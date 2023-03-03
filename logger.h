@@ -30,7 +30,7 @@
 	_BFLOG_IMPL(LOG_KERN | LOG_NOTICE, fmt, ##__VA_ARGS__)
 
 #ifdef DEBUG
-#define BFLOG_DBG(fmt, ...) BFLOG_IMPL(LOG_KERN | LOG_DEBUG, fmt, ##__VA_ARGS__)
+#define BFLOG_DBG(fmt, ...) _BFLOG_IMPL(LOG_KERN | LOG_DEBUG, fmt, ##__VA_ARGS__)
 #else
 #define BFLOG_DBG(fmt, ...)
 #endif
