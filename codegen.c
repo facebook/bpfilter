@@ -29,6 +29,8 @@
 #include "rule.h"
 #include "table.h"
 
+#define PROG_IFINDEX 2
+
 enum fixup_insn_type {
 	FIXUP_INSN_OFF,
 	FIXUP_INSN_IMM,
@@ -533,7 +535,7 @@ static int tc_load_img(struct codegen *codegen)
 	}
 
 	img_ctx->hook.sz = sizeof(img_ctx->hook);
-	img_ctx->hook.ifindex = 2;
+	img_ctx->hook.ifindex = PROG_IFINDEX;
 	img_ctx->hook.attach_point = codegen->bpf_tc_hook;
 
 	fd = load_img(codegen);

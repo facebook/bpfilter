@@ -13,6 +13,7 @@ make \
 	M=$PATH_TO_BPFILTER_SOURCES
 ```
 
+At present, the code statically sets the interface to which bpfilter is attached. However, there are plans to enhance this functionality in the future. As of now, you will need to make changes to `PROG_IFINDEX` in `codegen.c` if you want to modify the interface.
 
 ## License
 
