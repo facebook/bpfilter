@@ -21,6 +21,7 @@ userccflags += -I /usr/include -I $(srctree)/tools/include/ -I $(srctree)/tools/
 
 $(obj)/bpfilter_umh: $(LIBBPF_A)
 
+AFLAGS_bpfilter_umh_blob.o += -I $(obj)
 $(obj)/bpfilter_umh_blob.o: $(obj)/bpfilter_umh
 
 obj-m += bpfilter.o

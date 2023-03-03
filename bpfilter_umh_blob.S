@@ -2,6 +2,6 @@
 	.section .init.rodata, "a"
 	.global bpfilter_umh_start
 bpfilter_umh_start:
-	.incbin "net/bpfilter/bpfilter_umh"
+	.incbin "bpfilter_umh"
 	.global bpfilter_umh_end
 bpfilter_umh_end:
