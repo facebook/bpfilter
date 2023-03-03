@@ -7,12 +7,12 @@
 #ifndef NET_BPFILTER_TABLE_H
 #define NET_BPFILTER_TABLE_H
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <linux/types.h>
 
 #include <search.h>
 #include <stdint.h>
+
+#include "bpfilter.h"
 
 struct context;
 struct rule;

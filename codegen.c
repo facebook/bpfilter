@@ -8,8 +8,6 @@
 
 #include "codegen.h"
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/pkt_cls.h>
@@ -26,6 +24,7 @@
 
 #include <bpf/libbpf.h>
 
+#include "bpfilter.h"
 #include "logger.h"
 #include "rule.h"
 #include "table.h"

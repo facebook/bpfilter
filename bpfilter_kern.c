@@ -6,11 +6,12 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/umh.h>
-#include <linux/bpfilter.h>
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/fs.h>
 #include <linux/file.h>
+
+#include "bpfilter.h"
 #include "msgfmt.h"
 
 extern char bpfilter_umh_start;
