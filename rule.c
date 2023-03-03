@@ -8,8 +8,6 @@
 
 #include "rule.h"
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <linux/filter.h>
 #include <linux/ip.h>
 #include <linux/netfilter/x_tables.h>
@@ -19,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bpfilter.h"
 #include "codegen.h"
 #include "context.h"
 #include "logger.h"

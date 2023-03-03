@@ -7,9 +7,9 @@
 #ifndef NET_BPFILTER_TARGET_H
 #define NET_BPFILTER_TARGET_H
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <stdint.h>
+
+#include "bpfilter.h"
 
 struct codegen;
 struct context;

@@ -7,9 +7,9 @@
 #ifndef NET_BPFILTER_MATCH_H
 #define NET_BPFILTER_MATCH_H
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <stdint.h>
+
+#include "bpfilter.h"
 
 struct bpfilter_ipt_match;
 struct codegen;

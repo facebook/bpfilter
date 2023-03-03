@@ -8,8 +8,6 @@
 
 #include "filter-table.h"
 
-#include "../../include/uapi/linux/bpfilter.h"
-
 #include <linux/kernel.h>
 #include <linux/err.h>
 
@@ -19,6 +17,7 @@
 
 #include <bpf/bpf.h>
 
+#include "bpfilter.h"
 #include "codegen.h"
 #include "context.h"
 #include "logger.h"
