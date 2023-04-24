@@ -11,6 +11,9 @@ project(bpfilter
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
+set(CMAKE_CXX_FLAGS_RELEASE "")     # No NDEBUG in release mode
+
 # Include headers to the list of sources, so dependencies are re-built
 # on change.
 set(bpfilter_srcs
