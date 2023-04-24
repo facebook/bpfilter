@@ -41,5 +41,13 @@ set(bpfilter_cflags
     -Wall -Wextra
 )
 
+set(bpfilter_cflags_release
+    -O2
+)
+
+set(bpfilter_cflags_debug
+    -O0 -g3 -ggdb -fno-omit-frame-pointer
+)
+
 add_subdirectory(src)
 add_subdirectory(lib)
