@@ -9,6 +9,10 @@ project(bpfilter
     LANGUAGES C
 )
 
+find_package(Doxygen REQUIRED)
+
+find_program(SPHINX_BIN sphinx-build REQUIRED)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
@@ -51,3 +55,4 @@ set(bpfilter_cflags_debug
 
 add_subdirectory(src)
 add_subdirectory(lib)
+add_subdirectory(doc)
