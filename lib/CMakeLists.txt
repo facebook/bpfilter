@@ -18,6 +18,8 @@ target_include_directories(libbpfilter_o
 target_compile_options(libbpfilter_o
     PRIVATE
         -fPIC ${bpfilter_cflags}
+        $<$<CONFIG:Release>:${bpfilter_cflags_release}>
+        $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
 
 add_library(libbpfilter_a STATIC $<TARGET_OBJECTS:libbpfilter_o>)

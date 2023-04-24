@@ -12,4 +12,6 @@ target_include_directories(bpfilter
 target_compile_options(bpfilter
     PRIVATE
         -fPIE ${bpfilter_cflags}
+        $<$<CONFIG:Release>:${bpfilter_cflags_release}>
+        $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
