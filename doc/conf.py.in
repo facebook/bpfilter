@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+
+# -- Project information -----------------------------------------------------
+project = '@PROJECT_NAME@'
+copyright = '2023 Meta Platforms, Inc. and affiliates'
+author = ''
+
+# -- General configuration ---------------------------------------------------
+templates_path = ['_templates']
+exclude_patterns = []
+
+extensions = ['breathe']
+breathe_default_project = '@PROJECT_NAME@'
+
+# -- Options for HTML output -------------------------------------------------
+html_theme = 'furo'
+html_static_path = ['_static']
