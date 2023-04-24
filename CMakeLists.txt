@@ -6,12 +6,15 @@ cmake_minimum_required(VERSION 3.26)
 project(bpfilter
     VERSION 0.0.1
     DESCRIPTION "BPF-based packet filtering framework"
-    LANGUAGES C
+    LANGUAGES C CXX
 )
 
+find_package(GTest REQUIRED)
 find_package(Doxygen REQUIRED)
 
 find_program(SPHINX_BIN sphinx-build REQUIRED)
+
+include(GoogleTest)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -33,7 +36,7 @@ endif ()
 # Include headers to the list of sources, so dependencies are re-built
 # on change.
 set(bpfilter_srcs
-    ${CMAKE_SOURCE_DIR}/src/main.c
+    ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
 )
 
 set(libbpfilter_srcs
@@ -55,4 +58,5 @@ set(bpfilter_cflags_debug
 
 add_subdirectory(src)
 add_subdirectory(lib)
+add_subdirectory(tests)
 add_subdirectory(doc)
