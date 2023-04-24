@@ -16,6 +16,7 @@ add_library(bpfilter_unit_o OBJECT ${bpfilter_daemon_srcs})
 target_compile_options(bpfilter_unit_o
 	PRIVATE
         ${bpfilter_cflags}
+        -fprofile-arcs -ftest-coverage
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
@@ -29,6 +30,11 @@ target_include_directories(bpfilter_unit_o
 target_link_options(bpfilter_unit_o
     PUBLIC
         -fsanitize=address -fsanitize=undefined
+)
+
+target_link_libraries(bpfilter_unit_o
+    PRIVATE
+        gcov
 )
 
 add_executable(tests_unit ${tests_unit_srcs})
