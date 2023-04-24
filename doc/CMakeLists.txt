@@ -15,3 +15,10 @@ add_custom_target(doc
 	BYPRODUCTS xml html
 	COMMENT "Generate HTML documentation"
 )
+
+add_custom_target(coverage
+	COMMAND ${LCOV_BIN} -c -d ${CMAKE_BINARY_DIR} -o lcov.out
+	COMMAND ${GENHTML_BIN} -o coverage lcov.out
+	BYPRODUCTS coverage
+	COMMENT "Generate coverage report"
+)

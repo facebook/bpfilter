@@ -13,6 +13,8 @@ find_package(GTest REQUIRED)
 find_package(Doxygen REQUIRED)
 
 find_program(SPHINX_BIN sphinx-build REQUIRED)
+find_program(LCOV_BIN lcov REQUIRED)
+find_program(GENHTML_BIN genhtml REQUIRED)
 
 include(GoogleTest)
 
