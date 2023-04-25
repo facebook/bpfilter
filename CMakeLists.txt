@@ -49,7 +49,7 @@ set(bpfilter_srcs
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
 )
 
-set(libbpfilter_srcs
+set(bpfilter_library_srcs
     ${CMAKE_SOURCE_DIR}/lib/include/bpfilter.h
     ${CMAKE_SOURCE_DIR}/lib/src/ipt.c
 )
