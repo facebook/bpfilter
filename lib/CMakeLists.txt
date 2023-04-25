@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-add_library(libbpfilter_o OBJECT ${libbpfilter_srcs})
+add_library(libbpfilter_o OBJECT
+    ${bpfilter_shared_srcs}
+)
 
 #[[
 libbpfilter_o is the main target compiling libbpfilter's source files.
@@ -11,8 +13,10 @@ shared library (libbpfilter_so).
 
 target_include_directories(libbpfilter_o
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/include
-        ${CMAKE_SOURCE_DIR}/lib/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/source
+        ${CMAKE_SOURCE_DIR}/shared/include # For headers included in header files
+        ${CMAKE_SOURCE_DIR}/shared/include/bpfilter # For headers included in C source files
 )
 
 target_compile_options(libbpfilter_o
