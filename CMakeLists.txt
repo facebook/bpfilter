@@ -35,6 +35,12 @@ else ()
     endif ()
 endif ()
 
+set(bpfilter_shared_srcs
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/mem.h
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h
+    ${CMAKE_SOURCE_DIR}/shared/src/request.c
+)
+
 # Include headers to the list of sources, so dependencies are re-built
 # on change.
 set(bpfilter_srcs
