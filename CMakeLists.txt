@@ -39,6 +39,8 @@ set(bpfilter_shared_srcs
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/mem.h
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h
     ${CMAKE_SOURCE_DIR}/shared/src/request.c
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/response.h
+    ${CMAKE_SOURCE_DIR}/shared/src/response.c
 )
 
 # Include headers to the list of sources, so dependencies are re-built
