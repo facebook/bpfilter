@@ -1,16 +1,21 @@
 BPF-based packet filtering framework
 ---
 
-`bpfilter.ko` is an out-of-tree kernel module catching `setsockopt()` requests coming from `iptables-legacy` and converting the rules into BPF programs.
+`bpfilter` is a daemon and shared library aiming to translate filtering rules into BPF programs, improve performances.
 
-`CONFIG_BPFILTER` needs to be enabled.
+## Build from sources
 
-To build the kernel module:
+Building `bpfilter` will requires the following packages:
+
 ```shell
-make \
-	-C $SOURCE_DIR \
-	O=$BUILD_DIR \
-	M=$PATH_TO_BPFILTER_SOURCES
+sudo dnf install -y \
+	cmake \
+	# Formatting and code quality: not required by advised
+	clang-tools-extra \
+	# For unit tests
+	gtest-devel lcov libasan libubsan \
+	# For documentation
+	doxygen python3-sphinx python3-breathe python3-furo
 ```
 
 At present, the code statically sets the interface to which bpfilter is attached. However, there are plans to enhance this functionality in the future. As of now, you will need to make changes to `PROG_IFINDEX` in `codegen.c` if you want to modify the interface.
