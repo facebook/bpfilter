@@ -2,6 +2,8 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 add_executable(bpfilter
+    ${CMAKE_SOURCE_DIR}/src/main.c
+    ${bpfilter_daemon_srcs}
     ${bpfilter_shared_srcs}
 )
 
