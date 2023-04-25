@@ -48,6 +48,7 @@ set(bpfilter_shared_srcs
 set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/chain.c ${CMAKE_SOURCE_DIR}/src/core/chain.h
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
+    ${CMAKE_SOURCE_DIR}/src/core/match.c ${CMAKE_SOURCE_DIR}/src/core/match.h
 )
 
 set(bpfilter_library_srcs
