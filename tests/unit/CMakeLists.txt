@@ -5,6 +5,7 @@ enable_testing()
 
 set(tests_unit_srcs
     list.cc
+    map.cc
 )
 
 #[[
