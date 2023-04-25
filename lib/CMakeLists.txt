@@ -2,6 +2,7 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 add_library(libbpfilter_o OBJECT
+    ${bpfilter_library_srcs}
     ${bpfilter_shared_srcs}
 )
 
