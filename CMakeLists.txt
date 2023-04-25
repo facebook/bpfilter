@@ -54,6 +54,8 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/string.h
     ${CMAKE_SOURCE_DIR}/src/core/table.c ${CMAKE_SOURCE_DIR}/src/core/table.h
     ${CMAKE_SOURCE_DIR}/src/core/target.c ${CMAKE_SOURCE_DIR}/src/core/target.h
+
+    ${CMAKE_SOURCE_DIR}/src/generator/codegen.h
 )
 
 set(bpfilter_library_srcs
