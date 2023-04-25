@@ -4,3 +4,6 @@
  */
 
 #pragma once
+
+#include <bpfilter/shared/request.h>
+#include <bpfilter/shared/response.h>
