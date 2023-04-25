@@ -50,6 +50,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
     ${CMAKE_SOURCE_DIR}/src/core/match.c ${CMAKE_SOURCE_DIR}/src/core/match.h
     ${CMAKE_SOURCE_DIR}/src/core/rule.c ${CMAKE_SOURCE_DIR}/src/core/rule.h
+    ${CMAKE_SOURCE_DIR}/src/core/table.c ${CMAKE_SOURCE_DIR}/src/core/table.h
 )
 
 set(bpfilter_library_srcs
