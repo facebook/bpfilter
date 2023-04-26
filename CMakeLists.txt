@@ -49,6 +49,7 @@ set(bpfilter_shared_srcs
 set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/context.c ${CMAKE_SOURCE_DIR}/src/core/context.h
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
+    ${CMAKE_SOURCE_DIR}/src/core/logger.h
     ${CMAKE_SOURCE_DIR}/src/core/map.c ${CMAKE_SOURCE_DIR}/src/core/map.h
     ${CMAKE_SOURCE_DIR}/src/core/match.c ${CMAKE_SOURCE_DIR}/src/core/match.h
     ${CMAKE_SOURCE_DIR}/src/core/rule.c ${CMAKE_SOURCE_DIR}/src/core/rule.h
