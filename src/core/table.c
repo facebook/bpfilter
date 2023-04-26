@@ -29,7 +29,7 @@ void bf_table_free(struct bf_table **table)
 		return;
 
 	bf_list_foreach(&(*table)->chains, node) {
-		struct bf_chain *chain = bf_list_node_data(node);
+        struct bf_chain *chain = bf_list_node_get_data(node);
 		bf_chain_free(&chain);
 	}
 

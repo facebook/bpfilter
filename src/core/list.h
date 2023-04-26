@@ -8,7 +8,21 @@
 #include <assert.h>
 #include <stddef.h>
 
+/* This has to be defined here, otherwise struct bf_list_node definition is
+ * self-referencing... */
 typedef struct bf_list_node bf_list_node;
+
+/**
+ * @struct bf_list_ops
+ * @brief Operation to manipulate @ref bf_list data.
+ *
+ * @var bf_list_ops::free
+ *  Free the data stored in a node. Should be able to handle NULL data.
+ */
+typedef struct
+{
+    void (*free)(void **data);
+} bf_list_ops;
 
 /**
  * @struct bf_list_node
@@ -52,6 +66,7 @@ typedef struct
     size_t len;
     bf_list_node *head;
     bf_list_node *tail;
+    bf_list_ops ops;
 } bf_list;
 
 /**
@@ -89,16 +104,17 @@ typedef struct
 /**
  * @brief Initialize an allocated list.
  *
- * @param l List to initialise. Must be non-NULL.
+ * @param list List to initialise. Must be non-NULL.
+ * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
+ *  @p ops shouldn't contain any NULL field.
  */
-void bf_list_init(bf_list *l);
+void bf_list_init(bf_list *list, const bf_list_ops *ops);
 
 /**
  * @brief Clean up a list.
  *
- * Every node in the list is freed. The node's content is not freed. If
- * the @ref bf_list object has been dynamically allocated, it won't be
- * freed either.
+ * Every node in the list is freed. The node's data is freed using the function
+ * provided during initialisation (through @ref bf_list_ops).
  *
  * @param list Pointer to the initialised list to clean. Must be non-NULL.
  */
@@ -139,8 +155,9 @@ int bf_list_add_tail(bf_list *list, void *data);
 /**
  * @brief Delete @p node from @p list.
  *
- * @p node is freed and shouldn't be used once the function returns. Caller
- * should ensure the node's data is freed before calling this function.
+ * @p node is freed and shouldn't be used once the function returns. The node's
+ * data will be freed using the function provided during initialisation (through
+ * @ref bf_list_ops).
  *
  * @param list List to remove node from. Must be non-NULL.
  * @param node Node to remove from the list. Must be non-NULL.
@@ -150,7 +167,7 @@ void bf_list_delete(bf_list *list, bf_list_node *node);
 /**
  * @brief Returns the first element of the list.
  *
- * A @p bf_list_node object it returned. Use @ref bf_list_node_data to
+ * A @p bf_list_node object it returned. Use @ref bf_list_node_get_data to
  * get a pointer to the data.
  *
  * @param list Initialised list. Must be non-NULL.
@@ -165,7 +182,7 @@ static inline bf_list_node *bf_list_get_head(const bf_list *list)
 /**
  * @brief Returns the last element of the list.
  *
- * A @p bf_list_node object it returned. Use @ref bf_list_node_data to
+ * A @p bf_list_node object it returned. Use @ref bf_list_node_get_data to
  * get a pointer to the data.
  *
  * @param list Initialised list. Must be non-NULL.
@@ -206,12 +223,33 @@ static inline bf_list_node *bf_list_node_prev(const bf_list_node *node)
  *
  * Note that the pointer returned can be NULL, as nothing prevents NULL data
  * to be stored in the node.
+ * The pointer returned is owned by the node and should not be freed.
  *
  * @param node Current node. Must be non-NULL.
  * @return Pointer to the data stored in the iterator.
  */
-static inline void *bf_list_node_data(const bf_list_node *node)
+static inline void *bf_list_node_get_data(const bf_list_node *node)
 {
     assert(node);
     return node->data;
+}
+
+/**
+ * @brief Get the node's data and remove it from the node.
+ *
+ * Once the function returns, the node's data is set to NULL. The pointer
+ * returned is then owned by the caller.
+ *
+ * @param node Current node. Must be non-NULL.
+ * @return Pointer to the data stored in the node.
+ */
+static inline void *bf_list_node_take_data(bf_list_node *node)
+{
+    void *data = node->data;
+
+    assert(node);
+
+    node->data = NULL;
+
+    return data;
 }

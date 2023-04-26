@@ -29,7 +29,7 @@ void bf_chain_free(struct bf_chain **chain)
 		return;
 
 	bf_list_foreach(&(*chain)->rules, node) {
-		struct bf_rule *rule = bf_list_node_data(node);
+        struct bf_rule *rule = bf_list_node_get_data(node);
 		bf_rule_free(&rule);
 	}
 

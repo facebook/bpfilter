@@ -36,35 +36,39 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 /**
  * @brief Free a list node. Must be non-NULL.
  *
+ * The data contained in the node will also be freed using the function provided
+ * in the list's ops.
+ *
  * @param node Node to free.
  */
-static void bf_list_node_free(bf_list_node **node)
+static void bf_list_node_free(bf_list_node **node,
+                              void (*free_data)(void **data))
 {
     assert(node);
 
-    (*node)->prev = NULL;
-    (*node)->next = NULL;
-
+    free_data(&(*node)->data);
     free(*node);
     *node = NULL;
 }
 
-void bf_list_init(bf_list *l)
+void bf_list_init(bf_list *list, const bf_list_ops *ops)
 {
-    assert(l);
+    assert(list);
+    assert(ops);
+    assert(ops->free);
 
-    l->len = 0;
-    l->head = NULL;
-    l->tail = NULL;
+    list->len = 0;
+    list->head = NULL;
+    list->tail = NULL;
+    list->ops = *ops;
 }
 
 void bf_list_clean(bf_list *list)
 {
     assert(list);
 
-    bf_list_foreach (list, node) {
-        bf_list_node_free(&node);
-    }
+    bf_list_foreach (list, node)
+        bf_list_node_free(&node, list->ops.free);
 
     list->len = 0;
     list->head = NULL;
@@ -136,7 +140,7 @@ void bf_list_delete(bf_list *list, bf_list_node *node)
     if (node->next)
         node->next->prev = node->prev;
 
-    bf_list_node_free(&node);
+    bf_list_node_free(&node, list->ops.free);
 
     --list->len;
 }
