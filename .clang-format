@@ -60,7 +60,7 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Always
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
-ForEachMacros: ['bf_list_foreach']
+ForEachMacros: ['bf_list_foreach', 'bf_list_foreach_rev']
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^<linux/'
