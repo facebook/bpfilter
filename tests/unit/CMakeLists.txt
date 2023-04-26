@@ -12,7 +12,10 @@ set(tests_unit_srcs
 bpfilter_o can't be used here to build against the unit tests, as we need
 --coverage build flag to be added. Hence, bpfilter_unit_o is defined.
 ]]
-add_library(bpfilter_unit_o OBJECT ${bpfilter_daemon_srcs})
+add_library(bpfilter_unit_o OBJECT
+    ${bpfilter_daemon_srcs}
+    ${bpfilter_shared_srcs}
+)
 
 target_compile_options(bpfilter_unit_o
 	PRIVATE

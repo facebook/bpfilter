@@ -36,6 +36,7 @@ else ()
 endif ()
 
 set(bpfilter_shared_srcs
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/helper.h
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/mem.h
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h
     ${CMAKE_SOURCE_DIR}/shared/src/request.c

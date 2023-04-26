@@ -29,7 +29,7 @@ void bf_rule_free(struct bf_rule **rule)
 		return;
 
 	bf_list_foreach(&(*rule)->matches, node) {
-		struct bf_match *match = bf_list_node_data(node);
+        struct bf_match *match = bf_list_node_get_data(node);
 		bf_match_free(&match);
 	}
 
