@@ -13,6 +13,25 @@
 
 #include "shared/mem.h"
 
+int bf_response_new_raw(struct bf_response **response, const char *data,
+                        size_t data_len)
+{
+    __cleanup_bf_response__ struct bf_response *_response = NULL;
+
+    assert(response);
+    assert(data);
+
+    _response = malloc(data_len);
+    if (!_response)
+        return -ENOMEM;
+
+    memcpy(_response, data, data_len);
+
+    *response = TAKE_PTR(_response);
+
+    return 0;
+}
+
 int bf_response_new_success(struct bf_response **response, size_t data_len,
                             const char *data)
 {
