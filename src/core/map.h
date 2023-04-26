@@ -10,7 +10,20 @@
 #include <search.h>
 #include <stddef.h>
 
-typedef struct hsearch_data bf_map;
+/**
+ * @struct bf_map
+ * @brief Map object.
+ *
+ * This structure is opaque and should not be accessed directly. Use the
+ * provided functions instead.
+ *
+ * @var bf_map::data
+ *  Underlying data structure used to store the map.
+ */
+typedef struct
+{
+    struct hsearch_data data;
+} bf_map;
 
 /**
  * @brief Create a new map.

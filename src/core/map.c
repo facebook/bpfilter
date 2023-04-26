@@ -11,62 +11,62 @@
 
 int bf_map_new(bf_map **map, size_t nelem)
 {
-	bf_map *_map;
+    bf_map *_map;
 
-	assert(map);
+    assert(map);
 
-	_map = calloc(1, sizeof(*_map));
-	if (!_map)
-		return -ENOMEM;
+    _map = calloc(1, sizeof(*_map));
+    if (!_map)
+        return -ENOMEM;
 
-	if (!hcreate_r(nelem, _map)) {
-		free(_map);
-		return -errno;
-	}
+    if (!hcreate_r(nelem, &_map->data)) {
+        free(_map);
+        return -errno;
+    }
 
-	*map = _map;
+    *map = _map;
 
-	return 0;
+    return 0;
 }
 
 void bf_map_free(bf_map **map)
 {
-	hdestroy_r(*map);
-	free(*map);
-	*map = NULL;
+    hdestroy_r(&(*map)->data);
+    free(*map);
+    *map = NULL;
 }
 
 int bf_map_find(bf_map *map, const char *key, void **value)
 {
-	const ENTRY needle = { .key = (char *)key };
-	ENTRY *found;
+    const ENTRY needle = {.key = (char *)key};
+    ENTRY *found;
 
-	assert(map);
-	assert(key);
-	assert(value);
+    assert(map);
+    assert(key);
+    assert(value);
 
-	if (!hsearch_r(needle, FIND, &found, map))
-		return -ENOENT;
+    if (!hsearch_r(needle, FIND, &found, &map->data))
+        return -ENOENT;
 
-	*value = found->data;
+    *value = found->data;
 
-	return 0;
+    return 0;
 }
 
 int bf_map_upsert(bf_map *map, const char *key, void *value)
 {
-	const ENTRY needle = { .key = (char *)key, .data = value };
-	ENTRY *found;
+    const ENTRY needle = {.key = (char *)key, .data = value};
+    ENTRY *found;
 
-	assert(map);
-	assert(key);
-	assert(value);
+    assert(map);
+    assert(key);
+    assert(value);
 
-	if (!hsearch_r(needle, ENTER, &found, map))
-		return -errno;
+    if (!hsearch_r(needle, ENTER, &found, &map->data))
+        return -errno;
 
-	found->key = (char *)key;
-	found->data = value;
+    found->key = (char *)key;
+    found->data = value;
 
-	return 0;
+    return 0;
 }
