@@ -20,6 +20,7 @@ add_library(bpfilter_unit_o OBJECT
 target_compile_options(bpfilter_unit_o
 	PRIVATE
         ${bpfilter_cflags}
+        -fsanitize=address -fsanitize=undefined
         -fprofile-arcs -ftest-coverage
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
@@ -46,6 +47,7 @@ add_executable(tests_unit ${tests_unit_srcs})
 target_compile_options(tests_unit
     PRIVATE
         ${bpfilter_cflags}
+        -fsanitize=address -fsanitize=undefined
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
