@@ -52,6 +52,17 @@ static void dummy_free(void **data)
 
 static bf_list_ops dummy_ops = {.free = dummy_free};
 
+static void new_and_fill(bf_list **l, size_t count, const bf_list_ops *ops,
+                         int (*filler)(bf_list *l, void *data))
+{
+    EXPECT_EQ(0, bf_list_new(l, ops));
+
+    for (size_t i = 1; i <= count; ++i)
+        EXPECT_EQ(0, filler(*l, &i));
+
+    EXPECT_EQ(count, bf_list_size(*l));
+}
+
 static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
                           int (*filler)(bf_list *l, void *data))
 {
@@ -61,6 +72,49 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
         EXPECT_EQ(0, filler(l, &i));
 
     EXPECT_EQ(count, bf_list_size(l));
+}
+
+TEST(list, new_and_free)
+{
+    bf_list *l = nullptr;
+
+    {
+        // With noop operators
+        EXPECT_EQ(0, bf_list_new(&l, &noop_ops));
+        EXPECT_EQ(0, l->len);
+        EXPECT_EQ(nullptr, l->head);
+        EXPECT_EQ(nullptr, l->tail);
+
+        bf_list_free(&l);
+        EXPECT_EQ(nullptr, l);
+
+        new_and_fill(&l, 3, &noop_ops, bf_list_add_head);
+        EXPECT_EQ(3, l->len);
+        EXPECT_NE(nullptr, l->head);
+        EXPECT_NE(nullptr, l->tail);
+
+        bf_list_free(&l);
+        EXPECT_EQ(nullptr, l);
+    }
+
+    {
+        // With dummy operators which allocate memory
+        bf_list_new(&l, &dummy_ops);
+        EXPECT_EQ(0, l->len);
+        EXPECT_EQ(nullptr, l->head);
+        EXPECT_EQ(nullptr, l->tail);
+
+        bf_list_free(&l);
+        EXPECT_EQ(nullptr, l);
+
+        new_and_fill(&l, 3, &dummy_ops, dummy_filler_head);
+        EXPECT_EQ(3, l->len);
+        EXPECT_NE(nullptr, l->head);
+        EXPECT_NE(nullptr, l->tail);
+
+        bf_list_free(&l);
+        EXPECT_EQ(nullptr, l);
+    }
 }
 
 TEST(list, init_and_clean)
@@ -212,7 +266,11 @@ TEST(list, fill_from_tail_and_check)
 TEST(list, ensure_reject_null_params)
 {
     bf_list list = {};
+    bf_list *plist = nullptr;
 
+    EXPECT_DEATH(bf_list_new(nullptr, &noop_ops), "");
+    EXPECT_DEATH(bf_list_new(&plist, nullptr), "");
+    EXPECT_DEATH(bf_list_free(nullptr), "");
     EXPECT_DEATH(bf_list_init(nullptr, &noop_ops), "");
     EXPECT_DEATH(bf_list_init(&list, nullptr), "");
     EXPECT_DEATH(bf_list_clean(nullptr), "");

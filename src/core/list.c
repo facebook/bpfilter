@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "shared/mem.h"
+
 /**
  * @brief Create a new list node, with the given data.
  *
@@ -49,6 +51,37 @@ static void bf_list_node_free(bf_list_node **node,
     free_data(&(*node)->data);
     free(*node);
     *node = NULL;
+}
+
+int bf_list_new(bf_list **list, const bf_list_ops *ops)
+{
+    __cleanup_bf_list__ bf_list *_list = NULL;
+
+    assert(list);
+    assert(ops);
+    assert(ops->free);
+
+    _list = calloc(1, sizeof(*_list));
+    if (!_list)
+        return -ENOMEM;
+
+    bf_list_init(_list, ops);
+
+    *list = TAKE_PTR(_list);
+
+    return 0;
+}
+
+void bf_list_free(bf_list **list)
+{
+    assert(list);
+
+    if (!*list)
+        return;
+
+    bf_list_clean(*list);
+    free(*list);
+    *list = NULL;
 }
 
 void bf_list_init(bf_list *list, const bf_list_ops *ops)

@@ -69,6 +69,8 @@ typedef struct
     bf_list_ops ops;
 } bf_list;
 
+#define __cleanup_bf_list__ __attribute__((cleanup(bf_list_free)))
+
 /**
  * @brief Iterate over a @ref bf_list.
  *
@@ -100,6 +102,22 @@ typedef struct
     for (bf_list_node *node = (list)->tail,                                    \
                       *__next = (list)->tail ? (list)->tail->prev : NULL;      \
          node; node = __next, __next = __next ? __next->prev : NULL)
+
+/**
+ * @brief Allocate and initialise a new list.
+ *
+ * @param list Pointer to the list to initialise. Must be non-NULL.
+ * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
+ * @return 0 on success or negative errno code on failure.
+ */
+int bf_list_new(bf_list **list, const bf_list_ops *ops);
+
+/**
+ * @brief Free a list.
+ *
+ * @param list Pointer to the list to free. Must be non-NULL.
+ */
+void bf_list_free(bf_list **list);
 
 /**
  * @brief Initialize an allocated list.
