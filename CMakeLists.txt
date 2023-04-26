@@ -47,8 +47,7 @@ set(bpfilter_shared_srcs
 # Include headers to the list of sources, so dependencies are re-built
 # on change.
 set(bpfilter_daemon_srcs
-    ${CMAKE_SOURCE_DIR}/src/core/chain.c ${CMAKE_SOURCE_DIR}/src/core/chain.h
-    ${CMAKE_SOURCE_DIR}/src/core/dump.c ${CMAKE_SOURCE_DIR}/src/core/dump.h
+    ${CMAKE_SOURCE_DIR}/src/core/context.c ${CMAKE_SOURCE_DIR}/src/core/context.h
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
     ${CMAKE_SOURCE_DIR}/src/core/map.c ${CMAKE_SOURCE_DIR}/src/core/map.h
     ${CMAKE_SOURCE_DIR}/src/core/match.c ${CMAKE_SOURCE_DIR}/src/core/match.h
@@ -57,7 +56,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/table.c ${CMAKE_SOURCE_DIR}/src/core/table.h
     ${CMAKE_SOURCE_DIR}/src/core/target.c ${CMAKE_SOURCE_DIR}/src/core/target.h
 
-    ${CMAKE_SOURCE_DIR}/src/generator/codegen.h
+    ${CMAKE_SOURCE_DIR}/src/generator/codegen.c ${CMAKE_SOURCE_DIR}/src/generator/codegen.h
 )
 
 set(bpfilter_library_srcs
