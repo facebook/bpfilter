@@ -4,6 +4,7 @@
 enable_testing()
 
 set(tests_unit_srcs
+    context.cc
     list.cc
     map.cc
 )
