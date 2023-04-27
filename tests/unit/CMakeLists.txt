@@ -34,7 +34,9 @@ target_include_directories(bpfilter_unit_o
 
 target_link_options(bpfilter_unit_o
     PUBLIC
-        -fsanitize=address -fsanitize=undefined
+        ${bpfilter_ldflags}
+        $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
+        $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
 )
 
 target_link_libraries(bpfilter_unit_o
@@ -47,7 +49,6 @@ add_executable(tests_unit ${tests_unit_srcs})
 target_compile_options(tests_unit
     PRIVATE
         ${bpfilter_cflags}
-        -fsanitize=address -fsanitize=undefined
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
@@ -60,7 +61,9 @@ target_link_libraries(tests_unit
 
 target_link_options(tests_unit
     PUBLIC
-        -fsanitize=address -fsanitize=undefined
+        ${bpfilter_ldflags}
+        $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
+        $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
 )
 
 gtest_discover_tests(tests_unit)
