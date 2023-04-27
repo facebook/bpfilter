@@ -38,7 +38,7 @@ static int bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
         }
 
         _buf_len += r;
-    } while (r > 0);
+    } while (r > 0 && _buf_len == buf_capacity);
 
     *buf = TAKE_PTR(_buf);
     *buf_len = _buf_len;
