@@ -58,7 +58,6 @@ static inline size_t bf_response_size(struct bf_response *response)
 {
     assert(response);
 
-    return sizeof(struct bf_response) + response->type == BF_RES_SUCCESS ?
-               response->data_len :
-               0;
+    return sizeof(struct bf_response) +
+           (response->type == BF_RES_SUCCESS ? response->data_len : 0);
 }
