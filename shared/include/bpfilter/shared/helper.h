@@ -6,9 +6,13 @@
 #pragma once
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define UNUSED(x) (void)(x)
 
+#define __cleanup_free__ __attribute__((__cleanup__(freep)))
+#define __cleanup_close__ __attribute__((__cleanup__(closep)))
 
 /*
  * Thank you Lennart:
@@ -17,4 +21,12 @@
 static inline void freep(void *p)
 {
     free(*(void **)p);
+    *(void **)p = NULL;
+}
+
+static inline void closep(int *fd)
+{
+    if (*fd >= 0)
+        close(*fd);
+    *fd = -1;
 }
