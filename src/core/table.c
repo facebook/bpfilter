@@ -10,31 +10,32 @@
 
 int bf_table_new(struct bf_table **table)
 {
-	struct bf_table *_table;
+    struct bf_table *_table;
 
-	_table = calloc(1, sizeof(*_table));
-	if (!_table)
-		return -ENOMEM;
+    _table = calloc(1, sizeof(*_table));
+    if (!_table)
+        return -ENOMEM;
 
-	bf_list_init(&_table->chains);
+    bf_list_init(&_table->chains,
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_table_free}});
 
-	*table = _table;
+    *table = _table;
 
-	return 0;
+    return 0;
 }
 
 void bf_table_free(struct bf_table **table)
 {
-	if (!*table)
-		return;
+    if (!*table)
+        return;
 
-	bf_list_foreach(&(*table)->chains, node) {
+    bf_list_foreach (&(*table)->chains, node) {
         struct bf_chain *chain = bf_list_node_get_data(node);
-		bf_chain_free(&chain);
-	}
+        bf_chain_free(&chain);
+    }
 
-	bf_list_clean(&(*table)->chains);
+    bf_list_clean(&(*table)->chains);
 
-	free(*table);
-	*table = NULL;
+    free(*table);
+    *table = NULL;
 }
