@@ -12,6 +12,8 @@
  * self-referencing... */
 typedef struct bf_list_node bf_list_node;
 
+typedef void (*bf_list_ops_free)(void **data);
+
 /**
  * @struct bf_list_ops
  * @brief Operation to manipulate @ref bf_list data.
@@ -21,7 +23,7 @@ typedef struct bf_list_node bf_list_node;
  */
 typedef struct
 {
-    void (*free)(void **data);
+    bf_list_ops_free free;
 } bf_list_ops;
 
 /**

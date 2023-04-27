@@ -10,31 +10,31 @@
 
 int bf_chain_new(struct bf_chain **chain)
 {
-	struct bf_chain *_chain;
+    struct bf_chain *_chain;
 
-	_chain = calloc(1, sizeof(*_chain));
-	if (!_chain)
-		return -ENOMEM;
+    _chain = calloc(1, sizeof(*_chain));
+    if (!_chain)
+        return -ENOMEM;
 
-	bf_list_init(&_chain->rules);
+    bf_list_init(&_chain->rules, NULL);
 
-	*chain = _chain;
+    *chain = _chain;
 
-	return 0;
+    return 0;
 }
 
 void bf_chain_free(struct bf_chain **chain)
 {
-	if (!*chain)
-		return;
+    if (!*chain)
+        return;
 
-	bf_list_foreach(&(*chain)->rules, node) {
+    bf_list_foreach (&(*chain)->rules, node) {
         struct bf_rule *rule = bf_list_node_get_data(node);
-		bf_rule_free(&rule);
-	}
+        bf_rule_free(&rule);
+    }
 
-	bf_list_clean(&(*chain)->rules);
+    bf_list_clean(&(*chain)->rules);
 
-	free(*chain);
-	*chain = NULL;
+    free(*chain);
+    *chain = NULL;
 }
