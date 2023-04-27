@@ -18,4 +18,4 @@
  *  NULL.
  * @return 0 on success, negative errno value on error.
  */
-int bf_send(struct bf_request *request, struct bf_response **response);
+int bf_send(const struct bf_request *request, struct bf_response **response);

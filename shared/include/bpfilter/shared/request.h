@@ -27,7 +27,7 @@ int bf_request_new(struct bf_request **request, size_t data_len,
                    const char *data);
 void bf_request_free(struct bf_request **request);
 
-static inline size_t bf_request_size(struct bf_request *request)
+static inline size_t bf_request_size(const struct bf_request *request)
 {
     assert(request);
 
