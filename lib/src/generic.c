@@ -15,7 +15,7 @@
 #include "shared/request.h"
 #include "shared/response.h"
 
-int bf_send(struct bf_request *request, struct bf_response **response)
+int bf_send(const struct bf_request *request, struct bf_response **response)
 {
     __cleanup_close__ int fd = -1;
     struct sockaddr_un addr = {};

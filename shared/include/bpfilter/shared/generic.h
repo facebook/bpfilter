@@ -16,7 +16,7 @@ struct bf_response;
  * @param request Request to send. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
-int bf_send_request(int fd, struct bf_request *request);
+int bf_send_request(int fd, const struct bf_request *request);
 
 /**
  * @brief Received a request from the file descriptor.

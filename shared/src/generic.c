@@ -46,7 +46,7 @@ static int bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
     return 0;
 }
 
-int bf_send_request(int fd, struct bf_request *request)
+int bf_send_request(int fd, const struct bf_request *request)
 {
     int r;
 
