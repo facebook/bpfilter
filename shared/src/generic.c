@@ -56,6 +56,10 @@ int bf_send_request(int fd, struct bf_request *request)
     if (r < 0) {
         fprintf(stderr, "Failed to send request: %s\n", strerror(errno));
         return -errno;
+    } else if ((size_t)r != bf_request_size(request)) {
+        fprintf(stderr, "Failed to send request: %d bytes sent, %ld expected\n",
+                r, bf_request_size(request));
+        return -EIO;
     }
 
     return 0;
@@ -108,6 +112,11 @@ int bf_send_response(int fd, struct bf_response *response)
     if (r < 0) {
         fprintf(stderr, "Failed to send response: %s\n", strerror(errno));
         return -errno;
+    } else if ((size_t)r != bf_response_size(response)) {
+        fprintf(stderr,
+                "Failed to send response: %d bytes sent, %ld expected\n", r,
+                bf_response_size(response));
+        return -EIO;
     }
 
     return 0;
