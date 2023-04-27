@@ -36,12 +36,11 @@ else ()
 endif ()
 
 set(bpfilter_shared_srcs
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/generic.h ${CMAKE_SOURCE_DIR}/shared/src/generic.c
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/helper.h
     ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/mem.h
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h
-    ${CMAKE_SOURCE_DIR}/shared/src/request.c
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/response.h
-    ${CMAKE_SOURCE_DIR}/shared/src/response.c
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h ${CMAKE_SOURCE_DIR}/shared/src/request.c
+    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/response.h ${CMAKE_SOURCE_DIR}/shared/src/response.c
 )
 
 # Include headers to the list of sources, so dependencies are re-built
@@ -62,6 +61,7 @@ set(bpfilter_daemon_srcs
 
 set(bpfilter_library_srcs
     ${CMAKE_SOURCE_DIR}/lib/include/bpfilter/bpfilter.h
+    ${CMAKE_SOURCE_DIR}/lib/src/generic.c
     ${CMAKE_SOURCE_DIR}/lib/src/ipt.c
 )
 
