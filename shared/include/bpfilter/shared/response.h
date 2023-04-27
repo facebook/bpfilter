@@ -54,7 +54,7 @@ int bf_response_new_success(struct bf_response **response, size_t data_len,
 int bf_response_new_failure(struct bf_response **response, int error);
 void bf_response_free(struct bf_response **response);
 
-static inline size_t bf_response_size(struct bf_response *response)
+static inline size_t bf_response_size(const struct bf_response *response)
 {
     assert(response);
 
