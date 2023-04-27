@@ -27,6 +27,13 @@ target_compile_options(libbpfilter_o
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
 )
 
+target_link_options(libbpfilter_o
+    PUBLIC
+        ${bpfilter_ldflags}
+        $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
+        $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
+)
+
 add_library(libbpfilter_a STATIC $<TARGET_OBJECTS:libbpfilter_o>)
 set_target_properties(libbpfilter_a PROPERTIES OUTPUT_NAME bpfilter)
 

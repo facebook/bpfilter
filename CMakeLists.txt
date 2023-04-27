@@ -69,12 +69,23 @@ set(bpfilter_cflags
     -Wall -Wextra
 )
 
+set(bpfilter_ldflags
+)
+
 set(bpfilter_cflags_release
     -O2
 )
 
+set(bpfilter_ldflags_release
+)
+
 set(bpfilter_cflags_debug
     -O0 -g3 -ggdb -fno-omit-frame-pointer
+    -fsanitize=address -fsanitize=undefined
+)
+
+set(bpfilter_ldflags_debug
+    -fsanitize=address -fsanitize=undefined
 )
 
 add_subdirectory(src)
