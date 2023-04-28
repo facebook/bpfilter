@@ -24,7 +24,7 @@ struct bf_request
 };
 
 int bf_request_new(struct bf_request **request, size_t data_len,
-                   const char *data);
+                   const void *data);
 
 /**
  * @brief Copy a request.
