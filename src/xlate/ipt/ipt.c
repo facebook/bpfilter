@@ -9,8 +9,13 @@
 
 #include <stdio.h>
 
+#include "core/chain.h"
 #include "core/logger.h"
+#include "core/match.h"
+#include "core/rule.h"
+#include "core/target.h"
 #include "generator/codegen.h"
+#include "shared/helper.h"
 #include "shared/mem.h"
 #include "xlate/ipt/dump.h"
 #include "xlate/ipt/helpers.h"
