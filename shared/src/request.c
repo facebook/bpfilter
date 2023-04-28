@@ -33,6 +33,25 @@ int bf_request_new(struct bf_request **request, size_t data_len,
     return 0;
 }
 
+int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
+{
+    __cleanup_bf_request__ struct bf_request *_request = NULL;
+    int r;
+
+    assert(dest);
+    assert(src);
+
+    r = bf_request_new(&_request, src->data_len, src->data);
+    if (r < 0)
+        return r;
+
+    _request->type = src->type;
+
+    *dest = TAKE_PTR(_request);
+
+    return 0;
+}
+
 void bf_request_free(struct bf_request **request)
 {
     free(*request);

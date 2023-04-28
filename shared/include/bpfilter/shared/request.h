@@ -25,6 +25,17 @@ struct bf_request
 
 int bf_request_new(struct bf_request **request, size_t data_len,
                    const char *data);
+
+/**
+ * @brief Copy a request.
+ *
+ * @param dest The destination request. Allocated by the function.
+ *  Can't be NULL.
+ * @param src The source request, to copy. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
+ */
+int bf_request_copy(struct bf_request **dest, const struct bf_request *src);
+
 void bf_request_free(struct bf_request **request);
 
 static inline size_t bf_request_size(const struct bf_request *request)

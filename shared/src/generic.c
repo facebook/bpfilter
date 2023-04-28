@@ -90,8 +90,7 @@ int bf_recv_request(int fd, struct bf_request **request)
         return -EINVAL;
     }
 
-    r = bf_request_new(&_request, _oversized_request->data_len,
-                       _oversized_request->data);
+    r = bf_request_copy(&_request, _oversized_request);
     if (r < 0) {
         fprintf(stderr, "Failed to allocate request: %s\n", strerror(-r));
         return r;
@@ -147,8 +146,7 @@ int bf_recv_response(int fd, struct bf_response **response)
         return -EINVAL;
     }
 
-    r = bf_response_new_raw(&_response, _oversized_response->data,
-                            _oversized_response->data_len);
+    r = bf_response_copy(&_response, _oversized_response);
     if (r < 0) {
         fprintf(stderr, "Failed to allocate response: %s\n", strerror(-r));
         return r;
