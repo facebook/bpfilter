@@ -67,3 +67,9 @@ target_link_options(tests_unit
 )
 
 gtest_discover_tests(tests_unit)
+
+add_custom_target(test
+    COMMAND $<TARGET_FILE:tests_unit>
+    DEPENDS tests_unit
+    COMMENT "Running unit tests"
+)
