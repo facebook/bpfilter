@@ -12,8 +12,8 @@
 
 enum bf_response_type
 {
-    BF_RES_FAILURE,
     BF_RES_SUCCESS,
+    BF_RES_FAILURE,
     __BF_RES_TYPE_MAX
 };
 
