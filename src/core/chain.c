@@ -16,7 +16,7 @@ int bf_chain_new(struct bf_chain **chain)
     if (!_chain)
         return -ENOMEM;
 
-    bf_list_init(&_chain->rules, NULL);
+    _chain->rules = bf_list_default({.free = (bf_list_ops_free)bf_rule_free});
 
     *chain = _chain;
 
@@ -27,11 +27,6 @@ void bf_chain_free(struct bf_chain **chain)
 {
     if (!*chain)
         return;
-
-    bf_list_foreach (&(*chain)->rules, node) {
-        struct bf_rule *rule = bf_list_node_get_data(node);
-        bf_rule_free(&rule);
-    }
 
     bf_list_clean(&(*chain)->rules);
 

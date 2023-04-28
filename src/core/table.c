@@ -17,7 +17,7 @@ int bf_table_new(struct bf_table **table)
         return -ENOMEM;
 
     bf_list_init(&_table->chains,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_table_free}});
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_chain_free}});
 
     *table = _table;
 
