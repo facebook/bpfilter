@@ -48,6 +48,7 @@ set(bpfilter_shared_srcs
 set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/chain.c ${CMAKE_SOURCE_DIR}/src/core/chain.h
     ${CMAKE_SOURCE_DIR}/src/core/context.c ${CMAKE_SOURCE_DIR}/src/core/context.h
+    ${CMAKE_SOURCE_DIR}/src/core/dump.c ${CMAKE_SOURCE_DIR}/src/core/dump.h
     ${CMAKE_SOURCE_DIR}/src/core/list.c ${CMAKE_SOURCE_DIR}/src/core/list.h
     ${CMAKE_SOURCE_DIR}/src/core/logger.h
     ${CMAKE_SOURCE_DIR}/src/core/map.c ${CMAKE_SOURCE_DIR}/src/core/map.h
@@ -58,6 +59,11 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/target.c ${CMAKE_SOURCE_DIR}/src/core/target.h
 
     ${CMAKE_SOURCE_DIR}/src/generator/codegen.c ${CMAKE_SOURCE_DIR}/src/generator/codegen.h
+
+    ${CMAKE_SOURCE_DIR}/src/xlate/frontend.c ${CMAKE_SOURCE_DIR}/src/xlate/frontend.h
+    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
+    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.c ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.h
+    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.c ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.h
 )
 
 set(bpfilter_library_srcs
