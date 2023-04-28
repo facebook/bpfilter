@@ -106,6 +106,14 @@ typedef struct
          node; node = __next, __next = __next ? __next->prev : NULL)
 
 /**
+ * @brief Returns an initialised @ref bf_list.
+ *
+ * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
+ * @return An initialised @ref bf_list.
+ */
+#define bf_list_default(list_ops) ((bf_list) {.ops = list_ops})
+
+/**
  * @brief Allocate and initialise a new list.
  *
  * @param list Pointer to the list to initialise. Must be non-NULL.
