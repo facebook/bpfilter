@@ -11,10 +11,12 @@
 
 #include "core/context.h"
 #include "core/logger.h"
+#include "generator/codegen.h"
 #include "shared/generic.h"
 #include "shared/helper.h"
 #include "shared/request.h"
 #include "shared/response.h"
+#include "xlate/frontend.h"
 
 static struct bf_context context = {};
 
@@ -58,9 +60,10 @@ int run(void)
     bf_info("Starting to accept connections...");
 
     while (!sig_received) {
+        const struct bf_frontend *fe;
         __cleanup_close__ int client_fd = -1;
         __cleanup_bf_request__ struct bf_request *request = NULL;
-        __cleanup_bf_response__ struct bf_response *dummy = NULL;
+        __cleanup_bf_response__ struct bf_response *response = NULL;
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {
@@ -76,11 +79,39 @@ int run(void)
         if (r < 0)
             return bf_err_code(r, "bf_recv_request() failed");
 
-        r = bf_response_new_failure(&dummy, ENOMEM);
-        if (r < 0)
-            return bf_err_code(r, "bf_response_new_failure() failed");
+        fe = bf_frontend_get(request->type);
+        if (fe) {
+            bf_list codegens[__BF_HOOK_MAX];
 
-        r = bf_send_response(client_fd, dummy);
+            bf_dbg("Dumping request's data:");
+            fe->dump(request->data);
+
+            for (int i = 0; i < __BF_HOOK_MAX; i++) {
+                codegens[i] = bf_list_default(
+                    {.free = (bf_list_ops_free)bf_codegen_free});
+            }
+
+            r = fe->translate(request->data, request->data_len, &codegens);
+            if (r < 0)
+                return bf_err_code(r, "translation failed");
+            else
+                bf_info("translation successful!");
+
+            for (int i = 0; i < __BF_HOOK_MAX; i++)
+                bf_list_clean(&codegens[i]);
+
+            r = bf_response_new_success(&response, 0, NULL);
+            if (r < 0)
+                return bf_err_code(r, "bf_response_new_success() failed");
+        } else {
+            r = bf_response_new_failure(&response, -ENOTSUP);
+            if (r < 0)
+                return bf_err_code(r, "bf_response_new_failure() failed");
+        }
+
+        r = bf_send_response(client_fd, response);
+        if (r < 0)
+            return bf_err_code(r, "bf_send_response() failed");
     }
 
     return 0;
