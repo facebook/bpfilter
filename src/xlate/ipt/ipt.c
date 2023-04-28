@@ -162,7 +162,7 @@ int bf_ipt_translate(void *data, size_t data_size,
         __cleanup_bf_codegen__ struct bf_codegen *codegen = NULL;
 
         if (!ipt_is_hook_enabled(ipt, i)) {
-            bf_info("Hook %d is not enabled, skipping\n", i);
+            bf_info("Hook %d is not enabled, skipping", i);
             continue;
         }
 
