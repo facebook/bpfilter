@@ -36,22 +36,20 @@ struct bf_response
     };
 };
 
-/**
- * @brief Allocate a response from raw data.
- *
- * @param response Response to allocate. Can't be NULL.
- * @param data Response's data. Will be copied inside the response. Can't be
- * NULL.
- * @param data_len Full length of the response's data, including fixed and
- *  variable length fields.
- * @return 0 on success, negative errno value on error.
- */
-int bf_response_new_raw(struct bf_response **response, const char *data,
-                        size_t data_len);
-
 int bf_response_new_success(struct bf_response **response, size_t data_len,
                             const char *data);
 int bf_response_new_failure(struct bf_response **response, int error);
+
+/**
+ * @brief Copy a response.
+ *
+ * @param dest The destination response. Allocated by the function.
+ *  Can't be NULL.
+ * @param src The source response, to copy. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
+ */
+int bf_response_copy(struct bf_response **dest, const struct bf_response *src);
+
 void bf_response_free(struct bf_response **response);
 
 static inline size_t bf_response_size(const struct bf_response *response)
