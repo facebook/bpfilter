@@ -8,6 +8,8 @@
 #include <bpfilter/shared/request.h>
 #include <bpfilter/shared/response.h>
 
+struct ipt_replace;
+
 /**
  * @brief Send a request to the daemon and receive the response.
  *
@@ -19,3 +21,11 @@
  * @return 0 on success, negative errno value on error.
  */
 int bf_send(const struct bf_request *request, struct bf_response **response);
+
+/**
+ * @brief Send to bpfilter daemon iptable's ipt_replace data.
+ *
+ * @param ipt_replace ipt_replace data to send to the daemon. Can't be NULL.
+ * @return 0 on success, negative errno value on error.
+ */
+int bf_ipt_replace(struct ipt_replace *ipt_replace);
