@@ -14,7 +14,7 @@
 #include "shared/mem.h"
 
 int bf_request_new(struct bf_request **request, size_t data_len,
-                   const char *data)
+                   const void *data)
 {
     __cleanup_bf_request__ struct bf_request *_request = NULL;
 
