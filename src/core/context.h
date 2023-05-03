@@ -9,7 +9,6 @@
 
 enum bf_hooks
 {
-    BF_HOOK_XDP,
     BF_HOOK_TC_INGRESS,
     BF_HOOK_IPT_PRE_ROUTING,
     BF_HOOK_IPT_LOCAL_IN,

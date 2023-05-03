@@ -7,6 +7,7 @@ set(tests_unit_srcs
     context.cc
     list.cc
     map.cc
+    progtype.cc
 )
 
 #[[
