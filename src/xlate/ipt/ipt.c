@@ -6,10 +6,12 @@
 #include "xlate/ipt/ipt.h"
 
 #include <linux/netfilter.h>
+#include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <stdio.h>
 
 #include "core/chain.h"
+#include "core/context.h"
 #include "core/logger.h"
 #include "core/match.h"
 #include "core/rule.h"
@@ -20,9 +22,12 @@
 #include "xlate/ipt/dump.h"
 #include "xlate/ipt/helpers.h"
 
+int bf_ipt_translate(void *data, size_t data_size,
+                     bf_list (*codegens)[__BF_HOOK_MAX]);
+int bf_ipt_dump(struct ipt_replace *ipt);
+
 const struct bf_frontend ipt_frontend = {
     .translate = (bf_fe_translate_fn)bf_ipt_translate,
-    .generate = NULL,
     .dump = (bf_fe_dump_fn)bf_ipt_dump_replace,
 };
 
