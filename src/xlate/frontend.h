@@ -18,7 +18,6 @@ typedef void (*bf_fe_dump_fn)(void *data);
 struct bf_frontend
 {
     bf_fe_translate_fn translate;
-    int (*generate)(struct bf_table *, struct bf_codegen **codegen);
     bf_fe_dump_fn dump;
 };
 
