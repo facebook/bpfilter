@@ -28,3 +28,22 @@ void bf_context_clean(struct bf_context *context)
     for (int i = 0; i < __BF_HOOK_MAX; ++i)
         bf_list_clean(&context->hooks[i]);
 }
+
+const char *bf_hook_to_str(enum bf_hooks hook)
+{
+    if (hook < 0 || hook >= __BF_HOOK_MAX)
+        return NULL;
+
+    static const char *str[] = {
+        [BF_HOOK_XDP] = "BF_HOOK_XDP",
+        [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
+        [BF_HOOK_IPT_PRE_ROUTING] = "BF_HOOK_IPT_PRE_ROUTING",
+        [BF_HOOK_IPT_LOCAL_IN] = "BF_HOOK_IPT_LOCAL_IN",
+        [BF_HOOK_IPT_FORWARD] = "BF_HOOK_IPT_FORWARD",
+        [BF_HOOK_IPT_LOCAL_OUT] = "BF_HOOK_IPT_LOCAL_OUT",
+        [BF_HOOK_IPT_POST_ROUTING] = "BF_HOOK_IPT_POST_ROUTING",
+        [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
+    };
+
+    return str[hook];
+}

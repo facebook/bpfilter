@@ -47,3 +47,13 @@ void bf_context_init(struct bf_context *context);
  * @param context Context to clean up. Can't be NULL.
  */
 void bf_context_clean(struct bf_context *context);
+
+/**
+ * @brief Convert a bpfilter hook to a string.
+ *
+ * If the value of @p hook is invalid, NULL is returned.
+ *
+ * @param hook The hook to convert
+ * @return String representation of the hook, or NULL if the hook is invalid.
+ */
+const char *bf_hook_to_str(enum bf_hooks hook);
