@@ -6,6 +6,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 /* This has to be defined here, otherwise struct bf_list_node definition is
@@ -158,6 +159,18 @@ static inline size_t bf_list_size(bf_list *list)
 {
     assert(list);
     return list->len;
+}
+
+/**
+ * @brief Check if a list is empty.
+ *
+ * @param list Initialised list. Must be non-NULL.
+ * @return True if the list is empty, false otherwise.
+ */
+static inline bool bf_list_empty(bf_list *list)
+{
+    assert(list);
+    return list->len == 0;
 }
 
 /**
