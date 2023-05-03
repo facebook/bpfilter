@@ -9,6 +9,8 @@
 
 #define __cleanup_bf_codegen__ __attribute__((cleanup(bf_codegen_free)))
 
+#define EMIT(codegen, x)
+
 struct bf_chain;
 
 /**

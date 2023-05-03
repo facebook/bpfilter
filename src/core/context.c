@@ -35,7 +35,6 @@ const char *bf_hook_to_str(enum bf_hooks hook)
         return NULL;
 
     static const char *str[] = {
-        [BF_HOOK_XDP] = "BF_HOOK_XDP",
         [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
         [BF_HOOK_IPT_PRE_ROUTING] = "BF_HOOK_IPT_PRE_ROUTING",
         [BF_HOOK_IPT_LOCAL_IN] = "BF_HOOK_IPT_LOCAL_IN",

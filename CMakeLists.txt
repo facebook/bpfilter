@@ -59,6 +59,8 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/target.c ${CMAKE_SOURCE_DIR}/src/core/target.h
 
     ${CMAKE_SOURCE_DIR}/src/generator/codegen.c ${CMAKE_SOURCE_DIR}/src/generator/codegen.h
+    ${CMAKE_SOURCE_DIR}/src/generator/progtype.c ${CMAKE_SOURCE_DIR}/src/generator/progtype.h
+    ${CMAKE_SOURCE_DIR}/src/generator/tc.c ${CMAKE_SOURCE_DIR}/src/generator/tc.h
 
     ${CMAKE_SOURCE_DIR}/src/xlate/frontend.c ${CMAKE_SOURCE_DIR}/src/xlate/frontend.h
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
