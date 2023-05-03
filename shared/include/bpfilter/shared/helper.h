@@ -11,6 +11,14 @@
 
 #define UNUSED(x) (void)(x)
 
+/**
+ * @brief Get the number of element in an array.
+ *
+ * @param x The array.
+ * @return size_t The number of elements in the array.
+ */
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 #define __cleanup_free__ __attribute__((__cleanup__(freep)))
 #define __cleanup_close__ __attribute__((__cleanup__(closep)))
 
