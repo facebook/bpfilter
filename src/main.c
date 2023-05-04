@@ -97,8 +97,15 @@ int run(void)
             else
                 bf_info("translation successful!");
 
-            for (int i = 0; i < __BF_HOOK_MAX; i++)
+            for (int i = 0; i < __BF_HOOK_MAX; i++) {
+                if (!bf_list_empty(&codegens[i])) {
+                    bf_list_node *n = bf_list_get_head(&codegens[i]);
+                    bf_codegen_generate(i, bf_list_node_get_data(n));
+                    bf_codegen_dump_bytecode(bf_list_node_get_data(n));
+                }
+
                 bf_list_clean(&codegens[i]);
+            }
 
             r = bf_response_new_success(&response, 0, NULL);
             if (r < 0)
