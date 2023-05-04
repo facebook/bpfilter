@@ -63,6 +63,55 @@ void bf_codegen_free(struct bf_codegen **codegen)
     *codegen = NULL;
 }
 
+int bf_codegen_emit(struct bf_codegen *codegen, struct bpf_insn insn)
+{
+    assert(codegen);
+
+    if (codegen->len_cur == codegen->len_max) {
+        bf_err("Codegen buffer overflow");
+        return -EOVERFLOW;
+    }
+
+    codegen->img[codegen->len_cur++] = insn;
+
+    return 0;
+}
+
+int bf_codegen_emit_fixup(struct bf_codegen *codegen,
+                          enum bf_codegen_fixup_type type, struct bpf_insn insn)
+{
+    __cleanup_bf_codegen_fixup__ struct bf_codegen_fixup *fixup = NULL;
+    int r;
+
+    assert(codegen);
+
+    if (codegen->len_cur == codegen->len_max) {
+        bf_err("Codegen buffer overflow");
+        return -EOVERFLOW;
+    }
+
+    r = bf_codegen_fixup_new(&fixup);
+    if (r)
+        return r;
+
+    fixup->type = type;
+    fixup->insn = codegen->len_cur;
+
+    r = bf_list_add_tail(&codegen->fixups, fixup);
+    if (r)
+        return r;
+
+    TAKE_PTR(fixup);
+
+    /* This call could fail and return an error, in which case it is not
+     * properly handled. However, this shouldn't be an issue as we previously
+     * test whether enough room is available in codegen.img, which is currently
+     * the only reason for EMIT() to fail. */
+    EMIT(codegen, insn);
+
+    return 0;
+}
+
 void bf_codegen_generate(enum bf_hooks hook, struct bf_codegen *codegen)
 {
     enum bf_progtype type;

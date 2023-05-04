@@ -37,29 +37,3 @@ void bf_codegen_fixup_free(struct bf_codegen_fixup **fixup)
     free(*fixup);
     *fixup = NULL;
 }
-
-int bf_codegen_fixup_emit(struct bf_codegen *codegen,
-                          enum bf_codegen_fixup_type type, struct bpf_insn insn)
-{
-    __cleanup_bf_codegen_fixup__ struct bf_codegen_fixup *fixup = NULL;
-    int r;
-
-    assert(codegen);
-
-    r = bf_codegen_fixup_new(&fixup);
-    if (r)
-        return r;
-
-    fixup->type = type;
-    fixup->insn = codegen->len_cur;
-
-    r = bf_list_add_tail(&codegen->fixups, fixup);
-    if (r)
-        return r;
-
-    TAKE_PTR(fixup);
-
-    EMIT(codegen, insn);
-
-    return 0;
-}
