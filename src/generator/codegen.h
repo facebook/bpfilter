@@ -12,6 +12,9 @@
 
 #include "core/context.h"
 #include "core/list.h"
+#include "generator/fixup.h"
+
+#define BF_CODEGEN_MAX_INSN (1 << 12)
 
 #define __cleanup_bf_codegen__ __attribute__((cleanup(bf_codegen_free)))
 
@@ -27,14 +30,9 @@
 #define CODEGEN_REG_RUNTIME_CTX BPF_REG_8
 #define CODEGEN_REG_CTX BPF_REG_9
 
-#define EMIT(codegen, x)                                                       \
-    ({                                                                         \
-        typeof(codegen) __codegen = codegen;                                   \
-        (__codegen)->img[codegen->len_cur++] = (x);                            \
-    })
-
+#define EMIT(codegen, x) bf_codegen_emit((codegen), (x))
 #define EMIT_FIXUP(codegen, type, insn)                                        \
-    bf_codegen_fixup_emit((codegen), (type), (insn))
+    bf_codegen_emit_fixup((codegen), (type), (insn))
 
 struct bf_chain;
 
@@ -94,6 +92,35 @@ int bf_codegen_new(struct bf_codegen **codegen);
  * @param codegen Codegen to free. Can't be NULL.
  */
 void bf_codegen_free(struct bf_codegen **codegen);
+
+/**
+ * @brief Emit a BPF instruction into the given codegen.
+ *
+ * @p insn is copied into the bytecode stored in @p codegen, and position
+ * counter is advanced.
+ *
+ * @param codegen Codegen containing the bytecode to modify. Can't be NULL.
+ * @param insn Instruction to add to the codegen.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_codegen_emit(struct bf_codegen *codegen, struct bpf_insn insn);
+
+/**
+ * @brief Emit a fixup in the codegen, for the given instruction.
+ *
+ * @p insn is added to the @p codegen, and a fixup is added for this
+ * instruction's offset in order to be fixed later.
+ *
+ * @param codegen Codegen containing the bytecode to modify. The fixup will be
+ *  added to @p codegen.fixups. Can't be NULL.
+ * @param type Fixup type. See @ref bf_codegen_fixup_type.
+ * @param insn Instruction to add to the codegen. This instruction is not
+ * expected to be valid, ads
+ * @return
+ */
+int bf_codegen_emit_fixup(struct bf_codegen *codegen,
+                          enum bf_codegen_fixup_type type,
+                          struct bpf_insn insn);
 
 void bf_codegen_generate(enum bf_hooks hook, struct bf_codegen *codegen);
 

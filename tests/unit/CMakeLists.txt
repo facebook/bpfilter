@@ -8,6 +8,7 @@ set(tests_unit_srcs
     list.cc
     map.cc
     progtype.cc
+    codegen.cc
 )
 
 #[[
