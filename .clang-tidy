@@ -1,0 +1,43 @@
+---
+# Disable checks:
+# - bugprone-reserved-identifier:
+#   Functions starting with `_[A-Z]` are flagged as erroneous, but it's valid in C.
+# - bugprone-suspicious-include:
+#   Not a huge issue, and leading to false positive as unit tests include the tested
+#   C file.
+# - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling:
+#   Warn on occurrences of unsafe or deprecated buffer handling functions, but
+#   requires usage of optional component of the C language.
+
+Checks: >
+  -*,
+  bugprone-*,
+    -bugprone-reserved-identifier,
+    -bugprone-suspicious-include,
+  clang-analyzer-*,
+    -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  concurrency-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  readability-*,
+    -readability-suspicious-call-argument
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: none
+
+CheckOptions:
+  # It's OK to use the following short variable names:
+  - key: readability-identifier-length.IgnoredVariableNames
+    value: 'i|r|fd|n'
+  # It's OK to use the following short parameters names:
+  - key: readability-identifier-length.IgnoredParameterNames
+    value: 'fe|fd'
+  # Do not put braces around single-line statements, except it they visually
+  # span over multiple lines.
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: 2
+  # I like this parameter, but I don't want to be bothered for simple functions
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '40'
