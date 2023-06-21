@@ -63,12 +63,15 @@ FixNamespaceComments: true
 ForEachMacros: ['bf_list_foreach', 'bf_list_foreach_rev']
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<linux/'
+  # net/if.h needs to be included BEFORE linux/if.h to avoid conflicts
+  - Regex: '<net/if.h>'
     Priority: 1
-  - Regex: '^"'
-    Priority: 3
-  - Regex: '.*'
+  - Regex: '^<linux/'
     Priority: 2
+  - Regex: '^"'
+    Priority: 4
+  - Regex: '.*'
+    Priority: 3
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: false
