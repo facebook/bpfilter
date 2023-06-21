@@ -12,6 +12,11 @@ exclude_patterns = []
 
 extensions = ['breathe']
 breathe_default_project = '@PROJECT_NAME@'
+breathe_default_members = ('members', 'private-members', 'undoc-members')
+breathe_domain_by_extension = { "h": "c", "c": "c" }
+breathe_show_define_initializer = False # Avoid showing badly formatted functions-like macros code.
+breathe_show_enumvalue_initializer = True
+breathe_show_include = True
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'furo'
