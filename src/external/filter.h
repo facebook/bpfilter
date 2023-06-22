@@ -8,6 +8,8 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 
+#include <stdbool.h>
+
 /* ArgX, context and stack frame pointer register positions. Note,
  * Arg1, Arg2, Arg3, etc are used as argument mappings of function
  * calls in BPF_CALL instruction.
@@ -309,14 +311,12 @@ static inline bool insn_is_zext(const struct bpf_insn *insn)
 
 /* Convert function address to BPF immediate */
 
-#define BPF_CALL_IMM(x) ((void *)(x) - (void *)__bpf_call_base)
-
 #define BPF_EMIT_CALL(FUNC)                                                    \
     ((struct bpf_insn) {.code = BPF_JMP | BPF_CALL,                            \
                         .dst_reg = 0,                                          \
                         .src_reg = 0,                                          \
                         .off = 0,                                              \
-                        .imm = BPF_CALL_IMM(FUNC)})
+                        .imm = FUNC})
 
 /* Raw code statement block */
 

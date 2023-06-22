@@ -11,12 +11,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "shared/mem.h"
+#include "shared/helper.h"
 
-int bf_request_new(struct bf_request **request, size_t data_len,
-                   const void *data)
+int bf_request_new(struct bf_request **request, const void *data,
+                   size_t data_len)
 {
-    __cleanup_bf_request__ struct bf_request *_request = NULL;
+    _cleanup_bf_request_ struct bf_request *_request = NULL;
 
     assert(request);
     assert(data);
@@ -35,17 +35,14 @@ int bf_request_new(struct bf_request **request, size_t data_len,
 
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
 {
-    __cleanup_bf_request__ struct bf_request *_request = NULL;
-    int r;
+    _cleanup_bf_request_ struct bf_request *_request = NULL;
 
     assert(dest);
     assert(src);
 
-    r = bf_request_new(&_request, src->data_len, src->data);
-    if (r < 0)
-        return r;
-
-    _request->type = src->type;
+    _request = bf_memdup(src, bf_request_size(src));
+    if (!_request)
+        return -ENOMEM;
 
     *dest = TAKE_PTR(_request);
 

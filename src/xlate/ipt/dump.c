@@ -8,12 +8,13 @@
 #include <linux/netfilter.h>
 #include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
+
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "core/dump.h"
 #include "core/string.h"
-#include "core/target.h"
 #include "helpers.h"
 
 /**
@@ -45,9 +46,13 @@ static const char *target_name[] = {
  * @param counters @p ipt_counters structure. Must be non-NULL.
  * @param p @p log_prefix structure.
  */
-static inline void ipt_dump_counters(const struct ipt_counters *counters, char *p)
+static inline void ipt_dump_counters(const struct ipt_counters *counters,
+                                     prefix_t *prefix)
 {
-        DUMP_P(p, "struct ipt_counters at %p\n", counters);
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
+
+    DUMP(prefix, "struct ipt_counters at %p", counters);
 }
 
 /**
@@ -56,23 +61,26 @@ static inline void ipt_dump_counters(const struct ipt_counters *counters, char *
  * @param ip @p ipt_ip structure. Must be non-NULL.
  * @param p @p log_prefix structure.
  */
-static void ipt_dump_ip(const struct ipt_ip *ip, char *p)
+static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
 {
-        DUMP_P(p, "struct ipt_ip at %p\n", ip);
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
 
-        bf_dump_prefix_push(p);
-        DUMP_P(p, "src: %d.%d.%d.%d\n", IP4_SPLIT(ip->src));
-        DUMP_P(p, "dst: %d.%d.%d.%d\n", IP4_SPLIT(ip->dst));
-        DUMP_P(p, "src_mask: %d.%d.%d.%d\n", IP4_SPLIT(ip->smsk));
-        DUMP_P(p, "dst_mask: %d.%d.%d.%d\n", IP4_SPLIT(ip->dmsk));
-        DUMP_P(p, "in_iface: %s\n", ip->iniface);
-        DUMP_P(p, "out_iface: %s\n", ip->outiface);
-        DUMP_P(p, "in_iface_mask: %s\n", ip->iniface_mask);
-        DUMP_P(p, "out_iface_mask: %s\n", ip->outiface_mask);
-        DUMP_P(p, "protocol: %d\n", ip->proto);
-        DUMP_P(p, "flags: %d\n", ip->flags);
-        DUMP_P(bf_dump_prefix_last(p), "invflags: %d\n", ip->invflags);
-        bf_dump_prefix_pop(p);
+    DUMP(prefix, "struct ipt_ip at %p", ip);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "src: " IP4_FMT, IP4_SPLIT(ip->src));
+    DUMP(prefix, "dst: " IP4_FMT, IP4_SPLIT(ip->dst));
+    DUMP(prefix, "src_mask: " IP4_FMT, IP4_SPLIT(ip->smsk));
+    DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(ip->dmsk));
+    DUMP(prefix, "in_iface: %s", ip->iniface);
+    DUMP(prefix, "out_iface: %s", ip->outiface);
+    DUMP(prefix, "in_iface_mask: %s", ip->iniface_mask);
+    DUMP(prefix, "out_iface_mask: %s", ip->outiface_mask);
+    DUMP(prefix, "protocol: %d", ip->proto);
+    DUMP(prefix, "flags: %d", ip->flags);
+    DUMP(bf_dump_prefix_last(prefix), "invflags: %d", ip->invflags);
+    bf_dump_prefix_pop(prefix);
 }
 
 /**
@@ -81,20 +89,29 @@ static void ipt_dump_ip(const struct ipt_ip *ip, char *p)
  * @param match @p ipt_entry_match structure. Must be non-NULL.
  * @param p @p log_prefix structure.
  */
-static void ipt_dump_match(const struct ipt_entry_match *match, char *p)
+static void ipt_dump_match(const struct ipt_entry_match *match,
+                           prefix_t *prefix)
 {
-        DUMP_P(p, "struct ipt_entry_match at %p\n", match);
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
 
-        bf_dump_prefix_push(p);
-        DUMP_P(p, "user:\n");
-        DUMP_P(p, "match_size: %d\n", match->u.user.match_size);
-        DUMP_P(p, "name: %s\n", match->u.user.name);
-        DUMP_P(p, "revision: %d\n", match->u.user.revision);
-        DUMP_P(p, "kernel:\n");
-        DUMP_P(p, "match_size: %d\n", match->u.kernel.match_size);
-        DUMP_P(p, "match at %p\n", match->u.kernel.match);
-        DUMP_P(bf_dump_prefix_last(p), "match_size: %d\n", match->u.match_size);
-        bf_dump_prefix_pop(p);
+    DUMP(prefix, "struct ipt_entry_match at %p", match);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "user:");
+    DUMP(prefix, "match_size: %d", match->u.user.match_size);
+    DUMP(prefix, "name: %s", match->u.user.name);
+    DUMP(prefix, "revision: %d", match->u.user.revision);
+    DUMP(prefix, "kernel:");
+    DUMP(prefix, "match_size: %d", match->u.kernel.match_size);
+    DUMP(prefix, "match at %p", match->u.kernel.match);
+    DUMP(bf_dump_prefix_last(prefix), "match_size: %d", match->u.match_size);
+    bf_dump_prefix_pop(prefix);
+}
+
+static inline int _bf_ipt_convert_verdict(int verdict)
+{
+    return -verdict - 1;
 }
 
 /**
@@ -103,107 +120,121 @@ static void ipt_dump_match(const struct ipt_entry_match *match, char *p)
  * @param target @p ipt_entry_target structure. Must be non-NULL.
  * @param p @p log_prefix structure.
  */
-static void ipt_dump_target(const struct ipt_entry_target *target, char *p)
+static void ipt_dump_target(const struct ipt_entry_target *target,
+                            prefix_t *prefix)
 {
-        bool is_standard;
-        struct ipt_standard_target *std_target = (void *)target;
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
+    bool is_standard;
+    struct ipt_standard_target *std_target = (void *)target;
 
-        is_standard = streq(target->u.user.name, "");
+    is_standard = streq(target->u.user.name, "");
 
-        DUMP_P(p, "struct ipt_entry_target at %p\n", target);
+    DUMP(prefix, "struct ipt_entry_target at %p", target);
 
-        bf_dump_prefix_push(p);
-        DUMP_P(p, "user:\n");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "user:");
 
-        bf_dump_prefix_push(p);
-        DUMP_P(p, "target_size: %d\n", target->u.user.target_size);
-        DUMP_P(p, "name: '%s'\n", target->u.user.name);
-        DUMP_P(bf_dump_prefix_last(p), "revision: %d\n", target->u.user.revision);
-        bf_dump_prefix_pop(p);
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "target_size: %d", target->u.user.target_size);
+    DUMP(prefix, "name: '%s'", target->u.user.name);
+    DUMP(bf_dump_prefix_last(prefix), "revision: %d", target->u.user.revision);
+    bf_dump_prefix_pop(prefix);
 
-        DUMP_P(p, "kernel:\n");
+    DUMP(prefix, "kernel:");
 
-        bf_dump_prefix_push(p);
-        DUMP_P(p, "target_size: %d\n", target->u.kernel.target_size);
-        DUMP_P(bf_dump_prefix_last(p), "target: %p\n", target->u.kernel.target);
-        bf_dump_prefix_pop(p);
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "target_size: %d", target->u.kernel.target_size);
+    DUMP(bf_dump_prefix_last(prefix), "target: %p", target->u.kernel.target);
+    bf_dump_prefix_pop(prefix);
 
-        DUMP_P((is_standard ? p : bf_dump_prefix_last(p)), "target_size: %d\n", target->u.target_size);
-        if (is_standard)
-                DUMP_P(bf_dump_prefix_last(p), "verdict: %s\n", target_name[convert_verdict(std_target->verdict)]);
+    DUMP((is_standard ? prefix : bf_dump_prefix_last(prefix)),
+         "target_size: %d", target->u.target_size);
+    if (is_standard)
+        DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
+             target_name[_bf_ipt_convert_verdict(std_target->verdict)]);
 
-        bf_dump_prefix_pop(p);
+    bf_dump_prefix_pop(prefix);
 }
 
-void bf_ipt_dump_replace(struct ipt_replace *ipt)
+void bf_ipt_dump_replace(struct ipt_replace *ipt, prefix_t *prefix)
 {
-        int i;
-        uint32_t offset;
-        char p[DUMP_PREFIX_LEN] = {};
-        struct ipt_entry *first_rule;
-        struct ipt_entry *last_rule;
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
+    int i;
+    uint32_t offset;
+    struct ipt_entry *first_rule;
+    struct ipt_entry *last_rule;
 
-        DUMP_P(p, "struct ipt_replace at %p\n", ipt);
+    DUMP(prefix, "struct ipt_replace at %p", ipt);
 
-        bf_dump_prefix_push(p);
+    bf_dump_prefix_push(prefix);
 
-        DUMP_P(p, "name: '%s'\n", ipt->name);
-        DUMP_P(p, "valid_hooks: " BIN_FMT "\n", BIN_SPLIT(ipt->valid_hooks));
-        DUMP_P(p, "num_entries: %d\n", ipt->num_entries);
-        DUMP_P(p, "size: %d\n", ipt->size);
-        DUMP_P(bf_dump_prefix_last(p), "struct bpfilter_ipt_entry at %p\n", ipt->entries);
+    DUMP(prefix, "name: '%s'", ipt->name);
+    DUMP(prefix, "valid_hooks: " BIN_FMT "", BIN_SPLIT(ipt->valid_hooks));
+    DUMP(prefix, "num_entries: %d", ipt->num_entries);
+    DUMP(prefix, "size: %d", ipt->size);
+    DUMP(bf_dump_prefix_last(prefix), "struct ipt_entry at %p", ipt->entries);
 
-        bf_dump_prefix_push(p);
+    bf_dump_prefix_push(prefix);
 
-        // Loop over each hook to print its rules (if defined).
-        for (i = 0; i < NF_INET_NUMHOOKS; ++i) {
-                if (i == NF_INET_POST_ROUTING)
-                        bf_dump_prefix_last(p);
+    // Loop over each hook to print its rules (if defined).
+    for (i = 0; i < NF_INET_NUMHOOKS; ++i) {
+        if (i == NF_INET_POST_ROUTING)
+            bf_dump_prefix_last(prefix);
 
-                if (!ipt_is_hook_enabled(ipt, i)) {
-                        DUMP_P(p, "%s: no rule defined\n", hook_name[i]);
-                        continue;
-                }
-
-                DUMP_P(p, "%s (from %x to %x):\n", hook_name[i], ipt->hook_entry[i], ipt->underflow[i]);
-
-                bf_dump_prefix_push(p);
-
-                first_rule = ipt_get_first_rule(ipt, i);
-                last_rule = ipt_get_last_rule(ipt, i);
-                offset = sizeof(*first_rule);
-
-                // Loop over the rules for the current hook.
-                while (first_rule <= last_rule) {
-                        DUMP_P((first_rule == last_rule ? bf_dump_prefix_last(p) : p), "struct bpfilter_ipt_entry at %p\n", first_rule);
-
-                        bf_dump_prefix_push(p);
-
-                        ipt_dump_ip(&first_rule->ip, p);
-
-                        DUMP_P(p, "target_offset: %d\n", first_rule->target_offset);
-                        DUMP_P(p, "next_offset: %d\n", first_rule->next_offset);
-                        DUMP_P(p, "comefrom: %d\n", first_rule->comefrom);
-
-                        ipt_dump_counters(&first_rule->counters, p);
-
-                        // Loop over the matches for the current rule.
-                        while (offset < first_rule->target_offset) {
-                                ipt_dump_match(ipt_get_match(first_rule, offset), p);
-                                offset += ipt_get_match(first_rule, offset)->u.match_size;
-                        }
-
-                        ipt_dump_target(ipt_get_target(first_rule), bf_dump_prefix_last(p));
-
-                        bf_dump_prefix_pop(p);
-
-                        if (!first_rule->next_offset)
-                                break;
-
-                        first_rule = ipt_get_next_rule(first_rule);
-                }
-                bf_dump_prefix_pop(p);
+        if (!ipt_is_hook_enabled(ipt, i)) {
+            DUMP(prefix, "%s: no rule defined", hook_name[i]);
+            continue;
         }
 
-        bf_dump_prefix_pop(p);
+        DUMP(prefix, "%s (from %x to %x):", hook_name[i], ipt->hook_entry[i],
+             ipt->underflow[i]);
+
+        bf_dump_prefix_push(prefix);
+
+        first_rule = ipt_get_first_rule(ipt, i);
+        last_rule = ipt_get_last_rule(ipt, i);
+        offset = sizeof(*first_rule);
+
+        // Loop over the rules for the current hook.
+        while (first_rule <= last_rule) {
+            if (first_rule == last_rule)
+                bf_dump_prefix_last(prefix);
+
+            DUMP(prefix, "struct ipt_entry at %p", first_rule);
+
+            bf_dump_prefix_push(prefix);
+
+            ipt_dump_ip(&first_rule->ip, prefix);
+
+            DUMP(prefix, "target_offset: %d", first_rule->target_offset);
+            DUMP(prefix, "next_offset: %d", first_rule->next_offset);
+            DUMP(prefix, "comefrom: %d", first_rule->comefrom);
+
+            ipt_dump_counters(&first_rule->counters, prefix);
+
+            // Loop over the matches for the current rule.
+            while (offset < first_rule->target_offset) {
+                ipt_dump_match(ipt_get_match(first_rule, offset), prefix);
+                offset += ipt_get_match(first_rule, offset)->u.match_size;
+            }
+
+            ipt_dump_target(ipt_get_target(first_rule),
+                            bf_dump_prefix_last(prefix));
+
+            bf_dump_prefix_pop(prefix);
+
+            if (!first_rule->next_offset)
+                break;
+
+            first_rule = ipt_get_next_rule(first_rule);
+        }
+        bf_dump_prefix_pop(prefix);
+    }
+
+    bf_dump_prefix_pop(prefix);
+
+    // Force flush, otherwise output on stderr might appear.
+    fflush(stdout);
 }

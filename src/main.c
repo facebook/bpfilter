@@ -3,6 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <assert.h>
+#include <bits/types/sig_atomic_t.h>
+#include <errno.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -10,115 +13,349 @@
 #include <unistd.h>
 
 #include "core/context.h"
+#include "core/helper.h"
 #include "core/logger.h"
-#include "generator/codegen.h"
+#include "core/marsh.h"
+#include "shared/front.h"
 #include "shared/generic.h"
 #include "shared/helper.h"
 #include "shared/request.h"
 #include "shared/response.h"
-#include "xlate/frontend.h"
-
-static struct bf_context context = {};
-
-volatile sig_atomic_t sig_received = 0;
+#include "xlate/front.h"
 
 /**
- * @brief Set atomic flag when a signal is received.
+ * @brief Global flag to indicate whether the daemon should stop.
+ */
+static volatile sig_atomic_t _stop_received = 0;
+
+/**
+ * @brief Path to bpfilter's runtime context file.
+ *
+ * bpfilter will periodically save its internal context back to disk, to prevent
+ * spurious service interruption to lose information about the current state of
+ * the daemon.
+ *
+ * This runtime context is read back when the daemon is restarted, so bpfilter
+ * can manage the BPF programs that survived the daemon reboot.
+ *
+ * @todo Shouldn't this be in /run/bpfilter/ instead?
+ */
+static const char *context_path = "/run/bpfilter.blob";
+
+/**
+ * @brief Set atomic flag to stop the daemon if specific signals are received.
  *
  * @param sig Signal number.
  */
-void sig_handler(int sig)
+void _sig_handler(int sig)
 {
     UNUSED(sig);
 
-    sig_received = 1;
+    _stop_received = 1;
 }
 
-int run(void)
+/**
+ * @brief Load bpfilter's runtime context from disk.
+ *
+ * Read the daemon's runtime context from @p path and initialize the internal
+ * context with it.
+ *
+ * @param path Path to the context file.
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_load(const char *path)
 {
-    __cleanup_close__ int fd = -1;
+    _cleanup_free_ struct bf_marsh *marsh = NULL;
+    struct bf_marsh *child = NULL;
+    size_t len;
+    int r;
+
+    assert(path);
+
+    if (access(context_path, F_OK)) {
+        return bf_info_code(errno, "failed test access to context file: %s",
+                            path);
+    }
+
+    r = bf_read_file(path, (void **)&marsh, &len);
+    if (r < 0)
+        return r;
+
+    if (bf_marsh_size(marsh) != len) {
+        return bf_err_code(
+            EINVAL, "conflicting marsheled data size: got %zu, expected %zu",
+            len, bf_marsh_size(marsh));
+    }
+
+    child = bf_marsh_next_child(marsh, child);
+    if (!child) {
+        return bf_err_code(-EINVAL,
+                           "expecting a child in main marshalled context");
+    }
+
+    r = bf_context_load(child);
+    if (r < 0)
+        return r;
+
+    for (int i = 0; i < _BF_FRONT_MAX; ++i) {
+        child = bf_marsh_next_child(marsh, child);
+        if (!child) {
+            bf_err(
+                "no marshalled context for %s. Skipping restoration of remaining front-specific context.",
+                bf_front_to_str(i));
+            break;
+        }
+
+        r = bf_front_ops_get(i)->unmarsh(child);
+        if (r < 0) {
+            return bf_err_code(r, "failed to restore context for %s",
+                               bf_front_to_str(i));
+        }
+    }
+
+    bf_dbg("loaded marshalled context from %s", path);
+
+    bf_context_dump(NULL);
+
+    return 0;
+}
+
+/**
+ * @brief Save bpfilter's runtime context to disk.
+ *
+ * Marshel the daemon's runtime context and save it to @p path.
+ *
+ * @param path Path to the context file.
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_save(const char *path)
+{
+    _cleanup_free_ struct bf_marsh *marsh = NULL;
+    int r;
+
+    assert(path);
+
+    r = bf_marsh_new(&marsh, NULL, 0);
+    if (r < 0)
+        return r;
+
+    {
+        _cleanup_free_ struct bf_marsh *child = NULL;
+
+        r = bf_context_save(&child);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&marsh, child);
+        if (r < 0)
+            return r;
+    }
+
+    for (int i = 0; i < _BF_FRONT_MAX; ++i) {
+        _cleanup_free_ struct bf_marsh *child = NULL;
+
+        r = bf_front_ops_get(i)->marsh(&child);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&marsh, child);
+        if (r < 0)
+            return r;
+    }
+
+    r = bf_write_file(path, marsh, bf_marsh_size(marsh));
+    if (r < 0)
+        return r;
+
+    bf_dbg("saved marshalled context to %s", path);
+
+    return 0;
+}
+
+/**
+ * @brief Initialize bpfilter's daemon runtime.
+ *
+ * Setup signal handler (for graceful shutdown), load context from disk, and
+ * initialise various front-ends.
+ *
+ * If no context can be loaded, a new one is initialized from scratch.
+ *
+ * Front-ends' @p init function is called every time. They are responsible for
+ * checking whether they need to perform any initialization or not, depending
+ * on the loaded runtime context.
+ *
+ * Updated context is saved back to disk.
+ *
+ * @todo Should the runtime context be saved unconditionally?
+ *
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_init(void)
+{
+    struct sigaction sighandler = {.sa_handler = _sig_handler};
+    int r;
+
+    if (sigaction(SIGINT, &sighandler, NULL) < 0)
+        return bf_err_code(errno, "can't override handler for SIGINT");
+
+    if (sigaction(SIGTERM, &sighandler, NULL) < 0)
+        return bf_err_code(errno, "can't override handler for SIGTERM");
+
+    // Either load context, or initialize it from scratch.
+    r = _bf_load(context_path);
+    if (r < 0) {
+        r = bf_context_setup();
+        if (r < 0)
+            return bf_err_code(r, "failed to setup context");
+    }
+
+    for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
+        r = bf_front_ops_get(front)->setup();
+        if (r < 0) {
+            return bf_err_code(r, "failed to setup front-end %s",
+                               bf_front_to_str(front));
+        }
+
+        bf_dbg("completed setup for %s", bf_front_to_str(front));
+    }
+
+    r = _bf_save(context_path);
+    if (r < 0)
+        return bf_err_code(r, "failed to backup context at %s", context_path);
+
+    return 0;
+}
+
+/**
+ * @brief Clean up bpfilter's daemon runtime.
+ *
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_clean(void)
+{
+    int r;
+
+    for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
+        r = bf_front_ops_get(front)->teardown();
+        if (r < 0) {
+            bf_warn_code(r, "failed to teardown front-end %s, continuing",
+                         bf_front_to_str(front));
+        }
+    }
+
+    bf_context_teardown();
+
+    return 0;
+}
+
+/**
+ * @brief Process a request.
+ *
+ * The handler corresponding to @p request->front will be called (if any).
+ * If the handler returns 0, @p response is expected to be filled, and ready
+ * to be returned to the client.
+ * If the handler returns a negative error code, @p response is filled by @ref
+ * process_request with a generated error response and 0 is returned. If
+ * generating the error response fails, then 0 is returned.
+ *
+ * In other words, if 0 is returned, @p response is ready to be sent back, if
+ * a negative error code is returned, an error occured during @p request
+ * processing, and no response is available.
+ *
+ * @param request Request to process.
+ * @param response Response to fill.
+ * @return 0 on success, negative error code on failure.
+ */
+static int _process_request(struct bf_request *request,
+                            struct bf_response **response)
+{
+    const struct bf_front_ops *ops;
+    int r;
+
+    assert(request);
+    assert(response);
+
+    ops = bf_front_ops_get(request->front);
+    r = ops->request_handler(request, response);
+    if (r) {
+        /* We failed to process the request, so we need to generate an
+         * error. If the error response is successfully generated, then we
+         * return 0, otherwise we return the error code. */
+        r = bf_response_new_failure(response, r);
+    }
+
+    if (request->cmd == BF_REQ_SET_RULES)
+        r = _bf_save(context_path);
+
+    return r;
+}
+
+/**
+ * @brief Loop and process requests.
+ *
+ * Create a socket and perform blocking accept() calls. For each connection,
+ * receive a request, process it, and send the response back.
+ *
+ * If a signal is received, @ref _stop_received will be set to 1 by @ref
+ * _sig_handler and blocking call to `accept()` will be interrupted.
+ *
+ * @return 0 on success, negative error code on failure.
+ */
+static int _run(void)
+{
+    _cleanup_close_ int fd = -1;
     struct sockaddr_un addr = {};
     int r;
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
-        return bf_err_code(errno, "socket() failed");
-
-    unlink(BF_SOCKET_PATH); // Remove socket file if it exists.
+        return bf_err_code(errno, "failed to create socket");
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     r = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
-    if (r < 0)
-        return bf_err_code(errno, "bind() failed");
+    if (r < 0) {
+        return bf_err_code(errno, "failed to bind socket to %s",
+                           BF_SOCKET_PATH);
+    }
 
     r = listen(fd, 1);
     if (r < 0)
         return bf_err_code(errno, "listen() failed");
 
-    bf_info("Starting to accept connections...");
+    bf_info("waiting for requests...");
 
-    while (!sig_received) {
-        const struct bf_frontend *fe;
-        __cleanup_close__ int client_fd = -1;
-        __cleanup_bf_request__ struct bf_request *request = NULL;
-        __cleanup_bf_response__ struct bf_response *response = NULL;
+    while (!_stop_received) {
+        _cleanup_close_ int client_fd = -1;
+        _cleanup_bf_request_ struct bf_request *request = NULL;
+        _cleanup_bf_response_ struct bf_response *response = NULL;
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {
-            if (sig_received) {
-                bf_info("Received signal, exiting...");
+            if (_stop_received) {
+                bf_info("received stop signal, exiting...");
                 continue;
             }
 
-            return bf_err_code(errno, "accept() failed");
+            return bf_err_code(errno, "failed to accept connection");
         }
 
         r = bf_recv_request(client_fd, &request);
         if (r < 0)
-            return bf_err_code(r, "bf_recv_request() failed");
+            return bf_err_code(r, "failed to receive request");
 
-        fe = bf_frontend_get(request->type);
-        if (fe) {
-            bf_list codegens[__BF_HOOK_MAX];
+        bf_dbg("received request from client on FD %d", client_fd);
 
-            bf_dbg("Dumping request's data:");
-            fe->dump(request->data);
-
-            for (int i = 0; i < __BF_HOOK_MAX; i++) {
-                codegens[i] = bf_list_default(
-                    {.free = (bf_list_ops_free)bf_codegen_free});
-            }
-
-            r = fe->translate(request->data, request->data_len, &codegens);
-            if (r < 0)
-                return bf_err_code(r, "translation failed");
-            else
-                bf_info("translation successful!");
-
-            for (int i = 0; i < __BF_HOOK_MAX; i++) {
-                if (!bf_list_empty(&codegens[i])) {
-                    bf_list_node *n = bf_list_get_head(&codegens[i]);
-                    bf_codegen_generate(i, bf_list_node_get_data(n));
-                    bf_codegen_dump_bytecode(bf_list_node_get_data(n));
-                }
-
-                bf_list_clean(&codegens[i]);
-            }
-
-            r = bf_response_new_success(&response, 0, NULL);
-            if (r < 0)
-                return bf_err_code(r, "bf_response_new_success() failed");
-        } else {
-            r = bf_response_new_failure(&response, -ENOTSUP);
-            if (r < 0)
-                return bf_err_code(r, "bf_response_new_failure() failed");
+        r = _process_request(request, &response);
+        if (r) {
+            bf_err("failed to process request");
+            continue;
         }
 
         r = bf_send_response(client_fd, response);
         if (r < 0)
-            return bf_err_code(r, "bf_send_response() failed");
+            return bf_err_code(r, "failed to send response");
     }
 
     return 0;
@@ -128,23 +365,19 @@ int main(void)
 {
     int r;
 
-    struct sigaction sa = {
-        .sa_handler = sig_handler,
-    };
+    bf_logger_setup();
 
-    if (sigaction(SIGINT, &sa, NULL) < 0)
-        return bf_err_code(errno, "sigaction() failed");
-
-    if (sigaction(SIGTERM, &sa, NULL) < 0)
-        return bf_err_code(errno, "sigaction() failed");
-
-    bf_context_init(&context);
-
-    r = run();
+    r = _bf_init();
     if (r < 0)
-        bf_err_code(r, "run() failed");
+        return bf_err_code(r, "failed to initialize bpfilter");
 
-    bf_context_clean(&context);
+    r = _run();
+    if (r < 0)
+        return bf_err_code(r, "run() failed");
+
+    _bf_clean();
+
+    unlink(BF_SOCKET_PATH); // Remove socket file.
 
     return r;
 }

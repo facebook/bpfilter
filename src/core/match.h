@@ -7,7 +7,7 @@
 
 #define BF_MATCH_OPS_NAME 29
 
-#define __cleanup_bf_match__ __attribute__((__cleanup__(bf_match_free)))
+#define _cleanup_bf_match_ __attribute__((__cleanup__(bf_match_free)))
 
 struct bf_match_ops
 {

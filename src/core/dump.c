@@ -8,45 +8,47 @@
 #include <stddef.h>
 #include <string.h>
 
-void bf_dump_prefix_push(char *prefix)
+void bf_dump_prefix_push(prefix_t *prefix)
 {
-        size_t len = strlen(prefix);
+    char *_prefix = *prefix;
+    size_t len = strlen(_prefix);
 
-        if (len) {
-                /* If the prefix string is not empty, then we need to either
-				 * continue the previous branch (with a pipe), or remove
-                 * it altogether if it stopped. */
-                strncpy(&prefix[len - 4],
-                        prefix[len - 4] == '`' ? "    " : "|   ", 5);
-        }
+    if (len) {
+        /* If the prefix string is not empty, then we need to either
+         * continue the previous branch (with a pipe), or remove
+         * it altogether if it stopped. */
+        strncpy(&_prefix[len - 4], _prefix[len - 4] == '`' ? "    " : "|   ",
+                5);
+    }
 
-        if (len + 5 > DUMP_PREFIX_LEN)
-                return;
+    if (len + 5 > DUMP_PREFIX_LEN)
+        return;
 
-
-        strncpy(&prefix[len], "|-- ", 5);
+    strncpy(&_prefix[len], "|-- ", 5);
 }
 
-char *bf_dump_prefix_last(char *prefix)
+prefix_t *bf_dump_prefix_last(prefix_t *prefix)
 {
-        size_t len = strlen(prefix);
+    char *_prefix = *prefix;
+    size_t len = strlen(_prefix);
 
-        if (len)
-                strncpy(&prefix[len - 4], "`-- ", 5);
+    if (len)
+        strncpy(&_prefix[len - 4], "`-- ", 5);
 
-        return prefix;
+    return prefix;
 }
 
-void bf_dump_prefix_pop(char *prefix)
+void bf_dump_prefix_pop(prefix_t *prefix)
 {
-        size_t len = strlen(prefix);
+    char *_prefix = *prefix;
+    size_t len = strlen(_prefix);
 
-        if (!len)
-                return;
+    if (!len)
+        return;
 
-        prefix[len - 4] = '\0';
+    _prefix[len - 4] = '\0';
 
-        // Ensure we have a branch to the next item.
-        if (len - 4)
-                strncpy(&prefix[len - 8], "|-- ", 5);
+    // Ensure we have a branch to the next item.
+    if (len - 4)
+        strncpy(&_prefix[len - 8], "|-- ", 5);
 }

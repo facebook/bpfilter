@@ -21,17 +21,17 @@ static const char *message =
 
 int main(void)
 {
-    __cleanup_bf_request__ struct bf_request *request = NULL;
-    __cleanup_bf_response__ struct bf_response *response = NULL;
+    _cleanup_bf_request_ struct bf_request *request = NULL;
+    _cleanup_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    r = bf_request_new(&request, strlen(message) + 1, message);
+    r = bf_request_new(&request, message, strlen(message) + 1);
     if (r) {
         fprintf(stderr, "bf_request_new() failed: %s\n", strerror(-r));
         return r;
     }
 
-    request->type = BF_REQ_IPT;
+    request->front = BF_FRONT_IPT;
 
     r = bf_send(request, &response);
     if (r) {

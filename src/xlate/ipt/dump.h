@@ -5,11 +5,14 @@
 
 #pragma once
 
-#include <linux/netfilter_ipv4/ip_tables.h>
+#include "core/dump.h"
+
+struct ipt_replace;
 
 /**
  * @brief Dump content of bpfilter_ipt_replace structure.
  *
  * @param ipt iptable's ipt_replace structure. Must be non-NULL.
+ * @param prefix Prefix to print on each line.
  */
-void bf_ipt_dump_replace(struct ipt_replace *ipt);
+void bf_ipt_dump_replace(struct ipt_replace *ipt, prefix_t *prefix);
