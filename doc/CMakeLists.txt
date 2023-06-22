@@ -17,7 +17,8 @@ add_custom_target(doc
 )
 
 add_custom_target(coverage
-	COMMAND ${LCOV_BIN} -c -d ${CMAKE_BINARY_DIR} -o lcov.out
+	COMMAND ${LCOV_BIN} --capture --directory ${CMAKE_BINARY_DIR} --output-file lcov.out
+	COMMAND ${LCOV_BIN} --output-file lcov.out --remove lcov.out "${CMAKE_SOURCE_DIR}/tests/unit/src/*/*"
 	COMMAND ${GENHTML_BIN} -o coverage lcov.out
 	BYPRODUCTS coverage
 	COMMENT "Generate coverage report"

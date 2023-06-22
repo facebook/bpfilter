@@ -5,19 +5,18 @@
 
 #include "shared/generic.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "shared/generic.h"
 #include "shared/helper.h"
-#include "shared/request.h"
-#include "shared/response.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response)
 {
-    __cleanup_close__ int fd = -1;
+    _cleanup_close_ int fd = -1;
     struct sockaddr_un addr = {};
     int r;
 

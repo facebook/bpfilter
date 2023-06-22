@@ -1,24 +1,30 @@
 BPF-based packet filtering framework
 ---
 
-`bpfilter` is a daemon and shared library aiming to translate filtering rules into BPF programs, improve performances.
+`bpfilter` is a daemon and shared library aiming to translate packets filtering rules into BPF programs.
 
 ## Build from sources
 
 Building `bpfilter` will requires the following packages:
 
 ```shell
+# Add required repositories
+sudo dnf copr enable naccyde/criterion
+
+# Install dependencies
 sudo dnf install -y \
-	cmake \
-	# Formatting and code quality: not required by advised
-	clang-tools-extra \
-	# For unit tests
-	gtest-devel lcov libasan libubsan \
-	# For documentation
+	cmake libbpf-devel \
+    criterion-devel lcov libasan libubsan \
 	doxygen python3-sphinx python3-breathe python3-furo
 ```
 
-At present, the code statically sets the interface to which bpfilter is attached. However, there are plans to enhance this functionality in the future. As of now, you will need to make changes to `PROG_IFINDEX` in `codegen.c` if you want to modify the interface.
+To build `bpfilter` (from the source directory):
+```shell
+cmake -Bbuild -S.
+make -C build -j
+```
+
+`bpfilter` daemon will be in `$BUILD/src/bpfilter`, and `libbpfilter.so` will be in `$BUILD/lib/libbpfilter.so`.
 
 ## License
 

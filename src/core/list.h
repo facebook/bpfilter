@@ -72,7 +72,7 @@ typedef struct
     bf_list_ops ops;
 } bf_list;
 
-#define __cleanup_bf_list__ __attribute__((cleanup(bf_list_free)))
+#define _cleanup_bf_list_ __attribute__((cleanup(bf_list_free)))
 
 /**
  * @brief Iterate over a @ref bf_list.
@@ -155,7 +155,7 @@ void bf_list_clean(bf_list *list);
  * @param list Initialised list. Must be non-NULL.
  * @return Number of nodes in the list.
  */
-static inline size_t bf_list_size(bf_list *list)
+static inline size_t bf_list_size(const bf_list *list)
 {
     assert(list);
     return list->len;
@@ -171,6 +171,38 @@ static inline bool bf_list_empty(bf_list *list)
 {
     assert(list);
     return list->len == 0;
+}
+
+/**
+ * @brief Check if @p node is the head of @p list.
+ *
+ * @param list List. Must be non NULL.
+ * @param node Node. Must be non NULL.
+ * @return True if @p node is the head of @p list, false otherwise.
+ */
+static inline bool bf_list_is_head(const bf_list *list,
+                                   const bf_list_node *node)
+{
+    assert(list);
+    assert(node);
+
+    return node == list->head;
+}
+
+/**
+ * @brief Check if @p node is the tail of @p list.
+ *
+ * @param list List. Must be non NULL.
+ * @param node Node. Must be non NULL.
+ * @return True if @p node is the tail of @p list, false otherwise.
+ */
+static inline bool bf_list_is_tail(const bf_list *list,
+                                   const bf_list_node *node)
+{
+    assert(list);
+    assert(node);
+
+    return node == list->tail;
 }
 
 /**
@@ -286,10 +318,11 @@ static inline void *bf_list_node_get_data(const bf_list_node *node)
  */
 static inline void *bf_list_node_take_data(bf_list_node *node)
 {
-    void *data = node->data;
+    void *data;
 
     assert(node);
 
+    data = node->data;
     node->data = NULL;
 
     return data;

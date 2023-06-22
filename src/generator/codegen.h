@@ -5,127 +5,90 @@
 
 #pragma once
 
-#include <linux/bpf.h>
-
-#include <stddef.h>
-#include <stdint.h>
-
-#include "core/context.h"
+#include "core/dump.h"
+#include "core/hook.h"
 #include "core/list.h"
-#include "generator/fixup.h"
+#include "shared/front.h"
 
-#define BF_CODEGEN_MAX_INSN (1 << 12)
+struct bf_marsh;
 
-#define __cleanup_bf_codegen__ __attribute__((cleanup(bf_codegen_free)))
-
-#define CODEGEN_REG_RETVAL BPF_REG_0
-#define CODEGEN_REG_SCRATCH1 BPF_REG_1
-#define CODEGEN_REG_SCRATCH2 BPF_REG_2
-#define CODEGEN_REG_SCRATCH3 BPF_REG_3
-#define CODEGEN_REG_SCRATCH4 BPF_REG_4
-#define CODEGEN_REG_SCRATCH5 BPF_REG_5
-#define CODEGEN_REG_DATA_END CODEGEN_REG_SCRATCH5
-#define CODEGEN_REG_L3 BPF_REG_6
-#define CODEGEN_REG_L4 BPF_REG_7
-#define CODEGEN_REG_RUNTIME_CTX BPF_REG_8
-#define CODEGEN_REG_CTX BPF_REG_9
-
-#define EMIT(codegen, x) bf_codegen_emit((codegen), (x))
-#define EMIT_FIXUP(codegen, type, insn)                                        \
-    bf_codegen_emit_fixup((codegen), (type), (insn))
-
-struct bf_chain;
-
-struct runtime_context
-{
-    uint32_t data_size;
-    void *l3;
-    void *l4;
-};
-
-#define STACK_RUNTIME_CONTEXT_OFFSET(field)                                    \
-    (-(short)(offsetof(struct runtime_context, field) +                        \
-              sizeof(((struct runtime_context *)NULL)->field)))
+#define _cleanup_bf_codegen_ __attribute__((cleanup(bf_codegen_free)))
 
 /**
  * @struct bf_codegen
- * @brief Codegen object. Contains a BPF program's source data, translated
- *  data, and BPF bytecode.
  *
- * @var bf_codegen::chain
- *  Filtering rules, in bpfilter format.
- * @var bf_codegen::src_data
- *  Source data, in front-end format.
- * @var bf_codegen::src_data_size
- *  Size of the source data, in bytes.
+ * Codegen are used to represent filtering rules to be applied for a given
+ * front, at a given location in the network stack. It contains a list of
+ * programs, which are BPF program aimed to be attached to a given interface.
+ * Hence, not all rules have to target all interfaces.
+ *
+ * @var bf_codegen::hook
+ * Hook to attach the programs to.
+ * @var bf_codegen::front
+ * Source of the filtering rules.
+ * @var bf_codegen::rules
+ * List of rules defined by the front, to be attached at @p hook.
+ * @var bf_codegen::programs
+ * List of generated BPF programs for this codegen. One program per interface
+ * should be expected, except for the loopback interface.
  */
 struct bf_codegen
 {
-    struct bf_chain *chain;
-    void *src_data;
-    size_t src_data_size;
+    enum bf_hook hook;
+    enum bf_front front;
 
-    /* BPF bytecode */
-    struct bpf_insn *img;
-    size_t len_cur;
-    size_t len_max;
-
-    /* Post processing */
-    bf_list fixups;
+    bf_list rules;
+    bf_list programs;
 };
 
 /**
  * @brief Allocate and initialise a new codegen.
  *
  * @param codegen Codegen to initialise. Can't be NULL.
- * @return int 0 on success, negative error code on failure.
+ * @return 0 on success, or negative errno value on failure.
  */
 int bf_codegen_new(struct bf_codegen **codegen);
 
 /**
  * @brief Free a codegen.
  *
- * Data owned by the codegen will be freed, either with a dedicated function
- * (i.e. bf_chain_free() for bf_codegen.chain) or with free() (i.e.
- * bf_codegen.src_data).
+ * If one or more programs are loaded, they won't be unloaded. Use @ref
+ * bf_codegen_unload first to ensure programs are unloaded. This behaviour
+ * is expected so @ref bf_codegen can be freed without unloading the BPF
+ * program, during a daemon restart for example.
  *
  * @param codegen Codegen to free. Can't be NULL.
  */
 void bf_codegen_free(struct bf_codegen **codegen);
 
 /**
- * @brief Emit a BPF instruction into the given codegen.
+ * @brief Generate BPF programs for a codegen.
  *
- * @p insn is copied into the bytecode stored in @p codegen, and position
- * counter is advanced.
- *
- * @param codegen Codegen containing the bytecode to modify. Can't be NULL.
- * @param insn Instruction to add to the codegen.
- * @return 0 on success, or negative errno value on error.
+ * @param codegen Codegen to generate BPF programs for. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
  */
-int bf_codegen_emit(struct bf_codegen *codegen, struct bpf_insn insn);
+int bf_codegen_generate(struct bf_codegen *codegen);
 
 /**
- * @brief Emit a fixup in the codegen, for the given instruction.
+ * @brief Load the BPF program stored in a codegen.
  *
- * @p insn is added to the @p codegen, and a fixup is added for this
- * instruction's offset in order to be fixed later.
+ * Each program within the codegen will be loaded and attached to its interface.
  *
- * @param codegen Codegen containing the bytecode to modify. The fixup will be
- *  added to @p codegen.fixups. Can't be NULL.
- * @param type Fixup type. See @ref bf_codegen_fixup_type.
- * @param insn Instruction to add to the codegen. This instruction is not
- * expected to be valid, ads
- * @return
+ * @param codegen Codegen containing the BPF program to load. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
  */
-int bf_codegen_emit_fixup(struct bf_codegen *codegen,
-                          enum bf_codegen_fixup_type type,
-                          struct bpf_insn insn);
-
-void bf_codegen_generate(enum bf_hooks hook, struct bf_codegen *codegen);
+int bf_codegen_load(struct bf_codegen *codegen);
 
 /**
- * @brief Dump BPF bytecode stored in the given codegen.
- * @param codegen Codegen to dump. Can't be NULL.
+ * @brief Unload a codegen's BPF programs.
+ *
+ * @param codegen Codegen containing the BPF program to unload. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
  */
-void bf_codegen_dump_bytecode(struct bf_codegen *codegen);
+int bf_codegen_unload(struct bf_codegen *codegen);
+
+int bf_codegen_marsh(const struct bf_codegen *codegen, struct bf_marsh **data);
+
+int bf_codegen_unmarsh(const struct bf_marsh *ctx, struct bf_codegen **codegen);
+
+void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix);

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define BF_SOCKET_PATH "/run/bpfilter.sock"
+
 struct bf_request;
 struct bf_response;
 

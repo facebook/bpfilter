@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "shared/mem.h"
+#include "shared/helper.h"
 
 /**
  * @brief Create a new list node, with the given data.
@@ -55,7 +55,7 @@ static void bf_list_node_free(bf_list_node **node,
 
 int bf_list_new(bf_list **list, const bf_list_ops *ops)
 {
-    __cleanup_bf_list__ bf_list *_list = NULL;
+    _cleanup_bf_list_ bf_list *_list = NULL;
 
     assert(list);
     assert(ops);

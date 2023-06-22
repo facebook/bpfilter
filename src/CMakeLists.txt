@@ -10,6 +10,7 @@ add_executable(bpfilter
 target_include_directories(bpfilter
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/shared/include # Required for shared include files to include each other.
         ${CMAKE_SOURCE_DIR}/shared/include/bpfilter
 )
 
@@ -25,4 +26,9 @@ target_link_options(bpfilter
         ${bpfilter_ldflags}
         $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
+)
+
+target_link_libraries(bpfilter
+    PUBLIC
+        bpf
 )

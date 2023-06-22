@@ -9,19 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <unistd.h>
 
 #include "shared/helper.h"
-#include "shared/mem.h"
 #include "shared/request.h"
 #include "shared/response.h"
 
-static int bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
+#define _RECV_BUF_SIZE 64
+
+static int _bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
 {
-    __cleanup_free__ char *_buf = NULL;
-    size_t buf_capacity = 64;
+    _cleanup_free_ char *_buf = NULL;
+    size_t buf_capacity = _RECV_BUF_SIZE;
     size_t _buf_len = 0;
-    int r;
+    ssize_t r;
 
     assert(buf);
     assert(buf_len);
@@ -48,7 +48,7 @@ static int bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
 
 int bf_send_request(int fd, const struct bf_request *request)
 {
-    int r;
+    ssize_t r;
 
     assert(request);
 
@@ -56,9 +56,12 @@ int bf_send_request(int fd, const struct bf_request *request)
     if (r < 0) {
         fprintf(stderr, "Failed to send request: %s\n", strerror(errno));
         return -errno;
-    } else if ((size_t)r != bf_request_size(request)) {
-        fprintf(stderr, "Failed to send request: %d bytes sent, %ld expected\n",
-                r, bf_request_size(request));
+    }
+
+    if ((size_t)r != bf_request_size(request)) {
+        fprintf(stderr,
+                "Failed to send request: %lu bytes sent, %ld expected\n", r,
+                bf_request_size(request));
         return -EIO;
     }
 
@@ -67,15 +70,15 @@ int bf_send_request(int fd, const struct bf_request *request)
 
 int bf_recv_request(int fd, struct bf_request **request)
 {
-    __cleanup_bf_request__ struct bf_request *_request = NULL;
-    __cleanup_bf_request__ struct bf_request *_oversized_request = NULL;
-    __cleanup_free__ char *buf = NULL;
+    _cleanup_bf_request_ struct bf_request *_request = NULL;
+    _cleanup_bf_request_ struct bf_request *_oversized_request = NULL;
+    _cleanup_free_ char *buf = NULL;
     size_t buf_len;
     int r;
 
     assert(request);
 
-    r = bf_recv_in_buff(fd, &buf, &buf_len);
+    r = _bf_recv_in_buff(fd, &buf, &buf_len);
     if (r < 0)
         return r;
 
@@ -103,7 +106,7 @@ int bf_recv_request(int fd, struct bf_request **request)
 
 int bf_send_response(int fd, struct bf_response *response)
 {
-    int r;
+    ssize_t r;
 
     assert(response);
 
@@ -111,9 +114,11 @@ int bf_send_response(int fd, struct bf_response *response)
     if (r < 0) {
         fprintf(stderr, "Failed to send response: %s\n", strerror(errno));
         return -errno;
-    } else if ((size_t)r != bf_response_size(response)) {
+    }
+
+    if ((size_t)r != bf_response_size(response)) {
         fprintf(stderr,
-                "Failed to send response: %d bytes sent, %ld expected\n", r,
+                "Failed to send response: %lu bytes sent, %ld expected\n", r,
                 bf_response_size(response));
         return -EIO;
     }
@@ -123,15 +128,15 @@ int bf_send_response(int fd, struct bf_response *response)
 
 int bf_recv_response(int fd, struct bf_response **response)
 {
-    __cleanup_bf_response__ struct bf_response *_response = NULL;
-    __cleanup_bf_response__ struct bf_response *_oversized_response = NULL;
-    __cleanup_free__ char *buf = NULL;
+    _cleanup_bf_response_ struct bf_response *_response = NULL;
+    _cleanup_bf_response_ struct bf_response *_oversized_response = NULL;
+    _cleanup_free_ char *buf = NULL;
     size_t buf_len;
     int r;
 
     assert(response);
 
-    r = bf_recv_in_buff(fd, &buf, &buf_len);
+    r = _bf_recv_in_buff(fd, &buf, &buf_len);
     if (r < 0)
         return r;
 

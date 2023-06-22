@@ -5,57 +5,53 @@
 
 #pragma once
 
+#include "core/logger.h"
+
 /**
- * @brief Dump prefixed-print helper.
+ * @brief Dump prefixed-formatted string.
  *
  * @param p Prefix string.
  * @param fmt Log format string.
  * @param ... Variadic argument list for @p fmt.
  */
-#define DUMP_P(p, fmt, ...) \
-        fprintf(stdout, "%s" fmt, p, ##__VA_ARGS__);
+#define DUMP(p, fmt, ...) bf_dbg("%s" fmt, (*p), ##__VA_ARGS__);
 
 /**
  * @brief Split 32 bits IPv4 representation into four 8 bits components.
  *
  * @param addr 32 bits IPv4 address to split.
  */
-#define IP4_SPLIT(addr) \
-    ((unsigned char *)&addr)[0], \
-    ((unsigned char *)&addr)[1], \
-    ((unsigned char *)&addr)[2], \
-    ((unsigned char *)&addr)[3]
+#define IP4_SPLIT(addr)                                                        \
+    ((unsigned char *)&(addr))[0], ((unsigned char *)&(addr))[1],              \
+        ((unsigned char *)&(addr))[2], ((unsigned char *)&(addr))[3]
+
+/// Format to use with @ref IP4_SPLIT to print an IPv4.
+#define IP4_FMT "%d.%d.%d.%d"
 
 /**
  * @brief Split a byte into 8 characters representing each bit.
  *
  * @param byte Byte to split.
  */
-#define BIN_SPLIT(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0')
+#define BIN_SPLIT(byte)                                                        \
+    (((byte)&0x80) + 0x30), (((byte)&0x40) + 0x30), (((byte)&0x20) + 0x30),    \
+        (((byte)&0x10) + 0x30), (((byte)&0x08) + 0x30),                        \
+        (((byte)&0x04) + 0x30), (((byte)&0x02) + 0x30), (((byte)&0x01) + 0x30)
 
-/**
- * @brief Format to use with BIN_SPLIT() to print a byte as 8 bits.
- */
+/// Format to use with BIN_SPLIT() to print a byte as 8 bits.
 #define BIN_FMT "%c%c%c%c%c%c%c%c"
 
-/**
- * @brief Maximum length of the prefix buffer.
- */
+/// Maximum length of the prefix buffer.
 #define DUMP_PREFIX_LEN 65
+
+typedef char(prefix_t)[DUMP_PREFIX_LEN];
 
 /**
  * @brief Add a symbol to the prefix string.
+ *
  * @param prefix Prefix string.
  */
-void bf_dump_prefix_push(char *prefix);
+void bf_dump_prefix_push(prefix_t *prefix);
 
 /**
  * @brief Convert previous node to make is the last of the branch.
@@ -63,7 +59,7 @@ void bf_dump_prefix_push(char *prefix);
  * @param prefix Prefix string.
  * @return @p prefix
  */
-char *bf_dump_prefix_last(char *prefix);
+prefix_t *bf_dump_prefix_last(prefix_t *prefix);
 
 /**
  * @brief Remove rightmost branch from the prefix string.
@@ -73,4 +69,4 @@ char *bf_dump_prefix_last(char *prefix);
  *
  * @param prefix Prefix string.
  */
-void bf_dump_prefix_pop(char *prefix);
+void bf_dump_prefix_pop(prefix_t *prefix);
