@@ -13,9 +13,9 @@ sudo dnf copr enable naccyde/criterion
 
 # Install dependencies
 sudo dnf install -y \
-	cmake libbpf-devel \
-    criterion-devel lcov libasan libubsan \
-	doxygen python3-sphinx python3-breathe python3-furo
+    cmake libbpf-devel \
+    criterion-devel clang-tools-extra lcov \
+    doxygen python3-sphinx python3-breathe python3-furo
 ```
 
 To build `bpfilter` (from the source directory):
