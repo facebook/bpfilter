@@ -6,10 +6,9 @@ cmake_minimum_required(VERSION 3.26)
 project(bpfilter
     VERSION 0.0.1
     DESCRIPTION "BPF-based packet filtering framework"
-    LANGUAGES C CXX
+    LANGUAGES C
 )
 
-find_package(GTest REQUIRED)
 find_package(Doxygen REQUIRED)
 find_package(PkgConfig REQUIRED)
 
