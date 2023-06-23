@@ -459,7 +459,7 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
 static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 {
     _cleanup_free_ struct ipt_entry *entries = NULL;
-    struct bf_codegen *codegens[_BF_HOOK_MAX];
+    struct bf_codegen *codegens[_BF_HOOK_MAX] = {};
     int r;
 
     assert(replace);
