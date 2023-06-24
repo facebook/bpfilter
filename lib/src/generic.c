@@ -25,7 +25,7 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) {
-        fprintf(stderr, "Failed to create socket: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to create socket: %s\n", bf_strerror(errno));
         return -errno;
     }
 
@@ -34,19 +34,20 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
 
     r = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
     if (r < 0) {
-        fprintf(stderr, "Failed to connect to socket: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to connect to socket: %s\n",
+                bf_strerror(errno));
         return -errno;
     }
 
     r = bf_send_request(fd, request);
     if (r < 0) {
-        fprintf(stderr, "Failed to send request: %s\n", strerror(-r));
+        fprintf(stderr, "Failed to send request: %s\n", bf_strerror(r));
         return r;
     }
 
     r = bf_recv_response(fd, response);
     if (r < 0) {
-        fprintf(stderr, "Failed to receive response: %s\n", strerror(-r));
+        fprintf(stderr, "Failed to receive response: %s\n", bf_strerror(r));
         return r;
     }
 

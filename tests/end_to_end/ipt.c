@@ -9,6 +9,8 @@
 
 #include "global.h"
 
+extern const char *strerrordesc_np(int errnum);
+
 static unsigned char raw_filter_table[] = {
     0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -81,7 +83,7 @@ int main(void)
 
     r = bf_ipt_replace(filter_table);
     if (r < 0) {
-        err("bf_ipt_replace() failed: %s", strerror(-r));
+        err("bf_ipt_replace() failed: %s", strerrordesc_np(r));
         return EXIT_FAILURE;
     }
 
