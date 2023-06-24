@@ -33,7 +33,7 @@ static int _bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
 
         r = recv(fd, _buf + _buf_len, buf_capacity - _buf_len, 0);
         if (r < 0) {
-            fprintf(stderr, "recv() failed: %s\n", strerror(errno));
+            fprintf(stderr, "recv() failed: %s\n", bf_strerror(errno));
             return -errno;
         }
 
@@ -54,7 +54,7 @@ int bf_send_request(int fd, const struct bf_request *request)
 
     r = send(fd, request, bf_request_size(request), 0);
     if (r < 0) {
-        fprintf(stderr, "Failed to send request: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to send request: %s\n", bf_strerror(errno));
         return -errno;
     }
 
@@ -95,7 +95,7 @@ int bf_recv_request(int fd, struct bf_request **request)
 
     r = bf_request_copy(&_request, _oversized_request);
     if (r < 0) {
-        fprintf(stderr, "Failed to allocate request: %s\n", strerror(-r));
+        fprintf(stderr, "Failed to allocate request: %s\n", bf_strerror(r));
         return r;
     }
 
@@ -112,7 +112,7 @@ int bf_send_response(int fd, struct bf_response *response)
 
     r = send(fd, response, bf_response_size(response), 0);
     if (r < 0) {
-        fprintf(stderr, "Failed to send response: %s\n", strerror(errno));
+        fprintf(stderr, "Failed to send response: %s\n", bf_strerror(errno));
         return -errno;
     }
 
@@ -153,7 +153,7 @@ int bf_recv_response(int fd, struct bf_response **response)
 
     r = bf_response_copy(&_response, _oversized_response);
     if (r < 0) {
-        fprintf(stderr, "Failed to allocate response: %s\n", strerror(-r));
+        fprintf(stderr, "Failed to allocate response: %s\n", bf_strerror(r));
         return r;
     }
 

@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-extern const char *strerrordesc_np(int errnum);
+#include "shared/helper.h"
 
 enum bf_style
 {
@@ -36,13 +36,6 @@ enum bf_style
     BF_STYLE_LIGHT_CYAN = 1 << 16,
     BF_STYLE_WHITE = 1 << 17,
 };
-
-/**
- * @brief Return a string describing the given error code.
- *
- * @param v Error code, can be positive or negative.
- */
-#define _strerror(v) strerrordesc_np(abs(v))
 
 /**
  * @brief Log an error message to stderr.
@@ -110,7 +103,7 @@ enum bf_style
  */
 #define _bf_log_code_impl(code, fmt, ...)                                      \
     ({                                                                         \
-        fprintf(stderr, fmt ": %s\n", ##__VA_ARGS__, _strerror(code));         \
+        fprintf(stderr, fmt ": %s\n", ##__VA_ARGS__, bf_strerror(code));       \
         -abs(code);                                                            \
     })
 

@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+extern const char *strerrordesc_np(int errnum);
+
 #define bf_packed __attribute__((packed))
 
 /**
@@ -59,6 +61,15 @@
 
 #define _cleanup_free_ __attribute__((__cleanup__(freep)))
 #define _cleanup_close_ __attribute__((__cleanup__(closep)))
+
+/**
+ * @brief Return a string describing the given error code.
+ *
+ * This function must be used over strerror(), which is marked at mt-unsafe.
+ *
+ * @param v Error code, can be positive or negative.
+ */
+#define bf_strerror(v) strerrordesc_np(abs(v))
 
 /**
  * @brief Free a pointer and set it to NULL.

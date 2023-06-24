@@ -11,6 +11,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+extern const char *strerrordesc_np(int errnum);
+
 static const char *message =
     "Hello, world! Hello, world! Hello, world! Hello, world! Hello, world! "
     "Hello, world! Hello, world! Hello, world! Hello, world! Hello, world! "
@@ -27,7 +29,7 @@ int main(void)
 
     r = bf_request_new(&request, message, strlen(message) + 1);
     if (r) {
-        fprintf(stderr, "bf_request_new() failed: %s\n", strerror(-r));
+        fprintf(stderr, "bf_request_new() failed: %s\n", strerrordesc_np(-r));
         return r;
     }
 
@@ -35,7 +37,7 @@ int main(void)
 
     r = bf_send(request, &response);
     if (r) {
-        fprintf(stderr, "bf_send() failed: %s\n", strerror(-r));
+        fprintf(stderr, "bf_send() failed: %s\n", strerrordesc_np(-r));
         return r;
     }
 
