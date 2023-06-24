@@ -21,23 +21,17 @@
  * @brief Map each hook to its name as a string.
  */
 static const char *hook_name[] = {
-        [NF_INET_PRE_ROUTING] = "PRE_ROUTING",
-        [NF_INET_LOCAL_IN] = "LOCAL_IN",
-        [NF_INET_FORWARD] = "FORWARD",
-        [NF_INET_LOCAL_OUT] = "LOCAL_OUT",
-        [NF_INET_POST_ROUTING] = "POST_ROUTING",
+    [NF_INET_PRE_ROUTING] = "PRE_ROUTING",   [NF_INET_LOCAL_IN] = "LOCAL_IN",
+    [NF_INET_FORWARD] = "FORWARD",           [NF_INET_LOCAL_OUT] = "LOCAL_OUT",
+    [NF_INET_POST_ROUTING] = "POST_ROUTING",
 };
 
 /**
  * @brief Map each target to its name as a string.
  */
 static const char *target_name[] = {
-        [NF_DROP] = "DROP",
-        [NF_ACCEPT] = "ACCEPT",
-        [NF_STOLEN] = "STOLEN",
-        [NF_QUEUE] = "QUEUE",
-        [NF_REPEAT] = "REPEAT",
-        [NF_STOP] = "STOP",
+    [NF_DROP] = "DROP",   [NF_ACCEPT] = "ACCEPT", [NF_STOLEN] = "STOLEN",
+    [NF_QUEUE] = "QUEUE", [NF_REPEAT] = "REPEAT", [NF_STOP] = "STOP",
 };
 
 /**

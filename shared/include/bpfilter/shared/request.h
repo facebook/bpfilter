@@ -60,6 +60,7 @@ struct bf_request
             int ipt_cmd;
         };
     };
+
     size_t data_len;
     char data[];
 };
