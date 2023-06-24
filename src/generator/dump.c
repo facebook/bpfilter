@@ -71,12 +71,12 @@ static const char *_bf_src(const struct bpf_insn *insn,
 }
 
 static void _bf_program_dump_alu_insn(const struct bf_program *program,
-                                      size_t *i, prefix_t *prefix)
+                                      size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
     char imm_buf[BF_IMM_BUF_LEN] = {};
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
     const char *size = BF_INSN_CLS(insn) == BPF_ALU64 ? "" : "(u32)";
 
     switch (BF_INSN_CODE(insn)) {
@@ -88,29 +88,29 @@ static void _bf_program_dump_alu_insn(const struct bf_program *program,
     case BPF_LSH:
     case BPF_RSH:
     case BPF_XOR:
-        DUMP(prefix, "%04lu %s = %s%s %s %s%s", *i, _bpf_reg(insn->dst_reg),
-             size, _bpf_reg(insn->dst_reg), _bf_op(insn), size,
-             _bf_src(insn, &imm_buf));
+        DUMP(prefix, "%04lu %s = %s%s %s %s%s", *insn_idx,
+             _bpf_reg(insn->dst_reg), size, _bpf_reg(insn->dst_reg),
+             _bf_op(insn), size, _bf_src(insn, &imm_buf));
         break;
     case BPF_DIV:
-        DUMP(prefix, "%04lu BPF_DIV - Unsupported", *i);
+        DUMP(prefix, "%04lu BPF_DIV - Unsupported", *insn_idx);
         break;
     case BPF_MOD:
-        DUMP(prefix, "%04lu BPF_MOD - Unsupported", *i);
+        DUMP(prefix, "%04lu BPF_MOD - Unsupported", *insn_idx);
         break;
     case BPF_NEG:
-        DUMP(prefix, "%04lu %s = ~%s%s", *i, _bpf_reg(insn->dst_reg), size,
-             _bf_src(insn, &imm_buf));
+        DUMP(prefix, "%04lu %s = ~%s%s", *insn_idx, _bpf_reg(insn->dst_reg),
+             size, _bf_src(insn, &imm_buf));
         break;
     case BPF_MOV:
-        DUMP(prefix, "%04lu %s = %s%s", *i, _bpf_reg(insn->dst_reg), size,
-             _bf_src(insn, &imm_buf));
+        DUMP(prefix, "%04lu %s = %s%s", *insn_idx, _bpf_reg(insn->dst_reg),
+             size, _bf_src(insn, &imm_buf));
         break;
     case BPF_ARSH:
-        DUMP(prefix, "%04lu BPF_ARSH - Unsupported", *i);
+        DUMP(prefix, "%04lu BPF_ARSH - Unsupported", *insn_idx);
         break;
     case BPF_END:
-        DUMP(prefix, "%04lu BPF_END - Unsupported", *i);
+        DUMP(prefix, "%04lu BPF_END - Unsupported", *insn_idx);
         break;
     };
 }
@@ -144,23 +144,24 @@ static const char *_bpf_helper(const struct bpf_insn *insn)
 }
 
 static void _bf_program_dump_jmp_insn(const struct bf_program *program,
-                                      size_t *i, prefix_t *prefix)
+                                      size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
     char imm_buf[BF_IMM_BUF_LEN] = {};
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
     const char *size = BF_INSN_CLS(insn) == BPF_ALU ? "" : "(u32)";
 
     assert(program);
-    assert(i);
+    assert(insn_idx);
 
     switch (BF_INSN_CODE(insn)) {
     case BPF_JA:
         if (insn->off == 0) {
-            DUMP(prefix, "%04lu noop", *i);
+            DUMP(prefix, "%04lu noop", *insn_idx);
         } else {
-            DUMP(prefix, "%04lu goto pc + %d", *i, program->img[*i].off);
+            DUMP(prefix, "%04lu goto pc + %d", *insn_idx,
+                 program->img[*insn_idx].off);
         }
         break;
     case BPF_JEQ:
@@ -174,25 +175,25 @@ static void _bf_program_dump_jmp_insn(const struct bf_program *program,
     case BPF_JSGE:
     case BPF_JSLT:
     case BPF_JSLE:
-        DUMP(prefix, "%04lu if %s%s %s %s%s goto pc + %d", *i, size,
+        DUMP(prefix, "%04lu if %s%s %s %s%s goto pc + %d", *insn_idx, size,
              _bpf_reg(insn->dst_reg), _bf_jmp_op(insn), size,
              _bf_src(insn, &imm_buf), insn->off);
         break;
     case BPF_CALL:
         switch (insn->src_reg) {
         case 0x00:
-            DUMP(prefix, "%04lu call %s", *i, _bpf_helper(insn));
+            DUMP(prefix, "%04lu call %s", *insn_idx, _bpf_helper(insn));
             break;
         case 0x01:
-            DUMP(prefix, "%04lu call pc + %d", *i, insn->imm);
+            DUMP(prefix, "%04lu call pc + %d", *insn_idx, insn->imm);
             break;
         case 0x02:
-            DUMP(prefix, "%04lu call helper function by BTF ID", *i);
+            DUMP(prefix, "%04lu call helper function by BTF ID", *insn_idx);
             break;
         };
         break;
     case BPF_EXIT:
-        DUMP(prefix, "%04lu exit", *i);
+        DUMP(prefix, "%04lu exit", *insn_idx);
         break;
     };
 }
@@ -214,133 +215,134 @@ static const char *_bpf_ldst_size(const struct bpf_insn *insn)
 }
 
 static void _bf_program_dump_imm64_insn(const struct bf_program *program,
-                                        size_t *i, prefix_t *prefix)
+                                        size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
     const struct bpf_insn *next_insn;
 
     assert(program);
-    assert(i);
+    assert(insn_idx);
     assert(prefix);
 
-    assert((*i + 1) < program->img_size);
+    assert((*insn_idx + 1) < program->img_size);
 
-    next_insn = &program->img[*i + 1];
+    next_insn = &program->img[*insn_idx + 1];
 
-    (*i)++; // Skip the next one as this is a 64 bits immediate value
-            // instruction.
+    (*insn_idx)++; // Skip the next one as this is a 64 bits immediate value
+                   // instruction.
 
     assert(insn->code == (BPF_IMM | BPF_DW | BPF_LD));
 
     switch (insn->src_reg) {
     case 0x00:
-        DUMP(prefix, "%04lu %s = %llu", *i, _bpf_reg(insn->dst_reg),
+        DUMP(prefix, "%04lu %s = %llu", *insn_idx, _bpf_reg(insn->dst_reg),
              ((unsigned long long)insn->imm << 32) | next_insn->imm);
         break;
     case 0x01:
-        DUMP(prefix, "%04lu %s = map_by_fd(%d)", *i, _bpf_reg(insn->dst_reg),
-             insn->imm);
+        DUMP(prefix, "%04lu %s = map_by_fd(%d)", *insn_idx,
+             _bpf_reg(insn->dst_reg), insn->imm);
         break;
     case 0x02:
-        DUMP(prefix, "%04lu %s = map_val(map_by_fd(%d)) + %d", *i,
+        DUMP(prefix, "%04lu %s = map_val(map_by_fd(%d)) + %d", *insn_idx,
              _bpf_reg(insn->dst_reg), insn->imm, next_insn->imm);
         break;
     case 0x03:
-        DUMP(prefix, "%04lu %s = val_addr(%d)", *i, _bpf_reg(insn->dst_reg),
-             insn->imm);
+        DUMP(prefix, "%04lu %s = val_addr(%d)", *insn_idx,
+             _bpf_reg(insn->dst_reg), insn->imm);
         break;
     case 0x04:
-        DUMP(prefix, "%04lu %s = code_addr(%d)", *i, _bpf_reg(insn->dst_reg),
-             insn->imm);
+        DUMP(prefix, "%04lu %s = code_addr(%d)", *insn_idx,
+             _bpf_reg(insn->dst_reg), insn->imm);
         break;
     case 0x05:
-        DUMP(prefix, "%04lu %s = map_by_idx(%d)", *i, _bpf_reg(insn->dst_reg),
-             insn->imm);
+        DUMP(prefix, "%04lu %s = map_by_idx(%d)", *insn_idx,
+             _bpf_reg(insn->dst_reg), insn->imm);
         break;
     case 0x06:
-        DUMP(prefix, "%04lu %s = map_val(map_by_idx(%d)) + %d", *i,
+        DUMP(prefix, "%04lu %s = map_val(map_by_idx(%d)) + %d", *insn_idx,
              _bpf_reg(insn->dst_reg), insn->imm, next_insn->imm);
         break;
     }
 }
 
 static void _bf_program_dump_ldst_insn(const struct bf_program *program,
-                                       size_t *i, prefix_t *prefix)
+                                       size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
 
     switch (BF_INSN_MODE(insn)) {
     case BPF_IMM:
-        _bf_program_dump_imm64_insn(program, i, prefix);
+        _bf_program_dump_imm64_insn(program, insn_idx, prefix);
         break;
     case BPF_ABS:
     case BPF_IND:
-        DUMP(prefix, "%04lu legacy BPF instructions are not supported", *i);
+        DUMP(prefix, "%04lu legacy BPF instructions are not supported",
+             *insn_idx);
         break;
     case BPF_MEM:
         switch (BF_INSN_CLS(insn)) {
         case BPF_LDX:
-            DUMP(prefix, "%04lu %s = *(%s *)(%s + %d)", *i,
+            DUMP(prefix, "%04lu %s = *(%s *)(%s + %d)", *insn_idx,
                  _bpf_reg(insn->dst_reg), _bpf_ldst_size(insn),
                  _bpf_reg(insn->src_reg), insn->off);
             break;
         case BPF_ST:
-            DUMP(prefix, "%04lu *(%s *)(%s + %d) = %d", *i,
+            DUMP(prefix, "%04lu *(%s *)(%s + %d) = %d", *insn_idx,
                  _bpf_ldst_size(insn), _bpf_reg(insn->dst_reg), insn->off,
                  insn->imm);
             break;
         case BPF_STX:
-            DUMP(prefix, "%04lu *(%s *)(%s + %d) = %s", *i,
+            DUMP(prefix, "%04lu *(%s *)(%s + %d) = %s", *insn_idx,
                  _bpf_ldst_size(insn), _bpf_reg(insn->dst_reg), insn->off,
                  _bpf_reg(insn->src_reg));
             break;
         };
         break;
     case BPF_ATOMIC:
-        DUMP(prefix, "%04lu BPF_ATOMIC - Unsupported", *i);
+        DUMP(prefix, "%04lu BPF_ATOMIC - Unsupported", *insn_idx);
         break;
     }
 }
 
-static void _bf_program_dump_insn(const struct bf_program *program, size_t *i,
-                                  prefix_t *prefix)
+static void _bf_program_dump_insn(const struct bf_program *program,
+                                  size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
 
     switch (BF_INSN_CLS(insn)) {
     case BPF_LD:
     case BPF_LDX:
     case BPF_ST:
     case BPF_STX:
-        _bf_program_dump_ldst_insn(program, i, prefix);
+        _bf_program_dump_ldst_insn(program, insn_idx, prefix);
         break;
     case BPF_ALU:
     case BPF_ALU64:
-        _bf_program_dump_alu_insn(program, i, prefix);
+        _bf_program_dump_alu_insn(program, insn_idx, prefix);
         break;
     case BPF_JMP:
     case BPF_JMP32:
-        _bf_program_dump_jmp_insn(program, i, prefix);
+        _bf_program_dump_jmp_insn(program, insn_idx, prefix);
         break;
     default:
-        DUMP(prefix, "%04lu Unknown insn code: 0x%02x", *i,
-             program->img[*i].code);
+        DUMP(prefix, "%04lu Unknown insn code: 0x%02x", *insn_idx,
+             program->img[*insn_idx].code);
         break;
     };
 }
 
-static void _bf_program_dump_raw(const struct bf_program *program, size_t *i,
-                                 prefix_t *prefix)
+static void _bf_program_dump_raw(const struct bf_program *program,
+                                 size_t *insn_idx, prefix_t *prefix)
 {
-    const struct bpf_insn *insn = &program->img[*i];
+    const struct bpf_insn *insn = &program->img[*insn_idx];
 
-    switch (BF_INSN_CLS(&program->img[*i])) {
+    switch (BF_INSN_CLS(&program->img[*insn_idx])) {
     case BPF_LD:
     case BPF_LDX:
     case BPF_STX:
