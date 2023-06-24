@@ -81,8 +81,8 @@ static inline bool bf_marsh_is_valid_child(const struct bf_marsh *marsh,
 /**
  * @brief Get the next child of @p ctx after @p child.
  *
- * @param marsh Marshalled data.
- * @param child Valid child of @p marsh.
+ * @param marsh Marshalled data. Can't be NULL.
+ * @param child Valid child of @p marsh. Can be NULL.
  * @return Next child of @p marsh after @p child, or NULL if @p child is the
  *  last child of @p marsh.
  */

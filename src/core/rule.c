@@ -93,36 +93,44 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
     if (r < 0)
         return r;
 
-    child = bf_marsh_next_child(marsh, NULL);
-
+    if (!(child = bf_marsh_next_child(marsh, NULL)))
+        return -EINVAL;
     memcpy(&_rule->index, child->data, sizeof(_rule->index));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->ifindex, child->data, sizeof(_rule->ifindex));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->invflags, child->data, sizeof(_rule->invflags));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->src, child->data, sizeof(_rule->src));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->dst, child->data, sizeof(_rule->dst));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->src_mask, child->data, sizeof(_rule->src_mask));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->dst_mask, child->data, sizeof(_rule->dst_mask));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->protocol, child->data, sizeof(_rule->protocol));
-    child = bf_marsh_next_child(marsh, child);
 
     r = bf_target_new(&target);
     if (r < 0)
         return bf_err_code(r, "Failed to create target");
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(target, child->data, sizeof(struct bf_target));
     _rule->target = TAKE_PTR(target);
 

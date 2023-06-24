@@ -812,22 +812,28 @@ static int _bf_ipt_unmarsh(struct bf_marsh *marsh)
     if (r < 0)
         return -ENOMEM;
 
-    child = bf_marsh_next_child(marsh, NULL);
+    if (!(child = bf_marsh_next_child(marsh, NULL)))
+        return -EINVAL;
     memcpy(&cache->valid_hooks, child->data, sizeof(cache->valid_hooks));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&cache->hook_entry, child->data, sizeof(cache->hook_entry));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&cache->underflow, child->data, sizeof(cache->underflow));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&cache->num_entries, child->data, sizeof(cache->num_entries));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&cache->size, child->data, sizeof(cache->size));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     cache->entries = bf_memdup(child->data, child->data_len);
     if (!cache->entries)
         return -ENOMEM;

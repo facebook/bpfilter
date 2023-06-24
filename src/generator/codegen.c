@@ -215,7 +215,8 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
     if (r)
         return bf_err_code(r, "failed to allocate codegen object");
 
-    child = bf_marsh_next_child(marsh, NULL);
+    if (!(child = bf_marsh_next_child(marsh, NULL)))
+        return -EINVAL;
 
     {
         struct bf_marsh *subchild = NULL;
@@ -234,7 +235,9 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
         }
     }
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+
     {
         struct bf_marsh *subchild = NULL;
         while ((subchild = bf_marsh_next_child(child, subchild))) {
@@ -251,13 +254,13 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
         }
     }
 
-    child = bf_marsh_next_child(marsh, child);
-
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_codegen->hook, child->data, sizeof(_codegen->hook));
-    child = bf_marsh_next_child(marsh, child);
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_codegen->front, child->data, sizeof(_codegen->front));
-    child = bf_marsh_next_child(marsh, child);
 
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");

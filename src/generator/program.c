@@ -129,23 +129,28 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     assert(marsh);
     assert(program);
 
-    child = bf_marsh_next_child(marsh, NULL);
+    if (!(child = bf_marsh_next_child(marsh, NULL)))
+        return -EINVAL;
     memcpy(&ifindex, child->data, sizeof(ifindex));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&hook, child->data, sizeof(hook));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&front, child->data, sizeof(front));
 
     r = bf_program_new(&_program, ifindex, hook, front);
     if (r < 0)
         return r;
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_program->num_rules, child->data, sizeof(_program->num_rules));
 
-    child = bf_marsh_next_child(marsh, child);
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     _program->img = bf_memdup(child->data, child->data_len);
     _program->img_size = child->data_len;
     _program->img_cap = child->data_len;
