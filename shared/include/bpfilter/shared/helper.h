@@ -73,12 +73,12 @@ extern const char *strerrordesc_np(int errnum);
 
 /**
  * @brief Free a pointer and set it to NULL.
- * @param p Pointer to free.
+ * @param ptr Pointer to free.
  */
-static inline void freep(void *p)
+static inline void freep(void *ptr)
 {
-    free(*(void **)p);
-    *(void **)p = NULL;
+    free(*(void **)ptr);
+    *(void **)ptr = NULL;
 }
 
 /**
