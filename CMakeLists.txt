@@ -29,14 +29,14 @@ set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "")     # No NDEBUG in release mode
 
 if (NOT CMAKE_BUILD_TYPE)
-  message(STATUS "Setting build type to 'Release' as none was specified.")
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+  message(STATUS "Setting build type to 'release' as none was specified.")
+  set(CMAKE_BUILD_TYPE "release" CACHE STRING "Choose the type of build." FORCE)
 else ()
     set(BF_VALID_BUILD_TYPE "debug;release")
     string(TOLOWER ${CMAKE_BUILD_TYPE} BF_LOWER_BUILD_TYPE)
     list(FIND BF_VALID_BUILD_TYPE ${BF_LOWER_BUILD_TYPE} BF_BUILD_TYPE_INDEX)
     if (${BF_BUILD_TYPE_INDEX} EQUAL -1)
-        message(FATAL_ERROR "CMAKE_BUILD_TYPE must be either 'Debug' or 'Release' (default), not '${CMAKE_BUILD_TYPE}'")
+        message(FATAL_ERROR "CMAKE_BUILD_TYPE must be either 'rebug' or 'release' (default), not '${CMAKE_BUILD_TYPE}'")
     endif ()
 endif ()
 
