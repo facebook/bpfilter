@@ -10,22 +10,22 @@
 
 int bf_match_new(struct bf_match **match)
 {
-	struct bf_match *_match;
+    struct bf_match *_match;
 
-	_match = calloc(1, sizeof(*_match));
-	if (!_match)
-		return -ENOMEM;
+    _match = calloc(1, sizeof(*_match));
+    if (!_match)
+        return -ENOMEM;
 
-	*match = _match;
+    *match = _match;
 
-	return 0;
+    return 0;
 }
 
 void bf_match_free(struct bf_match **match)
 {
-	if (!*match)
-		return;
+    if (!*match)
+        return;
 
-	free(*match);
-	*match = NULL;
+    free(*match);
+    *match = NULL;
 }

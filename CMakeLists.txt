@@ -18,6 +18,7 @@ find_program(SPHINX_BIN sphinx-build REQUIRED)
 find_program(LCOV_BIN lcov REQUIRED)
 find_program(GENHTML_BIN genhtml REQUIRED)
 find_program(CLANG_TIDY_BIN clang-tidy REQUIRED)
+find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
 
 include(GoogleTest)
 

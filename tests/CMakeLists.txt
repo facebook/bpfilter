@@ -8,3 +8,8 @@ add_custom_target(lint
     COMMAND ${CLANG_TIDY_BIN} --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy -p ${CMAKE_BINARY_DIR} ${bpfilter_shared_srcs} ${bpfilter_daemon_srcs} ${bpfilter_library_srcs}
     COMMENT "Run linter on source files"
 )
+
+add_custom_target(checkstyle
+    COMMAND ${CLANG_FORMAT_BIN} --style=file:${CMAKE_SOURCE_DIR}/.clang-format --dry-run --Werror ${bpfilter_shared_srcs} ${bpfilter_daemon_srcs} ${bpfilter_library_srcs}
+    COMMENT "Check source code formatting"
+)
