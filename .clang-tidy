@@ -5,6 +5,9 @@
 # - bugprone-suspicious-include:
 #   Not a huge issue, and leading to false positive as unit tests include the tested
 #   C file.
+# - bugprone-assignment-in-if-condition:
+#   Assignment in if conditions sometimes make the code simpler and shorter. However,
+#   they should be used sparingly.
 # - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling:
 #   Warn on occurrences of unsafe or deprecated buffer handling functions, but
 #   requires usage of optional component of the C language.
@@ -14,6 +17,7 @@ Checks: >
   bugprone-*,
     -bugprone-reserved-identifier,
     -bugprone-suspicious-include,
+    -bugprone-assignment-in-if-condition,
   clang-analyzer-*,
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   concurrency-*,
@@ -24,7 +28,7 @@ Checks: >
     -readability-suspicious-call-argument
 
 WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
+HeaderFilterRegex: '^(?!external\/filter.h).*'
 FormatStyle: none
 
 CheckOptions:
@@ -33,7 +37,7 @@ CheckOptions:
     value: 'i|r|fd|n'
   # It's OK to use the following short parameters names:
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'fe|fd'
+    value: 'fe|fd|a|b'
   # Do not put braces around single-line statements, except it they visually
   # span over multiple lines.
   - key: readability-braces-around-statements.ShortStatementLines
