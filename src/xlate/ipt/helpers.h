@@ -27,7 +27,7 @@
  * @return Pointer to the match at @p offset in @p ipt_entry.
  */
 #define ipt_get_match(entry, offset)                                           \
-    ((struct ipt_entry_match *)((void *)(entry) + offset))
+    ((struct ipt_entry_match *)((void *)(entry) + (offset)))
 
 /**
  * @brief Get @p ipt_entry's target.

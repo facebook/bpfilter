@@ -27,9 +27,9 @@ static int _bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
     assert(buf_len);
 
     do {
-        _buf = realloc(_buf, buf_capacity <<= 1);
-        if (!_buf)
-            return -ENOMEM;
+        r = bf_realloc((void **)&_buf, buf_capacity <<= 1);
+        if (r < 0)
+            return (int)r;
 
         r = recv(fd, _buf + _buf_len, buf_capacity - _buf_len, 0);
         if (r < 0) {
@@ -38,7 +38,7 @@ static int _bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
         }
 
         _buf_len += r;
-    } while (r > 0 && _buf_len == buf_capacity);
+    } while (r && _buf_len == buf_capacity);
 
     *buf = TAKE_PTR(_buf);
     *buf_len = _buf_len;

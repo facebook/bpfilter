@@ -71,7 +71,7 @@ static const char *_bf_src(const struct bpf_insn *insn,
 }
 
 static void _bf_program_dump_alu_insn(const struct bf_program *program,
-                                      size_t *insn_idx, prefix_t *prefix)
+                                      const size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
@@ -144,7 +144,7 @@ static const char *_bpf_helper(const struct bpf_insn *insn)
 }
 
 static void _bf_program_dump_jmp_insn(const struct bf_program *program,
-                                      size_t *insn_idx, prefix_t *prefix)
+                                      const size_t *insn_idx, prefix_t *prefix)
 {
     prefix_t _prefix = {};
     prefix = prefix ?: &_prefix;
@@ -338,7 +338,7 @@ static void _bf_program_dump_insn(const struct bf_program *program,
 }
 
 static void _bf_program_dump_raw(const struct bf_program *program,
-                                 size_t *insn_idx, prefix_t *prefix)
+                                 const size_t *insn_idx, prefix_t *prefix)
 {
     const struct bpf_insn *insn = &program->img[*insn_idx];
 

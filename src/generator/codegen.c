@@ -81,9 +81,10 @@ int bf_codegen_generate(struct bf_codegen *codegen)
             return r;
 
         r = bf_program_generate(program, &codegen->rules);
-        if (r)
+        if (r) {
             return bf_err_code(r, "failed to generate program for %s",
                                it->if_name);
+        }
 
         r = bf_list_add_tail(&codegen->programs, program);
         if (r)

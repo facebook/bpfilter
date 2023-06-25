@@ -144,9 +144,10 @@ static void ipt_dump_target(const struct ipt_entry_target *target,
 
     DUMP((is_standard ? prefix : bf_dump_prefix_last(prefix)),
          "target_size: %d", target->u.target_size);
-    if (is_standard)
+    if (is_standard) {
         DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
              target_name[_bf_ipt_convert_verdict(std_target->verdict)]);
+    }
 
     bf_dump_prefix_pop(prefix);
 }

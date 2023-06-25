@@ -273,11 +273,12 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
 static void _bf_context_delete_codegen(struct bf_context *context,
                                        enum bf_hook hook, enum bf_front front)
 {
-    _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+    struct bf_codegen *codegen = NULL;
 
     assert(context);
 
     codegen = _bf_context_take_codegen(context, hook, front);
+    bf_codegen_free(&codegen);
 }
 
 /**

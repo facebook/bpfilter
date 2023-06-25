@@ -28,7 +28,6 @@ Test(src_core_hook, can_get_prog_type_from_hook)
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         prog_type = bf_hook_to_bpf_prog_type(i);
-        cr_assert(BPF_PROG_TYPE_UNSPEC <= prog_type);
         cr_assert(prog_type <= BPF_PROG_TYPE_SYSCALL);
     }
 }

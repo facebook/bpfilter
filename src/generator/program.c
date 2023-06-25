@@ -203,6 +203,7 @@ static inline size_t _round_next_power_of_2(size_t x)
 int bf_program_grow_img(struct bf_program *program)
 {
     size_t new_cap;
+    int r;
 
     assert(program);
 
@@ -213,11 +214,10 @@ int bf_program_grow_img(struct bf_program *program)
                   sizeof(struct bpf_insn);
     }
 
-    program->img = realloc(program->img, new_cap);
-    if (!program->img) {
-        bf_err("failed to grow program img from %lu to %lu", program->img_cap,
-               new_cap);
-        return -ENOMEM;
+    r = bf_realloc((void **)&program->img, new_cap);
+    if (r < 0) {
+        return bf_err_code(r, "failed to grow program img from %lu to %lu",
+                           program->img_cap, new_cap);
     }
 
     program->img_cap = new_cap;
@@ -311,25 +311,25 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->src_mask || rule->src) {
-        const int op = rule->invflags & IPT_INV_SRCIP ? BPF_JEQ : BPF_JNE;
-
         EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH1, CODEGEN_REG_L3,
                                   offsetof(struct iphdr, saddr)));
         EMIT(program,
              BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH1, rule->src_mask));
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-                   BPF_JMP_IMM(op, CODEGEN_REG_SCRATCH1, rule->src, 0));
+        EMIT_FIXUP(
+            program, BF_CODEGEN_FIXUP_NEXT_RULE,
+            BPF_JMP_IMM(rule->invflags & IPT_INV_SRCIP ? BPF_JEQ : BPF_JNE,
+                        CODEGEN_REG_SCRATCH1, rule->src, 0));
     }
 
     if (rule->dst_mask || rule->dst) {
-        const int op = rule->invflags & IPT_INV_DSTIP ? BPF_JEQ : BPF_JNE;
-
         EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH2, CODEGEN_REG_L3,
                                   offsetof(struct iphdr, daddr)));
         EMIT(program,
              BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH2, rule->dst_mask));
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-                   BPF_JMP_IMM(op, CODEGEN_REG_SCRATCH2, rule->dst, 0));
+        EMIT_FIXUP(
+            program, BF_CODEGEN_FIXUP_NEXT_RULE,
+            BPF_JMP_IMM(rule->invflags & IPT_INV_DSTIP ? BPF_JEQ : BPF_JNE,
+                        CODEGEN_REG_SCRATCH2, rule->dst, 0));
     }
 
     if (rule->protocol) {
@@ -693,14 +693,17 @@ int bf_program_load(struct bf_program *program)
 
     // Pin program
     r = bf_bpf_obj_pin(program->prog_pin_path, fd);
-    if (r < 0)
+    if (r < 0) {
         return bf_err_code(errno, "failed to pin program fd to %s",
                            program->prog_pin_path);
+    }
 
     // Pin map
     r = bf_bpf_obj_pin(program->map_pin_path, map_fd);
-    if (r < 0)
-        return bf_err_code(errno, "failed to pin counters map");
+    if (r < 0) {
+        return bf_err_code(errno, "failed to pin map fd to %s",
+                           program->map_pin_path);
+    }
 
     bf_dbg("loaded %s codegen image to %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
