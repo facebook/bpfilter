@@ -87,8 +87,9 @@ int bf_codegen_load(struct bf_codegen *codegen);
  */
 int bf_codegen_unload(struct bf_codegen *codegen);
 
-int bf_codegen_marsh(const struct bf_codegen *codegen, struct bf_marsh **data);
+int bf_codegen_marsh(const struct bf_codegen *codegen, struct bf_marsh **marsh);
 
-int bf_codegen_unmarsh(const struct bf_marsh *ctx, struct bf_codegen **codegen);
+int bf_codegen_unmarsh(const struct bf_marsh *marsh,
+                       struct bf_codegen **codegen);
 
 void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix);

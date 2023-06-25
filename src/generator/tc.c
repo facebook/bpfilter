@@ -122,7 +122,7 @@ static int _tc_load_img(struct bf_program *program, int fd)
     assert(fd >= 0);
 
     hook.sz = sizeof(hook);
-    hook.ifindex = program->ifindex;
+    hook.ifindex = (int)program->ifindex;
     hook.attach_point = bf_hook_to_tc_hook(program->hook);
 
     r = bpf_tc_hook_create(&hook);
@@ -166,10 +166,11 @@ static int _tc_unload_img(struct bf_program *program)
     opts.priority = 1;
 
     r = bpf_tc_detach(&hook, &opts);
-    if (r)
+    if (r) {
         return bf_err_code(r, "failed to detach %s program from %s",
                            bf_front_to_str(program->front),
                            bf_hook_to_str(program->hook));
+    }
 
     return 0;
 }

@@ -6,6 +6,7 @@
 #pragma once
 
 #include <assert.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -149,4 +150,29 @@ static inline void *bf_memcpy(void *dst, const void *src, size_t len)
         return dst;
 
     return memcpy(dst, src, len);
+}
+
+/**
+ * @brief Reallocate @p ptr into a new buffer of size @p size.
+ *
+ * Behaves similarly to realloc(), except that @p ptr is left unchanged if
+ * allocation fails, and an error is returned.
+ *
+ * @param ptr Memory buffer to grow. Can't be NULL.
+ * @param size New size of the memory buffer.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static inline int bf_realloc(void **ptr, size_t size)
+{
+    _cleanup_free_ void *_ptr;
+
+    assert(ptr);
+
+    _ptr = realloc(*ptr, size);
+    if (!_ptr)
+        return -ENOMEM;
+
+    *ptr = TAKE_PTR(_ptr);
+
+    return 0;
 }
