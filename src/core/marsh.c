@@ -73,9 +73,6 @@ int bf_marsh_add_child_raw(struct bf_marsh **marsh, const void *data,
     assert(marsh);
     assert(!data ? !data_len : 1);
 
-    if (!data)
-        return 0;
-
     r = bf_marsh_new(&child, data, data_len);
     if (r < 0)
         return r;
