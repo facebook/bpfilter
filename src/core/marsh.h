@@ -56,54 +56,66 @@ static inline void *bf_marsh_end(const struct bf_marsh *marsh)
 }
 
 /**
- * @brief Check if @p child is a valid child of @p marsh.
+ * @brief Check if `child` is a valid child for `marsh`.
  *
- * A valid child is a child that starts and ends in its parent.
+ * A valid marsh is defined by the following criteria:
+ *  - It starts within its parent's data.
+ *  - Its full length (including the header) is within its parent's data.
+ * A marsh can only be validated relative to its parent. By recursively
+ * validating all the children of a marsh, we can validate the whole marsh.
  *
- * @param marsh Parent marshalled data.
- * @param child Child marshalled data.
- * @return True if @p child is a valid child of @p marsh, false otherwise.
+ * @warning This function doesn't check if the marshalled data is valid. It
+ * only checks if the marshalled data is within the parent's data and can be
+ * accessed safely.
+ *
+ * @param marsh Parent marsh, must be valid.
+ * @param child Child marsh to validate. Can be NULL.
+ * @return true if `child` is a valid child of `marsh`, false otherwise.
  */
-static inline bool bf_marsh_is_valid_child(const struct bf_marsh *marsh,
+static inline bool bf_marsh_child_is_valid(const struct bf_marsh *marsh,
                                            const struct bf_marsh *child)
 {
     assert(marsh);
-    assert(child);
 
-    // Ensure the child's header is within valid memory range before
-    // dereferencing it.
-    return child >= (struct bf_marsh *)marsh->data &&
-           (void *)((void *)child + sizeof(struct bf_marsh)) <=
-               bf_marsh_end(marsh) &&
-           bf_marsh_end(child) <= bf_marsh_end(marsh);
+    if (!child)
+        return false;
+
+    // Child must start within the parent marsh.
+    if ((void *)child < (void *)marsh->data ||
+        (void *)child > bf_marsh_end(marsh))
+        return false;
+
+    /* Child's data_len field must be within the parent bf_marsh. This check
+     * is required to safely access child->data_len. */
+    if ((void *)child + sizeof(struct bf_marsh) > bf_marsh_end(marsh))
+        return false;
+
+    // Child's data must be within the parent bf_marsh.
+    if (bf_marsh_end(child) > bf_marsh_end(marsh))
+        return false;
+
+    return true;
 }
 
 /**
- * @brief Get the next child of @p ctx after @p child.
+ * @brief Get `marsh`'s child located after `child`.
  *
- * @param marsh Marshalled data. Can't be NULL.
- * @param child Valid child of @p marsh. Can be NULL.
- * @return Next child of @p marsh after @p child, or NULL if @p child is the
- *  last child of @p marsh.
+ * @param marsh Parent marsh, must be valid.
+ * @param child Child of `marsh`, must be a valid child of `marsh` or NULL. If
+ *  `child` is NULL, the first child of `marsh` is returned.
+ * @return Next child of `marsh` after `child`, or NULL if `child` is the
+ *  last valid child of `marsh`.
  */
 static inline struct bf_marsh *bf_marsh_next_child(const struct bf_marsh *marsh,
                                                    const struct bf_marsh *child)
 {
-    struct bf_marsh *next_child;
-
     assert(marsh);
-    assert(child ? bf_marsh_is_valid_child(marsh, child) : 1);
 
-    if (!child) {
-        if (marsh->data_len >= sizeof(struct bf_marsh))
-            return (struct bf_marsh *)marsh->data;
+    struct bf_marsh *next_child =
+        child ? (struct bf_marsh *)(child->data + child->data_len) :
+                (struct bf_marsh *)marsh->data;
 
-        return NULL;
-    }
-
-    next_child = (struct bf_marsh *)bf_marsh_end(child);
-
-    return bf_marsh_is_valid_child(marsh, next_child) ? next_child : NULL;
+    return bf_marsh_child_is_valid(marsh, next_child) ? next_child : NULL;
 }
 
 /**
