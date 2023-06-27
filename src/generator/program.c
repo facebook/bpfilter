@@ -83,6 +83,7 @@ void bf_program_free(struct bf_program **program)
         return;
 
     bf_list_clean(&(*program)->fixups);
+    free((*program)->img);
 
     free(*program);
     *program = NULL;
