@@ -9,10 +9,10 @@
 
 #include "test.h"
 
-TestAssert(src_core_flavor, bf_flavor_ops_get, 0, (-1));
-TestAssert(src_core_flavor, bf_flavor_ops_get, 1, (_BF_FLAVOR_MAX));
-TestAssert(src_core_flavor, bf_flavor_to_str, 0, (-1));
-TestAssert(src_core_flavor, bf_flavor_to_str, 1, (_BF_FLAVOR_MAX));
+TestAssert(src_core_flavor, bf_flavor_ops_get, (-1));
+TestAssert(src_core_flavor, bf_flavor_ops_get, (_BF_FLAVOR_MAX));
+TestAssert(src_core_flavor, bf_flavor_to_str, (-1));
+TestAssert(src_core_flavor, bf_flavor_to_str, (_BF_FLAVOR_MAX));
 
 Test(src_core_flavor, can_get_flavor_ops)
 {

@@ -9,13 +9,13 @@
 
 #include "test.h"
 
-TestAssert(src_core_target, bf_target_type_to_str, 0, (-1));
-TestAssert(src_core_target, bf_target_type_to_str, 1, (_BF_TARGET_TYPE_MAX));
-TestAssert(src_core_target, bf_target_standard_verdict_to_str, 0, (-1));
-TestAssert(src_core_target, bf_target_standard_verdict_to_str, 1,
+TestAssert(src_core_target, bf_target_type_to_str, (-1));
+TestAssert(src_core_target, bf_target_type_to_str, (_BF_TARGET_TYPE_MAX));
+TestAssert(src_core_target, bf_target_standard_verdict_to_str, (-1));
+TestAssert(src_core_target, bf_target_standard_verdict_to_str,
            (_BF_TARGET_STANDARD_MAX));
-TestAssert(src_core_target, bf_target_ops_get, 0, (-1));
-TestAssert(src_core_target, bf_target_ops_get, 1, (_BF_TARGET_TYPE_MAX));
+TestAssert(src_core_target, bf_target_ops_get, (-1));
+TestAssert(src_core_target, bf_target_ops_get, (_BF_TARGET_TYPE_MAX));
 
 Test(src_core_target, can_get_target_type_str)
 {

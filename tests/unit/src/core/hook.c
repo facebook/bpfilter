@@ -9,12 +9,12 @@
 
 #include "test.h"
 
-TestAssert(src_core_hook, bf_hook_to_str, 0, (-1));
-TestAssert(src_core_hook, bf_hook_to_str, 1, (_BF_HOOK_MAX));
-TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, 0, (-1));
-TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, 1, (_BF_HOOK_MAX));
-TestAssert(src_core_hook, bf_hook_to_flavor, 0, (-1));
-TestAssert(src_core_hook, bf_hook_to_flavor, 1, (_BF_HOOK_MAX));
+TestAssert(src_core_hook, bf_hook_to_str, (-1));
+TestAssert(src_core_hook, bf_hook_to_str, (_BF_HOOK_MAX));
+TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, (-1));
+TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, (_BF_HOOK_MAX));
+TestAssert(src_core_hook, bf_hook_to_flavor, (-1));
+TestAssert(src_core_hook, bf_hook_to_flavor, (_BF_HOOK_MAX));
 
 Test(src_core_hook, can_get_str_from_hook)
 {
