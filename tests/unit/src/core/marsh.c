@@ -190,14 +190,14 @@ Test(src_core_marsh, child_is_valid)
     }
 }
 
-TestAssert(src_core_marsh, bf_marsh_new, 0, (NULL, NOT_NULL, 0));
-TestAssert(src_core_marsh, bf_marsh_new, 1, (NOT_NULL, NULL, 1));
-TestAssert(src_core_marsh, bf_marsh_add_child_obj, 0, (NULL, NOT_NULL));
-TestAssert(src_core_marsh, bf_marsh_add_child_raw, 0, (NULL, NOT_NULL, 0));
-TestAssert(src_core_marsh, bf_marsh_next_child, 0, (NULL, NOT_NULL));
-TestAssert(src_core_marsh, bf_marsh_child_is_valid, 0, (NULL, NOT_NULL));
+TestAssert(src_core_marsh, bf_marsh_new, (NULL, NOT_NULL, 0));
+TestAssert(src_core_marsh, bf_marsh_new, (NOT_NULL, NULL, 1));
+TestAssert(src_core_marsh, bf_marsh_add_child_obj, (NULL, NOT_NULL));
+TestAssert(src_core_marsh, bf_marsh_add_child_raw, (NULL, NOT_NULL, 0));
+TestAssert(src_core_marsh, bf_marsh_next_child, (NULL, NOT_NULL));
+TestAssert(src_core_marsh, bf_marsh_child_is_valid, (NULL, NOT_NULL));
 
-Test(src_core_marsh, bf_marsh_add_child_obj_1, .signal = SIGABRT)
+TestAssertManual(src_core_marsh, bf_marsh_add_child_obj)
 {
     // TestAssert() can't be used here because bf_marsh_add_child_obj() will
     // call assert() on *marsh, so it needs to point to valid memory.
@@ -208,7 +208,7 @@ Test(src_core_marsh, bf_marsh_add_child_obj_1, .signal = SIGABRT)
     bf_marsh_add_child_obj(&marsh, NULL);
 }
 
-Test(src_core_marsh, bf_marsh_add_child_raw_1, .signal = SIGABRT)
+TestAssertManual(src_core_marsh, bf_marsh_add_child_raw)
 {
     // TestAssert() can't be used here because bf_marsh_add_child_obj() will
     // call assert() on *marsh, so it needs to point to valid memory.

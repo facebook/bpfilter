@@ -17,11 +17,11 @@ static const char content[] =
     "Elle change de main, il a beau dire que ses parents n'ont pas un sou"
     "Au fond, tout le monde s'en fout, les trois types, les gens autour";
 
-TestAssert(src_core_helper, bf_read_file, 0, (NULL, NOT_NULL, NOT_NULL));
-TestAssert(src_core_helper, bf_read_file, 1, (NOT_NULL, NULL, NOT_NULL));
-TestAssert(src_core_helper, bf_read_file, 2, (NOT_NULL, NOT_NULL, NULL));
-TestAssert(src_core_helper, bf_write_file, 0, (NULL, NOT_NULL, 0));
-TestAssert(src_core_helper, bf_write_file, 1, (NOT_NULL, NULL, 0));
+TestAssert(src_core_helper, bf_read_file, (NULL, NOT_NULL, NOT_NULL));
+TestAssert(src_core_helper, bf_read_file, (NOT_NULL, NULL, NOT_NULL));
+TestAssert(src_core_helper, bf_read_file, (NOT_NULL, NOT_NULL, NULL));
+TestAssert(src_core_helper, bf_write_file, (NULL, NOT_NULL, 0));
+TestAssert(src_core_helper, bf_write_file, (NOT_NULL, NULL, 0));
 
 Test(src_core_helper, write_and_read_file)
 {

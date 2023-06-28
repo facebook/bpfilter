@@ -76,21 +76,21 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
 static bf_list_ops noop_ops = {.free = noop_free};
 static bf_list_ops dummy_ops = {.free = dummy_free};
 
-TestAssert(src_core_list, bf_list_new, 0, (NULL, NOT_NULL));
-TestAssert(src_core_list, bf_list_new, 1, (NOT_NULL, NULL));
-TestAssert(src_core_list, bf_list_free, 0, (NULL));
-TestAssert(src_core_list, bf_list_init, 0, (NULL, NOT_NULL));
-TestAssert(src_core_list, bf_list_init, 1, (NOT_NULL, NULL));
-TestAssert(src_core_list, bf_list_clean, 0, (NULL));
-TestAssert(src_core_list, bf_list_size, 0, (NULL));
-TestAssert(src_core_list, bf_list_add_head, 0, (NULL, NOT_NULL));
-TestAssert(src_core_list, bf_list_add_tail, 0, (NULL, NOT_NULL));
-TestAssert(src_core_list, bf_list_get_head, 0, (NULL));
-TestAssert(src_core_list, bf_list_get_tail, 0, (NULL));
-TestAssert(src_core_list, bf_list_node_next, 0, (NULL));
-TestAssert(src_core_list, bf_list_node_prev, 0, (NULL));
-TestAssert(src_core_list, bf_list_node_get_data, 0, (NULL));
-TestAssert(src_core_list, bf_list_node_take_data, 0, (NULL));
+TestAssert(src_core_list, bf_list_new, (NULL, NOT_NULL));
+TestAssert(src_core_list, bf_list_new, (NOT_NULL, NULL));
+TestAssert(src_core_list, bf_list_free, (NULL));
+TestAssert(src_core_list, bf_list_init, (NULL, NOT_NULL));
+TestAssert(src_core_list, bf_list_init, (NOT_NULL, NULL));
+TestAssert(src_core_list, bf_list_clean, (NULL));
+TestAssert(src_core_list, bf_list_size, (NULL));
+TestAssert(src_core_list, bf_list_add_head, (NULL, NOT_NULL));
+TestAssert(src_core_list, bf_list_add_tail, (NULL, NOT_NULL));
+TestAssert(src_core_list, bf_list_get_head, (NULL));
+TestAssert(src_core_list, bf_list_get_tail, (NULL));
+TestAssert(src_core_list, bf_list_node_next, (NULL));
+TestAssert(src_core_list, bf_list_node_prev, (NULL));
+TestAssert(src_core_list, bf_list_node_get_data, (NULL));
+TestAssert(src_core_list, bf_list_node_take_data, (NULL));
 
 Test(src_core_list, new_and_free)
 {

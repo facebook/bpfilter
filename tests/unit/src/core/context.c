@@ -19,4 +19,4 @@ Test(src_core_context, new)
     cr_assert_eq(context, NULL);
 }
 
-TestAssert(src_core_context, _bf_context_new, 0, (NULL));
+TestAssert(src_core_context, _bf_context_new, (NULL));
