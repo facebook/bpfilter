@@ -48,7 +48,7 @@ target_link_options(tests_unit
 )
 
 add_custom_target(test
-    COMMAND $<TARGET_FILE:tests_unit> --verbose
+    COMMAND $<TARGET_FILE:tests_unit> --verbose --xml=test-report.xml
     DEPENDS tests_unit
     COMMENT "Running unit tests"
 )
