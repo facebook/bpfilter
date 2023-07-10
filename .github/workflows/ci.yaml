@@ -7,27 +7,74 @@ on:
     branches:
       - main
 
+permissions:
+  checks: write
+  pull-requests: write
+  
 jobs:
   build:
     runs-on: ubuntu-22.04
-    container: fedora:38
     strategy:
       fail-fast: false
       matrix:
-        buildtype:
-          - debug
-          - release
+        buildtype: [ 'debug', 'release' ]
+        image: [ 'fedora:38', 'ubuntu:22.04' ]
+    container: ${{ matrix.image }}
     steps:
-      - name: Install packages
+      - name: Install packages Fedora
+        if: matrix.image == 'fedora:38'
         run: |
           sudo dnf -y install 'dnf-command(copr)'
           sudo dnf -y copr enable naccyde/criterion 
-          sudo dnf -y install cmake libbpf-devel \
-                              criterion-devel clang-tools-extra lcov libasan libubsan \
-                              doxygen python3-sphinx python3-breathe python3-furo
+          sudo dnf -y install \
+            clang-tools-extra \
+            cmake \
+            criterion-devel \
+            doxygen \
+            lcov \
+            libasan \
+            libbpf-devel \
+            libubsan \
+            python3-breathe \
+            python3-furo \
+            python3-sphinx
+      - name: Install packages Ubuntu
+        if: matrix.image == 'ubuntu:22.04'
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
+            clang-format \
+            clang-tidy \
+            cmake \
+            doxygen \
+            lcov \
+            libbpf-dev \
+            libcriterion-dev \
+            python3-breathe \
+            python3-pip \
+            python3-sphinx
+          pip install furo
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Configure build
         run: cmake -B $GITHUB_WORKSPACE/build -S $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.buildtype }}
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build
+      - name: Check style
+        if: matrix.buildtype == 'release'
+        run: make -C $GITHUB_WORKSPACE/build checkstyle
+      - name: Run unit tests
+        run: make -C $GITHUB_WORKSPACE/build test
+      - name: Coverage
+        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
+        run: make -C $GITHUB_WORKSPACE/build coverage
+      - name: Upload coverage report to Codecov
+        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
+        uses: codecov/codecov-action@v3
+        with:
+          files: build/doc/lcov.out
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Generate documentation
+        if: matrix.buildtype == 'release'
+        run: make -C $GITHUB_WORKSPACE/build doc
