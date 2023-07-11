@@ -32,3 +32,5 @@ target_link_libraries(bpfilter
     PUBLIC
         bpf
 )
+
+install(TARGETS bpfilter)

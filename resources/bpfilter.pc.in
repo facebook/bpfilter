@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/include
+libdir=${prefix}/lib64
+
+Name: bpfilter
+Description: BPF-based packet filtering framework
+URL: https://github.com/facebook/bpfilter
+Version: 0.0.1
+Libs: -Wl,-rpath,${libdir} -L${libdir} -lbpfilter
+Cflags: -I${includedir}
