@@ -22,6 +22,11 @@ find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
 
 include(GoogleTest)
 
+# Set the default install location to /usr/lib64 on 64-bit systems
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(CMAKE_INSTALL_LIBDIR lib64)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 17)
 
@@ -107,6 +112,9 @@ set(bpfilter_cflags_debug
 set(bpfilter_ldflags_debug
     -fsanitize=address -fsanitize=undefined
 )
+
+configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/bpfilter.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pkgconfig)
 
 add_subdirectory(src)
 add_subdirectory(lib)

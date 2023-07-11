@@ -45,3 +45,11 @@ add_custom_target(libbpfilter
     DEPENDS libbpfilter_a libbpfilter_so
     COMMENT "Compound target to build libbpfilter.a and libbpfilter.so"
 )
+
+install(TARGETS libbpfilter_a libbpfilter_so)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/include/bpfilter/"
+        DESTINATION "include/bpfilter"
+)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/shared/include/bpfilter/"
+        DESTINATION "include/bpfilter"
+)
