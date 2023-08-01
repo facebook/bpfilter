@@ -33,4 +33,7 @@ target_link_libraries(bpfilter
         bpf
 )
 
-install(TARGETS bpfilter)
+install(
+    TARGETS bpfilter
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
