@@ -9,6 +9,8 @@ project(bpfilter
     LANGUAGES C
 )
 
+include(GNUInstallDirs)
+
 find_package(Doxygen REQUIRED)
 find_package(PkgConfig REQUIRED)
 
@@ -19,13 +21,6 @@ find_program(LCOV_BIN lcov REQUIRED)
 find_program(GENHTML_BIN genhtml REQUIRED)
 find_program(CLANG_TIDY_BIN clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
-
-include(GoogleTest)
-
-# Set the default install location to /usr/lib64 on 64-bit systems
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(CMAKE_INSTALL_LIBDIR lib64)
-endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 17)
@@ -41,7 +36,7 @@ else ()
     string(TOLOWER ${CMAKE_BUILD_TYPE} BF_LOWER_BUILD_TYPE)
     list(FIND BF_VALID_BUILD_TYPE ${BF_LOWER_BUILD_TYPE} BF_BUILD_TYPE_INDEX)
     if (${BF_BUILD_TYPE_INDEX} EQUAL -1)
-        message(FATAL_ERROR "CMAKE_BUILD_TYPE must be either 'rebug' or 'release' (default), not '${CMAKE_BUILD_TYPE}'")
+        message(FATAL_ERROR "CMAKE_BUILD_TYPE must be either 'debug' or 'release' (default), not '${CMAKE_BUILD_TYPE}'")
     endif ()
 endif ()
 
@@ -114,7 +109,10 @@ set(bpfilter_ldflags_debug
 )
 
 configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc @ONLY)
-install(FILES ${CMAKE_BINARY_DIR}/bpfilter.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pkgconfig)
+install(
+    FILES ${CMAKE_BINARY_DIR}/bpfilter.pc
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
+)
 
 add_subdirectory(src)
 add_subdirectory(lib)
