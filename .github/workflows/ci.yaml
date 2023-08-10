@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container: fedora:38
+    strategy:
+      fail-fast: false
+      matrix:
+        buildtype:
+          - debug
+          - release
+    steps:
+      - name: Install packages
+        run: |
+          sudo dnf -y install 'dnf-command(copr)'
+          sudo dnf -y copr enable naccyde/criterion 
+          sudo dnf -y install cmake libbpf-devel \
+                              criterion-devel clang-tools-extra lcov libasan libubsan \
+                              doxygen python3-sphinx python3-breathe python3-furo
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Configure build
+        run: cmake -B $GITHUB_WORKSPACE/build -S $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.buildtype }}
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build
