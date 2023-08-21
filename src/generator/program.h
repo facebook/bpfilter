@@ -38,6 +38,13 @@
             return __r;                                                        \
     })
 
+#define EMIT_KFUNC_CALL(program, function)                                     \
+    ({                                                                         \
+        int __r = bf_program_emit_kfunc_call((program), (function));           \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
 #define EMIT_FIXUP(program, type, insn)                                        \
     ({                                                                         \
         int __r = bf_program_emit_fixup((program), (type), (insn));            \
@@ -99,6 +106,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
 
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn);
+int bf_program_emit_kfunc_call(struct bf_program *program, const char *name);
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn);
 int bf_program_emit_fixup_call(struct bf_program *program,

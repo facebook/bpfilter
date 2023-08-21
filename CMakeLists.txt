@@ -53,6 +53,7 @@ set(bpfilter_shared_srcs
 # on change.
 set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/bpf.h ${CMAKE_SOURCE_DIR}/src/core/bpf.c
+    ${CMAKE_SOURCE_DIR}/src/core/btf.h ${CMAKE_SOURCE_DIR}/src/core/btf.c
     ${CMAKE_SOURCE_DIR}/src/core/counter.h
     ${CMAKE_SOURCE_DIR}/src/core/context.h ${CMAKE_SOURCE_DIR}/src/core/context.c
     ${CMAKE_SOURCE_DIR}/src/core/dump.h ${CMAKE_SOURCE_DIR}/src/core/dump.c

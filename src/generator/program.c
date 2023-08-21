@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include "core/bpf.h"
+#include "core/btf.h"
 #include "core/counter.h"
 #include "core/flavor.h"
 #include "core/logger.h"
@@ -508,6 +509,26 @@ int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
     }
 
     program->img[program->img_size++] = insn;
+
+    return 0;
+}
+
+int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
+{
+    int r;
+
+    assert(program);
+    assert(name);
+
+    r = bf_btf_get_id(name);
+    if (r < 0)
+        return r;
+
+    EMIT(program, ((struct bpf_insn) {.code = BPF_JMP | BPF_CALL,
+                                      .dst_reg = 0,
+                                      .src_reg = BPF_PSEUDO_KFUNC_CALL,
+                                      .off = 0,
+                                      .imm = r}));
 
     return 0;
 }
