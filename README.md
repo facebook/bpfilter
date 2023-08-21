@@ -18,6 +18,8 @@ sudo dnf install -y \
     doxygen python3-sphinx python3-breathe python3-furo
 ```
 
+`libbpf` version 1.0 or above is required. `bpfilter` doesn't support `libbpf`'s `0.x` API.
+
 To build `bpfilter` (from the source directory):
 ```shell
 cmake -Bbuild -S.
