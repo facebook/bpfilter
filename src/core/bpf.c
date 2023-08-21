@@ -26,11 +26,7 @@
  */
 static int _bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 {
-    int r = (int)syscall(__NR_bpf, cmd, attr, sizeof(*attr));
-    if (r < 0)
-        return errno;
-
-    return r;
+    return (int)syscall(__NR_bpf, cmd, attr, sizeof(*attr));
 }
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
