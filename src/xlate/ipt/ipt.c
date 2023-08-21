@@ -356,13 +356,13 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
 {
     struct ipt_entry *first_rule;
     struct ipt_entry *last_rule;
-    size_t rule_idx = 0;
     int r;
 
     assert(ipt);
     assert(codegens);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
+        size_t rule_idx = 0;
         _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
         enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
 
