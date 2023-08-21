@@ -686,7 +686,7 @@ int bf_program_load(struct bf_program *program)
                          bf_hook_to_bpf_prog_type(program->hook), program->img,
                          program->img_size, log, _BF_PROGRAM_LOG_SIZE, &fd);
     if (r < 0)
-        return bf_err_code(errno, "failed to load BPF program: %s", log);
+        return bf_err_code(errno, "failed to load BPF program:\n%s", log);
 
     r = ops->load_img(program, fd);
     if (r)
