@@ -14,6 +14,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "core/btf.h"
 #include "core/context.h"
 #include "core/helper.h"
 #include "core/logger.h"
@@ -425,6 +426,10 @@ int main(int argc, char *argv[])
     if (r != 0)
         return bf_err_code(r, "failed to parse arguments");
 
+    r = bf_btf_setup();
+    if (r < 0)
+        return bf_err_code(r, "failed to setup BTF module");
+
     r = _bf_init();
     if (r < 0)
         return bf_err_code(r, "failed to initialize bpfilter");
@@ -434,6 +439,7 @@ int main(int argc, char *argv[])
         return bf_err_code(r, "run() failed");
 
     _bf_clean();
+    bf_btf_teardown();
 
     unlink(BF_SOCKET_PATH); // Remove socket file.
 
