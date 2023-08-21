@@ -46,12 +46,6 @@
  * processed, we store the index and length of the chains statically.
  */
 
-struct ipt_rules_range
-{
-    size_t idx;
-    size_t len;
-};
-
 struct bf_ipt_cache
 {
     unsigned int valid_hooks;
@@ -61,26 +55,6 @@ struct bf_ipt_cache
     unsigned int size;
     struct ipt_entry *entries;
 };
-
-static struct ipt_rules_range _in_rules = {};
-static struct ipt_rules_range _out_rules = {};
-
-/**
- * @brief Check whether @p rule_idx is in @p range.
- *
- * Rule ranges are used to define which rules, from a sequence of rules, are
- * supported by bpfilter.
- *
- * @param rule_idx Rule index to check.
- * @param range Range to check.
- * @return True if @p rule_idx is in @p range, false otherwise.
- */
-#define rule_idx_is_in_range(rule_idx, range)                                  \
-    ({                                                                         \
-        typeof(range) _range = (range);                                        \
-        typeof(rule_idx) _idx = (rule_idx);                                    \
-        (_range.idx <= _idx && _idx < (_range.idx + _range.len));              \
-    })
 
 static void _bf_ipt_cache_free(struct bf_ipt_cache **cache);
 
@@ -391,7 +365,6 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
         enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
-        struct ipt_rules_range *rules_range;
 
         if (!ipt_is_hook_enabled(ipt, i)) {
             bf_dbg("ipt hook %d is not enabled, skipping", i);
@@ -431,11 +404,6 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
                 "discarding all chains which are neither NF_INET_LOCAL_IN nor NF_INET_LOCAL_OUT");
             continue;
         }
-
-        rules_range = i == NF_INET_LOCAL_IN ? &_in_rules : &_out_rules;
-        rules_range->idx = rule_idx;
-        rules_range->len = bf_list_size(&codegen->rules);
-        rule_idx += rules_range->len;
 
         bf_dbg("created codegen for %s::%s", bf_front_to_str(codegen->front),
                bf_hook_to_str(codegen->hook));
@@ -534,21 +502,8 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 static int _bf_ipt_set_counters_handler(struct xt_counters_info *counters,
                                         size_t len)
 {
-    size_t rule_idx = 0;
-
     assert(counters);
     assert(bf_xt_counters_info_size(counters) == len);
-
-    bf_context_foreach_codegen_by_fe(codegen, BF_FRONT_IPT)
-    {
-        if (!rule_idx_is_in_range(rule_idx, _in_rules) &&
-            !rule_idx_is_in_range(rule_idx, _out_rules)) {
-            bf_warn("skipping counters for rule index %lu", rule_idx);
-            continue;
-        }
-
-        ++rule_idx;
-    }
 
     return 0;
 }
