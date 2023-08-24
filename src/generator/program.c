@@ -313,7 +313,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->src_mask || rule->src) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH1, CODEGEN_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH1, BF_REG_L3,
                                   offsetof(struct iphdr, saddr)));
         EMIT(program,
              BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH1, rule->src_mask));
@@ -324,7 +324,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->dst_mask || rule->dst) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH2, CODEGEN_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH2, BF_REG_L3,
                                   offsetof(struct iphdr, daddr)));
         EMIT(program,
              BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH2, rule->dst_mask));
@@ -335,21 +335,19 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->protocol) {
-        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, CODEGEN_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, BF_REG_L3,
                                   offsetof(struct iphdr, protocol)));
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(BPF_JNE, CODEGEN_REG_SCRATCH4, rule->protocol, 0));
 
-        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, CODEGEN_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, BF_REG_L3,
                                   offsetof(struct iphdr, protocol)));
-        EMIT(program, BPF_MOV64_REG(CODEGEN_REG_L4, CODEGEN_REG_L3));
-        EMIT(program,
-             BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH1, CODEGEN_REG_L3, 0));
+        EMIT(program, BPF_MOV64_REG(BF_REG_L4, BF_REG_L3));
+        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH1, BF_REG_L3, 0));
         EMIT(program, BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH1, 0x0f));
         EMIT(program, BPF_ALU32_IMM(BPF_LSH, CODEGEN_REG_SCRATCH1, 2));
-        EMIT(program,
-             BPF_ALU64_REG(BPF_ADD, CODEGEN_REG_L4, CODEGEN_REG_SCRATCH1));
+        EMIT(program, BPF_ALU64_REG(BPF_ADD, BF_REG_L4, CODEGEN_REG_SCRATCH1));
     }
 
     /// @todo do matches too!
@@ -357,10 +355,10 @@ static int _bf_program_generate_rule(struct bf_program *program,
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD,
                BPF_MOV64_IMM(BPF_REG_ARG1, 0));
     EMIT(program, BPF_MOV32_IMM(BPF_REG_ARG2, program->num_rules));
-    EMIT(program, BPF_MOV64_REG(BPF_REG_ARG3, CODEGEN_REG_RUNTIME_CTX));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_ARG3, BF_REG_CTX));
     EMIT(program,
          // Copy the packet size into REG3.
-         BPF_LDX_MEM(BPF_DW, BPF_REG_ARG3, CODEGEN_REG_RUNTIME_CTX,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_ARG3, BF_REG_CTX,
                      _BF_STACK_RUNTIME_CTX_OFFSET(data_size)));
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
@@ -621,7 +619,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
     if (r)
         return r;
 
-    r = ops->load_packet_data(program, CODEGEN_REG_L3);
+    r = ops->load_packet_data(program, BF_REG_L3);
     if (r)
         return r;
 
@@ -630,17 +628,16 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         return r;
 
     EMIT(program, BPF_MOV64_REG(CODEGEN_REG_SCRATCH2, CODEGEN_REG_DATA_END));
-    EMIT(program, BPF_ALU64_REG(BPF_SUB, CODEGEN_REG_SCRATCH2, CODEGEN_REG_L3));
-    EMIT(program,
-         BPF_STX_MEM(BPF_DW, CODEGEN_REG_RUNTIME_CTX, CODEGEN_REG_SCRATCH2,
-                     _BF_STACK_RUNTIME_CTX_OFFSET(data_size)));
+    EMIT(program, BPF_ALU64_REG(BPF_SUB, CODEGEN_REG_SCRATCH2, BF_REG_L3));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, CODEGEN_REG_SCRATCH2,
+                              _BF_STACK_RUNTIME_CTX_OFFSET(data_size)));
 
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, CODEGEN_REG_L3, ETH_HLEN));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_L3, ETH_HLEN));
 
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_REG(BPF_JGT, CODEGEN_REG_L3, CODEGEN_REG_DATA_END, 0));
+               BPF_JMP_REG(BPF_JGT, BF_REG_L3, CODEGEN_REG_DATA_END, 0));
 
-    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_SCRATCH1, CODEGEN_REG_L3));
+    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_SCRATCH1, BF_REG_L3));
     EMIT(program,
          BPF_ALU64_IMM(BPF_ADD, CODEGEN_REG_SCRATCH1, sizeof(struct iphdr)));
     EMIT_FIXUP(
