@@ -41,8 +41,8 @@ static int _tc_gen_inline_prologue(struct bf_program *program)
 {
     assert(program);
 
-    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_CTX, BPF_REG_ARG1));
-    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_RUNTIME_CTX, BPF_REG_FP));
+    EMIT(program, BPF_MOV64_REG(BF_REG_ARG, BPF_REG_ARG1));
+    EMIT(program, BPF_MOV64_REG(BF_REG_CTX, BPF_REG_FP));
     EMIT(program, BPF_MOV64_IMM(CODEGEN_REG_RETVAL, TC_ACT_OK));
 
     return 0;
@@ -52,8 +52,8 @@ static int _tc_load_packet_data(struct bf_program *program, int reg)
 {
     assert(program);
 
-    EMIT(program, BPF_LDX_MEM(BPF_W, reg, CODEGEN_REG_CTX,
-                              offsetof(struct __sk_buff, data)));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_W, reg, BF_REG_ARG, offsetof(struct __sk_buff, data)));
 
     return 0;
 }
@@ -64,7 +64,7 @@ static int _tc_load_packet_data_end(struct bf_program *program, int reg)
 
     assert(program);
 
-    EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_DATA_END, CODEGEN_REG_CTX,
+    EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_DATA_END, BF_REG_ARG,
                               offsetof(struct __sk_buff, data_end)));
 
     return 0;

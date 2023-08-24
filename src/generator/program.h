@@ -26,10 +26,10 @@
 #define CODEGEN_REG_SCRATCH4 BPF_REG_4
 #define CODEGEN_REG_SCRATCH5 BPF_REG_5
 #define CODEGEN_REG_DATA_END CODEGEN_REG_SCRATCH5
-#define CODEGEN_REG_L3 BPF_REG_6
-#define CODEGEN_REG_L4 BPF_REG_7
-#define CODEGEN_REG_RUNTIME_CTX BPF_REG_8
-#define CODEGEN_REG_CTX BPF_REG_9
+#define BF_REG_L3 BPF_REG_6
+#define BF_REG_L4 BPF_REG_7
+#define BF_REG_CTX BPF_REG_8
+#define BF_REG_ARG BPF_REG_9
 
 #define EMIT(program, x)                                                       \
     ({                                                                         \
