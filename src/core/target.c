@@ -16,6 +16,7 @@
 #include "external/filter.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
+#include "generator/reg.h"
 #include "shared/helper.h"
 
 const char *bf_target_type_to_str(enum bf_target_type type)
@@ -72,7 +73,7 @@ int bf_target_generate_standard(struct bf_program *program,
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
 
     EMIT(program,
-         BPF_MOV32_IMM(BPF_REG_0, ops->convert_return_code(target->verdict)));
+         BPF_MOV32_IMM(BF_REG_RET, ops->convert_return_code(target->verdict)));
 
     EMIT(program, BPF_EXIT_INSN());
 
