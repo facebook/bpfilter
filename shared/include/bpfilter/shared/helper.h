@@ -16,6 +16,7 @@
 extern const char *strerrordesc_np(int errnum);
 
 #define bf_packed __attribute__((packed))
+#define bf_aligned(x) __attribute__((aligned(x)))
 
 /**
  * @brief Mark a variable as unused, to prevent the compiler from emitting a
