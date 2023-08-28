@@ -16,6 +16,7 @@
 #include "external/filter.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
+#include "generator/reg.h"
 #include "shared/front.h"
 #include "shared/helper.h"
 
