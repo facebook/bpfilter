@@ -109,7 +109,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
                                 sizeof(program->front));
     r |= bf_marsh_add_child_raw(&_marsh, &program->num_rules,
                                 sizeof(program->num_rules));
-    r |= bf_marsh_add_child_raw(&_marsh, program->img, program->img_size);
+    r |= bf_marsh_add_child_raw(&_marsh, program->img,
+                                program->img_size * sizeof(struct bpf_insn));
     if (r)
         return bf_err_code(r, "Failed to serialize program");
 
@@ -154,8 +155,8 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     _program->img = bf_memdup(child->data, child->data_len);
-    _program->img_size = child->data_len;
-    _program->img_cap = child->data_len;
+    _program->img_size = child->data_len / sizeof(struct bpf_insn);
+    _program->img_cap = child->data_len / sizeof(struct bpf_insn);
 
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
@@ -204,21 +205,17 @@ static inline size_t _round_next_power_of_2(size_t x)
 
 int bf_program_grow_img(struct bf_program *program)
 {
-    size_t new_cap;
+    size_t new_cap = _BF_PROGRAM_DEFAULT_IMG_SIZE;
     int r;
 
     assert(program);
 
-    if (!program->img) {
-        new_cap = _BF_PROGRAM_DEFAULT_IMG_SIZE * sizeof(struct bpf_insn);
-    } else {
-        new_cap = _round_next_power_of_2(program->img_cap << 1) *
-                  sizeof(struct bpf_insn);
-    }
+    if (program->img)
+        new_cap = _round_next_power_of_2(program->img_cap << 1);
 
-    r = bf_realloc((void **)&program->img, new_cap);
+    r = bf_realloc((void **)&program->img, new_cap * sizeof(struct bpf_insn));
     if (r < 0) {
-        return bf_err_code(r, "failed to grow program img from %lu to %lu",
+        return bf_err_code(r, "failed to grow program img from %lu to %lu insn",
                            program->img_cap, new_cap);
     }
 
@@ -264,7 +261,7 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_CODEGEN_FIXUP_NEXT_RULE:
         case BF_CODEGEN_FIXUP_END_OF_CHAIN:
             insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
-            v = program->img_size - fixup->insn - 1;
+            v = (int)(program->img_size - fixup->insn - 2U);
             break;
         case BF_CODEGEN_FIXUP_MAP_FD:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
@@ -540,8 +537,9 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     assert(program);
 
     if (program->img_size == program->img_cap) {
-        bf_err("Codegen buffer overflow");
-        return -EOVERFLOW;
+        r = bf_program_grow_img(program);
+        if (r)
+            return r;
     }
 
     r = bf_fixup_new(&fixup);
