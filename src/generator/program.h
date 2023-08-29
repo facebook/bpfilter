@@ -30,18 +30,6 @@
  */
 #define BF_PROG_CTX_OFF(field) offsetof(struct bf_program_context, field)
 
-#define CODEGEN_REG_RETVAL BPF_REG_0
-#define CODEGEN_REG_SCRATCH1 BPF_REG_1
-#define CODEGEN_REG_SCRATCH2 BPF_REG_2
-#define CODEGEN_REG_SCRATCH3 BPF_REG_3
-#define CODEGEN_REG_SCRATCH4 BPF_REG_4
-#define CODEGEN_REG_SCRATCH5 BPF_REG_5
-#define CODEGEN_REG_DATA_END CODEGEN_REG_SCRATCH5
-#define BF_REG_L3 BPF_REG_6
-#define BF_REG_L4 BPF_REG_7
-#define BF_REG_CTX BPF_REG_8
-#define BF_REG_ARG BPF_REG_9
-
 #define EMIT(program, x)                                                       \
     ({                                                                         \
         int __r = bf_program_emit((program), (x));                             \
