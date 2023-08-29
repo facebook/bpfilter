@@ -7,6 +7,7 @@
 
 #include <linux/pkt_cls.h>
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <bpf/libbpf.h>
 #include <errno.h>
@@ -17,6 +18,7 @@
 #include "generator/codegen.h"
 #include "generator/program.h"
 #include "generator/reg.h"
+#include "generator/stub.h"
 #include "shared/front.h"
 #include "shared/helper.h"
 
@@ -40,42 +42,67 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
 
 static int _tc_gen_inline_prologue(struct bf_program *program)
 {
+    int r;
+
     assert(program);
 
-    EMIT(program, BPF_MOV64_REG(BF_REG_ARG, BPF_REG_ARG1));
-    EMIT(program, BPF_MOV64_REG(BF_REG_CTX, BPF_REG_FP));
-    EMIT(program, BPF_MOV64_IMM(CODEGEN_REG_RETVAL, TC_ACT_OK));
+    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
+    if (r)
+        return r;
+
+    // Copy __sk_buff pointer into BF_REG_1
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
+
+    // Copy __sk_buff.data into BF_REG_2
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1,
+                              offsetof(struct __sk_buff, data)));
+
+    // Copy __sk_buff.data_end into BF_REG_3
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_1,
+                              offsetof(struct __sk_buff, data_end)));
+
+    // Calculate packet size
+    EMIT(program, BPF_ALU64_REG(BPF_SUB, BF_REG_3, BF_REG_2));
+
+    // Copy packet size into context
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
+
+    r = bf_stub_get_l2_eth_hdr(program);
+    if (r)
+        return r;
+
+    r = bf_stub_get_l3_ipv4_hdr(program);
+    if (r)
+        return r;
+
+    r = bf_stub_get_l4_hdr(program);
+    if (r)
+        return r;
 
     return 0;
 }
 
 static int _tc_load_packet_data(struct bf_program *program, int reg)
 {
-    assert(program);
-
-    EMIT(program,
-         BPF_LDX_MEM(BPF_W, reg, BF_REG_ARG, offsetof(struct __sk_buff, data)));
+    UNUSED(program);
+    UNUSED(reg);
 
     return 0;
 }
 
 static int _tc_load_packet_data_end(struct bf_program *program, int reg)
 {
+    UNUSED(program);
     UNUSED(reg);
-
-    assert(program);
-
-    EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_DATA_END, BF_REG_ARG,
-                              offsetof(struct __sk_buff, data_end)));
 
     return 0;
 }
 
 static int _tc_gen_inline_epilogue(struct bf_program *program)
 {
-    assert(program);
-
-    EMIT(program, BPF_EXIT_INSN());
+    UNUSED(program);
 
     return 0;
 }

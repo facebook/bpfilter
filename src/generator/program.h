@@ -6,6 +6,10 @@
 #pragma once
 
 #include <linux/bpf.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 #include <stddef.h>
 #include <stdint.h>
@@ -15,9 +19,16 @@
 #include "core/list.h"
 #include "external/filter.h"
 #include "generator/fixup.h"
+#include "generator/reg.h"
 #include "shared/front.h"
 
 #define PIN_PATH_LEN 64
+
+/**
+ * @brief Convenience macro to get the offset of a field in @ref
+ * bf_program_context.
+ */
+#define BF_PROG_CTX_OFF(field) offsetof(struct bf_program_context, field)
 
 #define CODEGEN_REG_RETVAL BPF_REG_0
 #define CODEGEN_REG_SCRATCH1 BPF_REG_1
@@ -74,6 +85,70 @@
 struct bf_marsh;
 struct bf_rule;
 struct bf_counter;
+
+/**
+ * @brief BPF program runtime context.
+ *
+ * This structure is used to map data located in the first frame of the
+ * generated BPF program. Address to this structure will be stored in
+ * @ref BF_REG_CTX register, and fields can be accessed using the convenience
+ * macro @ref BF_PROG_CTX_OFF.
+ *
+ * Layer 2, 3, and 4 headers are stored in an anonymous union, accessed through
+ * the field named `lXraw`. The various header structures stored in anonymous
+ * union are used to ensure `lXraw` is big enough to store any supported header.
+ *
+ * @warning A static assertion is defined to ensure this structure is aligned
+ * on 8-bytes boundaries. This is required by @ref bf_stub_memclear.
+ */
+struct bf_program_context
+{
+    /** Argument passed to the BPF program, it content depends on the BPF
+     * program type. */
+    void *arg;
+
+    /** BPF dynamic pointer representing the packet data. Dynamic pointers are
+     * used with every program type. */
+    struct bpf_dynptr dynptr;
+
+    /** Total size of the packet. */
+    uint64_t pkt_size;
+
+    /** Offset of the layer 3 header in the packet. */
+    uint32_t l3_offset;
+
+    /** Offset of the layer 4 header in the packet. */
+    uint32_t l4_offset;
+
+    /** Layer 4 protocol. Set when the L3 header is processed. Used to define
+     * how many bytes to read when processing the packet. */
+    uint16_t l4_proto;
+
+    /** Layer 2 header. */
+    union
+    {
+        struct ethhdr _ethhdr;
+        char l2raw;
+    };
+
+    /** Layer 3 header. */
+    union
+    {
+        struct iphdr _iphdr;
+        char l3raw;
+    };
+
+    /** Layer 4 header. */
+    union
+    {
+        struct udphdr _udphdr;
+        struct tcphdr _tcphdr;
+        char l4raw;
+    };
+} bf_aligned(8);
+
+static_assert(sizeof(struct bf_program_context) % 8 == 0,
+              "struct bf_program_context must be 8-bytes aligned");
 
 struct bf_program
 {

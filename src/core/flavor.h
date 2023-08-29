@@ -39,8 +39,6 @@ enum bf_flavor
  *
  * Define a set of operations that can be performed for a specific BPF flavor.
  *
- * @var bf_flavor_ops::gen_inline_prologue
- *  Generate the prologue of the BPF program.
  * @var bf_flavor_ops::load_packet_data
  *  Load the packet data pointer into a register.
  * @var bf_flavor_ops::load_packet_data_end
@@ -50,6 +48,20 @@ enum bf_flavor
  */
 struct bf_flavor_ops
 {
+    /**
+     * @brief Generate the flavor-specific prologue of the BPF program.
+     *
+     * This function can assume BF_ARG_1 contains the first argument passed
+     * to the program, and BF_REG_CTX is properly set, pointing to an
+     * initialised context.
+     *
+     * The purpose of this callback is to:
+     * - Ensure ctx.dynptr is a valid BPF dynptr to the packet data.
+     * - ctx.pkt_size contains the packet size.
+     * - BPF dynptr slices to layer 2, 3, and 4 (if relevant) are stored within
+     *   the context, and BF_REG_L{2, 3, 4} are updated to contain the address
+     *   of the relevant header.
+     */
     int (*gen_inline_prologue)(struct bf_program *program);
     int (*load_packet_data)(struct bf_program *program, int reg);
     int (*load_packet_data_end)(struct bf_program *program, int reg);
