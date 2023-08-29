@@ -298,33 +298,30 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->src_mask || rule->src) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH1, BF_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_L3,
                                   offsetof(struct iphdr, saddr)));
-        EMIT(program,
-             BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH1, rule->src_mask));
+        EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_1, rule->src_mask));
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(rule->invflags & IPT_INV_SRCIP ? BPF_JEQ : BPF_JNE,
-                        CODEGEN_REG_SCRATCH1, rule->src, 0));
+                        BF_REG_1, rule->src, 0));
     }
 
     if (rule->dst_mask || rule->dst) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, CODEGEN_REG_SCRATCH2, BF_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_L3,
                                   offsetof(struct iphdr, daddr)));
-        EMIT(program,
-             BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH2, rule->dst_mask));
+        EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, rule->dst_mask));
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(rule->invflags & IPT_INV_DSTIP ? BPF_JEQ : BPF_JNE,
-                        CODEGEN_REG_SCRATCH2, rule->dst, 0));
+                        BF_REG_2, rule->dst, 0));
     }
 
     if (rule->protocol) {
-        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, BF_REG_L3,
+        EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_L3,
                                   offsetof(struct iphdr, protocol)));
-        EMIT_FIXUP(
-            program, BF_CODEGEN_FIXUP_NEXT_RULE,
-            BPF_JMP_IMM(BPF_JNE, CODEGEN_REG_SCRATCH4, rule->protocol, 0));
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+                   BPF_JMP_IMM(BPF_JNE, BF_REG_4, rule->protocol, 0));
     }
 
     /// @todo do matches too!
@@ -461,9 +458,10 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
 
     assert(program);
 
+    /// @todo: remove conditional on num_rules
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
-                          program->num_rules, &_fd);
+                          program->num_rules ? program->num_rules : 1, &_fd);
     if (r < 0)
         return bf_err_code(errno, "failed to create counters map");
 
