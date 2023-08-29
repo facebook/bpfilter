@@ -542,7 +542,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     /* This call could fail and return an error, in which case it is not
      * properly handled. However, this shouldn't be an issue as we previously
      * test whether enough room is available in codegen.img, which is currently
-     * the only reason for EMITC() to fail. */
+     * the only reason for EMIT() to fail. */
     EMIT(program, insn);
 
     return 0;
@@ -578,7 +578,7 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     /* This call could fail and return an error, in which case it is not
      * properly handled. However, this shouldn't be an issue as we previously
      * test whether enough room is available in codegen.img, which is currently
-     * the only reason for EMITC() to fail. */
+     * the only reason for EMIT() to fail. */
     EMIT(program, BPF_CALL_REL(0));
 
     return 0;
