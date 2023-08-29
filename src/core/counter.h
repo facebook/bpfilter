@@ -21,4 +21,4 @@ struct bf_counter
 {
     uint64_t packets;
     uint64_t bytes;
-};
+} bf_packed;
