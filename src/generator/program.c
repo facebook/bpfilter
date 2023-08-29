@@ -10,7 +10,6 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
-#include <linux/ip.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <assert.h>
@@ -29,6 +28,7 @@
 #include "core/rule.h"
 #include "core/target.h"
 #include "external/filter.h"
+#include "generator/stub.h"
 #include "shared/helper.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
@@ -584,6 +584,33 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     return 0;
 }
 
+static int _bf_program_generate_runtime_init(struct bf_program *program)
+{
+    int r;
+
+    // Store the context's address in BF_REG_CTX.
+    EMIT(program, BPF_MOV64_REG(BF_REG_CTX, BF_REG_FP));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_CTX,
+                                -(int)sizeof(struct bf_program_context)));
+
+    // Initialise the context to 0.
+    r = bf_stub_memclear(program, BF_REG_CTX,
+                         sizeof(struct bf_program_context));
+    if (r)
+        return r;
+
+    // Save the program's argument into the context.
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_ARG_1, BF_PROG_CTX_OFF(arg)));
+
+    // Set slices registers to 0
+    EMIT(program, BPF_MOV64_IMM(BF_REG_L2, 0));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_L3, 0));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_L4, 0));
+
+    return 0;
+}
+
 int bf_program_generate(struct bf_program *program, bf_list *rules)
 {
     const struct bf_flavor_ops *ops =
@@ -595,36 +622,17 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
             bf_front_to_str(program->front), bf_hook_to_str(program->hook),
             if_indextoname(program->ifindex, ifname_buf));
 
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_0, 0));
+    r = _bf_program_generate_runtime_init(program);
+    if (r)
+        return r;
+
+    // Set default return value to ACCEPT.
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
 
     r = ops->gen_inline_prologue(program);
     if (r)
         return r;
-
-    r = ops->load_packet_data(program, BF_REG_L3);
-    if (r)
-        return r;
-
-    r = ops->load_packet_data_end(program, CODEGEN_REG_DATA_END);
-    if (r)
-        return r;
-
-    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_SCRATCH2, CODEGEN_REG_DATA_END));
-    EMIT(program, BPF_ALU64_REG(BPF_SUB, CODEGEN_REG_SCRATCH2, BF_REG_L3));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, CODEGEN_REG_SCRATCH2,
-                              _BF_STACK_RUNTIME_CTX_OFFSET(data_size)));
-
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_L3, ETH_HLEN));
-
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_REG(BPF_JGT, BF_REG_L3, CODEGEN_REG_DATA_END, 0));
-
-    EMIT(program, BPF_MOV64_REG(CODEGEN_REG_SCRATCH1, BF_REG_L3));
-    EMIT(program,
-         BPF_ALU64_IMM(BPF_ADD, CODEGEN_REG_SCRATCH1, sizeof(struct iphdr)));
-    EMIT_FIXUP(
-        program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-        BPF_JMP_REG(BPF_JGT, CODEGEN_REG_SCRATCH1, CODEGEN_REG_DATA_END, 0));
 
     bf_list_foreach (rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
