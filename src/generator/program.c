@@ -325,14 +325,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(BPF_JNE, CODEGEN_REG_SCRATCH4, rule->protocol, 0));
-
-        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH4, BF_REG_L3,
-                                  offsetof(struct iphdr, protocol)));
-        EMIT(program, BPF_MOV64_REG(BF_REG_L4, BF_REG_L3));
-        EMIT(program, BPF_LDX_MEM(BPF_B, CODEGEN_REG_SCRATCH1, BF_REG_L3, 0));
-        EMIT(program, BPF_ALU32_IMM(BPF_AND, CODEGEN_REG_SCRATCH1, 0x0f));
-        EMIT(program, BPF_ALU32_IMM(BPF_LSH, CODEGEN_REG_SCRATCH1, 2));
-        EMIT(program, BPF_ALU64_REG(BPF_ADD, BF_REG_L4, CODEGEN_REG_SCRATCH1));
     }
 
     /// @todo do matches too!
