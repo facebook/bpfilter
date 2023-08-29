@@ -32,19 +32,7 @@
 #include "shared/helper.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
-#define _BF_PROGRAM_LOG_SIZE 65536
-#define _BF_STACK_SCRATCH_OFFSET (-(short)sizeof(struct runtime_context))
-
-#define _BF_STACK_RUNTIME_CTX_OFFSET(field)                                    \
-    (-(short)(offsetof(struct runtime_context, field) +                        \
-              sizeof(((struct runtime_context *)NULL)->field)))
-
-struct runtime_context
-{
-    uint64_t data_size;
-    void *l3;
-    void *l4;
-} bf_packed;
+#define _BF_PROGRAM_LOG_SIZE (1 << 13)
 
 int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
                    enum bf_front front)
