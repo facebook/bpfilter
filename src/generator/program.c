@@ -337,14 +337,15 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     /// @todo do matches too!
 
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD,
-               BPF_MOV64_IMM(BPF_REG_ARG1, 0));
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_ARG2, program->num_rules));
-    EMIT(program, BPF_MOV64_REG(BPF_REG_ARG3, BF_REG_CTX));
+    // BF_ARG_1: counters map file descriptor.
+    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
+
+    // BF_ARG_2: index of the current rule in counters map.
+    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, program->num_rules));
+
+    // BF_ARG_3: packet size, from the context.
     EMIT(program,
-         // Copy the packet size into REG3.
-         BPF_LDX_MEM(BPF_DW, BPF_REG_ARG3, BF_REG_CTX,
-                     _BF_STACK_RUNTIME_CTX_OFFSET(data_size)));
+         BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
 
@@ -362,57 +363,60 @@ static int _bf_program_generate_rule(struct bf_program *program,
     return 0;
 }
 
+/**
+ * @brief Generate a function to update the packets counter
+ *
+ * Assuming:
+ * - BF_ARG_1: file descriptor of the counters map.
+ * - BF_ARG_2: index of the rule in the counters map.
+ * - BF_ARG_3: packet size
+ *
+ * @todo Random jump into the bytecode should be calculated by the daemon,
+ * not the developer.
+ * @todo Create a fixup to jump to the end of a function.
+ * @todo Set BF_REG_0 to !0 on failure, so we don't drop the packet.
+ *
+ * @param program Program to emit the function into. Can not be NULL.
+ * @return 0 on success, or negative errno value on error.
+ */
 static int _bf_program_generate_add_counter(struct bf_program *program)
 {
-    EMIT(program,
-         // Save packet size away from function arguments.
-         BPF_MOV64_REG(BPF_REG_7, BPF_REG_ARG3));
+    // Load the map into BF_ARG_1.
+    EMIT_LOAD_FD_FIXUP(program, BF_ARG_1);
 
-    EMIT_LOAD_FD_FIXUP(program, BPF_REG_ARG1);
+    // Store the rule's key before the runtime context.
+    EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_FP, BF_ARG_2, -8));
 
-    EMIT(program,
-         // Store the rule's map key before the runtime context.
-         BPF_STX_MEM(BPF_W, BPF_REG_FP, BPF_REG_ARG2,
-                     _BF_STACK_SCRATCH_OFFSET - 4));
-    EMIT(program,
-         // Store BPF_REG_FP address into ARG2.
-         BPF_MOV64_REG(BPF_REG_ARG2, BPF_REG_10));
-    EMIT(program,
-         // Substract proper offset so ARG2 contains the address to the key.
-         BPF_ALU64_IMM(BPF_ADD, BPF_REG_ARG2, _BF_STACK_SCRATCH_OFFSET - 4));
-    EMIT(program,
-         // Call BPF_FUNC_map_lookup_elem(&map, &key).
-         BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+    // Store the packet size before the rule's key
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_FP, BF_ARG_3, -16));
 
-    /// @todo Verifiy at compile time if the jump offset is correct
-    /// @todo Add fixup to jump to a function's end.
-    EMIT(program,
-         // If the return value is NULL, jump after the counters processing.
-         BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 6));
+    // BF_ARG_2: address of the rule's counters map key.
+    EMIT(program, BPF_MOV64_REG(BF_ARG_2, BF_REG_FP));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_2, -8));
 
-    EMIT(program,
-         // Copy packets count into REG1.
-         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0, 0));
-    EMIT(program,
-         // Increment packets counter by 1.
-         BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, 1));
-    EMIT(program,
-         // Copy the packets counter back to the counters structure.
-         BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1, 0));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
-    EMIT(program,
-         // Copy bytes count into REG1.
-         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0, 8));
-    EMIT(program,
-         // Add the current packet's size to the bytes counter.
-         BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_7));
-    EMIT(program,
-         // Copy the bytes counter back to the counters structure.
-         BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1, 8));
+    // If we can't find the entry, return.
+    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 7));
 
-    EMIT(program,
-         // Tell BPF we update an existing element in the map.
-         BPF_MOV32_IMM(BPF_REG_0, 0));
+    // Increment the packets count by 1.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_0,
+                              offsetof(struct bf_counter, packets)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_1, 1));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_0, BF_REG_1,
+                              offsetof(struct bf_counter, packets)));
+
+    // Increase the total byte by the size of the packet.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_0,
+                              offsetof(struct bf_counter, bytes)));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_FP, -16));
+    EMIT(program, BPF_ALU64_REG(BPF_ADD, BF_REG_1, BF_REG_2));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_0, BF_REG_1,
+                              offsetof(struct bf_counter, bytes)));
+
+    // On success, BF_REG_0 is 0.
+    EMIT(program, BPF_MOV32_IMM(BF_REG_0, 0));
+
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
