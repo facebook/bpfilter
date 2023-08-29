@@ -652,13 +652,13 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         return 0;
     }
 
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_END_OF_CHAIN, NULL);
-    if (r)
-        return bf_err_code(r, "failed to generate end of chain fixups");
-
     r = ops->gen_inline_epilogue(program);
     if (r)
         return r;
+
+    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_END_OF_CHAIN, NULL);
+    if (r)
+        return bf_err_code(r, "failed to generate end of chain fixups");
 
     r = _bf_program_generate_functions(program);
     if (r)
