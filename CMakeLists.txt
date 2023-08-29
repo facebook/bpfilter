@@ -72,6 +72,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/generator/dump.h ${CMAKE_SOURCE_DIR}/src/generator/dump.c
     ${CMAKE_SOURCE_DIR}/src/generator/program.h ${CMAKE_SOURCE_DIR}/src/generator/program.c
     ${CMAKE_SOURCE_DIR}/src/generator/reg.h
+    ${CMAKE_SOURCE_DIR}/src/generator/stub.h ${CMAKE_SOURCE_DIR}/src/generator/stub.c
     ${CMAKE_SOURCE_DIR}/src/generator/fixup.h ${CMAKE_SOURCE_DIR}/src/generator/fixup.c
     ${CMAKE_SOURCE_DIR}/src/generator/tc.h ${CMAKE_SOURCE_DIR}/src/generator/tc.c
 
