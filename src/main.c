@@ -3,10 +3,12 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <argp.h>
 #include <assert.h>
 #include <bits/types/sig_atomic_t.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -43,7 +45,50 @@ static volatile sig_atomic_t _stop_received = 0;
 static const char *context_path = "/run/bpfilter.blob";
 
 /**
- * @brief Set atomic flag to stop the daemon if specific signals are received.
+ * @brief bpfilter runtime configuration
+ */
+static struct bf_arguments
+{
+    /** If true, bpfilter won't load or save its state to the filesystem, and
+     * all the loaded BPF programs will be unloaded before shuting down. Hence,
+     * as long as bpfilter is running, filtering rules will be applied. When
+     * bpfilter is stopped, everything is cleaned up. */
+    bool transient;
+} _arguments;
+
+static struct argp_option options[] = {
+    {"transient", 't', 0, 0,
+     "Do not load or save runtime context and remove all BPF programs on shutdown",
+     0},
+    {0},
+};
+
+/**
+ * @brief argp callback to process command line arguments.
+ *
+ * @return 0 on succcess, non-zero on failure.
+ */
+static error_t _bf_args_parser(int key, char *arg, struct argp_state *state)
+{
+    UNUSED(arg);
+
+    struct bf_arguments *args = state->input;
+
+    switch (key) {
+    case 't':
+        args->transient = true;
+        break;
+
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Set atomic flag to stop the daemon if specific signals are
+ * received.
  *
  * @param sig Signal number.
  */
@@ -361,11 +406,18 @@ static int _run(void)
     return 0;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int r;
+    struct argp argp = {options, _bf_args_parser, NULL, NULL, 0, NULL, NULL};
+
+    _arguments.transient = false;
 
     bf_logger_setup();
+
+    r = argp_parse(&argp, argc, argv, 0, 0, &_arguments);
+    if (r != 0)
+        return bf_err_code(r, "failed to parse arguments");
 
     r = _bf_init();
     if (r < 0)
