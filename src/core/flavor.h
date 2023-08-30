@@ -39,10 +39,6 @@ enum bf_flavor
  *
  * Define a set of operations that can be performed for a specific BPF flavor.
  *
- * @var bf_flavor_ops::load_packet_data
- *  Load the packet data pointer into a register.
- * @var bf_flavor_ops::load_packet_data_end
- *  Load the packet data end pointer into a register.
  * @var bf_flavor_ops::gen_inline_epilogue
  *  Generate the epilogue of the BPF program.
  */
@@ -63,8 +59,6 @@ struct bf_flavor_ops
      *   of the relevant header.
      */
     int (*gen_inline_prologue)(struct bf_program *program);
-    int (*load_packet_data)(struct bf_program *program, int reg);
-    int (*load_packet_data_end)(struct bf_program *program, int reg);
     int (*gen_inline_epilogue)(struct bf_program *program);
     int (*convert_return_code)(enum bf_target_standard_verdict verdict);
     int (*load_img)(struct bf_program *program, int fd);
