@@ -238,7 +238,7 @@ static int _bf_save(const char *path)
 static int _bf_init(void)
 {
     struct sigaction sighandler = {.sa_handler = _sig_handler};
-    int r;
+    int r = 0;
 
     if (sigaction(SIGINT, &sighandler, NULL) < 0)
         return bf_err_code(errno, "can't override handler for SIGINT");
@@ -247,8 +247,10 @@ static int _bf_init(void)
         return bf_err_code(errno, "can't override handler for SIGTERM");
 
     // Either load context, or initialize it from scratch.
-    r = _bf_load(context_path);
-    if (r < 0) {
+    if (!_arguments.transient)
+        r = _bf_load(context_path);
+
+    if (_arguments.transient || r < 0) {
         r = bf_context_setup();
         if (r < 0)
             return bf_err_code(r, "failed to setup context");
@@ -264,9 +266,13 @@ static int _bf_init(void)
         bf_dbg("completed setup for %s", bf_front_to_str(front));
     }
 
-    r = _bf_save(context_path);
-    if (r < 0)
-        return bf_err_code(r, "failed to backup context at %s", context_path);
+    if (!_arguments.transient) {
+        r = _bf_save(context_path);
+        if (r < 0) {
+            return bf_err_code(r, "failed to backup context at %s",
+                               context_path);
+        }
+    }
 
     return 0;
 }
@@ -288,7 +294,7 @@ static int _bf_clean(void)
         }
     }
 
-    bf_context_teardown();
+    bf_context_teardown(_arguments.transient);
 
     return 0;
 }
@@ -329,7 +335,7 @@ static int _process_request(struct bf_request *request,
         r = bf_response_new_failure(response, r);
     }
 
-    if (request->cmd == BF_REQ_SET_RULES)
+    if (!_arguments.transient && request->cmd == BF_REQ_SET_RULES)
         r = _bf_save(context_path);
 
     return r;
