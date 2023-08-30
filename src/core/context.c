@@ -253,7 +253,7 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
     assert(context);
 
     /* Use bf_list_foreach() instead of bf_context-specific functions so the
-     * node can be deleted while iterating. the node can be */
+     * node can be deleted while iterating. */
     bf_list_foreach (&context->hooks[hook], codegen_node) {
         struct bf_codegen *codegen = bf_list_node_get_data(codegen_node);
         if (codegen->front != front)
