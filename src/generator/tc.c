@@ -23,8 +23,6 @@
 #include "shared/helper.h"
 
 static int _tc_gen_inline_prologue(struct bf_program *program);
-static int _tc_load_packet_data(struct bf_program *program, int reg);
-static int _tc_load_packet_data_end(struct bf_program *program, int reg);
 static int _tc_gen_inline_epilogue(struct bf_program *program);
 static int _tc_convert_return_code(enum bf_target_standard_verdict verdict);
 static int _tc_load_img(struct bf_program *program, int fd);
@@ -32,8 +30,6 @@ static int _tc_unload_img(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_prologue = _tc_gen_inline_prologue,
-    .load_packet_data = _tc_load_packet_data,
-    .load_packet_data_end = _tc_load_packet_data_end,
     .gen_inline_epilogue = _tc_gen_inline_epilogue,
     .convert_return_code = _tc_convert_return_code,
     .load_img = _tc_load_img,
@@ -80,22 +76,6 @@ static int _tc_gen_inline_prologue(struct bf_program *program)
     r = bf_stub_get_l4_hdr(program);
     if (r)
         return r;
-
-    return 0;
-}
-
-static int _tc_load_packet_data(struct bf_program *program, int reg)
-{
-    UNUSED(program);
-    UNUSED(reg);
-
-    return 0;
-}
-
-static int _tc_load_packet_data_end(struct bf_program *program, int reg)
-{
-    UNUSED(program);
-    UNUSED(reg);
 
     return 0;
 }
