@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "core/dump.h"
@@ -58,8 +59,11 @@ int bf_context_setup(void);
 
 /**
  * @brief Teardown the global bpfilter context.
+ *
+ * @param clear If true, all the BPF programs will be unloaded before clearing
+ * the context.
  */
-void bf_context_teardown(void);
+void bf_context_teardown(bool clear);
 
 /**
  * @brief Dump content of the context.

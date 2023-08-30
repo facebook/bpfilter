@@ -417,8 +417,14 @@ int bf_context_setup(void)
     return 0;
 }
 
-void bf_context_teardown(void)
+void bf_context_teardown(bool clear)
 {
+    if (clear) {
+        bf_context_foreach_codegen (codegen) {
+            bf_codegen_unload(codegen);
+        }
+    }
+
     _bf_context_free(&_global_context);
 }
 
