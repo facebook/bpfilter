@@ -22,14 +22,21 @@ static struct bf_options
 
     /** If true, print debug log messages (bf_debug). */
     bool verbose;
+
+    /** Size of the log buffer when loading a BPF program, as a power of 2. */
+    unsigned int bpf_log_buf_len_pow;
 } _opts = {
     .transient = false,
     .verbose = false,
+    .bpf_log_buf_len_pow = 16,
 };
 
 static struct argp_option options[] = {
     {"transient", 't', 0, 0,
      "Do not load or save runtime context and remove all BPF programs on shutdown",
+     0},
+    {"buffer-len", 'b', "BUF_LEN_POW", 0,
+     "Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
      0},
     {"verbose", 'v', 0, 0, "Print debug logs", 0},
     {0},
@@ -49,6 +56,9 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     switch (key) {
     case 't':
         args->transient = true;
+        break;
+    case 'b':
+        args->bpf_log_buf_len_pow = atoi(arg);
         break;
     case 'v':
         args->verbose = true;
@@ -75,4 +85,9 @@ bool bf_opts_verbose(void)
 bool bf_opts_transient(void)
 {
     return _opts.transient;
+}
+
+unsigned int bf_opts_bpf_log_buf_len_pow(void)
+{
+    return _opts.bpf_log_buf_len_pow;
 }

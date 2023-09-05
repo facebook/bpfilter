@@ -14,6 +14,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "core/logger.h"
+#include "opts.h"
+#include "shared/helper.h"
+
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 
 /**
@@ -30,29 +34,38 @@ static int _bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 }
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, char *log, size_t log_len, int *fd)
+                     size_t img_len, int *fd)
 {
+    _cleanup_free_ char *log_buf = NULL;
     union bpf_attr attr = {
         .prog_type = prog_type,
         .insns = _bf_ptr_to_u64(img),
         .insn_cnt = (unsigned int)img_len,
         .license = _bf_ptr_to_u64("GPL"),
-        .log_buf = _bf_ptr_to_u64(log),
-        .log_size = log_len,
-        .log_level = 1,
     };
     int r;
 
     assert(name);
     assert(img);
-    assert(log);
     assert(fd);
+
+    if (bf_opts_verbose()) {
+        log_buf = malloc(1 << bf_opts_bpf_log_buf_len_pow());
+        if (!log_buf)
+            return -ENOMEM;
+
+        attr.log_buf = _bf_ptr_to_u64(log_buf);
+        attr.log_size = (uint32_t)(1 << bf_opts_bpf_log_buf_len_pow());
+        attr.log_level = 1;
+    }
 
     snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
 
     r = _bpf(BPF_PROG_LOAD, &attr);
-    if (r < 0)
-        return r;
+    if (r < 0) {
+        return bf_err_code(r, "failed to load BPF program: %s\n%s",
+                           bf_strerror(errno), log_buf);
+    }
 
     *fd = r;
 

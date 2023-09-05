@@ -32,7 +32,6 @@
 #include "shared/helper.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
-#define _BF_PROGRAM_LOG_SIZE (1 << 13)
 
 int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
                    enum bf_front front)
@@ -676,7 +675,6 @@ int bf_program_load(struct bf_program *program)
 {
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
-    _cleanup_free_ char *log = NULL;
     _cleanup_close_ int map_fd = -1;
     _cleanup_close_ int fd = -1;
     int r;
@@ -687,15 +685,11 @@ int bf_program_load(struct bf_program *program)
     if (r)
         return r;
 
-    log = malloc(_BF_PROGRAM_LOG_SIZE);
-    if (!log)
-        return bf_err_code(ENOMEM, "failed to allocate log buffer");
-
     r = bf_bpf_prog_load(program->prog_name,
                          bf_hook_to_bpf_prog_type(program->hook), program->img,
-                         program->img_size, log, _BF_PROGRAM_LOG_SIZE, &fd);
+                         program->img_size, &fd);
     if (r < 0)
-        return bf_err_code(errno, "failed to load BPF program:\n%s", log);
+        return r;
 
     r = ops->load_img(program, fd);
     if (r)
