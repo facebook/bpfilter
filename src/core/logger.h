@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 
+#include "opts.h"
 #include "shared/helper.h"
 
 enum bf_style
@@ -77,9 +78,11 @@ enum bf_style
 #ifndef NDEBUG
 #define bf_dbg(fmt, ...)                                                       \
     ({                                                                         \
-        _bf_log_impl("%sdebug%s  : " fmt,                                      \
-                     bf_logger_get_color(BF_STYLE_BLUE | BF_STYLE_BOLD),       \
-                     bf_logger_get_color(BF_STYLE_RESET), ##__VA_ARGS__);      \
+        if (bf_opts_verbose()) {                                               \
+            _bf_log_impl("%sdebug%s  : " fmt,                                  \
+                         bf_logger_get_color(BF_STYLE_BLUE | BF_STYLE_BOLD),   \
+                         bf_logger_get_color(BF_STYLE_RESET), ##__VA_ARGS__);  \
+        }                                                                      \
     })
 #else
 #define bf_dbg(...)

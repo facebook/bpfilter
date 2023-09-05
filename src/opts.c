@@ -1,0 +1,78 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+ */
+
+#include "opts.h"
+
+#include <argp.h>
+
+#include "shared/helper.h"
+
+/**
+ * @brief bpfilter runtime configuration
+ */
+static struct bf_options
+{
+    /** If true, bpfilter won't load or save its state to the filesystem, and
+     * all the loaded BPF programs will be unloaded before shuting down. Hence,
+     * as long as bpfilter is running, filtering rules will be applied. When
+     * bpfilter is stopped, everything is cleaned up. */
+    bool transient;
+
+    /** If true, print debug log messages (bf_debug). */
+    bool verbose;
+} _opts = {
+    .transient = false,
+    .verbose = false,
+};
+
+static struct argp_option options[] = {
+    {"transient", 't', 0, 0,
+     "Do not load or save runtime context and remove all BPF programs on shutdown",
+     0},
+    {"verbose", 'v', 0, 0, "Print debug logs", 0},
+    {0},
+};
+
+/**
+ * @brief argp callback to process command line arguments.
+ *
+ * @return 0 on succcess, non-zero on failure.
+ */
+static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
+{
+    UNUSED(arg);
+
+    struct bf_options *args = state->input;
+
+    switch (key) {
+    case 't':
+        args->transient = true;
+        break;
+    case 'v':
+        args->verbose = true;
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+
+    return 0;
+}
+
+int bf_opts_init(int argc, char *argv[])
+{
+    struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
+
+    return argp_parse(&argp, argc, argv, 0, 0, &_opts);
+}
+
+bool bf_opts_verbose(void)
+{
+    return _opts.verbose;
+}
+
+bool bf_opts_transient(void)
+{
+    return _opts.transient;
+}
