@@ -14,15 +14,12 @@
  * @param prog_type BPF program type.
  * @param img BPF program itself. Can't be NULL.
  * @param img_len Size of the BPF program, as a number of instructions.
- * @param log Log buffer. If the call fails, this buffer will contain more
- * context about the error.
- * @param log_len Length of @p log.
  * @param fd If the call succeed, this parameter will contain the loaded
  * program's file descriptor.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, char *log, size_t log_len, int *fd);
+                     size_t img_len, int *fd);
 
 /**
  * @brief Create a BPF map.
