@@ -176,7 +176,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "img_size: %lu", program->img_size);
     DUMP(bf_dump_prefix_last(prefix), "img_cap: %lu", program->img_cap);
 
-    bf_dump_prefix_last(prefix);
+    bf_dump_prefix_pop(prefix);
 }
 
 static inline size_t _round_next_power_of_2(size_t x)
