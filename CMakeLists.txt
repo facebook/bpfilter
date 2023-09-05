@@ -52,6 +52,8 @@ set(bpfilter_shared_srcs
 # Include headers to the list of sources, so dependencies are re-built
 # on change.
 set(bpfilter_daemon_srcs
+    ${CMAKE_SOURCE_DIR}/src/opts.h ${CMAKE_SOURCE_DIR}/src/opts.c
+
     ${CMAKE_SOURCE_DIR}/src/core/bpf.h ${CMAKE_SOURCE_DIR}/src/core/bpf.c
     ${CMAKE_SOURCE_DIR}/src/core/btf.h ${CMAKE_SOURCE_DIR}/src/core/btf.c
     ${CMAKE_SOURCE_DIR}/src/core/counter.h

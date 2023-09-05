@@ -3,7 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <argp.h>
 #include <assert.h>
 #include <bits/types/sig_atomic_t.h>
 #include <errno.h>
@@ -19,6 +18,7 @@
 #include "core/helper.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "opts.h"
 #include "shared/front.h"
 #include "shared/generic.h"
 #include "shared/helper.h"
@@ -44,48 +44,6 @@ static volatile sig_atomic_t _stop_received = 0;
  * @todo Shouldn't this be in /run/bpfilter/ instead?
  */
 static const char *context_path = "/run/bpfilter.blob";
-
-/**
- * @brief bpfilter runtime configuration
- */
-static struct bf_arguments
-{
-    /** If true, bpfilter won't load or save its state to the filesystem, and
-     * all the loaded BPF programs will be unloaded before shuting down. Hence,
-     * as long as bpfilter is running, filtering rules will be applied. When
-     * bpfilter is stopped, everything is cleaned up. */
-    bool transient;
-} _arguments;
-
-static struct argp_option options[] = {
-    {"transient", 't', 0, 0,
-     "Do not load or save runtime context and remove all BPF programs on shutdown",
-     0},
-    {0},
-};
-
-/**
- * @brief argp callback to process command line arguments.
- *
- * @return 0 on succcess, non-zero on failure.
- */
-static error_t _bf_args_parser(int key, char *arg, struct argp_state *state)
-{
-    UNUSED(arg);
-
-    struct bf_arguments *args = state->input;
-
-    switch (key) {
-    case 't':
-        args->transient = true;
-        break;
-
-    default:
-        return ARGP_ERR_UNKNOWN;
-    }
-
-    return 0;
-}
 
 /**
  * @brief Set atomic flag to stop the daemon if specific signals are
@@ -236,7 +194,7 @@ static int _bf_save(const char *path)
  *
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_init(void)
+static int _bf_init(int argc, char *argv[])
 {
     struct sigaction sighandler = {.sa_handler = _sig_handler};
     int r = 0;
@@ -247,11 +205,15 @@ static int _bf_init(void)
     if (sigaction(SIGTERM, &sighandler, NULL) < 0)
         return bf_err_code(errno, "can't override handler for SIGTERM");
 
+    r = bf_opts_init(argc, argv);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse command line arguments");
+
     // Either load context, or initialize it from scratch.
-    if (!_arguments.transient)
+    if (!bf_opts_transient())
         r = _bf_load(context_path);
 
-    if (_arguments.transient || r < 0) {
+    if (bf_opts_transient() || r < 0) {
         r = bf_context_setup();
         if (r < 0)
             return bf_err_code(r, "failed to setup context");
@@ -267,7 +229,7 @@ static int _bf_init(void)
         bf_dbg("completed setup for %s", bf_front_to_str(front));
     }
 
-    if (!_arguments.transient) {
+    if (!bf_opts_transient()) {
         r = _bf_save(context_path);
         if (r < 0) {
             return bf_err_code(r, "failed to backup context at %s",
@@ -295,7 +257,7 @@ static int _bf_clean(void)
         }
     }
 
-    bf_context_teardown(_arguments.transient);
+    bf_context_teardown(bf_opts_transient());
 
     return 0;
 }
@@ -336,7 +298,7 @@ static int _process_request(struct bf_request *request,
         r = bf_response_new_failure(response, r);
     }
 
-    if (!_arguments.transient && request->cmd == BF_REQ_SET_RULES)
+    if (!bf_opts_transient() && request->cmd == BF_REQ_SET_RULES)
         r = _bf_save(context_path);
 
     return r;
@@ -416,21 +378,14 @@ static int _run(void)
 int main(int argc, char *argv[])
 {
     int r;
-    struct argp argp = {options, _bf_args_parser, NULL, NULL, 0, NULL, NULL};
-
-    _arguments.transient = false;
 
     bf_logger_setup();
-
-    r = argp_parse(&argp, argc, argv, 0, 0, &_arguments);
-    if (r != 0)
-        return bf_err_code(r, "failed to parse arguments");
 
     r = bf_btf_setup();
     if (r < 0)
         return bf_err_code(r, "failed to setup BTF module");
 
-    r = _bf_init();
+    r = _bf_init(argc, argv);
     if (r < 0)
         return bf_err_code(r, "failed to initialize bpfilter");
 
