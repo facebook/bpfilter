@@ -14,36 +14,46 @@
 #include "shared/request.h"
 #include "shared/response.h"
 
-#define _RECV_BUF_SIZE 64
-
-static int _bf_recv_in_buff(int fd, char **buf, size_t *buf_len)
+static ssize_t _bf_recv_in_buff(int fd, void *buf, size_t buf_len)
 {
-    _cleanup_free_ char *_buf = NULL;
-    size_t buf_capacity = _RECV_BUF_SIZE;
-    size_t _buf_len = 0;
+    ssize_t bytes_read = 0;
     ssize_t r;
 
     assert(buf);
-    assert(buf_len);
 
     do {
-        r = bf_realloc((void **)&_buf, buf_capacity <<= 1);
-        if (r < 0)
-            return (int)r;
-
-        r = recv(fd, _buf + _buf_len, buf_capacity - _buf_len, 0);
+        /// @todo Add a timeout to the socket to prevent blocking forever.
+        r = read(fd, buf + bytes_read, buf_len - bytes_read);
         if (r < 0) {
-            fprintf(stderr, "recv() failed: %s\n", bf_strerror(errno));
+            fprintf(stderr, "can't read from the socket: %s\n",
+                    bf_strerror(errno));
             return -errno;
         }
 
-        _buf_len += r;
-    } while (r && _buf_len == buf_capacity);
+        bytes_read += r;
+    } while (r && (size_t)bytes_read != buf_len);
 
-    *buf = TAKE_PTR(_buf);
-    *buf_len = _buf_len;
+    return bytes_read;
+}
 
-    return 0;
+static ssize_t _bf_send_from_buff(int fd, void *buf, size_t buf_len)
+{
+    ssize_t bytes_sent = 0;
+    ssize_t r;
+
+    assert(buf);
+
+    while ((size_t)bytes_sent < buf_len) {
+        r = write(fd, buf + bytes_sent, buf_len - bytes_sent);
+        if (r < 0) {
+            fprintf(stderr, "can't write to socket: %s\n", bf_strerror(errno));
+            return -errno;
+        }
+
+        bytes_sent += r;
+    }
+
+    return bytes_sent;
 }
 
 int bf_send_request(int fd, const struct bf_request *request)
@@ -52,7 +62,7 @@ int bf_send_request(int fd, const struct bf_request *request)
 
     assert(request);
 
-    r = send(fd, request, bf_request_size(request), 0);
+    r = _bf_send_from_buff(fd, (void *)request, bf_request_size(request));
     if (r < 0) {
         fprintf(stderr, "Failed to send request: %s\n", bf_strerror(errno));
         return -errno;
@@ -60,8 +70,8 @@ int bf_send_request(int fd, const struct bf_request *request)
 
     if ((size_t)r != bf_request_size(request)) {
         fprintf(stderr,
-                "Failed to send request: %lu bytes sent, %ld expected\n", r,
-                bf_request_size(request));
+                "Failed to send request: %lu bytes sent, %ld expected\n",
+                (size_t)r, bf_request_size(request));
         return -EIO;
     }
 
@@ -70,33 +80,40 @@ int bf_send_request(int fd, const struct bf_request *request)
 
 int bf_recv_request(int fd, struct bf_request **request)
 {
+    struct bf_request req;
     _cleanup_bf_request_ struct bf_request *_request = NULL;
-    _cleanup_bf_request_ struct bf_request *_oversized_request = NULL;
-    _cleanup_free_ char *buf = NULL;
-    size_t buf_len;
-    int r;
+    ssize_t r;
 
     assert(request);
 
-    r = _bf_recv_in_buff(fd, &buf, &buf_len);
+    r = _bf_recv_in_buff(fd, &req, sizeof(req));
     if (r < 0)
-        return r;
+        return (int)r;
 
-    if (buf_len < sizeof(*_request)) {
-        fprintf(stderr, "Received request is too small\n");
-        return -EINVAL;
+    if ((size_t)r != sizeof(req)) {
+        fprintf(stderr,
+                "failed to read request: %lu bytes read, %lu expected\n",
+                (size_t)r, sizeof(req));
+        return -EIO;
     }
 
-    _oversized_request = (struct bf_request *)TAKE_PTR(buf);
-    if (bf_request_size(_oversized_request) > buf_len) {
-        fprintf(stderr, "Received request is too large\n");
-        return -EINVAL;
+    _request = malloc(bf_request_size(&req));
+    if (!_request) {
+        fprintf(stderr, "failed to allocate request: %s\n", bf_strerror(errno));
+        return -errno;
     }
 
-    r = bf_request_copy(&_request, _oversized_request);
-    if (r < 0) {
-        fprintf(stderr, "Failed to allocate request: %s\n", bf_strerror(r));
-        return r;
+    memcpy(_request, &req, sizeof(req));
+
+    r = _bf_recv_in_buff(fd, _request->data, _request->data_len);
+    if (r < 0)
+        return (int)r;
+
+    if ((size_t)r != _request->data_len) {
+        fprintf(stderr,
+                "failed to read request: %lu bytes read, %lu expected\n",
+                (size_t)r, _request->data_len);
+        return -EIO;
     }
 
     *request = TAKE_PTR(_request);
@@ -110,7 +127,7 @@ int bf_send_response(int fd, struct bf_response *response)
 
     assert(response);
 
-    r = send(fd, response, bf_response_size(response), 0);
+    r = _bf_send_from_buff(fd, (void *)response, bf_response_size(response));
     if (r < 0) {
         fprintf(stderr, "Failed to send response: %s\n", bf_strerror(errno));
         return -errno;
@@ -128,33 +145,41 @@ int bf_send_response(int fd, struct bf_response *response)
 
 int bf_recv_response(int fd, struct bf_response **response)
 {
+    struct bf_response res;
     _cleanup_bf_response_ struct bf_response *_response = NULL;
-    _cleanup_bf_response_ struct bf_response *_oversized_response = NULL;
-    _cleanup_free_ char *buf = NULL;
-    size_t buf_len;
-    int r;
+    ssize_t r;
 
     assert(response);
 
-    r = _bf_recv_in_buff(fd, &buf, &buf_len);
+    r = _bf_recv_in_buff(fd, &res, sizeof(res));
     if (r < 0)
-        return r;
+        return -errno;
 
-    if (buf_len < sizeof(*_response)) {
-        fprintf(stderr, "Received response is too small\n");
-        return -EINVAL;
+    if ((size_t)r != sizeof(res)) {
+        fprintf(stderr,
+                "failed to read response: %lu bytes read, %lu expected\n",
+                (size_t)r, sizeof(res));
+        return -EIO;
     }
 
-    _oversized_response = (struct bf_response *)TAKE_PTR(buf);
-    if (bf_response_size(_oversized_response) > buf_len) {
-        fprintf(stderr, "Received response is too large\n");
-        return -EINVAL;
+    _response = malloc(bf_response_size(&res));
+    if (!_response) {
+        fprintf(stderr, "failed to allocate response: %s\n",
+                bf_strerror(errno));
+        return -errno;
     }
 
-    r = bf_response_copy(&_response, _oversized_response);
-    if (r < 0) {
-        fprintf(stderr, "Failed to allocate response: %s\n", bf_strerror(r));
-        return r;
+    memcpy(_response, &res, sizeof(res));
+
+    r = _bf_recv_in_buff(fd, _response->data, _response->data_len);
+    if (r < 0)
+        return (int)r;
+
+    if ((size_t)r != _response->data_len) {
+        fprintf(stderr,
+                "failed to read response: %lu bytes read, %lu expected\n",
+                (size_t)r, _response->data_len);
+        return -EIO;
     }
 
     *response = TAKE_PTR(_response);
