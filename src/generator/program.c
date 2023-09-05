@@ -247,6 +247,9 @@ static int _bf_program_fixup(struct bf_program *program,
 
         switch (type) {
         case BF_CODEGEN_FIXUP_NEXT_RULE:
+            insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
+            v = (int)(program->img_size - fixup->insn - 1U);
+            break;
         case BF_CODEGEN_FIXUP_END_OF_CHAIN:
             insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
             v = (int)(program->img_size - fixup->insn - 2U);
