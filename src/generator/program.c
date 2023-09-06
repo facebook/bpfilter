@@ -96,6 +96,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
                                 sizeof(program->front));
     r |= bf_marsh_add_child_raw(&_marsh, &program->num_rules,
                                 sizeof(program->num_rules));
+    r |= bf_marsh_add_child_raw(&_marsh, &program->num_rules_total,
+                                sizeof(program->num_rules_total));
     r |= bf_marsh_add_child_raw(&_marsh, program->img,
                                 program->img_size * sizeof(struct bpf_insn));
     if (r)
@@ -138,6 +140,11 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     memcpy(&_program->num_rules, child->data, sizeof(_program->num_rules));
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    memcpy(&_program->num_rules_total, child->data,
+           sizeof(_program->num_rules_total));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -332,7 +339,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
 
     // BF_ARG_2: index of the current rule in counters map.
-    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, program->num_rules));
+    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, rule->index));
 
     // BF_ARG_3: packet size, from the context.
     EMIT(program,
@@ -348,8 +355,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_NEXT_RULE, NULL);
     if (r)
         return bf_err_code(r, "failed to generate next rule fixups");
-
-    ++program->num_rules;
 
     return 0;
 }
@@ -463,7 +468,7 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
     /// @todo: remove conditional on num_rules
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
-                          program->num_rules ? program->num_rules : 1, &_fd);
+                          program->num_rules_total, &_fd);
     if (r < 0)
         return bf_err_code(errno, "failed to create counters map");
 
@@ -643,13 +648,8 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         r = _bf_program_generate_rule(program, rule);
         if (r)
             return r;
-    }
 
-    if (!program->num_rules) {
-        bf_info("No rules for %s::%s::%s, skipping",
-                bf_front_to_str(program->front), bf_hook_to_str(program->hook),
-                ifname_buf);
-        return 0;
+        ++program->num_rules;
     }
 
     r = ops->gen_inline_epilogue(program);
