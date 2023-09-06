@@ -27,10 +27,13 @@ struct bf_program;
  *
  * @var bf_flavor::BF_FLAVOR_TC
  *  TC flavor.
+ * @var bf_flavor::BF_FLAVOR_NF
+ *  For BPF_PROG_TYPE_NETFILTER programs. Expects a struct bpf_nf_ctx argument.
  */
 enum bf_flavor
 {
     BF_FLAVOR_TC,
+    BF_FLAVOR_NF,
     _BF_FLAVOR_MAX,
 };
 

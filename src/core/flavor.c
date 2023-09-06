@@ -7,6 +7,7 @@
 
 #include <assert.h>
 
+#include "generator/nf.h"
 #include "generator/tc.h"
 #include "shared/helper.h"
 
@@ -14,6 +15,7 @@ const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
 {
     static const struct bf_flavor_ops *flavor_ops[] = {
         [BF_FLAVOR_TC] = &bf_flavor_ops_tc,
+        [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
     };
 
     assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
@@ -27,6 +29,7 @@ const char *bf_flavor_to_str(enum bf_flavor flavor)
 {
     static const char *flavor_str[] = {
         [BF_FLAVOR_TC] = "BF_FLAVOR_TC",
+        [BF_FLAVOR_NF] = "BF_FLAVOR_NF",
     };
 
     assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
