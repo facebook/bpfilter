@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include <net/if.h>
+
 #include <linux/bpf.h>
+#include <linux/icmp.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
@@ -129,6 +132,7 @@ struct bf_program_context
     /** Layer 4 header. */
     union
     {
+        struct icmphdr _icmphdr;
         struct udphdr _udphdr;
         struct tcphdr _tcphdr;
         char l4raw;

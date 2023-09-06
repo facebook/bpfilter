@@ -170,21 +170,30 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
     EMIT(program,
          BPF_LDX_MEM(BPF_W, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
 
-    // If L4 protocol is TCP.
-    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 2));
+    {
+        // If L4 protocol is TCP.
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 3));
 
-    // If L4 protocol is UDP.
-    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_UDP, 3));
+        // If L4 protocol is UDP.
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_UDP, 4));
 
-    // Protocol is not supported, quit the program.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN, BPF_JMP_A(0));
+        // If L4 protocol is ICMP.
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_ICMP, 5));
 
-    // If TCP
-    EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct tcphdr)));
-    EMIT(program, BPF_JMP_A(1));
+        // Protocol is not supported, skip slice request.
+        EMIT(program, BPF_JMP_A(8));
 
-    // If UDP
-    EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct udphdr)));
+        // If TCP
+        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct tcphdr)));
+        EMIT(program, BPF_JMP_A(3));
+
+        // If UDP
+        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct udphdr)));
+        EMIT(program, BPF_JMP_A(1));
+
+        // If ICMP
+        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct udphdr)));
+    }
 
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
