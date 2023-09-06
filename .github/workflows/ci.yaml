@@ -10,7 +10,7 @@ on:
 permissions:
   checks: write
   pull-requests: write
-  
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -18,14 +18,14 @@ jobs:
       fail-fast: false
       matrix:
         buildtype: [ 'debug', 'release' ]
-        image: [ 'fedora:38', 'ubuntu:22.04' ]
+        image: [ 'fedora:38', 'ubuntu:23.10' ]
     container: ${{ matrix.image }}
     steps:
       - name: Install packages Fedora
         if: matrix.image == 'fedora:38'
         run: |
           sudo dnf -y install 'dnf-command(copr)'
-          sudo dnf -y copr enable naccyde/criterion 
+          sudo dnf -y copr enable naccyde/criterion
           sudo dnf -y install \
             clang-tools-extra \
             cmake \
@@ -39,7 +39,7 @@ jobs:
             python3-furo \
             python3-sphinx
       - name: Install packages Ubuntu
-        if: matrix.image == 'ubuntu:22.04'
+        if: matrix.image == 'ubuntu:23.10'
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
@@ -47,13 +47,13 @@ jobs:
             clang-tidy \
             cmake \
             doxygen \
+            furo \
             lcov \
             libbpf-dev \
             libcriterion-dev \
             python3-breathe \
             python3-pip \
             python3-sphinx
-          pip install furo
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Configure build
