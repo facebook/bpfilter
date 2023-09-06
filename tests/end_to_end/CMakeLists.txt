@@ -33,3 +33,9 @@ endfunction()
 
 createEndToEndTarget(raw)
 createEndToEndTarget(ipt)
+
+add_custom_target(e2e
+    COMMAND sudo --preserve-env=PATH python3 ${CMAKE_CURRENT_SOURCE_DIR}/end_to_end.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Run end-to-end tests"
+)
