@@ -11,6 +11,7 @@ add_executable(tests_unit
     src/core/list.c
     src/core/target.c
     src/core/helper.c
+    src/generator/nf.c
     ${bpfilter_daemon_srcs} ${bpfilter_shared_srcs}
 )
 

@@ -34,11 +34,11 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
 {
     static const unsigned int prog_type[] = {
         [BF_HOOK_TC_INGRESS] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_IPT_PRE_ROUTING] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_IPT_LOCAL_IN] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_IPT_FORWARD] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_IPT_LOCAL_OUT] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_IPT_POST_ROUTING] = BPF_PROG_TYPE_SCHED_CLS,
+        [BF_HOOK_IPT_PRE_ROUTING] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_IPT_LOCAL_IN] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_IPT_FORWARD] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_IPT_LOCAL_OUT] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_IPT_POST_ROUTING] = BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_TC_EGRESS] = BPF_PROG_TYPE_SCHED_CLS,
     };
 
@@ -53,11 +53,11 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
 {
     static const enum bf_flavor flavors[] = {
         [BF_HOOK_TC_INGRESS] = BF_FLAVOR_TC,
-        [BF_HOOK_IPT_PRE_ROUTING] = BF_FLAVOR_TC,
-        [BF_HOOK_IPT_LOCAL_IN] = BF_FLAVOR_TC,
-        [BF_HOOK_IPT_FORWARD] = BF_FLAVOR_TC,
-        [BF_HOOK_IPT_LOCAL_OUT] = BF_FLAVOR_TC,
-        [BF_HOOK_IPT_POST_ROUTING] = BF_FLAVOR_TC,
+        [BF_HOOK_IPT_PRE_ROUTING] = BF_FLAVOR_NF,
+        [BF_HOOK_IPT_LOCAL_IN] = BF_FLAVOR_NF,
+        [BF_HOOK_IPT_FORWARD] = BF_FLAVOR_NF,
+        [BF_HOOK_IPT_LOCAL_OUT] = BF_FLAVOR_NF,
+        [BF_HOOK_IPT_POST_ROUTING] = BF_FLAVOR_NF,
         [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
     };
 
