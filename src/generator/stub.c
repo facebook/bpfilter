@@ -128,7 +128,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     // Convert the number of words stored in ip.ihl into a number of bytes.
     EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_1, 2));
 
-    // Store the L3 offst in BF_REG_2
+    // Store the L3 offset in BF_REG_2
     EMIT(program,
          BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_CTX, BF_PROG_CTX_OFF(l3_offset)));
 
