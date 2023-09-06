@@ -123,7 +123,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3, 0));
 
     // Only keep the 4 IHL bits
-    EMIT(program, BPF_ALU64_IMM(BPF_RSH, BF_REG_1, 4));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BF_REG_1, 15));
 
     // Convert the number of words stored in ip.ihl into a number of bytes.
     EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_1, 2));
