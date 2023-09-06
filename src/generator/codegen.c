@@ -80,6 +80,8 @@ int bf_codegen_generate(struct bf_codegen *codegen)
         if (r)
             return r;
 
+        program->num_rules_total = bf_list_size(&codegen->rules);
+
         r = bf_program_generate(program, &codegen->rules);
         if (r) {
             return bf_err_code(r, "failed to generate program for %s",

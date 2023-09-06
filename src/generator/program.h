@@ -148,6 +148,7 @@ struct bf_program
     char prog_pin_path[PIN_PATH_LEN];
     char map_pin_path[PIN_PATH_LEN];
     size_t num_rules;
+    size_t num_rules_total;
 
     /* Bytecode */
     uint32_t functions_location[_BF_CODEGEN_FIXUP_FUNCTION_MAX];
