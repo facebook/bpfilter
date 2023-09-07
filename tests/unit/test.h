@@ -7,6 +7,8 @@
 
 #include <signal.h>
 
+#include "generator/codegen.h"
+
 #define NOT_NULL ((void *)0xdeadbeef)
 
 /**
@@ -52,3 +54,15 @@
 
 #define __TestAssertManual(suite, function, id)                                \
     Test(suite, function##_##id, .signal = SIGABRT)
+
+/**
+ * @brief Create a dummy @ref bf_codegen structure containing @p nprogs
+ * programs.
+ *
+ * @param codegen Codegen to allocate and initialise. Can't be NULL.
+ * @param hook Hook to attach the programs to.
+ * @param nprogs Number of programs to generate.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_test_make_codegen(struct bf_codegen **codegen, enum bf_hook hook,
+                         int nprogs);
