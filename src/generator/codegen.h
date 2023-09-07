@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
@@ -93,3 +95,13 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
                        struct bf_codegen **codegen);
 
 void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix);
+
+/**
+ * @brief Get a codegen's BPF program for a given interface.
+ *
+ * @param codegen Codegen containing the BPF program to get. Can't be NULL.
+ * @param ifindex Interface to get the BPF program for.
+ * @return BPF program for the given interface, or NULL if not found.
+ */
+struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
+                                          uint32_t ifindex);

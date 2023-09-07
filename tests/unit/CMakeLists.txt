@@ -4,6 +4,7 @@
 enable_testing()
 
 add_executable(tests_unit
+    test.c
     src/core/context.c
     src/core/flavor.c
     src/core/hook.c
@@ -11,6 +12,7 @@ add_executable(tests_unit
     src/core/list.c
     src/core/target.c
     src/core/helper.c
+    src/generator/codegen.c
     src/generator/nf.c
     ${bpfilter_daemon_srcs} ${bpfilter_shared_srcs}
 )

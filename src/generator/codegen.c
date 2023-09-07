@@ -315,3 +315,15 @@ void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
 
     bf_dump_prefix_pop(prefix);
 }
+
+struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
+                                          uint32_t ifindex)
+{
+    bf_list_foreach (&codegen->programs, program_node) {
+        struct bf_program *program = bf_list_node_get_data(program_node);
+        if (program->ifindex == ifindex)
+            return program;
+    }
+
+    return NULL;
+}
