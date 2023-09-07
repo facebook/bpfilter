@@ -14,13 +14,14 @@
 
 #include "core/context.h"
 #include "core/logger.h"
-#include "external/filter.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "generator/stub.h"
 #include "shared/front.h"
 #include "shared/helper.h"
+
+#include "external/filter.h"
 
 static int _tc_gen_inline_prologue(struct bf_program *program);
 static int _tc_gen_inline_epilogue(struct bf_program *program);

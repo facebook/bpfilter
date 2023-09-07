@@ -27,9 +27,10 @@
 #include "core/marsh.h"
 #include "core/rule.h"
 #include "core/target.h"
-#include "external/filter.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
+
+#include "external/filter.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 

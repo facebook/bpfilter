@@ -20,10 +20,11 @@
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
-#include "external/filter.h"
 #include "generator/fixup.h"
 #include "generator/reg.h"
 #include "shared/front.h"
+
+#include "external/filter.h"
 
 #define PIN_PATH_LEN 64
 

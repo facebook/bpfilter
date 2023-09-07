@@ -13,11 +13,12 @@
 
 #include "core/flavor.h"
 #include "core/hook.h"
-#include "external/filter.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "shared/helper.h"
+
+#include "external/filter.h"
 
 const char *bf_target_type_to_str(enum bf_target_type type)
 {

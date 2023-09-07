@@ -10,8 +10,9 @@
 #include <arpa/inet.h>
 #include <assert.h>
 
-#include "external/filter.h"
 #include "generator/program.h"
+
+#include "external/filter.h"
 
 int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
                      size_t size)

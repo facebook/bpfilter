@@ -67,6 +67,8 @@ IncludeCategories:
     Priority: 1
   - Regex: '^<linux/'
     Priority: 2
+  - Regex: '^"external/.*'
+    Priority: 5
   - Regex: '^"'
     Priority: 4
   - Regex: '.*'
