@@ -6,5 +6,5 @@ Name: bpfilter
 Description: BPF-based packet filtering framework
 URL: https://github.com/facebook/bpfilter
 Version: 0.0.1
-Libs: -Wl,-rpath,${libdir} -L${libdir} -lbpfilter
+Libs: -Wl,-rpath,${libdir} -L${libdir} -lbpfilter $<$<CONFIG:Debug>:-fsanitize=address -fsanitize=undefined>
 Cflags: -I${includedir}
