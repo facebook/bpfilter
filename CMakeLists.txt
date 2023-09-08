@@ -113,7 +113,13 @@ set(bpfilter_ldflags_debug
     -fsanitize=address -fsanitize=undefined
 )
 
-configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc @ONLY)
+configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc.in @ONLY)
+file(
+  GENERATE
+  OUTPUT ${CMAKE_BINARY_DIR}/bpfilter.pc
+  INPUT ${CMAKE_BINARY_DIR}/bpfilter.pc.in
+)
+
 install(
     FILES ${CMAKE_BINARY_DIR}/bpfilter.pc
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
