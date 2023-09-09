@@ -5,7 +5,9 @@ BPF-based packet filtering framework
 
 ## Build from sources
 
-Building `bpfilter` will requires the following packages:
+Building and running `bpfilter` requires `libbpf` version 1.0 or above, and Linux 5.19+. `bpfilter` is developed (and tested) on Fedora 38, with `libbpf` 1.1 and Linux 6.2.
+
+Building `bpfilter` requires the following packages on Fedora 38:
 
 ```shell
 # Add required repositories
@@ -17,8 +19,6 @@ sudo dnf install -y \
     criterion-devel clang-tools-extra lcov \
     doxygen python3-sphinx python3-breathe python3-furo
 ```
-
-`libbpf` version 1.0 or above is required. `bpfilter` doesn't support `libbpf`'s `0.x` API.
 
 To build `bpfilter` (from the source directory):
 ```shell
