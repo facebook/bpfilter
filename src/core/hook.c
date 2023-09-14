@@ -67,3 +67,22 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
 
     return flavors[hook];
 }
+
+enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
+{
+    static const enum bpf_attach_type hooks[] = {
+        [BF_HOOK_TC_INGRESS] = 0,
+        [BF_HOOK_IPT_PRE_ROUTING] = 0,
+        [BF_HOOK_IPT_LOCAL_IN] = BPF_NETFILTER,
+        [BF_HOOK_IPT_FORWARD] = BPF_NETFILTER,
+        [BF_HOOK_IPT_LOCAL_OUT] = BPF_NETFILTER,
+        [BF_HOOK_IPT_POST_ROUTING] = 0,
+        [BF_HOOK_TC_EGRESS] = 0,
+    };
+
+    assert(0 <= hook && hook < _BF_HOOK_MAX);
+    static_assert(ARRAY_SIZE(hooks) == _BF_HOOK_MAX,
+                  "missing entries in hooks array");
+
+    return hooks[hook];
+}

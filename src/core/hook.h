@@ -49,3 +49,11 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook);
  * @return bpfilter flavor corresponding to @p hook.
  */
 enum bf_flavor bf_hook_to_flavor(enum bf_hook hook);
+
+/**
+ * @brief Convert a bpfilter hook to a BPF attach type.
+ *
+ * @param hook The hook to convert. Must be a valid hook.
+ * @return The BPF attach type corresponding to @p hook.
+ */
+enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook);

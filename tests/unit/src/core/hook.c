@@ -42,3 +42,14 @@ Test(src_core_hook, can_get_flavor_from_hook)
         cr_assert(flavor < _BF_FLAVOR_MAX);
     }
 }
+
+Test(src_core_hook, can_get_attach_type_from_hook)
+{
+    enum bpf_attach_type attach_type;
+
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        attach_type = bf_hook_to_attach_type(i);
+        cr_assert(0 <= attach_type);
+        cr_assert(attach_type < __MAX_BPF_ATTACH_TYPE);
+    }
+}
