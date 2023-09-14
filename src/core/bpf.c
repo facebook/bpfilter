@@ -68,8 +68,8 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
 
     r = _bpf(BPF_PROG_LOAD, &attr);
     if (r < 0) {
-        return bf_err_code(r, "failed to load BPF program: %s\n%s",
-                           bf_strerror(errno), log_buf);
+        return bf_err_code(r, "failed to load BPF program (%lu bytes):\n%s\n",
+                           img_len, log_buf ?: "(no log buffer available)");
     }
 
     *fd = r;
