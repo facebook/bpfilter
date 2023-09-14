@@ -68,3 +68,24 @@ int bf_bpf_obj_pin(const char *path, int fd);
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_obj_get(const char *path, int *fd);
+
+/**
+ * @brief Create a Netfilter BPF link.
+ *
+ * @param prog_fd File descriptor of the program to attach to the link.
+ * @param hook Netfilter hook to attach the program to.
+ * @param priority Priority of the program on the hook.
+ * @param link_fd Link file descriptor, only valid if the return value of the
+ *  function is 0.
+ * @return 0 on success or negative errno value on failure.
+ */
+int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
+                          int *link_fd);
+
+/**
+ * @brief Detach a BPF link using its file descriptor.
+ * @param link_fd File descriptor of the link to detach. You can get a file
+ *  descriptor using @ref bf_bpf_obj_get.
+ * @return 0 on success or negative errno value on failure.
+ */
+int bf_bpf_link_detach(int link_fd);

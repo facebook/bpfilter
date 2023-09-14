@@ -5,10 +5,6 @@
 
 #include "generator/nf.h"
 
-#include <net/if.h>
-
-#include <linux/netfilter.h>
-
 #include <assert.h>
 #include <errno.h>
 
@@ -91,4 +87,19 @@ static int _nf_unload_img(struct bf_program *program)
     assert(program);
 
     return -ENOTSUP;
+}
+
+enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
+{
+    assert(hook >= BF_HOOK_IPT_PRE_ROUTING || hook <= BF_HOOK_IPT_POST_ROUTING);
+
+    enum nf_inet_hooks hooks[] = {
+        [BF_HOOK_IPT_PRE_ROUTING] = NF_INET_PRE_ROUTING,
+        [BF_HOOK_IPT_LOCAL_IN] = NF_INET_LOCAL_IN,
+        [BF_HOOK_IPT_FORWARD] = NF_INET_FORWARD,
+        [BF_HOOK_IPT_LOCAL_OUT] = NF_INET_LOCAL_OUT,
+        [BF_HOOK_IPT_POST_ROUTING] = NF_INET_POST_ROUTING,
+    };
+
+    return hooks[hook];
 }

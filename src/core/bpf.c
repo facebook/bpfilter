@@ -5,7 +5,10 @@
 
 #include "core/bpf.h"
 
+#include <net/if.h>
+
 #include <linux/bpf.h>
+#include <linux/netfilter.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -15,6 +18,7 @@
 #include <unistd.h>
 
 #include "core/logger.h"
+#include "generator/nf.h"
 #include "opts.h"
 #include "shared/helper.h"
 
@@ -140,4 +144,34 @@ int bf_bpf_obj_get(const char *path, int *fd)
     *fd = r;
 
     return 0;
+}
+
+int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
+                          int *link_fd)
+{
+    union bpf_attr attr = {};
+    int r;
+
+    attr.link_create.prog_fd = prog_fd;
+    attr.link_create.attach_type = BPF_NETFILTER;
+    attr.link_create.netfilter.pf = NFPROTO_IPV4;
+    attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
+    attr.link_create.netfilter.priority = priority;
+
+    r = _bpf(BPF_LINK_CREATE, &attr);
+    if (r < 0)
+        return r;
+
+    *link_fd = r;
+
+    return 0;
+}
+
+int bf_bpf_link_detach(int link_fd)
+{
+    union bpf_attr attr = {
+        .link_detach.link_fd = link_fd,
+    };
+
+    return _bpf(BPF_LINK_DETACH, &attr);
 }
