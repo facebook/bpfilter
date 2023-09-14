@@ -687,7 +687,8 @@ int bf_program_load(struct bf_program *program)
 
     r = bf_bpf_prog_load(program->prog_name,
                          bf_hook_to_bpf_prog_type(program->hook), program->img,
-                         program->img_size, &fd);
+                         program->img_size,
+                         bf_hook_to_attach_type(program->hook), &fd);
     if (r < 0)
         return r;
 

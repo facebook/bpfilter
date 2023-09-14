@@ -38,7 +38,7 @@ static int _bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 }
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, int *fd)
+                     size_t img_len, enum bpf_attach_type attach_type, int *fd)
 {
     _cleanup_free_ char *log_buf = NULL;
     union bpf_attr attr = {
@@ -46,6 +46,7 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
         .insns = _bf_ptr_to_u64(img),
         .insn_cnt = (unsigned int)img_len,
         .license = _bf_ptr_to_u64("GPL"),
+        .expected_attach_type = attach_type,
     };
     int r;
 
