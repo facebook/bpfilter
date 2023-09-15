@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 
+#include "core/flavor.h"
 #include "generator/program.h"
 
 #include "external/filter.h"
@@ -28,7 +29,11 @@ int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
 
 int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
 {
+    const struct bf_flavor_ops *ops =
+        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+
     assert(program);
+    assert(ops);
 
     // BF_ARG_1: address of the skb.
     if (BF_ARG_1 != skb_reg)
@@ -43,16 +48,25 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
 
     EMIT_KFUNC_CALL(program, "bpf_dynptr_from_skb");
 
-    // If an error occurs, quit the program.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
+    // Copy the return value to BF_REG_2.
+    EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_RET));
+
+    // If the function call failed, quit the program.
+    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
 
     return 0;
 }
 
 int bf_stub_get_l2_eth_hdr(struct bf_program *program)
 {
+    const struct bf_flavor_ops *ops =
+        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+
     assert(program);
+    assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -70,20 +84,24 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
 
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
-    // If an error occurs, quit the program.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_IMM(BPF_JEQ, BF_REG_RET, 0, 0));
-
     // Copy the L2 header pointer to BF_REG_L2.
     EMIT(program, BPF_MOV64_REG(BF_REG_L2, BF_REG_RET));
+
+    // If L2 was not found, quit the program.
+    EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L2, 0, 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
 
     // Load L2 ethertype
     EMIT(program, BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_L2,
                               offsetof(struct ethhdr, h_proto)));
 
-    // Quit the program if L3 is not IPv4.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1, ntohs(ETH_P_IP), 0));
+    // If L3 is not IPv4, quit the program.
+    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, ntohs(ETH_P_IP), 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
 
     // Update L3 header offset.
     EMIT(program, BPF_ST_MEM(BPF_W, BF_REG_CTX, BF_PROG_CTX_OFF(l3_offset),
@@ -94,7 +112,11 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
 
 int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 {
+    const struct bf_flavor_ops *ops =
+        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+
     assert(program);
+    assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -113,12 +135,14 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
-    // If an error occurs, quit the program.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_IMM(BPF_JEQ, BF_REG_RET, 0, 0));
-
     // Copy the L3 header pointer to BF_REG_L3.
     EMIT(program, BPF_MOV64_REG(BF_REG_L3, BF_REG_RET));
+
+    // If L3 was not found, quit the program.
+    EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L3, 0, 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
 
     // Load ip.ihl into BF_REG_1
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3, 0));
@@ -153,7 +177,11 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 
 int bf_stub_get_l4_hdr(struct bf_program *program)
 {
+    const struct bf_flavor_ops *ops =
+        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+
     assert(program);
+    assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -182,28 +210,30 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
         EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_ICMP, 5));
 
         // Protocol is not supported, skip slice request.
-        EMIT(program, BPF_JMP_A(8));
+        EMIT(program, BPF_JMP_A(10));
 
         // If TCP
-        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct tcphdr)));
+        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct tcphdr)));
         EMIT(program, BPF_JMP_A(3));
 
         // If UDP
-        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct udphdr)));
+        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
         EMIT(program, BPF_JMP_A(1));
 
         // If ICMP
-        EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct udphdr)));
+        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
     }
 
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
-    // If an error occurs, quit the program.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_END_OF_CHAIN,
-               BPF_JMP_IMM(BPF_JEQ, BF_REG_RET, 0, 0));
-
     // Copy the L3 header pointer to BF_REG_L3.
     EMIT(program, BPF_MOV64_REG(BF_REG_L4, BF_REG_RET));
+
+    // If an error occurred, quit the program.
+    EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L4, 0, 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
 
     return 0;
 }
