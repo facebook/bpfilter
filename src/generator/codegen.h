@@ -77,9 +77,13 @@ int bf_codegen_generate(struct bf_codegen *codegen);
  * Each program within the codegen will be loaded and attached to its interface.
  *
  * @param codegen Codegen containing the BPF program to load. Can't be NULL.
+ * @param prev_codegen Codegen to replace. Can be NULL. @ref bf_codegen_load
+ *  is responsible for unloading the previous codegen. @ref bf_codegen_load
+ *  doesn't own @p prev_codegen, and won't free it.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_codegen_load(struct bf_codegen *codegen);
+int bf_codegen_load(struct bf_codegen *codegen,
+                    struct bf_codegen *prev_codegen);
 
 /**
  * @brief Unload a codegen's BPF programs.

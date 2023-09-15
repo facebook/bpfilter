@@ -672,12 +672,13 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
     return 0;
 }
 
-int bf_program_load(struct bf_program *program)
+int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
 {
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+    union bf_flavor_attach_attr attr;
     _cleanup_close_ int map_fd = -1;
-    _cleanup_close_ int fd = -1;
+    _cleanup_close_ int prog_fd = -1;
     int r;
 
     assert(program);
@@ -689,16 +690,23 @@ int bf_program_load(struct bf_program *program)
     r = bf_bpf_prog_load(program->prog_name,
                          bf_hook_to_bpf_prog_type(program->hook), program->img,
                          program->img_size,
-                         bf_hook_to_attach_type(program->hook), &fd);
+                         bf_hook_to_attach_type(program->hook), &prog_fd);
     if (r < 0)
         return r;
 
-    r = ops->load_img(program, fd);
+    r = ops->attach_prog_pre_unload(program, &prog_fd, &attr);
+    if (r)
+        return r;
+
+    if (prev_program)
+        bf_program_unload(prev_program);
+
+    r = ops->attach_prog_post_unload(program, &prog_fd, &attr);
     if (r)
         return r;
 
     // Pin program
-    r = bf_bpf_obj_pin(program->prog_pin_path, fd);
+    r = bf_bpf_obj_pin(program->prog_pin_path, prog_fd);
     if (r < 0) {
         return bf_err_code(errno, "failed to pin program fd to %s",
                            program->prog_pin_path);
@@ -727,7 +735,7 @@ int bf_program_unload(struct bf_program *program)
 
     assert(program);
 
-    r = ops->unload_img(program);
+    r = ops->detach_prog(program);
     if (r)
         return r;
 

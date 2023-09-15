@@ -100,13 +100,20 @@ int bf_codegen_generate(struct bf_codegen *codegen)
     return 0;
 }
 
-int bf_codegen_load(struct bf_codegen *codegen)
+int bf_codegen_load(struct bf_codegen *codegen, struct bf_codegen *prev_codegen)
 {
     int r;
 
     bf_list_foreach (&codegen->programs, program_node) {
+        struct bf_program *prev_program = NULL;
         struct bf_program *program = bf_list_node_get_data(program_node);
-        r = bf_program_load(program);
+
+        if (prev_codegen) {
+            prev_program =
+                bf_codegen_get_program(prev_codegen, program->ifindex);
+        }
+
+        r = bf_program_load(program, prev_program);
         if (r) {
             bf_program_dump(program, NULL);
             bf_program_dump_bytecode(program, false);

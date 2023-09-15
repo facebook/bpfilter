@@ -181,7 +181,18 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_function function);
 int bf_program_generate(struct bf_program *program, bf_list *rules);
-int bf_program_load(struct bf_program *program);
+
+/**
+ * @brief Load the program into the kernel.
+ * @param program Program to load. Can not be NULL.
+ * @param prev_program Previous program to unload. Can be NULL. If not NULL,
+ *  @ref bf_program_load will unload @p prev_program between @ref
+ *  attach_prog_pre_unload and @ref attach_prog_post_unload calls.
+ * @return 0 on success, negative errno code on failure.
+ */
+int bf_program_load(struct bf_program *program,
+                    struct bf_program *prev_program);
+
 int bf_program_unload(struct bf_program *program);
 
 int bf_program_get_counters(const struct bf_program *program,

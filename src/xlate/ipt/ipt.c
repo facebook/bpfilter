@@ -449,7 +449,6 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
         return bf_err_code(-ENOMEM, "failed to duplicate iptables rules");
 
     for (int i = 0; i < _BF_HOOK_MAX; i++) {
-        struct bf_codegen *prev_codegen;
         _cleanup_bf_codegen_ struct bf_codegen *codegen = codegens[i];
 
         /// @todo Fix TAKE_PTR() to work with arrays.
@@ -465,17 +464,12 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
                 codegen->hook);
         }
 
-        // We don't care about the return value: we just want the codegen to be
-        // deleted if it exists.
-        prev_codegen = bf_context_get_codegen(i, BF_FRONT_IPT);
-        if (prev_codegen) {
-            bf_codegen_unload(prev_codegen);
-            bf_context_delete_codegen(i, BF_FRONT_IPT);
-        }
-
-        r = bf_codegen_load(codegen);
+        r = bf_codegen_load(codegen, bf_context_get_codegen(i, BF_FRONT_IPT));
         if (r)
             return bf_err_code(r, "failed to load codegen");
+
+        // Delete the previous codegen, if any.
+        bf_context_delete_codegen(i, BF_FRONT_IPT);
 
         r = bf_context_set_codegen(i, BF_FRONT_IPT, codegen);
         if (r)
