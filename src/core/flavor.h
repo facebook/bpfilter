@@ -38,6 +38,16 @@ enum bf_flavor
 };
 
 /**
+ * @brief Extra attribute to share between call during 2-steps attach.
+ */
+union bf_flavor_attach_attr
+{
+    /** File descriptor of the link created before the existing program has
+     * been detached. */
+    int pre_unload_link_fd;
+};
+
+/**
  * @struct bf_flavor_ops
  *
  * Define a set of operations that can be performed for a specific BPF flavor.
@@ -62,10 +72,48 @@ struct bf_flavor_ops
      *   of the relevant header.
      */
     int (*gen_inline_prologue)(struct bf_program *program);
+
     int (*gen_inline_epilogue)(struct bf_program *program);
     int (*convert_return_code)(enum bf_target_standard_verdict verdict);
-    int (*load_img)(struct bf_program *program, int fd);
-    int (*unload_img)(struct bf_program *program);
+
+    /**
+     * @brief Attach a loaded BPF program to the kernel, before unloading the
+     * out-of-date program.
+     *
+     * There are two callbacks used to attach a program for a given flavor,
+     * which are used to ensure the new program is attached before the existing
+     * program (attached to the same hook) is detached. @ref
+     * attach_prog_pre_unload is called before the existing program is detached
+     * and unloaded, @ref attach_prog_post_unload is called once the existing
+     * program has been detached from the kernel and unloaded.
+     *
+     * This 2-steps process is mandatory for specific flavor (e.g. netfilter),
+     * as we want to avoid downtime, while ensuring a given program (for a
+     * specific hook and interface) will always use the same priority.
+     *
+     * @param program Program to attach.
+     * @param prog_fd File descriptor of the loaded program.
+     * @param attr Extra attribute to share between call during 2-steps attach.
+     * @return 0 on success, negative ernno code on failure.
+     */
+    int (*attach_prog_pre_unload)(struct bf_program *program, int *prog_fd,
+                                  union bf_flavor_attach_attr *attr);
+
+    /**
+     * @brief Attach a loaded BPF program to the kernel, after the out-of-date
+     * program has been detached.
+     *
+     * See @ref attach_prog_pre_unload for details.
+     *
+     * @param program Program to attach.
+     * @param prog_fd File descriptor of the loaded program.
+     * @param attr Extra attribute to share between call during 2-steps attach.
+     * @return 0 on success, negative ernno code on failure.
+     */
+    int (*attach_prog_post_unload)(struct bf_program *program, int *prog_fd,
+                                   union bf_flavor_attach_attr *attr);
+
+    int (*detach_prog)(struct bf_program *program);
 };
 
 /**

@@ -26,15 +26,16 @@
 static int _tc_gen_inline_prologue(struct bf_program *program);
 static int _tc_gen_inline_epilogue(struct bf_program *program);
 static int _tc_convert_return_code(enum bf_target_standard_verdict verdict);
-static int _tc_load_img(struct bf_program *program, int fd);
-static int _tc_unload_img(struct bf_program *program);
+static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
+                                      union bf_flavor_attach_attr *attr);
+static int _tc_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_prologue = _tc_gen_inline_prologue,
     .gen_inline_epilogue = _tc_gen_inline_epilogue,
     .convert_return_code = _tc_convert_return_code,
-    .load_img = _tc_load_img,
-    .unload_img = _tc_unload_img,
+    .attach_prog_pre_unload = _tc_attach_prog_pre_unload,
+    .detach_prog = _tc_detach_prog,
 };
 
 static int _tc_gen_inline_prologue(struct bf_program *program)
@@ -110,27 +111,30 @@ static int _tc_convert_return_code(enum bf_target_standard_verdict verdict)
 }
 
 /**
- * @brief Load the TC BPF bytecode image.
+ * @brief Attach the loaded TC program to the proper hook.
  *
- * @todo Use a configurable interface index.
  * @todo How should priority be handled?
  * @todo This function, as well as many others, is using libbpf. Not all
  *  functions uses libbpf to communicate with the kernel. This should be
  *  unified.
  *
- * @param program Codegen containing the image to load. Can't be NULL, image
+ * @param program Program to attach to the TC hook. Can't be NULL, image
  *  must have been previously generated.
  * @param fd File descriptor of the loaded BPF program. Can't be negative.
+ * @param attr Attribute used for 2-step attach workflow.
  * @return 0 on success, negative error code on failure.
  */
-static int _tc_load_img(struct bf_program *program, int fd)
+static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
+                                      union bf_flavor_attach_attr *attr)
 {
     struct bpf_tc_hook hook = {};
     struct bpf_tc_opts opts = {};
     int r;
 
+    UNUSED(attr);
+
     assert(program);
-    assert(fd >= 0);
+    assert(*prog_fd >= 0);
 
     hook.sz = sizeof(hook);
     hook.ifindex = (int)program->ifindex;
@@ -143,7 +147,7 @@ static int _tc_load_img(struct bf_program *program, int fd)
     opts.sz = sizeof(opts);
     opts.handle = bf_tc_program_handle(program) + 1;
     opts.priority = 1;
-    opts.prog_fd = fd;
+    opts.prog_fd = *prog_fd;
 
     r = bpf_tc_attach(&hook, &opts);
     if (r)
@@ -153,14 +157,12 @@ static int _tc_load_img(struct bf_program *program, int fd)
 }
 
 /**
- * @brief Unload the TC BPF bytecode image.
+ * @brief Detach the TC BPF program.
  *
- * @todo Use a configurable interface index.
- *
- * @param codegen Codegen containing the image to unload. Can't be NULL.
- * @return 0 on success, negative error code on failure.
+ * @param program Attached TC BPF program. Can't be NULL.
+ * @return 0 on success, negative errno value on failure.
  */
-static int _tc_unload_img(struct bf_program *program)
+static int _tc_detach_prog(struct bf_program *program)
 {
     struct bpf_tc_hook hook = {};
     struct bpf_tc_opts opts = {};
