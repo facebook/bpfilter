@@ -260,6 +260,12 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_CODEGEN_FIXUP_END_OF_CHAIN:
             insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
             v = (int)(program->img_size - fixup->insn - 2U);
+            if (v > SHRT_MAX) {
+                // Jump offset is a s16, so we cut short program generation
+                // before the verifier complains.
+                bf_err("Fixup jump is too far away");
+                return -ERANGE;
+            }
             break;
         case BF_CODEGEN_FIXUP_MAP_FD:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
