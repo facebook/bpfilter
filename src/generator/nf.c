@@ -5,11 +5,24 @@
 
 #include "generator/nf.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/if_ether.h>
+
 #include <assert.h>
 #include <errno.h>
+#include <stddef.h>
 
+#include "core/bpf.h"
+#include "core/logger.h"
+#include "core/target.h"
 #include "generator/program.h"
+#include "generator/reg.h"
+#include "generator/stub.h"
 #include "shared/helper.h"
+
+#include "external/filter.h"
+#include "external/nf_bpf_link.h"
 
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
@@ -31,18 +44,71 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
 
 static int _nf_gen_inline_prologue(struct bf_program *program)
 {
-    assert(program);
+    const struct bf_flavor_ops *ops =
+        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
+    int r;
 
-    return -ENOTSUP;
+    assert(program);
+    assert(ops);
+
+    // Copy address of sk_buff into BF_REG_1.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
+                              offsetof(struct bpf_nf_ctx, state)));
+
+    // Copy address of sk_buff into BF_REG_1.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
+                              offsetof(struct nf_hook_state, in)));
+
+    // Copy address of sk_buff into BF_REG_1.
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_1,
+                              offsetof(struct net_device, ifindex)));
+
+    // If the packet is coming from the wrong interface, then quit.
+    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
+                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program, BPF_EXIT_INSN());
+
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
+
+    // Copy address of sk_buff into BF_REG_1.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
+                              offsetof(struct bpf_nf_ctx, skb)));
+
+    // Copy packet length into BF_REG_2.
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, 112));
+
+    // Add size of Ethernet header to BF_REG_2.
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, ETH_HLEN));
+
+    // Store packet length in context.
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_2,
+                              offsetof(struct bf_program_context, pkt_size)));
+
+    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
+    if (r)
+        return r;
+
+    // BPF_PROG_TYPE_NETFILTER's skb is stripped from the Ethernet header, so
+    // we don't get it.
+
+    r = bf_stub_get_l3_ipv4_hdr(program);
+    if (r)
+        return r;
+
+    r = bf_stub_get_l4_hdr(program);
+    if (r)
+        return r;
+
+    return 0;
 }
 
 static int _nf_gen_inline_epilogue(struct bf_program *program)
 {
     UNUSED(program);
 
-    EMIT(program, BPF_EXIT_INSN());
-
-    return -ENOTSUP;
+    return 0;
 }
 
 /**
@@ -67,9 +133,19 @@ static int _nf_convert_return_code(enum bf_target_standard_verdict verdict)
 static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr)
 {
+    int r;
+
     assert(program);
     assert(*prog_fd >= 0);
     assert(attr);
+
+    r = bf_bpf_nf_link_create(*prog_fd, program->hook, 1,
+                              &attr->pre_unload_link_fd);
+    if (r) {
+        return bf_err_code(r,
+                           "failed to create Netfilter link before unload: %s",
+                           bf_strerror(errno));
+    }
 
     return 0;
 }
@@ -77,10 +153,24 @@ static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
 static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
                                        union bf_flavor_attach_attr *attr)
 {
+    _cleanup_close_ int post_unload_fd = -1;
+    _cleanup_close_ int pre_unload_fd = attr->pre_unload_link_fd;
+    int r;
+
     assert(program);
     assert(*prog_fd >= 0);
 
-    UNUSED(attr);
+    r = bf_bpf_nf_link_create(*prog_fd, program->hook, program->ifindex,
+                              &post_unload_fd);
+    if (r) {
+        return bf_err_code(r,
+                           "failed to create Netfilter link before unload: %s",
+                           bf_strerror(errno));
+    }
+
+    closep(prog_fd);
+    *prog_fd = post_unload_fd;
+    post_unload_fd = -1;
 
     return 0;
 }
@@ -93,9 +183,18 @@ static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
  */
 static int _nf_detach_prog(struct bf_program *program)
 {
+    int fd;
+    int r;
+
     assert(program);
 
-    return 0;
+    r = bf_bpf_obj_get(program->prog_pin_path, &fd);
+    if (r < 0) {
+        return bf_err_code(r, "failed to open pinned object at %s: %s)",
+                           program->prog_pin_path, bf_strerror(r));
+    }
+
+    return bf_bpf_link_detach(fd);
 }
 
 enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
