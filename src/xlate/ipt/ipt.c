@@ -402,12 +402,6 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
             first_rule = ipt_get_next_rule(first_rule);
         }
 
-        if (i != NF_INET_LOCAL_IN && i != NF_INET_LOCAL_OUT) {
-            bf_warn(
-                "discarding all chains which are neither NF_INET_LOCAL_IN nor NF_INET_LOCAL_OUT");
-            continue;
-        }
-
         bf_dbg("created codegen for %s::%s", bf_front_to_str(codegen->front),
                bf_hook_to_str(codegen->hook));
 
@@ -571,9 +565,8 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
         struct bf_list_node *rule_node = NULL;
         enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
 
-        if (i != NF_INET_LOCAL_IN && i != NF_INET_LOCAL_OUT) {
-            bf_warn(
-                "skipping all chains which are neither NF_INET_LOCAL_IN nor NF_INET_LOCAL_OUT");
+        if (!(_cache->valid_hooks & (1 << i))) {
+            bf_dbg("ipt hook %d is not enabled, skipping", i);
             continue;
         }
 
