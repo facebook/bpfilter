@@ -472,7 +472,6 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
 
     assert(program);
 
-    /// @todo: remove conditional on num_rules
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
                           program->num_rules_total, &_fd);
