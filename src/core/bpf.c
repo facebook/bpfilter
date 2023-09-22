@@ -10,7 +10,6 @@
 #include <linux/bpf.h>
 #include <linux/netfilter.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -54,9 +53,9 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     };
     int r;
 
-    assert(name);
-    assert(img);
-    assert(fd);
+    bf_assert(name);
+    bf_assert(img);
+    bf_assert(fd);
 
     if (bf_opts_verbose()) {
         log_buf = malloc(1 << bf_opts_bpf_log_buf_len_pow());
@@ -111,8 +110,8 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
         .value = (uint64_t)value,
     };
 
-    assert(key);
-    assert(value);
+    bf_assert(key);
+    bf_assert(value);
 
     return _bpf(BPF_MAP_LOOKUP_ELEM, &attr);
 }
@@ -134,8 +133,8 @@ int bf_bpf_obj_get(const char *path, int *fd)
     };
     int r;
 
-    assert(path);
-    assert(fd);
+    bf_assert(path);
+    bf_assert(fd);
 
     r = _bpf(BPF_OBJ_GET, &attr);
     if (r < 0)

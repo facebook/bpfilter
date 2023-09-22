@@ -12,7 +12,6 @@
 #include <linux/if_ether.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +38,7 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
 
-    assert(ifindex);
+    bf_assert(ifindex);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
@@ -94,8 +93,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    assert(program);
-    assert(marsh);
+    bf_assert(program);
+    bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r < 0)
@@ -130,8 +129,8 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     struct bf_marsh *child = NULL;
     int r;
 
-    assert(marsh);
-    assert(program);
+    bf_assert(marsh);
+    bf_assert(program);
 
     if (!(child = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
@@ -224,7 +223,7 @@ int bf_program_grow_img(struct bf_program *program)
     size_t new_cap = _BF_PROGRAM_DEFAULT_IMG_SIZE;
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     if (program->img)
         new_cap = _round_next_power_of_2(program->img_cap << 1);
@@ -245,15 +244,15 @@ static void _bf_program_fixup_insn(struct bpf_insn *insn,
 {
     switch (type) {
     case BF_CODEGEN_FIXUP_INSN_OFF:
-        assert(!insn->off);
+        bf_assert(!insn->off);
         insn->off = v;
         break;
     case BF_CODEGEN_FIXUP_INSN_IMM:
-        assert(!insn->imm);
+        bf_assert(!insn->imm);
         insn->imm = v;
         break;
     default:
-        assert(0);
+        bf_assert(0);
     }
 }
 
@@ -261,8 +260,8 @@ static int _bf_program_fixup(struct bf_program *program,
                              enum bf_fixup_type type,
                              const union bf_fixup_attr *attr)
 {
-    assert(program);
-    assert(type >= 0 && type < _BF_CODEGEN_FIXUP_MAX);
+    bf_assert(program);
+    bf_assert(type >= 0 && type < _BF_CODEGEN_FIXUP_MAX);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         enum bf_fixup_insn_type insn_type = _BF_CODEGEN_FIXUP_INSN_MAX_MAX;
@@ -304,7 +303,7 @@ static int _bf_program_fixup(struct bf_program *program,
         default:
             // Avoid `enumeration value not handled` warning, this should never
             // happen as we check the type is valid before the switch.
-            assert(0);
+            bf_assert(0);
             break;
         }
 
@@ -321,8 +320,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
     const struct bf_target_ops *target_ops;
     int r;
 
-    assert(program);
-    assert(rule);
+    bf_assert(program);
+    bf_assert(rule);
 
     if (!rule->src_mask && !rule->src) {
         if (rule->invflags & IPT_INV_SRCIP)
@@ -450,7 +449,7 @@ static int _bf_program_generate_functions(struct bf_program *program)
 {
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
@@ -459,8 +458,8 @@ static int _bf_program_generate_functions(struct bf_program *program)
         if (fixup->type != BF_CODEGEN_FIXUP_FUNCTION_CALL)
             continue;
 
-        assert(fixup->function >= 0 &&
-               fixup->function < _BF_CODEGEN_FIXUP_FUNCTION_MAX);
+        bf_assert(fixup->function >= 0 &&
+                  fixup->function < _BF_CODEGEN_FIXUP_FUNCTION_MAX);
 
         // Only generate each function once
         if (program->functions_location[fixup->function])
@@ -475,7 +474,7 @@ static int _bf_program_generate_functions(struct bf_program *program)
         default:
             // Avoid `enumeration value not handled` warning, this should never
             // happen as we check the type is valid before the switch.
-            assert(0);
+            bf_assert(0);
             break;
         }
 
@@ -491,7 +490,7 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
     union bf_fixup_attr bf_attr = {};
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
@@ -511,7 +510,7 @@ int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
 {
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     if (program->img_size == program->img_cap) {
         r = bf_program_grow_img(program);
@@ -528,8 +527,8 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
 {
     int r;
 
-    assert(program);
-    assert(name);
+    bf_assert(program);
+    bf_assert(name);
 
     r = bf_btf_get_id(name);
     if (r < 0)
@@ -550,7 +549,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     if (program->img_size == program->img_cap) {
         r = bf_program_grow_img(program);
@@ -586,7 +585,7 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     if (program->img_size == program->img_cap) {
         bf_err("Codegen buffer overflow");
@@ -707,7 +706,7 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
     _cleanup_close_ int prog_fd = -1;
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     r = _bf_program_load_counters_map(program, &map_fd);
     if (r)
@@ -764,7 +763,7 @@ int bf_program_unload(struct bf_program *program)
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     r = ops->detach_prog(program);
     if (r)

@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -35,7 +34,7 @@ struct bf_marsh
  */
 static inline size_t bf_marsh_size(const struct bf_marsh *marsh)
 {
-    assert(marsh);
+    bf_assert(marsh);
 
     return sizeof(struct bf_marsh) + marsh->data_len;
 }
@@ -50,7 +49,7 @@ static inline size_t bf_marsh_size(const struct bf_marsh *marsh)
  */
 static inline void *bf_marsh_end(const struct bf_marsh *marsh)
 {
-    assert(marsh);
+    bf_assert(marsh);
 
     return (void *)(marsh->data + marsh->data_len);
 }
@@ -75,7 +74,7 @@ static inline void *bf_marsh_end(const struct bf_marsh *marsh)
 static inline bool bf_marsh_child_is_valid(const struct bf_marsh *marsh,
                                            const struct bf_marsh *child)
 {
-    assert(marsh);
+    bf_assert(marsh);
 
     if (!child)
         return false;
@@ -109,7 +108,7 @@ static inline bool bf_marsh_child_is_valid(const struct bf_marsh *marsh,
 static inline struct bf_marsh *bf_marsh_next_child(const struct bf_marsh *marsh,
                                                    const struct bf_marsh *child)
 {
-    assert(marsh);
+    bf_assert(marsh);
 
     struct bf_marsh *next_child =
         child ? (struct bf_marsh *)(child->data + child->data_len) :

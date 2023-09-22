@@ -5,15 +5,13 @@
 
 #include "front.h"
 
-#include <assert.h>
-
 #include "shared/helper.h"
 
 extern const struct bf_front_ops ipt_front;
 
 const struct bf_front_ops *bf_front_ops_get(enum bf_front front)
 {
-    assert(0 <= front && front < _BF_FRONT_MAX);
+    bf_assert(0 <= front && front < _BF_FRONT_MAX);
 
     static const struct bf_front_ops *fronts[] = {
         [BF_FRONT_IPT] = &ipt_front,

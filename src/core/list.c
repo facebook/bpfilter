@@ -5,11 +5,8 @@
 
 #include "list.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-
-#include "shared/helper.h"
 
 /**
  * @brief Create a new list node, with the given data.
@@ -23,7 +20,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 {
     bf_list_node *_node;
 
-    assert(node);
+    bf_assert(node);
 
     _node = calloc(1, sizeof(*_node));
     if (!_node)
@@ -46,7 +43,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 static void bf_list_node_free(bf_list_node **node,
                               void (*free_data)(void **data))
 {
-    assert(node);
+    bf_assert(node);
 
     free_data(&(*node)->data);
     free(*node);
@@ -57,9 +54,9 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops)
 {
     _cleanup_bf_list_ bf_list *_list = NULL;
 
-    assert(list);
-    assert(ops);
-    assert(ops->free);
+    bf_assert(list);
+    bf_assert(ops);
+    bf_assert(ops->free);
 
     _list = calloc(1, sizeof(*_list));
     if (!_list)
@@ -74,7 +71,7 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops)
 
 void bf_list_free(bf_list **list)
 {
-    assert(list);
+    bf_assert(list);
 
     if (!*list)
         return;
@@ -86,9 +83,9 @@ void bf_list_free(bf_list **list)
 
 void bf_list_init(bf_list *list, const bf_list_ops *ops)
 {
-    assert(list);
-    assert(ops);
-    assert(ops->free);
+    bf_assert(list);
+    bf_assert(ops);
+    bf_assert(ops->free);
 
     list->len = 0;
     list->head = NULL;
@@ -98,7 +95,7 @@ void bf_list_init(bf_list *list, const bf_list_ops *ops)
 
 void bf_list_clean(bf_list *list)
 {
-    assert(list);
+    bf_assert(list);
 
     bf_list_foreach (list, node)
         bf_list_node_free(&node, list->ops.free);
@@ -113,7 +110,7 @@ int bf_list_add_head(bf_list *list, void *data)
     bf_list_node *node = NULL;
     int r;
 
-    assert(list);
+    bf_assert(list);
 
     r = bf_list_node_new(&node, data);
     if (r < 0)
@@ -138,7 +135,7 @@ int bf_list_add_tail(bf_list *list, void *data)
     bf_list_node *node = NULL;
     int r;
 
-    assert(list);
+    bf_assert(list);
 
     r = bf_list_node_new(&node, data);
     if (r < 0)
@@ -160,8 +157,8 @@ int bf_list_add_tail(bf_list *list, void *data)
 
 void bf_list_delete(bf_list *list, bf_list_node *node)
 {
-    assert(list);
-    assert(node);
+    bf_assert(list);
+    bf_assert(node);
 
     if (list->head == node)
         list->head = node->next;

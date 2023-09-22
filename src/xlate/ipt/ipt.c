@@ -11,7 +11,6 @@
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -150,7 +149,7 @@ const struct bf_front_ops ipt_front = {
  */
 static enum bf_hook _bf_ipt_hook_to_bf_hook(enum nf_inet_hooks ipt_hook)
 {
-    assert(0 <= ipt_hook && ipt_hook <= NF_INET_NUMHOOKS);
+    bf_assert(0 <= ipt_hook && ipt_hook <= NF_INET_NUMHOOKS);
 
     switch (ipt_hook) {
     case NF_INET_PRE_ROUTING:
@@ -171,7 +170,7 @@ static enum bf_hook _bf_ipt_hook_to_bf_hook(enum nf_inet_hooks ipt_hook)
 static enum bf_target_standard_verdict
 _bf_ipt_std_verdict_to_verdict(int verdict)
 {
-    assert(verdict == NF_DROP || verdict == NF_ACCEPT);
+    bf_assert(verdict == NF_DROP || verdict == NF_ACCEPT);
 
     switch (verdict) {
     case NF_ACCEPT:
@@ -179,7 +178,7 @@ _bf_ipt_std_verdict_to_verdict(int verdict)
     case NF_DROP:
         return BF_TARGET_STANDARD_DROP;
     default:
-        assert(0);
+        bf_assert(0);
         return 0;
     };
 }
@@ -193,7 +192,7 @@ static int _bf_ipt_cache_new(struct bf_ipt_cache **cache)
 {
     _cleanup_bf_ipt_cache_ struct bf_ipt_cache *_cache = NULL;
 
-    assert(cache);
+    bf_assert(cache);
 
     _cache = calloc(1, sizeof(*_cache));
     if (!_cache)
@@ -361,8 +360,8 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
     struct ipt_entry *last_rule;
     int r;
 
-    assert(ipt);
-    assert(codegens);
+    bf_assert(ipt);
+    bf_assert(codegens);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         size_t rule_idx = 0;
@@ -427,8 +426,8 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     struct bf_codegen *codegens[_BF_HOOK_MAX] = {};
     int r;
 
-    assert(replace);
-    assert(bf_ipt_replace_size(replace) == len);
+    bf_assert(replace);
+    bf_assert(bf_ipt_replace_size(replace) == len);
 
     bf_ipt_dump_replace(replace, NULL);
 
@@ -495,8 +494,8 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 static int _bf_ipt_set_counters_handler(struct xt_counters_info *counters,
                                         size_t len)
 {
-    assert(counters);
-    assert(bf_xt_counters_info_size(counters) == len);
+    bf_assert(counters);
+    bf_assert(bf_xt_counters_info_size(counters) == len);
 
     return 0;
 }
@@ -506,8 +505,8 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
 {
     struct ipt_getinfo *info = (struct ipt_getinfo *)request->data;
 
-    assert(request);
-    assert(sizeof(*info) == request->data_len);
+    bf_assert(request);
+    bf_assert(sizeof(*info) == request->data_len);
 
     if (!streq(info->name, "filter")) {
         return bf_err_code(
@@ -537,8 +536,8 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
     struct ipt_get_entries *entries;
     int r;
 
-    assert(request);
-    assert(response);
+    bf_assert(request);
+    bf_assert(response);
 
     entries = (struct ipt_get_entries *)request->data;
 
@@ -666,7 +665,8 @@ static int _bf_ipt_teardown(void)
  * @todo Document that request and responses are not const: they will be free
  *  by the daemon once the front is done with them. Hence, the front is free
  *  to modify the requests content.
- * @todo Check assertions: a malformed request could cause the daemon to crash.
+ * @todo Check bf_assertions: a malformed request could cause the daemon to
+ * crash.
  *
  * @param request
  * @param response
@@ -718,7 +718,7 @@ static int _bf_ipt_marsh(struct bf_marsh **marsh)
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    assert(marsh);
+    bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r < 0)
@@ -753,7 +753,7 @@ static int _bf_ipt_unmarsh(struct bf_marsh *marsh)
     struct bf_marsh *child = NULL;
     int r;
 
-    assert(marsh);
+    bf_assert(marsh);
 
     r = _bf_ipt_cache_new(&cache);
     if (r < 0)

@@ -5,7 +5,6 @@
 
 #include "context.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -41,7 +40,7 @@ static int _bf_context_new(struct bf_context **context)
 
     _cleanup_bf_context_ struct bf_context *_context = NULL;
 
-    assert(context);
+    bf_assert(context);
 
     _context = calloc(1, sizeof(struct bf_context));
     if (!_context)
@@ -65,7 +64,7 @@ static int _bf_context_new(struct bf_context **context)
  */
 static void _bf_context_free(struct bf_context **context)
 {
-    assert(context);
+    bf_assert(context);
 
     if (!*context)
         return;
@@ -125,8 +124,8 @@ static int _bf_context_marsh(const struct bf_context *context,
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    assert(context);
-    assert(marsh);
+    bf_assert(context);
+    bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r)
@@ -190,8 +189,8 @@ static int _bf_context_unmarsh(const struct bf_marsh *marsh,
     struct bf_marsh *child;
     int r;
 
-    assert(marsh);
-    assert(context);
+    bf_assert(marsh);
+    bf_assert(context);
 
     child = bf_marsh_next_child(marsh, NULL);
     if (!child)
@@ -232,7 +231,7 @@ static struct bf_codegen *
 _bf_context_get_codegen(const struct bf_context *context, enum bf_hook hook,
                         enum bf_front front)
 {
-    assert(context);
+    bf_assert(context);
 
     bf_context_foreach_codegen_by_hook(codegen, hook)
     {
@@ -250,7 +249,7 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
                                                    enum bf_hook hook,
                                                    enum bf_front front)
 {
-    assert(context);
+    bf_assert(context);
 
     /* Use bf_list_foreach() instead of bf_context-specific functions so the
      * node can be deleted while iterating. */
@@ -275,7 +274,7 @@ static void _bf_context_delete_codegen(struct bf_context *context,
 {
     struct bf_codegen *codegen = NULL;
 
-    assert(context);
+    bf_assert(context);
 
     codegen = _bf_context_take_codegen(context, hook, front);
     bf_codegen_free(&codegen);
@@ -288,8 +287,8 @@ static int _bf_context_set_codegen(struct bf_context *context,
                                    enum bf_hook hook, enum bf_front front,
                                    struct bf_codegen *codegen)
 {
-    assert(context);
-    assert(codegen && codegen->hook == hook && codegen->front == front);
+    bf_assert(context);
+    bf_assert(codegen && codegen->hook == hook && codegen->front == front);
 
     if (_bf_context_get_codegen(context, hook, front))
         return bf_err_code(-EEXIST, "codegen already exists in context");
@@ -304,7 +303,7 @@ static int _bf_context_update_codegen(struct bf_context *context,
                                       enum bf_hook hook, enum bf_front front,
                                       struct bf_codegen *codegen)
 {
-    assert(context);
+    bf_assert(context);
 
     _bf_context_delete_codegen(context, hook, front);
 
@@ -331,7 +330,7 @@ _bf_context_get_next_codegen_node(const struct bf_context *context,
     enum bf_hook i =
         node ? ((struct bf_codegen *)bf_list_node_get_data(node))->hook : 0;
 
-    assert(context);
+    bf_assert(context);
 
     for (; i < _BF_HOOK_MAX; ++i) {
         node = _bf_context_get_next_codegen_node_by_hook(context, node, i);
@@ -362,7 +361,7 @@ _bf_context_get_next_codegen_node_by_hook(const struct bf_context *context,
                                           const struct bf_list_node *node,
                                           enum bf_hook hook)
 {
-    assert(context);
+    bf_assert(context);
 
     if (!node)
         return bf_list_get_head(&context->hooks[hook]);
@@ -391,7 +390,7 @@ _bf_context_get_next_codegen_node_by_fe(const struct bf_context *context,
                                         const struct bf_list_node *node,
                                         enum bf_front front)
 {
-    assert(context);
+    bf_assert(context);
 
     while ((node = _bf_context_get_next_codegen_node(context, node))) {
         if (((struct bf_codegen *)bf_list_node_get_data(node))->front == front)
@@ -406,7 +405,7 @@ int bf_context_setup(void)
     _cleanup_bf_context_ struct bf_context *_context = NULL;
     int r;
 
-    assert(!_context);
+    bf_assert(!_context);
 
     r = _bf_context_new(&_context);
     if (r)
@@ -433,7 +432,7 @@ int bf_context_save(struct bf_marsh **marsh)
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    assert(marsh);
+    bf_assert(marsh);
 
     r = _bf_context_marsh(_global_context, &_marsh);
     if (r)
@@ -449,7 +448,7 @@ int bf_context_load(const struct bf_marsh *marsh)
     _cleanup_bf_context_ struct bf_context *_context = NULL;
     int r;
 
-    assert(marsh);
+    bf_assert(marsh);
 
     r = _bf_context_unmarsh(marsh, &_context);
     if (r)
@@ -496,7 +495,7 @@ int bf_context_update_codegen(enum bf_hook hook, enum bf_front front,
 
 struct bf_codegen *bf_context_get_next_codegen(const void **iter)
 {
-    assert(iter);
+    bf_assert(iter);
 
     *iter = _bf_context_get_next_codegen_node(_global_context, *iter);
 
@@ -506,7 +505,7 @@ struct bf_codegen *bf_context_get_next_codegen(const void **iter)
 struct bf_codegen *bf_context_get_next_codegen_by_hook(const void **iter,
                                                        enum bf_hook hook)
 {
-    assert(iter);
+    bf_assert(iter);
 
     *iter =
         _bf_context_get_next_codegen_node_by_hook(_global_context, *iter, hook);
@@ -517,7 +516,7 @@ struct bf_codegen *bf_context_get_next_codegen_by_hook(const void **iter,
 struct bf_codegen *bf_context_get_next_codegen_by_fe(const void **iter,
                                                      enum bf_front front)
 {
-    assert(iter);
+    bf_assert(iter);
 
     *iter =
         _bf_context_get_next_codegen_node_by_fe(_global_context, *iter, front);

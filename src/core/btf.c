@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "core/logger.h"
+#include "shared/helper.h"
 
 static struct btf *_btf = NULL;
 
@@ -31,7 +32,7 @@ int bf_btf_get_id(const char *name)
 {
     int id;
 
-    assert(name);
+    bf_assert(name);
 
     id = btf__find_by_name(_btf, name);
     if (id < 0)

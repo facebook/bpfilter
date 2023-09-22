@@ -8,7 +8,6 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 
-#include <assert.h>
 #include <stdio.h>
 
 #include "core/dump.h"
@@ -35,7 +34,7 @@ static const char *_bpf_reg(unsigned char reg)
         [BPF_REG_10] = "BPF_REG_10",
     };
 
-    assert(reg < __MAX_BPF_REG);
+    bf_assert(reg < __MAX_BPF_REG);
     static_assert(ARRAY_SIZE(regs) == __MAX_BPF_REG);
 
     return regs[reg];
@@ -51,7 +50,7 @@ static const char *_bf_op(const struct bpf_insn *insn)
 
     unsigned code = BF_INSN_CODE(insn) >> 4;
 
-    assert(code < ARRAY_SIZE(ops));
+    bf_assert(code < ARRAY_SIZE(ops));
 
     return ops[code];
 }
@@ -59,8 +58,8 @@ static const char *_bf_op(const struct bpf_insn *insn)
 static const char *_bf_src(const struct bpf_insn *insn,
                            char (*imm_buf)[BF_IMM_BUF_LEN])
 {
-    assert(insn);
-    assert(imm_buf);
+    bf_assert(insn);
+    bf_assert(imm_buf);
 
     if (BF_INSN_SRC(insn))
         return _bpf_reg(insn->src_reg);
@@ -128,7 +127,7 @@ static const char *_bf_jmp_op(const struct bpf_insn *insn)
 
     int code = BF_INSN_CODE(insn) >> 4;
 
-    assert(0 <= code && code < (int)ARRAY_SIZE(ops));
+    bf_assert(0 <= code && code < (int)ARRAY_SIZE(ops));
 
     return ops[code];
 }
@@ -152,8 +151,8 @@ static void _bf_program_dump_jmp_insn(const struct bf_program *program,
     const struct bpf_insn *insn = &program->img[*insn_idx];
     const char *size = BF_INSN_CLS(insn) == BPF_ALU ? "" : "(u32)";
 
-    assert(program);
-    assert(insn_idx);
+    bf_assert(program);
+    bf_assert(insn_idx);
 
     switch (BF_INSN_CODE(insn)) {
     case BPF_JA:
@@ -209,7 +208,7 @@ static const char *_bpf_ldst_size(const struct bpf_insn *insn)
 
     unsigned char size = BF_INSN_SIZE(insn) >> 3;
 
-    assert(size < (int)ARRAY_SIZE(sizes));
+    bf_assert(size < (int)ARRAY_SIZE(sizes));
 
     return sizes[size];
 }
@@ -222,18 +221,18 @@ static void _bf_program_dump_imm64_insn(const struct bf_program *program,
     const struct bpf_insn *insn = &program->img[*insn_idx];
     const struct bpf_insn *next_insn;
 
-    assert(program);
-    assert(insn_idx);
-    assert(prefix);
+    bf_assert(program);
+    bf_assert(insn_idx);
+    bf_assert(prefix);
 
-    assert((*insn_idx + 1) < program->img_size);
+    bf_assert((*insn_idx + 1) < program->img_size);
 
     next_insn = &program->img[*insn_idx + 1];
 
     (*insn_idx)++; // Skip the next one as this is a 64 bits immediate value
                    // instruction.
 
-    assert(insn->code == (BPF_IMM | BPF_DW | BPF_LD));
+    bf_assert(insn->code == (BPF_IMM | BPF_DW | BPF_LD));
 
     switch (insn->src_reg) {
     case 0x00:

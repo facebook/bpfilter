@@ -3,7 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <assert.h>
 #include <bits/types/sig_atomic_t.h>
 #include <errno.h>
 #include <signal.h>
@@ -115,7 +114,7 @@ static int _bf_load(const char *path)
     size_t len;
     int r;
 
-    assert(path);
+    bf_assert(path);
 
     if (access(context_path, F_OK)) {
         return bf_info_code(errno, "failed test access to context file: %s",
@@ -178,7 +177,7 @@ static int _bf_save(const char *path)
     _cleanup_free_ struct bf_marsh *marsh = NULL;
     int r;
 
-    assert(path);
+    bf_assert(path);
 
     r = bf_marsh_new(&marsh, NULL, 0);
     if (r < 0)
@@ -331,8 +330,8 @@ static int _process_request(struct bf_request *request,
     const struct bf_front_ops *ops;
     int r;
 
-    assert(request);
-    assert(response);
+    bf_assert(request);
+    bf_assert(response);
 
     ops = bf_front_ops_get(request->front);
     r = ops->request_handler(request, response);

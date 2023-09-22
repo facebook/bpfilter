@@ -5,7 +5,6 @@
 
 #include "fixup.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -23,7 +22,7 @@ const char *bf_fixup_type_to_str(enum bf_fixup_type type)
         [BF_CODEGEN_FIXUP_FUNCTION_CALL] = "BF_CODEGEN_FIXUP_FUNCTION_CALL",
     };
 
-    assert(type >= 0 && type < _BF_CODEGEN_FIXUP_MAX);
+    bf_assert(type >= 0 && type < _BF_CODEGEN_FIXUP_MAX);
     static_assert(ARRAY_SIZE(str) == _BF_CODEGEN_FIXUP_MAX);
 
     return str[type];
@@ -36,7 +35,7 @@ const char *bf_fixup_function_to_str(enum bf_fixup_function function)
             "BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER",
     };
 
-    assert(function >= 0 && function < _BF_CODEGEN_FIXUP_FUNCTION_MAX);
+    bf_assert(function >= 0 && function < _BF_CODEGEN_FIXUP_FUNCTION_MAX);
     static_assert(ARRAY_SIZE(str) == _BF_CODEGEN_FIXUP_FUNCTION_MAX);
 
     return str[function];
@@ -44,7 +43,7 @@ const char *bf_fixup_function_to_str(enum bf_fixup_function function)
 
 int bf_fixup_new(struct bf_fixup **fixup)
 {
-    assert(fixup);
+    bf_assert(fixup);
 
     *fixup = calloc(1, sizeof(struct bf_fixup));
     if (!fixup)
@@ -55,7 +54,7 @@ int bf_fixup_new(struct bf_fixup **fixup)
 
 void bf_fixup_free(struct bf_fixup **fixup)
 {
-    assert(fixup);
+    bf_assert(fixup);
 
     if (!*fixup)
         return;

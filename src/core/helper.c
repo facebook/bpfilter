@@ -5,7 +5,6 @@
 
 #include "core/helper.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -22,9 +21,9 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     size_t _len;
     ssize_t r;
 
-    assert(path);
-    assert(buf);
-    assert(len);
+    bf_assert(path);
+    bf_assert(buf);
+    bf_assert(len);
 
     fd = open(path, O_RDONLY);
     if (fd < 0)
@@ -56,8 +55,8 @@ int bf_write_file(const char *path, const void *buf, size_t len)
     _cleanup_close_ int fd = -1;
     ssize_t r;
 
-    assert(path);
-    assert(buf);
+    bf_assert(path);
+    bf_assert(buf);
 
     fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, 0644);
     if (!fd)

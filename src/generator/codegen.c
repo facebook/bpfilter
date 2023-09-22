@@ -7,7 +7,6 @@
 
 #include <net/if.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -27,7 +26,7 @@ int bf_codegen_new(struct bf_codegen **codegen)
 {
     _cleanup_bf_codegen_ struct bf_codegen *_codegen = NULL;
 
-    assert(codegen);
+    bf_assert(codegen);
 
     _codegen = calloc(1, sizeof(*_codegen));
     if (!_codegen)
@@ -46,7 +45,7 @@ int bf_codegen_new(struct bf_codegen **codegen)
 
 void bf_codegen_free(struct bf_codegen **codegen)
 {
-    assert(codegen);
+    bf_assert(codegen);
 
     if (!*codegen)
         return;
@@ -64,7 +63,7 @@ int bf_codegen_generate(struct bf_codegen *codegen)
     struct if_nameindex *if_ni;
     struct if_nameindex *it;
 
-    assert(codegen);
+    bf_assert(codegen);
 
     if_ni = if_nameindex();
     if (!if_ni)
@@ -130,7 +129,7 @@ int bf_codegen_unload(struct bf_codegen *codegen)
 {
     int r;
 
-    assert(codegen);
+    bf_assert(codegen);
 
     bf_list_foreach (&codegen->programs, program_node) {
         struct bf_program *program = bf_list_node_get_data(program_node);
@@ -218,8 +217,8 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
     struct bf_marsh *child = NULL;
     int r;
 
-    assert(marsh);
-    assert(codegen);
+    bf_assert(marsh);
+    bf_assert(codegen);
 
     r = bf_codegen_new(&_codegen);
     if (r)
