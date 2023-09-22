@@ -8,7 +8,6 @@
 #include <linux/pkt_cls.h>
 
 #include <arpa/inet.h>
-#include <assert.h>
 #include <bpf/libbpf.h>
 #include <errno.h>
 
@@ -42,7 +41,7 @@ static int _tc_gen_inline_prologue(struct bf_program *program)
 {
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
     if (r)
@@ -98,7 +97,7 @@ static int _tc_gen_inline_epilogue(struct bf_program *program)
  */
 static int _tc_convert_return_code(enum bf_target_standard_verdict verdict)
 {
-    assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
 
     static const int verdicts[] = {
         [BF_TARGET_STANDARD_ACCEPT] = TC_ACT_OK,
@@ -133,8 +132,8 @@ static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
 
     UNUSED(attr);
 
-    assert(program);
-    assert(*prog_fd >= 0);
+    bf_assert(program);
+    bf_assert(*prog_fd >= 0);
 
     hook.sz = sizeof(hook);
     hook.ifindex = (int)program->ifindex;
@@ -168,7 +167,7 @@ static int _tc_detach_prog(struct bf_program *program)
     struct bpf_tc_opts opts = {};
     int r;
 
-    assert(program);
+    bf_assert(program);
 
     hook.sz = sizeof(hook);
     hook.ifindex = (int)program->ifindex;
@@ -190,7 +189,7 @@ static int _tc_detach_prog(struct bf_program *program)
 
 enum bpf_tc_attach_point bf_hook_to_tc_hook(enum bf_hook hook)
 {
-    assert(hook == BF_HOOK_TC_INGRESS || hook == BF_HOOK_TC_EGRESS);
+    bf_assert(hook == BF_HOOK_TC_INGRESS || hook == BF_HOOK_TC_EGRESS);
 
     enum bpf_tc_attach_point hooks[] = {
         [BF_HOOK_TC_INGRESS] = BPF_TC_INGRESS,

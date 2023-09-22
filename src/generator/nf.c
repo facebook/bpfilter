@@ -9,7 +9,6 @@
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stddef.h>
 
@@ -48,8 +47,8 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     int r;
 
-    assert(program);
-    assert(ops);
+    bf_assert(program);
+    bf_assert(ops);
 
     // Copy address of sk_buff into BF_REG_1.
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
@@ -118,7 +117,7 @@ static int _nf_gen_inline_epilogue(struct bf_program *program)
  */
 static int _nf_convert_return_code(enum bf_target_standard_verdict verdict)
 {
-    assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
 
     static const int verdicts[] = {
         [BF_TARGET_STANDARD_ACCEPT] = NF_ACCEPT,
@@ -135,9 +134,9 @@ static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
 {
     int r;
 
-    assert(program);
-    assert(*prog_fd >= 0);
-    assert(attr);
+    bf_assert(program);
+    bf_assert(*prog_fd >= 0);
+    bf_assert(attr);
 
     r = bf_bpf_nf_link_create(*prog_fd, program->hook, 1,
                               &attr->pre_unload_link_fd);
@@ -157,8 +156,8 @@ static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
     _cleanup_close_ int pre_unload_fd = attr->pre_unload_link_fd;
     int r;
 
-    assert(program);
-    assert(*prog_fd >= 0);
+    bf_assert(program);
+    bf_assert(*prog_fd >= 0);
 
     r = bf_bpf_nf_link_create(*prog_fd, program->hook, program->ifindex,
                               &post_unload_fd);
@@ -190,7 +189,8 @@ static int _nf_detach_prog(struct bf_program *program)
 
 enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
 {
-    assert(hook >= BF_HOOK_IPT_PRE_ROUTING || hook <= BF_HOOK_IPT_POST_ROUTING);
+    bf_assert(hook >= BF_HOOK_IPT_PRE_ROUTING ||
+              hook <= BF_HOOK_IPT_POST_ROUTING);
 
     enum nf_inet_hooks hooks[] = {
         [BF_HOOK_IPT_PRE_ROUTING] = NF_INET_PRE_ROUTING,

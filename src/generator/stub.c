@@ -8,18 +8,18 @@
 #include <linux/bpf.h>
 
 #include <arpa/inet.h>
-#include <assert.h>
 
 #include "core/flavor.h"
 #include "generator/program.h"
+#include "shared/helper.h"
 
 #include "external/filter.h"
 
 int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
                      size_t size)
 {
-    assert(program);
-    assert(!(size % 8));
+    bf_assert(program);
+    bf_assert(!(size % 8));
 
     for (size_t i = 0; i < size; i += 8)
         EMIT(program, BPF_ST_MEM(BPF_DW, addr_reg, i, 0));
@@ -32,8 +32,8 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
 
-    assert(program);
-    assert(ops);
+    bf_assert(program);
+    bf_assert(ops);
 
     // BF_ARG_1: address of the skb.
     if (BF_ARG_1 != skb_reg)
@@ -65,8 +65,8 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
 
-    assert(program);
-    assert(ops);
+    bf_assert(program);
+    bf_assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -115,8 +115,8 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
 
-    assert(program);
-    assert(ops);
+    bf_assert(program);
+    bf_assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -180,8 +180,8 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
     const struct bf_flavor_ops *ops =
         bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
 
-    assert(program);
-    assert(ops);
+    bf_assert(program);
+    bf_assert(ops);
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));

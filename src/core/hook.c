@@ -7,8 +7,6 @@
 
 #include <linux/bpf.h>
 
-#include <assert.h>
-
 #include "shared/helper.h"
 
 const char *bf_hook_to_str(enum bf_hook hook)
@@ -23,7 +21,7 @@ const char *bf_hook_to_str(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
     };
 
-    assert(0 <= hook && hook < _BF_HOOK_MAX);
+    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
     static_assert(ARRAY_SIZE(hooks_str) == _BF_HOOK_MAX,
                   "missing entries in hooks_str array");
 
@@ -42,7 +40,7 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BPF_PROG_TYPE_SCHED_CLS,
     };
 
-    assert(0 <= hook && hook < _BF_HOOK_MAX);
+    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
     static_assert(ARRAY_SIZE(prog_type) == _BF_HOOK_MAX,
                   "missing entries in prog_type array");
 
@@ -61,7 +59,7 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
     };
 
-    assert(0 <= hook && hook < _BF_HOOK_MAX);
+    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
     static_assert(ARRAY_SIZE(flavors) == _BF_HOOK_MAX,
                   "missing entries in flavors array");
 
@@ -80,7 +78,7 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = 0,
     };
 
-    assert(0 <= hook && hook < _BF_HOOK_MAX);
+    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
     static_assert(ARRAY_SIZE(hooks) == _BF_HOOK_MAX,
                   "missing entries in hooks array");
 

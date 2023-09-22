@@ -5,8 +5,6 @@
 
 #include "core/flavor.h"
 
-#include <assert.h>
-
 #include "generator/nf.h"
 #include "generator/tc.h"
 #include "shared/helper.h"
@@ -18,7 +16,7 @@ const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
     };
 
-    assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
+    bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
     static_assert(ARRAY_SIZE(flavor_ops) == _BF_FLAVOR_MAX,
                   "missing entries in fronts array");
 
@@ -32,7 +30,7 @@ const char *bf_flavor_to_str(enum bf_flavor flavor)
         [BF_FLAVOR_NF] = "BF_FLAVOR_NF",
     };
 
-    assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
+    bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
     static_assert(ARRAY_SIZE(flavor_str) == _BF_FLAVOR_MAX,
                   "missing entries in flavor_str array");
 

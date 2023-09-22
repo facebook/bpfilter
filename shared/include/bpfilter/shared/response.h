@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include <assert.h>
 #include <sys/types.h>
+
+#include "shared/helper.h"
 
 #define _cleanup_bf_response_ __attribute__((cleanup(bf_response_free)))
 
@@ -104,7 +105,7 @@ int bf_response_copy(struct bf_response **dest, const struct bf_response *src);
  */
 static inline size_t bf_response_size(const struct bf_response *response)
 {
-    assert(response);
+    bf_assert(response);
 
     return sizeof(struct bf_response) +
            (response->type == BF_RES_SUCCESS ? response->data_len : 0);

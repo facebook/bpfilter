@@ -5,7 +5,6 @@
 
 #include "shared/response.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,8 +16,8 @@ int bf_response_new_success(struct bf_response **response, const char *data,
 {
     _cleanup_bf_response_ struct bf_response *_response = NULL;
 
-    assert(response);
-    assert(!(!!data ^ !!data_len));
+    bf_assert(response);
+    bf_assert(!(!!data ^ !!data_len));
 
     _response = calloc(1, sizeof(*_response) + data_len);
     if (!_response)
@@ -37,7 +36,7 @@ int bf_response_new_failure(struct bf_response **response, int error)
 {
     _cleanup_bf_response_ struct bf_response *_response = NULL;
 
-    assert(response);
+    bf_assert(response);
 
     _response = calloc(1, sizeof(*_response));
     if (!_response)
@@ -61,8 +60,8 @@ int bf_response_copy(struct bf_response **dest, const struct bf_response *src)
 {
     _cleanup_bf_response_ struct bf_response *_response = NULL;
 
-    assert(dest);
-    assert(src);
+    bf_assert(dest);
+    bf_assert(src);
 
     _response = bf_memdup(src, bf_response_size(src));
     if (!_response)

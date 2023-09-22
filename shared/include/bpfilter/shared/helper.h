@@ -18,6 +18,10 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_packed __attribute__((packed))
 #define bf_aligned(x) __attribute__((aligned(x)))
 
+#ifndef bf_assert
+#define bf_assert(x) assert(x)
+#endif
+
 /**
  * @brief Mark a variable as unused, to prevent the compiler from emitting a
  * warning.
@@ -144,8 +148,8 @@ static inline void *bf_memdup(const void *src, size_t len)
  */
 static inline void *bf_memcpy(void *dst, const void *src, size_t len)
 {
-    assert(dst);
-    assert(src ? 1 : len == 0);
+    bf_assert(dst);
+    bf_assert(src ? 1 : len == 0);
 
     if (!src || !len)
         return dst;
@@ -167,7 +171,7 @@ static inline int bf_realloc(void **ptr, size_t size)
 {
     _cleanup_free_ void *_ptr;
 
-    assert(ptr);
+    bf_assert(ptr);
 
     _ptr = realloc(*ptr, size);
     if (!_ptr)

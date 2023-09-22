@@ -5,9 +5,10 @@
 
 #pragma once
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#include "shared/helper.h"
 
 /* This has to be defined here, otherwise struct bf_list_node definition is
  * self-referencing... */
@@ -157,7 +158,7 @@ void bf_list_clean(bf_list *list);
  */
 static inline size_t bf_list_size(const bf_list *list)
 {
-    assert(list);
+    bf_assert(list);
     return list->len;
 }
 
@@ -169,7 +170,7 @@ static inline size_t bf_list_size(const bf_list *list)
  */
 static inline bool bf_list_empty(bf_list *list)
 {
-    assert(list);
+    bf_assert(list);
     return list->len == 0;
 }
 
@@ -183,8 +184,8 @@ static inline bool bf_list_empty(bf_list *list)
 static inline bool bf_list_is_head(const bf_list *list,
                                    const bf_list_node *node)
 {
-    assert(list);
-    assert(node);
+    bf_assert(list);
+    bf_assert(node);
 
     return node == list->head;
 }
@@ -199,8 +200,8 @@ static inline bool bf_list_is_head(const bf_list *list,
 static inline bool bf_list_is_tail(const bf_list *list,
                                    const bf_list_node *node)
 {
-    assert(list);
-    assert(node);
+    bf_assert(list);
+    bf_assert(node);
 
     return node == list->tail;
 }
@@ -248,7 +249,7 @@ void bf_list_delete(bf_list *list, bf_list_node *node);
  */
 static inline bf_list_node *bf_list_get_head(const bf_list *list)
 {
-    assert(list);
+    bf_assert(list);
     return list->head;
 }
 
@@ -263,7 +264,7 @@ static inline bf_list_node *bf_list_get_head(const bf_list *list)
  */
 static inline bf_list_node *bf_list_get_tail(const bf_list *list)
 {
-    assert(list);
+    bf_assert(list);
     return list->tail;
 }
 
@@ -275,7 +276,7 @@ static inline bf_list_node *bf_list_get_tail(const bf_list *list)
  */
 static inline bf_list_node *bf_list_node_next(const bf_list_node *node)
 {
-    assert(node);
+    bf_assert(node);
     return node->next;
 }
 
@@ -287,7 +288,7 @@ static inline bf_list_node *bf_list_node_next(const bf_list_node *node)
  */
 static inline bf_list_node *bf_list_node_prev(const bf_list_node *node)
 {
-    assert(node);
+    bf_assert(node);
     return node->prev;
 }
 
@@ -303,7 +304,7 @@ static inline bf_list_node *bf_list_node_prev(const bf_list_node *node)
  */
 static inline void *bf_list_node_get_data(const bf_list_node *node)
 {
-    assert(node);
+    bf_assert(node);
     return node->data;
 }
 
@@ -320,7 +321,7 @@ static inline void *bf_list_node_take_data(bf_list_node *node)
 {
     void *data;
 
-    assert(node);
+    bf_assert(node);
 
     data = node->data;
     node->data = NULL;

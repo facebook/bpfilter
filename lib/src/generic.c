@@ -5,7 +5,6 @@
 
 #include "shared/generic.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,8 +19,8 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
     struct sockaddr_un addr = {};
     int r;
 
-    assert(request);
-    assert(response);
+    bf_assert(request);
+    bf_assert(response);
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) {

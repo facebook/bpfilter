@@ -200,7 +200,7 @@ TestAssert(src_core_marsh, bf_marsh_child_is_valid, (NULL, NOT_NULL));
 TestAssertManual(src_core_marsh, bf_marsh_add_child_obj)
 {
     // TestAssert() can't be used here because bf_marsh_add_child_obj() will
-    // call assert() on *marsh, so it needs to point to valid memory.
+    // call bf_assert() on *marsh, so it needs to point to valid memory.
 
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
@@ -211,7 +211,7 @@ TestAssertManual(src_core_marsh, bf_marsh_add_child_obj)
 TestAssertManual(src_core_marsh, bf_marsh_add_child_raw)
 {
     // TestAssert() can't be used here because bf_marsh_add_child_obj() will
-    // call assert() on *marsh, so it needs to point to valid memory.
+    // call bf_assert() on *marsh, so it needs to point to valid memory.
 
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 

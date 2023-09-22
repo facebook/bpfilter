@@ -5,7 +5,6 @@
 
 #include "shared/request.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,8 +17,8 @@ int bf_request_new(struct bf_request **request, const void *data,
 {
     _cleanup_bf_request_ struct bf_request *_request = NULL;
 
-    assert(request);
-    assert(data);
+    bf_assert(request);
+    bf_assert(data);
 
     _request = calloc(1, sizeof(*_request) + data_len);
     if (!_request)
@@ -37,8 +36,8 @@ int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
 {
     _cleanup_bf_request_ struct bf_request *_request = NULL;
 
-    assert(dest);
-    assert(src);
+    bf_assert(dest);
+    bf_assert(src);
 
     _request = bf_memdup(src, bf_request_size(src));
     if (!_request)

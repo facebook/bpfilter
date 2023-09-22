@@ -3,7 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@ static ssize_t _bf_recv_in_buff(int fd, void *buf, size_t buf_len)
     ssize_t bytes_read = 0;
     ssize_t r;
 
-    assert(buf);
+    bf_assert(buf);
 
     do {
         /// @todo Add a timeout to the socket to prevent blocking forever.
@@ -41,7 +40,7 @@ static ssize_t _bf_send_from_buff(int fd, void *buf, size_t buf_len)
     ssize_t bytes_sent = 0;
     ssize_t r;
 
-    assert(buf);
+    bf_assert(buf);
 
     while ((size_t)bytes_sent < buf_len) {
         r = write(fd, buf + bytes_sent, buf_len - bytes_sent);
@@ -60,7 +59,7 @@ int bf_send_request(int fd, const struct bf_request *request)
 {
     ssize_t r;
 
-    assert(request);
+    bf_assert(request);
 
     r = _bf_send_from_buff(fd, (void *)request, bf_request_size(request));
     if (r < 0) {
@@ -84,7 +83,7 @@ int bf_recv_request(int fd, struct bf_request **request)
     _cleanup_bf_request_ struct bf_request *_request = NULL;
     ssize_t r;
 
-    assert(request);
+    bf_assert(request);
 
     r = _bf_recv_in_buff(fd, &req, sizeof(req));
     if (r < 0)
@@ -125,7 +124,7 @@ int bf_send_response(int fd, struct bf_response *response)
 {
     ssize_t r;
 
-    assert(response);
+    bf_assert(response);
 
     r = _bf_send_from_buff(fd, (void *)response, bf_response_size(response));
     if (r < 0) {
@@ -149,7 +148,7 @@ int bf_recv_response(int fd, struct bf_response **response)
     _cleanup_bf_response_ struct bf_response *_response = NULL;
     ssize_t r;
 
-    assert(response);
+    bf_assert(response);
 
     r = _bf_recv_in_buff(fd, &res, sizeof(res));
     if (r < 0)

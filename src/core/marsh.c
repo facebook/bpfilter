@@ -5,7 +5,6 @@
 
 #include "core/marsh.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,8 +13,8 @@ int bf_marsh_new(struct bf_marsh **marsh, const void *data, size_t data_len)
 {
     struct bf_marsh *_marsh = NULL;
 
-    assert(marsh);
-    assert(!data ? !data_len : 1);
+    bf_assert(marsh);
+    bf_assert(!data ? !data_len : 1);
 
     _marsh = malloc(sizeof(struct bf_marsh) + data_len);
     if (!_marsh)
@@ -31,7 +30,7 @@ int bf_marsh_new(struct bf_marsh **marsh, const void *data, size_t data_len)
 
 void bf_marsh_free(struct bf_marsh **marsh)
 {
-    assert(marsh);
+    bf_assert(marsh);
 
     if (!*marsh)
         return;
@@ -45,8 +44,8 @@ int bf_marsh_add_child_obj(struct bf_marsh **marsh, const struct bf_marsh *obj)
     _cleanup_bf_marsh_ struct bf_marsh *new = NULL;
     size_t new_data_len;
 
-    assert(marsh && *marsh);
-    assert(obj);
+    bf_assert(marsh && *marsh);
+    bf_assert(obj);
 
     new_data_len = (*marsh)->data_len + bf_marsh_size(obj);
 
@@ -70,8 +69,8 @@ int bf_marsh_add_child_raw(struct bf_marsh **marsh, const void *data,
     _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
     int r;
 
-    assert(marsh && *marsh);
-    assert(!data ? !data_len : 1);
+    bf_assert(marsh && *marsh);
+    bf_assert(!data ? !data_len : 1);
 
     r = bf_marsh_new(&child, data, data_len);
     if (r < 0)

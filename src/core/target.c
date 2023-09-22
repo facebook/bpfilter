@@ -7,7 +7,6 @@
 
 #include <linux/bpf.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -27,7 +26,7 @@ const char *bf_target_type_to_str(enum bf_target_type type)
         [BF_TARGET_TYPE_ERROR] = "ERROR",
     };
 
-    assert(0 <= type && type < _BF_TARGET_TYPE_MAX);
+    bf_assert(0 <= type && type < _BF_TARGET_TYPE_MAX);
     static_assert(ARRAY_SIZE(str) == _BF_TARGET_TYPE_MAX);
 
     return str[type];
@@ -41,7 +40,7 @@ bf_target_standard_verdict_to_str(enum bf_target_standard_verdict verdict)
         [BF_TARGET_STANDARD_DROP] = "DROP",
     };
 
-    assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
     static_assert(ARRAY_SIZE(str) == _BF_TARGET_STANDARD_MAX);
 
     return str[verdict];
@@ -103,7 +102,7 @@ const struct bf_target_ops *bf_target_ops_get(enum bf_target_type type)
             },
     };
 
-    assert(0 <= type && type < _BF_TARGET_TYPE_MAX);
+    bf_assert(0 <= type && type < _BF_TARGET_TYPE_MAX);
     static_assert(ARRAY_SIZE(target_ops) == _BF_TARGET_TYPE_MAX);
 
     return &target_ops[type];

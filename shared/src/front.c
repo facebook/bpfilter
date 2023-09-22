@@ -5,11 +5,11 @@
 
 #include "shared/front.h"
 
-#include <assert.h>
+#include "shared/helper.h"
 
 const char *bf_front_to_str(enum bf_front front)
 {
-    assert(front >= 0 && front < _BF_FRONT_MAX);
+    bf_assert(front >= 0 && front < _BF_FRONT_MAX);
 
     static const char * const names[] = {
         [BF_FRONT_IPT] = "BF_FRONT_IPT",

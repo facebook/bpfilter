@@ -5,7 +5,6 @@
 
 #include "core/rule.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,8 +49,8 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    assert(rule);
-    assert(marsh);
+    bf_assert(rule);
+    bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r < 0)
@@ -86,8 +85,8 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
     struct bf_marsh *child = NULL;
     int r;
 
-    assert(marsh);
-    assert(rule);
+    bf_assert(marsh);
+    bf_assert(rule);
 
     r = bf_rule_new(&_rule);
     if (r < 0)

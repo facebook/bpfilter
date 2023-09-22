@@ -5,9 +5,10 @@
 
 #pragma once
 
-#include <assert.h>
 #include <bpfilter/shared/front.h>
 #include <sys/types.h>
+
+#include "shared/helper.h"
 
 #define _cleanup_bf_request_ __attribute__((cleanup(bf_request_free)))
 
@@ -104,7 +105,7 @@ int bf_request_copy(struct bf_request **dest, const struct bf_request *src);
  */
 static inline size_t bf_request_size(const struct bf_request *request)
 {
-    assert(request);
+    bf_assert(request);
 
     return sizeof(struct bf_request) + request->data_len;
 }
