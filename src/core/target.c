@@ -48,9 +48,15 @@ bf_target_standard_verdict_to_str(enum bf_target_standard_verdict verdict)
 
 int bf_target_new(struct bf_target **target)
 {
-    *target = calloc(1, sizeof(struct bf_target));
-    if (!*target)
+    _cleanup_bf_target_ struct bf_target *_target = NULL;
+
+    bf_assert(target);
+
+    _target = calloc(1, sizeof(struct bf_target));
+    if (!_target)
         return -ENOMEM;
+
+    *target = TAKE_PTR(_target);
 
     return 0;
 }
