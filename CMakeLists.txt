@@ -12,9 +12,7 @@ project(bpfilter
 include(GNUInstallDirs)
 
 find_package(Doxygen REQUIRED)
-find_package(PkgConfig REQUIRED)
-
-pkg_check_modules(CRITERION REQUIRED criterion)
+find_package(cmocka REQUIRED)
 
 find_program(SPHINX_BIN sphinx-build REQUIRED)
 find_program(LCOV_BIN lcov REQUIRED)

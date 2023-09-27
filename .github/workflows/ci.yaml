@@ -25,11 +25,10 @@ jobs:
         if: matrix.image == 'fedora:38'
         run: |
           sudo dnf -y install 'dnf-command(copr)'
-          sudo dnf -y copr enable naccyde/criterion
           sudo dnf -y install \
             clang-tools-extra \
             cmake \
-            criterion-devel \
+            libcmocka-devel \
             doxygen \
             lcov \
             libasan \
@@ -50,7 +49,7 @@ jobs:
             furo \
             lcov \
             libbpf-dev \
-            libcriterion-dev \
+            libcmocka-dev \
             python3-breathe \
             python3-pip \
             python3-sphinx

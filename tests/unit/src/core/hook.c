@@ -1,55 +1,67 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-/*                                                                             \
- * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.                     \
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
 #include "core/hook.c"
 
-#include <criterion/criterion.h>
+#include "harness/cmocka.h"
+#include "harness/mock.h"
 
-#include "test.h"
+Test(hook, hook_to_str_assert_failure)
+{
+    expect_assert_failure(bf_hook_to_str(-1));
+    expect_assert_failure(bf_hook_to_str(_BF_HOOK_MAX));
+}
 
-TestAssert(src_core_hook, bf_hook_to_str, (-1));
-TestAssert(src_core_hook, bf_hook_to_str, (_BF_HOOK_MAX));
-TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, (-1));
-TestAssert(src_core_hook, bf_hook_to_bpf_prog_type, (_BF_HOOK_MAX));
-TestAssert(src_core_hook, bf_hook_to_flavor, (-1));
-TestAssert(src_core_hook, bf_hook_to_flavor, (_BF_HOOK_MAX));
-
-Test(src_core_hook, can_get_str_from_hook)
+Test(hook, can_get_str_from_hook)
 {
     for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        cr_assert_not_null(bf_hook_to_str(i));
+        assert_non_null(bf_hook_to_str(i));
 }
 
-Test(src_core_hook, can_get_prog_type_from_hook)
+Test(hook, hook_to_bpf_prog_type_assert_failure)
 {
-    unsigned int prog_type;
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        prog_type = bf_hook_to_bpf_prog_type(i);
-        cr_assert(prog_type <= BPF_PROG_TYPE_NETFILTER);
-    }
+    expect_assert_failure(bf_hook_to_bpf_prog_type(-1));
+    expect_assert_failure(bf_hook_to_bpf_prog_type(_BF_HOOK_MAX));
 }
 
-Test(src_core_hook, can_get_flavor_from_hook)
+Test(hook, can_get_prog_type_from_hook)
+{
+    for (int i = 0; i < _BF_HOOK_MAX; ++i)
+        assert_true(bf_hook_to_bpf_prog_type(i) <= BPF_PROG_TYPE_NETFILTER);
+}
+
+Test(hook, hook_to_flavor_assert_failure)
+{
+    expect_assert_failure(bf_hook_to_flavor(-1));
+    expect_assert_failure(bf_hook_to_flavor(_BF_HOOK_MAX));
+}
+
+Test(hook, can_get_flavor_from_hook)
 {
     enum bf_flavor flavor;
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         flavor = bf_hook_to_flavor(i);
-        cr_assert(0 <= flavor);
-        cr_assert(flavor < _BF_FLAVOR_MAX);
+        assert_true(0 <= flavor);
+        assert_true(flavor < _BF_FLAVOR_MAX);
     }
 }
 
-Test(src_core_hook, can_get_attach_type_from_hook)
+Test(hook, hook_to_attach_type_assert_failure)
+{
+    expect_assert_failure(bf_hook_to_attach_type(-1));
+    expect_assert_failure(bf_hook_to_attach_type(_BF_HOOK_MAX));
+}
+
+Test(hook, can_get_attach_type_from_hook)
 {
     enum bpf_attach_type attach_type;
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         attach_type = bf_hook_to_attach_type(i);
-        cr_assert(0 <= attach_type);
-        cr_assert(attach_type < __MAX_BPF_ATTACH_TYPE);
+        assert_true(0 <= attach_type);
+        assert_true(attach_type < __MAX_BPF_ATTACH_TYPE);
     }
 }
