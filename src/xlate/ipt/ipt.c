@@ -25,7 +25,6 @@
 #include "core/marsh.h"
 #include "core/match.h"
 #include "core/rule.h"
-#include "core/string.h"
 #include "core/target.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
@@ -231,7 +230,7 @@ static int _bf_ipt_to_target(struct ipt_entry_target *ipt_target,
     if (r < 0)
         return r;
 
-    if (streq("", ipt_target->u.user.name)) {
+    if (bf_streq("", ipt_target->u.user.name)) {
         int verdict;
         struct ipt_standard_target *ipt_std_target =
             (struct xt_standard_target *)ipt_target;
@@ -246,7 +245,7 @@ static int _bf_ipt_to_target(struct ipt_entry_target *ipt_target,
 
         verdict = _bf_ipt_convert_verdict(ipt_std_target->verdict);
         _target->verdict = _bf_ipt_std_verdict_to_verdict(verdict);
-    } else if (streq("ERROR", ipt_target->u.user.name)) {
+    } else if (bf_streq("ERROR", ipt_target->u.user.name)) {
         _target->type = BF_TARGET_TYPE_ERROR;
     } else {
         return bf_err_code(-EINVAL, "Unknown target: %s",
@@ -508,7 +507,7 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
     bf_assert(request);
     bf_assert(sizeof(*info) == request->data_len);
 
-    if (!streq(info->name, "filter")) {
+    if (!bf_streq(info->name, "filter")) {
         return bf_err_code(
             -EINVAL, "can't process IPT_SO_GET_INFO for table %s", info->name);
     }
@@ -541,7 +540,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
     entries = (struct ipt_get_entries *)request->data;
 
-    if (!streq(entries->name, "filter")) {
+    if (!bf_streq(entries->name, "filter")) {
         return bf_err_code(-EINVAL,
                            "can't process IPT_SO_GET_INFO for table %s",
                            entries->name);

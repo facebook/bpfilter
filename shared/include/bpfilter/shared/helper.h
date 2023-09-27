@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -180,4 +181,16 @@ static inline int bf_realloc(void **ptr, size_t size)
     *ptr = TAKE_PTR(_ptr);
 
     return 0;
+}
+
+/**
+ * @brief Returns true if @p a is equal to @p b.
+ *
+ * @param a First string.
+ * @param b Second string.
+ * @return True if @p a == @p b, false otherwise.
+ */
+static inline bool bf_streq(const char *a, const char *b)
+{
+    return strcmp(a, b) == 0;
 }

@@ -14,8 +14,8 @@
 #include <stdio.h>
 
 #include "core/dump.h"
-#include "core/string.h"
 #include "helpers.h"
+#include "shared/helper.h"
 
 /**
  * @brief Map each hook to its name as a string.
@@ -122,7 +122,7 @@ static void ipt_dump_target(const struct ipt_entry_target *target,
     bool is_standard;
     struct ipt_standard_target *std_target = (void *)target;
 
-    is_standard = streq(target->u.user.name, "");
+    is_standard = bf_streq(target->u.user.name, "");
 
     DUMP(prefix, "struct ipt_entry_target at %p", target);
 
