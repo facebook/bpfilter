@@ -18,6 +18,7 @@ extern const char *strerrordesc_np(int errnum);
 
 #define bf_packed __attribute__((packed))
 #define bf_aligned(x) __attribute__((aligned(x)))
+#define bf_unused __attribute__((unused))
 
 #ifndef bf_assert
 #define bf_assert(x) assert(x)
