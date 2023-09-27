@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <linux/bpf.h>
+
 #include "core/flavor.h"
 
 /**

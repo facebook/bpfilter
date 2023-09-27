@@ -5,8 +5,6 @@
 
 #include "core/hook.h"
 
-#include <linux/bpf.h>
-
 #include "shared/helper.h"
 
 const char *bf_hook_to_str(enum bf_hook hook)
