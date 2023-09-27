@@ -16,7 +16,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
-#include "core/string.h"
 #include "generator/dump.h"
 #include "generator/program.h"
 #include "shared/front.h"
@@ -71,7 +70,7 @@ int bf_codegen_generate(struct bf_codegen *codegen)
 
     for (it = if_ni; it->if_index != 0 || it->if_name != NULL; it++) {
         _cleanup_bf_program_ struct bf_program *program = NULL;
-        if (streq("lo", it->if_name))
+        if (bf_streq("lo", it->if_name))
             continue;
 
         r = bf_program_new(&program, it->if_index, codegen->hook,
