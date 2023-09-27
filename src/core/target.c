@@ -92,7 +92,7 @@ int bf_target_generate_error(struct bf_program *program,
     UNUSED(program);
     UNUSED(target);
 
-    return -EINVAL;
+    return -ENOTSUP;
 }
 
 const struct bf_target_ops *bf_target_ops_get(enum bf_target_type type)
