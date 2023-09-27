@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-/*                                                                             \
- * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.                     \
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
 #include "core/helper.c"
 
-#include <criterion/criterion.h>
-
-#include "test.h"
+#include "harness/cmocka.h"
+#include "harness/helper.h"
+#include "harness/mock.h"
 
 static const char content[] =
     "Il est assis au fond du métro, où personne ne regarde"
@@ -17,20 +17,81 @@ static const char content[] =
     "Elle change de main, il a beau dire que ses parents n'ont pas un sou"
     "Au fond, tout le monde s'en fout, les trois types, les gens autour";
 
-TestAssert(src_core_helper, bf_read_file, (NULL, NOT_NULL, NOT_NULL));
-TestAssert(src_core_helper, bf_read_file, (NOT_NULL, NULL, NOT_NULL));
-TestAssert(src_core_helper, bf_read_file, (NOT_NULL, NOT_NULL, NULL));
-TestAssert(src_core_helper, bf_write_file, (NULL, NOT_NULL, 0));
-TestAssert(src_core_helper, bf_write_file, (NOT_NULL, NULL, 0));
-
-Test(src_core_helper, write_and_read_file)
+Test(helper, read_file_assert_failure)
 {
-    static const char *filepath = "/tmp/bpfilter_src_core_helper_test";
+    expect_assert_failure(bf_read_file(NULL, NOT_NULL, NOT_NULL));
+    expect_assert_failure(bf_read_file(NOT_NULL, NULL, NOT_NULL));
+    expect_assert_failure(bf_read_file(NOT_NULL, NOT_NULL, NULL));
+}
+
+Test(helper, write_file_assert_failure)
+{
+    expect_assert_failure(bf_write_file(NULL, NOT_NULL, 0));
+    expect_assert_failure(bf_write_file(NOT_NULL, NULL, 0));
+}
+
+Test(helper, read_failure)
+{
+    {
+        // Can not open the file to read.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(open, -1);
+
+        assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
+    }
+
+    {
+        // Can not allocate memory to read the content of the file.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+
+        assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
+    }
+
+    {
+        // Can not read the content of the file.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(read, -1);
+
+        assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
+    }
+}
+
+Test(helper, write_failure)
+{
+    {
+        // Can not open the output file.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(open, -1);
+
+        assert_true(bf_write_file(tmp, NOT_NULL, 1) < 0);
+    }
+
+    {
+        // Can not write to the output file.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(write, -1);
+
+        assert_true(bf_write_file(tmp, NOT_NULL, 1) < 0);
+    }
+
+    {
+        // Can not write the full buffer to the output file.
+        _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(write, 10);
+
+        assert_true(bf_write_file(tmp, NOT_NULL, 100) < 0);
+    }
+}
+
+Test(helper, write_and_read_file)
+{
+    _cleanup_tmp_file_ char *filepath = bf_test_get_readable_tmp_filepath();
     _cleanup_free_ char *read_data = NULL;
     size_t read_len;
 
-    cr_assert_eq(0, bf_write_file(filepath, content, strlen(content)));
-    cr_assert_eq(0, bf_read_file(filepath, (void **)&read_data, &read_len));
-    cr_assert_eq(strlen(content), read_len);
-    cr_assert_eq(0, memcmp(content, read_data, read_len));
+    assert_int_equal(0, bf_write_file(filepath, content, strlen(content)));
+    assert_int_equal(0, bf_read_file(filepath, (void **)&read_data, &read_len));
+    assert_int_equal(strlen(content), read_len);
+    assert_int_equal(0, memcmp(content, read_data, read_len));
 }

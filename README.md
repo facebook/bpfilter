@@ -10,13 +10,10 @@ Building and running `bpfilter` requires `libbpf` version 1.0 or above, and Linu
 Building `bpfilter` requires the following packages on Fedora 38:
 
 ```shell
-# Add required repositories
-sudo dnf copr enable naccyde/criterion
-
 # Install dependencies
 sudo dnf install -y \
     cmake libbpf-devel \
-    criterion-devel clang-tools-extra lcov \
+    libcmocka-devel clang-tools-extra lcov \
     doxygen python3-sphinx python3-breathe python3-furo
 ```
 
