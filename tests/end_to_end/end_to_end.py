@@ -125,7 +125,7 @@ class Device:
         try:
             os.stat(f"/sys/class/net/{name}")
             return True
-        except Exception as _:
+        except Exception:
             return False
 
     def __init__(self, name: str, addr: str, ip: str) -> None:
