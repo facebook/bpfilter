@@ -64,7 +64,7 @@ def run(cmd: str, echo: bool = False, **kwargs) -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=True,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -73,8 +73,7 @@ class Bpfilter:
         self._process: Any = None
 
     def run(self) -> None:
-        """Run bpfilter.
-        """
+        """Run bpfilter."""
 
         self._process = subprocess.Popen(
             [
@@ -84,7 +83,7 @@ class Bpfilter:
             ]
         )
 
-        time.sleep(.25)
+        time.sleep(0.25)
 
     def stop(self) -> None:
         self._process.send_signal(signal.SIGTERM)
@@ -98,32 +97,19 @@ class Iptables:
 
     def stats(self) -> dict:
         iptables = subprocess.Popen(
-            [
-                str(iptables_path),
-                "-L",
-                "-nv",
-                "--bpf"
-            ],
-            stdout=subprocess.PIPE
+            [str(iptables_path), "-L", "-nv", "--bpf"], stdout=subprocess.PIPE
         )
 
-        jc = subprocess.check_output(
-            [
-                "jc",
-                "--iptables"
-            ],
-            stdin=iptables.stdout
-        )
+        jc = subprocess.check_output(["jc", "--iptables"], stdin=iptables.stdout)
 
         iptables.wait()
         iptables.stdout.close()
 
-        return json.loads(jc.decode('UTF-8'))
+        return json.loads(jc.decode("UTF-8"))
 
 
 class Device:
-    """A network device.
-    """
+    """A network device."""
 
     @staticmethod
     def exists(name: str) -> bool:
@@ -156,8 +142,7 @@ class Device:
         self._ip = ip
 
     def setup(self) -> None:
-        """Setup the network device.
-        """
+        """Setup the network device."""
 
         cmds = [
             f"ip link set dev {self.name} address {self.addr}",
@@ -221,11 +206,11 @@ class Network:
 
         if Device.exists(self.dev1.name) or Device.exists(self.dev2.name):
             raise ValueError(
-                f"Device '{self.dev1.name}' or '{self.dev2.name}' already exists!")
+                f"Device '{self.dev1.name}' or '{self.dev2.name}' already exists!"
+            )
 
     def setup(self) -> None:
-        """Setup the network.
-        """
+        """Setup the network."""
 
         run("ip link add bf-veth1 type veth peer name bf-veth2")
 
@@ -235,8 +220,7 @@ class Network:
         run("sysctl -w net.ipv4.conf.all.rp_filter=0")
 
     def teardown(self) -> None:
-        """Teardown the network.
-        """
+        """Teardown the network."""
 
         run(f"ip link set {self.dev1.name} down")
         run(f"ip link del {self.dev1.name}")
@@ -351,8 +335,8 @@ class IptablesTests(BpfilterEndToEndTest):
         self.assertIsNone(Network.send(icmp, iface=self.dev1))
 
         stats = self.iptables.stats()
-        self.assertEqual(stats[0]['rules'][0]['pkts'], 1)
-        self.assertEqual(stats[0]['rules'][0]['bytes'], len(icmp))
+        self.assertEqual(stats[0]["rules"][0]["pkts"], 1)
+        self.assertEqual(stats[0]["rules"][0]["bytes"], len(icmp))
 
 
 if __name__ == "__main__":
