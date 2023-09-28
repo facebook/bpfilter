@@ -3,3 +3,5 @@ build
 build.*
 # VSCode configuration folder
 .vscode
+*.pyc
+__pycache__
