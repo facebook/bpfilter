@@ -117,6 +117,7 @@ bf_test_configure_non_build_srcs(tests_unit
 target_compile_options(tests_unit
     PRIVATE
         -fprofile-arcs -ftest-coverage
+        -fno-pie
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
         ${bpfilter_cflags}
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
@@ -141,6 +142,7 @@ target_link_libraries(tests_unit
 
 target_link_options(tests_unit
     PUBLIC
+        -Wl,-no-pie
         ${bpfilter_ldflags}
         $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
