@@ -20,15 +20,15 @@ static struct bf_options
      * bpfilter is stopped, everything is cleaned up. */
     bool transient;
 
-    /** If true, print debug log messages (bf_debug). */
-    bool verbose;
-
     /** Size of the log buffer when loading a BPF program, as a power of 2. */
     unsigned int bpf_log_buf_len_pow;
+
+    /** If true, print debug log messages (bf_debug). */
+    bool verbose;
 } _opts = {
     .transient = false,
-    .verbose = false,
     .bpf_log_buf_len_pow = 16,
+    .verbose = false,
 };
 
 static struct argp_option options[] = {
@@ -77,11 +77,6 @@ int bf_opts_init(int argc, char *argv[])
     return argp_parse(&argp, argc, argv, 0, 0, &_opts);
 }
 
-bool bf_opts_verbose(void)
-{
-    return _opts.verbose;
-}
-
 bool bf_opts_transient(void)
 {
     return _opts.transient;
@@ -90,4 +85,9 @@ bool bf_opts_transient(void)
 unsigned int bf_opts_bpf_log_buf_len_pow(void)
 {
     return _opts.bpf_log_buf_len_pow;
+}
+
+bool bf_opts_verbose(void)
+{
+    return _opts.verbose;
 }
