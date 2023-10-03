@@ -13,14 +13,23 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         buildtype: [ 'debug', 'release' ]
         image: [ 'fedora:38', 'ubuntu:23.10' ]
+        os: ['ubuntu-22.04', 'macos-latest-xlarge']
+        exclude:
+          - os: macos-latest-xlarge
+            image: ubuntu:23.10
+    runs-on: ${{ matrix.os }}
     container: ${{ matrix.image }}
     steps:
+      - name: Setup docker (missing on MacOS)
+        if: runner.os == 'macos'
+        run: |
+          brew install docker
+          colima start
       - name: Install packages Fedora
         if: matrix.image == 'fedora:38'
         run: |
