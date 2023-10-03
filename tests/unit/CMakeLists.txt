@@ -141,7 +141,6 @@ target_link_libraries(tests_unit
 
 target_link_options(tests_unit
     PUBLIC
-        -Wl,--allow-multiple-definition
         ${bpfilter_ldflags}
         $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
