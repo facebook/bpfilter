@@ -183,18 +183,9 @@ static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
  */
 static int _nf_detach_prog(struct bf_program *program)
 {
-    int fd;
-    int r;
-
     assert(program);
 
-    r = bf_bpf_obj_get(program->prog_pin_path, &fd);
-    if (r < 0) {
-        return bf_err_code(r, "failed to open pinned object at %s: %s)",
-                           program->prog_pin_path, bf_strerror(r));
-    }
-
-    return bf_bpf_link_detach(fd);
+    return bf_bpf_link_detach(program->runtime.prog_fd);
 }
 
 enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
