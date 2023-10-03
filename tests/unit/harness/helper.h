@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "core/hook.c"
+#include "core/hook.h"
 
 #define _cleanup_tmp_file_ __attribute__((cleanup(bf_test_remove_tmp_file)))
 
