@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -40,10 +41,8 @@ static volatile sig_atomic_t _stop_received = 0;
  *
  * This runtime context is read back when the daemon is restarted, so bpfilter
  * can manage the BPF programs that survived the daemon reboot.
- *
- * @todo Shouldn't this be in /run/bpfilter/ instead?
  */
-static const char *context_path = "/run/bpfilter.blob";
+static const char *context_path = BF_RUNTIME_DIR "/data.bin";
 
 /**
  * @brief Set atomic flag to stop the daemon if specific signals are
@@ -56,6 +55,48 @@ void _sig_handler(int sig)
     UNUSED(sig);
 
     _stop_received = 1;
+}
+
+/**
+ * @brief Ensure the daemon can use the runtime directory.
+ *
+ * Check if the current process can access @ref BF_RUNTIME_DIR. If it doesn't
+ * exists, create it with the appropriate permissions. If it exists, check
+ * that it is a directory.
+ *
+ * @return 0 on success, negative errno value on failure.
+ */
+static int _bf_ensure_runtime_dir(void)
+{
+    struct stat stats;
+    int r;
+
+    r = access(BF_RUNTIME_DIR, R_OK | W_OK);
+    if (r < 0 && errno == ENOENT) {
+        if (mkdir(BF_RUNTIME_DIR, 0755) == 0)
+            return 0;
+
+        return bf_err_code(errno, "failed to create runtime directory '%s'",
+                           BF_RUNTIME_DIR);
+    } else if (r < 0 && errno == EACCES) {
+        return bf_err_code(errno, "can't access runtime directory '%s'",
+                           BF_RUNTIME_DIR);
+    } else if (r < 0) {
+        return bf_err_code(errno, "failed to access runtime directory '%s'",
+                           BF_RUNTIME_DIR);
+    }
+
+    if (stat(BF_RUNTIME_DIR, &stats)) {
+        return bf_err_code(errno, "failed to stat runtime directory '%s'",
+                           BF_RUNTIME_DIR);
+    }
+
+    if (!S_ISDIR(stats.st_mode)) {
+        return bf_err_code(ENOTDIR, "runtime directory '%s' is not a directory",
+                           BF_RUNTIME_DIR);
+    }
+
+    return 0;
 }
 
 /**
@@ -204,6 +245,10 @@ static int _bf_init(int argc, char *argv[])
 
     if (sigaction(SIGTERM, &sighandler, NULL) < 0)
         return bf_err_code(errno, "can't override handler for SIGTERM");
+
+    r = _bf_ensure_runtime_dir();
+    if (r < 0)
+        return bf_err_code(r, "failed to ensure runtime directory exists");
 
     r = bf_opts_init(argc, argv);
     if (r < 0)
