@@ -61,6 +61,9 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
     bf_list_init(&_program->fixups,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
 
+    _program->runtime.map_fd = -1;
+    _program->runtime.prog_fd = -1;
+
     *program = TAKE_PTR(_program);
 
     return 0;
@@ -73,6 +76,14 @@ void bf_program_free(struct bf_program **program)
 
     bf_list_clean(&(*program)->fixups);
     free((*program)->img);
+
+    /* Close the file descriptors if they are still open. If --transient is
+     * used, then the file descriptors are already closed (as
+     * bf_program_unload() has been called). Otherwise, bf_program_unload()
+     * won't be called, but the programs are pinned, so they can be closed
+     * safely. */
+    closep(&(*program)->runtime.prog_fd);
+    closep(&(*program)->runtime.map_fd);
 
     free(*program);
     *program = NULL;
@@ -156,6 +167,14 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
 
+    r = bf_bpf_obj_get(_program->map_pin_path, &_program->runtime.map_fd);
+    if (r < 0)
+        return bf_err_code(r, "failed to get map fd");
+
+    r = bf_bpf_obj_get(_program->prog_pin_path, &_program->runtime.prog_fd);
+    if (r < 0)
+        return bf_err_code(r, "failed to get prog fd");
+
     *program = TAKE_PTR(_program);
 
     return 0;
@@ -177,8 +196,10 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "num_rules: %lu", program->num_rules);
     DUMP(prefix, "prog_name: %s", program->prog_name);
     DUMP(prefix, "map_name: %s", program->map_name);
-    DUMP(prefix, "prog_pin_path: %s", program->prog_pin_path);
-    DUMP(prefix, "map_pin_path: %s", program->map_pin_path);
+    DUMP(prefix, "prog_pin_path: %s",
+         bf_opts_transient() ? "<transient>" : program->prog_pin_path);
+    DUMP(prefix, "map_pin_path: %s",
+         bf_opts_transient() ? "<transient>" : program->map_pin_path);
     DUMP(prefix, "img: %p", program->img);
     DUMP(prefix, "img_size: %lu", program->img_size);
     DUMP(bf_dump_prefix_last(prefix), "img_cap: %lu", program->img_cap);
@@ -710,24 +731,29 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
     if (r)
         return r;
 
-    // Pin program
-    r = bf_bpf_obj_pin(program->prog_pin_path, prog_fd);
-    if (r < 0) {
-        return bf_err_code(errno, "failed to pin program fd to %s",
-                           program->prog_pin_path);
-    }
-
-    // Pin map
-    r = bf_bpf_obj_pin(program->map_pin_path, map_fd);
-    if (r < 0) {
-        return bf_err_code(errno, "failed to pin map fd to %s",
-                           program->map_pin_path);
-    }
-
     bf_dbg("loaded %s codegen image to %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
-    bf_dbg("  prog pin path: %s", program->prog_pin_path);
-    bf_dbg("  map pin path: %s", program->map_pin_path);
+
+    if (!bf_opts_transient()) {
+        // Pin program
+        r = bf_bpf_obj_pin(program->prog_pin_path, prog_fd);
+        if (r < 0) {
+            return bf_err_code(errno, "failed to pin program fd to %s",
+                               program->prog_pin_path);
+        }
+        bf_dbg("  prog pin path: %s", program->prog_pin_path);
+
+        // Pin map
+        r = bf_bpf_obj_pin(program->map_pin_path, map_fd);
+        if (r < 0) {
+            return bf_err_code(errno, "failed to pin map fd to %s",
+                               program->map_pin_path);
+        }
+        bf_dbg("  map pin path: %s", program->map_pin_path);
+    }
+
+    program->runtime.prog_fd = TAKE_FD(prog_fd);
+    program->runtime.map_fd = TAKE_FD(map_fd);
 
     return 0;
 }
@@ -744,13 +770,19 @@ int bf_program_unload(struct bf_program *program)
     if (r)
         return r;
 
-    unlink(program->prog_pin_path);
-    unlink(program->map_pin_path);
+    closep(&program->runtime.prog_fd);
+    closep(&program->runtime.map_fd);
 
-    bf_dbg("unloaded %s codegen image to %s", bf_front_to_str(program->front),
+    bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
-    bf_dbg("  prog pin path: %s", program->prog_pin_path);
-    bf_dbg("  map pin path: %s", program->map_pin_path);
+
+    if (!bf_opts_transient()) {
+        unlink(program->prog_pin_path);
+        unlink(program->map_pin_path);
+
+        bf_dbg("  prog pin path: %s", program->prog_pin_path);
+        bf_dbg("  map pin path: %s", program->map_pin_path);
+    }
 
     return 0;
 }
@@ -762,11 +794,7 @@ int bf_program_get_counters(const struct bf_program *program,
     _cleanup_close_ int fd = -1;
     int r;
 
-    r = bf_bpf_obj_get(program->map_pin_path, &fd);
-    if (r < 0)
-        return bf_err_code(r, "failed to open counters map");
-
-    r = bf_bpf_map_lookup_elem(fd, &rule->index, counters);
+    r = bf_bpf_map_lookup_elem(program->runtime.map_fd, &rule->index, counters);
     if (r < 0)
         return bf_err_code(errno, "failed to lookup counters map");
 
