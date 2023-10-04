@@ -12,77 +12,96 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        buildtype: [ 'debug', 'release' ]
-        image: [ 'fedora:38', 'ubuntu:23.10' ]
-        os: ['ubuntu-22.04', 'macos-latest-xlarge']
-        exclude:
-          - os: macos-latest-xlarge
-            image: ubuntu:23.10
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.image }}
+  # build:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       buildtype: [ 'debug', 'release' ]
+  #       image: [ 'fedora:38', 'ubuntu:23.10' ]
+  #       os: ['ubuntu-22.04', 'macos-latest-xlarge']
+  #       exclude:
+  #         - os: macos-latest-xlarge
+  #           image: ubuntu:23.10
+  #   runs-on: ${{ matrix.os }}
+  #   container: ${{ matrix.image }}
+  #   steps:
+  #     - name: Setup docker (missing on MacOS)
+  #       if: runner.os == 'macos'
+  #       run: |
+  #         brew install docker
+  #         colima start
+  #     - name: Install packages Fedora
+  #       if: matrix.image == 'fedora:38'
+  #       run: |
+  #         sudo dnf -y install 'dnf-command(copr)'
+  #         sudo dnf -y install \
+  #           clang-tools-extra \
+  #           cmake \
+  #           libcmocka-devel \
+  #           doxygen \
+  #           lcov \
+  #           libasan \
+  #           libbpf-devel \
+  #           libubsan \
+  #           python3-breathe \
+  #           python3-furo \
+  #           python3-sphinx
+  #     - name: Install packages Ubuntu
+  #       if: matrix.image == 'ubuntu:23.10'
+  #       run: |
+  #         apt-get update
+  #         DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
+  #           clang-format \
+  #           clang-tidy \
+  #           cmake \
+  #           doxygen \
+  #           furo \
+  #           lcov \
+  #           libbpf-dev \
+  #           libcmocka-dev \
+  #           python3-breathe \
+  #           python3-pip \
+  #           python3-sphinx
+  #     - name: Check out repository code
+  #       uses: actions/checkout@v3
+  #     - name: Configure build
+  #       run: cmake -B $GITHUB_WORKSPACE/build -S $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.buildtype }}
+  #     - name: Build
+  #       run: make -C $GITHUB_WORKSPACE/build
+  #     - name: Check style
+  #       if: matrix.buildtype == 'release'
+  #       run: make -C $GITHUB_WORKSPACE/build checkstyle
+  #     - name: Run unit tests
+  #       run: make -C $GITHUB_WORKSPACE/build test
+  #     - name: Coverage
+  #       if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
+  #       run: make -C $GITHUB_WORKSPACE/build coverage
+  #     - name: Upload coverage report to Codecov
+  #       if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
+  #       uses: codecov/codecov-action@v3
+  #       with:
+  #         files: build/doc/lcov.out
+  #       env:
+  #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  #     - name: Generate documentation
+  #       if: matrix.buildtype == 'release'
+  #       run: make -C $GITHUB_WORKSPACE/build doc
+
+  build-m1:
+    runs-on: macos-latest-xlarge
     steps:
       - name: Setup docker (missing on MacOS)
-        if: runner.os == 'macos'
         run: |
           brew install docker
-          colima start
-      - name: Install packages Fedora
-        if: matrix.image == 'fedora:38'
+          brew install colima
+          colima start debug
+      - name: Check error logs
+        if: failure()
         run: |
-          sudo dnf -y install 'dnf-command(copr)'
-          sudo dnf -y install \
-            clang-tools-extra \
-            cmake \
-            libcmocka-devel \
-            doxygen \
-            lcov \
-            libasan \
-            libbpf-devel \
-            libubsan \
-            python3-breathe \
-            python3-furo \
-            python3-sphinx
-      - name: Install packages Ubuntu
-        if: matrix.image == 'ubuntu:23.10'
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
-            clang-format \
-            clang-tidy \
-            cmake \
-            doxygen \
-            furo \
-            lcov \
-            libbpf-dev \
-            libcmocka-dev \
-            python3-breathe \
-            python3-pip \
-            python3-sphinx
+          cat /Users/runner/.lima/colima/ha.stderr.log
+          cat /Users/runner/.lima/colima/serial*.log
       - name: Check out repository code
         uses: actions/checkout@v3
-      - name: Configure build
-        run: cmake -B $GITHUB_WORKSPACE/build -S $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.buildtype }}
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build
-      - name: Check style
-        if: matrix.buildtype == 'release'
-        run: make -C $GITHUB_WORKSPACE/build checkstyle
-      - name: Run unit tests
-        run: make -C $GITHUB_WORKSPACE/build test
-      - name: Coverage
-        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
-        run: make -C $GITHUB_WORKSPACE/build coverage
-      - name: Upload coverage report to Codecov
-        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
-        uses: codecov/codecov-action@v3
-        with:
-          files: build/doc/lcov.out
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Generate documentation
-        if: matrix.buildtype == 'release'
-        run: make -C $GITHUB_WORKSPACE/build doc
+      - name: Run CI
+        run: docker build -t bpfilter-m1 .
+        working-directory: ./.github/actions/ci-action

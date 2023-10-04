@@ -1,0 +1,6 @@
+# action.yml
+name: 'CI'
+description: 'bpfilter CI'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
