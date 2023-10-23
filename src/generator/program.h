@@ -170,6 +170,8 @@ struct bf_program
         int prog_fd;
         /** File descriptor of the counters map. */
         int map_fd;
+        /** Hook-specific ops to use to generate the program. */
+        const struct bf_flavor_ops *ops;
     } runtime;
 };
 

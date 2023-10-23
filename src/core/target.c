@@ -75,11 +75,9 @@ int bf_target_generate_standard(struct bf_program *program,
 {
     /// @todo Support target jumping to user-defined chains.
 
-    const struct bf_flavor_ops *ops =
-        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
-
     EMIT(program,
-         BPF_MOV32_IMM(BF_REG_RET, ops->convert_return_code(target->verdict)));
+         BPF_MOV32_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
+                                       target->verdict)));
 
     EMIT(program, BPF_EXIT_INSN());
 
