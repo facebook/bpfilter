@@ -47,6 +47,7 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
     _program->ifindex = ifindex;
     _program->hook = hook;
     _program->front = front;
+    _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
 
     snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bpfltr_%02d%02d%04d", hook,
              front, ifindex);
@@ -644,8 +645,6 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
 
 int bf_program_generate(struct bf_program *program, bf_list *rules)
 {
-    const struct bf_flavor_ops *ops =
-        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     char ifname_buf[IFNAMSIZ] = {};
     int r;
 
@@ -658,10 +657,11 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         return r;
 
     // Set default return value to ACCEPT.
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
-                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program,
+         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
+                                       BF_TARGET_STANDARD_ACCEPT)));
 
-    r = ops->gen_inline_prologue(program);
+    r = program->runtime.ops->gen_inline_prologue(program);
     if (r)
         return r;
 
@@ -678,7 +678,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         ++program->num_rules;
     }
 
-    r = ops->gen_inline_epilogue(program);
+    r = program->runtime.ops->gen_inline_epilogue(program);
     if (r)
         return r;
 
@@ -699,8 +699,6 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
 
 int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
 {
-    const struct bf_flavor_ops *ops =
-        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     union bf_flavor_attach_attr attr;
     _cleanup_close_ int map_fd = -1;
     _cleanup_close_ int prog_fd = -1;
@@ -719,14 +717,14 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
     if (r < 0)
         return r;
 
-    r = ops->attach_prog_pre_unload(program, &prog_fd, &attr);
+    r = program->runtime.ops->attach_prog_pre_unload(program, &prog_fd, &attr);
     if (r)
         return r;
 
     if (prev_program)
         bf_program_unload(prev_program);
 
-    r = ops->attach_prog_post_unload(program, &prog_fd, &attr);
+    r = program->runtime.ops->attach_prog_post_unload(program, &prog_fd, &attr);
     if (r)
         return r;
 
@@ -759,13 +757,11 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
 
 int bf_program_unload(struct bf_program *program)
 {
-    const struct bf_flavor_ops *ops =
-        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     int r;
 
     bf_assert(program);
 
-    r = ops->detach_prog(program);
+    r = program->runtime.ops->detach_prog(program);
     if (r)
         return r;
 

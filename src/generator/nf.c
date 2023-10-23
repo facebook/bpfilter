@@ -43,12 +43,9 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
 
 static int _nf_gen_inline_prologue(struct bf_program *program)
 {
-    const struct bf_flavor_ops *ops =
-        bf_flavor_ops_get(bf_hook_to_flavor(program->hook));
     int r;
 
     bf_assert(program);
-    bf_assert(ops);
 
     // Copy address of sk_buff into BF_REG_1.
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
@@ -64,8 +61,9 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
 
     // If the packet is coming from the wrong interface, then quit.
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, ops->convert_return_code(
-                                                BF_TARGET_STANDARD_ACCEPT)));
+    EMIT(program,
+         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
+                                       BF_TARGET_STANDARD_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     EMIT(program,
