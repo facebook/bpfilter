@@ -134,10 +134,10 @@ target_include_directories(tests_unit
 
 target_link_libraries(tests_unit
     PRIVATE
-        bpf
+        PkgConfig::bpf
         gcov
-        cmocka
-        elf
+        PkgConfig::cmocka
+        PkgConfig::elf
 )
 
 target_link_options(tests_unit
