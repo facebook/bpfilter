@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.20)
 
 project(bpfilter
     VERSION 0.0.1
