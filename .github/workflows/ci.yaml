@@ -36,7 +36,8 @@ jobs:
             libubsan \
             python3-breathe \
             python3-furo \
-            python3-sphinx
+            python3-sphinx \
+            pkgconf
       - name: Install packages Ubuntu
         if: matrix.image == 'ubuntu:23.10'
         run: |
@@ -52,7 +53,8 @@ jobs:
             libcmocka-dev \
             python3-breathe \
             python3-pip \
-            python3-sphinx
+            python3-sphinx \
+            pkgconf
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Configure build

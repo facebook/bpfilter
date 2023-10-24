@@ -10,7 +10,7 @@ BPF-based packet filtering framework
 sudo dnf install -y \
     cmake libbpf-devel \
     libcmocka-devel clang-tools-extra lcov \
-    doxygen python3-sphinx python3-breathe python3-furo
+    doxygen python3-sphinx python3-breathe python3-furo pkgconf
 ```
 
 To build `bpfilter` (from the source directory):
