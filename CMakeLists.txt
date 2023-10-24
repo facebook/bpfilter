@@ -18,6 +18,15 @@ pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
 pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
 
+# Required to get CMake to pass PIE flags to the compiler/linker
+include(CheckPIESupported)
+check_pie_supported()
+if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
+  message(WARNING "PIE is not supported at link time: ${output}.\n"
+                  "PIE link options will not be passed to linker.\n"
+                  "If PIE is enabled by default, test auto discovery might fail.")
+endif()
+
 find_program(SPHINX_BIN sphinx-build REQUIRED)
 find_program(LCOV_BIN lcov REQUIRED)
 find_program(GENHTML_BIN genhtml REQUIRED)
