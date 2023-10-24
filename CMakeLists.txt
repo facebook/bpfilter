@@ -34,7 +34,6 @@ find_program(CLANG_TIDY_BIN clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_C_STANDARD 17)
 
 set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "")     # No NDEBUG in release mode
@@ -102,7 +101,7 @@ set(bpfilter_library_srcs
 )
 
 set(bpfilter_cflags
-    -Wall -Wextra
+    -std=gnu17 -Wall -Wextra
 )
 
 set(bpfilter_ldflags
