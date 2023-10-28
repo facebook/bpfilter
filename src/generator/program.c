@@ -631,7 +631,8 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     char ifname_buf[IFNAMSIZ] = {};
     int r;
 
-    bf_info("generating program for %s::%s::%s",
+    bf_info("generating %s program for %s::%s::%s",
+            bf_flavor_to_str(bf_hook_to_flavor(program->hook)),
             bf_front_to_str(program->front), bf_hook_to_str(program->hook),
             if_indextoname(program->ifindex, ifname_buf));
 
