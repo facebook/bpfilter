@@ -24,7 +24,7 @@
 
 static int _tc_gen_inline_prologue(struct bf_program *program);
 static int _tc_gen_inline_epilogue(struct bf_program *program);
-static int _tc_convert_return_code(enum bf_verdict verdict);
+static int _tc_get_verdict(enum bf_verdict verdict);
 static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _tc_detach_prog(struct bf_program *program);
@@ -32,7 +32,7 @@ static int _tc_detach_prog(struct bf_program *program);
 const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_prologue = _tc_gen_inline_prologue,
     .gen_inline_epilogue = _tc_gen_inline_epilogue,
-    .convert_return_code = _tc_convert_return_code,
+    .get_verdict = _tc_get_verdict,
     .attach_prog_pre_unload = _tc_attach_prog_pre_unload,
     .detach_prog = _tc_detach_prog,
 };
@@ -95,7 +95,7 @@ static int _tc_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _tc_convert_return_code(enum bf_verdict verdict)
+static int _tc_get_verdict(enum bf_verdict verdict)
 {
     bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 

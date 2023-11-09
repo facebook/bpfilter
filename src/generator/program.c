@@ -374,9 +374,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
 
-    EMIT(program,
-         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       rule->verdict)));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                                rule->verdict)));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_NEXT_RULE, NULL);
@@ -656,9 +655,8 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         return r;
 
     // Set default return value to ACCEPT.
-    EMIT(program,
-         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_VERDICT_ACCEPT)));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                                BF_VERDICT_ACCEPT)));
 
     r = program->runtime.ops->gen_inline_prologue(program);
     if (r)

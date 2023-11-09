@@ -74,7 +74,7 @@ struct bf_flavor_ops
     int (*gen_inline_prologue)(struct bf_program *program);
 
     int (*gen_inline_epilogue)(struct bf_program *program);
-    int (*convert_return_code)(enum bf_verdict verdict);
+    int (*get_verdict)(enum bf_verdict verdict);
 
     /**
      * @brief Attach a loaded BPF program to the kernel, before unloading the

@@ -25,7 +25,7 @@
 
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
-static int _nf_convert_return_code(enum bf_verdict verdict);
+static int _nf_get_verdict(enum bf_verdict verdict);
 static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
@@ -35,7 +35,7 @@ static int _nf_detach_prog(struct bf_program *program);
 const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_prologue = _nf_gen_inline_prologue,
     .gen_inline_epilogue = _nf_gen_inline_epilogue,
-    .convert_return_code = _nf_convert_return_code,
+    .get_verdict = _nf_get_verdict,
     .attach_prog_pre_unload = _nf_attach_prog_pre_unload,
     .attach_prog_post_unload = _nf_attach_prog_post_unload,
     .detach_prog = _nf_detach_prog,
@@ -61,9 +61,8 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
 
     // If the packet is coming from the wrong interface, then quit.
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
-    EMIT(program,
-         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_VERDICT_ACCEPT)));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                                BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     EMIT(program,
@@ -113,7 +112,7 @@ static int _nf_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _nf_convert_return_code(enum bf_verdict verdict)
+static int _nf_get_verdict(enum bf_verdict verdict)
 {
     bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
