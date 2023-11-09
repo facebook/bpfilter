@@ -14,7 +14,7 @@
 
 #include "core/bpf.h"
 #include "core/logger.h"
-#include "core/target.h"
+#include "core/verdict.h"
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "generator/stub.h"
@@ -25,7 +25,7 @@
 
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
-static int _nf_convert_return_code(enum bf_target_standard_verdict verdict);
+static int _nf_convert_return_code(enum bf_verdict verdict);
 static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
@@ -63,7 +63,7 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     EMIT(program,
@@ -113,16 +113,16 @@ static int _nf_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _nf_convert_return_code(enum bf_target_standard_verdict verdict)
+static int _nf_convert_return_code(enum bf_verdict verdict)
 {
-    bf_assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
     static const int verdicts[] = {
-        [BF_TARGET_STANDARD_ACCEPT] = NF_ACCEPT,
-        [BF_TARGET_STANDARD_DROP] = NF_DROP,
+        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
+        [BF_VERDICT_DROP] = NF_DROP,
     };
 
-    static_assert(ARRAY_SIZE(verdicts) == _BF_TARGET_STANDARD_MAX);
+    static_assert(ARRAY_SIZE(verdicts) == _BF_VERDICT_MAX);
 
     return verdicts[verdict];
 }

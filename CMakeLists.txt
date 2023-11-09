@@ -76,8 +76,8 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/core/logger.h ${CMAKE_SOURCE_DIR}/src/core/logger.c
     ${CMAKE_SOURCE_DIR}/src/core/match.h ${CMAKE_SOURCE_DIR}/src/core/match.c
     ${CMAKE_SOURCE_DIR}/src/core/rule.h ${CMAKE_SOURCE_DIR}/src/core/rule.c
-    ${CMAKE_SOURCE_DIR}/src/core/target.h ${CMAKE_SOURCE_DIR}/src/core/target.c
     ${CMAKE_SOURCE_DIR}/src/core/marsh.h ${CMAKE_SOURCE_DIR}/src/core/marsh.c
+    ${CMAKE_SOURCE_DIR}/src/core/verdict.h ${CMAKE_SOURCE_DIR}/src/core/verdict.c
 
     ${CMAKE_SOURCE_DIR}/src/generator/codegen.h ${CMAKE_SOURCE_DIR}/src/generator/codegen.c
     ${CMAKE_SOURCE_DIR}/src/generator/dump.h ${CMAKE_SOURCE_DIR}/src/generator/dump.c

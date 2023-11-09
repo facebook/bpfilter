@@ -25,7 +25,7 @@
 #include "core/marsh.h"
 #include "core/match.h"
 #include "core/rule.h"
-#include "core/target.h"
+#include "core/verdict.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
 #include "shared/front.h"
@@ -166,27 +166,6 @@ static enum bf_hook _bf_ipt_hook_to_bf_hook(enum nf_inet_hooks ipt_hook)
     }
 }
 
-static enum bf_target_standard_verdict
-_bf_ipt_std_verdict_to_verdict(int verdict)
-{
-    bf_assert(verdict == NF_DROP || verdict == NF_ACCEPT);
-
-    switch (verdict) {
-    case NF_ACCEPT:
-        return BF_TARGET_STANDARD_ACCEPT;
-    case NF_DROP:
-        return BF_TARGET_STANDARD_DROP;
-    default:
-        bf_assert(0);
-        return 0;
-    };
-}
-
-static inline int _bf_ipt_convert_verdict(int verdict)
-{
-    return -verdict - 1;
-}
-
 static int _bf_ipt_cache_new(struct bf_ipt_cache **cache)
 {
     _cleanup_bf_ipt_cache_ struct bf_ipt_cache *_cache = NULL;
@@ -214,24 +193,16 @@ static void _bf_ipt_cache_free(struct bf_ipt_cache **cache)
 }
 
 /**
- * @brief Convert an iptables target to a bpfilter target.
+ * @brief Convert an iptables target to a bpfilter verdict.
  *
  * @param ipt_target iptables target to convert.
- * @param target Target to store the conversion in.
+ * @param verdict Verdict to store the conversion in.
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_ipt_to_target(struct ipt_entry_target *ipt_target,
-                             struct bf_target **target)
+static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
+                                     enum bf_verdict *verdict)
 {
-    _cleanup_bf_target_ struct bf_target *_target;
-    int r;
-
-    r = bf_target_new(&_target);
-    if (r < 0)
-        return r;
-
     if (bf_streq("", ipt_target->u.user.name)) {
-        int verdict;
         struct ipt_standard_target *ipt_std_target =
             (struct xt_standard_target *)ipt_target;
 
@@ -241,18 +212,21 @@ static int _bf_ipt_to_target(struct ipt_entry_target *ipt_target,
                 "target expects jump to a user-defined chain, this is not supported");
         }
 
-        _target->type = BF_TARGET_TYPE_STANDARD;
-
-        verdict = _bf_ipt_convert_verdict(ipt_std_target->verdict);
-        _target->verdict = _bf_ipt_std_verdict_to_verdict(verdict);
-    } else if (bf_streq("ERROR", ipt_target->u.user.name)) {
-        _target->type = BF_TARGET_TYPE_ERROR;
+        switch (-ipt_std_target->verdict - 1) {
+        case NF_ACCEPT:
+            *verdict = BF_VERDICT_ACCEPT;
+            break;
+        case NF_DROP:
+            *verdict = BF_VERDICT_DROP;
+            break;
+        default:
+            return bf_err_code(-ENOTSUP, "unsupported verdict: %d",
+                               ipt_std_target->verdict);
+        }
     } else {
-        return bf_err_code(-EINVAL, "Unknown target: %s",
+        return bf_err_code(-ENOTSUP, "unsupported target: %s",
                            ipt_target->u.user.name);
     }
-
-    *target = TAKE_PTR(_target);
 
     return 0;
 }
@@ -295,7 +269,7 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
     _cleanup_bf_match_ struct bf_match *match = NULL;
-    _cleanup_bf_target_ struct bf_target *target = NULL;
+    enum bf_verdict verdict;
     size_t offset = sizeof(*ipt_rule);
     int r;
 
@@ -334,10 +308,10 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
         offset += ipt_get_match(ipt_rule, offset)->u.match_size;
     }
 
-    r = _bf_ipt_to_target(ipt_get_target(ipt_rule), &target);
+    r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &verdict);
     if (r < 0)
         return r;
-    _rule->target = TAKE_PTR(target);
+    _rule->verdict = verdict;
 
     *rule = TAKE_PTR(_rule);
 

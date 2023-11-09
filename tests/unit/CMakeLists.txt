@@ -85,7 +85,7 @@ set(bf_test_srcs
     src/core/hook.c
     src/core/list.c
     src/core/marsh.c
-    src/core/target.c
+    src/core/verdict.c
     src/generator/codegen.c
     src/generator/nf.c
 )

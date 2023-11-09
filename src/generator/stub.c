@@ -51,7 +51,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
@@ -84,7 +84,7 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L2, 0, 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     // Load L2 ethertype
@@ -95,7 +95,7 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, ntohs(ETH_P_IP), 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     // Update L3 header offset.
@@ -133,7 +133,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L3, 0, 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     // Load ip.ihl into BF_REG_1
@@ -221,7 +221,7 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
     EMIT(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L4, 0, 2));
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
