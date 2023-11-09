@@ -20,6 +20,7 @@
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
+#include "core/verdict.h"
 #include "generator/fixup.h"
 #include "generator/reg.h"
 #include "shared/front.h"
@@ -152,8 +153,11 @@ struct bf_program
     char map_name[BPF_OBJ_NAME_LEN];
     char prog_pin_path[PIN_PATH_LEN];
     char map_pin_path[PIN_PATH_LEN];
-    size_t num_rules;
-    size_t num_rules_total;
+
+    /** Number of counters in the counters map. Not all of them are used by
+     * the program, but this value is common for all the programs of a given
+     * codegen. */
+    size_t num_counters;
 
     /* Bytecode */
     uint32_t functions_location[_BF_CODEGEN_FIXUP_FUNCTION_MAX];
@@ -192,7 +196,8 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn);
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_function function);
-int bf_program_generate(struct bf_program *program, bf_list *rules);
+int bf_program_generate(struct bf_program *program, bf_list *rules,
+                        enum bf_verdict policy);
 
 /**
  * @brief Load the program into the kernel.
@@ -207,8 +212,7 @@ int bf_program_load(struct bf_program *program,
 
 int bf_program_unload(struct bf_program *program);
 
-int bf_program_get_counters(const struct bf_program *program,
-                            const struct bf_rule *rule,
-                            struct bf_counter *counters);
+int bf_program_get_counter(const struct bf_program *program,
+                           uint32_t counter_idx, struct bf_counter *counter);
 int bf_program_set_counters(struct bf_program *program,
                             const struct bf_counter *counters);

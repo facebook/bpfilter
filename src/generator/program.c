@@ -106,10 +106,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &program->hook, sizeof(program->hook));
     r |= bf_marsh_add_child_raw(&_marsh, &program->front,
                                 sizeof(program->front));
-    r |= bf_marsh_add_child_raw(&_marsh, &program->num_rules,
-                                sizeof(program->num_rules));
-    r |= bf_marsh_add_child_raw(&_marsh, &program->num_rules_total,
-                                sizeof(program->num_rules_total));
+    r |= bf_marsh_add_child_raw(&_marsh, &program->num_counters,
+                                sizeof(program->num_counters));
     r |= bf_marsh_add_child_raw(&_marsh, program->img,
                                 program->img_size * sizeof(struct bpf_insn));
     if (r)
@@ -151,12 +149,8 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&_program->num_rules, child->data, sizeof(_program->num_rules));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_program->num_rules_total, child->data,
-           sizeof(_program->num_rules_total));
+    memcpy(&_program->num_counters, child->data,
+           sizeof(_program->num_counters));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -193,7 +187,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "ifindex: %s", if_indextoname(program->ifindex, ifname_buf));
     DUMP(prefix, "hook: %s", bf_hook_to_str(program->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
-    DUMP(prefix, "num_rules: %lu", program->num_rules);
+    DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
     DUMP(prefix, "map_name: %s", program->map_name);
     DUMP(prefix, "prog_pin_path: %s",
@@ -493,7 +487,7 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
 
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
-                          program->num_rules_total, &_fd);
+                          program->num_counters, &_fd);
     if (r < 0)
         return bf_err_code(errno, "failed to create counters map");
 
@@ -641,7 +635,8 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
     return 0;
 }
 
-int bf_program_generate(struct bf_program *program, bf_list *rules)
+int bf_program_generate(struct bf_program *program, bf_list *rules,
+                        enum bf_verdict policy)
 {
     char ifname_buf[IFNAMSIZ] = {};
     int r;
@@ -671,13 +666,27 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
         r = _bf_program_generate_rule(program, rule);
         if (r)
             return r;
-
-        ++program->num_rules;
     }
 
     r = program->runtime.ops->gen_inline_epilogue(program);
     if (r)
         return r;
+
+    // BF_ARG_1: counters map file descriptor.
+    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
+
+    // BF_ARG_2: index of the current rule in counters map.
+    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, bf_list_size(rules)));
+
+    // BF_ARG_3: packet size, from the context.
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
+
+    EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
+
+    EMIT(program,
+         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(policy)));
+    EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_END_OF_CHAIN, NULL);
     if (r)
@@ -690,6 +699,9 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_FUNCTION_CALL, NULL);
     if (r)
         return bf_err_code(r, "failed to generate function call fixups");
+
+    // Add 1 to the number of counters for the policy counter.
+    program->num_counters = bf_list_size(rules) + 1;
 
     return 0;
 }
@@ -779,14 +791,15 @@ int bf_program_unload(struct bf_program *program)
     return 0;
 }
 
-int bf_program_get_counters(const struct bf_program *program,
-                            const struct bf_rule *rule,
-                            struct bf_counter *counters)
+int bf_program_get_counter(const struct bf_program *program,
+                           uint32_t counter_idx, struct bf_counter *counter)
 {
-    _cleanup_close_ int fd = -1;
+    bf_assert(program);
+    bf_assert(counter);
+
     int r;
 
-    r = bf_bpf_map_lookup_elem(program->runtime.map_fd, &rule->index, counters);
+    r = bf_bpf_map_lookup_elem(program->runtime.map_fd, &counter_idx, counter);
     if (r < 0)
         return bf_err_code(errno, "failed to lookup counters map");
 

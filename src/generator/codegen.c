@@ -78,9 +78,7 @@ int bf_codegen_generate(struct bf_codegen *codegen)
         if (r)
             return r;
 
-        program->num_rules_total = bf_list_size(&codegen->rules);
-
-        r = bf_program_generate(program, &codegen->rules);
+        r = bf_program_generate(program, &codegen->rules, codegen->policy);
         if (r) {
             return bf_err_code(r, "failed to generate program for %s",
                                it->if_name);
@@ -200,6 +198,8 @@ int bf_codegen_marsh(const struct bf_codegen *codegen, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &codegen->hook, sizeof(codegen->hook));
     r |= bf_marsh_add_child_raw(&_marsh, &codegen->front,
                                 sizeof(codegen->front));
+    r |= bf_marsh_add_child_raw(&_marsh, &codegen->policy,
+                                sizeof(codegen->policy));
 
     if (r)
         return bf_err_code(r, "failed to serialize codegen");
@@ -270,6 +270,10 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
         return -EINVAL;
     memcpy(&_codegen->front, child->data, sizeof(_codegen->front));
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    memcpy(&_codegen->policy, child->data, sizeof(_codegen->policy));
+
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
 
@@ -290,6 +294,7 @@ void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "hook: %s", bf_hook_to_str(codegen->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(codegen->front));
+    DUMP(prefix, "policy: %s", bf_verdict_to_str(codegen->policy));
 
     // Rules
     DUMP(prefix, "rules: %lu", bf_list_size(&codegen->rules));
@@ -331,4 +336,32 @@ struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
     }
 
     return NULL;
+}
+
+int bf_codegen_get_counter(const struct bf_codegen *codegen,
+                           uint32_t counter_idx, struct bf_counter *counter)
+{
+    bf_assert(codegen);
+    bf_assert(counter);
+
+    int r;
+
+    /* There are 1 more counter than number of rules. The last counter is
+     * dedicated to the policy. */
+    if (counter_idx > bf_list_size(&codegen->rules))
+        return -EINVAL;
+
+    bf_list_foreach (&codegen->programs, program_node) {
+        struct bf_program *program = bf_list_node_get_data(program_node);
+        struct bf_counter _counter = {};
+
+        r = bf_program_get_counter(program, counter_idx, &_counter);
+        if (r)
+            return -EINVAL;
+
+        counter->packets += _counter.packets;
+        counter->bytes += _counter.bytes;
+    }
+
+    return 0;
 }
