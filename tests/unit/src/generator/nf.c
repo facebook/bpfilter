@@ -15,5 +15,5 @@ Test(nf, all_verdicts_valid)
     assert_non_null(ops);
 
     for (int i = 0; i < _BF_VERDICT_MAX; ++i)
-        ops->convert_return_code(i);
+        ops->get_verdict(i);
 }
