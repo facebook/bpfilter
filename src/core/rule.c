@@ -13,7 +13,7 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/match.h"
-#include "core/target.h"
+#include "core/verdict.h"
 #include "shared/helper.h"
 
 int bf_rule_new(struct bf_rule **rule)
@@ -38,7 +38,6 @@ void bf_rule_free(struct bf_rule **rule)
         return;
 
     bf_list_clean(&(*rule)->matches);
-    bf_target_free(&(*rule)->target);
 
     free(*rule);
     *rule = NULL;
@@ -68,8 +67,8 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
                                 sizeof(rule->dst_mask));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->protocol,
                                 sizeof(rule->protocol));
-    r |=
-        bf_marsh_add_child_raw(&_marsh, rule->target, sizeof(struct bf_target));
+    r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
+                                sizeof(enum bf_verdict));
     if (r)
         return bf_err_code(r, "Failed to serialize rule");
 
@@ -81,7 +80,6 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
-    _cleanup_bf_target_ struct bf_target *target = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -124,14 +122,9 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
         return -EINVAL;
     memcpy(&_rule->protocol, child->data, sizeof(_rule->protocol));
 
-    r = bf_target_new(&target);
-    if (r < 0)
-        return bf_err_code(r, "Failed to create target");
-
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(target, child->data, sizeof(struct bf_target));
-    _rule->target = TAKE_PTR(target);
+    memcpy(&_rule->verdict, child->data, sizeof(_rule->verdict));
 
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
@@ -159,13 +152,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(rule->dst_mask));
     DUMP(prefix, "protocol: %u", rule->protocol);
     DUMP(prefix, "matches: %lu", bf_list_size(&rule->matches));
-
-    DUMP(bf_dump_prefix_last(prefix), "target:");
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "type: %s", bf_target_type_to_str(rule->target->type));
-    DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
-         bf_target_standard_verdict_to_str(rule->target->verdict));
-    bf_dump_prefix_pop(prefix);
+    DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
 
     bf_dump_prefix_pop(prefix);
 }

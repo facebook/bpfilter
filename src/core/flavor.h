@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "core/target.h"
+#include "core/verdict.h"
 
 struct bf_program;
 
@@ -74,7 +74,7 @@ struct bf_flavor_ops
     int (*gen_inline_prologue)(struct bf_program *program);
 
     int (*gen_inline_epilogue)(struct bf_program *program);
-    int (*convert_return_code)(enum bf_target_standard_verdict verdict);
+    int (*convert_return_code)(enum bf_verdict verdict);
 
     /**
      * @brief Attach a loaded BPF program to the kernel, before unloading the

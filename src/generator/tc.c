@@ -24,7 +24,7 @@
 
 static int _tc_gen_inline_prologue(struct bf_program *program);
 static int _tc_gen_inline_epilogue(struct bf_program *program);
-static int _tc_convert_return_code(enum bf_target_standard_verdict verdict);
+static int _tc_convert_return_code(enum bf_verdict verdict);
 static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _tc_detach_prog(struct bf_program *program);
@@ -95,16 +95,16 @@ static int _tc_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _tc_convert_return_code(enum bf_target_standard_verdict verdict)
+static int _tc_convert_return_code(enum bf_verdict verdict)
 {
-    bf_assert(0 <= verdict && verdict < _BF_TARGET_STANDARD_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
     static const int verdicts[] = {
-        [BF_TARGET_STANDARD_ACCEPT] = TC_ACT_OK,
-        [BF_TARGET_STANDARD_DROP] = TC_ACT_SHOT,
+        [BF_VERDICT_ACCEPT] = TC_ACT_OK,
+        [BF_VERDICT_DROP] = TC_ACT_SHOT,
     };
 
-    static_assert(ARRAY_SIZE(verdicts) == _BF_TARGET_STANDARD_MAX);
+    static_assert(ARRAY_SIZE(verdicts) == _BF_VERDICT_MAX);
 
     return verdicts[verdict];
 }

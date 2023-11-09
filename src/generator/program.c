@@ -25,7 +25,7 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
-#include "core/target.h"
+#include "core/verdict.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
 
@@ -318,7 +318,6 @@ static int _bf_program_fixup(struct bf_program *program,
 static int _bf_program_generate_rule(struct bf_program *program,
                                      struct bf_rule *rule)
 {
-    const struct bf_target_ops *target_ops;
     int r;
 
     bf_assert(program);
@@ -375,10 +374,10 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
 
-    target_ops = bf_target_ops_get(rule->target->type);
-    r = target_ops->generate(program, rule->target);
-    if (r)
-        return r;
+    EMIT(program,
+         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
+                                       rule->verdict)));
+    EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_NEXT_RULE, NULL);
     if (r)
@@ -659,7 +658,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules)
     // Set default return value to ACCEPT.
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->convert_return_code(
-                                       BF_TARGET_STANDARD_ACCEPT)));
+                                       BF_VERDICT_ACCEPT)));
 
     r = program->runtime.ops->gen_inline_prologue(program);
     if (r)

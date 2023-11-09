@@ -9,6 +9,7 @@
 
 #include "core/dump.h"
 #include "core/list.h"
+#include "core/verdict.h"
 
 struct bf_marsh;
 
@@ -33,7 +34,7 @@ struct bf_rule
     uint32_t dst_mask;
     uint16_t protocol;
     bf_list matches;
-    struct bf_target *target;
+    enum bf_verdict verdict;
 };
 
 /**
