@@ -7,9 +7,11 @@
 
 #include <stdint.h>
 
+#include "core/counter.h"
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
+#include "core/verdict.h"
 #include "shared/front.h"
 
 struct bf_marsh;
@@ -38,6 +40,10 @@ struct bf_codegen
 {
     enum bf_hook hook;
     enum bf_front front;
+
+    /** Codegen policy: verdict to be applied by default by the codegen, unless
+     * one of the rules matches the packet. */
+    enum bf_verdict policy;
 
     bf_list rules;
     bf_list programs;
@@ -109,3 +115,23 @@ void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix);
  */
 struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
                                           uint32_t ifindex);
+
+/**
+ * @brief Get packets and bytes counter at a specific index.
+ *
+ * Counters are referenced by their index in the counters map. There are 1 more
+ * counter in the map than the number of rules. This last counter (the last in
+ * the map) is dedicated to the policy.
+ *
+ * The counter from all the program generated from @p codegen are summarised
+ * together.
+ *
+ * @param codegen Codegen to get the counter for. Can't be NULL.
+ * @param counter_idx Index of the counter to get. If @p counter_idx doesn't
+ * correspond to a valid index, -E2BIG is returned.
+ * @param counter Counter structure to fill with the counter values. Can't be
+ * NULL.
+ * @return 0 on success, or a negative errno  value on failure.
+ */
+int bf_codegen_get_counter(const struct bf_codegen *codegen,
+                           uint32_t counter_idx, struct bf_counter *counter);

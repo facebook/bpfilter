@@ -318,6 +318,16 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     return 0;
 }
 
+static bool _ipt_entry_is_empty(const struct ipt_entry *entry)
+{
+    return entry->ip.dmsk.s_addr == 0 && entry->ip.dst.s_addr == 0 &&
+           entry->ip.flags == 0 && entry->ip.iniface[0] == 0 &&
+           entry->ip.iniface_mask[0] == 0 && entry->ip.invflags == 0 &&
+           entry->ip.outiface[0] == 0 && entry->ip.outiface_mask[0] == 0 &&
+           entry->ip.proto == 0 && entry->ip.smsk.s_addr == 0 &&
+           entry->ip.src.s_addr == 0;
+}
+
 /**
  * @brief Translate iptables rules into bpfilter format.
  *
@@ -337,7 +347,6 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
     bf_assert(codegens);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
-        size_t rule_idx = 0;
         _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
         enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
 
@@ -356,7 +365,25 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
         first_rule = ipt_get_first_rule(ipt, i);
         last_rule = ipt_get_last_rule(ipt, i);
 
-        while (first_rule <= last_rule) {
+        if (_ipt_entry_is_empty(last_rule)) {
+            /* We assume the last rule is a policy (ipt_entry.ip field is filled
+             * with 0), and use it as the verdict if true. */
+            enum bf_verdict verdict;
+
+            r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule), &verdict);
+            if (r)
+                return bf_err_code(r, "invalid IPT policy verdict");
+
+            codegen->policy = verdict;
+        } else {
+            return bf_err_code(-EINVAL, "last IPT rule isn't a valid policy");
+        }
+
+        /* Loop from the first rule, to the last rule (excluded). As we assume
+         * the last rule is the policy, we don't need to generate a bf_rule
+         * structure for it. */
+        for (size_t rule_idx = 0; first_rule < last_rule;
+             ++rule_idx, first_rule = ipt_get_next_rule(first_rule)) {
             _cleanup_bf_rule_ struct bf_rule *rule = NULL;
             r = _bf_ipt_to_rule(first_rule, &rule);
             if (r < 0)
@@ -370,8 +397,6 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
             /* Rule has been added to the chain, so if anything goes wrong from
              * here, it wil be freed by the chain directly. */
             TAKE_PTR(rule);
-
-            first_rule = ipt_get_next_rule(first_rule);
         }
 
         bf_dbg("created codegen for %s::%s", bf_front_to_str(codegen->front),
@@ -532,10 +557,8 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         struct ipt_entry *first_rule;
         struct ipt_entry *last_rule;
-        struct ipt_entry *it;
         struct bf_codegen *codegen;
-        struct bf_list_node *rule_node = NULL;
-        enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
+        uint32_t counter_idx;
 
         if (!(_cache->valid_hooks & (1 << i))) {
             bf_dbg("ipt hook %d is not enabled, skipping", i);
@@ -544,60 +567,27 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
         first_rule = bf_ipt_entries_get_rule(entries, _cache->hook_entry[i]);
         last_rule = bf_ipt_entries_get_rule(entries, _cache->underflow[i]);
-        codegen = bf_context_get_codegen(hook, BF_FRONT_IPT);
+        codegen =
+            bf_context_get_codegen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
 
-        size_t rules_count = 0;
-        it = first_rule;
-        while (it <= last_rule) {
-            ++rules_count;
-            it->counters.pcnt = 0;
-            it->counters.bcnt = 0;
-            it = ipt_get_next_rule(it);
-        }
+        for (counter_idx = 0; first_rule <= last_rule;
+             ++counter_idx, first_rule = ipt_get_next_rule(first_rule)) {
+            struct bf_counter counter = {};
 
-        if (rules_count != bf_list_size(&codegen->rules)) {
-            bf_warn(
-                "number of rules in chain %s::%s does not match: %lu vs %lu",
-                bf_front_to_str(codegen->front), bf_hook_to_str(codegen->hook),
-                rules_count, bf_list_size(&codegen->rules));
-            continue;
-        }
-
-        bf_list_foreach (&codegen->programs, program_node) {
-            struct bf_program *program = bf_list_node_get_data(program_node);
-            rule_node = bf_list_get_head(&codegen->rules);
-
-            it = first_rule;
-            while (it <= last_rule) {
-                struct bf_counter counters = {};
-                struct bf_rule *rule = bf_list_node_get_data(rule_node);
-                if (!rule) {
-                    bf_warn("missing rule for codegen %s::%s",
-                            bf_front_to_str(codegen->front),
-                            bf_hook_to_str(codegen->hook));
-                    break;
-                }
-
-                if (rule->ifindex != 0 && rule->ifindex != program->ifindex) {
-                    rule_node = bf_list_node_next(rule_node);
-                    it = ipt_get_next_rule(it);
-                    continue;
-                }
-
-                r = bf_program_get_counters(program, rule, &counters);
-                if (r < 0) {
-                    return bf_err_code(
-                        r, "failed to get counters for rule %s::%s::%u",
-                        bf_front_to_str(codegen->front),
-                        bf_hook_to_str(codegen->hook), rule->index);
-                }
-
-                it->counters.pcnt += counters.packets;
-                it->counters.bcnt += counters.bytes;
-
-                rule_node = bf_list_node_next(rule_node);
-                it = ipt_get_next_rule(it);
+            r = bf_codegen_get_counter(codegen, counter_idx, &counter);
+            if (r) {
+                return bf_err_code(r, "failed to get IPT counter for index %u",
+                                   counter_idx);
             }
+
+            first_rule->counters.bcnt = counter.bytes;
+            first_rule->counters.pcnt = counter.packets;
+        }
+
+        if (counter_idx != bf_list_size(&codegen->rules) + 1) {
+            /* We expect len(codegen->rules) + 1 as the policy is considered
+             * a rule for iptables, but not for bpfilter. */
+            return bf_err_code(-EINVAL, "invalid number of rules requested");
         }
     }
 
