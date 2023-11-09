@@ -272,16 +272,6 @@ static int _bf_program_fixup(struct bf_program *program,
             insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
             v = (int)(program->img_size - fixup->insn - 1U);
             break;
-        case BF_CODEGEN_FIXUP_END_OF_CHAIN:
-            insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
-            v = (int)(program->img_size - fixup->insn - 2U);
-            if (v > SHRT_MAX) {
-                // Jump offset is a s16, so we cut short program generation
-                // before the verifier complains.
-                bf_err("Fixup jump is too far away");
-                return -ERANGE;
-            }
-            break;
         case BF_CODEGEN_FIXUP_MAP_FD:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
             v = attr->map_fd;
@@ -687,10 +677,6 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     EMIT(program,
          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(policy)));
     EMIT(program, BPF_EXIT_INSN());
-
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_END_OF_CHAIN, NULL);
-    if (r)
-        return bf_err_code(r, "failed to generate end of chain fixups");
 
     r = _bf_program_generate_functions(program);
     if (r)
