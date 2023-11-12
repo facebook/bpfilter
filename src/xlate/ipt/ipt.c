@@ -442,10 +442,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     }
 
     for (int i = 0; i < _BF_HOOK_MAX; i++) {
-        _cleanup_bf_codegen_ struct bf_codegen *codegen = codegens[i];
-
-        /// @todo Fix TAKE_PTR() to work with arrays.
-        codegens[i] = NULL;
+        _cleanup_bf_codegen_ struct bf_codegen *codegen = TAKE_PTR(codegens[i]);
 
         if (!codegen)
             continue;
