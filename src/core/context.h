@@ -40,14 +40,11 @@ struct bf_marsh;
  * @struct bf_context
  * @brief bpfilter working context. Only one context is used during the
  *  daemon's lifetime.
- *
- * @var bf_context::hooks
- *  Array containing a list of codegen for each hook. Each codegen represents
- *  a BPF program. A given front-end will have at most 1 codegen for each hook.
  */
 struct bf_context
 {
-    bf_list hooks[_BF_HOOK_MAX];
+    /// Codegens used by bpfilter. One codegen per (hook, front) set.
+    struct bf_codegen *codegens[_BF_HOOK_MAX][_BF_FRONT_MAX];
 };
 
 /**
@@ -89,37 +86,6 @@ int bf_context_save(struct bf_marsh **marsh);
  * @return 0 on success, negative error code on failure.
  */
 int bf_context_load(const struct bf_marsh *marsh);
-
-/**
- * @brief Iterate over all codegens.
- *
- * @param codegen Name to use to store the current codegen in.
- */
-#define bf_context_foreach_codegen(codegen)                                    \
-    for (struct bf_codegen *_i = NULL, *codegen = NULL;                        \
-         (codegen = bf_context_get_next_codegen((const void **)&_i));)
-
-/**
- * @brief Iterate over codegens for a given hook.
- *
- * @param codegen Name to use to store the current codegen in.
- * @param hook Hook to iterate over.
- */
-#define bf_context_foreach_codegen_by_hook(codegen, hook)                      \
-    for (struct bf_codegen *_i = NULL, *codegen = NULL;                        \
-         (codegen = bf_context_get_next_codegen_by_hook((const void **)&_i,    \
-                                                        (hook)));)
-
-/**
- * @brief Iterate over codegens for a given front-end.
- *
- * @param codegen Name to use to store the current codegen in.
- * @param fe Front-end to iterate over.
- */
-#define bf_context_foreach_codegen_by_fe(codegen, fe)                          \
-    for (struct bf_codegen *_i = NULL, *codegen = NULL;                        \
-         (codegen =                                                            \
-              bf_context_get_next_codegen_by_fe((const void **)&_i, (fe)));)
 
 /**
  * @brief Get codegen for a given (hook, front) set.
@@ -171,7 +137,7 @@ int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
                            struct bf_codegen *codegen);
 
 /**
- * @brief Update the codegen for a given (hook, front) set.
+ * @brief Replace the codegen for a given (hook, front) set, if any.
  *
  * If a codegen already exists for the given (hook, front) set, then it is
  * deleted and replaced by @p codegen. Otherwise, @p codegen is added to the
@@ -180,36 +146,6 @@ int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
  * @param hook Hook to update the codegen for. Must be a valid hook.
  * @param front Front-end to update the codegen for. Must be a valid
  * @param codegen Codegen to update the context with. Can't be NULL.
- * @return 0 on success, negative error code on failure.
  */
-int bf_context_update_codegen(enum bf_hook hook, enum bf_front front,
-                              struct bf_codegen *codegen);
-
-/**
- * @brief Iterate over all codegens.
- *
- * @param iter Opaque iterator. Pointer to a void * variable. If *iter is NULL,
- * then the first codegen is returned. Otherwise, the next codegen is returned.
- * @return The next codegen, or NULL if there is no more.
- */
-struct bf_codegen *bf_context_get_next_codegen(const void **iter);
-
-/**
- * @brief Iterate over all codegens for a given hook.
- *
- * @param iter Opaque iterator. Pointer to a void * variable. If *iter is NULL,
- * then the first codegen is returned. Otherwise, the next codegen is returned.
- * @return The next codegen, or NULL if there is no more.
- */
-struct bf_codegen *bf_context_get_next_codegen_by_hook(const void **iter,
-                                                       enum bf_hook hook);
-
-/**
- * @brief Iterate over all codegens for a given front-end.
- *
- * @param iter Opaque iterator. Pointer to a void * variable. If *iter is NULL,
- * then the first codegen is returned. Otherwise, the next codegen is returned.
- * @return The next codegen, or NULL if there is no more.
- */
-struct bf_codegen *bf_context_get_next_codegen_by_fe(const void **iter,
-                                                     enum bf_front front);
+void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
+                                struct bf_codegen *codegen);

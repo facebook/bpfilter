@@ -19,10 +19,6 @@
 static struct bf_context *_global_context = NULL;
 
 static void _bf_context_free(struct bf_context **context);
-static const struct bf_list_node *
-_bf_context_get_next_codegen_node_by_hook(const struct bf_context *context,
-                                          const struct bf_list_node *node,
-                                          enum bf_hook hook);
 
 /**
  * @brief Create and initialize a new context.
@@ -34,10 +30,6 @@ _bf_context_get_next_codegen_node_by_hook(const struct bf_context *context,
  */
 static int _bf_context_new(struct bf_context **context)
 {
-    static const bf_list_ops ops = {
-        .free = (bf_list_ops_free)bf_codegen_free,
-    };
-
     _cleanup_bf_context_ struct bf_context *_context = NULL;
 
     bf_assert(context);
@@ -45,9 +37,6 @@ static int _bf_context_new(struct bf_context **context)
     _context = calloc(1, sizeof(struct bf_context));
     if (!_context)
         return bf_err_code(errno, "failed to allocate memory");
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        bf_list_init(&_context->hooks[i], &ops);
 
     *context = TAKE_PTR(_context);
 
@@ -69,8 +58,10 @@ static void _bf_context_free(struct bf_context **context)
     if (!*context)
         return;
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        bf_list_clean(&(*context)->hooks[i]);
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        for (int j = 0; j < _BF_FRONT_MAX; ++j)
+            bf_codegen_free(&(*context)->codegens[i][j]);
+    }
 
     free(*context);
     *context = NULL;
@@ -88,21 +79,24 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
-    DUMP(bf_dump_prefix_last(prefix), "hooks:");
+    DUMP(bf_dump_prefix_last(prefix), "codegens:");
     bf_dump_prefix_push(prefix);
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        if (i == BF_HOOK_TC_EGRESS)
+        if (i == _BF_HOOK_MAX - 1)
             bf_dump_prefix_last(prefix);
 
         DUMP(prefix, "%s", bf_hook_to_str(i));
         bf_dump_prefix_push(prefix);
 
-        bf_list_foreach (&context->hooks[i], codegen_node) {
-            if (bf_list_is_tail(&context->hooks[i], codegen_node))
+        for (int j = 0; j < _BF_FRONT_MAX; ++j) {
+            if (j == _BF_FRONT_MAX - 1)
                 bf_dump_prefix_last(prefix);
 
-            bf_codegen_dump(bf_list_node_get_data(codegen_node), prefix);
+            if (context->codegens[i][j])
+                bf_codegen_dump(context->codegens[i][j], prefix);
+            else
+                DUMP(prefix, "%s: <null>", bf_front_to_str(j));
         }
 
         bf_dump_prefix_pop(prefix);
@@ -132,7 +126,7 @@ static int _bf_context_marsh(const struct bf_context *context,
         return bf_err_code(r, "failed to create marsh for context");
 
     {
-        // Serialize bf_context.hooks content (struct bf_codegen)
+        // Serialize bf_context.codegens content
 
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
@@ -141,10 +135,12 @@ static int _bf_context_marsh(const struct bf_context *context,
             return bf_err_code(r, "failed to create marsh for codegens");
 
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-            bf_list_foreach (&context->hooks[i], codegen_node) {
+            for (int j = 0; j < _BF_FRONT_MAX; ++j) {
                 _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-                struct bf_codegen *codegen =
-                    bf_list_node_get_data(codegen_node);
+                struct bf_codegen *codegen = context->codegens[i][j];
+
+                if (!codegen)
+                    continue;
 
                 r = bf_codegen_marsh(codegen, &subchild);
                 if (r)
@@ -206,16 +202,24 @@ static int _bf_context_unmarsh(const struct bf_marsh *marsh,
 
         while ((subchild = bf_marsh_next_child(child, subchild))) {
             _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+            enum bf_hook hook;
+            enum bf_front front;
 
             r = bf_codegen_unmarsh(subchild, &codegen);
             if (r)
                 return bf_err_code(r, "failed to unmarsh codegen");
 
-            r = bf_list_add_head(&_context->hooks[codegen->hook], codegen);
-            if (r)
-                return bf_err_code(r, "failed to add codegen to context");
+            hook = codegen->hook;
+            front = codegen->front;
 
-            TAKE_PTR(codegen);
+            if (_context->codegens[hook][front]) {
+                return bf_err_code(
+                    -EEXIST,
+                    "restored codegen for %s::%s, but codegen already exists in context!",
+                    bf_hook_to_str(hook), bf_front_to_str(front));
+            }
+
+            _context->codegens[hook][front] = TAKE_PTR(codegen);
         }
     }
 
@@ -233,13 +237,7 @@ _bf_context_get_codegen(const struct bf_context *context, enum bf_hook hook,
 {
     bf_assert(context);
 
-    bf_context_foreach_codegen_by_hook(codegen, hook)
-    {
-        if (codegen->front == front)
-            return codegen;
-    }
-
-    return NULL;
+    return context->codegens[hook][front];
 }
 
 /**
@@ -251,19 +249,11 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
 {
     bf_assert(context);
 
-    /* Use bf_list_foreach() instead of bf_context-specific functions so the
-     * node can be deleted while iterating. */
-    bf_list_foreach (&context->hooks[hook], codegen_node) {
-        struct bf_codegen *codegen = bf_list_node_get_data(codegen_node);
-        if (codegen->front != front)
-            continue;
+    struct bf_codegen *codegen = context->codegens[hook][front];
 
-        codegen = bf_list_node_take_data(codegen_node);
-        bf_list_delete(&context->hooks[hook], codegen_node);
-        return codegen;
-    }
+    context->codegens[hook][front] = NULL;
 
-    return NULL;
+    return codegen;
 }
 
 /**
@@ -272,12 +262,9 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
 static void _bf_context_delete_codegen(struct bf_context *context,
                                        enum bf_hook hook, enum bf_front front)
 {
-    struct bf_codegen *codegen = NULL;
-
     bf_assert(context);
 
-    codegen = _bf_context_take_codegen(context, hook, front);
-    bf_codegen_free(&codegen);
+    bf_codegen_free(&context->codegens[hook][front]);
 }
 
 /**
@@ -290,114 +277,25 @@ static int _bf_context_set_codegen(struct bf_context *context,
     bf_assert(context);
     bf_assert(codegen && codegen->hook == hook && codegen->front == front);
 
-    if (_bf_context_get_codegen(context, hook, front))
+    if (context->codegens[hook][front])
         return bf_err_code(-EEXIST, "codegen already exists in context");
 
-    return bf_list_add_tail(&context->hooks[hook], codegen);
+    context->codegens[hook][front] = codegen;
+
+    return 0;
 }
 
 /**
- * See @ref bf_context_update_codegen for details.
+ * See @ref bf_context_replace_codegen for details.
  */
-static int _bf_context_update_codegen(struct bf_context *context,
-                                      enum bf_hook hook, enum bf_front front,
-                                      struct bf_codegen *codegen)
+static void _bf_context_replace_codegen(struct bf_context *context,
+                                        enum bf_hook hook, enum bf_front front,
+                                        struct bf_codegen *codegen)
 {
     bf_assert(context);
 
-    _bf_context_delete_codegen(context, hook, front);
-
-    return bf_list_add_tail(&context->hooks[hook], codegen);
-}
-
-/**
- * @brief Get the next codegen list node.
- *
- * For a given @p node, this function returns the next codegen list node. It
- * will jump accross hooks if no more codegen are available for the current
- * hook.
- *
- * if @p node is NULL, the first codegen node is returned.
- *
- * @param context Context to get the codegen from.
- * @param node Node to get the next codegen from, or NULL.
- * @return The next codegen, or NULL if there is no more.
- */
-static const struct bf_list_node *
-_bf_context_get_next_codegen_node(const struct bf_context *context,
-                                  const struct bf_list_node *node)
-{
-    enum bf_hook i =
-        node ? ((struct bf_codegen *)bf_list_node_get_data(node))->hook : 0;
-
-    bf_assert(context);
-
-    for (; i < _BF_HOOK_MAX; ++i) {
-        node = _bf_context_get_next_codegen_node_by_hook(context, node, i);
-        if (node)
-            return node;
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Get the next codegen list node for a given hook.
- *
- * @p node is expected to be a valid codegen node for the given hook. If @p node
- * is NULL, the first codegen node for the given hook is returned.
- *
- * @warning This function is not supposed to be called directly. Use the
- *  @ref bf_context_foreach_codegen_by_hook macro instead to iterate over
- *  codegen for a given hook.
- *
- * @param context Context to get the codegen from.
- * @param node Node to get the next codegen from, or NULL.
- * @param hook Hook to get the codegen from. Must be a valid hook.
- * @return The next codegen for the given hook, or NULL if there is no more.
- */
-static const struct bf_list_node *
-_bf_context_get_next_codegen_node_by_hook(const struct bf_context *context,
-                                          const struct bf_list_node *node,
-                                          enum bf_hook hook)
-{
-    bf_assert(context);
-
-    if (!node)
-        return bf_list_get_head(&context->hooks[hook]);
-
-    return bf_list_node_next(node);
-}
-
-/**
- * @brief Get the next codegen list node for a given front-end.
- *
- * @p node is expected to be a valid codegen node for the given front-end. If
- * @p node is NULL, the first codegen node for the given front-end is returned.
- *
- * @warning This function is not supposed to be called directly. Use the
- * @ref bf_context_foreach_codegen_by_fe macro instead to iterate over
- * codegen for a given front-end.
- *
- * @param context Context to get the codegen from.
- * @param node Node to get the next codegen from, or NULL.
- * @param fe Front-end to get the codegen from. Must be a valid front-end.
- * @return The next codegen for the given front-end, or NULL if there is no
- * more.
- */
-static const struct bf_list_node *
-_bf_context_get_next_codegen_node_by_fe(const struct bf_context *context,
-                                        const struct bf_list_node *node,
-                                        enum bf_front front)
-{
-    bf_assert(context);
-
-    while ((node = _bf_context_get_next_codegen_node(context, node))) {
-        if (((struct bf_codegen *)bf_list_node_get_data(node))->front == front)
-            return node;
-    }
-
-    return NULL;
+    bf_codegen_free(&context->codegens[hook][front]);
+    context->codegens[hook][front] = codegen;
 }
 
 int bf_context_setup(void)
@@ -419,8 +317,13 @@ int bf_context_setup(void)
 void bf_context_teardown(bool clear)
 {
     if (clear) {
-        bf_context_foreach_codegen (codegen) {
-            bf_codegen_unload(codegen);
+        for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+            for (int j = 0; j < _BF_FRONT_MAX; ++j) {
+                if (!_global_context->codegens[i][j])
+                    continue;
+
+                bf_codegen_unload(_global_context->codegens[i][j]);
+            }
         }
     }
 
@@ -487,39 +390,8 @@ int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
     return _bf_context_set_codegen(_global_context, hook, front, codegen);
 }
 
-int bf_context_update_codegen(enum bf_hook hook, enum bf_front front,
-                              struct bf_codegen *codegen)
+void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
+                                struct bf_codegen *codegen)
 {
-    return _bf_context_update_codegen(_global_context, hook, front, codegen);
-}
-
-struct bf_codegen *bf_context_get_next_codegen(const void **iter)
-{
-    bf_assert(iter);
-
-    *iter = _bf_context_get_next_codegen_node(_global_context, *iter);
-
-    return (*iter) ? bf_list_node_get_data(*iter) : NULL;
-}
-
-struct bf_codegen *bf_context_get_next_codegen_by_hook(const void **iter,
-                                                       enum bf_hook hook)
-{
-    bf_assert(iter);
-
-    *iter =
-        _bf_context_get_next_codegen_node_by_hook(_global_context, *iter, hook);
-
-    return (*iter) ? bf_list_node_get_data(*iter) : NULL;
-}
-
-struct bf_codegen *bf_context_get_next_codegen_by_fe(const void **iter,
-                                                     enum bf_front front)
-{
-    bf_assert(iter);
-
-    *iter =
-        _bf_context_get_next_codegen_node_by_fe(_global_context, *iter, front);
-
-    return (*iter) ? bf_list_node_get_data(*iter) : NULL;
+    _bf_context_replace_codegen(_global_context, hook, front, codegen);
 }
