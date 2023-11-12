@@ -249,11 +249,7 @@ static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
 {
     bf_assert(context);
 
-    struct bf_codegen *codegen = context->codegens[hook][front];
-
-    context->codegens[hook][front] = NULL;
-
-    return codegen;
+    return TAKE_PTR(context->codegens[hook][front]);
 }
 
 /**
