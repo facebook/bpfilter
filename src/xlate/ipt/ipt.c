@@ -436,8 +436,10 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     /* Copy entries now, so we don't have to unload the codegens if the copy
      * fails. */
     entries = bf_memdup(replace->entries, replace->size);
-    if (!entries)
-        return bf_err_code(-ENOMEM, "failed to duplicate iptables rules");
+    if (!entries) {
+        r = bf_err_code(-ENOMEM, "failed to duplicate iptables rules");
+        goto end_free_codegens;
+    }
 
     for (int i = 0; i < _BF_HOOK_MAX; i++) {
         _cleanup_bf_codegen_ struct bf_codegen *codegen = codegens[i];
@@ -450,23 +452,18 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 
         r = bf_codegen_generate(codegen);
         if (r) {
-            return bf_err_code(
-                r, "failed to generate bytecode for hook %d, skipping",
-                codegen->hook);
+            bf_err_code(r, "failed to generate bytecode for hook %d, skipping",
+                        codegen->hook);
+            goto end_free_codegens;
         }
 
         r = bf_codegen_load(codegen, bf_context_get_codegen(i, BF_FRONT_IPT));
-        if (r)
-            return bf_err_code(r, "failed to load codegen");
+        if (r) {
+            bf_err_code(r, "failed to load codegen");
+            goto end_free_codegens;
+        }
 
-        // Delete the previous codegen, if any.
-        bf_context_delete_codegen(i, BF_FRONT_IPT);
-
-        r = bf_context_set_codegen(i, BF_FRONT_IPT, codegen);
-        if (r)
-            return bf_err_code(r, "failed to add codegen to context");
-
-        TAKE_PTR(codegen);
+        bf_context_replace_codegen(i, BF_FRONT_IPT, TAKE_PTR(codegen));
     }
 
     _cache->valid_hooks = replace->valid_hooks;
@@ -477,7 +474,11 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     free(_cache->entries);
     _cache->entries = TAKE_PTR(entries);
 
-    return 0;
+end_free_codegens:
+    for (int i = 0; i < _BF_HOOK_MAX; i++)
+        bf_codegen_free(&codegens[i]);
+
+    return r;
 }
 
 /**
