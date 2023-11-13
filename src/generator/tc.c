@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "tc.h"
+#include "generator/tc.h"
 
 #include <linux/pkt_cls.h>
 
@@ -27,6 +27,8 @@ static int _tc_gen_inline_epilogue(struct bf_program *program);
 static int _tc_get_verdict(enum bf_verdict verdict);
 static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
+static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
+                                       union bf_flavor_attach_attr *attr);
 static int _tc_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {
@@ -34,6 +36,7 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_epilogue = _tc_gen_inline_epilogue,
     .get_verdict = _tc_get_verdict,
     .attach_prog_pre_unload = _tc_attach_prog_pre_unload,
+    .attach_prog_post_unload = _tc_attach_prog_post_unload,
     .detach_prog = _tc_detach_prog,
 };
 
@@ -151,6 +154,16 @@ static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
     r = bpf_tc_attach(&hook, &opts);
     if (r)
         return bf_err_code(r, "failed to attach BPF program to TC hook");
+
+    return 0;
+}
+
+static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
+                                       union bf_flavor_attach_attr *attr)
+{
+    UNUSED(program);
+    UNUSED(prog_fd);
+    UNUSED(attr);
 
     return 0;
 }
