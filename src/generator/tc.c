@@ -88,8 +88,6 @@ static int _tc_gen_inline_epilogue(struct bf_program *program)
 {
     UNUSED(program);
 
-    EMIT(program, BPF_EXIT_INSN());
-
     return 0;
 }
 
