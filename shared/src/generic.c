@@ -174,7 +174,7 @@ int bf_recv_response(int fd, struct bf_response **response)
     if (r < 0)
         return (int)r;
 
-    if ((size_t)r != _response->data_len) {
+    if (_response->type == BF_RES_SUCCESS && (size_t)r != _response->data_len) {
         fprintf(stderr,
                 "failed to read response: %lu bytes read, %lu expected\n",
                 (size_t)r, _response->data_len);
