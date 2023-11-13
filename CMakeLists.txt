@@ -132,7 +132,7 @@ file(
 
 install(
     FILES ${CMAKE_BINARY_DIR}/bpfilter.pc
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
 add_subdirectory(src)
