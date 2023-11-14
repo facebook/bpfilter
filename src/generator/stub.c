@@ -27,22 +27,33 @@ int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
     return 0;
 }
 
-int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
+/**
+ * @brief Generate stub to create a dynptr.
+ *
+ * @param program Program to generate the stub for. Must not be NULL.
+ * @param arg_reg Register where the first argument to the dynptr creation
+ *  function is located (SKB or xdp_md structure).
+ * @param kfunc Name of the kfunc to use to create the dynamic pointer.
+ * @return 0 on success, or negative errno value on error.
+ */
+static int _stub_make_ctx_dynptr(struct bf_program *program,
+                                 enum bf_reg arg_reg, const char *kfunc)
 {
     bf_assert(program);
+    bf_assert(kfunc);
 
-    // BF_ARG_1: address of the skb.
-    if (BF_ARG_1 != skb_reg)
-        EMIT(program, BPF_MOV64_IMM(BF_ARG_1, skb_reg));
+    // BF_ARG_1: address of the SKB or xdp_md structure.
+    if (arg_reg != BF_ARG_1)
+        EMIT(program, BPF_MOV64_IMM(BF_ARG_1, arg_reg));
 
     // BF_ARG_2: flags.
     EMIT(program, BPF_MOV64_IMM(BF_ARG_2, 0));
 
-    // BF_ARG_1: address of the dynptr in the context.
+    // BF_ARG_3: address of the dynptr in the context
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(dynptr)));
 
-    EMIT_KFUNC_CALL(program, "bpf_dynptr_from_skb");
+    EMIT_KFUNC_CALL(program, kfunc);
 
     // Copy the return value to BF_REG_2.
     EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_RET));
@@ -54,6 +65,20 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
+}
+
+int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg)
+{
+    assert(program);
+
+    return _stub_make_ctx_dynptr(program, md_reg, "bpf_dynptr_from_xdp");
+}
+
+int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
+{
+    assert(program);
+
+    return _stub_make_ctx_dynptr(program, skb_reg, "bpf_dynptr_from_skb");
 }
 
 int bf_stub_get_l2_eth_hdr(struct bf_program *program)

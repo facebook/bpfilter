@@ -166,6 +166,26 @@ int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
     return 0;
 }
 
+int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
+                           enum bf_xdp_attach_mode mode)
+{
+    union bpf_attr attr = {};
+    int r;
+
+    attr.link_create.prog_fd = prog_fd;
+    attr.link_create.target_fd = ifindex;
+    attr.link_create.attach_type = BPF_XDP;
+    attr.link_create.flags = mode;
+
+    r = _bpf(BPF_LINK_CREATE, &attr);
+    if (r < 0)
+        return r;
+
+    *link_fd = r;
+
+    return 0;
+}
+
 int bf_bpf_link_detach(int link_fd)
 {
     union bpf_attr attr = {

@@ -34,6 +34,7 @@ enum bf_flavor
 {
     BF_FLAVOR_TC,
     BF_FLAVOR_NF,
+    BF_FLAVOR_XDP,
     _BF_FLAVOR_MAX,
 };
 

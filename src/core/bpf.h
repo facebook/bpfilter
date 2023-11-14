@@ -5,9 +5,18 @@
 
 #pragma once
 
+#include <linux/if_link.h>
+
 #include <stddef.h>
 
 #include "core/hook.h"
+
+enum bf_xdp_attach_mode
+{
+    BF_XDP_MODE_SKB = XDP_FLAGS_SKB_MODE,
+    BF_XDP_MODE_DRV = XDP_FLAGS_DRV_MODE,
+    BF_XDP_MODE_HW = XDP_FLAGS_HW_MODE,
+};
 
 /**
  * @brief Load a BPF program.
@@ -81,6 +90,19 @@ int bf_bpf_obj_get(const char *path, int *fd);
  */
 int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
                           int *link_fd);
+
+/**
+ * @brief Create a XDP BPF link.
+ *
+ * @param prog_fd File descriptor of the program to attach to the link.
+ * @param ifindex Interface index to attach the program to.
+ * @param link_fd Link file descriptor, only valid if the return value of the
+ *  function is 0.
+ * @param mode XDP program attach mode. See @ref bf_xdp_attach_mode.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
+                           enum bf_xdp_attach_mode mode);
 
 /**
  * @brief Detach a BPF link using its file descriptor.
