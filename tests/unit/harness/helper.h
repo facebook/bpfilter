@@ -10,8 +10,12 @@
 #define _cleanup_tmp_file_ __attribute__((cleanup(bf_test_remove_tmp_file)))
 
 struct bf_codegen;
+struct bf_nlmsg;
+struct bf_nlpart;
 
 char *bf_test_get_readable_tmp_filepath(void);
 void bf_test_remove_tmp_file(char **path);
 int bf_test_make_codegen(struct bf_codegen **codegen, enum bf_hook hook,
                          int nprogs);
+int bf_test_get_nlpart_add_chain(struct bf_nlpart **part);
+int bf_test_get_nlmsg_add_chain(struct bf_nlmsg **msg);

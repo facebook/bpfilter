@@ -88,6 +88,7 @@ set(bf_test_srcs
     src/core/verdict.c
     src/generator/codegen.c
     src/generator/nf.c
+    src/xlate/nft/nlpart.c
 )
 
 add_executable(tests_unit
@@ -140,6 +141,7 @@ target_link_libraries(tests_unit
         gcov
         PkgConfig::cmocka
         PkgConfig::elf
+        PkgConfig::nl
 )
 
 target_link_options(tests_unit

@@ -8,7 +8,7 @@ BPF-based packet filtering framework
 `bpfilter` requires an up-to-date system running Linux 6.4+ and `libbpf` 1.2+. Build dependencies are the following on Fedora 38:
 ```shell
 sudo dnf install -y \
-    cmake libbpf-devel \
+    cmake libbpf-devel libnl3-devel \
     libcmocka-devel clang-tools-extra lcov \
     doxygen python3-sphinx python3-breathe python3-furo pkgconf
 ```
