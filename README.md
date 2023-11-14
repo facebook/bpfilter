@@ -13,10 +13,15 @@ sudo dnf install -y \
     doxygen python3-sphinx python3-breathe python3-furo pkgconf
 ```
 
-To build `bpfilter` (from the source directory):
+## Quick Start
+
+Run from the source directory:
 ```shell
+# Build bpfilter and libbpfilter
 cmake -S . -B build
 make -C build -j
+# Run unit tests
+make -C build test
 ```
 
 `bpfilter` daemon will be in `$BUILD/src/bpfilter`, and `libbpfilter.so` will be in `$BUILD/lib/libbpfilter.so`.
