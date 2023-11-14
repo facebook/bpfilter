@@ -8,6 +8,10 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "opts.h"
+
+#define _DUMP_HEXDUMP_LEN 8
+
 void bf_dump_prefix_push(prefix_t *prefix)
 {
     char *_prefix = *prefix;
@@ -51,4 +55,24 @@ void bf_dump_prefix_pop(prefix_t *prefix)
     // Ensure we have a branch to the next item.
     if (len - 4)
         strncpy(&_prefix[len - 8], "|-- ", 5);
+}
+
+void bf_dump_hex(prefix_t *prefix, const void *data, size_t len)
+{
+    // 5 characters per byte (0x%02x) + 1 for the null terminator.
+    char buf[_DUMP_HEXDUMP_LEN * 5 + 1];
+    const void *end = data + len;
+
+    /* DUMP() won't print anything if we're not verbose, so we might as well
+     * skip the dump generation too. */
+    if (!bf_opts_verbose())
+        return;
+
+    while (data < end) {
+        char *line = buf;
+        for (size_t i = 0; i < _DUMP_HEXDUMP_LEN && data < end; ++i, ++data)
+            line += sprintf(line, "0x%02x ", *(unsigned char *)data);
+
+        DUMP((data == end ? bf_dump_prefix_last(prefix) : prefix), "%s", buf);
+    }
 }
