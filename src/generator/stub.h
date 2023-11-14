@@ -27,17 +27,27 @@ struct bf_program;
  */
 int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
                      size_t size);
+/**
+ * @brief Emit instructions to get a dynptr for an XDP program.
+ *
+ * Prepare arguments and call bpf_dynptr_from_xdp(). If the return value is
+ * different from 0, jump to the end of the program and accept the packet.
+ *
+ * The initialised dynptr is stored in the program's runtime context.
+ *
+ * @param program Program to emit instructions into.
+ * @param md_reg Scratch register containing the pointer to the xdp_md.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg);
 
 /**
- * @brief Emit instructions to initialise the context's dynptr on the packet.
+ * @brief Emit instructions to get a dynptr for an XDP program.
  *
- * Store bpf_dynptr_from_skb argument into:
- * - BF_ARG_1: pointer to the @p skb. This is the address provided by @p
- *   skb_reg. If @p skb_reg is already BF_ARG_1, skip this instruction.
- * - BF_ARG_2: flags, 0.
- * - BF_ARG_3: address to the dynptr structure located in the context.
- * Then, call bpf_dynptr_from_skb(). If the return value is different from 0,
- * jump to the end of the program.
+ * Prepare arguments and call bpf_dynptr_from_skb(). If the return value is
+ * different from 0, jump to the end of the program and accept the packet.
+ *
+ * The initialised dynptr is stored in the program's runtime context.
  *
  * @param program Program to emit instructions into.
  * @param skb_reg Scratch register containing the pointer to the skb.
