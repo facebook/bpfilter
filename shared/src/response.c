@@ -11,6 +11,19 @@
 
 #include "shared/helper.h"
 
+int bf_response_new_raw(struct bf_response **response, size_t data_len)
+{
+    bf_assert(response);
+
+    *response = malloc(sizeof(**response) + data_len);
+    if (!*response)
+        return -ENOMEM;
+
+    (*response)->type = BF_RES_SUCCESS;
+
+    return 0;
+}
+
 int bf_response_new_success(struct bf_response **response, const char *data,
                             size_t data_len)
 {

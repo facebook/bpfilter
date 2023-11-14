@@ -57,6 +57,20 @@ struct bf_response
 };
 
 /**
+ * @brief Allocate a response without copying data.
+ *
+ * Space will be allocated in the response for @p data_len bytes of data, but
+ * no data will be copied, nor will the response's data be initialized.
+ *
+ * The response's type will be set to BF_RES_SUCCESS.
+ *
+ * @param response Pointer to the response to allocate. Must be non-NULL.
+ * @param data_len Size of the data to allocate.
+ * @return 0 on success, or negative errno code on failure.
+ */
+int bf_response_new_raw(struct bf_response **response, size_t data_len);
+
+/**
  * @brief Allocate and initialise a new successful response.
  *
  * @param response Pointer to the response to allocate. Must be non-NULL.
