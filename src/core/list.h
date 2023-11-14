@@ -168,9 +168,10 @@ static inline size_t bf_list_size(const bf_list *list)
  * @param list Initialised list. Must be non-NULL.
  * @return True if the list is empty, false otherwise.
  */
-static inline bool bf_list_empty(bf_list *list)
+static inline bool bf_list_is_empty(const bf_list *list)
 {
     bf_assert(list);
+
     return list->len == 0;
 }
 
