@@ -94,6 +94,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.h ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.c
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.c
+    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nft.c
     ${CMAKE_SOURCE_DIR}/src/xlate/nft/nlmsg.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nlmsg.c
     ${CMAKE_SOURCE_DIR}/src/xlate/nft/nlpart.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nlpart.c
 )
