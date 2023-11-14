@@ -198,6 +198,10 @@ static int _bf_save(const char *path)
     for (int i = 0; i < _BF_FRONT_MAX; ++i) {
         _cleanup_free_ struct bf_marsh *child = NULL;
 
+        r = bf_marsh_new(&child, NULL, 0);
+        if (r < 0)
+            return r;
+
         r = bf_front_ops_get(i)->marsh(&child);
         if (r < 0)
             return r;
@@ -264,6 +268,9 @@ static int _bf_init(int argc, char *argv[])
     }
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
+        if (!bf_opts_is_front_enabled(front))
+            continue;
+
         r = bf_front_ops_get(front)->setup();
         if (r < 0) {
             return bf_err_code(r, "failed to setup front-end %s",
@@ -294,6 +301,9 @@ static int _bf_clean(void)
     int r;
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
+        if (!bf_opts_is_front_enabled(front))
+            continue;
+
         r = bf_front_ops_get(front)->teardown();
         if (r < 0) {
             bf_warn_code(r, "failed to teardown front-end %s, continuing",
@@ -332,6 +342,9 @@ static int _process_request(struct bf_request *request,
 
     bf_assert(request);
     bf_assert(response);
+
+    if (!bf_opts_is_front_enabled(request->front))
+        return bf_response_new_failure(response, -ENOTSUP);
 
     ops = bf_front_ops_get(request->front);
     r = ops->request_handler(request, response);

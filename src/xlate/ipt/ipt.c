@@ -676,29 +676,25 @@ static int _bf_ipt_request_handler(struct bf_request *request,
 
 static int _bf_ipt_marsh(struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    int r = 0;
 
     bf_assert(marsh);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    if (!_cache)
+        return 0;
 
-    r |= bf_marsh_add_child_raw(&_marsh, &_cache->valid_hooks,
+    r |= bf_marsh_add_child_raw(marsh, &_cache->valid_hooks,
                                 sizeof(_cache->valid_hooks));
-    r |= bf_marsh_add_child_raw(&_marsh, &_cache->hook_entry,
+    r |= bf_marsh_add_child_raw(marsh, &_cache->hook_entry,
                                 sizeof(_cache->hook_entry));
-    r |= bf_marsh_add_child_raw(&_marsh, &_cache->underflow,
+    r |= bf_marsh_add_child_raw(marsh, &_cache->underflow,
                                 sizeof(_cache->underflow));
-    r |= bf_marsh_add_child_raw(&_marsh, &_cache->num_entries,
+    r |= bf_marsh_add_child_raw(marsh, &_cache->num_entries,
                                 sizeof(_cache->num_entries));
-    r |= bf_marsh_add_child_raw(&_marsh, &_cache->size, sizeof(_cache->size));
-    r |= bf_marsh_add_child_raw(&_marsh, _cache->entries, _cache->size);
+    r |= bf_marsh_add_child_raw(marsh, &_cache->size, sizeof(_cache->size));
+    r |= bf_marsh_add_child_raw(marsh, _cache->entries, _cache->size);
     if (r)
         return r;
-
-    *marsh = TAKE_PTR(_marsh);
 
     bf_dbg("Saved bf_ipt_cache at %p:", _cache);
     bf_dbg("  valid_hooks: %u", _cache->valid_hooks);
@@ -715,6 +711,9 @@ static int _bf_ipt_unmarsh(struct bf_marsh *marsh)
     int r;
 
     bf_assert(marsh);
+
+    if (marsh->data_len == 0)
+        return 0;
 
     r = _bf_ipt_cache_new(&cache);
     if (r < 0)
