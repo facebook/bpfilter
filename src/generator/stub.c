@@ -5,9 +5,9 @@
 
 #include "generator/stub.h"
 
-#include <linux/bpf.h>
-
 #include <arpa/inet.h>
+
+#include <linux/bpf.h>
 
 #include "core/flavor.h"
 #include "generator/program.h"

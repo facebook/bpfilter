@@ -5,9 +5,10 @@
 
 #include "generator/tc.h"
 
+#include <arpa/inet.h>
+
 #include <linux/pkt_cls.h>
 
-#include <arpa/inet.h>
 #include <bpf/libbpf.h>
 #include <errno.h>
 
