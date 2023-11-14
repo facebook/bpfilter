@@ -103,6 +103,7 @@ set(bpfilter_library_srcs
     ${CMAKE_SOURCE_DIR}/lib/include/bpfilter/bpfilter.h
     ${CMAKE_SOURCE_DIR}/lib/src/generic.c
     ${CMAKE_SOURCE_DIR}/lib/src/ipt.c
+    ${CMAKE_SOURCE_DIR}/lib/src/nft.c
 )
 
 set(bpfilter_cflags

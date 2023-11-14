@@ -5,8 +5,11 @@
 
 #pragma once
 
+#include <linux/netlink.h>
+
 #include <bpfilter/shared/request.h>
 #include <bpfilter/shared/response.h>
+#include <stdint.h>
 
 struct ipt_getinfo;
 struct ipt_get_entries;
@@ -60,3 +63,33 @@ int bf_ipt_get_info(struct ipt_getinfo *info);
  * @return 0 on success, negative errno value on error.
  */
 int bf_ipt_get_entries(struct ipt_get_entries *entries);
+
+/**
+ * @brief Send nftable's Netlink request to the bpfilter daemon but do not
+ *  expect a response.
+ *
+ * @param data Netlink request to send to the daemon. Caller keep ownership
+ *  of the request. Can't be NULL.
+ * @param len Length of the request. Can't be 0.
+ * @return 0 on success, negative errno value on error. Returns an error if
+ *  @p data is NULL or @p len is 0.
+ */
+int bf_nft_send(const void *data, size_t len);
+
+/**
+ * @brief Send nftable's Netlink request to the bpfilter daemon and write the
+ *  response back.
+ *
+ * @p res and @p res_len won't be modified unless the call is successful.
+ *
+ * @param req Netlink request to send to the daemon. Caller keep ownership
+ *  of the request. Can't be NULL.
+ * @param req_len Length of the request. Can't be 0.
+ * @param res Response received from the daemon. The caller is responsible for
+ *  allocating the buffer. Can't be NULL.
+ * @param res_len Length of the response buffer. Can't be 0. If the call the
+ *  successful, it will be updated with the length of the response.
+ * @return 0 on success, negative errno value on error.
+ */
+int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
+                    struct nlmsghdr *res, size_t *res_len);
