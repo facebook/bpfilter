@@ -70,3 +70,14 @@ prefix_t *bf_dump_prefix_last(prefix_t *prefix);
  * @param prefix Prefix string.
  */
 void bf_dump_prefix_pop(prefix_t *prefix);
+
+/**
+ * @brief Dump the data buffer in hexedecimal format.
+ *
+ * Each byte in @p data will be printed as 0x%02x, with 8 bytes on each row.
+ *
+ * @param prefix Prefix string.
+ * @param data Data buffer to print.
+ * @param len Size of the data buffer.
+ */
+void bf_dump_hex(prefix_t *prefix, const void *data, size_t len);
