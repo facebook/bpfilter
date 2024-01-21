@@ -115,7 +115,7 @@ struct bf_program_context
 
     /** Layer 4 protocol. Set when the L3 header is processed. Used to define
      * how many bytes to read when processing the packet. */
-    uint16_t l4_proto;
+    uint8_t l4_proto;
 
     /** Layer 2 header. */
     union

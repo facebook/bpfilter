@@ -183,7 +183,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 
     // Store the L4 protocol into the context.
     EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l4_proto)));
 
     return 0;
 }
@@ -206,7 +206,7 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
 
     // Load L4 protocol from the context.
     EMIT(program,
-         BPF_LDX_MEM(BPF_W, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
 
     {
         // If L4 protocol is TCP.
