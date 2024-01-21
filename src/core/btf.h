@@ -30,3 +30,16 @@ void bf_btf_teardown(void);
  * @return BTF ID on success, or negative errno value on failure.
  */
 int bf_btf_get_id(const char *name);
+
+/**
+ * @brief Get the offset of a field in a kernel structure.
+ *
+ * Use Linux' BTF data to find the offset of a specific field in a structure.
+ *
+ * @param struct_name Name of the structure to find the offset in. Can't be
+ * NULL.
+ * @param field_name Name of the field to get the offset of. Can't be NULL.
+ *
+ * @return Offset of @p field_name if found, negative error value on failure.
+ */
+int bf_btf_get_field_off(const char *struct_name, const char *field_name);

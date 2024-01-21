@@ -41,3 +41,4 @@ bf_mock_declare(void *, calloc, (size_t nmemb, size_t size));
 bf_mock_declare(int, open, (const char *pathname, int flags, mode_t mode));
 bf_mock_declare(ssize_t, read, (int fd, void *buf, size_t count));
 bf_mock_declare(ssize_t, write, (int fd, const void *buf, size_t count));
+bf_mock_declare(struct btf *, btf__load_vmlinux_btf, (void));

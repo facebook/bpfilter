@@ -13,6 +13,7 @@
 #include <stddef.h>
 
 #include "core/bpf.h"
+#include "core/btf.h"
 #include "core/logger.h"
 #include "core/verdict.h"
 #include "generator/program.h"
@@ -21,7 +22,6 @@
 #include "shared/helper.h"
 
 #include "external/filter.h"
-#include "external/nf_bpf_link.h"
 
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
@@ -44,20 +44,24 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
 static int _nf_gen_inline_prologue(struct bf_program *program)
 {
     int r;
+    int offset;
 
     bf_assert(program);
 
-    // Copy address of sk_buff into BF_REG_1.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
-                              offsetof(struct bpf_nf_ctx, state)));
+    // Copy bpf_nf_ctx.state in BF_REG_1.
+    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
 
-    // Copy address of sk_buff into BF_REG_1.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
-                              offsetof(struct nf_hook_state, in)));
+    // Copy nf_hook_state.in in BF_REG_1.
+    if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
 
-    // Copy address of sk_buff into BF_REG_1.
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_1,
-                              offsetof(struct net_device, ifindex)));
+    // Copy net_device.ifindex in BF_REG_1.
+    if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_1, offset));
 
     // If the packet is coming from the wrong interface, then quit.
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
@@ -69,11 +73,14 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
          BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
 
     // Copy address of sk_buff into BF_REG_1.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1,
-                              offsetof(struct bpf_nf_ctx, skb)));
+    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
 
     // Copy packet length into BF_REG_2.
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, 112));
+    if ((offset = bf_btf_get_field_off("sk_buff", "len")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, offset));
 
     // Add size of Ethernet header to BF_REG_2.
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, ETH_HLEN));
@@ -86,8 +93,8 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     if (r)
         return r;
 
-    // BPF_PROG_TYPE_NETFILTER's skb is stripped from the Ethernet header, so
-    // we don't get it.
+    // BPF_PROG_TYPE_NETFILTER's skb is stripped from the Ethernet header,
+    // so we don't get it.
 
     r = bf_stub_get_l3_ipv4_hdr(program);
     if (r)
