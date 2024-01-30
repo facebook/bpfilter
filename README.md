@@ -26,6 +26,8 @@ make -C build test
 
 `bpfilter` daemon will be in `$BUILD/src/bpfilter`, and `libbpfilter.so` will be in `$BUILD/lib/libbpfilter.so`.
 
+For more details about build and using `iptables` with `bpfilter`, see [doc/iptables.md](doc/iptables.md).
+
 ## License
 
 bpfilter is GPLv2 licensed, as found in the COPYING file.
