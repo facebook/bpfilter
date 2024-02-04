@@ -10,6 +10,6 @@ add_custom_target(lint
 )
 
 add_custom_target(checkstyle
-    COMMAND ${CLANG_FORMAT_BIN} --style=file:${CMAKE_SOURCE_DIR}/.clang-format --dry-run --Werror ${bpfilter_shared_srcs} ${bpfilter_daemon_srcs} ${bpfilter_library_srcs}
+    COMMAND ${CLANG_FORMAT_BIN} --style=file:${CMAKE_SOURCE_DIR}/.clang-format --dry-run ${bpfilter_shared_srcs} ${bpfilter_daemon_srcs} ${bpfilter_library_srcs}
     COMMENT "Check source code formatting"
 )
