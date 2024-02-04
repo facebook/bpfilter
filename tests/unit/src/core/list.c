@@ -75,25 +75,14 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
 static bf_list_ops noop_ops = {.free = noop_free};
 static bf_list_ops dummy_ops = {.free = dummy_free};
 
-/* TestAssert(list, bf_list_new, (NULL, NOT_NULL));
-TestAssert(list, bf_list_new, (NOT_NULL, NULL));
-TestAssert(list, bf_list_free, (NULL));
-TestAssert(list, bf_list_init, (NULL, NOT_NULL));
-TestAssert(list, bf_list_init, (NOT_NULL, NULL));
-TestAssert(list, bf_list_clean, (NULL));
-TestAssert(list, bf_list_size, (NULL));
-TestAssert(list, bf_list_add_head, (NULL, NOT_NULL));
-TestAssert(list, bf_list_add_tail, (NULL, NOT_NULL));
-TestAssert(list, bf_list_get_head, (NULL));
-TestAssert(list, bf_list_get_tail, (NULL));
-TestAssert(list, bf_list_node_next, (NULL));
-TestAssert(list, bf_list_node_prev, (NULL));
-TestAssert(list, bf_list_node_get_data, (NULL));
-TestAssert(list, bf_list_node_take_data, (NULL)); */
-
 Test(list, new_and_free)
 {
     bf_list *l = NULL;
+
+    expect_assert_failure(bf_list_new(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_new(NOT_NULL, NULL));
+    expect_assert_failure(bf_list_free(NULL));
+    expect_assert_failure(bf_list_add_head(NULL, NOT_NULL));
 
     {
         // With noop operators
@@ -137,6 +126,10 @@ Test(list, new_and_free)
 Test(list, init_and_clean)
 {
     bf_list l;
+
+    expect_assert_failure(bf_list_init(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_init(NOT_NULL, NULL));
+    expect_assert_failure(bf_list_clean(NULL));
 
     {
         // With noop operators
@@ -189,6 +182,10 @@ Test(list, fill_from_head_and_check)
 {
     bf_list list;
     size_t i;
+
+    expect_assert_failure(bf_list_size(NULL));
+    expect_assert_failure(bf_list_get_head(NULL));
+    expect_assert_failure(bf_list_node_get_data(NULL));
 
     bf_list_init(&list, &dummy_ops);
 
@@ -248,6 +245,9 @@ Test(list, fill_from_tail_and_check)
     bf_list list;
     size_t i;
 
+    expect_assert_failure(bf_list_add_tail(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_get_tail(NULL));
+
     bf_list_init(&list, &dummy_ops);
 
     assert_null(bf_list_get_head(&list));
@@ -274,4 +274,76 @@ Test(list, fill_from_tail_and_check)
     }
 
     bf_list_clean(&list);
+}
+
+Test(list, is_tail)
+{
+    bf_list l;
+
+    expect_assert_failure(bf_list_is_tail(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_is_tail(NOT_NULL, NULL));
+
+    init_and_fill(&l, 10, &dummy_ops, dummy_filler_head);
+
+    assert_true(bf_list_is_tail(&l, bf_list_get_tail(&l)));
+    assert_false(bf_list_is_tail(&l, bf_list_get_head(&l)));
+
+    bf_list_clean(&l);
+}
+
+Test(list, prev_next_node_access)
+{
+    expect_assert_failure(bf_list_node_next(NULL));
+    expect_assert_failure(bf_list_node_prev(NULL));
+
+    {
+        _cleanup_bf_list_ bf_list *l = NULL;
+
+        new_and_fill(&l, 0, &noop_ops, bf_list_add_head);
+
+        assert_null(bf_list_get_head(l));
+        assert_null(bf_list_get_tail(l));
+    }
+
+    {
+        _cleanup_bf_list_ bf_list *l = NULL;
+
+        new_and_fill(&l, 1, &noop_ops, bf_list_add_head);
+
+        assert_ptr_equal(bf_list_get_head(l), bf_list_get_tail(l));
+        assert_null(bf_list_node_next(bf_list_get_tail(l)));
+        assert_null(bf_list_node_prev(bf_list_get_head(l)));
+    }
+
+    {
+        _cleanup_bf_list_ bf_list *l = NULL;
+
+        new_and_fill(&l, 2, &noop_ops, bf_list_add_head);
+
+        assert_ptr_not_equal(bf_list_get_head(l), bf_list_get_tail(l));
+        assert_ptr_equal(bf_list_node_next(bf_list_get_head(l)),
+                         bf_list_get_tail(l));
+        assert_ptr_equal(bf_list_node_prev(bf_list_get_tail(l)),
+                         bf_list_get_head(l));
+    }
+}
+
+Test(list, node_take_data)
+{
+    {
+        _cleanup_bf_list_ bf_list *l = NULL;
+
+        new_and_fill(&l, 5, &dummy_ops, dummy_filler_tail);
+
+        bf_list_foreach (l, node) {
+            assert_non_null(node);
+            assert_non_null(node->data);
+
+            void *data = bf_list_node_take_data(node);
+            assert_non_null(data);
+            assert_null(node->data);
+
+            free(data);
+        }
+    }
 }
