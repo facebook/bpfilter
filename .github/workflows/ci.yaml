@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches:
@@ -12,20 +13,20 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+  full:
     strategy:
       fail-fast: false
       matrix:
-        buildtype: [ 'debug', 'release' ]
-        image: [ 'fedora:38', 'ubuntu:23.10' ]
-    container: ${{ matrix.image }}
+        arch: ["X64", "ARM64"]
+        mode: ["release", "debug"]
+    container: "fedora:39"
+    runs-on: [self-hosted, "${{ matrix.arch }}"]
     steps:
-      - name: Install packages Fedora
-        if: matrix.image == 'fedora:38'
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install dependencies (Fedora)
         run: |
-          sudo dnf -y install 'dnf-command(copr)'
-          sudo dnf -y install \
+          sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
             clang-tools-extra \
             cmake \
             libcmocka-devel \
@@ -38,7 +39,53 @@ jobs:
             python3-furo \
             python3-sphinx \
             pkgconf
-      - name: Install packages Ubuntu
+      - name: Configure build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=${{ matrix.mode }}
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build
+      - name: Run unit tests
+        run: make -C $GITHUB_WORKSPACE/build test
+      - name: Coverage
+        run: make -C $GITHUB_WORKSPACE/build coverage
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: build/doc/lcov.out
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Check style
+        run: make -C $GITHUB_WORKSPACE/build checkstyle
+      - name: Generate documentation
+        run: make -C $GITHUB_WORKSPACE/build doc
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["fedora:38", "ubuntu:23.10"]
+        arch: ["X64", "ARM64"]
+    container: ${{ matrix.image }}
+    runs-on: [self-hosted, "${{ matrix.arch }}"]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install dependencies (Fedora)
+        if: matrix.image == 'fedora:38'
+        run: |
+          sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            clang-tools-extra \
+            cmake \
+            libcmocka-devel \
+            doxygen \
+            lcov \
+            libasan \
+            libbpf-devel \
+            libubsan \
+            python3-breathe \
+            python3-furo \
+            python3-sphinx \
+            pkgconf
+      - name: Install dependencies (Ubuntu)
         if: matrix.image == 'ubuntu:23.10'
         run: |
           apt-get update
@@ -55,27 +102,9 @@ jobs:
             python3-pip \
             python3-sphinx \
             pkgconf
-      - name: Check out repository code
-        uses: actions/checkout@v3
       - name: Configure build
-        run: cmake -B $GITHUB_WORKSPACE/build -S $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.buildtype }}
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build
-      - name: Check style
-        if: matrix.buildtype == 'release'
-        run: make -C $GITHUB_WORKSPACE/build checkstyle
       - name: Run unit tests
         run: make -C $GITHUB_WORKSPACE/build test
-      - name: Coverage
-        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
-        run: make -C $GITHUB_WORKSPACE/build coverage
-      - name: Upload coverage report to Codecov
-        if: matrix.buildtype == 'Debug' && matrix.image == 'fedora:38'
-        uses: codecov/codecov-action@v3
-        with:
-          files: build/doc/lcov.out
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Generate documentation
-        if: matrix.buildtype == 'release'
-        run: make -C $GITHUB_WORKSPACE/build doc
