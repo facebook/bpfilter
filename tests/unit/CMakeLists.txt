@@ -119,11 +119,17 @@ set_property(TARGET tests_unit PROPERTY POSITION_INDEPENDENT_CODE FALSE)
 
 target_compile_options(tests_unit
     PRIVATE
-        -fprofile-arcs -ftest-coverage
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
         ${bpfilter_cflags}
         $<$<CONFIG:Release>:${bpfilter_cflags_release}>
         $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
+)
+
+# We don't want to compute coverage statistics for unit testing code.
+set(bf_coverage_srcs ${bf_test_srcs} ${bpfilter_daemon_srcs} ${bpfilter_shared_srcs})
+set_source_files_properties(${bf_coverage_srcs}
+    PROPERTIES
+        COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
 )
 
 target_include_directories(tests_unit
