@@ -1,20 +1,28 @@
-.. bpfilter documentation master file, created by
-   sphinx-quickstart on Tue Feb 28 17:21:35 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 ``bpfilter``
 ============
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
    :caption: Usage
 
-   usage
+   overview
+   sources
    iptables
 
 .. toctree::
+   :hidden:
    :maxdepth: 2
    :caption: Development
 
    reference
+
+``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).
+
+The ``bpfilter`` daemon running on the system receives a request from a client (``iptables``, ``nftables``, or any other client that could be created) and converts the client-provided ruleset into one or more BPF program(s).
+
+If you want to know more about ``bpfilter``'s internals, take a look at the following talks about the project:
+
+* `BPF and firewall: kernel support to ease more complex packets filtering (LSFMMBPF 2023) <https://www.youtube.com/watch?v=UDZhCubE-Kk&list=PLbzoR-pLrL6rlmdpJ3-oMgU_zxc1wAhjS&index=47>`_
+* `bpfilter: a BPF-based packet filtering framework (All Systems Go 2023) <https://media.ccc.de/v/all-systems-go-2023-196-bpfilter-a-bpf-based-packet-filtering-framework>`_
+* `bpfilter: a BPF-based packet filtering framework (Linux Plumbers Conference 2023) <https://www.youtube.com/watch?v=J5Hm6PrJWI4&t=27649s>`_
