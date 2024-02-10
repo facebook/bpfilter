@@ -1,5 +1,5 @@
-``iptables``
-============
+With ``iptables``
+=================
 
 
 The purpose of this document is to guide you through the process of using ``iptables`` as a front-end for ``bpfilter``. Although ``iptables`` does not officially support ``bpfilter``, it can still route its requests directly to the ``bpfilter`` daemon instead of the Linux kernel.
@@ -31,7 +31,7 @@ Upon successful installation, ``bpfilter`` will be available at ``$INSTALL_DIREC
 Build ``iptables``
 ------------------
 
-To use ``iptables`` with ``bpfilter``, you need to clone `this fork <https://github.com/qdeslandes/iptables.git>`_ and switch to the ``bpfilter`` branch. This version of ``iptables`` is identical to the one on your system, with the exception of the added ``--bpf`` option. This option allows ``iptables`` to communicate with ``bpfilter`` instead of the kernel.
+To use ``iptables`` with ``bpfilter``, you need to clone `this fork <https://github.com/qdeslandes/iptables.git>`_ and switch to the ``bpfilter`` branch. This version of ``iptables`` is identical to the one on your system, except the added ``--bpf`` option. This option allows ``iptables`` to communicate with ``bpfilter`` instead of the kernel.
 
 To configure ``iptables``, navigate to its source directory and run the following commands:
 
