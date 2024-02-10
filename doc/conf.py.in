@@ -20,4 +20,3 @@ breathe_show_include = True
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'furo'
-html_static_path = ['_static']

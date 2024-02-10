@@ -3,10 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-bpfilter
-========
+``bpfilter``
+============
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Usage
 
-   todo
+   usage
+   iptables
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+
    reference
