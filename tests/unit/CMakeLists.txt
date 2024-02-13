@@ -79,6 +79,7 @@ endfunction()
 enable_testing()
 
 set(bf_test_srcs
+    src/core/btf.c
     src/core/context.c
     src/core/flavor.c
     src/core/helper.c
@@ -162,6 +163,7 @@ bf_test_mock(tests_unit
         open
         read
         write
+        btf__load_vmlinux_btf
 )
 
 add_custom_target(test

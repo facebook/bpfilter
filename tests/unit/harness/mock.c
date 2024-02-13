@@ -83,3 +83,12 @@ bf_mock_define(ssize_t, write, (int fd, const void *buf, size_t count))
     errno = -ENOENT;
     return mock_type(ssize_t);
 }
+
+bf_mock_define(struct btf *, btf__load_vmlinux_btf, (void))
+{
+    if (!bf_mock_btf__load_vmlinux_btf_is_enabled())
+        return bf_mock_real(btf__load_vmlinux_btf)();
+
+    errno = -EINVAL;
+    return mock_type(struct btf *);
+}
