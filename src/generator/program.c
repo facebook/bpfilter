@@ -571,8 +571,9 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     bf_assert(program);
 
     if (program->img_size == program->img_cap) {
-        bf_err("Codegen buffer overflow");
-        return -EOVERFLOW;
+        r = bf_program_grow_img(program);
+        if (r)
+            return r;
     }
 
     r = bf_fixup_new(&fixup);
