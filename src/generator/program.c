@@ -477,7 +477,7 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
 
     r = bf_bpf_map_create(program->map_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), sizeof(struct bf_counter),
-                          program->num_counters, &_fd);
+                          program->num_counters, 0, &_fd);
     if (r < 0)
         return bf_err_code(errno, "failed to create counters map");
 

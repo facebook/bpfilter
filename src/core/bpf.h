@@ -8,6 +8,7 @@
 #include <linux/if_link.h>
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/hook.h"
 
@@ -43,12 +44,24 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
  * @param key_size Size of a key.
  * @param value_size Size of a value.
  * @param max_entries Number of entries in the map.
+ * @param flags Map creation flags.
  * @param fd If the call succeed, this parameter will contain the map's
  * file descriptor.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
-                      size_t value_size, size_t max_entries, int *fd);
+                      size_t value_size, size_t max_entries, uint32_t flags,
+                      int *fd);
+
+/**
+ * @brief Freeze a BPF map.
+ *
+ * A frozen map can't be modified from userspace.
+ *
+ * @param fd File descriptor of the map.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_map_freeze(int fd);
 
 /**
  * @brief Get an element from a map.
@@ -59,6 +72,16 @@ int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value);
+
+/**
+ * @brief Update (or insert) an element in a map.
+ *
+ * @param fd File descriptor of the map to search in.
+ * @param key Key to get the value for. Can't be NULL.
+ * @param value Pointer to the value.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_map_update_elem(int fd, const void *key, void *value);
 
 /**
  * @brief Pin a BPF object to a given path.
