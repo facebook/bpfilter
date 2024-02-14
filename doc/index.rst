@@ -4,7 +4,7 @@
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: Usage
+   :caption: Users
 
    overview
    sources
@@ -13,8 +13,9 @@
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: Development
+   :caption: Developers
 
+   developers/generation
    reference
 
 ``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).

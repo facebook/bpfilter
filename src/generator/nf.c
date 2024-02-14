@@ -16,6 +16,7 @@
 #include "core/btf.h"
 #include "core/logger.h"
 #include "core/verdict.h"
+#include "generator/jmp.h"
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "generator/stub.h"
@@ -64,10 +65,15 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_1, offset));
 
     // If the packet is coming from the wrong interface, then quit.
-    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                                BF_VERDICT_ACCEPT)));
-    EMIT(program, BPF_EXIT_INSN());
+    {
+        _cleanup_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
+            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
+
+        EMIT(program,
+             BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                           BF_VERDICT_ACCEPT)));
+        EMIT(program, BPF_EXIT_INSN());
+    }
 
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
