@@ -22,6 +22,7 @@
 #include "core/list.h"
 #include "core/verdict.h"
 #include "generator/fixup.h"
+#include "generator/print.h"
 #include "generator/reg.h"
 #include "shared/front.h"
 
