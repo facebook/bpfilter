@@ -81,13 +81,15 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
 }
 
 int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
-                      size_t value_size, size_t max_entries, int *fd)
+                      size_t value_size, size_t max_entries, uint32_t flags,
+                      int *fd)
 {
     union bpf_attr attr = {
         .map_type = type,
         .key_size = key_size,
         .value_size = value_size,
         .max_entries = max_entries,
+        .map_flags = flags,
     };
     int r;
 
@@ -102,6 +104,15 @@ int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
     return 0;
 }
 
+int bf_bpf_map_freeze(int fd)
+{
+    union bpf_attr attr = {
+        .map_fd = fd,
+    };
+
+    return _bpf(BPF_MAP_FREEZE, &attr);
+}
+
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
 {
     union bpf_attr attr = {
@@ -114,6 +125,18 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
     bf_assert(value);
 
     return _bpf(BPF_MAP_LOOKUP_ELEM, &attr);
+}
+
+int bf_bpf_map_update_elem(int fd, const void *key, void *value)
+{
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key = _bf_ptr_to_u64(key),
+        .value = _bf_ptr_to_u64(value),
+        .flags = BPF_ANY,
+    };
+
+    return _bpf(BPF_MAP_UPDATE_ELEM, &attr);
 }
 
 int bf_bpf_obj_pin(const char *path, int fd)
