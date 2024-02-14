@@ -89,6 +89,7 @@ set(bf_test_srcs
     src/core/verdict.c
     src/generator/codegen.c
     src/generator/nf.c
+    src/generator/program.c
 )
 
 add_executable(tests_unit
