@@ -88,6 +88,7 @@ set(bf_test_srcs
     src/core/marsh.c
     src/core/verdict.c
     src/generator/codegen.c
+    src/generator/jmp.c
     src/generator/nf.c
     src/generator/program.c
 )
