@@ -135,8 +135,9 @@ static const char *_bf_jmp_op(const struct bpf_insn *insn)
 static const char *_bpf_helper(const struct bpf_insn *insn)
 {
     static const char *funcs[] = {
-        [BPF_FUNC_map_lookup_elem] = "map_lookup_elem",
-        [BPF_FUNC_map_update_elem] = "map_update_elem",
+        [BPF_FUNC_map_lookup_elem] = "bpf_map_lookup_elem",
+        [BPF_FUNC_map_update_elem] = "bpf_map_update_elem",
+        [BPF_FUNC_trace_printk] = "bpf_trace_printk",
     };
 
     return funcs[insn->imm];

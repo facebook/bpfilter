@@ -90,6 +90,7 @@ set(bf_test_srcs
     src/generator/codegen.c
     src/generator/jmp.c
     src/generator/nf.c
+    src/generator/print.c
     src/generator/program.c
 )
 
