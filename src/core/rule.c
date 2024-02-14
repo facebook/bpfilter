@@ -152,7 +152,8 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(rule->dst_mask));
     DUMP(prefix, "protocol: %u", rule->protocol);
     DUMP(prefix, "matches: %lu", bf_list_size(&rule->matches));
-    DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
+    DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
+         bf_verdict_to_str(rule->verdict));
 
     bf_dump_prefix_pop(prefix);
 }
