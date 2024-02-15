@@ -5,7 +5,7 @@ configure_file(Doxyfile.in Doxyfile)
 configure_file(conf.py.in conf.py)
 
 set(doc_srcs
-	index.rst reference.rst todo.rst
+	index.rst reference.rst
 )
 
 add_custom_target(doc
