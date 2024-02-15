@@ -347,16 +347,19 @@ static int _bf_program_generate_rule(struct bf_program *program,
     /// @todo do matches too!
 
     // BF_ARG_1: counters map file descriptor.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
+    if (rule->counters) {
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD,
+                   BPF_MOV64_IMM(BF_ARG_1, 0));
 
     // BF_ARG_2: index of the current rule in counters map.
     EMIT(program, BPF_MOV32_IMM(BF_ARG_2, rule->index));
 
     // BF_ARG_3: packet size, from the context.
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX,
+                                  BF_PROG_CTX_OFF(pkt_size)));
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
+    }
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                                 rule->verdict)));

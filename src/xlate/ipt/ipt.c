@@ -291,6 +291,7 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     _rule->dst = ipt_rule->ip.dst.s_addr;
     _rule->dst_mask = ipt_rule->ip.dmsk.s_addr;
     _rule->protocol = ipt_rule->ip.proto;
+    _rule->counters = true;
 
     while (offset < ipt_rule->target_offset) {
         r = _bf_ipt_to_match(ipt_get_match(ipt_rule, offset), &match);
