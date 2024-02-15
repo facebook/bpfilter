@@ -78,6 +78,14 @@ void bf_codegen_free(struct bf_codegen **codegen);
 int bf_codegen_generate(struct bf_codegen *codegen);
 
 /**
+ * @brief Update the BPF programs for a codegen.
+ *
+ * @param codegen Codegen to update. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_codegen_update(struct bf_codegen *codegen);
+
+/**
  * @brief Load the BPF program stored in a codegen.
  *
  * Each program within the codegen will be loaded and attached to its interface.

@@ -320,7 +320,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
     if (rule->src_mask || rule->src) {
         EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_L3,
                                   offsetof(struct iphdr, saddr)));
-        EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_1, rule->src_mask));
+        if (rule->src_mask != 0xffffffff)
+            EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_1, rule->src_mask));
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(rule->invflags & IPT_INV_SRCIP ? BPF_JEQ : BPF_JNE,
@@ -330,7 +331,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
     if (rule->dst_mask || rule->dst) {
         EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_L3,
                                   offsetof(struct iphdr, daddr)));
-        EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, rule->dst_mask));
+        if (rule->dst_mask != 0xffffffff)
+            EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, rule->dst_mask));
         EMIT_FIXUP(
             program, BF_CODEGEN_FIXUP_NEXT_RULE,
             BPF_JMP_IMM(rule->invflags & IPT_INV_DSTIP ? BPF_JEQ : BPF_JNE,
@@ -351,14 +353,14 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD,
                    BPF_MOV64_IMM(BF_ARG_1, 0));
 
-    // BF_ARG_2: index of the current rule in counters map.
-    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, rule->index));
+        // BF_ARG_2: index of the current rule in counters map.
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_2, rule->index));
 
-    // BF_ARG_3: packet size, from the context.
+        // BF_ARG_3: packet size, from the context.
         EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX,
                                   BF_PROG_CTX_OFF(pkt_size)));
 
-    EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
+        EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
     }
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
@@ -693,6 +695,30 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
 
     // Add 1 to the number of counters for the policy counter.
     program->num_counters = bf_list_size(rules) + 1;
+
+    return 0;
+}
+
+int bf_program_update(struct bf_program *program, bf_list *rules,
+                      enum bf_verdict policy)
+{
+    int r;
+
+    // Reset content
+    program->img_size = 0;
+    memset(program->functions_location, 0,
+           sizeof(uint32_t) * _BF_CODEGEN_FIXUP_FUNCTION_MAX);
+    bf_list_clean(&program->fixups);
+    bf_list_init(&program->fixups,
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
+
+    r = bf_program_generate(program, rules, policy);
+    if (r)
+        return bf_err_code(r, "can't regenerate program!");
+
+    r = bf_program_load(program, program);
+    if (r)
+        return bf_err_code(r, "can't load regenerated program!");
 
     return 0;
 }
