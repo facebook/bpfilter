@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "core/dump.h"
@@ -34,6 +35,7 @@ struct bf_rule
     uint32_t dst_mask;
     uint16_t protocol;
     bf_list matches;
+    bool counters;
     enum bf_verdict verdict;
 };
 

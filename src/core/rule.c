@@ -67,6 +67,8 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
                                 sizeof(rule->dst_mask));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->protocol,
                                 sizeof(rule->protocol));
+    r |= bf_marsh_add_child_raw(&_marsh, &rule->counters,
+                                sizeof(rule->counters));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
                                 sizeof(enum bf_verdict));
     if (r)
@@ -124,6 +126,10 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
+    memcpy(&_rule->counters, child->data, sizeof(_rule->counters));
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->verdict, child->data, sizeof(_rule->verdict));
 
     if (bf_marsh_next_child(marsh, child))
@@ -152,6 +158,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(rule->dst_mask));
     DUMP(prefix, "protocol: %u", rule->protocol);
     DUMP(prefix, "matches: %lu", bf_list_size(&rule->matches));
+    DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
          bf_verdict_to_str(rule->verdict));
 
