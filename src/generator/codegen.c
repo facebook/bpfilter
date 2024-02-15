@@ -365,3 +365,19 @@ int bf_codegen_get_counter(const struct bf_codegen *codegen,
 
     return 0;
 }
+
+int bf_codegen_update(struct bf_codegen *codegen)
+{
+    int r;
+
+    bf_assert(codegen);
+
+    bf_list_foreach (&codegen->programs, program_node) {
+        struct bf_program *program = bf_list_node_get_data(program_node);
+        r = bf_program_update(program, &codegen->rules, codegen->policy);
+        if (r)
+            return bf_err_code(r, "failed to refresh program");
+    }
+
+    return 0;
+}

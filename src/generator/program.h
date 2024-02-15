@@ -201,6 +201,27 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
                         enum bf_verdict policy);
 
 /**
+ * @brief Update the program's bytecode.
+ *
+ * This function will regenerate the BPF bytecode for @p program based on the
+ * given rules. The new bytecode will be loaded into the kernel to replace the
+ * current program. The program's metadata (ifindex, hook, front) will not be
+ * modified.
+ *
+ * @note This function purposefully update the bytecode and the program in
+ * one step. This is to ensure that the program is always in a consistent
+ * state.
+ *
+ * @param program Program to regenerate. Can not be NULL.
+ * @param rules List of rules to use to regenerate the program. Can not be NULL.
+ * @param policy Verdict to use when no rule matches. Must be one of @ref
+ * bf_verdict.
+ * @return 0 on success, negative errno code on failure.
+ */
+int bf_program_update(struct bf_program *program, bf_list *rules,
+                      enum bf_verdict policy);
+
+/**
  * @brief Load the program into the kernel.
  * @param program Program to load. Can not be NULL.
  * @param prev_program Previous program to unload. Can be NULL. If not NULL,
