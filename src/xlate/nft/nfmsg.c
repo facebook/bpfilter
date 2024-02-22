@@ -148,6 +148,40 @@ int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
     return 0;
 }
 
+int bf_nfmsg_new_done(struct bf_nfmsg **msg)
+{
+    bf_assert(msg);
+
+    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    struct nlmsghdr *nlh;
+    struct nfgenmsg extra_hdr = {
+        .nfgen_family = AF_INET,
+        .version = NFNETLINK_V0,
+        .res_id = 0,
+    };
+    int r;
+
+    _msg = calloc(1, sizeof(*_msg));
+    if (!_msg)
+        return -ENOMEM;
+
+    _msg->msg = nlmsg_alloc();
+    if (!_msg->msg)
+        return -ENOMEM;
+
+    nlh = nlmsg_put(_msg->msg, 0, 0, NLMSG_DONE, 0, NLM_F_MULTI);
+    if (!nlh)
+        return bf_err_code(-ENOMEM, "failed to insert Netlink header");
+
+    r = nlmsg_append(_msg->msg, &extra_hdr, sizeof(extra_hdr), NLMSG_ALIGNTO);
+    if (r)
+        return bf_err_code(r, "failed to insert Netfilter extra header");
+
+    *msg = TAKE_PTR(_msg);
+
+    return 0;
+}
+
 int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh)
 {
     bf_assert(msg);

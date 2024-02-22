@@ -85,6 +85,14 @@ extern const bf_nfpolicy *bf_nf_verdict_policy;
 int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr);
 
 /**
+ * Create a new Netfilter Netlink @c NLMSG_DONE message.
+ *
+ * @param msg The new message to allocate and initialise. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_nfmsg_new_done(struct bf_nfmsg **msg);
+
+/**
  * Create a new Netfilter Netlink message from an existing Netlink message.
  *
  * The provided @p nlmsghdr must be a valid Netlink message targeted to the

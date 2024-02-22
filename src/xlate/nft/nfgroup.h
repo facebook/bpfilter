@@ -126,6 +126,14 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
  * All the Netfilter Netlink messages contained in the group will written
  * contiguously in the payload of a single @c bf_response .
  *
+ * If only one message is present in the group, the response will contain only
+ * the message payload. If more than one message is present, the response will
+ * contain a multipart message, with the @c NLM_F_MULTI flag set on all the
+ * messages and a final @c NLMSG_DONE message.
+ *
+ * If the group is empty, the reponse will contain a single @c NLMSG_DONE
+ * message.
+ *
  * @param group Netlink messages group to convert. Can't be NULL.
  * @param resp Pointer to the new response. Can't be NULL. A new response will
  * be allocated by this function and the caller will be responsible for freeing
