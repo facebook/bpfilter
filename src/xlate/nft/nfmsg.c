@@ -139,3 +139,29 @@ int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
 
     return nla_put(msg->msg, type, len, data);
 }
+
+int bf_nfmsg_parse(const struct bf_nfmsg *msg, bf_nfattr **attrs, int maxtype,
+                   const bf_nfpolicy *policy)
+{
+    bf_assert(msg);
+    bf_assert(attrs);
+
+    return nlmsg_parse(bf_nfmsg_hdr(msg), sizeof(struct nfgenmsg), attrs,
+                       maxtype - 1, policy);
+}
+
+int bf_nfattr_parse(bf_nfattr *attr, bf_nfattr **attrs, int maxtype,
+                    const bf_nfpolicy *policy)
+{
+    bf_assert(attr);
+    bf_assert(attrs);
+
+    return nla_parse_nested(attrs, maxtype - 1, attr, policy);
+}
+
+void *bf_nfattr_data(bf_nfattr *attr)
+{
+    bf_assert(attr);
+
+    return nla_data(attr);
+}
