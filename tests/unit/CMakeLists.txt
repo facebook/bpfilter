@@ -93,6 +93,7 @@ set(bf_test_srcs
     src/generator/print.c
     src/generator/program.c
     src/xlate/nft/nfmsg.c
+    src/xlate/nft/nfgroup.c
 )
 
 add_executable(tests_unit

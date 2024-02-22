@@ -14,6 +14,8 @@
 #include "harness/cmocka.h"
 #include "shared/helper.h"
 
+struct nlmsghdr;
+
 static const char *_readable_file_content = "Hello, world!";
 
 char *bf_test_get_readable_tmp_filepath(void)
@@ -83,4 +85,56 @@ int bf_test_make_codegen(struct bf_codegen **codegen, enum bf_hook hook,
     *codegen = TAKE_PTR(c);
 
     return 0;
+}
+
+struct nlmsghdr *bf_test_get_nlmsghdr(size_t nmsg, size_t *len)
+{
+    // clang-format off
+    static const uint8_t raw[] = {
+        // struct nlmsghdr
+        0x58, 0x00, 0x00, 0x00, 0x03, 0x0a, 0x01, 0x04,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // struct nfgenmsg
+        0x02, 0x00, 0x00, 0x00,
+        // Payload
+            // Attr #1: NFTA_CHAIN_TABLE
+            0x0d, 0x00, 0x01, 0x00,
+            0x62, 0x70, 0x66, 0x69,
+            0x6c, 0x74, 0x65, 0x72,
+            0x00, 0x00, 0x00, 0x00,
+            // Attr #2: NFTA_CHAIN_NAME
+            0x0c, 0x00, 0x03, 0x00,
+            0x6d, 0x79, 0x63, 0x68,
+            0x61, 0x69, 0x6e, 0x00,
+            // Attr #3: NFTA_CHAIN_POLICY
+            0x08, 0x00, 0x05, 0x00,
+            0x00, 0x00, 0x00, 0x01,
+            // Attr #4: NFTA_CHAIN_TYPE
+            0x0b, 0x00, 0x07, 0x00,
+            0x66, 0x69, 0x6c, 0x74,
+            0x65, 0x72, 0x00, 0x00,
+            // Attr #5 (nested): NFTA_CHAIN_HOOK
+            0x14, 0x00, 0x04, 0x80,
+                // Attr #5.1: NFTA_HOOK_HOOKNUM
+                0x08, 0x00, 0x01, 0x00,
+                0x00, 0x00, 0x00, 0x01,
+                // Attr #5.2: NFTA_HOOK_PRIORITY
+                0x08, 0x00, 0x02, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+    };
+    // clang-format on
+
+    size_t msg_size = ARRAY_SIZE(raw) * nmsg;
+    _cleanup_free_ void *msg = NULL;
+
+    msg = malloc(msg_size);
+    if (!msg)
+        return NULL;
+
+    for (size_t i = 0; i < nmsg; ++i)
+        memcpy(msg + i * ARRAY_SIZE(raw), raw, ARRAY_SIZE(raw));
+
+    *len = msg_size;
+
+    return (struct nlmsghdr *)TAKE_PTR(msg);
 }
