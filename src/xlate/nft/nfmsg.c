@@ -5,6 +5,7 @@
 
 #include "xlate/nft/nfmsg.h"
 
+#include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netlink.h>
 
@@ -18,6 +19,99 @@ struct bf_nfmsg
 {
     struct nl_msg *msg;
 };
+
+static const struct nla_policy _bf_nf_table_policy[__NFTA_TABLE_MAX] = {
+    [NFTA_TABLE_NAME] = {.type = NLA_STRING},
+    [NFTA_TABLE_FLAGS] = {.type = NLA_U32},
+    [NFTA_TABLE_HANDLE] = {.type = NLA_U64},
+    [NFTA_TABLE_USERDATA] = {.type = NLA_BINARY},
+};
+const bf_nfpolicy *bf_nf_table_policy = _bf_nf_table_policy;
+
+static const struct nla_policy _bf_nf_chain_policy[__NFTA_CHAIN_MAX] = {
+    [NFTA_CHAIN_TABLE] = {.type = NLA_STRING},
+    [NFTA_CHAIN_HANDLE] = {.type = NLA_U64},
+    [NFTA_CHAIN_NAME] = {.type = NLA_STRING},
+    [NFTA_CHAIN_HOOK] = {.type = NLA_NESTED},
+    [NFTA_CHAIN_POLICY] = {.type = NLA_U32},
+    [NFTA_CHAIN_TYPE] = {.type = NLA_STRING},
+    [NFTA_CHAIN_COUNTERS] = {.type = NLA_NESTED},
+    [NFTA_CHAIN_FLAGS] = {.type = NLA_U32},
+    [NFTA_CHAIN_ID] = {.type = NLA_U32},
+    [NFTA_CHAIN_USERDATA] = {.type = NLA_BINARY},
+};
+const bf_nfpolicy *bf_nf_chain_policy = _bf_nf_chain_policy;
+
+static const struct nla_policy _bf_nf_hook_policy[__NFTA_HOOK_MAX] = {
+    [NFTA_HOOK_HOOKNUM] = {.type = NLA_U32},
+    [NFTA_HOOK_PRIORITY] = {.type = NLA_U32},
+    [NFTA_HOOK_DEV] = {.type = NLA_STRING},
+};
+const bf_nfpolicy *bf_nf_hook_policy = _bf_nf_hook_policy;
+
+static const struct nla_policy _bf_nf_rule_policy[__NFTA_RULE_MAX] = {
+    [NFTA_RULE_TABLE] = {.type = NLA_STRING},
+    [NFTA_RULE_CHAIN] = {.type = NLA_STRING},
+    [NFTA_RULE_HANDLE] = {.type = NLA_U64},
+    [NFTA_RULE_EXPRESSIONS] = {.type = NLA_NESTED},
+    [NFTA_RULE_COMPAT] = {.type = NLA_NESTED},
+    [NFTA_RULE_POSITION] = {.type = NLA_U64},
+    [NFTA_RULE_USERDATA] = {.type = NLA_BINARY},
+    [NFTA_RULE_ID] = {.type = NLA_U32},
+    [NFTA_RULE_POSITION_ID] = {.type = NLA_U32},
+    [NFTA_RULE_CHAIN_ID] = {.type = NLA_U32},
+};
+const bf_nfpolicy *bf_nf_rule_policy = _bf_nf_rule_policy;
+
+static const struct nla_policy _bf_nf_expr_policy[__NFTA_EXPR_MAX] = {
+    [NFTA_EXPR_NAME] = {.type = NLA_STRING},
+    [NFTA_EXPR_DATA] = {.type = NLA_NESTED},
+};
+const bf_nfpolicy *bf_nf_expr_policy = _bf_nf_expr_policy;
+
+static const struct nla_policy _bf_nf_counter_policy[NFTA_COUNTER_MAX + 1] = {
+    [NFTA_COUNTER_PACKETS] = {.type = NLA_U64},
+    [NFTA_COUNTER_BYTES] = {.type = NLA_U64},
+};
+const bf_nfpolicy *bf_nf_counter_policy = _bf_nf_counter_policy;
+
+static const struct nla_policy _bf_nf_payload_policy[__NFTA_PAYLOAD_MAX] = {
+    [NFTA_PAYLOAD_SREG] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_DREG] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_BASE] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_OFFSET] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_LEN] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_CSUM_TYPE] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_CSUM_OFFSET] = {.type = NLA_U32},
+    [NFTA_PAYLOAD_CSUM_FLAGS] = {.type = NLA_U32},
+};
+const bf_nfpolicy *bf_nf_payload_policy = _bf_nf_payload_policy;
+
+static const struct nla_policy _bf_nf_cmp_policy[__NFTA_CMP_MAX] = {
+    [NFTA_CMP_SREG] = {.type = NLA_U32},
+    [NFTA_CMP_OP] = {.type = NLA_U32},
+    [NFTA_CMP_DATA] = {.type = NLA_NESTED},
+};
+const bf_nfpolicy *bf_nf_cmp_policy = _bf_nf_cmp_policy;
+
+static const struct nla_policy _bf_nf_immediate_policy[__NFTA_IMMEDIATE_MAX] = {
+    [NFTA_IMMEDIATE_DREG] = {.type = NLA_U32},
+    [NFTA_IMMEDIATE_DATA] = {.type = NLA_NESTED},
+};
+const bf_nfpolicy *bf_nf_immediate_policy = _bf_nf_immediate_policy;
+
+static const struct nla_policy _bf_nf_data_policy[__NFTA_DATA_MAX] = {
+    [NFTA_DATA_VALUE] = {.type = NLA_BINARY},
+    [NFTA_DATA_VERDICT] = {.type = NLA_NESTED},
+};
+const bf_nfpolicy *bf_nf_data_policy = _bf_nf_data_policy;
+
+static const struct nla_policy _bf_nf_verdict_policy[__NFTA_VERDICT_MAX] = {
+    [NFTA_VERDICT_CODE] = {.type = NLA_U32},
+    [NFTA_VERDICT_CHAIN] = {.type = NLA_STRING},
+    [NFTA_VERDICT_CHAIN_ID] = {.type = NLA_U32},
+};
+const bf_nfpolicy *bf_nf_verdict_policy = _bf_nf_verdict_policy;
 
 int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
 {

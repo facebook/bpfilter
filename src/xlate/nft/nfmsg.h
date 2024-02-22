@@ -32,6 +32,29 @@ struct nla_policy;
 typedef struct nlattr bf_nfattr;
 typedef struct nla_policy bf_nfpolicy;
 
+/// Netlink validation policy for @c nft_table_attributes
+extern const bf_nfpolicy *bf_nf_table_policy;
+/// Netlink validation policy for @c nft_chain_attributes
+extern const bf_nfpolicy *bf_nf_chain_policy;
+/// Netlink validation policy for @c nft_hook_attributes
+extern const bf_nfpolicy *bf_nf_hook_policy;
+/// Netlink validation policy for @c nft_rule_attributes
+extern const bf_nfpolicy *bf_nf_rule_policy;
+/// Netlink validation policy for @c nft_expr_attributes
+extern const bf_nfpolicy *bf_nf_expr_policy;
+/// Netlink validation policy for @c nft_counter_attributes
+extern const bf_nfpolicy *bf_nf_counter_policy;
+/// Netlink validation policy for @c nft_payload_attributes
+extern const bf_nfpolicy *bf_nf_payload_policy;
+/// Netlink validation policy for @c nft_cmp_attributes
+extern const bf_nfpolicy *bf_nf_cmp_policy;
+/// Netlink validation policy for @c nft_immediate_attributes
+extern const bf_nfpolicy *bf_nf_immediate_policy;
+/// Netlink validation policy for @c nft_data_attributes
+extern const bf_nfpolicy *bf_nf_data_policy;
+/// Netlink validation policy for @c nft_verdict_attributes
+extern const bf_nfpolicy *bf_nf_verdict_policy;
+
 /**
  * Cleanup attribute for a @ref bf_nfmsg variable.
  */
