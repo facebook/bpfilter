@@ -303,3 +303,71 @@ void *bf_nfattr_data(bf_nfattr *attr);
  * @return Pointer to the attribute's data.
  */
 #define bf_nfattr_get_u64(attr) (*(uint64_t *)bf_nfattr_data(attr))
+
+/**
+ * @file nfmsg.h
+ * @section nfnest_section Nested attributes
+ *
+ * @ref bf_nfnest represent a virtual stack of nested attributes. It is used to
+ * create and close nested attributes within a Netlink message.
+ *
+ * @ref bf_nfmsg_nest_init declares a new nested attribute within a
+ * @ref bf_nfmsg. Every attribute added to the message after calling this
+ * function will be pushed within the nested attribute. When complete, @ref
+ * bf_nfnest_cleanup must be called to close the nested attribute.
+
+ * The nested attribute is a stack, so it is possible to have nested attributes
+ *within nested attributes.
+ */
+
+/**
+ * Cleanup attribute for a @ref bf_nfnest variable.
+ */
+#define _cleanup_bf_nfnest_ __attribute__((__cleanup__(bf_nfnest_cleanup)))
+
+/**
+ * Convenience macro to create a new nested attribute context or jump to
+ * @c bf_nfmsg_push_failure on failure.
+ *
+ * @param parent @ref bf_nfmsg to create the nested attribute into. Can't be
+ * NULL.
+ * @param type Type of the nested attribute.
+ * @return 0 on success, or negative errno value on error.
+ */
+#define bf_nfnest_or_jmp(parent, type)                                         \
+    ({                                                                         \
+        struct bf_nfnest __nest;                                               \
+        int __r = bf_nfmsg_nest_init(&__nest, parent, type);                   \
+        if (__r)                                                               \
+            goto bf_nfmsg_push_failure;                                        \
+        __nest;                                                                \
+    })
+
+struct bf_nfnest
+{
+    struct bf_nfmsg *parent;
+    bf_nfattr *attr;
+};
+
+/**
+ * @brief Declares a new nested attribute within @p parent.
+ *
+ * Once a nested attribute has been defined, all the attributes added to the
+ * part (@p parent here) will be added within the nested attribute, until it
+ * is closed (@ref bf_nfnest_cleanup).
+ *
+ * @param nest Pointer to the nested attribute. Must be an allocated @ref
+ * bf_nfmsg_next structure. Can't be NULL.
+ * @param parent @ref bf_nfmsg containing the nested attribute.
+ * @param type Type of the nested attribute.
+ * @return 0 on success, negative errno value on error.
+ */
+int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
+                       uint16_t type);
+
+/**
+ * @brief Close a nested attribute.
+ *
+ * @param nest Nested attribute to close. Can't be NULL.
+ */
+void bf_nfnest_cleanup(struct bf_nfnest *nest);
