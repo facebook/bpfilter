@@ -92,3 +92,42 @@ bf_mock_define(struct btf *, btf__load_vmlinux_btf, (void))
     errno = -EINVAL;
     return mock_type(struct btf *);
 }
+
+bf_mock_define(struct nl_msg *, nlmsg_alloc, ())
+{
+    if (!bf_mock_nlmsg_alloc_is_enabled())
+        return bf_mock_real(nlmsg_alloc)();
+
+    errno = -EINVAL;
+    return mock_type(struct nl_msg *);
+}
+
+bf_mock_define(struct nl_msg *, nlmsg_convert, (struct nlmsghdr * hdr))
+{
+    if (!bf_mock_nlmsg_convert_is_enabled())
+        return bf_mock_real(nlmsg_convert)(hdr);
+
+    errno = -EINVAL;
+    return mock_type(struct nl_msg *);
+}
+
+bf_mock_define(struct nlmsghdr *, nlmsg_put,
+               (struct nl_msg * n, uint32_t pid, uint32_t seq, int type,
+                int payload, int flags))
+{
+    if (!bf_mock_nlmsg_put_is_enabled())
+        return bf_mock_real(nlmsg_put)(n, pid, seq, type, payload, flags);
+
+    errno = -EINVAL;
+    return mock_type(struct nlmsghdr *);
+}
+
+bf_mock_define(int, nlmsg_append,
+               (struct nl_msg * n, void *data, size_t len, int pad))
+{
+    if (!bf_mock_nlmsg_append_is_enabled())
+        return bf_mock_real(nlmsg_append)(n, data, len, pad);
+
+    errno = -EINVAL;
+    return mock_type(int);
+}

@@ -92,6 +92,7 @@ set(bf_test_srcs
     src/generator/nf.c
     src/generator/print.c
     src/generator/program.c
+    src/xlate/nft/nfmsg.c
 )
 
 add_executable(tests_unit
@@ -150,6 +151,7 @@ target_link_libraries(tests_unit
         gcov
         PkgConfig::cmocka
         PkgConfig::elf
+        PkgConfig::nl
 )
 
 target_link_options(tests_unit
@@ -167,6 +169,10 @@ bf_test_mock(tests_unit
         read
         write
         btf__load_vmlinux_btf
+        nlmsg_alloc
+        nlmsg_convert
+        nlmsg_put
+        nlmsg_append
 )
 
 add_custom_target(test

@@ -29,6 +29,9 @@
         (bf_mock) {.disable = bf_mock_##name##_disable};                       \
     })
 
+struct nlmsghdr;
+struct nl_msg;
+
 typedef struct
 {
     void (*disable)(void);
@@ -42,3 +45,10 @@ bf_mock_declare(int, open, (const char *pathname, int flags, mode_t mode));
 bf_mock_declare(ssize_t, read, (int fd, void *buf, size_t count));
 bf_mock_declare(ssize_t, write, (int fd, const void *buf, size_t count));
 bf_mock_declare(struct btf *, btf__load_vmlinux_btf, (void));
+bf_mock_declare(struct nl_msg *, nlmsg_alloc, ());
+bf_mock_declare(struct nl_msg *, nlmsg_convert, (struct nlmsghdr * nlh));
+bf_mock_declare(struct nlmsghdr *, nlmsg_put,
+                (struct nl_msg * n, uint32_t pid, uint32_t seq, int type,
+                 int payload, int flags));
+bf_mock_declare(int, nlmsg_append,
+                (struct nl_msg * n, void *data, size_t len, int pad));

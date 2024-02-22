@@ -31,6 +31,7 @@ target_link_options(bpfilter
 target_link_libraries(bpfilter
     PUBLIC
         PkgConfig::bpf
+        PkgConfig::nl
 )
 
 install(
