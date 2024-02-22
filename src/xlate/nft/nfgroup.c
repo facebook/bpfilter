@@ -129,3 +129,27 @@ int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg)
 
     return bf_list_add_tail(&group->messages, msg);
 }
+
+int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
+                               uint16_t command, uint16_t seqnr)
+{
+    bf_assert(group);
+
+    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    int r;
+
+    r = bf_nfmsg_new(&_msg, command, seqnr);
+    if (r < 0)
+        return r;
+
+    r = bf_nfgroup_add_message(group, _msg);
+    if (r < 0)
+        return r;
+
+    if (msg)
+        *msg = TAKE_PTR(_msg);
+    else
+        TAKE_PTR(_msg);
+
+    return 0;
+}
