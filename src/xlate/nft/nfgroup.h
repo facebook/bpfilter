@@ -17,6 +17,20 @@ struct bf_response;
 struct bf_nfmsg;
 
 /**
+ * @file nfgroup.h
+ *
+ * Netlink allows data to be sent in multipart messages, which is a stream
+ * of multiple Netlink messages (each with its own header), flagged with
+ * @c NLM_F_MULTI and ending with a final message of type @c NLMSG_DONE
+ *
+ * @ref bf_nfgroup is an abstraction to represent multipart messages. It
+ * contains a list of @ref bf_nfmsg, each of which is a Netlink message.
+ *
+ * The messages group can be converted into a single @ref bf_response, which
+ * is a contiguous buffer containing all the messages in the group.
+ */
+
+/**
  * Cleanup function for @ref bf_nfgroup.
  */
 #define _cleanup_bf_nfgroup_ __attribute__((__cleanup__(bf_nfgroup_free)))
