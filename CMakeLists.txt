@@ -17,6 +17,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
 pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
+pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
 # Required to get CMake to pass PIE flags to the compiler/linker
 include(CheckPIESupported)
@@ -95,6 +96,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.h ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.c
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.c
+    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.c
 )
 
 set(bpfilter_library_srcs
