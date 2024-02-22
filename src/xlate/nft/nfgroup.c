@@ -13,6 +13,7 @@
 #include <netlink/msg.h>
 
 #include "core/list.h"
+#include "shared/response.h"
 #include "xlate/nft/nfmsg.h"
 
 struct bf_nfgroup
@@ -150,6 +151,39 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
         *msg = TAKE_PTR(_msg);
     else
         TAKE_PTR(_msg);
+
+    return 0;
+}
+
+int bf_nfgroup_to_response(const struct bf_nfgroup *group,
+                           struct bf_response **resp)
+{
+    bf_assert(group);
+    bf_assert(resp);
+
+    _cleanup_bf_response_ struct bf_response *_resp = NULL;
+    size_t size = bf_nfgroup_size(group);
+    void *payload;
+    int r;
+
+    r = bf_response_new_raw(&_resp, size);
+    if (r < 0)
+        return r;
+
+    _resp->type = BF_RES_SUCCESS;
+    _resp->data_len = 0;
+    payload = _resp->data;
+
+    bf_list_foreach (&group->messages, msg_node) {
+        struct bf_nfmsg *msg = bf_list_node_get_data(msg_node);
+
+        memcpy(payload, bf_nfmsg_hdr(msg), bf_nfmsg_len(msg));
+
+        payload += bf_nfmsg_len(msg);
+        _resp->data_len += bf_nfmsg_len(msg);
+    }
+
+    *resp = TAKE_PTR(_resp);
 
     return 0;
 }

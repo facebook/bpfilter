@@ -13,6 +13,7 @@
 
 struct nlmsghdr;
 struct bf_nfgroup;
+struct bf_response;
 struct bf_nfmsg;
 
 /**
@@ -104,3 +105,18 @@ int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg);
  */
 int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
                                uint16_t command, uint16_t seqnr);
+
+/**
+ * Convert a Netlink messages group into a bf_response.
+ *
+ * All the Netfilter Netlink messages contained in the group will written
+ * contiguously in the payload of a single @c bf_response .
+ *
+ * @param group Netlink messages group to convert. Can't be NULL.
+ * @param resp Pointer to the new response. Can't be NULL. A new response will
+ * be allocated by this function and the caller will be responsible for freeing
+ * it.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_nfgroup_to_response(const struct bf_nfgroup *group,
+                           struct bf_response **resp);
