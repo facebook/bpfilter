@@ -13,6 +13,7 @@
 #include "generator/program.h"
 #include "harness/cmocka.h"
 #include "shared/helper.h"
+#include "xlate/nft/nfgroup.h"
 
 struct nlmsghdr;
 
@@ -137,4 +138,17 @@ struct nlmsghdr *bf_test_get_nlmsghdr(size_t nmsg, size_t *len)
     *len = msg_size;
 
     return (struct nlmsghdr *)TAKE_PTR(msg);
+}
+
+struct bf_nfgroup *bf_test_get_nfgroup(size_t nmsg, size_t *len)
+{
+    _cleanup_bf_nfgroup_ struct bf_nfgroup *group = NULL;
+    _cleanup_free_ struct nlmsghdr *nlh = NULL;
+
+    nlh = bf_test_get_nlmsghdr(nmsg, len);
+    assert_non_null(nlh);
+
+    assert_int_equal(bf_nfgroup_new_from_stream(&group, nlh, *len), 0);
+
+    return TAKE_PTR(group);
 }

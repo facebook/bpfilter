@@ -96,6 +96,32 @@ void bf_nfgroup_free(struct bf_nfgroup **group)
     *group = NULL;
 }
 
+const bf_list *bf_nfgroup_messages(const struct bf_nfgroup *group)
+{
+    bf_assert(group);
+
+    return &group->messages;
+}
+
+size_t bf_nfgroup_size(const struct bf_nfgroup *group)
+{
+    bf_assert(group);
+
+    size_t size = 0;
+
+    bf_list_foreach (&group->messages, msg_node)
+        size += bf_nfmsg_len(bf_list_node_get_data(msg_node));
+
+    return size;
+}
+
+bool bf_nfgroup_is_empty(const struct bf_nfgroup *group)
+{
+    bf_assert(group);
+
+    return bf_list_is_empty(&group->messages);
+}
+
 int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg)
 {
     bf_assert(group);

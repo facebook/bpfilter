@@ -4,7 +4,12 @@
  */
 
 #pragma once
+
+#include <stdbool.h>
 #include <stddef.h>
+
+#include "core/list.h"
+
 struct nlmsghdr;
 struct bf_nfgroup;
 struct bf_nfmsg;
@@ -43,6 +48,33 @@ int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
  * is done.
  */
 void bf_nfgroup_free(struct bf_nfgroup **group);
+
+/**
+ * Get the list of messages in the Netlink messages group.
+ *
+ * @param group Netlink messages group to get the list from. Can't be NULL.
+ * @return @ref bf_list containing the @ref bf_nfmsg
+ */
+const bf_list *bf_nfgroup_messages(const struct bf_nfgroup *group);
+
+/**
+ * Get the total Netlink message size.
+ *
+ * The total size of the Netlink message is the sum of the size of all the
+ * messages, including padding.
+ *
+ * @param group Netlink messages group to get the size of. Can't be NULL.
+ * @return Total size of the Netlink messages group.
+ */
+size_t bf_nfgroup_size(const struct bf_nfgroup *group);
+
+/**
+ * Test if a Netlink message group is empty.
+ *
+ * @param group Netlink message to check. Can't be NULL.
+ * @return True if the Netlink message is empty (no messages), false otherwise.
+ */
+bool bf_nfgroup_is_empty(const struct bf_nfgroup *group);
 
 /**
  * Add a Netlink message to the Netlink messages group.
