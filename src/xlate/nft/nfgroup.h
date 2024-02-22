@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/list.h"
 
@@ -85,3 +86,21 @@ bool bf_nfgroup_is_empty(const struct bf_nfgroup *group);
  * @return 0 on success, or negative errno value on error.
  */
 int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg);
+
+/**
+ * Create a new Netfilter Netlink message and add it to a Netlink messages
+ * group.
+ *
+ * The new Netfilter Netlink message is owned by the messages group and should
+ * not be freed by the caller.
+ *
+ * @param group Netlink messages group to add the message to. Can't be NULL.
+ * @param msg Pointer to the new message. Once the function succeeds, this
+ * pointer will be set to the new message. Can be NULL, in which case the
+ * caller won't have access to the new message.
+ * @param command Netlink message command.
+ * @param seqnr Netlink message sequence number.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
+                               uint16_t command, uint16_t seqnr);

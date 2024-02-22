@@ -88,3 +88,33 @@ Test(nfgroup, helpers)
         assert_int_equal(bf_nfgroup_size(gp), len);
     }
 }
+
+Test(nfgroup, add_new_message)
+{
+    expect_assert_failure(bf_nfgroup_add_new_message(NULL, NOT_NULL, 0, 0));
+
+    {
+        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+
+        assert_int_equal(bf_nfgroup_new(&gp), 0);
+
+        for (int i = 0; i < 10; ++i) {
+            struct bf_nfmsg *msg = NULL;
+            assert_int_equal(bf_nfgroup_add_new_message(gp, &msg, 0, 0), 0);
+
+            assert_non_null(msg);
+            assert_int_equal(bf_list_size(bf_nfgroup_messages(gp)), i + 1);
+        }
+    }
+
+    {
+        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+
+        assert_int_equal(bf_nfgroup_new(&gp), 0);
+
+        for (int i = 0; i < 10; ++i) {
+            assert_int_equal(bf_nfgroup_add_new_message(gp, NULL, 0, 0), 0);
+            assert_int_equal(bf_list_size(bf_nfgroup_messages(gp)), i + 1);
+        }
+    }
+}
