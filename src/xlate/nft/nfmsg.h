@@ -56,6 +56,20 @@ extern const bf_nfpolicy *bf_nf_data_policy;
 extern const bf_nfpolicy *bf_nf_verdict_policy;
 
 /**
+ * @file nfmsg.h
+ * @section nfmsg_section Messages
+ *
+ * @ref bf_nfmsg is a structure used to represent Netlink messages. It is an
+ * opaque structure, so the user must go through the dedicated API to create,
+ * parse, and manipulate Netlink messages.
+ *
+ * Netlink attributes can be pushed into the message using the generic function
+ * @ref bf_nfmsg_attr_push. However, for common types, convenience macros are
+ * provided to push a string, a @c uint8_t, a @c uint16_t, a @c uint32_t, or a
+ * @c uint64_t attribute.
+ */
+
+/**
  * Cleanup attribute for a @ref bf_nfmsg variable.
  */
 #define _cleanup_bf_nfmsg_ __attribute__((__cleanup__(bf_nfmsg_free)))
