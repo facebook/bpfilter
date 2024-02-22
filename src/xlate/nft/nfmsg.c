@@ -95,3 +95,38 @@ void bf_nfmsg_free(struct bf_nfmsg **msg)
     free(*msg);
     *msg = NULL;
 }
+
+struct nlmsghdr *bf_nfmsg_hdr(const struct bf_nfmsg *msg)
+{
+    bf_assert(msg);
+
+    return nlmsg_hdr(msg->msg);
+}
+
+size_t bf_nfmsg_data_len(const struct bf_nfmsg *msg)
+{
+    bf_assert(msg);
+
+    return nlmsg_datalen(bf_nfmsg_hdr(msg));
+}
+
+size_t bf_nfmsg_len(const struct bf_nfmsg *msg)
+{
+    bf_assert(msg);
+
+    return nlmsg_total_size(bf_nfmsg_data_len(msg));
+}
+
+uint8_t bf_nfmsg_command(const struct bf_nfmsg *msg)
+{
+    bf_assert(msg);
+
+    return bf_nfmsg_hdr(msg)->nlmsg_type & 0xff;
+}
+
+uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg)
+{
+    bf_assert(msg);
+
+    return bf_nfmsg_hdr(msg)->nlmsg_seq;
+}

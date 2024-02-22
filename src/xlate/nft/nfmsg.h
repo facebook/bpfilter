@@ -65,3 +65,43 @@ int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh);
  * @param msg Message to free. Must be non-NULL.
  */
 void bf_nfmsg_free(struct bf_nfmsg **msg);
+
+/**
+ * Get the Netlink message header for a Netfilter Netlink message.
+ *
+ * @param msg Message to get the header from. Must be non-NULL.
+ * @return The Netlink message header.
+ */
+struct nlmsghdr *bf_nfmsg_hdr(const struct bf_nfmsg *msg);
+
+/**
+ * Get a Netfilter Netlink message's size, including header and padding.
+ *
+ * @param msg Message to get the size of. Can't be NULL.
+ * @return Message's size, including header and padding.
+ */
+size_t bf_nfmsg_len(const struct bf_nfmsg *msg);
+
+/**
+ * Get a Netfilter Netlink message's payload size, including padding.
+ *
+ * @param msg Message to get the payload size of. Can't be NULL.
+ * @return Message's payload size, including padding.
+ */
+size_t bf_nfmsg_data_len(const struct bf_nfmsg *msg);
+
+/**
+ * Get a Netfilter Netlink message's command.
+ *
+ * @param msg Message to get the command from. Can't be NULL.
+ * @return The message's command.
+ */
+uint8_t bf_nfmsg_command(const struct bf_nfmsg *msg);
+
+/**
+ * Get a Netfilter Netlink message's sequence number.
+ *
+ * @param msg Message to get the sequence number from. Can't be NULL.
+ * @return The message's sequence number.
+ */
+uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg);
