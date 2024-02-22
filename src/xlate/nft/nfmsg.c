@@ -130,3 +130,12 @@ uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg)
 
     return bf_nfmsg_hdr(msg)->nlmsg_seq;
 }
+
+int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
+                       size_t len)
+{
+    bf_assert(msg);
+    bf_assert(data);
+
+    return nla_put(msg->msg, type, len, data);
+}
