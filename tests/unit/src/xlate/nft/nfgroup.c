@@ -118,3 +118,36 @@ Test(nfgroup, add_new_message)
         }
     }
 }
+
+Test(nfgroup, to_response)
+{
+    expect_assert_failure(bf_nfgroup_to_response(NULL, NOT_NULL));
+    expect_assert_failure(bf_nfgroup_to_response(NOT_NULL, NULL));
+
+    {
+        // Group without any message
+
+        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _cleanup_bf_response_ struct bf_response *res = NULL;
+
+        assert_int_equal(bf_nfgroup_new(&gp), 0);
+        assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
+        assert_non_null(res);
+        assert_int_equal(res->type, BF_RES_SUCCESS);
+        assert_int_equal(res->data_len, 0);
+    }
+
+    {
+        // Group without multiple messages
+
+        size_t len;
+        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp =
+            bf_test_get_nfgroup(10, &len);
+        _cleanup_bf_response_ struct bf_response *res = NULL;
+
+        assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
+        assert_non_null(res);
+        assert_int_equal(res->type, BF_RES_SUCCESS);
+        assert_int_equal(res->data_len, len);
+    }
+}
