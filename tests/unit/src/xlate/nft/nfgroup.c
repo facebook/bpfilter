@@ -68,3 +68,23 @@ Test(nfgroup, new_from_stream)
         assert_non_null(gp);
     }
 }
+
+Test(nfgroup, helpers)
+{
+    expect_assert_failure(bf_nfgroup_messages(NULL));
+    expect_assert_failure(bf_nfgroup_size(NULL));
+    expect_assert_failure(bf_nfgroup_is_empty(NULL));
+
+    for (int i = 0; i < 10; ++i) {
+        size_t len;
+        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp =
+            bf_test_get_nfgroup(i, &len);
+
+        assert_int_equal(bf_nfgroup_is_empty(gp), i == 0);
+
+        const bf_list *msgs = bf_nfgroup_messages(gp);
+        assert_non_null(msgs);
+        assert_int_equal(bf_list_size(msgs), i);
+        assert_int_equal(bf_nfgroup_size(gp), len);
+    }
+}
