@@ -141,9 +141,12 @@ Test(nfmsg, write_attributes)
         [4] = {.type = NLA_STRING}, [5] = {.type = NLA_NESTED},
     };
     bf_nfattr *attrs[ARRAY_SIZE(test_policy)] = {};
+    bf_nfattr *nested_attrs[ARRAY_SIZE(test_policy)] = {};
 
     expect_assert_failure(bf_nfmsg_attr_push(NULL, 0, NOT_NULL, 0));
     expect_assert_failure(bf_nfmsg_attr_push(NOT_NULL, 0, NULL, 0));
+    expect_assert_failure(bf_nfmsg_nest_init(NULL, NOT_NULL, 0));
+    expect_assert_failure(bf_nfmsg_nest_init(NOT_NULL, NULL, 0));
 
     assert_int_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
     assert_int_equal(0, bf_nfmsg_push_u8(msg, 0, 0));
@@ -151,6 +154,16 @@ Test(nfmsg, write_attributes)
     assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
     assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
     assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+    {
+        _cleanup_bf_nfnest_ struct bf_nfnest nest;
+
+        assert_int_equal(0, bf_nfmsg_nest_init(&nest, msg, 5));
+        assert_int_equal(0, bf_nfmsg_push_u8(msg, 0, 0));
+        assert_int_equal(0, bf_nfmsg_push_u16(msg, 1, 1));
+        assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
+        assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
+        assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+    }
 
     assert_int_equal(
         0, bf_nfmsg_parse(msg, attrs, ARRAY_SIZE(attrs), test_policy));
@@ -159,4 +172,12 @@ Test(nfmsg, write_attributes)
     assert_int_equal(2, bf_nfattr_get_u32(attrs[2]));
     assert_int_equal(3, bf_nfattr_get_u64(attrs[3]));
     assert_string_equal("4", bf_nfattr_get_str(attrs[4]));
+
+    assert_int_equal(0, bf_nfattr_parse(attrs[5], nested_attrs,
+                                        ARRAY_SIZE(nested_attrs), test_policy));
+    assert_int_equal(0, bf_nfattr_get_u8(nested_attrs[0]));
+    assert_int_equal(1, bf_nfattr_get_u16(nested_attrs[1]));
+    assert_int_equal(2, bf_nfattr_get_u32(nested_attrs[2]));
+    assert_int_equal(3, bf_nfattr_get_u64(nested_attrs[3]));
+    assert_string_equal("4", bf_nfattr_get_str(nested_attrs[4]));
 }

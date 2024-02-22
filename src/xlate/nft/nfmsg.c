@@ -165,3 +165,28 @@ void *bf_nfattr_data(bf_nfattr *attr)
 
     return nla_data(attr);
 }
+
+int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
+                       uint16_t type)
+{
+    bf_assert(nest);
+    bf_assert(parent);
+
+    bf_nfattr *attr;
+
+    attr = nla_nest_start(parent->msg, type);
+    if (!attr)
+        return -ENOMEM;
+
+    nest->attr = attr;
+    nest->parent = parent;
+
+    return 0;
+}
+
+void bf_nfnest_cleanup(struct bf_nfnest *nest)
+{
+    bf_assert(nest);
+
+    nla_nest_end(nest->parent->msg, nest->attr);
+}
