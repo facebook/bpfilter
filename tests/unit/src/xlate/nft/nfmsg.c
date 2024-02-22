@@ -130,3 +130,18 @@ Test(nfmsg, new_from_nlmsghdr)
             0, bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
     }
 }
+
+Test(nfmsg, write_attributes)
+{
+    _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+    expect_assert_failure(bf_nfmsg_attr_push(NULL, 0, NOT_NULL, 0));
+    expect_assert_failure(bf_nfmsg_attr_push(NOT_NULL, 0, NULL, 0));
+
+    assert_int_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+    assert_int_equal(0, bf_nfmsg_push_u8(msg, 0, 0));
+    assert_int_equal(0, bf_nfmsg_push_u16(msg, 1, 1));
+    assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
+    assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
+    assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+}

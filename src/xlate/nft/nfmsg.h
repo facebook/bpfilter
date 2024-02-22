@@ -105,3 +105,108 @@ uint8_t bf_nfmsg_command(const struct bf_nfmsg *msg);
  * @return The message's sequence number.
  */
 uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg);
+
+/**
+ * Push a new attribute into a Netfilter Netlink message.
+ *
+ * @param msg Message to push the attribute to. Can't be NULL.
+ * @param type Attribute type.
+ * @param data Attribute data. Can't be NULL.
+ * @param len Attribute data length.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
+                       size_t len);
+
+/**
+ * Convenience macro to push a new attribute into a Netfilter Netlink message,
+ * but jump to a label on failure.
+ *
+ * If the attribute push fails, this macro jumps to the label
+ * @c bf_nfmsg_push_failure.
+ *
+ * @param msg Message to push the attribute to. Can't be NULL.
+ * @param type Attribute type.
+ * @param data Attribute data. Can't be NULL.
+ * @param size Attribute data length.
+ */
+#define bf_nfmsg_attr_push_or_jmp(msg, type, data, size)                       \
+    ({                                                                         \
+        if (bf_nfmsg_attr_push(msg, type, data, size) < 0)                     \
+            goto bf_nfmsg_push_failure;                                        \
+    })
+
+/**
+ * Convenience macro to push a new string attribute into a Netfilter Netlink
+ * message. See @ref bf_nfmsg_attr_push for more details.
+ */
+#define bf_nfmsg_push_str(msg, attr, data)                                     \
+    bf_nfmsg_attr_push(msg, attr, data, strlen(data) + 1)
+
+/**
+ * Convenience macro to push a new string attribute into a Netfilter Netlink
+ * message, and jump to a label on failure. See @ref bf_nfmsg_attr_push_or_jmp
+ * for more details.
+ */
+#define bf_nfmsg_push_str_or_jmp(part, attr, value)                            \
+    bf_nfmsg_attr_push_or_jmp(part, attr, value, strlen(value) + 1)
+
+/**
+ * Convenience macro to push a new uint8_t attribute into a Netfilter Netlink
+ * message. See @ref bf_nfmsg_attr_push for more details.
+ */
+#define bf_nfmsg_push_u8(msg, attr, data)                                      \
+    bf_nfmsg_attr_push(msg, attr, (&(uint8_t) {data}), sizeof(uint8_t))
+
+/**
+ * Convenience macro to push a new uint8_t attribute into a Netfilter Netlink
+ * message, and jump to a label on failure. See @ref bf_nfmsg_attr_push_or_jmp
+ * for more details.
+ */
+#define bf_nfmsg_push_u8_or_jmp(msg, attr, data)                               \
+    bf_nfmsg_attr_push_or_jmp(msg, attr, (&(uint8_t) {data}), sizeof(uint8_t))
+
+/**
+ * Convenience macro to push a new uint16_t attribute into a Netfilter Netlink
+ * message. See @ref bf_nfmsg_attr_push for more details.
+ */
+#define bf_nfmsg_push_u16(msg, attr, data)                                     \
+    bf_nfmsg_attr_push(msg, attr, (&(uint16_t) {data}), sizeof(uint16_t))
+
+/**
+ * Convenience macro to push a new uint16_t attribute into a Netfilter Netlink
+ * message, and jump to a label on failure. See @ref bf_nfmsg_attr_push_or_jmp
+ * for more details.
+ */
+#define bf_nfmsg_push_u16_or_jmp(msg, attr, data)                              \
+    bf_nfmsg_attr_push_or_jmp(msg, attr, (&(uint16_t) {data}), sizeof(uint16_t))
+
+/**
+ * Convenience macro to push a new uint32_t attribute into a Netfilter Netlink
+ * message. See @ref bf_nfmsg_attr_push for more details.
+ */
+#define bf_nfmsg_push_u32(msg, attr, data)                                     \
+    bf_nfmsg_attr_push(msg, attr, (&(uint32_t) {data}), sizeof(uint32_t))
+
+/**
+ * Convenience macro to push a new uint32_t attribute into a Netfilter Netlink
+ * message, and jump to a label on failure. See @ref bf_nfmsg_attr_push_or_jmp
+ * for more details.
+ */
+#define bf_nfmsg_push_u32_or_jmp(msg, attr, data)                              \
+    bf_nfmsg_attr_push_or_jmp(msg, attr, (&(uint32_t) {data}), sizeof(uint32_t))
+
+/**
+ * Convenience macro to push a new uint64_t attribute into a Netfilter Netlink
+ * message. See @ref bf_nfmsg_attr_push for more details.
+ */
+#define bf_nfmsg_push_u64(msg, attr, data)                                     \
+    bf_nfmsg_attr_push(msg, attr, (&(uint64_t) {data}), sizeof(uint64_t))
+
+/**
+ * Convenience macro to push a new uint64_t attribute into a Netfilter Netlink
+ * message, and jump to a label on failure. See @ref bf_nfmsg_attr_push_or_jmp
+ * for more details.
+ */
+#define bf_nfmsg_push_u64_or_jmp(msg, attr, data)                              \
+    bf_nfmsg_attr_push_or_jmp(msg, attr, (&(uint64_t) {data}), sizeof(uint64_t))
