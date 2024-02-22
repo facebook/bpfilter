@@ -26,6 +26,11 @@
 
 struct nlmsghdr;
 struct bf_nfmsg;
+struct nlattr;
+struct nla_policy;
+
+typedef struct nlattr bf_nfattr;
+typedef struct nla_policy bf_nfpolicy;
 
 /**
  * Cleanup attribute for a @ref bf_nfmsg variable.
@@ -210,3 +215,91 @@ int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
  */
 #define bf_nfmsg_push_u64_or_jmp(msg, attr, data)                              \
     bf_nfmsg_attr_push_or_jmp(msg, attr, (&(uint64_t) {data}), sizeof(uint64_t))
+
+/**
+ * Parse attributes from a Netfilter Netlink message.
+ *
+ * All the attributes contained in the message are parsed and stored in the
+ * @p attrs array. Nested attributes (attributes contained within other) are
+ * not parsed, see @ref bf_nfattr_parse instead.
+ *
+ * @param msg Message to parse the attributes from. Can't be NULL.
+ * @param attrs Array of attributes to parse. Can't be NULL.
+ * @param maxtype Maximum attribute type to parse.
+ * @param policy Netlink validation policy to use. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_nfmsg_parse(const struct bf_nfmsg *msg, bf_nfattr **attrs, int maxtype,
+                   const bf_nfpolicy *policy);
+
+/**
+ * @file nfmsg.h
+ * @section nfattr_section Attributes
+ *
+ * @ref bf_nfattr is a structure used to represent Netlink attributes. It is an
+ * opaque structure, so the user must go through the dedicated API to create,
+ * parse, and manipulate Netlink attributes.
+ */
+
+/**
+ * Parse attributes nested within a Netlink attribute.
+ *
+ * All the attributes contained in the @p attr are parsed and stored in the
+ * @p attrs array.
+ *
+ * @param attr Attribute to parse the nested attributes from. Can't be NULL.
+ * @param attrs Array of attributes to parse. Can't be NULL.
+ * @param maxtype Maximum attribute type to parse.
+ * @param policy Netlink validation policy to use. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_nfattr_parse(bf_nfattr *attr, bf_nfattr **attrs, int maxtype,
+                    const bf_nfpolicy *policy);
+
+/**
+ * Get the data of a Netlink attribute.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+void *bf_nfattr_data(bf_nfattr *attr);
+
+/**
+ * Get a Netlink attribute's data as a string.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_str(attr) ((char *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c uint8_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_u8(attr) (*(uint8_t *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c uint16_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_u16(attr) (*(uint16_t *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c uint32_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_u32(attr) (*(uint32_t *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c uint64_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_u64(attr) (*(uint64_t *)bf_nfattr_data(attr))

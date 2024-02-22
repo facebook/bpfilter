@@ -135,6 +135,13 @@ Test(nfmsg, write_attributes)
 {
     _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
+    const bf_nfpolicy test_policy[] = {
+        [0] = {.type = NLA_U8},     [1] = {.type = NLA_U16},
+        [2] = {.type = NLA_U32},    [3] = {.type = NLA_U64},
+        [4] = {.type = NLA_STRING}, [5] = {.type = NLA_NESTED},
+    };
+    bf_nfattr *attrs[ARRAY_SIZE(test_policy)] = {};
+
     expect_assert_failure(bf_nfmsg_attr_push(NULL, 0, NOT_NULL, 0));
     expect_assert_failure(bf_nfmsg_attr_push(NOT_NULL, 0, NULL, 0));
 
@@ -144,4 +151,12 @@ Test(nfmsg, write_attributes)
     assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
     assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
     assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+
+    assert_int_equal(
+        0, bf_nfmsg_parse(msg, attrs, ARRAY_SIZE(attrs), test_policy));
+    assert_int_equal(0, bf_nfattr_get_u8(attrs[0]));
+    assert_int_equal(1, bf_nfattr_get_u16(attrs[1]));
+    assert_int_equal(2, bf_nfattr_get_u32(attrs[2]));
+    assert_int_equal(3, bf_nfattr_get_u64(attrs[3]));
+    assert_string_equal("4", bf_nfattr_get_str(attrs[4]));
 }
