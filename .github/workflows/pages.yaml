@@ -37,6 +37,7 @@ jobs:
             lcov \
             libasan \
             libbpf-devel \
+            libnl3-devel \
             libubsan \
             python3-breathe \
             python3-furo \
