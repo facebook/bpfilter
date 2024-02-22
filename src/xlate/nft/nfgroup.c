@@ -162,16 +162,26 @@ int bf_nfgroup_to_response(const struct bf_nfgroup *group,
     bf_assert(resp);
 
     _cleanup_bf_response_ struct bf_response *_resp = NULL;
+    _cleanup_bf_nfmsg_ struct bf_nfmsg *done = NULL;
     size_t size = bf_nfgroup_size(group);
+    bool is_multipart = bf_list_size(&group->messages) != 1;
     void *payload;
     int r;
+
+    if (is_multipart) {
+        r = bf_nfmsg_new_done(&done);
+        if (r < 0)
+            return r;
+
+        size += bf_nfmsg_len(done);
+    }
 
     r = bf_response_new_raw(&_resp, size);
     if (r < 0)
         return r;
 
     _resp->type = BF_RES_SUCCESS;
-    _resp->data_len = 0;
+    _resp->data_len = size;
     payload = _resp->data;
 
     bf_list_foreach (&group->messages, msg_node) {
@@ -179,9 +189,14 @@ int bf_nfgroup_to_response(const struct bf_nfgroup *group,
 
         memcpy(payload, bf_nfmsg_hdr(msg), bf_nfmsg_len(msg));
 
+        if (is_multipart)
+            ((struct nlmsghdr *)payload)->nlmsg_flags |= NLM_F_MULTI;
+
         payload += bf_nfmsg_len(msg);
-        _resp->data_len += bf_nfmsg_len(msg);
     }
+
+    if (is_multipart)
+        memcpy(payload, bf_nfmsg_hdr(done), bf_nfmsg_len(done));
 
     *resp = TAKE_PTR(_resp);
 

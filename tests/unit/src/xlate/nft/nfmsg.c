@@ -75,6 +75,50 @@ Test(nfmsg, new_and_free)
     }
 }
 
+Test(nfmsg, new_done)
+{
+    expect_assert_failure(bf_nfmsg_new_done(NULL));
+
+    {
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+        assert_int_equal(0, bf_nfmsg_new_done(&msg));
+        assert_non_null(msg);
+    }
+
+    {
+        // calloc failure
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+    }
+
+    {
+        // nlmsg_put failure
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_alloc, NULL);
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+    }
+
+    {
+        // nlmsg_put failure
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_put, NULL);
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+    }
+
+    {
+        // nlmsg_append failure
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_append, -1);
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+
+        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+    }
+}
+
 Test(nfmsg, new_from_nlmsghdr)
 {
     expect_assert_failure(bf_nfmsg_new_from_nlmsghdr(NULL, NOT_NULL));

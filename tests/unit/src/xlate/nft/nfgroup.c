@@ -121,6 +121,7 @@ Test(nfgroup, add_new_message)
 
 Test(nfgroup, to_response)
 {
+    size_t done_msg_len = sizeof(struct nlmsghdr) + sizeof(struct nfgenmsg);
     expect_assert_failure(bf_nfgroup_to_response(NULL, NOT_NULL));
     expect_assert_failure(bf_nfgroup_to_response(NOT_NULL, NULL));
 
@@ -134,7 +135,7 @@ Test(nfgroup, to_response)
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
         assert_non_null(res);
         assert_int_equal(res->type, BF_RES_SUCCESS);
-        assert_int_equal(res->data_len, 0);
+        assert_int_equal(res->data_len, done_msg_len);
     }
 
     {
@@ -148,6 +149,11 @@ Test(nfgroup, to_response)
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
         assert_non_null(res);
         assert_int_equal(res->type, BF_RES_SUCCESS);
-        assert_int_equal(res->data_len, len);
+        assert_int_equal(res->data_len, len + done_msg_len);
+
+        struct nlmsghdr *last =
+            (struct nlmsghdr *)(res->data + res->data_len - done_msg_len);
+
+        assert_int_equal(last->nlmsg_type, NLMSG_DONE);
     }
 }
