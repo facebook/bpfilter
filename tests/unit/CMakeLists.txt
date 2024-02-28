@@ -79,6 +79,7 @@ endfunction()
 enable_testing()
 
 set(bf_test_srcs
+    src/opts.c
     src/core/btf.c
     src/core/context.c
     src/core/flavor.c

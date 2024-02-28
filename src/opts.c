@@ -45,6 +45,7 @@ static struct argp_option options[] = {
      "Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
      0},
     {"no-iptables", 0x01, 0, 0, "Disable iptables support", 0},
+    {"no-nftables", 0x02, 0, 0, "Disable nftables support", 0},
     {"verbose", 'v', 0, 0, "Print debug logs", 0},
     {0},
 };
@@ -70,6 +71,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case 0x01:
         bf_info("disabling iptables support");
         args->fronts &= ~(1 << BF_FRONT_IPT);
+        break;
+    case 0x02:
+        bf_info("disabling nftables support");
+        args->fronts &= ~(1 << BF_FRONT_NFT);
         break;
     case 'v':
         args->verbose = true;
