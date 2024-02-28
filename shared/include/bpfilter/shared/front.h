@@ -8,6 +8,7 @@
 enum bf_front
 {
     BF_FRONT_IPT,
+    BF_FRONT_NFT,
     _BF_FRONT_MAX,
 };
 
