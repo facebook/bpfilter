@@ -18,6 +18,7 @@
 
 enum bf_hook
 {
+    BF_HOOK_NFT_INGRESS,
     BF_HOOK_TC_INGRESS,
     BF_HOOK_IPT_PRE_ROUTING,
     BF_HOOK_IPT_LOCAL_IN,

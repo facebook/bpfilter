@@ -92,8 +92,10 @@ set(bf_test_srcs
     src/generator/nf.c
     src/generator/print.c
     src/generator/program.c
+    src/xlate/nft/nft.c
     src/xlate/nft/nfmsg.c
     src/xlate/nft/nfgroup.c
+    shared/src/front.c
 )
 
 add_executable(tests_unit
@@ -140,6 +142,7 @@ set_source_files_properties(${bf_coverage_srcs}
 
 target_include_directories(tests_unit
     PRIVATE
+        ${CMAKE_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/shared/include
