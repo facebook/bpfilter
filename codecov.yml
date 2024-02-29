@@ -1,0 +1,31 @@
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 0
+      - type: patch
+        # Expect at least 50% of the new code to be covered requirement can be
+        # raised later.
+        target: 50%
+        threshold: 0
+  individual_components:
+    # Some components of the project are hardly testable, so we don't want to
+    # enforce the same coverage requirements for them.
+    - component_id: hardly_testable
+      name: "Hardly testable"
+      paths:
+        # System calls
+        - src/core/bpf.c
+        # To test end-to-end using BPF_PROG_TEST_RUN
+        - src/generator/**
+        # To test using integration tests
+        - src/xlate/ipt/**
+        - src/xlate/nft/**
+      statuses:
+        - type: project
+          target: 0
+          threshold: 100
+        - type: patch
+          target: 0
+          threshold: 100
