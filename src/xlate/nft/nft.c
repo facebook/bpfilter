@@ -14,6 +14,8 @@
 
 struct bf_marsh;
 
+static const char *_bf_table_name = "bpfilter";
+
 static int _bf_nft_setup(void);
 static int _bf_nft_teardown(void);
 static int _bf_nft_request_handler(struct bf_request *request,
@@ -76,6 +78,53 @@ bf_nfmsg_push_failure:
     return -EINVAL;
 }
 
+static int _bf_nft_gettable_cb(const struct bf_nfmsg *req,
+                               struct bf_nfgroup *res)
+{
+    bf_assert(req);
+    bf_assert(res);
+
+    struct bf_nfmsg *msg = NULL;
+    int r;
+
+    r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWTABLE,
+                                   bf_nfmsg_seqnr(req));
+    if (r < 0)
+        return bf_err_code(r, "failed to create bf_nfmsg");
+
+    bf_nfmsg_push_str_or_jmp(msg, NFTA_TABLE_NAME, _bf_table_name);
+    bf_nfmsg_push_u32_or_jmp(msg, NFTA_TABLE_FLAGS, 0);
+    bf_nfmsg_push_u64_or_jmp(msg, NFTA_TABLE_HANDLE, 0);
+    bf_nfmsg_push_u32_or_jmp(msg, NFTA_TABLE_USE, 1);
+
+    return 0;
+
+bf_nfmsg_push_failure:
+    return -EINVAL;
+}
+
+static int _bf_nft_newtable_cb(const struct bf_nfmsg *req)
+{
+    bf_assert(req);
+
+    bf_nfattr *attrs[__NFTA_TABLE_MAX] = {};
+    int r;
+
+    r = bf_nfmsg_parse(req, attrs, __NFTA_TABLE_MAX, bf_nf_table_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFT_MSG_GETTABLE attributes");
+
+    if (!attrs[NFTA_TABLE_NAME])
+        return bf_warn_code(-EINVAL, "missing NFTA_TABLE_NAME attribute");
+
+    if (!bf_streq(bf_nfattr_get_str(attrs[NFTA_TABLE_NAME]), _bf_table_name)) {
+        return bf_warn_code(-EINVAL, "invalid table name '%s'",
+                            bf_nfattr_get_str(attrs[NFTA_TABLE_NAME]));
+    }
+
+    return 0;
+}
+
 static int _bf_nft_request_handle(const struct bf_nfmsg *req,
                                   struct bf_nfgroup *res)
 {
@@ -87,6 +136,12 @@ static int _bf_nft_request_handle(const struct bf_nfmsg *req,
     switch (bf_nfmsg_command(req)) {
     case NFT_MSG_GETGEN:
         r = _bf_nft_getgen_cb(req, res);
+        break;
+    case NFT_MSG_GETTABLE:
+        r = _bf_nft_gettable_cb(req, res);
+        break;
+    case NFT_MSG_NEWTABLE:
+        r = _bf_nft_newtable_cb(req);
         break;
     default:
         r = bf_warn_code(-ENOTSUP, "unsupported nft command %hu",
