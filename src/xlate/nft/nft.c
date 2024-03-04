@@ -131,7 +131,7 @@ static int _bf_nft_request_handle(const struct bf_nfmsg *req,
     bf_assert(req);
     bf_assert(res);
 
-    int r;
+    int r = 0;
 
     switch (bf_nfmsg_command(req)) {
     case NFT_MSG_GETGEN:
@@ -142,6 +142,10 @@ static int _bf_nft_request_handle(const struct bf_nfmsg *req,
         break;
     case NFT_MSG_NEWTABLE:
         r = _bf_nft_newtable_cb(req);
+        break;
+    case NFT_MSG_GETOBJ:
+    case NFT_MSG_GETFLOWTABLE:
+    case NFT_MSG_GETSET:
         break;
     default:
         r = bf_warn_code(-ENOTSUP, "unsupported nft command %hu",
