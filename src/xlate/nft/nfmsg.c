@@ -10,6 +10,7 @@
 #include <linux/netlink.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <netlink/msg.h>
 
 #include "core/logger.h"
@@ -292,6 +293,34 @@ void *bf_nfattr_data(bf_nfattr *attr)
     bf_assert(attr);
 
     return nla_data(attr);
+}
+
+size_t bf_nfattr_data_len(bf_nfattr *attr)
+{
+    bf_assert(attr);
+
+    return (size_t)nla_len(attr);
+}
+
+bool bf_nfattr_is_ok(bf_nfattr *attr, size_t remaining)
+{
+    bf_assert(attr);
+    bf_assert(remaining < INT_MAX);
+
+    return nla_ok(attr, (int)remaining);
+}
+
+bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining)
+{
+    bf_assert(attr);
+    bf_assert(remaining && *remaining < INT_MAX);
+
+    int _remaining = (int)*remaining;
+
+    attr = nla_next(attr, &_remaining);
+    *remaining = (size_t)_remaining;
+
+    return attr;
 }
 
 int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
