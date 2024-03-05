@@ -342,6 +342,295 @@ bf_nfmsg_push_failure:
     return bf_err_code(-EINVAL, "failed to add attribute to Netlink message");
 }
 
+static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
+{
+    bf_assert(req);
+
+    _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+    _cleanup_bf_nfmsg_ struct bf_nfmsg *req_copy;
+    struct bf_codegen *codegen;
+    bf_nfattr *rule_attrs[__NFTA_RULE_MAX] = {};
+    bf_nfattr *expr_attrs[__NFTA_EXPR_MAX] = {};
+    bf_nfattr *payload_attrs[__NFTA_PAYLOAD_MAX] = {};
+    bf_nfattr *cmp_attrs[__NFTA_CMP_MAX] = {};
+    bf_nfattr *data_attrs[__NFTA_DATA_MAX] = {};
+    bf_nfattr *immediate_attrs[__NFTA_IMMEDIATE_MAX] = {};
+    bf_nfattr *verdict_attrs[__NFTA_VERDICT_MAX] = {};
+    bf_nfattr *parent;
+    bf_nfattr *attr;
+    size_t rem;
+    int r;
+
+    r = bf_nfmsg_parse(req, rule_attrs, __NFTA_RULE_MAX, bf_nf_rule_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFT_MSG_NEWRULE attributes");
+
+    if (!rule_attrs[NFTA_RULE_TABLE] ||
+        !bf_streq(bf_nfattr_get_str(rule_attrs[NFTA_RULE_TABLE]),
+                  _bf_table_name))
+        return bf_err_code(-EINVAL, "invalid table name");
+
+    if (!rule_attrs[NFTA_RULE_CHAIN] ||
+        !bf_streq(bf_nfattr_get_str(rule_attrs[NFTA_RULE_CHAIN]),
+                  _bf_chain_name))
+        return bf_err_code(-EINVAL, "invalid chain name");
+
+    parent = attr = rule_attrs[NFTA_RULE_EXPRESSIONS];
+    if (!parent)
+        return bf_err_code(-EINVAL, "missing NFTA_RULE_EXPRESSIONS attribute");
+    rem = bf_nfattr_data_len(parent);
+
+    attr = (bf_nfattr *)bf_nfattr_data(parent);
+    if (!bf_nfattr_is_ok(attr, rem))
+        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+
+    r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
+    if (r < 0) {
+        return bf_err_code(r,
+                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+    }
+
+    if (!expr_attrs[NFTA_EXPR_NAME] ||
+        !bf_streq(bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]), "payload"))
+        return bf_err_code(-EINVAL, "expecting rule expression 'payload'");
+
+    r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], payload_attrs,
+                        __NFTA_PAYLOAD_MAX, bf_nf_payload_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+
+    if (!payload_attrs[NFTA_PAYLOAD_BASE] ||
+        ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_BASE])) !=
+            NFT_PAYLOAD_NETWORK_HEADER) {
+        return bf_err_code(-EINVAL,
+                           "expecting payload base NFT_PAYLOAD_NETWORK_HEADER");
+    }
+
+    uint32_t len = ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_LEN]));
+    uint32_t off = ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_OFFSET]));
+
+    attr = bf_nfattr_next(attr, &rem);
+    if (!bf_nfattr_is_ok(attr, rem))
+        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+
+    r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
+    if (r < 0) {
+        return bf_err_code(r,
+                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+    }
+
+    if (!expr_attrs[NFTA_EXPR_NAME] ||
+        !bf_streq(bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]), "cmp"))
+        return bf_err_code(-EINVAL, "expecting rule expression 'cmp'");
+
+    r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], cmp_attrs, __NFTA_CMP_MAX,
+                        bf_nf_cmp_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+
+    uint32_t op = ntohl(bf_nfattr_get_u32(cmp_attrs[NFTA_CMP_OP]));
+    if (op != NFT_CMP_EQ)
+        return bf_err_code(-EINVAL, "only NFTA_CMP_OP is supported");
+
+    r = bf_nfattr_parse(cmp_attrs[NFTA_CMP_DATA], data_attrs, __NFTA_DATA_MAX,
+                        bf_nf_data_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_CMP_DATA attributes");
+
+    uint32_t cmp_value = ntohl(bf_nfattr_get_u32(data_attrs[NFTA_DATA_VALUE]));
+
+    attr = bf_nfattr_next(attr, &rem);
+    if (!bf_nfattr_is_ok(attr, rem))
+        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+
+    r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
+    if (r < 0) {
+        return bf_err_code(r,
+                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+    }
+
+    bool counter = false;
+    if (bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "counter")) {
+        counter = true;
+
+        attr = bf_nfattr_next(attr, &rem);
+        if (!bf_nfattr_is_ok(attr, rem))
+            return bf_err_code(-EINVAL, "expecting cmp, got invalid attribute");
+    }
+
+    if (!bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "immediate"))
+        return bf_err_code(r, "expected cmp attribute, got something else");
+
+    r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], immediate_attrs,
+                        __NFTA_IMMEDIATE_MAX, bf_nf_immediate_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+
+    r = bf_nfattr_parse(immediate_attrs[NFTA_IMMEDIATE_DATA], data_attrs,
+                        __NFTA_DATA_MAX, bf_nf_data_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_IMMEDIATE_DATA attributes");
+
+    if (!data_attrs[NFTA_DATA_VERDICT])
+        return bf_err_code(-EINVAL, "missing NFTA_DATA_VERDICT attribute");
+
+    r = bf_nfattr_parse(data_attrs[NFTA_DATA_VERDICT], verdict_attrs,
+                        __NFTA_VERDICT_MAX, bf_nf_verdict_policy);
+    if (r < 0)
+        return bf_err_code(r, "failed to parse NFTA_DATA_VERDICT attributes");
+
+    if (!verdict_attrs[NFTA_VERDICT_CODE])
+        return bf_err_code(-EINVAL, "missing NFTA_VERDICT_CODE attribute");
+
+    int32_t verdict =
+        ntohl(bf_nfattr_get_s32(verdict_attrs[NFTA_VERDICT_CODE]));
+    if (verdict < 0) {
+        return bf_err_code(-EINVAL,
+                           "only ACCEPT and DROP verdicts are supported");
+    }
+
+    // Add the rule to the relevant codegen
+    codegen = bf_context_get_codegen(BF_HOOK_NFT_INGRESS, BF_FRONT_NFT);
+
+    if (!codegen)
+        return bf_err_code(-EINVAL, "no codegen found for hook");
+
+    r = bf_rule_new(&rule);
+    if (r < 0)
+        return bf_err_code(r, "failed to create bf_rule");
+
+    rule->counters = counter;
+    switch (off) {
+    case 9:
+        rule->protocol = htonl(cmp_value);
+        break;
+    case 12:
+        rule->src = htonl(cmp_value);
+        rule->src_mask = 0xffffffff >> (32 - len * 8);
+        break;
+    case 16:
+        rule->dst = htonl(cmp_value);
+        rule->dst_mask = 0xffffffff >> (32 - len * 8);
+        break;
+    default:
+        return bf_err_code(-EINVAL, "unknown IP header offset %d", off);
+    };
+
+    rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
+    rule->index = bf_list_size(&codegen->rules);
+
+    r = bf_list_add_tail(&codegen->rules, rule);
+    if (r < 0)
+        return bf_err_code(r, "failed to add rule to codegen");
+    TAKE_PTR(rule);
+
+    r = bf_codegen_update(codegen);
+    if (r < 0)
+        return bf_err_code(r, "failed to update codegen");
+
+    // Backup the rule in the front-end context
+    r = bf_nfmsg_new_from_nlmsghdr(&req_copy, bf_nfmsg_hdr(req));
+    if (r < 0)
+        return bf_err_code(r, "failed to create bf_nfmsg from nlmsghdr");
+
+    r = bf_list_add_tail(_bf_nft_rules, req_copy);
+    if (r < 0)
+        return bf_err_code(r, "failed to add rule to bf_list");
+    TAKE_PTR(req_copy);
+
+    return 0;
+}
+
+static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
+                              struct bf_nfgroup *res)
+{
+    bf_assert(req);
+    bf_assert(res);
+
+    bf_nfattr *rule_attrs[__NFTA_RULE_MAX] = {};
+    int i = 0;
+    int r;
+
+    bf_list_foreach (_bf_nft_rules, rule_node) {
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+        struct bf_nfmsg *cached_msg = bf_list_node_get_data(rule_node);
+
+        r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWRULE,
+                                       bf_nfmsg_seqnr(req));
+        if (r < 0)
+            return bf_err_code(r, "failed to create bf_nfmsg");
+
+        bf_nfmsg_push_str_or_jmp(msg, NFTA_RULE_TABLE, _bf_table_name);
+        bf_nfmsg_push_str_or_jmp(msg, NFTA_RULE_CHAIN, _bf_chain_name);
+        bf_nfmsg_push_u64_or_jmp(msg, NFTA_RULE_HANDLE, i);
+        bf_nfmsg_push_u64_or_jmp(msg, NFTA_RULE_POSITION, i);
+
+        r = bf_nfmsg_parse(cached_msg, rule_attrs, __NFTA_RULE_MAX,
+                           bf_nf_rule_policy);
+        if (r < 0)
+            return bf_err_code(r, "failed to parse NFT_MSG_NEWRULE attributes");
+
+        {
+            _cleanup_bf_nfnest_ struct bf_nfnest _ =
+                bf_nfnest_or_jmp(msg, NFTA_RULE_EXPRESSIONS);
+            bf_nfattr *expr_attrs[__NFTA_EXPR_MAX] = {};
+            bf_nfattr *expressions = rule_attrs[NFTA_RULE_EXPRESSIONS];
+            bf_nfattr *expression;
+            size_t remaining = bf_nfattr_data_len(expressions);
+
+            expression = bf_nfattr_data(expressions);
+            while (bf_nfattr_is_ok(expression, remaining)) {
+                _cleanup_bf_nfnest_ struct bf_nfnest _ =
+                    bf_nfnest_or_jmp(msg, NFTA_LIST_ELEM);
+
+                r = bf_nfattr_parse(expression, expr_attrs, __NFTA_EXPR_MAX,
+                                    bf_nf_expr_policy);
+                if (r < 0) {
+                    return bf_err_code(
+                        r, "failed to parse NFTA_EXPR_* attributes");
+                }
+
+                bf_nfmsg_push_str_or_jmp(
+                    msg, NFTA_EXPR_NAME,
+                    bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]));
+                if (bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]),
+                             "counter")) {
+                    _cleanup_bf_nfnest_ struct bf_nfnest _ =
+                        bf_nfnest_or_jmp(msg, NFTA_EXPR_DATA);
+                    struct bf_counter counter;
+
+                    r = bf_codegen_get_counter(
+                        bf_context_get_codegen(BF_HOOK_NFT_INGRESS,
+                                               BF_FRONT_NFT),
+                        i, &counter);
+                    if (r < 0)
+                        return bf_err_code(r, "failed to get counter");
+
+                    bf_nfmsg_push_u64_or_jmp(msg, NFTA_COUNTER_BYTES,
+                                             be64toh(counter.bytes));
+                    bf_nfmsg_push_u64_or_jmp(msg, NFTA_COUNTER_PACKETS,
+                                             be64toh(counter.packets));
+                } else {
+                    bf_nfmsg_attr_push_or_jmp(
+                        msg, NFTA_EXPR_DATA,
+                        bf_nfattr_data(expr_attrs[NFTA_EXPR_DATA]),
+                        bf_nfattr_data_len(expr_attrs[NFTA_EXPR_DATA]));
+                }
+
+                expression = bf_nfattr_next(expression, &remaining);
+            }
+        }
+
+        i++;
+        TAKE_PTR(msg);
+    }
+
+    return 0;
+
+bf_nfmsg_push_failure:
+    return bf_err_code(-EINVAL, "failed to add attribute to Netlink message");
+}
+
 static int _bf_nft_request_handle(const struct bf_nfmsg *req,
                                   struct bf_nfgroup *res)
 {
@@ -366,9 +655,11 @@ static int _bf_nft_request_handle(const struct bf_nfmsg *req,
     case NFT_MSG_NEWCHAIN:
         r = _bf_nft_newchain_cb(req);
         break;
-    case NFT_MSG_NEWRULE:
-        break;
     case NFT_MSG_GETRULE:
+        r = _bf_nft_getrule_cb(req, res);
+        break;
+    case NFT_MSG_NEWRULE:
+        r = _bf_nft_newrule_cb(req);
         break;
     case NFT_MSG_GETOBJ:
     case NFT_MSG_GETFLOWTABLE:
