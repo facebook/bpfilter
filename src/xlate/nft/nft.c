@@ -11,6 +11,8 @@
 #include "core/context.h"
 #include "core/hook.h"
 #include "core/logger.h"
+#include "core/marsh.h"
+#include "core/rule.h"
 #include "core/verdict.h"
 #include "generator/codegen.h"
 #include "shared/request.h"
@@ -39,26 +41,77 @@ const struct bf_front_ops nft_front = {
     .unmarsh = _bf_nft_unmarsh,
 };
 
+static bf_list *_bf_nft_rules = NULL;
+
 static int _bf_nft_setup(void)
 {
+    int r;
+
+    // If the cache has been restored already, skip this.
+    if (_bf_nft_rules)
+        return 0;
+
+    r = bf_list_new(
+        &_bf_nft_rules,
+        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_nfmsg_free}});
+    if (r < 0)
+        return bf_err_code(r, "failed to create bf_list");
+
     return 0;
 }
 
 static int _bf_nft_teardown(void)
 {
+    bf_list_free(&_bf_nft_rules);
+
     return 0;
 }
 
 static int _bf_nft_marsh(struct bf_marsh **marsh)
 {
-    UNUSED(marsh);
+    bf_assert(marsh);
+
+    int r = 0;
+
+    bf_list_foreach (_bf_nft_rules, rule_node) {
+        struct bf_nfmsg *msg = bf_list_node_get_data(rule_node);
+
+        r = bf_marsh_add_child_raw(marsh, bf_nfmsg_hdr(msg), bf_nfmsg_len(msg));
+        if (r < 0)
+            return bf_err_code(r, "failed to add rule to marsh");
+    }
 
     return 0;
 }
 
 static int _bf_nft_unmarsh(struct bf_marsh *marsh)
 {
-    UNUSED(marsh);
+    bf_assert(marsh);
+
+    _cleanup_bf_list_ bf_list *list = NULL;
+    struct bf_marsh *child;
+    int r;
+
+    r = bf_list_new(
+        &list, (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_nfmsg_free}});
+    if (r < 0)
+        return bf_err_code(r, "failed to create bf_list");
+
+    while ((child = bf_marsh_next_child(marsh, child))) {
+        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+        struct nlmsghdr *nlh = (struct nlmsghdr *)(child->data);
+
+        r = bf_nfmsg_new_from_nlmsghdr(&msg, nlh);
+        if (r < 0)
+            return bf_err_code(r, "failed to create bf_nfmsg from marsh");
+
+        r = bf_list_add_tail(list, msg);
+        if (r < 0)
+            return bf_err_code(r, "failed to add bf_nfmsg to bf_list");
+        TAKE_PTR(msg);
+    }
+
+    _bf_nft_rules = TAKE_PTR(list);
 
     return 0;
 }
