@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -310,6 +311,38 @@ int bf_nfattr_parse(bf_nfattr *attr, bf_nfattr **attrs, int maxtype,
 void *bf_nfattr_data(bf_nfattr *attr);
 
 /**
+ * Get a Netlink attribute's payload size, including padding.
+ *
+ * @param attr Attribute the get the payload size of. Can't be NULL.
+ * @return Attribute's payload size, including padding.
+ */
+size_t bf_nfattr_data_len(bf_nfattr *attr);
+
+/**
+ * Check if a Netlink attribute (and its payload) is valid.
+ *
+ * If the function returns false, the attribute and its content can't be
+ * accessed safely.
+ *
+ * @param attr Attribute to validate. Can't be NULL.
+ * @param remaining Remaining bytes in the parent message or attribute. Can't be
+ * negative.
+ * @return true if the attribute is valid, false otherwise.
+ */
+bool bf_nfattr_is_ok(bf_nfattr *attr, size_t remaining);
+
+/**
+ * Get the next Netlink attribute in a message or in a nested attribute.
+ *
+ * @param attr Attribute to get the next attribute from. Can't be NULL.
+ * @param remaining Remaining bytes in the parent message or attribute. Can't be
+ * NULL. When the function succeeds, it is updated with the remaining bytes in
+ * the parent message or attribute.
+ * @return Pointer to the next attribute, or NULL if there are no more
+ */
+bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining);
+
+/**
  * Get a Netlink attribute's data as a string.
  *
  * @param attr Attribute to get the data from. Can't be NULL.
@@ -326,12 +359,28 @@ void *bf_nfattr_data(bf_nfattr *attr);
 #define bf_nfattr_get_u8(attr) (*(uint8_t *)bf_nfattr_data(attr))
 
 /**
+ * Get a Netlink attribute's data as a @c int8_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_s8(attr) (*(int8_t *)bf_nfattr_data(attr))
+
+/**
  * Get a Netlink attribute's data as a @c uint16_t.
  *
  * @param attr Attribute to get the data from. Can't be NULL.
  * @return Pointer to the attribute's data.
  */
 #define bf_nfattr_get_u16(attr) (*(uint16_t *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c int16_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_s16(attr) (*(int16_t *)bf_nfattr_data(attr))
 
 /**
  * Get a Netlink attribute's data as a @c uint32_t.
@@ -342,12 +391,28 @@ void *bf_nfattr_data(bf_nfattr *attr);
 #define bf_nfattr_get_u32(attr) (*(uint32_t *)bf_nfattr_data(attr))
 
 /**
+ * Get a Netlink attribute's data as a @c int32_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_s32(attr) (*(int32_t *)bf_nfattr_data(attr))
+
+/**
  * Get a Netlink attribute's data as a @c uint64_t.
  *
  * @param attr Attribute to get the data from. Can't be NULL.
  * @return Pointer to the attribute's data.
  */
 #define bf_nfattr_get_u64(attr) (*(uint64_t *)bf_nfattr_data(attr))
+
+/**
+ * Get a Netlink attribute's data as a @c int64_t.
+ *
+ * @param attr Attribute to get the data from. Can't be NULL.
+ * @return Pointer to the attribute's data.
+ */
+#define bf_nfattr_get_s64(attr) (*(int64_t *)bf_nfattr_data(attr))
 
 /**
  * @file nfmsg.h
