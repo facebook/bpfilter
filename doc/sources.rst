@@ -3,7 +3,7 @@ Build from sources
 
 This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon.
 
-``bpfilter`` development is mostly done using Fedora (38 and 39), but Ubuntu is also officially supported.
+``bpfilter`` development is mostly done using Fedora (38 and 39), but Ubuntu (23.10+) is also officially supported. Other distributions may work as long as Linux 6.4+ is available, but they are not officially supported at the moment.
 
 Required dependencies on Fedora and Ubuntu:
 
