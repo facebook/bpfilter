@@ -31,7 +31,7 @@ static struct
     make_print_str(BF_PRINT_NO_IPV4, "L3 header is not IPv4"),
 };
 
-static int _bf_fd = 1;
+static int _bf_fd;
 static const char *_bf_print_strs_path = "/sys/fs/bpf/bf_print_strs";
 
 size_t _bf_compute_offsets(void)
@@ -79,7 +79,7 @@ int bf_print_setup(void)
         return bf_err_code(r, "failed to freeze strings map");
 
     if (!bf_opts_transient()) {
-        r = bf_bpf_obj_pin(_bf_print_strs_path, _bf_fd);
+        r = bf_bpf_obj_pin(_bf_print_strs_path, fd);
         if (r < 0)
             return bf_err_code(r, "failed to pin strings map");
     }
