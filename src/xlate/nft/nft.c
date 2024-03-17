@@ -458,8 +458,11 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
             return bf_err_code(-EINVAL, "expecting cmp, got invalid attribute");
     }
 
-    if (!bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "immediate"))
-        return bf_err_code(r, "expected cmp attribute, got something else");
+    if (!bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "immediate")) {
+        return bf_err_code(
+            r, "expected immediate attribute, but have '%s' instead",
+            bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]));
+    }
 
     r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], immediate_attrs,
                         __NFTA_IMMEDIATE_MAX, bf_nf_immediate_policy);
