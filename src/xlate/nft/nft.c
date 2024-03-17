@@ -456,6 +456,13 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
         attr = bf_nfattr_next(attr, &rem);
         if (!bf_nfattr_is_ok(attr, rem))
             return bf_err_code(-EINVAL, "expecting cmp, got invalid attribute");
+
+        r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX,
+                            bf_nf_expr_policy);
+        if (r < 0) {
+            return bf_err_code(
+                r, "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+        }
     }
 
     if (!bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "immediate")) {
