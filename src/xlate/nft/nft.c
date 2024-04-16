@@ -89,7 +89,7 @@ static int _bf_nft_unmarsh(struct bf_marsh *marsh)
     bf_assert(marsh);
 
     _cleanup_bf_list_ bf_list *list = NULL;
-    struct bf_marsh *child;
+    struct bf_marsh *child = NULL;
     int r;
 
     r = bf_list_new(
