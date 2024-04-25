@@ -1,6 +1,5 @@
 # Usual build folder
-build
-build.*
+build/
 # VSCode configuration folder
 .vscode
 *.pyc
