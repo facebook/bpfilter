@@ -7,8 +7,7 @@
    :caption: Users
 
    overview
-   sources
-   iptables
+   build
 
 .. toctree::
    :hidden:
@@ -22,6 +21,8 @@
 ``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).
 
 The ``bpfilter`` daemon running on the system receives a request from a client (``iptables``, ``nftables``, or any other client that could be created) and converts the client-provided ruleset into one or more BPF program(s).
+
+If you want to try ``bpfilter`` with ``nftables`` or ``iptables``, have a look at :doc:`build`.
 
 If you want to know more about ``bpfilter``'s internals, take a look at the following talks about the project:
 
