@@ -21,7 +21,7 @@ You can then use CMake to generate the build system:
 
     cmake -S $BPFILTER_SOURCE -B $BUILD_DIRECTORY
 
-There is no ``bpfilter``-specific CMake option, but you can use the CMake-provided ones (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...).
+There is no ``bpfilter``-specific CMake option, but you can use the CMake-provided ones (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...), including ``-G`` to override the default build system generator (``ninja`` and ``make`` are supported).
 
 Once CMake completes, you can build ``bpfilter``. The following Make targets are available:
 

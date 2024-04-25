@@ -25,7 +25,7 @@ add_custom_target(coverage
 		--remove lcov.out
 		--ignore-errors unused
 		"${CMAKE_SOURCE_DIR}/tests/unit/\\*"
-	COMMAND ${GENHTML_BIN} -o coverage lcov.out
-	BYPRODUCTS coverage
+	COMMAND ${GENHTML_BIN} -o html_coverage lcov.out
+	BYPRODUCTS html_coverage
 	COMMENT "Generate coverage report"
 )
