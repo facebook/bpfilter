@@ -1,0 +1,456 @@
+From d8169a39c4d790b2587ca9176447533b6c18d137 Mon Sep 17 00:00:00 2001
+From: Quentin Deslandes <qde@naccy.de>
+Date: Fri, 26 Apr 2024 00:45:57 +0200
+Subject: [PATCH] libnftables: add support for bpfilter
+
+Introduce --bpf flag for nft to send the Netlink request to bpfilter
+through libbpfilter, instead of sending them to the kernel. bpfilter
+will handle the request and return an answer similarly to what the
+kernel would do.
+
+Signed-off-by: Quentin Deslandes <qde@naccy.de>
+---
+ configure.ac                   |  12 +++-
+ include/mnl.h                  |   4 ++
+ include/nftables.h             |   1 +
+ include/nftables/libnftables.h |   3 +
+ src/Makefile.am                |  12 ++++
+ src/libnftables.c              |  12 ++++
+ src/libnftables.map            |   2 +
+ src/main.c                     |  12 ++++
+ src/mnl.c                      | 111 +++++++++++++++++++++++++++++++--
+ src/nfnl_osf.c                 |  10 ++-
+ 10 files changed, 173 insertions(+), 6 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 7bd33bdc..bf51d5d7 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -110,6 +110,15 @@ AC_DEFINE([HAVE_LIBJANSSON], [1], [Define if you have libjansson])
+ ])
+ AM_CONDITIONAL([BUILD_JSON], [test "x$with_json" != xno])
+ 
++AC_ARG_WITH([bpfilter], [AS_HELP_STRING([--with-bpfilter],
++            [Enable bpfilter support])],
++	    [], [with_bpfilter=no])
++AS_IF([test "x$with_bpfilter" != xno], [
++PKG_CHECK_MODULES([BPFILTER], [bpfilter])
++AC_DEFINE([HAVE_LIBBPFILTER], [1], [Define if you have libbpfilter])
++])
++AM_CONDITIONAL([BUILD_BPFILTER], [test "x$with_bpfilter" != xno])
++
+ AC_CHECK_DECLS([getprotobyname_r, getprotobynumber_r, getservbyport_r], [], [], [[
+ #include <netdb.h>
+ ]])
+@@ -143,4 +152,5 @@ nft configuration:
+   use mini-gmp:			${with_mini_gmp}
+   enable man page:              ${enable_man_doc}
+   libxtables support:		${with_xtables}
+-  json output support:          ${with_json}"
++  json output support:          ${with_json}
++  bpfilter support:             ${with_bpfilter}"
+diff --git a/include/mnl.h b/include/mnl.h
+index cd5a2053..6cce3561 100644
+--- a/include/mnl.h
++++ b/include/mnl.h
+@@ -102,4 +102,8 @@ int nft_mnl_talk(struct netlink_ctx *ctx, const void *data, unsigned int len,
+ 		 int (*cb)(const struct nlmsghdr *nlh, void *data),
+ 		 void *cb_data);
+ 
++int nft_mnl_bf_talk(struct netlink_ctx *ctx, const void *data, unsigned int len,
++		    int (*cb)(const struct nlmsghdr *nlh, void *data),
++		    void *cb_data);
++
+ #endif /* _NFTABLES_MNL_H_ */
+diff --git a/include/nftables.h b/include/nftables.h
+index 4b7c3359..28c66db5 100644
+--- a/include/nftables.h
++++ b/include/nftables.h
+@@ -135,6 +135,7 @@ struct nft_ctx {
+ 	struct input_ctx	input;
+ 	struct output_ctx	output;
+ 	bool			check;
++	bool			bpf;
+ 	struct nft_cache	cache;
+ 	uint32_t		flags;
+ 	uint32_t		optimize_flags;
+diff --git a/include/nftables/libnftables.h b/include/nftables/libnftables.h
+index c1d48d76..f9962273 100644
+--- a/include/nftables/libnftables.h
++++ b/include/nftables/libnftables.h
+@@ -47,6 +47,9 @@ enum nft_optimize_flags {
+ uint32_t nft_ctx_get_optimize(struct nft_ctx *ctx);
+ void nft_ctx_set_optimize(struct nft_ctx *ctx, uint32_t flags);
+ 
++uint32_t nft_ctx_get_bpf(struct nft_ctx *ctx);
++void nft_ctx_set_bpf(struct nft_ctx *ctx, uint32_t flags);
++
+ enum {
+ 	NFT_CTX_INPUT_NO_DNS		= (1 << 0),
+ 	NFT_CTX_INPUT_JSON		= (1 << 1),
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 63a4ef43..3ae0b5bc 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -17,6 +17,9 @@ endif
+ if BUILD_JSON
+ AM_CPPFLAGS += -DHAVE_JSON
+ endif
++if BUILD_BPFILTER
++AM_CPPFLAGS += -DHAVE_BPFILTER
++endif
+ if BUILD_XTABLES
+ AM_CPPFLAGS += -DHAVE_XTABLES
+ endif
+@@ -120,4 +123,13 @@ libnftables_la_SOURCES += json.c parser_json.c
+ libnftables_la_LIBADD += ${JANSSON_LIBS}
+ endif
+ 
++if BUILD_BPFILTER
++libnftables_la_LIBADD += ${BPFILTER_LIBS}
++libnftables_la_CFLAGS = ${AM_CFLAGS} ${BPFILTER_CFLAGS}
++endif
++
+ nft_LDADD = libnftables.la
++
++if BUILD_BPFILTER
++nft_LDADD += ${BPFILTER_LIBS}
++endif
+diff --git a/src/libnftables.c b/src/libnftables.c
+index 41f54c0c..c8521672 100644
+--- a/src/libnftables.c
++++ b/src/libnftables.c
+@@ -398,6 +398,18 @@ void nft_ctx_set_optimize(struct nft_ctx *ctx, uint32_t flags)
+ 	ctx->optimize_flags = flags;
+ }
+ 
++EXPORT_SYMBOL(nft_ctx_get_bpf);
++uint32_t nft_ctx_get_bpf(struct nft_ctx *ctx)
++{
++	return ctx->bpf;
++}
++
++EXPORT_SYMBOL(nft_ctx_set_bpf);
++void nft_ctx_set_bpf(struct nft_ctx *ctx, uint32_t flags)
++{
++	ctx->bpf = flags;
++}
++
+ EXPORT_SYMBOL(nft_ctx_input_get_flags);
+ unsigned int nft_ctx_input_get_flags(struct nft_ctx *ctx)
+ {
+diff --git a/src/libnftables.map b/src/libnftables.map
+index 9369f44f..9c7337f3 100644
+--- a/src/libnftables.map
++++ b/src/libnftables.map
+@@ -32,6 +32,8 @@ LIBNFTABLES_2 {
+ LIBNFTABLES_3 {
+   nft_ctx_set_optimize;
+   nft_ctx_get_optimize;
++  nft_ctx_get_bpf;
++  nft_ctx_set_bpf;
+ } LIBNFTABLES_2;
+ 
+ LIBNFTABLES_4 {
+diff --git a/src/main.c b/src/main.c
+index 9485b193..e5629cbe 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -36,6 +36,7 @@ enum opt_indices {
+ 	IDX_INTERACTIVE,
+         IDX_INCLUDEPATH,
+ 	IDX_CHECK,
++	IDX_BPF,
+ 	IDX_OPTIMIZE,
+ #define IDX_RULESET_INPUT_END	IDX_OPTIMIZE
+         /* Ruleset list formatting */
+@@ -64,6 +65,7 @@ enum opt_vals {
+ 	OPT_VERSION		= 'v',
+ 	OPT_VERSION_LONG	= 'V',
+ 	OPT_CHECK		= 'c',
++	OPT_BPF			= 'b',
+ 	OPT_FILE		= 'f',
+ 	OPT_DEFINE		= 'D',
+ 	OPT_INTERACTIVE		= 'i',
+@@ -140,6 +142,8 @@ static const struct nft_opt nft_options[] = {
+ 				     "Specify debugging level (scanner, parser, eval, netlink, mnl, proto-ctx, segtree, all)"),
+ 	[IDX_OPTIMIZE]	    = NFT_OPT("optimize",		OPT_OPTIMIZE,		NULL,
+ 				     "Optimize ruleset"),
++	[IDX_BPF]	    = NFT_OPT("bpf",			OPT_BPF,		NULL,
++				     "Compile ruleset to BPF bytecode"),
+ };
+ 
+ #define NR_NFT_OPTIONS (sizeof(nft_options) / sizeof(nft_options[0]))
+@@ -501,6 +505,14 @@ int main(int argc, char * const *argv)
+ 		case OPT_OPTIMIZE:
+ 			nft_ctx_set_optimize(nft, 0x1);
+ 			break;
++		case OPT_BPF:
++#ifdef HAVE_BPFILTER
++			nft_ctx_set_bpf(nft, 0x1);
++#else
++			fprintf(stderr, "bpfilter support not compiled-in\n");
++			goto out_fail;
++#endif
++			break;
+ 		case OPT_INVALID:
+ 			goto out_fail;
+ 		}
+diff --git a/src/mnl.c b/src/mnl.c
+index 0fb36bd5..d392632f 100644
+--- a/src/mnl.c
++++ b/src/mnl.c
+@@ -39,6 +39,10 @@
+ #include <linux/netfilter.h>
+ #include <linux/netfilter_arp.h>
+ 
++#ifdef HAVE_BPFILTER
++#include <bpfilter/bpfilter.h>
++#endif
++
+ struct basehook {
+ 	struct list_head list;
+ 	const char *module_name;
+@@ -130,6 +134,30 @@ nft_mnl_talk(struct netlink_ctx *ctx, const void *data, unsigned int len,
+ 	return nft_mnl_recv(ctx, portid, cb, cb_data);
+ }
+ 
++#ifdef HAVE_BPFILTER
++int nft_mnl_bf_talk(struct netlink_ctx *ctx, const void *data, unsigned int len,
++		    int (*cb)(const struct nlmsghdr *nlh, void *data), void *cb_data)
++{
++	size_t buf_len = NFT_NLMSG_MAXSIZE;
++	char buf[NFT_NLMSG_MAXSIZE];
++	struct nlmsghdr *hdr = (void *)buf;
++	int ret;
++
++	if (ctx->nft->debug_mask & NFT_DEBUG_MNL)
++		mnl_nlmsg_fprintf(stderr, data, len, sizeof(struct nfgenmsg));
++
++	ret = bf_nft_sendrecv(data, len, (void *)buf, &buf_len);
++	if (ret < 0)
++		return -1;
++
++	ret = mnl_cb_run(buf, hdr->nlmsg_len, 0, 0, cb, cb_data);
++	if (ret < 0)
++		return -1;
++
++	return 0;
++}
++#endif
++
+ /*
+  * Rule-set consistency check across several netlink dumps
+  */
+@@ -151,7 +179,12 @@ uint32_t mnl_genid_get(struct netlink_ctx *ctx)
+ 
+ 	nlh = nftnl_nlmsg_build_hdr(buf, NFT_MSG_GETGEN, AF_UNSPEC, 0, ctx->seqnum);
+ 	/* Skip error checking, old kernels sets res_id field to zero. */
+-	nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, genid_cb, NULL);
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, genid_cb, NULL);
++	else
++#endif
++		nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, genid_cb, NULL);
+ 
+ 	return nft_genid;
+ }
+@@ -312,6 +345,16 @@ static void mnl_nft_batch_to_msg(struct netlink_ctx *ctx, struct msghdr *msg,
+ 	nftnl_batch_iovec(ctx->batch, iov, iov_len);
+ }
+ 
++#ifdef HAVE_BPFILTER
++static ssize_t mnl_nft_bf_socket_sendmsg(struct netlink_ctx *ctx,
++					 const struct msghdr *msg)
++{
++	struct iovec *iov = msg->msg_iov;
++
++	return bf_nft_send(iov[0].iov_base, iov[0].iov_len);
++}
++#endif
++
+ static ssize_t mnl_nft_socket_sendmsg(struct netlink_ctx *ctx,
+ 				      const struct msghdr *msg)
+ {
+@@ -428,7 +471,12 @@ int mnl_batch_talk(struct netlink_ctx *ctx, struct list_head *err_list,
+ 
+ 	mnl_set_rcvbuffer(ctx->nft->nf_sock, rcvbufsiz);
+ 
+-	ret = mnl_nft_socket_sendmsg(ctx, &msg);
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = mnl_nft_bf_socket_sendmsg(ctx, &msg);
++	else
++#endif
++		ret = mnl_nft_socket_sendmsg(ctx, &msg);
+ 	if (ret == -1)
+ 		return -1;
+ 
+@@ -705,6 +753,11 @@ struct nftnl_rule_list *mnl_nft_rule_dump(struct netlink_ctx *ctx, int family,
+ 		nftnl_rule_free(nlr);
+ 	}
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, rule_cb, nlr_list);
++	else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, rule_cb, nlr_list);
+ 	if (ret < 0)
+ 		goto err;
+@@ -1028,6 +1081,12 @@ struct nftnl_chain_list *mnl_nft_chain_dump(struct netlink_ctx *ctx,
+ 		nftnl_chain_free(nlc);
+ 	}
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft)) {
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, chain_cb, nlc_list);
++		errno = -ret;
++	} else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, chain_cb, nlc_list);
+ 	if (ret < 0 && errno != ENOENT)
+ 		goto err;
+@@ -1173,6 +1232,12 @@ struct nftnl_table_list *mnl_nft_table_dump(struct netlink_ctx *ctx,
+ 		nftnl_table_free(nlt);
+ 	}
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft)) {
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, table_cb, nlt_list);
++		errno = -ret;
++	} else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, table_cb, nlt_list);
+ 	if (ret < 0 && errno != ENOENT)
+ 		goto err;
+@@ -1427,6 +1492,12 @@ mnl_nft_set_dump(struct netlink_ctx *ctx, int family,
+ 	if (nls_list == NULL)
+ 		memory_allocation_error();
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft)) {
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, set_cb, nls_list);
++		errno = -ret;
++	} else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, set_cb, nls_list);
+ 	if (ret < 0 && errno != ENOENT)
+ 		goto err;
+@@ -1652,6 +1723,11 @@ mnl_nft_obj_dump(struct netlink_ctx *ctx, int family,
+ 	if (nln_list == NULL)
+ 		memory_allocation_error();
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, obj_cb, nln_list);
++	else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, obj_cb, nln_list);
+ 	if (ret < 0)
+ 		goto err;
+@@ -1898,6 +1974,11 @@ struct nftnl_set *mnl_nft_setelem_get_one(struct netlink_ctx *ctx,
+ 	nftnl_set_set_str(nls_out, NFTNL_SET_NAME,
+ 			  nftnl_set_get_str(nls_in, NFTNL_SET_NAME));
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		err = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, set_elem_cb, nls_out);
++	else
++#endif
+ 	err = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, set_elem_cb, nls_out);
+ 	if (err < 0) {
+ 		nftnl_set_free(nls_out);
+@@ -1913,6 +1994,7 @@ int mnl_nft_setelem_get(struct netlink_ctx *ctx, struct nftnl_set *nls,
+ 	char buf[MNL_SOCKET_BUFFER_SIZE];
+ 	struct nlmsghdr *nlh;
+ 	int msg_type;
++	int ret;
+ 
+ 	if (reset)
+ 		msg_type = NFT_MSG_GETSETELEM_RESET;
+@@ -1924,7 +2006,14 @@ int mnl_nft_setelem_get(struct netlink_ctx *ctx, struct nftnl_set *nls,
+ 				    NLM_F_DUMP, ctx->seqnum);
+ 	nftnl_set_elems_nlmsg_build_payload(nlh, nls);
+ 
+-	return nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, set_elem_cb, nls);
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, set_elem_cb, nls);
++	else
++#endif
++	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, set_elem_cb, nls);
++
++	return ret;
+ }
+ 
+ static int flowtable_cb(const struct nlmsghdr *nlh, void *data)
+@@ -1980,6 +2069,12 @@ mnl_nft_flowtable_dump(struct netlink_ctx *ctx, int family,
+ 	if (nln_list == NULL)
+ 		memory_allocation_error();
+ 
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft)) {
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, flowtable_cb, nln_list);
++		errno = -ret;
++	} else
++#endif
+ 	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, flowtable_cb, nln_list);
+ 	if (ret < 0 && errno != ENOENT)
+ 		goto err;
+@@ -2442,6 +2537,7 @@ static int __mnl_nft_dump_nf_hooks(struct netlink_ctx *ctx, uint8_t query_family
+ 		.family		= query_family,
+ 	};
+ 	struct nlmsghdr *nlh;
++	int ret;
+ 
+ 	nlh = nf_hook_dump_request(buf, family, ctx->seqnum);
+ 	if (devname)
+@@ -2449,7 +2545,14 @@ static int __mnl_nft_dump_nf_hooks(struct netlink_ctx *ctx, uint8_t query_family
+ 
+ 	mnl_attr_put_u32(nlh, NFNLA_HOOK_HOOKNUM, htonl(hooknum));
+ 
+-	return nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, dump_nf_hooks, &data);
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, dump_nf_hooks, &data);
++	else
++#endif
++	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, dump_nf_hooks, &data);
++
++	return ret;
+ }
+ 
+ static void print_hooks(struct netlink_ctx *ctx, int family, struct list_head *hook_list)
+diff --git a/src/nfnl_osf.c b/src/nfnl_osf.c
+index 20a1bfe7..0d48c4e6 100644
+--- a/src/nfnl_osf.c
++++ b/src/nfnl_osf.c
+@@ -217,6 +217,7 @@ static int osf_load_line(char *buffer, int len, int del,
+ 	struct nlmsghdr *nlh;
+ 	struct nfgenmsg *nfg;
+ 	char buf[MNL_SOCKET_BUFFER_SIZE];
++	int ret;
+ 
+ 	memset(&f, 0, sizeof(struct nf_osf_user_finger));
+ 
+@@ -347,7 +348,14 @@ static int osf_load_line(char *buffer, int len, int del,
+ 		mnl_attr_put(nlh, OSF_ATTR_FINGER, sizeof(struct nf_osf_user_finger), &f);
+ 	}
+ 
+-	return nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, 0, NULL);
++#ifdef HAVE_BPFILTER
++	if (nft_ctx_get_bpf(ctx->nft))
++		ret = nft_mnl_bf_talk(ctx, nlh, nlh->nlmsg_len, 0, NULL);
++	else
++#endif
++	ret = nft_mnl_talk(ctx, nlh, nlh->nlmsg_len, 0, NULL);
++
++	return ret;
+ }
+ 
+ #define OS_SIGNATURES DEFAULT_INCLUDE_PATH "/nftables/osf/pf.os"
+-- 
+2.44.0
+

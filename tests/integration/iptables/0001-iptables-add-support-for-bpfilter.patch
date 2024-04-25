@@ -1,0 +1,397 @@
+From f9d8186a12675b334b8ec412e83c140043bf3e75 Mon Sep 17 00:00:00 2001
+From: Quentin Deslandes <qde@naccy.de>
+Date: Thu, 25 Apr 2024 23:12:39 +0200
+Subject: [PATCH] iptables: add support for bpfilter
+
+Introduce the --bpf option to send request to bpfilter instead of the
+Linux kernel. bpfilter will convert the filtering rules into BPF program
+and attach them to the system.
+
+Signed-off-by: Quentin Deslandes <qde@naccy.de>
+---
+ configure.ac                |  9 ++++++++
+ include/libiptc/libip6tc.h  |  2 +-
+ include/libiptc/libiptc.h   |  2 +-
+ include/libiptc/xtcshared.h |  2 +-
+ iptables/Makefile.am        |  4 ++++
+ iptables/ip6tables.c        |  5 +++--
+ iptables/iptables-restore.c |  4 ++--
+ iptables/iptables-save.c    |  4 ++--
+ iptables/iptables.c         |  5 +++--
+ iptables/xshared.c          | 17 +++++++++++++++
+ iptables/xshared.h          |  1 +
+ libiptc/Makefile.am         |  6 ++++++
+ libiptc/libiptc.c           | 41 +++++++++++++++++++++++++++++++++----
+ 13 files changed, 87 insertions(+), 15 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index d99fa3b9..c5a7c581 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -54,6 +54,9 @@ AC_ARG_ENABLE([libipq],
+ AC_ARG_ENABLE([bpf-compiler],
+ 	AS_HELP_STRING([--enable-bpf-compiler], [Build bpf compiler]),
+ 	[enable_bpfc="$enableval"], [enable_bpfc="no"])
++AC_ARG_ENABLE([bpfilter],
++	AS_HELP_STRING([--enable-bpfilter], [Build with support for bpfilter]),
++	[enable_bpfilter="$enableval"], [enable_bpfilter="no"])
+ AC_ARG_ENABLE([nfsynproxy],
+ 	AS_HELP_STRING([--enable-nfsynproxy], [Build SYNPROXY configuration tool]),
+ 	[enable_nfsynproxy="$enableval"], [enable_nfsynproxy="no"])
+@@ -109,6 +112,7 @@ AM_CONDITIONAL([ENABLE_LARGEFILE], [test "$enable_largefile" = "yes"])
+ AM_CONDITIONAL([ENABLE_DEVEL], [test "$enable_devel" = "yes"])
+ AM_CONDITIONAL([ENABLE_LIBIPQ], [test "$enable_libipq" = "yes"])
+ AM_CONDITIONAL([ENABLE_BPFC], [test "$enable_bpfc" = "yes"])
++AM_CONDITIONAL([ENABLE_BPFILTER], [test "$enable_bpfilter" = "yes"])
+ AM_CONDITIONAL([ENABLE_SYNCONF], [test "$enable_nfsynproxy" = "yes"])
+ AM_CONDITIONAL([ENABLE_NFTABLES], [test "$enable_nftables" = "yes"])
+ AM_CONDITIONAL([ENABLE_CONNLABEL], [test "$enable_connlabel" = "yes"])
+@@ -122,6 +126,10 @@ if test "x$enable_bpfc" = "xyes" || test "x$enable_nfsynproxy" = "xyes"; then
+ 		AC_MSG_ERROR(missing libpcap library required by bpf compiler or nfsynproxy tool)])
+ fi
+ 
++if test "x$enable_bpfilter" = "xyes"; then
++	PKG_CHECK_MODULES([bpfilter], [bpfilter], [], [])
++fi
++
+ if test "x$enable_nftables" = "xyes"; then
+ 	PKG_CHECK_MODULES([libmnl], [libmnl >= 1.0], [mnl=1], [mnl=0])
+ 
+@@ -257,6 +265,7 @@ Iptables Configuration:
+   IPQ support:				${enable_libipq}
+   Large file support:			${enable_largefile}
+   BPF utils support:			${enable_bpfc}
++  bpfilter support:			${enable_bpfilter}
+   nfsynproxy util support:		${enable_nfsynproxy}
+   nftables support:			${enable_nftables}
+   connlabel support:			${enable_connlabel}
+diff --git a/include/libiptc/libip6tc.h b/include/libiptc/libip6tc.h
+index 9aed80a0..66f09619 100644
+--- a/include/libiptc/libip6tc.h
++++ b/include/libiptc/libip6tc.h
+@@ -24,7 +24,7 @@
+ int ip6tc_is_chain(const char *chain, struct xtc_handle *const handle);
+ 
+ /* Take a snapshot of the rules. Returns NULL on error. */
+-struct xtc_handle *ip6tc_init(const char *tablename);
++struct xtc_handle *ip6tc_init(const char *tablename, int use_bpf);
+ 
+ /* Cleanup after ip6tc_init(). */
+ void ip6tc_free(struct xtc_handle *h);
+diff --git a/include/libiptc/libiptc.h b/include/libiptc/libiptc.h
+index 24cdbdb7..bc8a030e 100644
+--- a/include/libiptc/libiptc.h
++++ b/include/libiptc/libiptc.h
+@@ -28,7 +28,7 @@ extern "C" {
+ int iptc_is_chain(const char *chain, struct xtc_handle *const handle);
+ 
+ /* Take a snapshot of the rules.  Returns NULL on error. */
+-struct xtc_handle *iptc_init(const char *tablename);
++struct xtc_handle *iptc_init(const char *tablename, int use_bpf);
+ 
+ /* Cleanup after iptc_init(). */
+ void iptc_free(struct xtc_handle *h);
+diff --git a/include/libiptc/xtcshared.h b/include/libiptc/xtcshared.h
+index 341f9d4f..11204a63 100644
+--- a/include/libiptc/xtcshared.h
++++ b/include/libiptc/xtcshared.h
+@@ -7,7 +7,7 @@ struct xt_counters;
+ 
+ struct xtc_ops {
+ 	int (*commit)(struct xtc_handle *);
+-	struct xtc_handle *(*init)(const char *);
++	struct xtc_handle *(*init)(const char *, int);
+ 	void (*free)(struct xtc_handle *);
+ 	int (*builtin)(const char *, struct xtc_handle *const);
+ 	int (*is_chain)(const char *, struct xtc_handle *const);
+diff --git a/iptables/Makefile.am b/iptables/Makefile.am
+index 2007cd10..998e9725 100644
+--- a/iptables/Makefile.am
++++ b/iptables/Makefile.am
+@@ -34,6 +34,10 @@ xtables_legacy_multi_SOURCES += ip6tables-standalone.c ip6tables.c ip6tables-mul
+ xtables_legacy_multi_CFLAGS  += -DENABLE_IPV6
+ xtables_legacy_multi_LDADD   += ../libiptc/libip6tc.la ../extensions/libext6.a
+ endif
++if ENABLE_BPFILTER
++xtables_legacy_multi_CFLAGS += ${bpfilter_CFLAGS} -DENABLE_BPFILTER
++xtables_legacy_multi_LDADD  += ${bpfilter_LIBS}
++endif
+ 
+ # iptables using nf_tables api
+ if ENABLE_NFTABLES
+diff --git a/iptables/ip6tables.c b/iptables/ip6tables.c
+index f9ae18ae..95bf093c 100644
+--- a/iptables/ip6tables.c
++++ b/iptables/ip6tables.c
+@@ -84,6 +84,7 @@ static struct option original_opts[] = {
+ 	{.name = "goto",          .has_arg = 1, .val = 'g'},
+ 	{.name = "ipv4",          .has_arg = 0, .val = '4'},
+ 	{.name = "ipv6",          .has_arg = 0, .val = '6'},
++    {.name = "bpf",           .has_arg = 0, .val = 'b'},
+ 	{NULL},
+ };
+ 
+@@ -724,11 +725,11 @@ int do_command6(int argc, char *argv[], char **table,
+ 
+ 	/* only allocate handle if we weren't called with a handle */
+ 	if (!*handle)
+-		*handle = ip6tc_init(*table);
++		*handle = ip6tc_init(*table, cs.options & OPT_BPF);
+ 
+ 	/* try to insmod the module if iptc_init failed */
+ 	if (!*handle && xtables_load_ko(xtables_modprobe_program, false) != -1)
+-		*handle = ip6tc_init(*table);
++		*handle = ip6tc_init(*table, cs.options & OPT_BPF);
+ 
+ 	if (!*handle)
+ 		xtables_error(VERSION_PROBLEM,
+diff --git a/iptables/iptables-restore.c b/iptables/iptables-restore.c
+index 53029738..a6bf6a6b 100644
+--- a/iptables/iptables-restore.c
++++ b/iptables/iptables-restore.c
+@@ -69,12 +69,12 @@ create_handle(const struct iptables_restore_cb *cb, const char *tablename)
+ {
+ 	struct xtc_handle *handle;
+ 
+-	handle = cb->ops->init(tablename);
++	handle = cb->ops->init(tablename, 0);
+ 
+ 	if (!handle) {
+ 		/* try to insmod the module if iptc_init failed */
+ 		xtables_load_ko(xtables_modprobe_program, false);
+-		handle = cb->ops->init(tablename);
++		handle = cb->ops->init(tablename, 0);
+ 	}
+ 
+ 	if (!handle)
+diff --git a/iptables/iptables-save.c b/iptables/iptables-save.c
+index 094adf22..932918ad 100644
+--- a/iptables/iptables-save.c
++++ b/iptables/iptables-save.c
+@@ -78,10 +78,10 @@ static int do_output(struct iptables_save_cb *cb, const char *tablename)
+ 	if (!tablename)
+ 		return for_each_table(&do_output, cb);
+ 
+-	h = cb->ops->init(tablename);
++	h = cb->ops->init(tablename, 0);
+ 	if (h == NULL) {
+ 		xtables_load_ko(xtables_modprobe_program, false);
+-		h = cb->ops->init(tablename);
++		h = cb->ops->init(tablename, 0);
+ 	}
+ 	if (!h)
+ 		xtables_error(OTHER_PROBLEM, "Cannot initialize: %s",
+diff --git a/iptables/iptables.c b/iptables/iptables.c
+index 8eb043e9..d2c1a3ba 100644
+--- a/iptables/iptables.c
++++ b/iptables/iptables.c
+@@ -81,6 +81,7 @@ static struct option original_opts[] = {
+ 	{.name = "goto",          .has_arg = 1, .val = 'g'},
+ 	{.name = "ipv4",          .has_arg = 0, .val = '4'},
+ 	{.name = "ipv6",          .has_arg = 0, .val = '6'},
++    {.name = "bpf",           .has_arg = 0, .val = 'b'},
+ 	{NULL},
+ };
+ 
+@@ -717,11 +718,11 @@ int do_command4(int argc, char *argv[], char **table,
+ 
+ 	/* only allocate handle if we weren't called with a handle */
+ 	if (!*handle)
+-		*handle = iptc_init(*table);
++		*handle = iptc_init(*table, cs.options & OPT_BPF);
+ 
+ 	/* try to insmod the module if iptc_init failed */
+ 	if (!*handle && xtables_load_ko(xtables_modprobe_program, false) != -1)
+-		*handle = iptc_init(*table);
++		*handle = iptc_init(*table, cs.options & OPT_BPF);
+ 
+ 	if (!*handle)
+ 		xtables_error(VERSION_PROBLEM,
+diff --git a/iptables/xshared.c b/iptables/xshared.c
+index b1997ea3..8c2200c5 100644
+--- a/iptables/xshared.c
++++ b/iptables/xshared.c
+@@ -968,6 +968,7 @@ static const unsigned int options_v_commands[NUMBER_OF_OPT] = {
+ /*OPT_LIST_C*/		CMD_LIST,
+ /*OPT_LIST_X*/		CMD_LIST,
+ /*OPT_LIST_MAC2*/	CMD_LIST,
++/*OPT_BPF*/			CMD_INSERT | CMD_DELETE | CMD_REPLACE | CMD_CHANGE_COUNTERS | CMD_LIST,
+ };
+ #undef CMD_IDRAC
+ 
+@@ -1004,6 +1005,7 @@ const char *ip46t_option_name(int option)
+ 	case OPT_LINENUMBERS:	return "--line-numbers";
+ 	case OPT_COUNTERS:	return "--set-counters";
+ 	case OPT_FRAGMENT:	return "--fragments";
++	case OPT_BPF:		return "--bpf";
+ 	default:		return "unknown option";
+ 	}
+ }
+@@ -1881,6 +1883,11 @@ void do_parse(int argc, char *argv[],
+ 			xtables_modprobe_program = optarg;
+ 			break;
+ 
++		case 'b':
++			set_option(p->ops, &cs->options, OPT_BPF, &args->invflags,
++					   invert);
++			break;
++
+ 		case 'c':
+ 			set_option(p->ops, &cs->options, OPT_COUNTERS,
+ 				   &args->invflags, invert);
+@@ -2007,6 +2014,16 @@ void do_parse(int argc, char *argv[],
+ 			option_test_and_reject(p, cs, OPT_LOGICALIN);
+ 		}
+ 	}
++
++#ifdef ENABLE_BPFILTER
++	if (args->family == AF_INET6 && cs->options & OPT_BPF)
++		xtables_error(PARAMETER_PROBLEM,
++					  "--bpf is not yet supported with IPv6");
++#else
++	if (cs->options & OPT_BPF)
++		xtables_error(PARAMETER_PROBLEM,
++					  "bpfilter support was disabled during build");
++#endif
+ }
+ 
+ void ipv4_proto_parse(struct iptables_command_state *cs,
+diff --git a/iptables/xshared.h b/iptables/xshared.h
+index 26c492eb..b2df4b27 100644
+--- a/iptables/xshared.h
++++ b/iptables/xshared.h
+@@ -50,6 +50,7 @@ enum {
+ 	OPT_LIST_C	= 1 << 20,
+ 	OPT_LIST_X	= 1 << 21,
+ 	OPT_LIST_MAC2	= 1 << 22,
++	OPT_BPF		= 1 << 23,
+ };
+ #define NUMBER_OF_OPT	24
+ 
+diff --git a/libiptc/Makefile.am b/libiptc/Makefile.am
+index d8fe169e..f97fed12 100644
+--- a/libiptc/Makefile.am
++++ b/libiptc/Makefile.am
+@@ -4,6 +4,12 @@ AM_CFLAGS        = ${regular_CFLAGS}
+ AM_CPPFLAGS      = ${regular_CPPFLAGS} -I${top_builddir}/include -I${top_srcdir}/include ${kinclude_CPPFLAGS}
+ AM_LDFLAGS       = ${regular_LDFLAGS}
+ 
++if ENABLE_BPFILTER
++AM_CFLAGS  += ${bpfilter_CFLAGS} -DENABLE_BPFILTER
++AM_CPPFLAGS += ${bpfilter_CFLAGS} -DENABLE_BPFILTER
++AM_LDFLAGS += ${bpfilter_LIBS}
++endif
++
+ pkgconfig_DATA      = libiptc.pc libip4tc.pc libip6tc.pc
+ 
+ lib_LTLIBRARIES     = libip4tc.la libip6tc.la
+diff --git a/libiptc/libiptc.c b/libiptc/libiptc.c
+index 9712a363..58339d1c 100644
+--- a/libiptc/libiptc.c
++++ b/libiptc/libiptc.c
+@@ -37,6 +37,10 @@
+ #include <xtables.h>
+ #include <libiptc/xtcshared.h>
+ 
++#if defined(ENABLE_BPFILTER) && !defined(_LIBIP6TC_H)
++#include <bpfilter/bpfilter.h>
++#endif
++
+ #include "linux_list.h"
+ 
+ //#define IPTC_DEBUG2 1
+@@ -133,6 +137,7 @@ struct xtc_handle {
+ 	struct chain_head *chain_iterator_cur;
+ 	struct rule_head *rule_iterator_cur;
+ 
++	bool use_bpf;
+ 	unsigned int num_chains;         /* number of user defined chains */
+ 
+ 	struct chain_head **chain_index;   /* array for fast chain list access*/
+@@ -1302,13 +1307,14 @@ out_free_handle:
+ 
+ 
+ struct xtc_handle *
+-TC_INIT(const char *tablename)
++TC_INIT(const char *tablename, int use_bpf)
+ {
+ 	struct xtc_handle *h;
+ 	STRUCT_GETINFO info;
+ 	unsigned int tmp;
+ 	socklen_t s;
+ 	int sockfd;
++	int ret;
+ 
+ retry:
+ 	iptc_fn = TC_INIT;
+@@ -1325,7 +1331,13 @@ retry:
+ 	s = sizeof(info);
+ 
+ 	strcpy(info.name, tablename);
+-	if (getsockopt(sockfd, TC_IPPROTO, SO_GET_INFO, &info, &s) < 0) {
++#if defined(ENABLE_BPFILTER) && !defined(_LIBIP6TC_H)
++	if (use_bpf)
++		ret = bf_ipt_get_info(&info);
++	else
++#endif
++	ret = getsockopt(sockfd, TC_IPPROTO, SO_GET_INFO, &info, &s);
++	if (ret < 0) {
+ 		close(sockfd);
+ 		return NULL;
+ 	}
+@@ -1347,8 +1359,17 @@ retry:
+ 
+ 	tmp = sizeof(STRUCT_GET_ENTRIES) + h->info.size;
+ 
+-	if (getsockopt(h->sockfd, TC_IPPROTO, SO_GET_ENTRIES, h->entries,
+-		       &tmp) < 0)
++#if defined(ENABLE_BPFILTER) && !defined(_LIBIP6TC_H)
++	if (use_bpf)
++	{
++		ret = bf_ipt_get_entries(h->entries);
++		if (ret == 0)
++			tmp = (sizeof(STRUCT_GET_ENTRIES) + h->entries->size);
++	}
++	else
++#endif
++	ret = getsockopt(h->sockfd, TC_IPPROTO, SO_GET_ENTRIES, h->entries, &tmp);
++	if (ret < 0)
+ 		goto error;
+ 
+ #ifdef IPTC_DEBUG2
+@@ -1362,6 +1383,8 @@ retry:
+ 	}
+ #endif
+ 
++	h->use_bpf = use_bpf;
++
+ 	if (parse_table(h) < 0)
+ 		goto error;
+ 
+@@ -2594,6 +2617,11 @@ TC_COMMIT(struct xtc_handle *handle)
+ 	}
+ #endif
+ 
++#if defined(ENABLE_BPFILTER) && !defined(_LIBIP6TC_H)
++	if (handle->use_bpf)
++		ret = bf_ipt_replace(repl);
++	else
++#endif
+ 	ret = setsockopt(handle->sockfd, TC_IPPROTO, SO_SET_REPLACE, repl,
+ 			 sizeof(*repl) + repl->size);
+ 	if (ret < 0)
+@@ -2670,6 +2698,11 @@ TC_COMMIT(struct xtc_handle *handle)
+ 	}
+ #endif
+ 
++#if defined(ENABLE_BPFILTER) && !defined(_LIBIP6TC_H)
++	if (handle->use_bpf)
++		ret = bf_ipt_add_counters(newcounters);
++	else
++#endif
+ 	ret = setsockopt(handle->sockfd, TC_IPPROTO, SO_SET_ADD_COUNTERS,
+ 			 newcounters, counterlen);
+ 	if (ret < 0)
+-- 
+2.44.0
+

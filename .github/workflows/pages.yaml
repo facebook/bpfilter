@@ -32,12 +32,13 @@ jobs:
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
             clang-tools-extra \
             cmake \
-            libcmocka-devel \
             doxygen \
+            git \
             lcov \
             libasan \
             libbpf-devel \
             libnl3-devel \
+            libcmocka-devel \
             libubsan \
             python3-breathe \
             python3-furo \
