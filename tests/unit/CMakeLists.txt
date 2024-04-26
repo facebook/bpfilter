@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 # - Set property to files that should not be build.
