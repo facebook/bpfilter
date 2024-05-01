@@ -3,7 +3,7 @@ BPF-based packet filtering framework
 
 `bpfilter` is a BPF-based packet filtering framework. `bpfilter` has two major components: a daemon running on the host and translating filtering rules into BPF programs, and a lightweight library to communicate with the daemon.
 
-`bpfilter` is a solution to translate filtering rules, not to create them. However, this repository contains a set of patches to apply to `iptables` and `nftables` to use them with `bpfilter`. See the [documentation](https://facebook.github.io/bpfilter/index.html) for more details.
+`bpfilter` is a solution to translate filtering rules, not to create them. However, this repository contains a set of patches to apply to `iptables` and `nftables` to use them with `bpfilter`. See the [documentation](https://bpfilter.io) for more details.
 
 ## Quick start
 
