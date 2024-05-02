@@ -32,6 +32,7 @@ jobs:
             cmake \
             libcmocka-devel \
             doxygen \
+            git \
             lcov \
             libasan \
             libbpf-devel \
@@ -78,11 +79,12 @@ jobs:
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
             clang-tools-extra \
             cmake \
-            libcmocka-devel \
             doxygen \
+            git \
             lcov \
             libasan \
             libbpf-devel \
+            libcmocka-devel \
             libnl3-devel \
             libubsan \
             python3-breathe \
@@ -98,6 +100,7 @@ jobs:
             clang-tidy \
             cmake \
             doxygen \
+            git \
             furo \
             lcov \
             libbpf-dev \

@@ -21,7 +21,7 @@ You can then use CMake to generate the build system:
 
     cmake -S $BPFILTER_SOURCE -B $BUILD_DIRECTORY
 
-There is no ``bpfilter``-specific CMake option, but you can use the CMake-provided ones (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...).
+There is no ``bpfilter``-specific CMake option, but you can use the CMake-provided ones (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...), including ``-G`` to override the default build system generator (``ninja`` and ``make`` are supported).
 
 Once CMake completes, you can build ``bpfilter``. The following Make targets are available:
 
@@ -36,3 +36,17 @@ Once CMake completes, you can build ``bpfilter``. The following Make targets are
 * ``coverage``: generate an HTML coverage report in ``$BUILD_DIRECTORY/doc/coverage``. This target will fail if ``make test`` hasn't been called before.
 
 ``bpfilter`` daemon will be in ``$BUILD/src/bpfilter``, and ``libbpfilter.so`` will be in ``$BUILD/lib/libbpfilter.so``.
+
+
+Building ``nftables`` and ``iptables``
+--------------------------------------
+
+``bpfilter``'s repository contains patches to add support for ``bpfilter`` to ``nftables`` and ``iptables``, you can build both from ``bpfilter``'s build directory:
+
+.. code-block:: shell
+
+    make -C $BUILD_DIRECTORY nftables iptables
+
+Once this command succeeds, ``nft`` (``nftables``'s command-line tool) and ``iptables`` are available in ``$BUILD_DIRECTORY/tools/install``.
+
+With either ``nft`` or ``iptables``, you can now communicate directly with the ``bpfilter`` daemon instead of the kernel by using the ``--bpf`` flag. This allows your filtering rules to be translated into BPF programs by ``bpfilter``.

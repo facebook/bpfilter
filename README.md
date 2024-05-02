@@ -1,7 +1,9 @@
 BPF-based packet filtering framework
 ---
 
-`bpfilter` is a daemon and shared library aiming to translate packet filtering rules into BPF programs.
+`bpfilter` is a BPF-based packet filtering framework. `bpfilter` has two major components: a daemon running on the host and translating filtering rules into BPF programs, and a lightweight library to communicate with the daemon.
+
+`bpfilter` is a solution to translate filtering rules, not to create them. However, this repository contains a set of patches to apply to `iptables` and `nftables` to use them with `bpfilter`. See the [documentation](https://bpfilter.io) for more details.
 
 ## Quick start
 
@@ -17,6 +19,7 @@ sudo dnf install \
     lcov \
     libasan \
     libbpf-devel \
+    libnl3-devel \
     libubsan \
     python3-breathe \
     python3-furo \
@@ -24,15 +27,22 @@ sudo dnf install \
     pkgconf
 
 # Build bpfilter
-cmake -S $BPFILTER_SOURCES -B $BPFILTER_BUILD
-make -C $BPFILTER_BUILD
-make -C $BPFILTER_BUILD test
+cmake -S $SOURCES_DIR -B $BUILD_DIR
+make -C $BUILD_DIR
+make -C $BUILD_DIR test
+
+# Build a custom version of nftables and iptables to use with bpfilter
+make -C $BUILD_DIR nftables iptables
 
 # Start bpfilter's daemon
-sudo $BPFILTER_BUILD/src/bpfilter
-```
+sudo $BUILD_DIR/src/bpfilter
 
-The [official documentation](https://facebook.github.io/bpfilter/index.html) contains more details about building the project for Fedora and Ubuntu, as well as building front-ends (e.g. `iptables`) to use with `bpfilter`, and an API reference.
+# Run the custom version of nftables
+sudo $BUILD_DIR/tools/install/sbin/nft --bpf ...
+
+# Run the custom version of iptables
+sudo $BUILD_DIR/tools/install/sbin/iptables --bpf ...
+```
 
 ## License
 
