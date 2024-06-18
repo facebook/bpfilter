@@ -4,6 +4,8 @@
 configure_file(Doxyfile.in Doxyfile)
 configure_file(conf.py.in conf.py)
 
+file(COPY _static DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 set(doc_srcs
 	index.rst reference.rst
 )
