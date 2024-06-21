@@ -9,11 +9,11 @@ Required dependencies on Fedora and Ubuntu:
 
 .. code-block:: shell
 
-    # Fedora 38 / 39
+    # Fedora 40
     clang-tools-extra cmake libcmocka-devel doxygen lcov libasan libbpf-devel libnl3-devel libubsan python3-breathe python3-furo python3-sphinx pkgconf
 
-    # Ubuntu 23.10
-    clang-format clang-tidy cmake doxygen furo lcov libbpf-dev libcmocka-dev libnl-3-dev python3-breathe python3-pip python3-sphinx pkgconf
+    # Ubuntu 24.04
+    clang-format clang-tidy cmake doxygen furo lcov libbpf-dev libcmocka-dev libnl-3-dev pkgconf python3-breathe python3-sphinx
 
 You can then use CMake to generate the build system:
 
@@ -41,7 +41,17 @@ Once CMake completes, you can build ``bpfilter``. The following Make targets are
 Building ``nftables`` and ``iptables``
 --------------------------------------
 
-``bpfilter``'s repository contains patches to add support for ``bpfilter`` to ``nftables`` and ``iptables``, you can build both from ``bpfilter``'s build directory:
+``bpfilter``'s repository contains patches to add support for ``bpfilter`` to ``nftables`` and ``iptables``. You first need to install ``nftables``' and ``iptables``' build dependencies:
+
+.. code-block:: shell
+
+    # Fedora 40
+    autoconf automake bison flex gmp-devel libedit-devel libmnl-devel libnftnl-devel libtool
+
+    # Ubuntu 24.04
+    autoconf bison flex libedit-dev libgmp-dev libmnl-dev libnftnl-dev libtool
+
+Then, you can build both from ``bpfilter``'s build directory:
 
 .. code-block:: shell
 
