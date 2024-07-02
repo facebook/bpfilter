@@ -106,7 +106,10 @@ static int _bf_ensure_runtime_dir(void)
  * context with it.
  *
  * @param path Path to the context file.
- * @return 0 on success, negative error code on failure.
+ * @return This function will return:
+ *  - 1 if the runtime context has been succesfully restored from the disk.
+ *  - 0 if no serialized context has been found on the disk.
+ *  - < 0 on error.
  */
 static int _bf_load(const char *path)
 {
@@ -118,8 +121,14 @@ static int _bf_load(const char *path)
     bf_assert(path);
 
     if (access(context_path, F_OK)) {
-        return bf_info_code(errno, "failed test access to context file: %s",
-                            path);
+        if (errno == ENOENT) {
+            bf_info("no serialized context found on disk, "
+                    "a new context will be created");
+            return 0;
+        } else {
+            return bf_info_code(errno, "failed test access to context file: %s",
+                                path);
+        }
     }
 
     r = bf_read_file(path, (void **)&marsh, &len);
@@ -162,7 +171,7 @@ static int _bf_load(const char *path)
 
     bf_context_dump(NULL);
 
-    return 0;
+    return 1;
 }
 
 /**
@@ -263,10 +272,13 @@ static int _bf_init(int argc, char *argv[])
         return bf_err_code(r, "failed to initialise messages map");
 
     // Either load context, or initialize it from scratch.
-    if (!bf_opts_transient())
+    if (!bf_opts_transient()) {
         r = _bf_load(context_path);
+        if (r < 0)
+            return bf_err_code(r, "failed to restore bpfilter context");
+    }
 
-    if (bf_opts_transient() || r < 0) {
+    if (bf_opts_transient() || r == 0) {
         r = bf_context_setup();
         if (r < 0)
             return bf_err_code(r, "failed to setup context");
