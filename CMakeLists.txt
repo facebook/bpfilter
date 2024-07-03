@@ -33,6 +33,8 @@ find_program(LCOV_BIN lcov REQUIRED)
 find_program(GENHTML_BIN genhtml REQUIRED)
 find_program(CLANG_TIDY_BIN clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
+find_program(CLANG_BIN clang REQUIRED)
+find_program(BPFTOOL_BIN bpftool REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

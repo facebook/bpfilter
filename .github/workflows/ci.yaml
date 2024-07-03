@@ -28,6 +28,8 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bpftool \
+            clang \
             clang-tools-extra \
             cmake \
             libcmocka-devel \
@@ -77,6 +79,8 @@ jobs:
         if: matrix.image == 'fedora:38'
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bpftool \
+            clang \
             clang-tools-extra \
             cmake \
             doxygen \
@@ -96,6 +100,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
+            clang \
             clang-format \
             clang-tidy \
             cmake \
@@ -106,6 +111,7 @@ jobs:
             libbpf-dev \
             libcmocka-dev \
             libnl-3-dev \
+            linux-tools-common \
             python3-breathe \
             python3-pip \
             python3-sphinx \
