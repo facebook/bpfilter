@@ -10,10 +10,10 @@ Required dependencies on Fedora and Ubuntu:
 .. code-block:: shell
 
     # Fedora 40
-    clang-tools-extra cmake libcmocka-devel doxygen lcov libasan libbpf-devel libnl3-devel libubsan python3-breathe python3-furo python3-sphinx pkgconf
+    bpftool clang clang-tools-extra cmake libcmocka-devel doxygen lcov libasan libbpf-devel libnl3-devel libubsan python3-breathe python3-furo python3-sphinx pkgconf
 
     # Ubuntu 24.04
-    clang-format clang-tidy cmake doxygen furo lcov libbpf-dev libcmocka-dev libnl-3-dev pkgconf python3-breathe python3-sphinx
+    clang clang-format clang-tidy cmake doxygen furo lcov libbpf-dev libcmocka-dev libnl-3-dev linux-tools-common pkgconf python3-breathe python3-sphinx
 
 You can then use CMake to generate the build system:
 
