@@ -20,12 +20,14 @@
 
 #include "core/bpf.h"
 #include "core/btf.h"
+#include "core/context.h"
 #include "core/counter.h"
 #include "core/flavor.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
 #include "core/verdict.h"
+#include "generator/printer.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
 
@@ -273,6 +275,7 @@ static int _bf_program_fixup(struct bf_program *program,
             v = (int)(program->img_size - fixup->insn - 1U);
             break;
         case BF_CODEGEN_FIXUP_MAP_FD:
+        case BF_CODEGEN_FIXUP_PRINTER_MAP_FD:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
             v = attr->map_fd;
             break;
@@ -728,6 +731,7 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
     union bf_flavor_attach_attr attr;
     _cleanup_close_ int map_fd = -1;
     _cleanup_close_ int prog_fd = -1;
+    union bf_fixup_attr bf_attr = {};
     int r;
 
     bf_assert(program);
@@ -735,6 +739,15 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
     r = _bf_program_load_counters_map(program, &map_fd);
     if (r)
         return r;
+
+    r = bf_printer_publish(bf_context_get_printer());
+    if (r)
+        return bf_err_code(r, "can't publish printer map");
+
+    bf_attr.map_fd = bf_printer_get_fd(bf_context_get_printer());
+    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD, &bf_attr);
+    if (r)
+        return bf_err_code(r, "can't update instruction with printer map fd");
 
     r = bf_bpf_prog_load(program->prog_name,
                          bf_hook_to_bpf_prog_type(program->hook), program->img,
