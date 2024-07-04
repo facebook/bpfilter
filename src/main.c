@@ -266,10 +266,6 @@ static int _bf_init(int argc, char *argv[])
     if (r < 0)
         return bf_err_code(r, "failed to parse command line arguments");
 
-    r = bf_print_setup();
-    if (r < 0)
-        return bf_err_code(r, "failed to initialise messages map");
-
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {
         r = _bf_load(context_path);
@@ -327,7 +323,6 @@ static int _bf_clean(void)
         }
     }
 
-    bf_print_teardown();
     bf_context_teardown(bf_opts_transient());
 
     return 0;
