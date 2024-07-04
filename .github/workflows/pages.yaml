@@ -30,6 +30,8 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bpftool \
+            clang \
             clang-tools-extra \
             cmake \
             doxygen \
