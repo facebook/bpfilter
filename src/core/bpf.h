@@ -54,16 +54,6 @@ int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
                       int *fd);
 
 /**
- * @brief Freeze a BPF map.
- *
- * A frozen map can't be modified from userspace.
- *
- * @param fd File descriptor of the map.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_bpf_map_freeze(int fd);
-
-/**
  * @brief Get an element from a map.
  *
  * @param fd File descriptor of the map to search in.
