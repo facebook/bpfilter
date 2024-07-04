@@ -18,6 +18,7 @@ const char *bf_fixup_type_to_str(enum bf_fixup_type type)
         [BF_CODEGEN_FIXUP_JUMP_TO_CHAIN] = "BF_CODEGEN_FIXUP_JUMP_TO_CHAIN",
         [BF_CODEGEN_FIXUP_COUNTERS_INDEX] = "BF_CODEGEN_FIXUP_COUNTERS_INDEX",
         [BF_CODEGEN_FIXUP_MAP_FD] = "BF_CODEGEN_FIXUP_MAP_FD",
+        [BF_CODEGEN_FIXUP_PRINTER_MAP_FD] = "BF_CODEGEN_FIXUP_PRINTER_MAP_FD",
         [BF_CODEGEN_FIXUP_FUNCTION_CALL] = "BF_CODEGEN_FIXUP_FUNCTION_CALL",
     };
 
@@ -76,8 +77,11 @@ void bf_fixup_dump(const struct bf_fixup *fixup,
     case BF_CODEGEN_FIXUP_NEXT_RULE:
     case BF_CODEGEN_FIXUP_JUMP_TO_CHAIN:
     case BF_CODEGEN_FIXUP_COUNTERS_INDEX:
-    case BF_CODEGEN_FIXUP_MAP_FD:
         DUMP(prefix, "offset: %zu", fixup->offset);
+        break;
+    case BF_CODEGEN_FIXUP_MAP_FD:
+    case BF_CODEGEN_FIXUP_PRINTER_MAP_FD:
+        DUMP(prefix, "immediate: %zu", fixup->offset);
         break;
     case BF_CODEGEN_FIXUP_FUNCTION_CALL:
         DUMP(prefix, "function: %s", bf_fixup_function_to_str(fixup->function));
