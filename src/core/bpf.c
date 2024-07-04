@@ -104,15 +104,6 @@ int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
     return 0;
 }
 
-int bf_bpf_map_freeze(int fd)
-{
-    union bpf_attr attr = {
-        .map_fd = fd,
-    };
-
-    return _bpf(BPF_MAP_FREEZE, &attr);
-}
-
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
 {
     union bpf_attr attr = {
