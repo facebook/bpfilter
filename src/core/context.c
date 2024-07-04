@@ -44,6 +44,61 @@ static int _bf_context_new(struct bf_context **context)
 }
 
 /**
+ * @brief Allocate a new context and initialise it from serialised data.
+ *
+ * @param context On success, points to the newly allocated and initialised
+ *  printer context. Can't be NULL.
+ * @param marsh Serialised data to use to initialise the context.
+ * @return 0 on success, or negative errno value on failure.
+ */
+static int _bf_context_new_from_marsh(struct bf_context **context, const struct bf_marsh *marsh)
+{
+    _cleanup_bf_context_ struct bf_context *_context = NULL;
+    struct bf_marsh *child = NULL;
+    struct bf_marsh *subchild = NULL;
+    int r;
+
+    bf_assert(context);
+    bf_assert(marsh);
+
+    // Allocate a new codegen
+    _context = calloc(1, sizeof(*_context));
+    if (!_context)
+        return -ENOMEM;
+
+    // Unmarsh bf_context.codegens
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return bf_err_code(-EINVAL, "failed to find valid child");
+
+    while ((subchild = bf_marsh_next_child(child, subchild))) {
+        _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+        enum bf_hook hook;
+        enum bf_front front;
+
+        r = bf_codegen_unmarsh(subchild, &codegen);
+        if (r)
+            return bf_err_code(r, "failed to unmarsh codegen");
+
+        hook = codegen->hook;
+        front = codegen->front;
+
+        if (_context->codegens[hook][front]) {
+            return bf_err_code(
+                -EEXIST,
+                "restored codegen for %s::%s, but codegen already exists in context!",
+                bf_hook_to_str(hook), bf_front_to_str(front));
+        }
+
+        _context->codegens[hook][front] = TAKE_PTR(codegen);
+    }
+
+    *context = TAKE_PTR(_context);
+
+    return 0;
+}
+
+/**
  * @brief Free a context.
  *
  * If @p context points to a NULL pointer, this function does nothing. Once
@@ -127,7 +182,6 @@ static int _bf_context_marsh(const struct bf_context *context,
 
     {
         // Serialize bf_context.codegens content
-
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_marsh_new(&child, NULL, 0);
@@ -164,66 +218,6 @@ static int _bf_context_marsh(const struct bf_context *context,
     }
 
     *marsh = TAKE_PTR(_marsh);
-
-    return 0;
-}
-
-/**
- * @brief Unmarsh a context.
- *
- * @p marsh is expected to be valid, that is @p marsh.data_len argument is
- * within bound regarding actual size of @p marsh.
- *
- * @param marsh Marsh'd context to restore.
- * @param context Restored context.
- * @return 0 on success, negative errno value on failure.
- */
-static int _bf_context_unmarsh(const struct bf_marsh *marsh,
-                               struct bf_context **context)
-{
-    _cleanup_bf_context_ struct bf_context *_context = NULL;
-    struct bf_marsh *child;
-    int r;
-
-    bf_assert(marsh);
-    bf_assert(context);
-
-    child = bf_marsh_next_child(marsh, NULL);
-    if (!child)
-        return bf_err_code(-EINVAL, "failed to find valid child");
-
-    r = _bf_context_new(&_context);
-    if (r)
-        return bf_err_code(r, "failed to create new context");
-
-    {
-        // Unmarsh codegens
-        struct bf_marsh *subchild = NULL;
-
-        while ((subchild = bf_marsh_next_child(child, subchild))) {
-            _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
-            enum bf_hook hook;
-            enum bf_front front;
-
-            r = bf_codegen_unmarsh(subchild, &codegen);
-            if (r)
-                return bf_err_code(r, "failed to unmarsh codegen");
-
-            hook = codegen->hook;
-            front = codegen->front;
-
-            if (_context->codegens[hook][front]) {
-                return bf_err_code(
-                    -EEXIST,
-                    "restored codegen for %s::%s, but codegen already exists in context!",
-                    bf_hook_to_str(hook), bf_front_to_str(front));
-            }
-
-            _context->codegens[hook][front] = TAKE_PTR(codegen);
-        }
-    }
-
-    *context = TAKE_PTR(_context);
 
     return 0;
 }
@@ -344,16 +338,16 @@ int bf_context_save(struct bf_marsh **marsh)
 
 int bf_context_load(const struct bf_marsh *marsh)
 {
-    _cleanup_bf_context_ struct bf_context *_context = NULL;
+    _cleanup_bf_context_ struct bf_context *context = NULL;
     int r;
 
     bf_assert(marsh);
 
-    r = _bf_context_unmarsh(marsh, &_context);
+    r = _bf_context_new_from_marsh(&context, marsh);
     if (r)
         return bf_err_code(r, "failed to deserialize context");
 
-    _global_context = TAKE_PTR(_context);
+    _global_context = TAKE_PTR(context);
 
     return 0;
 }
