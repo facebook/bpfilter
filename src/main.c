@@ -134,9 +134,12 @@ static int _bf_load(const char *path)
     if (r < 0)
         return r;
 
+    if (len < sizeof(struct bf_marsh))
+        return bf_err_code(EIO, "marshalled data is invalid");
+
     if (bf_marsh_size(marsh) != len) {
         return bf_err_code(
-            EINVAL, "conflicting marsheled data size: got %zu, expected %zu",
+            EINVAL, "conflicting marshalled data size: got %zu, expected %zu",
             len, bf_marsh_size(marsh));
     }
 
