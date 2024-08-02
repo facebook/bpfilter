@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#include "core/context.h"
+
 /**
  * @file printer.h
  *
