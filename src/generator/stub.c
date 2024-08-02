@@ -11,8 +11,10 @@
 
 #include "core/flavor.h"
 #include "generator/jmp.h"
+#include "generator/printer.h"
 #include "generator/program.h"
 #include "generator/reg.h"
+#include "opts.h"
 #include "shared/helper.h"
 
 #include "external/filter.h"
@@ -65,6 +67,9 @@ static int _stub_make_ctx_dynptr(struct bf_program *program,
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 0));
 
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "failed to create a new dynamic pointer");
+
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                            BF_VERDICT_ACCEPT)));
@@ -116,6 +121,9 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L2, 0, 0));
 
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
+
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                            BF_VERDICT_ACCEPT)));
@@ -130,6 +138,9 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
             program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, ntohs(ETH_P_IP), 0));
+
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "packet's L3 protocol is not IPv4, skipping");
 
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
@@ -172,6 +183,10 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L3, 0, 0));
+
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
+
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                            BF_VERDICT_ACCEPT)));
@@ -231,16 +246,19 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
 
     {
         // If L4 protocol is TCP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 3));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 4));
 
         // If L4 protocol is UDP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_UDP, 4));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_UDP, 5));
 
         // If L4 protocol is ICMP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_ICMP, 5));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_ICMP, 6));
 
-        // Protocol is not supported, skip slice request.
-        EMIT(program, BPF_JMP_A(10));
+        // Protocol is not supported, skip slice request and return
+        EMIT(program,
+             BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                           BF_VERDICT_ACCEPT)));
+        EMIT(program, BPF_EXIT_INSN());
 
         // If TCP
         EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct tcphdr)));
@@ -263,6 +281,10 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L4, 0, 0));
+
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
+
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                            BF_VERDICT_ACCEPT)));

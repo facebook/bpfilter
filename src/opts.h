@@ -14,3 +14,4 @@ bool bf_opts_transient(void);
 unsigned int bf_opts_bpf_log_buf_len_pow(void);
 bool bf_opts_is_front_enabled(enum bf_front front);
 bool bf_opts_verbose(void);
+bool bf_opts_debug(void);

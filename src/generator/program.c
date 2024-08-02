@@ -27,6 +27,7 @@
 #include "core/marsh.h"
 #include "core/rule.h"
 #include "core/verdict.h"
+#include "generator/jmp.h"
 #include "generator/printer.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
@@ -411,7 +412,16 @@ static int _bf_program_generate_add_counter(struct bf_program *program)
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // If we can't find the entry, return.
-    EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 7));
+    {
+        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_0, 0, 0));
+
+        if (bf_opts_debug())
+            EMIT_PRINT(program, "failed to fetch the rule's counters");
+
+        EMIT(program, BPF_MOV32_IMM(BF_REG_0, 0));
+        EMIT(program, BPF_EXIT_INSN());
+    }
 
     // Increment the packets count by 1.
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_0,
