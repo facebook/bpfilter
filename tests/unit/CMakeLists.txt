@@ -178,6 +178,7 @@ bf_test_mock(tests_unit
         nlmsg_convert
         nlmsg_put
         nlmsg_append
+        bf_bpf_obj_get
 )
 
 add_custom_target(test

@@ -119,6 +119,7 @@ Test(printer, printer_marsh_unmarsh)
     expect_assert_failure(bf_printer_add_msg(NOT_NULL, NULL));
     expect_assert_failure(bf_printer_add_msg(NULL, NULL));
 
+    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf_obj_get, 10);
     _cleanup_bf_printer_ struct bf_printer *printer0 = NULL;
     _cleanup_bf_printer_ struct bf_printer *printer1 = NULL;
     const struct bf_printer_msg *msg0;
@@ -146,4 +147,21 @@ Test(printer, printer_marsh_unmarsh)
 
     assert_int_equal(_bf_printer_total_size(printer0),
                      _bf_printer_total_size(printer1));
+}
+
+Test(printer, printer_marsh_unmarsh_failed_map_fd_open)
+{
+    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf_obj_get, -1);
+    _cleanup_bf_printer_ struct bf_printer *printer0 = NULL;
+    _cleanup_bf_printer_ struct bf_printer *printer1 = NULL;
+    const struct bf_printer_msg *msg0;
+    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+
+    assert_int_equal(bf_printer_new(&printer0), 0);
+    msg0 = bf_printer_add_msg(printer0, "hello");
+    assert_ptr_not_equal(msg0, NULL);
+
+    // Serialise and deserialise the printer
+    assert_int_equal(bf_printer_marsh(printer0, &marsh), 0);
+    assert_int_not_equal(bf_printer_new_from_marsh(&printer1, marsh), 0);
 }
