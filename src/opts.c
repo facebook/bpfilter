@@ -30,11 +30,17 @@ static struct bf_options
 
     /** If true, print debug log messages (bf_debug). */
     bool verbose;
+
+    /** If true, the BPF programs including log messages to be printed when
+     * a BPF helper or kfunc fails.
+     */
+    bool debug;
 } _opts = {
     .transient = false,
     .bpf_log_buf_len_pow = 16,
     .fronts = 0xffff,
     .verbose = false,
+    .debug = false,
 };
 
 static struct argp_option options[] = {
@@ -47,6 +53,7 @@ static struct argp_option options[] = {
     {"no-iptables", 0x01, 0, 0, "Disable iptables support", 0},
     {"no-nftables", 0x02, 0, 0, "Disable nftables support", 0},
     {"verbose", 'v', 0, 0, "Print debug logs", 0},
+    {"debug", 0x03, 0, 0, "Generate BPF programs with debug logs", 0},
     {0},
 };
 
@@ -78,6 +85,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         break;
     case 'v':
         args->verbose = true;
+        break;
+    case 0x03:
+        bf_info("generating BPF programs with debug logs");
+        args->debug = true;
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -111,4 +122,9 @@ bool bf_opts_is_front_enabled(enum bf_front front)
 bool bf_opts_verbose(void)
 {
     return _opts.verbose;
+}
+
+bool bf_opts_debug(void)
+{
+    return _opts.debug;
 }
