@@ -372,8 +372,10 @@ int bf_printer_publish(struct bf_printer *printer)
         memcpy(strings + msg->offset, msg->str, msg->len);
     }
 
+    fd = printer->fd;
+
     // If no map has been created yet, do it now
-    if (printer->fd == -1) {
+    if (fd == -1) {
         r = bf_bpf_map_create("bf_printer", BPF_MAP_TYPE_ARRAY,
                               sizeof(uint32_t), total_size, 1,
                               BPF_F_RDONLY_PROG, &fd);
@@ -384,6 +386,8 @@ int bf_printer_publish(struct bf_printer *printer)
     // Replace the existing messages in the map
     r = bf_bpf_map_update_elem(fd, (void *)(uint32_t[]) {0}, strings);
     if (r < 0) {
+        // Do not destroy the existing map if we can't replace the fist element
+        TAKE_FD(fd);
         return bf_err_code(
             r, "failed to insert the messages into the BPF map 'bf_printer'");
     }
@@ -395,8 +399,9 @@ int bf_printer_publish(struct bf_printer *printer)
             if (r < 0)
                 return bf_err_code(r, "failed to pin the printer map");
         }
-        printer->fd = TAKE_FD(fd);
     }
+
+    printer->fd = TAKE_FD(fd);
 
     return 0;
 }
