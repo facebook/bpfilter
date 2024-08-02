@@ -52,3 +52,4 @@ bf_mock_declare(struct nlmsghdr *, nlmsg_put,
                  int payload, int flags));
 bf_mock_declare(int, nlmsg_append,
                 (struct nl_msg * n, void *data, size_t len, int pad));
+bf_mock_declare(int, bf_bpf_obj_get, (const char *path, int *fd));

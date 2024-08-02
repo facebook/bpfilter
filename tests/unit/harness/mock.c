@@ -131,3 +131,11 @@ bf_mock_define(int, nlmsg_append,
     errno = -EINVAL;
     return mock_type(int);
 }
+
+bf_mock_define(int, bf_bpf_obj_get, (const char *path, int *fd))
+{
+    if (!bf_mock_bf_bpf_obj_get_is_enabled())
+        return bf_mock_real(bf_bpf_obj_get)(path, fd);
+
+    return mock_type(int);
+}
