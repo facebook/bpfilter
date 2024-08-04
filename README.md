@@ -49,3 +49,7 @@ sudo $BUILD_DIR/tools/install/sbin/iptables --bpf ...
 bpfilter is GPLv2 licensed, as found in the COPYING file.
 
 `bpfilter` was originally developed by Dmitrii Banshchikov as a [Linux kernel usermode helper](https://lore.kernel.org/bpf/20210829183608.2297877-1-me@ubique.spb.ru/).
+
+## Test CODEOWNERS
+
+**DO NOT MERGE**
