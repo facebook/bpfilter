@@ -8,14 +8,23 @@
 #include "core/list.h"
 #include "harness/cmocka.h"
 #include "harness/elf.h"
+#include "harness/filter.h"
+#include "harness/opts.h"
 #include "harness/test.h"
 #include "shared/helper.h"
 
-int main(void)
+int main(int argc, char *argv[])
 {
     _cleanup_bf_list_ bf_list *symbols = NULL;
     _cleanup_bf_test_suite_ bf_test_suite *suite = NULL;
+    _cleanup_bf_test_opts_ struct bf_test_opts *opts = NULL;
     int r;
+
+    r = bf_test_opts_new(&opts, argc, argv);
+    if (r) {
+        fprintf(stderr, "failed to create a bf_test_opts object\n");
+        return r;
+    }
 
     r = bf_list_new(&symbols, (bf_list_ops[]) {
                                   {.free = (bf_list_ops_free)bf_elf_sym_free}});
@@ -49,6 +58,9 @@ int main(void)
     int failed = 0;
     bf_list_foreach (&suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
+
+        if (!bf_test_filter_matches(opts->group_filter, group->name))
+            continue;
 
         fprintf(stderr, "[STARTING TEST SUITE: %s]\n", group->name);
 

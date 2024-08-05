@@ -105,8 +105,10 @@ add_executable(tests_unit
     harness/main.c
     harness/cmocka.h
     harness/elf.c harness/elf.h
+    harness/filter.c harness/filter.h
     harness/helper.c harness/helper.h
     harness/mock.c harness/mock.h
+    harness/opts.c harness/opts.h
     harness/test.c harness/test.h
 
     ${bf_test_srcs}
