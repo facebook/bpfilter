@@ -182,7 +182,7 @@ bf_test_mock(tests_unit
 )
 
 add_custom_target(test
-    COMMAND $<TARGET_FILE:tests_unit> --verbose --xml=test-report.xml
+    COMMAND $<TARGET_FILE:tests_unit>
     DEPENDS tests_unit
     COMMENT "Running unit tests"
 )
