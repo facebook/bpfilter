@@ -167,4 +167,5 @@ const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
  * @param printer Printer context. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_printer_publish(struct bf_printer *prinbter);
+int bf_printer_publish(struct bf_printer *printer);
+
