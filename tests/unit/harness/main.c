@@ -50,16 +50,14 @@ int main(void)
     bf_list_foreach (&suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
 
+        fprintf(stderr, "[STARTING TEST SUITE: %s]\n", group->name);
+
         r = _cmocka_run_group_tests(group->name, group->cmtests,
                                     bf_list_size(&group->tests), NULL, NULL);
-        if (r) {
+        if (r)
             failed = 1;
-            fprintf(stderr,
-                    "WARNING: unit tests group '%s' faileds: "
-                    "%s\n",
-                    group->name, strerror(-r));
-            continue;
-        }
+
+        fprintf(stderr, "[FINISHED TEST SUITE: %s]\n\n", group->name);
     }
 
     if (failed)
