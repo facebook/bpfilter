@@ -20,6 +20,8 @@ int bf_rule_new(struct bf_rule **rule)
 {
     struct bf_rule *_rule;
 
+    bf_assert(rule);
+
     _rule = calloc(1, sizeof(*_rule));
     if (!_rule)
         return -ENOMEM;
@@ -34,6 +36,8 @@ int bf_rule_new(struct bf_rule **rule)
 
 void bf_rule_free(struct bf_rule **rule)
 {
+    bf_assert(rule);
+
     if (!*rule)
         return;
 
