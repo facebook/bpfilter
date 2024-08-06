@@ -14,6 +14,7 @@
    :maxdepth: 2
    :caption: Developers
 
+   developers/packets_processing
    developers/generation
    developers/fronts/index
    reference

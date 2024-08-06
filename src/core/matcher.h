@@ -9,6 +9,24 @@
 
 #include "core/dump.h"
 
+/**
+ * @file matcher.h
+ *
+ * Matchers are criteria used to match a network packet against a specific
+ * rule. For example, a matcher could be used to match the destination IP
+ * field of an IPv4 packet to a specific IP address.
+ *
+ * Matchers are composed of:
+ * - A type, defining which data in the network packet to match the payload
+ *   against. In the example about, the type would be related to IPv4
+ *   destination address field.
+ * - An operator, to know how to compare the data in the packet defined by
+ *   the @ref type to the payload contained in the matcher. For example, we
+ *   want the matcher to match when the IPv4 destination address is equal to
+ *   the IP address in the payload.
+ * - A payload, which is compared to the similar value in the network packet.
+ */
+
 struct bf_matcher;
 struct bf_marsh;
 
