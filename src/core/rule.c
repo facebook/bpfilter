@@ -13,6 +13,7 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/match.h"
+#include "core/matcher.h"
 #include "core/verdict.h"
 #include "shared/helper.h"
 
@@ -29,6 +30,9 @@ int bf_rule_new(struct bf_rule **rule)
     bf_list_init(&_rule->matches,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_match_free}});
 
+    bf_list_init(&_rule->matchers,
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_matcher_free}});
+
     *rule = _rule;
 
     return 0;
@@ -42,6 +46,7 @@ void bf_rule_free(struct bf_rule **rule)
         return;
 
     bf_list_clean(&(*rule)->matches);
+    bf_list_clean(&(*rule)->matchers);
 
     free(*rule);
     *rule = NULL;
@@ -71,6 +76,31 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
                                 sizeof(rule->dst_mask));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->protocol,
                                 sizeof(rule->protocol));
+
+    {
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        r = bf_marsh_new(&child, NULL, 0);
+        if (r)
+            return r;
+
+        bf_list_foreach (&rule->matchers, matcher_node) {
+            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
+            struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+
+            r = bf_matcher_marsh(matcher, &subchild);
+            if (r)
+                return r;
+
+            r = bf_marsh_add_child_obj(&child, subchild);
+            if (r)
+                return r;
+        }
+
+        r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r)
+            return r;
+    }
+
     r |= bf_marsh_add_child_raw(&_marsh, &rule->counters,
                                 sizeof(rule->counters));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
@@ -130,6 +160,27 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
+
+    {
+        struct bf_marsh *subchild = NULL;
+
+        while ((subchild = bf_marsh_next_child(child, subchild))) {
+            _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+            r = bf_matcher_new_from_marsh(&matcher, subchild);
+            if (r)
+                return r;
+
+            r = bf_list_add_tail(&_rule->matchers, matcher);
+            if (r)
+                return r;
+
+            TAKE_PTR(matcher);
+        }
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
     memcpy(&_rule->counters, child->data, sizeof(_rule->counters));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
@@ -162,6 +213,19 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(rule->dst_mask));
     DUMP(prefix, "protocol: %u", rule->protocol);
     DUMP(prefix, "matches: %lu", bf_list_size(&rule->matches));
+
+    // Matchers
+    DUMP(prefix, "matchers: %lu", bf_list_size(&rule->matchers));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+
+        if (bf_list_is_tail(&rule->matchers, matcher_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_matcher_dump(matcher, prefix);
+    }
+
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
          bf_verdict_to_str(rule->verdict));
