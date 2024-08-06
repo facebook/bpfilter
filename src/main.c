@@ -171,8 +171,6 @@ static int _bf_load(const char *path)
 
     bf_dbg("loaded marshalled context from %s", path);
 
-    bf_context_dump(NULL);
-
     return 1;
 }
 
@@ -281,6 +279,8 @@ static int _bf_init(int argc, char *argv[])
         if (r < 0)
             return bf_err_code(r, "failed to setup context");
     }
+
+    bf_context_dump(NULL);
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
         if (!bf_opts_is_front_enabled(front))
