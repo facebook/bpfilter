@@ -1,0 +1,121 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+ */
+
+#include "core/matcher.c"
+
+#include "harness/cmocka.h"
+#include "harness/mock.h"
+
+Test(matcher, new_and_free)
+{
+    uint8_t payload[] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+    // Invalid argument
+    expect_assert_failure(bf_matcher_new(NULL, 0, 0, NULL, 0));
+    expect_assert_failure(bf_matcher_new(NOT_NULL, 0, 0, NULL, 1));
+    expect_assert_failure(bf_matcher_free(NULL));
+
+    // New, free, new again, then cleanup
+    {
+        _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+        assert_int_equal(0, bf_matcher_new(&matcher, 0, 0, NULL, 0));
+        bf_matcher_free(&matcher);
+        assert_null(matcher);
+
+        assert_int_equal(
+            0, bf_matcher_new(&matcher, 0, 0, payload, sizeof(payload)));
+    }
+
+    // malloc failure
+    {
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        struct bf_matcher *matcher;
+
+        assert_int_not_equal(0, bf_matcher_new(&matcher, 0, 0, NULL, 0));
+    }
+
+    // malloc failure with payload
+    {
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        struct bf_matcher *matcher;
+
+        assert_int_not_equal(
+            0, bf_matcher_new(&matcher, 0, 0, payload, sizeof(payload)));
+    }
+}
+
+Test(matcher, marsh_unmarsh)
+{
+    uint8_t payload[] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+    expect_assert_failure(bf_matcher_marsh(NULL, NOT_NULL));
+    expect_assert_failure(bf_matcher_marsh(NOT_NULL, NULL));
+    expect_assert_failure(bf_matcher_new_from_marsh(NULL, NOT_NULL));
+    expect_assert_failure(bf_matcher_new_from_marsh(NOT_NULL, NULL));
+
+    // All good
+    {
+        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _cleanup_bf_matcher_ struct bf_matcher *matcher1 = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+
+        assert_int_equal(
+            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
+        assert_int_equal(0, bf_matcher_marsh(matcher0, &marsh));
+        assert_int_equal(0, bf_matcher_new_from_marsh(&matcher1, marsh));
+    }
+
+    // Failed serialisation
+    {
+        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+
+        assert_int_equal(
+            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
+
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        assert_int_not_equal(0, bf_matcher_marsh(matcher0, &marsh));
+    }
+
+    // Failed deserialisation
+    {
+        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        // No cleanup, it's not supposed to be allocated
+        struct bf_matcher *matcher1 = NULL;
+
+        assert_int_equal(
+            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
+        assert_int_equal(0, bf_matcher_marsh(matcher0, &marsh));
+
+        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        assert_int_not_equal(0, bf_matcher_new_from_marsh(&matcher1, marsh));
+    }
+}
+
+Test(matcher, matcher_type_to_str_assert_failure)
+{
+    expect_assert_failure(bf_matcher_type_to_str(-1));
+    expect_assert_failure(bf_matcher_type_to_str(_BF_MATCHER_TYPE_MAX));
+}
+
+Test(matcher, can_get_str_from_matcher_type)
+{
+    for (int i = 0; i < _BF_MATCHER_TYPE_MAX; ++i)
+        assert_non_null(bf_matcher_type_to_str(i));
+}
+
+Test(matcher, matcher_op_to_str_assert_failure)
+{
+    expect_assert_failure(bf_matcher_op_to_str(-1));
+    expect_assert_failure(bf_matcher_op_to_str(_BF_MATCHER_OP_MAX));
+}
+
+Test(matcher, can_get_str_from_matcher_op)
+{
+    for (int i = 0; i < _BF_MATCHER_OP_MAX; ++i)
+        assert_non_null(bf_matcher_op_to_str(i));
+}
