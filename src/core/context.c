@@ -150,25 +150,31 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
     DUMP(prefix, "struct bf_context at %p", context);
 
     bf_dump_prefix_push(prefix);
-
-    DUMP(bf_dump_prefix_last(prefix), "codegens:");
+    
+    DUMP(bf_dump_prefix_last(prefix), "codegens: bf_codegen[%d][%d]",
+         _BF_HOOK_MAX, _BF_FRONT_MAX);
     bf_dump_prefix_push(prefix);
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         if (i == _BF_HOOK_MAX - 1)
             bf_dump_prefix_last(prefix);
 
-        DUMP(prefix, "%s", bf_hook_to_str(i));
+        DUMP(prefix, "[%s]", bf_hook_to_str(i));
         bf_dump_prefix_push(prefix);
 
         for (int j = 0; j < _BF_FRONT_MAX; ++j) {
             if (j == _BF_FRONT_MAX - 1)
                 bf_dump_prefix_last(prefix);
 
-            if (context->codegens[i][j])
-                bf_codegen_dump(context->codegens[i][j], prefix);
-            else
-                DUMP(prefix, "%s: <null>", bf_front_to_str(j));
+            if (context->codegens[i][j]) {
+                DUMP(prefix, "[%s]: struct bf_codegen *", bf_front_to_str(j));
+                bf_dump_prefix_push(prefix);
+                bf_codegen_dump(context->codegens[i][j],
+                                bf_dump_prefix_last(prefix));
+                bf_dump_prefix_pop(prefix);
+            } else {
+                DUMP(prefix, "[%s]: <null>", bf_front_to_str(j));
+            }
         }
 
         bf_dump_prefix_pop(prefix);
