@@ -29,13 +29,6 @@ struct bf_rule
 {
     uint32_t index;
     uint32_t ifindex;
-    uint8_t invflags;
-    uint32_t src;
-    uint32_t dst;
-    uint32_t src_mask;
-    uint32_t dst_mask;
-    uint16_t protocol;
-    bf_list matches;
     bf_list matchers;
     bool counters;
     enum bf_verdict verdict;

@@ -22,12 +22,6 @@ static int _create_dummy_rule(struct bf_rule **rule)
     _rule = *rule;
     _rule->index = 1;
     _rule->ifindex = 2;
-    _rule->invflags = 3;
-    _rule->src = 4;
-    _rule->dst = 5;
-    _rule->src_mask = 6;
-    _rule->dst_mask = 7;
-    _rule->protocol = 8;
 
     for (int i = 0; i < 10; ++i) {
         _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -95,11 +89,6 @@ Test(rule, marsh_unmarsh)
 
         assert_int_equal(rule0->index, rule1->index);
         assert_int_equal(rule0->ifindex, rule1->ifindex);
-        assert_int_equal(rule0->invflags, rule1->invflags);
-        assert_int_equal(rule0->src, rule1->src);
-        assert_int_equal(rule0->dst, rule1->dst);
-        assert_int_equal(rule0->src_mask, rule1->src_mask);
-        assert_int_equal(rule0->dst_mask, rule1->dst_mask);
         assert_int_equal(bf_list_size(&rule0->matchers),
                          bf_list_size(&rule1->matchers));
         assert_int_equal(rule0->counters, rule1->counters);

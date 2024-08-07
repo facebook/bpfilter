@@ -12,7 +12,6 @@
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
-#include "core/match.h"
 #include "core/verdict.h"
 #include "shared/helper.h"
 
@@ -25,9 +24,6 @@ int bf_rule_new(struct bf_rule **rule)
     _rule = calloc(1, sizeof(*_rule));
     if (!_rule)
         return -ENOMEM;
-
-    bf_list_init(&_rule->matches,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_match_free}});
 
     bf_list_init(&_rule->matchers,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_matcher_free}});
@@ -44,7 +40,6 @@ void bf_rule_free(struct bf_rule **rule)
     if (!*rule)
         return;
 
-    bf_list_clean(&(*rule)->matches);
     bf_list_clean(&(*rule)->matchers);
 
     free(*rule);
@@ -65,16 +60,6 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 
     r |= bf_marsh_add_child_raw(&_marsh, &rule->index, sizeof(rule->index));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->ifindex, sizeof(rule->ifindex));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->invflags,
-                                sizeof(rule->invflags));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->src, sizeof(rule->src));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->dst, sizeof(rule->dst));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->src_mask,
-                                sizeof(rule->src_mask));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->dst_mask,
-                                sizeof(rule->dst_mask));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->protocol,
-                                sizeof(rule->protocol));
 
     {
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
@@ -135,30 +120,6 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&_rule->invflags, child->data, sizeof(_rule->invflags));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_rule->src, child->data, sizeof(_rule->src));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_rule->dst, child->data, sizeof(_rule->dst));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_rule->src_mask, child->data, sizeof(_rule->src_mask));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_rule->dst_mask, child->data, sizeof(_rule->dst_mask));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_rule->protocol, child->data, sizeof(_rule->protocol));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
 
     {
         struct bf_marsh *subchild = NULL;
@@ -205,13 +166,6 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 
     DUMP(prefix, "index: %u", rule->index);
     DUMP(prefix, "ifindex: %u", rule->ifindex);
-    DUMP(prefix, "invflags: %u", rule->invflags);
-    DUMP(prefix, "src: " IP4_FMT, IP4_SPLIT(rule->src));
-    DUMP(prefix, "dst: " IP4_FMT, IP4_SPLIT(rule->dst));
-    DUMP(prefix, "src_mask: " IP4_FMT, IP4_SPLIT(rule->src_mask));
-    DUMP(prefix, "dst_mask: " IP4_FMT, IP4_SPLIT(rule->dst_mask));
-    DUMP(prefix, "protocol: %u", rule->protocol);
-    DUMP(prefix, "matches: %lu", bf_list_size(&rule->matches));
 
     // Matchers
     DUMP(prefix, "matchers: %lu", bf_list_size(&rule->matchers));

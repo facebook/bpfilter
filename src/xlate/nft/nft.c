@@ -518,7 +518,6 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
                                 sizeof(uint16_t));
         if (r)
             return r;
-        rule->protocol = htonl(cmp_value);
         break;
     case 12:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP_SRC_ADDR, BF_MATCHER_EQ,
@@ -528,8 +527,6 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
                                 sizeof(struct bf_matcher_ip_addr));
         if (r)
             return r;
-        rule->src = htonl(cmp_value);
-        rule->src_mask = 0xffffffff >> (32 - len * 8);
         break;
     case 16:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP_DST_ADDR, BF_MATCHER_EQ,
@@ -539,8 +536,6 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
                                 sizeof(struct bf_matcher_ip_addr));
         if (r)
             return r;
-        rule->dst = htonl(cmp_value);
-        rule->dst_mask = 0xffffffff >> (32 - len * 8);
         break;
     default:
         return bf_err_code(-EINVAL, "unknown IP header offset %d", off);

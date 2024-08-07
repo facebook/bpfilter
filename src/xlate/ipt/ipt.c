@@ -23,7 +23,6 @@
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
-#include "core/match.h"
 #include "core/matcher.h"
 #include "core/rule.h"
 #include "core/verdict.h"
@@ -245,7 +244,6 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
                            struct bf_rule **rule)
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
-    _cleanup_bf_match_ struct bf_match *match = NULL;
     enum bf_verdict verdict;
     size_t offset = sizeof(*ipt_rule);
     int r;
@@ -262,12 +260,6 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
         }
     }
 
-    _rule->invflags = ipt_rule->ip.invflags;
-    _rule->src = ipt_rule->ip.src.s_addr;
-    _rule->src_mask = ipt_rule->ip.smsk.s_addr;
-    _rule->dst = ipt_rule->ip.dst.s_addr;
-    _rule->dst_mask = ipt_rule->ip.dmsk.s_addr;
-    _rule->protocol = ipt_rule->ip.proto;
     _rule->counters = true;
 
     if (ipt_rule->ip.src.s_addr || ipt_rule->ip.smsk.s_addr) {
