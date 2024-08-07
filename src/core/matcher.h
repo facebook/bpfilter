@@ -51,6 +51,16 @@ enum bf_matcher_type
 };
 
 /**
+ * @brief Defines the structure of the payload for bf_matcher's
+ * BF_MATCHER_IP_SRC_ADDR and BF_MATCHER_IP_DST_ADDR types.
+ */
+struct bf_matcher_ip_addr
+{
+    uint32_t addr;
+    uint32_t mask;
+};
+
+/**
  * @brief Matcher comparison operator.
  *
  * The matcher comparison operator defines the type of comparison to operator
