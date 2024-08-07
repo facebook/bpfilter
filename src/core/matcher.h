@@ -43,6 +43,10 @@ enum bf_matcher_type
 {
     /// Matches IP source address.
     BF_MATCHER_IP_SRC_ADDR,
+    /// Matches IP destination address.
+    BF_MATCHER_IP_DST_ADDR,
+    /// Matches against the IP protocol field
+    BF_MATCHER_IP_PROTO,
     _BF_MATCHER_TYPE_MAX,
 };
 
@@ -56,6 +60,8 @@ enum bf_matcher_op
 {
     /// Test for equality.
     BF_MATCHER_EQ,
+    /// Test for inequality.
+    BF_MATCHER_NE,
     _BF_MATCHER_OP_MAX,
 };
 
