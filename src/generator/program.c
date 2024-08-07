@@ -181,6 +181,9 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 {
     char ifname_buf[IF_NAMESIZE] = {};
 
+    bf_assert(program);
+    bf_assert(prefix);
+
     DUMP(prefix, "struct bf_program at %p", program);
 
     bf_dump_prefix_push(prefix);

@@ -63,9 +63,11 @@ void bf_fixup_free(struct bf_fixup **fixup)
     *fixup = NULL;
 }
 
-void bf_fixup_dump(const struct bf_fixup *fixup,
-                   char (*prefix)[DUMP_PREFIX_LEN])
+void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
 {
+    bf_assert(fixup);
+    bf_assert(prefix);
+
     DUMP(prefix, "struct bf_fixup at %p", fixup);
 
     bf_dump_prefix_push(prefix);

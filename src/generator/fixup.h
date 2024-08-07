@@ -65,5 +65,4 @@ const char *bf_fixup_function_to_str(enum bf_fixup_function function);
 
 int bf_fixup_new(struct bf_fixup **fixup);
 void bf_fixup_free(struct bf_fixup **fixup);
-void bf_fixup_dump(const struct bf_fixup *fixup,
-                   char (*prefix)[DUMP_PREFIX_LEN]);
+void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix);
