@@ -226,9 +226,11 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
         TAKE_PTR(msg);
     }
 
-    r = bf_bpf_obj_get(_bf_printer_pin_path, &_printer->fd);
-    if (r < 0)
-        return bf_err_code(r, "failed to get printer map fd");
+    if (!bf_list_is_empty(&_printer->msgs)) {
+        r = bf_bpf_obj_get(_bf_printer_pin_path, &_printer->fd);
+        if (r < 0)
+            return bf_err_code(r, "failed to get printer map fd");
+    }
 
     *printer = TAKE_PTR(_printer);
 
