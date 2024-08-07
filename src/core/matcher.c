@@ -27,7 +27,7 @@ struct bf_matcher
 };
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
-                   enum bf_matcher_op op, const uint8_t *payload,
+                   enum bf_matcher_op op, const void *payload,
                    size_t payload_len)
 {
     _cleanup_bf_matcher_ struct bf_matcher *_matcher = NULL;

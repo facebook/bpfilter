@@ -89,7 +89,7 @@ enum bf_matcher_op
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
-                   enum bf_matcher_op op, const uint8_t *payload,
+                   enum bf_matcher_op op, const void *payload,
                    size_t payload_len);
 
 /**
