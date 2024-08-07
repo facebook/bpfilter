@@ -179,8 +179,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 {
-    prefix_t _prefix = {};
-    prefix = prefix ?: &_prefix;
     char ifname_buf[IF_NAMESIZE] = {};
 
     DUMP(prefix, "struct bf_program at %p", program);

@@ -303,7 +303,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     if (r < 0)
         return bf_err_code(r, "failed to create bf_nfmsg");
 
-    bf_codegen_dump(codegen, NULL);
+    bf_codegen_dump(codegen, EMPTY_PREFIX);
 
     switch (codegen->policy) {
     case BF_VERDICT_ACCEPT:

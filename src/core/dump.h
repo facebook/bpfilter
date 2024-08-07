@@ -44,6 +44,9 @@
 /// Maximum length of the prefix buffer.
 #define DUMP_PREFIX_LEN 65
 
+/// Empty prefix for dump functions
+#define EMPTY_PREFIX ((prefix_t[]) {{}})
+
 typedef char(prefix_t)[DUMP_PREFIX_LEN];
 
 /**

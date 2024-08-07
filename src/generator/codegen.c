@@ -111,13 +111,13 @@ int bf_codegen_load(struct bf_codegen *codegen, struct bf_codegen *prev_codegen)
 
         r = bf_program_load(program, prev_program);
         if (r) {
-            bf_program_dump(program, NULL);
+            bf_program_dump(program, EMPTY_PREFIX);
             bf_program_dump_bytecode(program, false);
             return bf_err_code(r, "failed to load program");
         }
     }
 
-    bf_codegen_dump(codegen, NULL);
+    bf_codegen_dump(codegen, EMPTY_PREFIX);
 
     return 0;
 }
@@ -286,8 +286,6 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
 
 void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
 {
-    prefix_t _prefix = {};
-    prefix = prefix ?: &_prefix;
 
     DUMP(prefix, "struct bf_codegen at %p", codegen);
 

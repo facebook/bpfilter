@@ -125,9 +125,6 @@ int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh)
 
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 {
-    prefix_t _prefix = {};
-    prefix = prefix ?: &_prefix;
-
     bf_assert(matcher);
     bf_assert(prefix);
 

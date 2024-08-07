@@ -144,9 +144,6 @@ static void _bf_context_free(struct bf_context **context)
  */
 static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
 {
-    prefix_t _prefix = {};
-    prefix = prefix ?: &_prefix;
-
     DUMP(prefix, "struct bf_context at %p", context);
 
     bf_dump_prefix_push(prefix);

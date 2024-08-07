@@ -197,8 +197,6 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
 void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 {
-    prefix_t _prefix = {};
-    prefix = prefix ?: &_prefix;
 
     DUMP(prefix, "struct bf_rule at %p", rule);
 
