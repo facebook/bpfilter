@@ -169,6 +169,23 @@ static int _bf_printer_msg_marsh(const struct bf_printer_msg *msg,
     return 0;
 }
 
+static void _bf_printer_msg_dump(const struct bf_printer_msg *msg,
+                                 prefix_t *prefix)
+{
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
+
+    bf_assert(msg);
+
+    DUMP(prefix, "struct bf_printer_msg at %p", msg);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "offset: %lu", msg->offset);
+    DUMP(prefix, "len: %lu", msg->len);
+    DUMP(bf_dump_prefix_last(prefix), "str: '%s'", msg->str);
+    bf_dump_prefix_pop(prefix);
+}
+
 size_t bf_printer_msg_offset(const struct bf_printer_msg *msg)
 {
     bf_assert(msg);
@@ -279,6 +296,38 @@ int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh)
     *marsh = TAKE_PTR(_marsh);
 
     return 0;
+}
+
+void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
+{
+    prefix_t _prefix = {};
+    prefix = prefix ?: &_prefix;
+
+    bf_assert(printer);
+
+    DUMP(prefix, "struct bf_printer at %p", printer);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "msgs: bf_list<bf_printer_msg>[%lu]",
+         bf_list_size(&printer->msgs));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&printer->msgs, msg_node) {
+        struct bf_printer_msg *msg = bf_list_node_get_data(msg_node);
+
+        if (bf_list_is_tail(&printer->msgs, msg_node))
+            bf_dump_prefix_last(prefix);
+
+        _bf_printer_msg_dump(msg, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+
+    if (bf_opts_transient()) {
+        DUMP(bf_dump_prefix_last(prefix), "fd: <transient>");
+    } else {
+        DUMP(bf_dump_prefix_last(prefix), "fd: %d", printer->fd);
+    }
+
+    bf_dump_prefix_pop(prefix);
 }
 
 /**

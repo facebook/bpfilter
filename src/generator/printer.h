@@ -127,6 +127,14 @@ void bf_printer_free(struct bf_printer **printer);
 int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh);
 
 /**
+ * @brief Dump the content of the printer structure.
+ *
+ * @param printer Printer object to dump. Can't be NULL.
+ * @param prefix Prefix to use for the dump. Can be NULL.
+ */
+void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix);
+
+/**
  * @brief Get the printer map's file descriptor.
  *
  * @param printer Printer context. Can't be NULL.
@@ -168,4 +176,3 @@ const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_printer_publish(struct bf_printer *printer);
-

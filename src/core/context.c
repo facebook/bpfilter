@@ -151,6 +151,11 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
     
+    DUMP(prefix, "printer: struct bf_printer *");
+    bf_dump_prefix_push(prefix);
+    bf_printer_dump(context->printer, bf_dump_prefix_last(prefix));
+    bf_dump_prefix_pop(prefix);
+    
     DUMP(bf_dump_prefix_last(prefix), "codegens: bf_codegen[%d][%d]",
          _BF_HOOK_MAX, _BF_FRONT_MAX);
     bf_dump_prefix_push(prefix);
