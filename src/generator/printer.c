@@ -173,6 +173,7 @@ static void _bf_printer_msg_dump(const struct bf_printer_msg *msg,
                                  prefix_t *prefix)
 {
     bf_assert(msg);
+    bf_assert(prefix);
 
     DUMP(prefix, "struct bf_printer_msg at %p", msg);
 
@@ -298,6 +299,7 @@ int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh)
 void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
 {
     bf_assert(printer);
+    bf_assert(prefix);
 
     DUMP(prefix, "struct bf_printer at %p", printer);
 

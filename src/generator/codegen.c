@@ -286,6 +286,8 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
 
 void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
 {
+    bf_assert(codegen);
+    bf_assert(prefix);
 
     DUMP(prefix, "struct bf_codegen at %p", codegen);
 
