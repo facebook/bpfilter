@@ -225,6 +225,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 
         bf_matcher_dump(matcher, prefix);
     }
+    bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
