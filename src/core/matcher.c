@@ -8,24 +8,6 @@
 #include "core/marsh.h"
 #include "shared/helper.h"
 
-/**
- * @brief Matcher definition.
- *
- * Matchers are criterias to match the packet against. A set of matcher defines
- * what a rule should match on.
- */
-struct bf_matcher
-{
-    /// Matcher type.
-    enum bf_matcher_type type;
-    /// Comparison operator.
-    enum bf_matcher_op op;
-    /// Total matcher size (including payload).
-    size_t len;
-    /// Payload to match the packet against (if any).
-    uint8_t payload[0];
-};
-
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
                    size_t payload_len)

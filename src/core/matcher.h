@@ -76,6 +76,24 @@ enum bf_matcher_op
 };
 
 /**
+ * @brief Matcher definition.
+ *
+ * Matchers are criterias to match the packet against. A set of matcher defines
+ * what a rule should match on.
+ */
+struct bf_matcher
+{
+    /// Matcher type.
+    enum bf_matcher_type type;
+    /// Comparison operator.
+    enum bf_matcher_op op;
+    /// Total matcher size (including payload).
+    size_t len;
+    /// Payload to match the packet against (if any).
+    uint8_t payload[0];
+};
+
+/**
  * @brief Allocate and initalise a new matcher.
  *
  * @param matcher Matcher object to allocate and initialise. Can't be NULL. On
