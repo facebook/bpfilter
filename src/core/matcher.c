@@ -148,6 +148,8 @@ const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 {
     static const char *types_str[] = {
         [BF_MATCHER_IP_SRC_ADDR] = "BF_MATCHER_IP_SRC_ADDR",
+        [BF_MATCHER_IP_DST_ADDR] = "BF_MATCHER_IP_DST_ADDR",
+        [BF_MATCHER_IP_PROTO] = "BF_MATCHER_IP_PROTO",
     };
 
     bf_assert(0 <= type && type < _BF_MATCHER_TYPE_MAX);
@@ -161,6 +163,7 @@ const char *bf_matcher_op_to_str(enum bf_matcher_op op)
 {
     static const char *ops_str[] = {
         [BF_MATCHER_EQ] = "BF_MATCHER_EQ",
+        [BF_MATCHER_NE] = "BF_MATCHER_NE",
     };
 
     bf_assert(0 <= op && op < _BF_MATCHER_OP_MAX);
