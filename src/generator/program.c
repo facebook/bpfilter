@@ -28,6 +28,7 @@
 #include "core/rule.h"
 #include "core/verdict.h"
 #include "generator/jmp.h"
+#include "generator/matcher/ip.h"
 #include "generator/printer.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
@@ -332,46 +333,22 @@ static int _bf_program_generate_rule(struct bf_program *program,
     bf_assert(program);
     bf_assert(rule);
 
-    if (!rule->src_mask && !rule->src) {
-        if (rule->invflags & IPT_INV_SRCIP)
-            return 0;
-    }
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-    if (!rule->dst_mask && !rule->dst) {
-        if (rule->invflags & IPT_INV_DSTIP)
-            return 0;
+        switch (matcher->type) {
+        case BF_MATCHER_IP_SRC_ADDR:
+        case BF_MATCHER_IP_DST_ADDR:
+        case BF_MATCHER_IP_PROTO:
+            r = bf_matcher_generate_ip(program, matcher);
+            if (r)
+                return r;
+            break;
+        default:
+            return bf_err_code(-EINVAL, "unknown matcher type %d",
+                               matcher->type);
+        };
     }
-
-    if (rule->src_mask || rule->src) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_L3,
-                                  offsetof(struct iphdr, saddr)));
-        if (rule->src_mask != 0xffffffff)
-            EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_1, rule->src_mask));
-        EMIT_FIXUP(
-            program, BF_CODEGEN_FIXUP_NEXT_RULE,
-            BPF_JMP_IMM(rule->invflags & IPT_INV_SRCIP ? BPF_JEQ : BPF_JNE,
-                        BF_REG_1, rule->src, 0));
-    }
-
-    if (rule->dst_mask || rule->dst) {
-        EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_L3,
-                                  offsetof(struct iphdr, daddr)));
-        if (rule->dst_mask != 0xffffffff)
-            EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, rule->dst_mask));
-        EMIT_FIXUP(
-            program, BF_CODEGEN_FIXUP_NEXT_RULE,
-            BPF_JMP_IMM(rule->invflags & IPT_INV_DSTIP ? BPF_JEQ : BPF_JNE,
-                        BF_REG_2, rule->dst, 0));
-    }
-
-    if (rule->protocol) {
-        EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_L3,
-                                  offsetof(struct iphdr, protocol)));
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-                   BPF_JMP_IMM(BPF_JNE, BF_REG_4, rule->protocol, 0));
-    }
-
-    /// @todo do matches too!
 
     // BF_ARG_1: counters map file descriptor.
     if (rule->counters) {

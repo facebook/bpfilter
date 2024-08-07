@@ -94,6 +94,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/generator/fixup.h ${CMAKE_SOURCE_DIR}/src/generator/fixup.c
     ${CMAKE_SOURCE_DIR}/src/generator/tc.h ${CMAKE_SOURCE_DIR}/src/generator/tc.c
     ${CMAKE_SOURCE_DIR}/src/generator/xdp.h ${CMAKE_SOURCE_DIR}/src/generator/xdp.c
+    ${CMAKE_SOURCE_DIR}/src/generator/matcher/ip.h ${CMAKE_SOURCE_DIR}/src/generator/matcher/ip.c
 
     ${CMAKE_SOURCE_DIR}/src/xlate/front.h ${CMAKE_SOURCE_DIR}/src/xlate/front.c
     ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
