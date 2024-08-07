@@ -199,7 +199,27 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
          bf_opts_transient() ? "<transient>" : program->map_pin_path);
     DUMP(prefix, "img: %p", program->img);
     DUMP(prefix, "img_size: %lu", program->img_size);
-    DUMP(bf_dump_prefix_last(prefix), "img_cap: %lu", program->img_cap);
+    DUMP(prefix, "img_cap: %lu", program->img_cap);
+
+    DUMP(prefix, "fixups: bf_list<struct bf_fixup>[%lu]",
+         bf_list_size(&program->fixups));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&program->fixups, fixup_node) {
+        struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
+
+        if (bf_list_is_tail(&program->fixups, fixup_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_fixup_dump(fixup, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(bf_dump_prefix_last(prefix), "runtime: <anonymous>");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
+    DUMP(prefix, "map_fd: %d", program->runtime.map_fd);
+    DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
+    bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
 }
