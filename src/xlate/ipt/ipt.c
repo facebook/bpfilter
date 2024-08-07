@@ -24,6 +24,7 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/match.h"
+#include "core/matcher.h"
 #include "core/rule.h"
 #include "core/verdict.h"
 #include "generator/codegen.h"
@@ -232,30 +233,6 @@ static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
 }
 
 /**
- * @brief Translate an iptables match into a bpfilter match.
- *
- * @todo Convert actual match content.
- *
- * @param ipt_match iptables match to translate.
- * @param match Match to store the translation in.
- * @return 0 on success, negative error code on failure.
- */
-static int _bf_ipt_to_match(const struct ipt_entry_match *ipt_match,
-                            struct bf_match **match)
-{
-    _cleanup_bf_match_ struct bf_match *_match = NULL;
-    int r;
-
-    r = bf_match_new(&_match);
-    if (r < 0)
-        return r;
-
-    *match = TAKE_PTR(_match);
-
-    return 0;
-}
-
-/**
  * @brief Translate an iptables rule into a bpfilter rule.
  *
  * @todo Bound check the target.
@@ -293,20 +270,44 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     _rule->protocol = ipt_rule->ip.proto;
     _rule->counters = true;
 
-    while (offset < ipt_rule->target_offset) {
-        r = _bf_ipt_to_match(ipt_get_match(ipt_rule, offset), &match);
-        if (r < 0)
+    if (ipt_rule->ip.src.s_addr || ipt_rule->ip.smsk.s_addr) {
+        struct bf_matcher_ip_addr addr = {
+            .addr = ipt_rule->ip.src.s_addr,
+            .mask = ipt_rule->ip.smsk.s_addr,
+        };
+
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_SRC_ADDR,
+                                ipt_rule->ip.invflags & IPT_INV_SRCIP ?
+                                    BF_MATCHER_EQ :
+                                    BF_MATCHER_NE,
+                                &addr, sizeof(addr));
+        if (r)
             return r;
+    }
 
-        r = bf_list_add_tail(&(_rule->matches), match);
-        if (r < 0)
+    if (ipt_rule->ip.dst.s_addr || ipt_rule->ip.dmsk.s_addr) {
+        struct bf_matcher_ip_addr addr = {
+            .addr = ipt_rule->ip.dst.s_addr,
+            .mask = ipt_rule->ip.dmsk.s_addr,
+        };
+
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_DST_ADDR,
+                                ipt_rule->ip.invflags & IPT_INV_DSTIP ?
+                                    BF_MATCHER_EQ :
+                                    BF_MATCHER_NE,
+                                &addr, sizeof(addr));
+        if (r)
             return r;
+    }
 
-        /* Match has been added to the rule, so if anything goes wrong from
-         * here, it will be freed by the rule directly. */
-        TAKE_PTR(match);
+    if (ipt_rule->ip.proto) {
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_PROTO, BF_MATCHER_EQ,
+                                &ipt_rule->ip.proto, sizeof(uint16_t));
+    }
 
-        offset += ipt_get_match(ipt_rule, offset)->u.match_size;
+    if (offset < ipt_rule->target_offset) {
+        return bf_err_code(-EINVAL,
+                           "iptables custom matchers are not (yet) supported!");
     }
 
     r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &verdict);
