@@ -280,7 +280,7 @@ static int _bf_init(int argc, char *argv[])
             return bf_err_code(r, "failed to setup context");
     }
 
-    bf_context_dump(NULL);
+    bf_context_dump(EMPTY_PREFIX);
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
         if (!bf_opts_is_front_enabled(front))
