@@ -297,7 +297,7 @@ void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
     DUMP(prefix, "policy: %s", bf_verdict_to_str(codegen->policy));
 
     // Rules
-    DUMP(prefix, "rules: %lu", bf_list_size(&codegen->rules));
+    DUMP(prefix, "rules: bf_list<bf_rule>[%lu]", bf_list_size(&codegen->rules));
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&codegen->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
@@ -310,7 +310,7 @@ void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     // Programs
-    DUMP(bf_dump_prefix_last(prefix), "programs: %lu",
+    DUMP(bf_dump_prefix_last(prefix), "programs: bf_list<bf_program>[%lu]",
          bf_list_size(&codegen->programs));
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&codegen->programs, program_node) {
