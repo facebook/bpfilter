@@ -13,7 +13,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/match.h"
-#include "core/matcher.h"
 #include "core/verdict.h"
 #include "shared/helper.h"
 
@@ -232,4 +231,26 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
          bf_verdict_to_str(rule->verdict));
 
     bf_dump_prefix_pop(prefix);
+}
+
+int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
+                        enum bf_matcher_op op, const void *payload,
+                        size_t payload_len)
+{
+    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+    int r;
+
+    bf_assert(rule);
+
+    r = bf_matcher_new(&matcher, type, op, payload, payload_len);
+    if (r)
+        return r;
+
+    r = bf_list_add_tail(&rule->matchers, matcher);
+    if (r)
+        return r;
+
+    TAKE_PTR(matcher);
+
+    return 0;
 }

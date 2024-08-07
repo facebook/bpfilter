@@ -10,6 +10,7 @@
 
 #include "core/dump.h"
 #include "core/list.h"
+#include "core/matcher.h"
 #include "core/verdict.h"
 
 struct bf_marsh;
@@ -86,3 +87,19 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule);
  * @param prefix Prefix for each printed line.
  */
 void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
+
+/**
+ * @brief Create a new matcher and add it to the rule.
+ *
+ * @param rule Rule to add the matcher to. Can't be NULL.
+ * @param type Matcher type.
+ * @param op Comparison operator.
+ * @param payload Payload of the matcher, its content and size depends on @ref
+ * type. Can be NULL but only if @ref payload_len is 0, in which case there is
+ * no payload.
+ * @param payload_len Length of the payload.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
+                        enum bf_matcher_op op, const void *payload,
+                        size_t payload_len);
