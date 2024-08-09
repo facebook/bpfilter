@@ -111,15 +111,11 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     // BF_ARG_4: size of the L2 header buffer.
     EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ethhdr)));
 
+    // Create the slice, accept the packet if it fails.
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
-
-    // Copy the L2 header pointer to BF_REG_L2.
-    EMIT(program, BPF_MOV64_REG(BF_REG_L2, BF_REG_RET));
-
-    // If L2 was not found, quit the program.
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L2, 0, 0));
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
         if (bf_opts_debug())
             EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
@@ -130,25 +126,16 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
         EMIT(program, BPF_EXIT_INSN());
     }
 
-    // Load L2 ethertype
+    // Copy the L2 header pointer to BF_REG_L2.
+    EMIT(program, BPF_MOV64_REG(BF_REG_L2, BF_REG_RET));
+
+    // Set bf_program_context.l3_proto
     EMIT(program, BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_L2,
                               offsetof(struct ethhdr, h_proto)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)));
 
-    // If L3 is not IPv4, quit the program.
-    {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
-            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, ntohs(ETH_P_IP), 0));
-
-        if (bf_opts_debug())
-            EMIT_PRINT(program, "packet's L3 protocol is not IPv4, skipping");
-
-        EMIT(program,
-             BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                           BF_VERDICT_ACCEPT)));
-        EMIT(program, BPF_EXIT_INSN());
-    }
-
-    // Update L3 header offset.
+    // Set bf_program_context.l3_offset
     EMIT(program, BPF_ST_MEM(BPF_W, BF_REG_CTX, BF_PROG_CTX_OFF(l3_offset),
                              sizeof(struct ethhdr)));
 
