@@ -110,6 +110,10 @@ struct bf_program_context
     /** Offset of the layer 3 header in the packet. */
     uint32_t l3_offset;
 
+    /** Layer 3 protocol. Set when the L2 header is processed. Used to define
+     * how many bytes to read when processing the packet. */
+    uint16_t l3_proto;
+
     /** Offset of the layer 4 header in the packet. */
     uint32_t l4_offset;
 
