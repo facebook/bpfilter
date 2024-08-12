@@ -95,6 +95,7 @@ set(bf_test_srcs
     src/generator/nf.c
     src/generator/printer.c
     src/generator/program.c
+    src/generator/swich.c
     src/xlate/nft/nft.c
     src/xlate/nft/nfmsg.c
     src/xlate/nft/nfgroup.c

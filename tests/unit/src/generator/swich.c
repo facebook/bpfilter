@@ -1,0 +1,100 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+ */
+
+#include "generator/swich.c"
+
+#include "harness/cmocka.h"
+#include "harness/helper.h"
+#include "harness/mock.h"
+
+Test(swich, new_and_free_option)
+{
+    struct bpf_insn insns[] = {
+        BPF_EXIT_INSN(),
+        BPF_EXIT_INSN(),
+        BPF_EXIT_INSN(),
+    };
+
+    expect_assert_failure(_bf_swich_option_new(NULL, 0, NOT_NULL, 0));
+    expect_assert_failure(_bf_swich_option_new(NOT_NULL, 0, NULL, 0));
+    expect_assert_failure(_bf_swich_option_free(NULL));
+
+    {
+        // Auto cleanup
+        _cleanup_bf_swich_option_ struct bf_swich_option *option = NULL;
+
+        assert_int_equal(
+            0, _bf_swich_option_new(&option, 0, (struct bpf_insn[]) {}, 0));
+        _bf_swich_option_free(&option);
+        assert_ptr_equal(NULL, option);
+        assert_int_equal(
+            0, _bf_swich_option_new(&option, 0, (struct bpf_insn[]) {}, 0));
+    }
+
+    {
+        // Instructions
+        struct bf_swich_option *option = NULL;
+
+        assert_int_equal(0, _bf_swich_option_new(&option, 0, insns, 3));
+        _bf_swich_option_free(&option);
+    }
+}
+
+Test(swich, init_and_cleanup)
+{
+    _cleanup_bf_swich_ struct bf_swich swich;
+
+    expect_assert_failure(bf_swich_init(NULL, NOT_NULL, 0));
+    expect_assert_failure(bf_swich_init(NOT_NULL, NULL, 0));
+    expect_assert_failure(bf_swich_cleanup(NULL));
+
+    assert_int_equal(0, bf_swich_init(&swich, NOT_NULL, 0));
+    bf_swich_cleanup(&swich);
+    assert_true(bf_list_is_empty(&swich.options));
+}
+
+Test(swich, generate_swich)
+{
+    struct bpf_insn insns[] = {
+        BPF_EXIT_INSN(),
+        BPF_EXIT_INSN(),
+        BPF_EXIT_INSN(),
+    };
+
+    {
+        // No default option
+        _cleanup_bf_program_ struct bf_program *program = NULL;
+        _cleanup_bf_swich_ struct bf_swich swich;
+
+        assert_int_equal(0, bf_program_new(&program, 1, 0, 0));
+        assert_int_equal(0, bf_swich_init(&swich, program, 0));
+
+        for (int i = 0; i < 3; ++i)
+            assert_int_equal(0, bf_swich_add_option(&swich, i, insns, i + 1));
+
+        assert_int_equal(0, bf_swich_generate(&swich));
+        assert_int_equal(12, program->img_size);
+        bf_swich_cleanup(&swich);
+    }
+
+    {
+        // With default option (2 times)
+        _cleanup_bf_program_ struct bf_program *program = NULL;
+        _cleanup_bf_swich_ struct bf_swich swich;
+
+        assert_int_equal(0, bf_program_new(&program, 1, 0, 0));
+        assert_int_equal(0, bf_swich_init(&swich, program, 0));
+
+        for (int i = 0; i < 3; ++i)
+            assert_int_equal(0, bf_swich_add_option(&swich, i, insns, i + 1));
+
+        assert_int_equal(0, bf_swich_set_default(&swich, insns, 3));
+        assert_int_equal(0, bf_swich_set_default(&swich, insns, 3));
+
+        assert_int_equal(0, bf_swich_generate(&swich));
+        assert_int_equal(16, program->img_size);
+        bf_swich_cleanup(&swich);
+    }
+}
