@@ -1,6 +1,11 @@
 Programs generation
 ===================
 
+Switch-cases
+------------
+
+.. doxygenfile:: swich.h
+
 Error handling
 --------------
 
