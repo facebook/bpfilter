@@ -15,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # This forces GitHub to print "fedora:39, x64" in the job name.
-        system: ["fedora:39"]
+        # This forces GitHub to print "fedora:40, x64" in the job name.
+        system: ["fedora:40"]
         arch: ["X64"]
         mode: ["release", "debug"]
     container: "${{ matrix.system }}"
