@@ -20,7 +20,7 @@ concurrency:
 jobs:
   deploy:
     if: github.repository == 'facebook/bpfilter'
-    container: "fedora:39"
+    container: "fedora:40"
     runs-on: ubuntu-latest
     steps:
       - name: Setup Pages
