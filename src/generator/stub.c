@@ -14,6 +14,7 @@
 #include "generator/printer.h"
 #include "generator/program.h"
 #include "generator/reg.h"
+#include "generator/swich.h"
 #include "opts.h"
 #include "shared/helper.h"
 
@@ -144,6 +145,9 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
 
 int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 {
+    _cleanup_bf_swich_ struct bf_swich swich;
+    int r;
+
     bf_assert(program);
 
     // BF_ARG_1: address of the dynptr in the context.
@@ -159,17 +163,30 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l3_raw)));
 
     // BF_ARG_4: size of the buffer
-    EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    {
+        _cleanup_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BF_ARG_4);
 
+        EMIT_SWICH_OPTION(&swich, htons(ETH_P_IP),
+                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
+        EMIT_SWICH_DEFAULT(
+            &swich,
+            BPF_MOV64_IMM(BF_REG_RET,
+                          program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT)),
+            BPF_EXIT_INSN());
+
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
+    }
+
+    // Create the slice, accept the packet if it fails.
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
-
-    // Copy the L3 header pointer to BF_REG_L3.
-    EMIT(program, BPF_MOV64_REG(BF_REG_L3, BF_REG_RET));
-
-    // If L3 was not found, quit the program.
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L3, 0, 0));
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
         if (bf_opts_debug())
             EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
@@ -180,11 +197,14 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
         EMIT(program, BPF_EXIT_INSN());
     }
 
+    // Copy the L3 header pointer to BF_REG_L3.
+    EMIT(program, BPF_MOV64_REG(BF_REG_L3, BF_REG_RET));
+
     // Load ip.ihl into BF_REG_1
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3, 0));
 
     // Only keep the 4 IHL bits
-    EMIT(program, BPF_ALU64_IMM(BPF_AND, BF_REG_1, 15));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BF_REG_1, 0x0f));
 
     // Convert the number of words stored in ip.ihl into a number of bytes.
     EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_1, 2));
@@ -213,6 +233,8 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 
 int bf_stub_get_l4_hdr(struct bf_program *program)
 {
+    int r;
+
     bf_assert(program);
 
     // BF_ARG_1: address of the dynptr in the context.
@@ -227,46 +249,30 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l4_raw)));
 
-    // Load L4 protocol from the context.
+    // BF_ARG_4: size of the buffer.
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     {
-        // If L4 protocol is TCP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 4));
+        _cleanup_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BF_ARG_4);
 
-        // If L4 protocol is UDP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_UDP, 5));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_TCP,
+                          BPF_MOV64_IMM(BF_REG_4, sizeof(struct tcphdr)));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_UDP,
+                          BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_ICMP,
+                          BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
 
-        // If L4 protocol is ICMP.
-        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_ICMP, 6));
-
-        // Protocol is not supported, skip slice request and return
-        EMIT(program,
-             BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                           BF_VERDICT_ACCEPT)));
-        EMIT(program, BPF_EXIT_INSN());
-
-        // If TCP
-        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct tcphdr)));
-        EMIT(program, BPF_JMP_A(3));
-
-        // If UDP
-        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
-        EMIT(program, BPF_JMP_A(1));
-
-        // If ICMP
-        EMIT(program, BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
     }
 
+    // Create the slice, accept hte packet if it fails
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
-
-    // Copy the L3 header pointer to BF_REG_L3.
-    EMIT(program, BPF_MOV64_REG(BF_REG_L4, BF_REG_RET));
-
-    // If an error occurred, quit the program.
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_L4, 0, 0));
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
         if (bf_opts_debug())
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
@@ -276,6 +282,9 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
                                            BF_VERDICT_ACCEPT)));
         EMIT(program, BPF_EXIT_INSN());
     }
+
+    // Copy the L3 header pointer to BF_REG_L3.
+    EMIT(program, BPF_MOV64_REG(BF_REG_L4, BF_REG_RET));
 
     return 0;
 }
