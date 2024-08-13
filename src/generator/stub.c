@@ -106,7 +106,7 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
 
     // BF_ARG_3: pointer to the buffer to store L2 header.
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l2raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l2_raw)));
 
     // BF_ARG_4: size of the L2 header buffer.
     EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ethhdr)));
@@ -156,7 +156,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
 
     // BF_ARG_3: pointer to the buffer.
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l3raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l3_raw)));
 
     // BF_ARG_4: size of the buffer
     EMIT(program, BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
@@ -225,12 +225,11 @@ int bf_stub_get_l4_hdr(struct bf_program *program)
 
     // BF_ARG_3: pointer to the buffer.
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l4raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l4_raw)));
 
     // Load L4 protocol from the context.
     EMIT(program,
-         BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
-
+         BPF_LDX_MEM(BPF_H, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     {
         // If L4 protocol is TCP.
         EMIT(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, IPPROTO_TCP, 4));

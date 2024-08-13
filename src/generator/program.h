@@ -107,41 +107,47 @@ struct bf_program_context
     /** Total size of the packet. */
     uint64_t pkt_size;
 
-    /** Offset of the layer 3 header in the packet. */
-    uint32_t l3_offset;
-
-    /** Layer 3 protocol. Set when the L2 header is processed. Used to define
-     * how many bytes to read when processing the packet. */
-    uint16_t l3_proto;
-
-    /** Offset of the layer 4 header in the packet. */
-    uint32_t l4_offset;
-
-    /** Layer 4 protocol. Set when the L3 header is processed. Used to define
-     * how many bytes to read when processing the packet. */
-    uint8_t l4_proto;
-
     /** Layer 2 header. */
     union
     {
         struct ethhdr _ethhdr;
-        char l2raw;
+        char l2_raw;
     };
 
     /** Layer 3 header. */
-    union
+    struct
     {
-        struct iphdr _iphdr;
-        char l3raw;
+        /** Offset of the layer 3 header in the packet. */
+        uint32_t l3_offset;
+
+        /** Layer 3 protocol. Set when the L2 header is processed. Used to
+         * define how many bytes to read when processing the packet. */
+        uint16_t l3_proto;
+
+        union
+        {
+            struct iphdr _iphdr;
+            char l3_raw;
+        };
     };
 
     /** Layer 4 header. */
-    union
+    struct
     {
-        struct icmphdr _icmphdr;
-        struct udphdr _udphdr;
-        struct tcphdr _tcphdr;
-        char l4raw;
+        /** Offset of the layer 4 header in the packet. */
+        uint32_t l4_offset;
+
+        /** Layer 4 protocol. Set when the L3 header is processed. Used to
+         * define how many bytes to read when processing the packet. */
+        uint16_t l4_proto;
+
+        union
+        {
+            struct icmphdr _icmphdr;
+            struct udphdr _udphdr;
+            struct tcphdr _tcphdr;
+            char l4_raw;
+        };
     };
 } bf_aligned(8);
 
