@@ -80,7 +80,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program,
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
  */
-int bf_stub_get_l2_eth_hdr(struct bf_program *program);
+int bf_stub_parse_l2_ethhdr(struct bf_program *program);
 
 /**
  * @brief Emit instructions to get a dynptr slice for the packet's L3 IPv4
@@ -106,7 +106,7 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program);
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
  */
-int bf_stub_get_l3_ipv4_hdr(struct bf_program *program);
+int bf_stub_parse_l3_hdr(struct bf_program *program);
 
 /**
  * @brief Emit instructions to get a dynptr slice for the packet's L4 header.
@@ -125,4 +125,4 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program);
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
  */
-int bf_stub_get_l4_hdr(struct bf_program *program);
+int bf_stub_parse_l4_hdr(struct bf_program *program);

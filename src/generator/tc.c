@@ -70,15 +70,15 @@ static int _tc_gen_inline_prologue(struct bf_program *program)
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
 
-    r = bf_stub_get_l2_eth_hdr(program);
+    r = bf_stub_parse_l2_ethhdr(program);
     if (r)
         return r;
 
-    r = bf_stub_get_l3_ipv4_hdr(program);
+    r = bf_stub_parse_l3_hdr(program);
     if (r)
         return r;
 
-    r = bf_stub_get_l4_hdr(program);
+    r = bf_stub_parse_l4_hdr(program);
     if (r)
         return r;
 

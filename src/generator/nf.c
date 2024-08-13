@@ -102,11 +102,11 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     // BPF_PROG_TYPE_NETFILTER's skb is stripped from the Ethernet header,
     // so we don't get it.
 
-    r = bf_stub_get_l3_ipv4_hdr(program);
+    r = bf_stub_parse_l3_hdr(program);
     if (r)
         return r;
 
-    r = bf_stub_get_l4_hdr(program);
+    r = bf_stub_parse_l4_hdr(program);
     if (r)
         return r;
 

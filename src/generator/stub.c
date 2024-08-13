@@ -94,7 +94,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
     return _stub_make_ctx_dynptr(program, skb_reg, "bpf_dynptr_from_skb");
 }
 
-int bf_stub_get_l2_eth_hdr(struct bf_program *program)
+int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 {
     bf_assert(program);
 
@@ -143,7 +143,7 @@ int bf_stub_get_l2_eth_hdr(struct bf_program *program)
     return 0;
 }
 
-int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
+int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
     _cleanup_bf_swich_ struct bf_swich swich;
     int r;
@@ -231,7 +231,7 @@ int bf_stub_get_l3_ipv4_hdr(struct bf_program *program)
     return 0;
 }
 
-int bf_stub_get_l4_hdr(struct bf_program *program)
+int bf_stub_parse_l4_hdr(struct bf_program *program)
 {
     int r;
 
