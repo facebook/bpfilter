@@ -5,6 +5,8 @@
 
 #include "generator/matcher/ip.h"
 
+#include <arpa/inet.h>
+
 #include "core/logger.h"
 #include "core/matcher.h"
 #include "generator/fixup.h"
@@ -45,6 +47,11 @@ int bf_matcher_generate_ip(struct bf_program *program,
                            const struct bf_matcher *matcher)
 {
     int r;
+
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+               BPF_JMP_REG(BPF_JNE, htons(ETH_P_IP), BF_REG_1, 0));
 
     switch (matcher->type) {
     case BF_MATCHER_IP_SRC_ADDR:
