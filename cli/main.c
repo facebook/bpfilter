@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "core/chain.h"
+#include "core/list.h"
+#include "core/dump.h"
 #include "parser/lexer.h"
 #include "parser/parser.h"
 
@@ -48,6 +51,7 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
 int main(int argc, char *argv[])
 {
     struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
+    bf_list chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free});
     int r;
 
     r = argp_parse(&argp, argc, argv, 0, 0, &_opts);
@@ -56,7 +60,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    printf("Source file: %s\n", _opts.input_file);
+    printf("Using source file: %s\n", _opts.input_file);
 
     FILE *rules = fopen(_opts.input_file, "r");
     if (!rules) {
@@ -66,15 +70,27 @@ int main(int argc, char *argv[])
 
     yyin = rules;
 
-    yyparse();
+    r = yyparse(&chains);
+    if (r == 1) {
+        fprintf(stderr, "failed to parse rules, syntax invalid\n");
+        return EXIT_FAILURE;
+    } else if (r == 2) {
+        fprintf(stderr, "failed to parse rules, not enough memory\n");
+        return EXIT_FAILURE;
+    }
+
+    bf_list_foreach (&chains, chain_node)
+        bf_chain_dump(bf_list_node_get_data(chain_node), EMPTY_PREFIX);
 
     fclose(rules);
 
     return 0;
 }
 
-void yyerror(const char *fmt, ...)
+void yyerror(bf_list *chains, const char *fmt, ...)
 {
+    UNUSED(chains);
+
     va_list args;
 
     va_start(args, fmt);
