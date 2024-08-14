@@ -126,19 +126,35 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
+static const char *_bf_matcher_type_strs[] = {
+    [BF_MATCHER_IP_SRC_ADDR] = "ip.saddr",
+    [BF_MATCHER_IP_DST_ADDR] = "ip.daddr",
+    [BF_MATCHER_IP_PROTO] = "ip.proto",
+};
+
+static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,
+              "missing entries in the matcher type array");
+
 const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 {
-    static const char *types_str[] = {
-        [BF_MATCHER_IP_SRC_ADDR] = "BF_MATCHER_IP_SRC_ADDR",
-        [BF_MATCHER_IP_DST_ADDR] = "BF_MATCHER_IP_DST_ADDR",
-        [BF_MATCHER_IP_PROTO] = "BF_MATCHER_IP_PROTO",
-    };
-
     bf_assert(0 <= type && type < _BF_MATCHER_TYPE_MAX);
-    static_assert(ARRAY_SIZE(types_str) == _BF_MATCHER_TYPE_MAX,
-                  "missing entries in the types_str array");
 
-    return types_str[type];
+    return _bf_matcher_type_strs[type];
+}
+
+int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type)
+{
+    bf_assert(str);
+    bf_assert(type);
+
+    for (size_t i = 0; i < _BF_MATCHER_TYPE_MAX; ++i) {
+        if (bf_streq(_bf_matcher_type_strs[i], str)) {
+            *type = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
 }
 
 const char *bf_matcher_op_to_str(enum bf_matcher_op op)

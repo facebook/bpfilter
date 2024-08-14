@@ -153,6 +153,15 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
 const char *bf_matcher_type_to_str(enum bf_matcher_type type);
 
 /**
+ * Convert a string to the corresponding matcher type.
+ *
+ * @param str String containing the name of a matcher type.
+ * @param hook Matcher type value, if the parsing succeeds.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type);
+
+/**
  * @brief Convert a matcher operator to a string.
  *
  * @param op The matcher operator to convert. Must be a valid @ref bf_matcher_op
