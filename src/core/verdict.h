@@ -17,4 +17,19 @@ enum bf_verdict
     _BF_VERDICT_MAX,
 };
 
+/**
+ * Convert a verdict value into a string.
+ *
+ * @param verdict The verdict to convert, must be valid.
+ * @return String representation of the verdict.
+ */
 const char *bf_verdict_to_str(enum bf_verdict verdict);
+
+/**
+ * Convert a string into a verdict value.
+ *
+ * @param str String to convert to a verdict. Can't be NULL.
+ * @param verdict String representation of the verdict. Can't be NULL.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_verdict_from_str(const char *str, enum bf_verdict *verdict);
