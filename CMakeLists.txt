@@ -13,6 +13,8 @@ include(GNUInstallDirs)
 
 find_package(Doxygen REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
 
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
@@ -148,6 +150,7 @@ install(
 )
 
 add_subdirectory(src)
+add_subdirectory(cli)
 add_subdirectory(lib)
 add_subdirectory(tests)
 add_subdirectory(doc)
