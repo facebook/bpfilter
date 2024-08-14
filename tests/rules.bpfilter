@@ -1,0 +1,9 @@
+chain BF_HOOK_NFT_INGRESS policy ACCEPT
+    rule
+        ip.proto icmp
+        ip.proto icmp
+        DROP
+    rule
+        ip.proto icmp
+        counter
+        DROP
