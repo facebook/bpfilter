@@ -30,11 +30,13 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bison \
             bpftool \
             clang \
             clang-tools-extra \
             cmake \
             doxygen \
+            flex \
             git \
             lcov \
             libasan \
