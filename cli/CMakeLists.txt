@@ -25,6 +25,7 @@ add_executable(bfcli
     ${CMAKE_SOURCE_DIR}/cli/main.c
 
     ${CMAKE_SOURCE_DIR}/src/opts.h ${CMAKE_SOURCE_DIR}/src/opts.c
+    ${CMAKE_SOURCE_DIR}/src/core/chain.c ${CMAKE_SOURCE_DIR}/src/core/chain.h
     ${CMAKE_SOURCE_DIR}/src/core/dump.h ${CMAKE_SOURCE_DIR}/src/core/dump.c
     ${CMAKE_SOURCE_DIR}/src/core/helper.h ${CMAKE_SOURCE_DIR}/src/core/helper.c
     ${CMAKE_SOURCE_DIR}/src/core/hook.h ${CMAKE_SOURCE_DIR}/src/core/hook.c
