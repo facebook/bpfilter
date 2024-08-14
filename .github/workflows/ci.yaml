@@ -28,10 +28,12 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bison \
             bpftool \
             clang \
             clang-tools-extra \
             cmake \
+            flex \
             libcmocka-devel \
             doxygen \
             git \
@@ -79,11 +81,13 @@ jobs:
         if: ${{ (matrix.image == 'fedora:38') || (matrix.image == 'fedora:39') }}
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+            bison \
             bpftool \
             clang \
             clang-tools-extra \
             cmake \
             doxygen \
+            flex \
             git \
             lcov \
             libasan \
@@ -100,11 +104,13 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
+            bison \
             clang \
             clang-format \
             clang-tidy \
             cmake \
             doxygen \
+            flex \
             git \
             furo \
             lcov \
