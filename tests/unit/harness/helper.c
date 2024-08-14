@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "core/rule.h"
 #include "generator/codegen.h"
 #include "generator/program.h"
 #include "harness/cmocka.h"
@@ -151,4 +152,23 @@ struct bf_nfgroup *bf_test_get_nfgroup(size_t nmsg, size_t *len)
     assert_int_equal(bf_nfgroup_new_from_stream(&group, nlh, *len), 0);
 
     return TAKE_PTR(group);
+}
+
+struct bf_rule *bf_test_get_rule(void)
+{
+    _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+
+    assert_int_equal(0, bf_rule_new(&rule));
+
+    rule->index = 1;
+    rule->ifindex = 2;
+
+    for (int i = 0; i < 10; ++i)
+        assert_int_equal(
+            0, bf_rule_add_matcher(rule, 0, 0, (void *)&i, sizeof(i)));
+
+    rule->counters = true;
+    rule->verdict = 1;
+
+    return TAKE_PTR(rule);
 }
