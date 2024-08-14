@@ -96,16 +96,25 @@ Test(matcher, marsh_unmarsh)
     }
 }
 
-Test(matcher, matcher_type_to_str_assert_failure)
+Test(matcher, matcher_type_to_str_to_matcher_type)
 {
+    enum bf_matcher_type matcher_type;
+
     expect_assert_failure(bf_matcher_type_to_str(-1));
     expect_assert_failure(bf_matcher_type_to_str(_BF_MATCHER_TYPE_MAX));
-}
+    expect_assert_failure(bf_matcher_type_from_str(NULL, NOT_NULL));
+    expect_assert_failure(bf_matcher_type_from_str(NOT_NULL, NULL));
 
-Test(matcher, can_get_str_from_matcher_type)
-{
-    for (int i = 0; i < _BF_MATCHER_TYPE_MAX; ++i)
-        assert_non_null(bf_matcher_type_to_str(i));
+    for (int i = 0; i < _BF_MATCHER_TYPE_MAX; ++i) {
+        const char *str = bf_matcher_type_to_str(i);
+
+        assert_non_null(str);
+        assert_int_not_equal(-1, bf_matcher_type_from_str(str, &matcher_type));
+        assert_int_equal(matcher_type, i);
+    }
+
+    assert_int_not_equal(0, bf_matcher_type_from_str("", &matcher_type));
+    assert_int_not_equal(0, bf_matcher_type_from_str("invalid", &matcher_type));
 }
 
 Test(matcher, matcher_op_to_str_assert_failure)
