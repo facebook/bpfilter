@@ -12,6 +12,8 @@
 %option noinput
 %option nounput
 
+%s STATE_MATCHER_IPPROTO
+
 %%
 
 [ \t\n]         ;
@@ -30,7 +32,13 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
-ip\.proto       { yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IPPROTO>{
+    [a-z]+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_IPPROTO;
+    }
+}
 
 [a-zA-Z0-9_]+   { yylval.sval = strdup(yytext); return STRING; }
 
