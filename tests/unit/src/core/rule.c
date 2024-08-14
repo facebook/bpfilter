@@ -6,42 +6,8 @@
 #include "core/rule.c"
 
 #include "harness/cmocka.h"
+#include "harness/helper.h"
 #include "harness/mock.h"
-
-static int _create_dummy_rule(struct bf_rule **rule)
-{
-    struct bf_rule *_rule;
-    int r;
-
-    bf_assert(rule);
-
-    r = bf_rule_new(rule);
-    if (r)
-        return r;
-
-    _rule = *rule;
-    _rule->index = 1;
-    _rule->ifindex = 2;
-
-    for (int i = 0; i < 10; ++i) {
-        _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-
-        r = bf_matcher_new(&matcher, 0, 0, (void *)&i, sizeof(i));
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&_rule->matchers, matcher);
-        if (r)
-            return r;
-
-        TAKE_PTR(matcher);
-    }
-
-    _rule->counters = true;
-    _rule->verdict = 1;
-
-    return 0;
-}
 
 Test(rule, new_and_free)
 {
@@ -79,13 +45,13 @@ Test(rule, marsh_unmarsh)
 
     // All good
     {
-        _cleanup_bf_rule_ struct bf_rule *rule0 = NULL;
+        _cleanup_bf_rule_ struct bf_rule *rule0 = bf_test_get_rule();
         _cleanup_bf_rule_ struct bf_rule *rule1 = NULL;
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, _create_dummy_rule(&rule0));
-        assert_success(bf_rule_marsh(rule0, &marsh));
-        assert_success(bf_rule_unmarsh(marsh, &rule1));
+        assert_non_null(rule0);
+        assert_int_equal(0, bf_rule_marsh(rule0, &marsh));
+        assert_int_equal(0, bf_rule_unmarsh(marsh, &rule1));
 
         assert_int_equal(rule0->index, rule1->index);
         assert_int_equal(rule0->ifindex, rule1->ifindex);
@@ -97,10 +63,10 @@ Test(rule, marsh_unmarsh)
 
     // Failed serialisation
     {
-        _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+        _cleanup_bf_rule_ struct bf_rule *rule = bf_test_get_rule();
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, _create_dummy_rule(&rule));
+        assert_non_null(rule);
 
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
         assert_error(bf_rule_marsh(rule, &marsh));
