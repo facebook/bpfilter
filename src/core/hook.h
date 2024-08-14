@@ -38,6 +38,15 @@ enum bf_hook
 const char *bf_hook_to_str(enum bf_hook hook);
 
 /**
+ * Convert a string to the corresponding hook.
+ *
+ * @param str String containing the name of a hook.
+ * @param hook Hook value, if the parsing succeeds.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_hook_from_str(const char *str, enum bf_hook *hook);
+
+/**
  * @brief Convert a bpfilter hook to a BPF program type.
  *
  * @param hook The hook to convert. Must be a valid hook.
