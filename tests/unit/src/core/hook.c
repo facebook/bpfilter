@@ -8,16 +8,25 @@
 #include "harness/cmocka.h"
 #include "harness/mock.h"
 
-Test(hook, hook_to_str_assert_failure)
+Test(hook, hook_to_str_to_hook)
 {
+    enum bf_hook hook;
+
     expect_assert_failure(bf_hook_to_str(-1));
     expect_assert_failure(bf_hook_to_str(_BF_HOOK_MAX));
-}
+    expect_assert_failure(bf_hook_from_str(NULL, NOT_NULL));
+    expect_assert_failure(bf_hook_from_str(NOT_NULL, NULL));
 
-Test(hook, can_get_str_from_hook)
-{
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        assert_non_null(bf_hook_to_str(i));
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        const char *str = bf_hook_to_str(i);
+
+        assert_non_null(str);
+        assert_int_not_equal(-1, bf_hook_from_str(str, &hook));
+        assert_int_equal(hook, i);
+    }
+
+    assert_int_not_equal(0, bf_hook_from_str("", &hook));
+    assert_int_not_equal(0, bf_hook_from_str("invalid", &hook));
 }
 
 Test(hook, hook_to_bpf_prog_type_assert_failure)

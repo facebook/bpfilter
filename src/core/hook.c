@@ -13,24 +13,40 @@
 #define BPF_TCX_INGRESS 46
 #define BPF_TCX_EGRESS 47
 
+static const char *_bf_hook_strs[] = {
+    [BF_HOOK_NFT_INGRESS] = "BF_HOOK_NFT_INGRESS",
+    [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
+    [BF_HOOK_IPT_PRE_ROUTING] = "BF_HOOK_IPT_PRE_ROUTING",
+    [BF_HOOK_IPT_LOCAL_IN] = "BF_HOOK_IPT_LOCAL_IN",
+    [BF_HOOK_IPT_FORWARD] = "BF_HOOK_IPT_FORWARD",
+    [BF_HOOK_IPT_LOCAL_OUT] = "BF_HOOK_IPT_LOCAL_OUT",
+    [BF_HOOK_IPT_POST_ROUTING] = "BF_HOOK_IPT_POST_ROUTING",
+    [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
+};
+
+static_assert(ARRAY_SIZE(_bf_hook_strs) == _BF_HOOK_MAX,
+              "missing entries in hooks_str array");
+
 const char *bf_hook_to_str(enum bf_hook hook)
 {
-    static const char *hooks_str[] = {
-        [BF_HOOK_NFT_INGRESS] = "BF_HOOK_NFT_INGRESS",
-        [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
-        [BF_HOOK_IPT_PRE_ROUTING] = "BF_HOOK_IPT_PRE_ROUTING",
-        [BF_HOOK_IPT_LOCAL_IN] = "BF_HOOK_IPT_LOCAL_IN",
-        [BF_HOOK_IPT_FORWARD] = "BF_HOOK_IPT_FORWARD",
-        [BF_HOOK_IPT_LOCAL_OUT] = "BF_HOOK_IPT_LOCAL_OUT",
-        [BF_HOOK_IPT_POST_ROUTING] = "BF_HOOK_IPT_POST_ROUTING",
-        [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
-    };
-
     bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
-    static_assert(ARRAY_SIZE(hooks_str) == _BF_HOOK_MAX,
-                  "missing entries in hooks_str array");
 
-    return hooks_str[hook];
+    return _bf_hook_strs[hook];
+}
+
+int bf_hook_from_str(const char *str, enum bf_hook *hook)
+{
+    bf_assert(str);
+    bf_assert(hook);
+
+    for (size_t i = 0; i < _BF_HOOK_MAX; ++i) {
+        if (bf_streq(_bf_hook_strs[i], str)) {
+            *hook = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
 }
 
 unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
