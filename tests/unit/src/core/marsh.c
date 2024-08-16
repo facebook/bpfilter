@@ -19,7 +19,7 @@ Test(marsh, new)
         // Create a new empty marsh.
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
         assert_int_equal(0, marsh->data_len);
         assert_int_equal(sizeof(struct bf_marsh), bf_marsh_size(marsh));
     }
@@ -29,7 +29,7 @@ Test(marsh, new)
         int a = 3;
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, &a, 0));
+        assert_success(bf_marsh_new(&marsh, &a, 0));
         assert_int_equal(0, marsh->data_len);
         assert_int_equal(sizeof(struct bf_marsh), bf_marsh_size(marsh));
     }
@@ -39,7 +39,7 @@ Test(marsh, new)
         int a = 3;
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, &a, sizeof(a)));
+        assert_success(bf_marsh_new(&marsh, &a, sizeof(a)));
         assert_int_equal(sizeof(a), marsh->data_len);
         assert_int_equal(sizeof(struct bf_marsh) + sizeof(a),
                          bf_marsh_size(marsh));
@@ -66,15 +66,15 @@ Test(marsh, add_child_obj)
     _cleanup_bf_marsh_ struct bf_marsh *child0 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *child1 = NULL;
 
-    assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-    assert_int_equal(0, bf_marsh_new(&child0, NULL, 0));
-    assert_int_equal(0, bf_marsh_new(&child1, NULL, 0));
+    assert_success(bf_marsh_new(&marsh, NULL, 0));
+    assert_success(bf_marsh_new(&child0, NULL, 0));
+    assert_success(bf_marsh_new(&child1, NULL, 0));
 
-    assert_int_equal(0, bf_marsh_add_child_obj(&marsh, child0));
+    assert_success(bf_marsh_add_child_obj(&marsh, child0));
     assert_int_equal(bf_marsh_size(child0), marsh->data_len);
     assert_int_equal(0, memcmp(child0, marsh->data, marsh->data_len));
 
-    assert_int_equal(0, bf_marsh_add_child_obj(&marsh, child1));
+    assert_success(bf_marsh_add_child_obj(&marsh, child1));
     assert_int_equal(bf_marsh_size(child0) + bf_marsh_size(child1),
                      marsh->data_len);
     assert_int_equal(0, memcmp(child1, marsh->data + bf_marsh_size(child0),
@@ -90,9 +90,9 @@ Test(marsh, add_child_raw)
     const char *child1_str = "hello";
     const char *child2_str = "world";
 
-    assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
+    assert_success(bf_marsh_new(&marsh, NULL, 0));
 
-    assert_int_equal(0, bf_marsh_add_child_raw(&marsh, NULL, 0));
+    assert_success(bf_marsh_add_child_raw(&marsh, NULL, 0));
     assert_int_equal(sizeof(struct bf_marsh), marsh->data_len);
 
     assert_int_equal(
@@ -125,7 +125,7 @@ Test(marsh, next_child)
         // Empty marsh.
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
         assert_null(bf_marsh_next_child(marsh, NULL));
     }
 
@@ -135,9 +135,9 @@ Test(marsh, next_child)
         struct bf_marsh *child;
         const char *str = "hello, world";
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, str, 2));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, &str[2], 3));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_add_child_raw(&marsh, str, 2));
+        assert_success(bf_marsh_add_child_raw(&marsh, &str[2], 3));
 
         assert_non_null(child = bf_marsh_next_child(marsh, NULL));
         assert_non_null(child = bf_marsh_next_child(marsh, child));
@@ -151,9 +151,9 @@ Test(marsh, next_child)
         struct bf_marsh *child1;
         const char *str = "hello, world";
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, str, 2));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, &str[2], 3));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_add_child_raw(&marsh, str, 2));
+        assert_success(bf_marsh_add_child_raw(&marsh, &str[2], 3));
 
         assert_non_null(child0 = bf_marsh_next_child(marsh, NULL));
         assert_non_null(child1 = bf_marsh_next_child(marsh, child0));
@@ -181,7 +181,7 @@ Test(marsh, child_assert_failure)
         // have a valid marsh.
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
         expect_assert_failure(bf_marsh_add_child_obj(&marsh, NULL));
     }
 
@@ -190,7 +190,7 @@ Test(marsh, child_assert_failure)
         // have a valid marsh.
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
         expect_assert_failure(bf_marsh_add_child_raw(&marsh, NULL, 1));
     }
 }
@@ -201,8 +201,8 @@ Test(marsh, child_is_valid)
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child0;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, "hello", 6));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_add_child_raw(&marsh, "hello", 6));
         assert_non_null(child0 = bf_marsh_next_child(marsh, NULL));
 
         assert_int_equal(0, bf_marsh_child_is_valid(marsh, NULL));
@@ -226,8 +226,8 @@ Test(marsh, child_is_valid)
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child0;
 
-        assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-        assert_int_equal(0, bf_marsh_add_child_raw(&marsh, NULL, 0));
+        assert_success(bf_marsh_new(&marsh, NULL, 0));
+        assert_success(bf_marsh_add_child_raw(&marsh, NULL, 0));
         assert_non_null(child0 = bf_marsh_next_child(marsh, NULL));
         assert_int_equal(child0, marsh->data);
         assert_int_equal(bf_marsh_end(child0), bf_marsh_end(marsh));
@@ -239,8 +239,8 @@ Test(marsh, add_child_obj_failure)
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-    assert_int_equal(0, bf_marsh_new(&marsh, NULL, 0));
-    assert_int_equal(0, bf_marsh_new(&child, NULL, 0));
+    assert_success(bf_marsh_new(&marsh, NULL, 0));
+    assert_success(bf_marsh_new(&child, NULL, 0));
 
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
     assert_true(bf_marsh_add_child_obj(&marsh, child) < 0);

@@ -50,7 +50,7 @@ Test(swich, init_and_cleanup)
     expect_assert_failure(bf_swich_init(NOT_NULL, NULL, 0));
     expect_assert_failure(bf_swich_cleanup(NULL));
 
-    assert_int_equal(0, bf_swich_init(&swich, NOT_NULL, 0));
+    assert_success(bf_swich_init(&swich, NOT_NULL, 0));
     bf_swich_cleanup(&swich);
     assert_true(bf_list_is_empty(&swich.options));
 }
@@ -68,13 +68,13 @@ Test(swich, generate_swich)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         _cleanup_bf_swich_ struct bf_swich swich;
 
-        assert_int_equal(0, bf_program_new(&program, 1, 0, 0));
-        assert_int_equal(0, bf_swich_init(&swich, program, 0));
+        assert_success(bf_program_new(&program, 1, 0, 0));
+        assert_success(bf_swich_init(&swich, program, 0));
 
         for (int i = 0; i < 3; ++i)
-            assert_int_equal(0, bf_swich_add_option(&swich, i, insns, i + 1));
+            assert_success(bf_swich_add_option(&swich, i, insns, i + 1));
 
-        assert_int_equal(0, bf_swich_generate(&swich));
+        assert_success(bf_swich_generate(&swich));
         assert_int_equal(12, program->img_size);
         bf_swich_cleanup(&swich);
     }
@@ -84,16 +84,16 @@ Test(swich, generate_swich)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         _cleanup_bf_swich_ struct bf_swich swich;
 
-        assert_int_equal(0, bf_program_new(&program, 1, 0, 0));
-        assert_int_equal(0, bf_swich_init(&swich, program, 0));
+        assert_success(bf_program_new(&program, 1, 0, 0));
+        assert_success(bf_swich_init(&swich, program, 0));
 
         for (int i = 0; i < 3; ++i)
-            assert_int_equal(0, bf_swich_add_option(&swich, i, insns, i + 1));
+            assert_success(bf_swich_add_option(&swich, i, insns, i + 1));
 
-        assert_int_equal(0, bf_swich_set_default(&swich, insns, 3));
-        assert_int_equal(0, bf_swich_set_default(&swich, insns, 3));
+        assert_success(bf_swich_set_default(&swich, insns, 3));
+        assert_success(bf_swich_set_default(&swich, insns, 3));
 
-        assert_int_equal(0, bf_swich_generate(&swich));
+        assert_success(bf_swich_generate(&swich));
         assert_int_equal(16, program->img_size);
         bf_swich_cleanup(&swich);
     }

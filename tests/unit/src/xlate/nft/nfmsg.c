@@ -22,7 +22,7 @@ Test(nfmsg, new_and_free)
     {
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
         assert_non_null(msg);
         assert_int_equal(NFT_MSG_GETRULE, bf_nfmsg_command(msg));
         assert_int_equal(17, bf_nfmsg_seqnr(msg));
@@ -32,7 +32,7 @@ Test(nfmsg, new_and_free)
     {
         struct bf_nfmsg *msg = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
         assert_non_null(msg);
         assert_int_equal(NFT_MSG_GETRULE, bf_nfmsg_command(msg));
         assert_int_equal(17, bf_nfmsg_seqnr(msg));
@@ -82,7 +82,7 @@ Test(nfmsg, new_done)
     {
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new_done(&msg));
+        assert_success(bf_nfmsg_new_done(&msg));
         assert_non_null(msg);
     }
 
@@ -129,7 +129,7 @@ Test(nfmsg, new_from_nlmsghdr)
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg0 = NULL;
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
         assert_int_equal(0,
                          bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
         assert_int_equal(bf_nfmsg_command(msg0), bf_nfmsg_command(msg1));
@@ -142,7 +142,7 @@ Test(nfmsg, new_from_nlmsghdr)
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg0 = NULL;
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
         bf_nfmsg_hdr(msg0)->nlmsg_type = 0;
         assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
     }
@@ -151,7 +151,7 @@ Test(nfmsg, new_from_nlmsghdr)
         // calloc failed
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg0 = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
 
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
@@ -163,7 +163,7 @@ Test(nfmsg, new_from_nlmsghdr)
         // nlmsg_convert failed
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg0 = NULL;
 
-        assert_int_equal(0, bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
+        assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
 
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_convert, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
@@ -189,33 +189,33 @@ Test(nfmsg, write_attributes)
     expect_assert_failure(bf_nfmsg_nest_init(NULL, NOT_NULL, 0));
     expect_assert_failure(bf_nfmsg_nest_init(NOT_NULL, NULL, 0));
 
-    assert_int_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
-    assert_int_equal(0, bf_nfmsg_push_u8(msg, 0, 0));
-    assert_int_equal(0, bf_nfmsg_push_u16(msg, 1, 1));
-    assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
-    assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
-    assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+    assert_success(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+    assert_success(bf_nfmsg_push_u8(msg, 0, 0));
+    assert_success(bf_nfmsg_push_u16(msg, 1, 1));
+    assert_success(bf_nfmsg_push_u32(msg, 2, 2));
+    assert_success(bf_nfmsg_push_u64(msg, 3, 3));
+    assert_success(bf_nfmsg_push_str(msg, 4, "4"));
     {
         _cleanup_bf_nfnest_ struct bf_nfnest nest;
 
-        assert_int_equal(0, bf_nfmsg_nest_init(&nest, msg, 5));
-        assert_int_equal(0, bf_nfmsg_push_u8(msg, 0, 0));
-        assert_int_equal(0, bf_nfmsg_push_u16(msg, 1, 1));
-        assert_int_equal(0, bf_nfmsg_push_u32(msg, 2, 2));
-        assert_int_equal(0, bf_nfmsg_push_u64(msg, 3, 3));
-        assert_int_equal(0, bf_nfmsg_push_str(msg, 4, "4"));
+        assert_success(bf_nfmsg_nest_init(&nest, msg, 5));
+        assert_success(bf_nfmsg_push_u8(msg, 0, 0));
+        assert_success(bf_nfmsg_push_u16(msg, 1, 1));
+        assert_success(bf_nfmsg_push_u32(msg, 2, 2));
+        assert_success(bf_nfmsg_push_u64(msg, 3, 3));
+        assert_success(bf_nfmsg_push_str(msg, 4, "4"));
     }
 
     assert_int_equal(
         0, bf_nfmsg_parse(msg, attrs, ARRAY_SIZE(attrs), test_policy));
-    assert_int_equal(0, bf_nfattr_get_u8(attrs[0]));
+    assert_success(bf_nfattr_get_u8(attrs[0]));
     assert_int_equal(1, bf_nfattr_get_u16(attrs[1]));
     assert_int_equal(2, bf_nfattr_get_u32(attrs[2]));
     assert_int_equal(3, bf_nfattr_get_u64(attrs[3]));
     assert_string_equal("4", bf_nfattr_get_str(attrs[4]));
 
-    assert_int_equal(0, bf_nfattr_parse(attrs[5], nested_attrs,
-                                        ARRAY_SIZE(nested_attrs), test_policy));
+    assert_success(bf_nfattr_parse(attrs[5], nested_attrs,
+                                   ARRAY_SIZE(nested_attrs), test_policy));
     assert_int_equal(0, bf_nfattr_get_u8(nested_attrs[0]));
     assert_int_equal(1, bf_nfattr_get_u16(nested_attrs[1]));
     assert_int_equal(2, bf_nfattr_get_u32(nested_attrs[2]));

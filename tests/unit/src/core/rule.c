@@ -53,12 +53,12 @@ Test(rule, new_and_free)
     {
         _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 
-        assert_int_equal(0, bf_rule_new(&rule));
+        assert_success(bf_rule_new(&rule));
         bf_rule_free(&rule);
         assert_null(rule);
         bf_rule_free(&rule);
 
-        assert_int_equal(0, bf_rule_new(&rule));
+        assert_success(bf_rule_new(&rule));
     }
 
     // malloc failure
@@ -84,8 +84,8 @@ Test(rule, marsh_unmarsh)
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_int_equal(0, _create_dummy_rule(&rule0));
-        assert_int_equal(0, bf_rule_marsh(rule0, &marsh));
-        assert_int_equal(0, bf_rule_unmarsh(marsh, &rule1));
+        assert_success(bf_rule_marsh(rule0, &marsh));
+        assert_success(bf_rule_unmarsh(marsh, &rule1));
 
         assert_int_equal(rule0->index, rule1->index);
         assert_int_equal(rule0->ifindex, rule1->ifindex);

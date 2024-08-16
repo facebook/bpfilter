@@ -25,3 +25,4 @@
     __attribute__((section(".bf_test"))) void group##__##name(bf_unused void **state)
 
 #define assert_error(x) assert_int_not_equal(0, (x))
+#define assert_success(x) assert_int_equal(0, (x))
