@@ -90,8 +90,8 @@ Test(helper, write_and_read_file)
     _cleanup_free_ char *read_data = NULL;
     size_t read_len;
 
-    assert_int_equal(0, bf_write_file(filepath, content, strlen(content)));
-    assert_int_equal(0, bf_read_file(filepath, (void **)&read_data, &read_len));
+    assert_success(bf_write_file(filepath, content, strlen(content)));
+    assert_success(bf_read_file(filepath, (void **)&read_data, &read_len));
     assert_int_equal(strlen(content), read_len);
     assert_int_equal(0, memcmp(content, read_data, read_len));
 }

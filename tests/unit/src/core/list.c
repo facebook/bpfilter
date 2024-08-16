@@ -53,10 +53,10 @@ static int dummy_filler_tail(bf_list *l, void *data)
 static void new_and_fill(bf_list **l, size_t count, const bf_list_ops *ops,
                          int (*filler)(bf_list *l, void *data))
 {
-    assert_int_equal(0, bf_list_new(l, ops));
+    assert_success(bf_list_new(l, ops));
 
     for (size_t i = 1; i <= count; ++i)
-        assert_int_equal(0, filler(*l, &i));
+        assert_success(filler(*l, &i));
 
     assert_int_equal(count, bf_list_size(*l));
 }
@@ -67,7 +67,7 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
     bf_list_init(l, ops);
 
     for (size_t i = 1; i <= count; ++i)
-        assert_int_equal(0, filler(l, &i));
+        assert_success(filler(l, &i));
 
     assert_int_equal(count, bf_list_size(l));
 }
@@ -86,7 +86,7 @@ Test(list, new_and_free)
 
     {
         // With noop operators
-        assert_int_equal(0, bf_list_new(&l, &noop_ops));
+        assert_success(bf_list_new(&l, &noop_ops));
         assert_int_equal(0, l->len);
         assert_null(l->head);
         assert_null(l->tail);

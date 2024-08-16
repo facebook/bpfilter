@@ -10,7 +10,7 @@
 
 Test(btf, init)
 {
-    assert_int_equal(0, bf_btf_setup());
+    assert_success(bf_btf_setup());
     assert_non_null(_btf);
 
     bf_btf_teardown();
@@ -28,9 +28,9 @@ Test(btf, failed_init)
 
 Test(btf, get_field_offset)
 {
-    assert_int_equal(0, bf_btf_setup());
+    assert_success(bf_btf_setup());
 
-    assert_int_equal(0, bf_btf_get_field_off("iphdr", "ihl"));
+    assert_success(bf_btf_get_field_off("iphdr", "ihl"));
     assert_int_equal(9, bf_btf_get_field_off("iphdr", "protocol"));
     assert_int_equal(8, bf_btf_get_field_off("bpf_nf_ctx", "skb"));
 
