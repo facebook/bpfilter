@@ -57,7 +57,8 @@ static int _bf_context_new(struct bf_context **context)
  * @param marsh Serialised data to use to initialise the context.
  * @return 0 on success, or negative errno value on failure.
  */
-static int _bf_context_new_from_marsh(struct bf_context **context, const struct bf_marsh *marsh)
+static int _bf_context_new_from_marsh(struct bf_context **context,
+                                      const struct bf_marsh *marsh)
 {
     _cleanup_bf_context_ struct bf_context *_context = NULL;
     struct bf_marsh *child = NULL;
@@ -147,12 +148,12 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
     DUMP(prefix, "struct bf_context at %p", context);
 
     bf_dump_prefix_push(prefix);
-    
+
     DUMP(prefix, "printer: struct bf_printer *");
     bf_dump_prefix_push(prefix);
     bf_printer_dump(context->printer, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
-    
+
     DUMP(bf_dump_prefix_last(prefix), "codegens: bf_codegen[%d][%d]",
          _BF_HOOK_MAX, _BF_FRONT_MAX);
     bf_dump_prefix_push(prefix);
