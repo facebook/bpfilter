@@ -200,6 +200,16 @@ int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
     return 0;
 }
 
+int bf_bpf_xdp_link_update(int link_fd, int prog_fd)
+{
+    union bpf_attr attr = {};
+
+    attr.link_update.link_fd = link_fd;
+    attr.link_update.new_prog_fd = prog_fd;
+
+    return _bpf(BPF_LINK_UPDATE, &attr);
+}
+
 int bf_bpf_link_detach(int link_fd)
 {
     union bpf_attr attr = {

@@ -118,6 +118,17 @@ int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
                            enum bf_xdp_attach_mode mode);
 
 /**
+ * Update the program attached to an XDP BPF link.
+ *
+ * The type, interface, or XDP mode of the link are left unchanged.
+ *
+ * @param link_fd File descriptor of the link to update.
+ * @param prog_fd File descriptor of the new program to attach to the link.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_xdp_link_update(int link_fd, int prog_fd);
+
+/**
  * @brief Detach a BPF link using its file descriptor.
  * @param link_fd File descriptor of the link to detach. You can get a file
  *  descriptor using @ref bf_bpf_obj_get.
