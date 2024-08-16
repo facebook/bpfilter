@@ -34,9 +34,10 @@
  * @param byte Byte to split.
  */
 #define BIN_SPLIT(byte)                                                        \
-    (((byte)&0x80) + 0x30), (((byte)&0x40) + 0x30), (((byte)&0x20) + 0x30),    \
-        (((byte)&0x10) + 0x30), (((byte)&0x08) + 0x30),                        \
-        (((byte)&0x04) + 0x30), (((byte)&0x02) + 0x30), (((byte)&0x01) + 0x30)
+    (((byte) & 0x80) + 0x30), (((byte) & 0x40) + 0x30),                        \
+        (((byte) & 0x20) + 0x30), (((byte) & 0x10) + 0x30),                    \
+        (((byte) & 0x08) + 0x30), (((byte) & 0x04) + 0x30),                    \
+        (((byte) & 0x02) + 0x30), (((byte) & 0x01) + 0x30)
 
 /// Format to use with BIN_SPLIT() to print a byte as 8 bits.
 #define BIN_FMT "%c%c%c%c%c%c%c%c"
