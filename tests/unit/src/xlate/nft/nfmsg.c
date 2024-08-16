@@ -47,7 +47,7 @@ Test(nfmsg, new_and_free)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
     }
 
     {
@@ -55,7 +55,7 @@ Test(nfmsg, new_and_free)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_alloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
     }
 
     {
@@ -63,7 +63,7 @@ Test(nfmsg, new_and_free)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_put, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
     }
 
     {
@@ -71,7 +71,7 @@ Test(nfmsg, new_and_free)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_append, -1);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
+        assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
     }
 }
 
@@ -91,7 +91,7 @@ Test(nfmsg, new_done)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+        assert_error(bf_nfmsg_new_done(&msg));
     }
 
     {
@@ -99,7 +99,7 @@ Test(nfmsg, new_done)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_alloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+        assert_error(bf_nfmsg_new_done(&msg));
     }
 
     {
@@ -107,7 +107,7 @@ Test(nfmsg, new_done)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_put, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+        assert_error(bf_nfmsg_new_done(&msg));
     }
 
     {
@@ -115,7 +115,7 @@ Test(nfmsg, new_done)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_append, -1);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
-        assert_int_not_equal(0, bf_nfmsg_new_done(&msg));
+        assert_error(bf_nfmsg_new_done(&msg));
     }
 }
 
@@ -144,8 +144,7 @@ Test(nfmsg, new_from_nlmsghdr)
 
         assert_int_equal(0, bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
         bf_nfmsg_hdr(msg0)->nlmsg_type = 0;
-        assert_int_not_equal(
-            0, bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
+        assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
     }
 
     {
@@ -157,8 +156,7 @@ Test(nfmsg, new_from_nlmsghdr)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
-        assert_int_not_equal(
-            0, bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
+        assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
     }
 
     {
@@ -170,8 +168,7 @@ Test(nfmsg, new_from_nlmsghdr)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_convert, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
-        assert_int_not_equal(
-            0, bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
+        assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
     }
 }
 

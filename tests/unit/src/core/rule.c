@@ -66,7 +66,7 @@ Test(rule, new_and_free)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         struct bf_rule *rule;
 
-        assert_int_not_equal(0, bf_rule_new(&rule));
+        assert_error(bf_rule_new(&rule));
     }
 }
 
@@ -103,6 +103,6 @@ Test(rule, marsh_unmarsh)
         assert_int_equal(0, _create_dummy_rule(&rule));
 
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
-        assert_int_not_equal(0, bf_rule_marsh(rule, &marsh));
+        assert_error(bf_rule_marsh(rule, &marsh));
     }
 }
