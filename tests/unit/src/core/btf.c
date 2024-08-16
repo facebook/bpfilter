@@ -22,7 +22,7 @@ Test(btf, failed_init)
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(btf__load_vmlinux_btf, NULL);
 
     assert_null(_btf);
-    assert_int_not_equal(0, bf_btf_setup());
+    assert_error(bf_btf_setup());
     assert_null(_btf);
 }
 

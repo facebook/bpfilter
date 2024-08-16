@@ -39,7 +39,7 @@ Test(printer, msg_lifetime)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
         struct bf_printer_msg *msg = NULL;
 
-        assert_int_not_equal(_bf_printer_msg_new(&msg), 0);
+        assert_error(_bf_printer_msg_new(&msg));
         assert_ptr_equal(msg, NULL);
     }
 }
@@ -101,7 +101,7 @@ Test(printer, printer_lifetime)
         _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
         struct bf_printer *printer = NULL;
 
-        assert_int_not_equal(bf_printer_new(&printer), 0);
+        assert_error(bf_printer_new(&printer));
         assert_ptr_equal(printer, NULL);
     }
 }
@@ -163,5 +163,5 @@ Test(printer, printer_marsh_unmarsh_failed_map_fd_open)
 
     // Serialise and deserialise the printer
     assert_int_equal(bf_printer_marsh(printer0, &marsh), 0);
-    assert_int_not_equal(bf_printer_new_from_marsh(&printer1, marsh), 0);
+    assert_error(bf_printer_new_from_marsh(&printer1, marsh));
 }
