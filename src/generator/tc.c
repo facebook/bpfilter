@@ -12,6 +12,7 @@
 #include <bpf/libbpf.h>
 #include <errno.h>
 
+#include "core/bpf.h"
 #include "core/context.h"
 #include "core/logger.h"
 #include "generator/codegen.h"
@@ -30,6 +31,8 @@ static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
                                        union bf_flavor_attach_attr *attr);
+static int _tc_attach_prog(struct bf_program *new_prog,
+                           struct bf_program *old_prog);
 static int _tc_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {
@@ -38,6 +41,7 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .get_verdict = _tc_get_verdict,
     .attach_prog_pre_unload = _tc_attach_prog_pre_unload,
     .attach_prog_post_unload = _tc_attach_prog_post_unload,
+    .attach_prog = _tc_attach_prog,
     .detach_prog = _tc_detach_prog,
 };
 
@@ -163,6 +167,43 @@ static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
     UNUSED(program);
     UNUSED(prog_fd);
     UNUSED(attr);
+
+    return 0;
+}
+
+static int _tc_attach_prog(struct bf_program *new_prog,
+                           struct bf_program *old_prog)
+{
+    _cleanup_close_ int prog_fd = -1;
+    _cleanup_close_ int link_fd = -1;
+    int r;
+
+    bf_assert(new_prog);
+
+    r = bf_bpf_prog_load(new_prog->prog_name,
+                         bf_hook_to_bpf_prog_type(new_prog->hook),
+                         new_prog->img, new_prog->img_size,
+                         bf_hook_to_attach_type(new_prog->hook), &prog_fd);
+    if (r)
+        return bf_err_code(r, "failed to load new bf_program");
+
+    if (old_prog) {
+        r = bf_bpf_link_update(old_prog->runtime.prog_fd, prog_fd);
+        if (r)
+            return bf_err_code(
+                r, "failed to updated existing link for TC bf_program");
+
+        new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
+    } else {
+        r = bf_bpf_tc_link_create(prog_fd, new_prog->ifindex,
+                                  bf_hook_to_attach_type(new_prog->hook),
+                                  &link_fd);
+        if (r)
+            return bf_err_code(r,
+                               "failed to create new link for TC bf_program");
+
+        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
+    }
 
     return 0;
 }

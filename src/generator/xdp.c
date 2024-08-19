@@ -28,6 +28,8 @@ static int _xdp_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
 static int _xdp_attach_prog_post_unload(struct bf_program *program,
                                         int *prog_fd,
                                         union bf_flavor_attach_attr *attr);
+static int _xdp_attach_prog(struct bf_program *new_prog,
+                            struct bf_program *old_prog);
 static int _xdp_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_xdp = {
@@ -36,6 +38,7 @@ const struct bf_flavor_ops bf_flavor_ops_xdp = {
     .get_verdict = _xdp_get_verdict,
     .attach_prog_pre_unload = _xdp_attach_prog_pre_unload,
     .attach_prog_post_unload = _xdp_attach_prog_post_unload,
+    .attach_prog = _xdp_attach_prog,
     .detach_prog = _xdp_detach_prog,
 };
 
@@ -155,6 +158,42 @@ static int _xdp_attach_prog_post_unload(struct bf_program *program,
 
     close(*prog_fd);
     *prog_fd = fd;
+
+    return 0;
+}
+
+static int _xdp_attach_prog(struct bf_program *new_prog,
+                            struct bf_program *old_prog)
+{
+    _cleanup_close_ int prog_fd = -1;
+    _cleanup_close_ int link_fd = -1;
+    int r;
+
+    bf_assert(new_prog);
+
+    r = bf_bpf_prog_load(new_prog->prog_name,
+                         bf_hook_to_bpf_prog_type(new_prog->hook),
+                         new_prog->img, new_prog->img_size,
+                         bf_hook_to_attach_type(new_prog->hook), &prog_fd);
+    if (r)
+        return bf_err_code(r, "failed to load new bf_program");
+
+    if (old_prog) {
+        r = bf_bpf_xdp_link_update(old_prog->runtime.prog_fd, prog_fd);
+        if (r)
+            return bf_err_code(
+                r, "failed to update existing link for XDP bf_program");
+
+        new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
+    } else {
+        r = bf_bpf_xdp_link_create(prog_fd, new_prog->ifindex, &link_fd,
+                                   BF_XDP_MODE_SKB);
+        if (r)
+            return bf_err_code(r,
+                               "failed to create new link for XDP bf_program");
+
+        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
+    }
 
     return 0;
 }

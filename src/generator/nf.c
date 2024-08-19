@@ -31,6 +31,8 @@ static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
                                       union bf_flavor_attach_attr *attr);
 static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
                                        union bf_flavor_attach_attr *attr);
+static int _nf_attach_prog(struct bf_program *new_prog,
+                           struct bf_program *old_prog);
 static int _nf_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_nf = {
@@ -39,6 +41,7 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .get_verdict = _nf_get_verdict,
     .attach_prog_pre_unload = _nf_attach_prog_pre_unload,
     .attach_prog_post_unload = _nf_attach_prog_post_unload,
+    .attach_prog = _nf_attach_prog,
     .detach_prog = _nf_detach_prog,
 };
 
@@ -180,6 +183,47 @@ static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
     closep(prog_fd);
     *prog_fd = post_unload_fd;
     post_unload_fd = -1;
+
+    return 0;
+}
+
+static int _nf_attach_prog(struct bf_program *new_prog,
+                           struct bf_program *old_prog)
+{
+    _cleanup_close_ int prog_fd = -1;
+    _cleanup_close_ int link_fd = -1;
+    _cleanup_close_ int tmp_fd = -1;
+    int r;
+
+    r = bf_bpf_prog_load(new_prog->prog_name,
+                         bf_hook_to_bpf_prog_type(new_prog->hook),
+                         new_prog->img, new_prog->img_size,
+                         bf_hook_to_attach_type(new_prog->hook), &prog_fd);
+    if (r)
+        return bf_err_code(r, "failed to load new bf_program");
+
+    if (old_prog) {
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &tmp_fd);
+        if (r)
+            return bf_err_code(r, "failed to create temporary link");
+
+        closep(&old_prog->runtime.prog_fd);
+
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, new_prog->ifindex,
+                                  &link_fd);
+        if (r)
+            return bf_err_code(r, "failed to create final link");
+
+        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
+    } else {
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, new_prog->ifindex,
+                                  &link_fd);
+        if (r)
+            return bf_err_code(
+                r, "failed to create a new link for BPF_NETFILTER bf_program");
+
+        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
+    }
 
     return 0;
 }
