@@ -247,3 +247,16 @@ int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter);
 int bf_program_set_counters(struct bf_program *program,
                             const struct bf_counter *counters);
+
+/**
+ * Load and attach the program to the kernel.
+ *
+ * Perform the loading and attaching of the program to the kernel in one
+ * step. If a similar program already exists, @p old_prog should be a pointer
+ * to it, and will be replaced.
+ *
+ * @param new_prog New program to load and attach to the kernel. Can't be NULL.
+ * @param old_prog Existing program to replace.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog);
