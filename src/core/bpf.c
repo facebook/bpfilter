@@ -159,6 +159,25 @@ int bf_bpf_obj_get(const char *path, int *fd)
     return 0;
 }
 
+int bf_bpf_tc_link_create(int prog_fd, int ifindex, enum bpf_attach_type hook,
+                          int *link_fd)
+{
+    union bpf_attr attr = {};
+    int r;
+
+    attr.link_create.prog_fd = prog_fd;
+    attr.link_create.target_fd = ifindex;
+    attr.link_create.attach_type = hook;
+
+    r = _bpf(BPF_LINK_CREATE, &attr);
+    if (r < 0)
+        return r;
+
+    *link_fd = r;
+
+    return 0;
+}
+
 int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
                           int *link_fd)
 {
@@ -201,6 +220,16 @@ int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
 }
 
 int bf_bpf_xdp_link_update(int link_fd, int prog_fd)
+{
+    union bpf_attr attr = {};
+
+    attr.link_update.link_fd = link_fd;
+    attr.link_update.new_prog_fd = prog_fd;
+
+    return _bpf(BPF_LINK_UPDATE, &attr);
+}
+
+int bf_bpf_link_update(int link_fd, int prog_fd)
 {
     union bpf_attr attr = {};
 
