@@ -23,11 +23,6 @@
 static int _xdp_gen_inline_prologue(struct bf_program *program);
 static int _xdp_gen_inline_epilogue(struct bf_program *program);
 static int _xdp_get_verdict(enum bf_verdict verdict);
-static int _xdp_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr);
-static int _xdp_attach_prog_post_unload(struct bf_program *program,
-                                        int *prog_fd,
-                                        union bf_flavor_attach_attr *attr);
 static int _xdp_attach_prog(struct bf_program *new_prog,
                             struct bf_program *old_prog);
 static int _xdp_detach_prog(struct bf_program *program);
@@ -36,8 +31,6 @@ const struct bf_flavor_ops bf_flavor_ops_xdp = {
     .gen_inline_prologue = _xdp_gen_inline_prologue,
     .gen_inline_epilogue = _xdp_gen_inline_epilogue,
     .get_verdict = _xdp_get_verdict,
-    .attach_prog_pre_unload = _xdp_attach_prog_pre_unload,
-    .attach_prog_post_unload = _xdp_attach_prog_post_unload,
     .attach_prog = _xdp_attach_prog,
     .detach_prog = _xdp_detach_prog,
 };
@@ -114,52 +107,6 @@ static int _xdp_get_verdict(enum bf_verdict verdict)
     static_assert(ARRAY_SIZE(verdicts) == _BF_VERDICT_MAX);
 
     return verdicts[verdict];
-}
-
-static int _xdp_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr)
-{
-    UNUSED(program);
-    UNUSED(prog_fd);
-    UNUSED(attr);
-
-    return 0;
-}
-
-/**
- * @brief Post unload attach callback.
- *
- * See @ref bf_flavor_ops::attach_prog_post_unload for more details.
- *
- * @warning At this point, the previous XDP program has been detached already.
- *  Meaning that no packet will be filtering until the function completes.
- *
- * @param program Program to unload. Must not be NULL.
- * @param prog_fd File descriptor of the program to unload.
- * @param attr Flavor-specific attributes. Unused for XDP.
- * @return 0 on success, or negative errno value on failure.
- */
-static int _xdp_attach_prog_post_unload(struct bf_program *program,
-                                        int *prog_fd,
-                                        union bf_flavor_attach_attr *attr)
-{
-    UNUSED(attr);
-
-    int fd;
-    int r;
-
-    bf_assert(program);
-    bf_assert(prog_fd);
-
-    r = bf_bpf_xdp_link_create(*prog_fd, program->ifindex, &fd,
-                               BF_XDP_MODE_SKB);
-    if (r)
-        return bf_err_code(r, "Failed to attach XDP program to interface");
-
-    close(*prog_fd);
-    *prog_fd = fd;
-
-    return 0;
 }
 
 static int _xdp_attach_prog(struct bf_program *new_prog,

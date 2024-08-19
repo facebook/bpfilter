@@ -8,6 +8,9 @@ This document describes the process to build ``bpfilter`` from sources. While `b
 .. note::
     Ubuntu 22.04 LTS allows for Linux 6.5 to be installed through its Hardware Enablement Stack (HWE). However, this feature only allows for the kernel and the headers **used to build the kernel modules** to be installed in v6.5. The main system kernel headers, located in ``/usr/include``, used to build userspace application, are still in the non-HWE version. This means Ubuntu 22.04 LTS is not supported by ``bpfilter``, even with the HWE stack.
 
+.. note::
+    Ubuntu 23.10 is running Linux 6.5, which is too old to support TCX hooks used by ``bpfilter``. Creating a TCX BPF program with ``bpfilter`` will return an error on Ubuntu 23.10.
+
 Required dependencies on Fedora and Ubuntu:
 
 .. code-block:: shell

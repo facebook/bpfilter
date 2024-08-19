@@ -27,10 +27,6 @@
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
 static int _nf_get_verdict(enum bf_verdict verdict);
-static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                      union bf_flavor_attach_attr *attr);
-static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr);
 static int _nf_attach_prog(struct bf_program *new_prog,
                            struct bf_program *old_prog);
 static int _nf_detach_prog(struct bf_program *program);
@@ -39,8 +35,6 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_prologue = _nf_gen_inline_prologue,
     .gen_inline_epilogue = _nf_gen_inline_epilogue,
     .get_verdict = _nf_get_verdict,
-    .attach_prog_pre_unload = _nf_attach_prog_pre_unload,
-    .attach_prog_post_unload = _nf_attach_prog_post_unload,
     .attach_prog = _nf_attach_prog,
     .detach_prog = _nf_detach_prog,
 };
@@ -140,51 +134,6 @@ static int _nf_get_verdict(enum bf_verdict verdict)
     static_assert(ARRAY_SIZE(verdicts) == _BF_VERDICT_MAX);
 
     return verdicts[verdict];
-}
-
-static int _nf_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                      union bf_flavor_attach_attr *attr)
-{
-    int r;
-
-    bf_assert(program);
-    bf_assert(*prog_fd >= 0);
-    bf_assert(attr);
-
-    r = bf_bpf_nf_link_create(*prog_fd, program->hook, 1,
-                              &attr->pre_unload_link_fd);
-    if (r) {
-        return bf_err_code(r,
-                           "failed to create Netfilter link before unload: %s",
-                           bf_strerror(errno));
-    }
-
-    return 0;
-}
-
-static int _nf_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr)
-{
-    _cleanup_close_ int post_unload_fd = -1;
-    _cleanup_close_ int pre_unload_fd = attr->pre_unload_link_fd;
-    int r;
-
-    bf_assert(program);
-    bf_assert(*prog_fd >= 0);
-
-    r = bf_bpf_nf_link_create(*prog_fd, program->hook, program->ifindex,
-                              &post_unload_fd);
-    if (r) {
-        return bf_err_code(r,
-                           "failed to create Netfilter link before unload: %s",
-                           bf_strerror(errno));
-    }
-
-    closep(prog_fd);
-    *prog_fd = post_unload_fd;
-    post_unload_fd = -1;
-
-    return 0;
 }
 
 static int _nf_attach_prog(struct bf_program *new_prog,

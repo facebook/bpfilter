@@ -56,72 +56,6 @@ void bf_codegen_free(struct bf_codegen **codegen)
     *codegen = NULL;
 }
 
-int bf_codegen_generate(struct bf_codegen *codegen)
-{
-    int r;
-    struct if_nameindex *if_ni;
-    struct if_nameindex *it;
-
-    bf_assert(codegen);
-
-    if_ni = if_nameindex();
-    if (!if_ni)
-        return bf_err_code(errno, "failed to get local interfaces");
-
-    for (it = if_ni; it->if_index != 0 || it->if_name != NULL; it++) {
-        _cleanup_bf_program_ struct bf_program *program = NULL;
-        if (bf_streq("lo", it->if_name))
-            continue;
-
-        r = bf_program_new(&program, it->if_index, codegen->hook,
-                           codegen->front);
-        if (r)
-            return r;
-
-        r = bf_program_generate(program, &codegen->rules, codegen->policy);
-        if (r) {
-            return bf_err_code(r, "failed to generate program for %s",
-                               it->if_name);
-        }
-
-        r = bf_list_add_tail(&codegen->programs, program);
-        if (r)
-            return bf_err_code(r, "failed to add program to codegen");
-
-        TAKE_PTR(program);
-    }
-
-    if_freenameindex(if_ni);
-
-    return 0;
-}
-
-int bf_codegen_load(struct bf_codegen *codegen, struct bf_codegen *prev_codegen)
-{
-    int r;
-
-    bf_list_foreach (&codegen->programs, program_node) {
-        struct bf_program *prev_program = NULL;
-        struct bf_program *program = bf_list_node_get_data(program_node);
-
-        if (prev_codegen) {
-            prev_program =
-                bf_codegen_get_program(prev_codegen, program->ifindex);
-        }
-
-        r = bf_program_load(program, prev_program);
-        if (r) {
-            bf_program_dump(program, EMPTY_PREFIX);
-            bf_program_dump_bytecode(program, false);
-            return bf_err_code(r, "failed to load program");
-        }
-    }
-
-    bf_codegen_dump(codegen, EMPTY_PREFIX);
-
-    return 0;
-}
-
 int bf_codegen_unload(struct bf_codegen *codegen)
 {
     int r;
@@ -396,7 +330,7 @@ int bf_codegen_up(struct bf_codegen *codegen)
             goto end;
         }
 
-        r = bf_program_attach(prog, NULL);
+        r = bf_program_load(prog, NULL);
         if (r)
             goto end;
 
@@ -419,10 +353,26 @@ int bf_codegen_update(struct bf_codegen *codegen)
     bf_assert(codegen);
 
     bf_list_foreach (&codegen->programs, program_node) {
-        struct bf_program *program = bf_list_node_get_data(program_node);
-        r = bf_program_update(program, &codegen->rules, codegen->policy);
+        _cleanup_bf_program_ struct bf_program *new_prog = NULL;
+        struct bf_program *old_prog = bf_list_node_get_data(program_node);
+
+        r = bf_program_new(&new_prog, old_prog->ifindex, codegen->hook,
+                           codegen->front);
         if (r)
-            return bf_err_code(r, "failed to refresh program");
+            return bf_err_code(r, "failed to create a new bf_program");
+
+        r = bf_program_generate(new_prog, &codegen->rules, codegen->policy);
+        if (r)
+            return bf_err_code(
+                r, "failed to generate the bytecode for a new bf_program");
+
+        r = bf_program_load(new_prog, old_prog);
+        if (r)
+            return bf_err_code(
+                r, "failed to attach the new bf_program, keeping the old one");
+
+        program_node->data = TAKE_PTR(new_prog);
+        bf_program_free(&old_prog);
     }
 
     return 0;

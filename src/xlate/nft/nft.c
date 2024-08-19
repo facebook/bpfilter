@@ -259,13 +259,9 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         codegen->hook = BF_HOOK_NFT_INGRESS;
         codegen->policy = verdict;
 
-        r = bf_codegen_generate(codegen);
+        r = bf_codegen_up(codegen);
         if (r < 0)
             return bf_err_code(r, "failed to generate codegen");
-
-        r = bf_codegen_load(codegen, NULL);
-        if (r < 0)
-            return bf_err_code(r, "failed to load codegen");
 
         bf_context_set_codegen(BF_HOOK_NFT_INGRESS, BF_FRONT_NFT, codegen);
 
