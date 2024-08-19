@@ -62,6 +62,8 @@ Test(hook, can_get_attach_type_from_hook)
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         attach_type = bf_hook_to_attach_type(i);
         assert_true(0 <= attach_type);
-        assert_true(attach_type < __MAX_BPF_ATTACH_TYPE);
+        // Don't check if the attach_type is a valid bpf_attach_type for the
+        // current kernel, as we might define it in compat.h to allow bpfilter
+        // to build.
     }
 }

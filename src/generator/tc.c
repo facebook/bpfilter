@@ -27,10 +27,6 @@
 static int _tc_gen_inline_prologue(struct bf_program *program);
 static int _tc_gen_inline_epilogue(struct bf_program *program);
 static int _tc_get_verdict(enum bf_verdict verdict);
-static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                      union bf_flavor_attach_attr *attr);
-static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr);
 static int _tc_attach_prog(struct bf_program *new_prog,
                            struct bf_program *old_prog);
 static int _tc_detach_prog(struct bf_program *program);
@@ -39,8 +35,6 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_prologue = _tc_gen_inline_prologue,
     .gen_inline_epilogue = _tc_gen_inline_epilogue,
     .get_verdict = _tc_get_verdict,
-    .attach_prog_pre_unload = _tc_attach_prog_pre_unload,
-    .attach_prog_post_unload = _tc_attach_prog_post_unload,
     .attach_prog = _tc_attach_prog,
     .detach_prog = _tc_detach_prog,
 };
@@ -115,62 +109,6 @@ static int _tc_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-/**
- * @brief Attach the loaded TC program to the proper hook.
- *
- * @todo How should priority be handled?
- * @todo This function, as well as many others, is using libbpf. Not all
- *  functions uses libbpf to communicate with the kernel. This should be
- *  unified.
- *
- * @param program Program to attach to the TC hook. Can't be NULL, image
- *  must have been previously generated.
- * @param fd File descriptor of the loaded BPF program. Can't be negative.
- * @param attr Attribute used for 2-step attach workflow.
- * @return 0 on success, negative error code on failure.
- */
-static int _tc_attach_prog_pre_unload(struct bf_program *program, int *prog_fd,
-                                      union bf_flavor_attach_attr *attr)
-{
-    struct bpf_tc_hook hook = {};
-    struct bpf_tc_opts opts = {};
-    int r;
-
-    UNUSED(attr);
-
-    bf_assert(program);
-    bf_assert(*prog_fd >= 0);
-
-    hook.sz = sizeof(hook);
-    hook.ifindex = (int)program->ifindex;
-    hook.attach_point = bf_hook_to_tc_hook(program->hook);
-
-    r = bpf_tc_hook_create(&hook);
-    if (r && r != -EEXIST)
-        return bf_err_code(r, "failed to create TC hook");
-
-    opts.sz = sizeof(opts);
-    opts.handle = bf_tc_program_handle(program) + 1;
-    opts.priority = 1;
-    opts.prog_fd = *prog_fd;
-
-    r = bpf_tc_attach(&hook, &opts);
-    if (r)
-        return bf_err_code(r, "failed to attach BPF program to TC hook");
-
-    return 0;
-}
-
-static int _tc_attach_prog_post_unload(struct bf_program *program, int *prog_fd,
-                                       union bf_flavor_attach_attr *attr)
-{
-    UNUSED(program);
-    UNUSED(prog_fd);
-    UNUSED(attr);
-
-    return 0;
-}
-
 static int _tc_attach_prog(struct bf_program *new_prog,
                            struct bf_program *old_prog)
 {
@@ -216,38 +154,7 @@ static int _tc_attach_prog(struct bf_program *new_prog,
  */
 static int _tc_detach_prog(struct bf_program *program)
 {
-    struct bpf_tc_hook hook = {};
-    struct bpf_tc_opts opts = {};
-    int r;
-
     bf_assert(program);
 
-    hook.sz = sizeof(hook);
-    hook.ifindex = (int)program->ifindex;
-    hook.attach_point = bf_hook_to_tc_hook(program->hook);
-
-    opts.sz = sizeof(opts);
-    opts.handle = bf_tc_program_handle(program) + 1;
-    opts.priority = 1;
-
-    r = bpf_tc_detach(&hook, &opts);
-    if (r) {
-        return bf_err_code(r, "failed to detach %s program from %s",
-                           bf_front_to_str(program->front),
-                           bf_hook_to_str(program->hook));
-    }
-
-    return 0;
-}
-
-enum bpf_tc_attach_point bf_hook_to_tc_hook(enum bf_hook hook)
-{
-    bf_assert(hook == BF_HOOK_TC_INGRESS || hook == BF_HOOK_TC_EGRESS);
-
-    enum bpf_tc_attach_point hooks[] = {
-        [BF_HOOK_TC_INGRESS] = BPF_TC_INGRESS,
-        [BF_HOOK_TC_EGRESS] = BPF_TC_EGRESS,
-    };
-
-    return hooks[hook];
+    return bf_bpf_link_detach(program->runtime.prog_fd);
 }

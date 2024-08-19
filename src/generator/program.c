@@ -731,94 +731,39 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     return 0;
 }
 
-int bf_program_update(struct bf_program *program, bf_list *rules,
-                      enum bf_verdict policy)
+int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
 {
     int r;
 
-    // Reset content
-    program->img_size = 0;
-    memset(program->functions_location, 0,
-           sizeof(uint32_t) * _BF_CODEGEN_FIXUP_FUNCTION_MAX);
-    bf_list_clean(&program->fixups);
-    bf_list_init(&program->fixups,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
+    bf_assert(new_prog);
 
-    r = bf_program_generate(program, rules, policy);
-    if (r)
-        return bf_err_code(r, "can't regenerate program!");
-
-    r = bf_program_load(program, program);
-    if (r)
-        return bf_err_code(r, "can't load regenerated program!");
-
-    return 0;
-}
-
-int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
-{
-    union bf_flavor_attach_attr attr;
-    _cleanup_close_ int map_fd = -1;
-    _cleanup_close_ int prog_fd = -1;
-    union bf_fixup_attr bf_attr = {};
-    int r;
-
-    bf_assert(program);
-
-    r = _bf_program_load_counters_map(program);
+    r = _bf_program_load_counters_map(new_prog);
     if (r)
         return r;
 
-    r = bf_printer_publish(bf_context_get_printer());
-    if (r)
-        return bf_err_code(r, "can't publish printer map");
-
-    bf_attr.map_fd = bf_printer_get_fd(bf_context_get_printer());
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD, &bf_attr);
-    if (r)
-        return bf_err_code(r, "can't update instruction with printer map fd");
-
-    r = bf_bpf_prog_load(program->prog_name,
-                         bf_hook_to_bpf_prog_type(program->hook), program->img,
-                         program->img_size,
-                         bf_hook_to_attach_type(program->hook), &prog_fd);
-    if (r < 0)
-        return r;
-
-    r = program->runtime.ops->attach_prog_pre_unload(program, &prog_fd, &attr);
+    r = _bf_program_load_printer_map(new_prog);
     if (r)
         return r;
 
-    if (prev_program)
-        bf_program_unload(prev_program);
-
-    r = program->runtime.ops->attach_prog_post_unload(program, &prog_fd, &attr);
+    r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
     if (r)
         return r;
-
-    bf_dbg("loaded %s codegen image to %s", bf_front_to_str(program->front),
-           bf_hook_to_str(program->hook));
 
     if (!bf_opts_transient()) {
         // Pin program
-        r = bf_bpf_obj_pin(program->prog_pin_path, prog_fd);
+        r = bf_bpf_obj_pin(new_prog->prog_pin_path, new_prog->runtime.prog_fd);
         if (r < 0) {
-            return bf_err_code(errno, "failed to pin program fd to %s",
-                               program->prog_pin_path);
+            return bf_err_code(r, "failed to pin program fd to %s",
+                               new_prog->prog_pin_path);
         }
-        bf_dbg("  prog pin path: %s", program->prog_pin_path);
 
         // Pin map
-        r = bf_bpf_obj_pin(program->map_pin_path, map_fd);
+        r = bf_bpf_obj_pin(new_prog->map_pin_path, new_prog->runtime.map_fd);
         if (r < 0) {
-            return bf_err_code(errno, "failed to pin map fd to %s",
-                               program->map_pin_path);
+            return bf_err_code(r, "failed to pin map fd to %s",
+                               new_prog->map_pin_path);
         }
-        bf_dbg("  map pin path: %s", program->map_pin_path);
     }
-
-    program->runtime.prog_fd = TAKE_FD(prog_fd);
-    program->runtime.map_fd = TAKE_FD(map_fd);
 
     return 0;
 }

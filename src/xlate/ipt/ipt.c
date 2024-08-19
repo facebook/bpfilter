@@ -441,16 +441,10 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
         if (!codegen)
             continue;
 
-        r = bf_codegen_generate(codegen);
+        r = bf_codegen_up(codegen);
         if (r) {
             bf_err_code(r, "failed to generate bytecode for hook %d, skipping",
                         codegen->hook);
-            goto end_free_codegens;
-        }
-
-        r = bf_codegen_load(codegen, bf_context_get_codegen(i, BF_FRONT_IPT));
-        if (r) {
-            bf_err_code(r, "failed to load codegen");
             goto end_free_codegens;
         }
 

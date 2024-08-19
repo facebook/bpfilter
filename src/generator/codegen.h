@@ -70,14 +70,6 @@ int bf_codegen_new(struct bf_codegen **codegen);
 void bf_codegen_free(struct bf_codegen **codegen);
 
 /**
- * @brief Generate BPF programs for a codegen.
- *
- * @param codegen Codegen to generate BPF programs for. Can't be NULL.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_codegen_generate(struct bf_codegen *codegen);
-
-/**
  * @brief Update the BPF programs for a codegen.
  *
  * @param codegen Codegen to update. Can't be NULL.
@@ -96,20 +88,6 @@ int bf_codegen_update(struct bf_codegen *codegen);
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_codegen_up(struct bf_codegen *codegen);
-
-/**
- * @brief Load the BPF program stored in a codegen.
- *
- * Each program within the codegen will be loaded and attached to its interface.
- *
- * @param codegen Codegen containing the BPF program to load. Can't be NULL.
- * @param prev_codegen Codegen to replace. Can be NULL. @ref bf_codegen_load
- *  is responsible for unloading the previous codegen. @ref bf_codegen_load
- *  doesn't own @p prev_codegen, and won't free it.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_codegen_load(struct bf_codegen *codegen,
-                    struct bf_codegen *prev_codegen);
 
 /**
  * @brief Unload a codegen's BPF programs.

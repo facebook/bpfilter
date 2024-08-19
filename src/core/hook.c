@@ -7,6 +7,12 @@
 
 #include "shared/helper.h"
 
+/* Linux 6.4 and 6.5 doesn't support TCX, for BPF_TCX_{INGRESS,EGRESS} are not
+ * defined. Defining them here allow for Ubuntu 23.10 to build and use bpfilter,
+ * although bpfilter wouldn't be able to attach a TCX program. */ 
+#define BPF_TCX_INGRESS 46
+#define BPF_TCX_EGRESS 47
+
 const char *bf_hook_to_str(enum bf_hook hook)
 {
     static const char *hooks_str[] = {
@@ -71,13 +77,13 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
 {
     static const enum bpf_attach_type hooks[] = {
         [BF_HOOK_NFT_INGRESS] = 0,
-        [BF_HOOK_TC_INGRESS] = 0,
+        [BF_HOOK_TC_INGRESS] = BPF_TCX_INGRESS,
         [BF_HOOK_IPT_PRE_ROUTING] = 0,
         [BF_HOOK_IPT_LOCAL_IN] = BPF_NETFILTER,
         [BF_HOOK_IPT_FORWARD] = BPF_NETFILTER,
         [BF_HOOK_IPT_LOCAL_OUT] = BPF_NETFILTER,
         [BF_HOOK_IPT_POST_ROUTING] = 0,
-        [BF_HOOK_TC_EGRESS] = 0,
+        [BF_HOOK_TC_EGRESS] = BPF_TCX_EGRESS,
     };
 
     bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
