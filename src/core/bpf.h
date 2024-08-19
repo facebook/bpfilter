@@ -92,6 +92,20 @@ int bf_bpf_obj_pin(const char *path, int fd);
 int bf_bpf_obj_get(const char *path, int *fd);
 
 /**
+ * Create a TC BPF link.
+ *
+ * @param prog_fd File descriptor of the program to attach to the link.
+ * @param ifindex Index of the interface to attach the program to.
+ * @param hook TC hook (BPF_TCX_INGRESS or BPF_TCX_EGRESS) to attach the
+ * program to.
+ * @param link_fd Link file descriptor, only valid if the return value of the
+ * function is 0.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_tc_link_create(int prog_fd, int ifindex, enum bpf_attach_type hook,
+                          int *link_fd);
+
+/**
  * @brief Create a Netfilter BPF link.
  *
  * @param prog_fd File descriptor of the program to attach to the link.
@@ -127,6 +141,18 @@ int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_xdp_link_update(int link_fd, int prog_fd);
+
+/**
+ * Update the program attached to a BPF link.
+ *
+ * Every configuration of the link remain unchanged, only the linked BPF
+ * program is modified.
+ *
+ * @param link_fd File descriptor of the link to update.
+ * @param prog_fd File descriptor of the new program to attach to the link.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_link_update(int link_fd, int prog_fd);
 
 /**
  * @brief Detach a BPF link using its file descriptor.
