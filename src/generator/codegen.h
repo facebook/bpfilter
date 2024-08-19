@@ -86,6 +86,18 @@ int bf_codegen_generate(struct bf_codegen *codegen);
 int bf_codegen_update(struct bf_codegen *codegen);
 
 /**
+ * Create a @ref bf_program for each interface, generate the program, load it,
+ * and attach it to the kernel.
+ *
+ * Simplify @ref bf_program management by providing a single call to add the
+ * programs to the systems, starting from a new @ref bf_codegen.
+ *
+ * @param codegen Codegen to generate the programs for, and load to the system.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_codegen_up(struct bf_codegen *codegen);
+
+/**
  * @brief Load the BPF program stored in a codegen.
  *
  * Each program within the codegen will be loaded and attached to its interface.

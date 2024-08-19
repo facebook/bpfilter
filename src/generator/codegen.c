@@ -366,6 +366,52 @@ int bf_codegen_get_counter(const struct bf_codegen *codegen,
     return 0;
 }
 
+int bf_codegen_up(struct bf_codegen *codegen)
+{
+    struct if_nameindex *if_ni;
+    struct if_nameindex *it;
+    int r = 0;
+
+    bf_assert(codegen);
+
+    if_ni = if_nameindex();
+    if (!if_ni) {
+        r = bf_err_code(errno, "failed to get local interfaces");
+        goto end;
+    }
+
+    for (it = if_ni; it->if_index != 0 || it->if_name != NULL; it++) {
+        _cleanup_bf_program_ struct bf_program *prog = NULL;
+
+        if (bf_streq("lo", it->if_name))
+            continue;
+
+        r = bf_program_new(&prog, it->if_index, codegen->hook, codegen->front);
+        if (r)
+            goto end;
+
+        r = bf_program_generate(prog, &codegen->rules, codegen->policy);
+        if (r) {
+            bf_err_code(r, "failed to generate bf_program for %s", it->if_name);
+            goto end;
+        }
+
+        r = bf_program_attach(prog, NULL);
+        if (r)
+            goto end;
+
+        r = bf_list_add_tail(&codegen->programs, prog);
+        if (r)
+            goto end;
+
+        TAKE_PTR(prog);
+    }
+
+end:
+    if_freenameindex(if_ni);
+    return r;
+}
+
 int bf_codegen_update(struct bf_codegen *codegen)
 {
     int r;

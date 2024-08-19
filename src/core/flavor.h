@@ -117,17 +117,21 @@ struct bf_flavor_ops
     /**
      * Load and attach a BPF program.
      *
-     * @p new_prog is the new program to be attached to the hook, and @p old_prog is the existing one.
+     * @p new_prog is the new program to be attached to the hook, and @p
+     * old_prog is the existing one.
      * @p old_prog can be NULL, if no program is already attached. The exact
-     * load and attach mechanism is up to the flavor: direct attach, BPF link, ...
+     * load and attach mechanism is up to the flavor: direct attach, BPF link,
+     * ...
      *
-     * If @p old_prog is not NULL, the replacement of @p old_prog by @p new_prog must be atomic.
+     * If @p old_prog is not NULL, the replacement of @p old_prog by @p new_prog
+     * must be atomic.
      *
      * @param new_prog New BPF program to attach to the kernel. Can't be NULL.
      * @param old_prog Previous program to replace.
      * @return 0 on success, or negative errno value on failure.
      */
-    int (*attach_prog)(struct bf_program *new_prog, struct bf_program *old_prog); 
+    int (*attach_prog)(struct bf_program *new_prog,
+                       struct bf_program *old_prog);
 
     int (*detach_prog)(struct bf_program *program);
 };

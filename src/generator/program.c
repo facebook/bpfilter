@@ -510,7 +510,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     union bf_fixup_attr fixup_attr = {};
     int r;
 
-    bf_assert(program); 
+    bf_assert(program);
 
     // Will publish the printer if not published yet.
     r = bf_printer_publish(bf_context_get_printer());
@@ -518,7 +518,8 @@ static int _bf_program_load_printer_map(struct bf_program *program)
         return bf_err_code(r, "can't publish printer map");
 
     fixup_attr.map_fd = bf_printer_get_fd(bf_context_get_printer());
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD, &fixup_attr);
+    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
+                          &fixup_attr);
     if (r)
         return bf_err_code(r, "can't update instruction with printer map fd");
 
@@ -910,4 +911,3 @@ int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
 
     return 0;
 }
-
