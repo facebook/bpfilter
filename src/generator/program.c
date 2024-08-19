@@ -483,7 +483,7 @@ static int _bf_program_generate_functions(struct bf_program *program)
     return 0;
 }
 
-static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
+static int _bf_program_load_counters_map(struct bf_program *program)
 {
     _cleanup_close_ int _fd = -1;
     union bf_fixup_attr bf_attr = {};
@@ -500,7 +500,27 @@ static int _bf_program_load_counters_map(struct bf_program *program, int *fd)
     bf_attr.map_fd = _fd;
     _bf_program_fixup(program, BF_CODEGEN_FIXUP_MAP_FD, &bf_attr);
 
-    *fd = TAKE_FD(_fd);
+    program->runtime.map_fd = TAKE_FD(_fd);
+
+    return 0;
+}
+
+static int _bf_program_load_printer_map(struct bf_program *program)
+{
+    union bf_fixup_attr fixup_attr = {};
+    int r;
+
+    bf_assert(program); 
+
+    // Will publish the printer if not published yet.
+    r = bf_printer_publish(bf_context_get_printer());
+    if (r)
+        return bf_err_code(r, "can't publish printer map");
+
+    fixup_attr.map_fd = bf_printer_get_fd(bf_context_get_printer());
+    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD, &fixup_attr);
+    if (r)
+        return bf_err_code(r, "can't update instruction with printer map fd");
 
     return 0;
 }
@@ -744,7 +764,7 @@ int bf_program_load(struct bf_program *program, struct bf_program *prev_program)
 
     bf_assert(program);
 
-    r = _bf_program_load_counters_map(program, &map_fd);
+    r = _bf_program_load_counters_map(program);
     if (r)
         return r;
 
@@ -852,3 +872,42 @@ int bf_codegen_set_counters(struct bf_program *program,
 
     return -ENOTSUP;
 }
+
+int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
+{
+    union bf_fixup_attr bf_attr = {};
+    int r;
+
+    bf_assert(new_prog);
+
+    r = _bf_program_load_counters_map(new_prog);
+    if (r)
+        return r;
+
+    r = _bf_program_load_printer_map(new_prog);
+    if (r)
+        return r;
+
+    r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
+    if (r)
+        return r;
+
+    if (!bf_opts_transient()) {
+        // Pin program
+        r = bf_bpf_obj_pin(new_prog->prog_pin_path, new_prog->runtime.prog_fd);
+        if (r < 0) {
+            return bf_err_code(r, "failed to pin program fd to %s",
+                               new_prog->prog_pin_path);
+        }
+
+        // Pin map
+        r = bf_bpf_obj_pin(new_prog->map_pin_path, new_prog->runtime.map_fd);
+        if (r < 0) {
+            return bf_err_code(r, "failed to pin map fd to %s",
+                               new_prog->map_pin_path);
+        }
+    }
+
+    return 0;
+}
+
