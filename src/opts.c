@@ -52,6 +52,7 @@ static struct argp_option options[] = {
      0},
     {"no-iptables", 0x01, 0, 0, "Disable iptables support", 0},
     {"no-nftables", 0x02, 0, 0, "Disable nftables support", 0},
+    {"no-cli", 0x04, 0, 0, "Disable CLI support", 0},
     {"verbose", 'v', 0, 0, "Print debug logs", 0},
     {"debug", 0x03, 0, 0, "Generate BPF programs with debug logs", 0},
     {0},
@@ -82,6 +83,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case 0x02:
         bf_info("disabling nftables support");
         args->fronts &= ~(1 << BF_FRONT_NFT);
+        break;
+    case 0x04:
+        bf_info("disabling CLI support");
+        args->fronts &= ~(1 << BF_FRONT_CLI);
         break;
     case 'v':
         args->verbose = true;

@@ -106,6 +106,7 @@ set(bpfilter_daemon_srcs
     ${CMAKE_SOURCE_DIR}/src/xlate/nft/nft.c
     ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.c
     ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.c
+    ${CMAKE_SOURCE_DIR}/src/xlate/cli.c
 )
 
 set(bpfilter_library_srcs
