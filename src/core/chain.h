@@ -10,11 +10,17 @@
 #include "core/list.h"
 #include "core/verdict.h"
 
-struct bf_chain;
 struct bf_marsh;
 struct bf_rule;
 
 #define _cleanup_bf_chain_ __attribute__((cleanup(bf_chain_free)))
+
+struct bf_chain
+{
+    enum bf_hook hook;
+    enum bf_verdict policy;
+    bf_list rules;
+};
 
 /**
  * Allocate and initialize a new bf_chain object.

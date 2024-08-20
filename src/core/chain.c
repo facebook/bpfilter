@@ -9,13 +9,6 @@
 #include "core/rule.h"
 #include "shared/helper.h"
 
-struct bf_chain
-{
-    enum bf_hook hook;
-    enum bf_verdict policy;
-    bf_list rules;
-};
-
 int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *rules)
 {
