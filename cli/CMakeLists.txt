@@ -48,6 +48,7 @@ target_include_directories(bfcli
         ${CMAKE_SOURCE_DIR}/shared/include
         ${CMAKE_SOURCE_DIR}/shared/include/bpfilter
         ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_SOURCE_DIR}/lib/include
 )
 
 target_compile_options(bfcli
@@ -68,6 +69,7 @@ target_link_libraries(bfcli
     PUBLIC
         PkgConfig::bpf
         PkgConfig::nl
+        libbpfilter_a
 )
 
 install(
