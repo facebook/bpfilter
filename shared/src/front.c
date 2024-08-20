@@ -14,6 +14,7 @@ const char *bf_front_to_str(enum bf_front front)
     static const char * const names[] = {
         [BF_FRONT_IPT] = "BF_FRONT_IPT",
         [BF_FRONT_NFT] = "BF_FRONT_NFT",
+        [BF_FRONT_CLI] = "BF_FRONT_CLI",
     };
 
     return names[front];
