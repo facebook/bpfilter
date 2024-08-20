@@ -821,7 +821,6 @@ int bf_codegen_set_counters(struct bf_program *program,
 
 int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
 {
-    union bf_fixup_attr bf_attr = {};
     int r;
 
     bf_assert(new_prog);
