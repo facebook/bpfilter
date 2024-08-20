@@ -9,7 +9,7 @@
 
 /* Linux 6.4 and 6.5 doesn't support TCX, for BPF_TCX_{INGRESS,EGRESS} are not
  * defined. Defining them here allow for Ubuntu 23.10 to build and use bpfilter,
- * although bpfilter wouldn't be able to attach a TCX program. */ 
+ * although bpfilter wouldn't be able to attach a TCX program. */
 #define BPF_TCX_INGRESS 46
 #define BPF_TCX_EGRESS 47
 
