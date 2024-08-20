@@ -3,9 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bpfilter/shared/request.h"
+#include "bpfilter/bpfilter.h"
 #include "core/chain.h"
 #include "core/list.h"
 #include "core/dump.h"
+#include "core/marsh.h"
 #include "parser/lexer.h"
 #include "parser/parser.h"
 
@@ -79,9 +82,40 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    bf_list_foreach (&chains, chain_node)
-        bf_chain_dump(bf_list_node_get_data(chain_node), EMPTY_PREFIX);
+    bf_list_foreach (&chains, chain_node) {
+        struct bf_chain *chain = bf_list_node_get_data(chain_node);
+        _cleanup_bf_request_ struct bf_request *request = NULL;
+        _cleanup_bf_response_ struct bf_response *response = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
+        r = bf_chain_marsh(chain, &marsh);
+        if (r) {
+            fprintf(stderr, "failed to marsh chain, skipping\n");
+            continue;
+        }
+
+        r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
+        if (r) {
+            fprintf(stderr, "failed to create request for chain, skipping\n");
+            continue;
+        }
+
+        request->front = BF_FRONT_CLI;
+        request->cmd = BF_REQ_SET_RULES;
+
+        r = bf_send(request, &response);
+        if (r) {
+            fprintf(stderr, "failed to send chain creation request, skipping\n");
+            continue;
+        }
+
+        if (response->type == BF_RES_FAILURE) {
+            fprintf(stderr, "chain creation request failed, %d received\n", response->error);
+            continue;
+        }
+    }
+
+    bf_list_clean(&chains);
     fclose(rules);
 
     return 0;
