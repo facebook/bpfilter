@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "opts.h"
+#include "core/opts.h"
 
 #define _DUMP_HEXDUMP_LEN 8
 

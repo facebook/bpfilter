@@ -3,14 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "bpfilter/shared/request.h"
-#include "bpfilter/bpfilter.h"
+#include "cli/lexer.h"
+#include "cli/parser.h"
 #include "core/chain.h"
-#include "core/list.h"
 #include "core/dump.h"
+#include "core/list.h"
 #include "core/marsh.h"
-#include "parser/lexer.h"
-#include "parser/parser.h"
+#include "shared/request.h"
+#include "shared/response.h"
+
+int bf_send(const struct bf_request *request, struct bf_response **response);
 
 static struct bf_options
 {
@@ -105,12 +107,14 @@ int main(int argc, char *argv[])
 
         r = bf_send(request, &response);
         if (r) {
-            fprintf(stderr, "failed to send chain creation request, skipping\n");
+            fprintf(stderr,
+                    "failed to send chain creation request, skipping\n");
             continue;
         }
 
         if (response->type == BF_RES_FAILURE) {
-            fprintf(stderr, "chain creation request failed, %d received\n", response->error);
+            fprintf(stderr, "chain creation request failed, %d received\n",
+                    response->error);
             continue;
         }
     }

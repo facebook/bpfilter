@@ -7,7 +7,7 @@
 
 #include <sys/types.h>
 
-#include "bpfilter/shared/helper.h"
+#include "shared/helper.h"
 
 #define _cleanup_bf_response_ __attribute__((cleanup(bf_response_free)))
 

@@ -22,8 +22,6 @@
 #include "generator/stub.h"
 #include "shared/helper.h"
 
-#include "external/filter.h"
-
 static int _nf_gen_inline_prologue(struct bf_program *program);
 static int _nf_gen_inline_epilogue(struct bf_program *program);
 static int _nf_get_verdict(enum bf_verdict verdict);

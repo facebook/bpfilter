@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "opts.h"
+#include "core/opts.h"
 
 #include <argp.h>
 #include <stdint.h>

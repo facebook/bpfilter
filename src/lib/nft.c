@@ -8,10 +8,9 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "bpfilter/bpfilter.h"
-#include "shared/front.h"
-#include "shared/request.h"
-#include "shared/response.h"
+#include "lib/generic.h"
+
+int bf_send(const struct bf_request *request, struct bf_response **response);
 
 int bf_nft_send(const void *data, size_t len)
 {

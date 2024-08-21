@@ -10,12 +10,12 @@
 #include <linux/bpf.h>
 
 #include "core/flavor.h"
+#include "core/opts.h"
 #include "generator/jmp.h"
 #include "generator/printer.h"
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "generator/swich.h"
-#include "opts.h"
 #include "shared/helper.h"
 
 #include "external/filter.h"

@@ -33,8 +33,6 @@
 #include "generator/stub.h"
 #include "shared/helper.h"
 
-#include "external/filter.h"
-
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
 int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,

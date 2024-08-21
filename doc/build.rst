@@ -31,11 +31,13 @@ There is no ``bpfilter``-specific CMake option, but you can use the CMake-provid
 
 Once CMake completes, you can build ``bpfilter``. The following Make targets are available:
 
-* ``bpfilter``: build ``bpfilter`` daemon.
+* ``daemon``: build ``bpfilter`` daemon.
 
-* ``libbpfilter``: build a static and dynamic version of ``libbpfilter``.
+* ``library``: build a static and dynamic version of ``libbpfilter``.
 
-* ``test``: build and run unit tests.
+* ``cli``: build ``bfcli`` command line interface.
+
+* ``test``: build and run the test suite.
 
 * ``doc``: generate ``bpfilter``'s documentation in ``$BUILD_DIRECTORY/doc/html``.
 
