@@ -10,23 +10,28 @@ set(doc_srcs
 	index.rst reference.rst
 )
 
+get_target_property(shared_srcs shared SOURCES)
+get_target_property(core_srcs core SOURCES)
+get_target_property(lib_srcs lib SOURCES)
+get_target_property(generator_srcs generator SOURCES)
+get_target_property(xlate_srcs xlate SOURCES)
+
 add_custom_target(doc
 	COMMAND Doxygen::doxygen Doxyfile
 	COMMAND ${SPHINX_BIN} -c . -Dbreathe_projects.bpfilter=xml ${CMAKE_CURRENT_SOURCE_DIR} html
-	DEPENDS Doxyfile.in conf.py ${doc_srcs} ${CMAKE_SOURCE_DIR}/src/main.c ${bpfilter_srcs}
+	DEPENDS Doxyfile.in conf.py ${doc_srcs} ${shared_srcs} ${core_srcs} ${lib_srcs} ${generator_srcs} ${xlate_srcs}
 	BYPRODUCTS xml html
 	COMMENT "Generate HTML documentation"
 )
 
 add_custom_target(coverage
 	COMMAND ${LCOV_BIN} --capture --directory ${CMAKE_BINARY_DIR} --output-file lcov.out
-	# Remove test files from the coverage results. lcov will fail due to test sources
-	# not providing coverage data, that's alright we specifically prevent them to do so.
+	# Only keep the coverage for bpfilter's source files, not the tests.
 	COMMAND ${LCOV_BIN}
 		--output-file lcov.out
-		--remove lcov.out
+		--extract lcov.out
 		--ignore-errors unused
-		"${CMAKE_SOURCE_DIR}/tests/unit/\\*"
+		"${CMAKE_SOURCE_DIR}/src/\\*"
 	COMMAND ${GENHTML_BIN} -o html_coverage lcov.out
 	BYPRODUCTS html_coverage
 	COMMENT "Generate coverage report"

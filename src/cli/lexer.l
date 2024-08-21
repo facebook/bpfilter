@@ -2,7 +2,7 @@
     #include <stdio.h>
     #include <stdbool.h>
 
-    #include "parser/parser.h"
+    #include "cli/parser.h"
     #include "core/verdict.h"
     #include "core/hook.h"
     #include "core/matcher.h"

@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include <bpfilter/shared/front.h>
 #include <sys/types.h>
 
-#include "bpfilter/shared/helper.h"
+#include "shared/front.h"
+#include "shared/helper.h"
 
 #define _cleanup_bf_request_ __attribute__((cleanup(bf_request_free)))
 

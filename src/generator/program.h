@@ -25,8 +25,6 @@
 #include "generator/reg.h"
 #include "shared/front.h"
 
-#include "external/filter.h"
-
 #define PIN_PATH_LEN 64
 
 /**

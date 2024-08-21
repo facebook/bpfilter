@@ -79,7 +79,7 @@ endfunction()
 enable_testing()
 
 set(bf_test_srcs
-    src/opts.c
+    src/core/opts.c
     src/core/btf.c
     src/core/context.c
     src/core/flavor.c
@@ -96,13 +96,19 @@ set(bf_test_srcs
     src/generator/printer.c
     src/generator/program.c
     src/generator/swich.c
+    src/shared/front.c
     src/xlate/nft/nft.c
     src/xlate/nft/nfmsg.c
     src/xlate/nft/nfgroup.c
-    shared/src/front.c
 )
 
-add_executable(tests_unit
+get_target_property(shared_srcs shared SOURCES)
+get_target_property(core_srcs core SOURCES)
+get_target_property(generator_srcs generator SOURCES)
+get_target_property(xlate_srcs xlate SOURCES)
+get_target_property(lib_srcs lib SOURCES)
+
+add_executable(unit_tests
     assert_override.h
 
     harness/main.c
@@ -116,46 +122,45 @@ add_executable(tests_unit
 
     ${bf_test_srcs}
 
-    ${bpfilter_daemon_srcs}
-    ${bpfilter_shared_srcs}
+    ${shared_srcs}
+    ${core_srcs}
+    ${generator_srcs}
+    ${xlate_srcs}
+    ${lib_srcs}
 )
 
-bf_test_configure_non_build_srcs(tests_unit
+bf_test_configure_non_build_srcs(unit_tests
     TESTS
         ${bf_test_srcs}
     SOURCES
-        ${bpfilter_daemon_srcs}
-        ${bpfilter_shared_srcs}
+        ${shared_srcs}
+        ${core_srcs}
+        ${generator_srcs}
+        ${xlate_srcs}
+        ${lib_srcs}
 )
 
 # The unit tests executable needs PIC disabled for test auto-discovery to work.
-set_property(TARGET tests_unit PROPERTY POSITION_INDEPENDENT_CODE FALSE)
+set_property(TARGET unit_tests PROPERTY POSITION_INDEPENDENT_CODE FALSE)
 
-target_compile_options(tests_unit
-    PRIVATE
-        -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
-        ${bpfilter_cflags}
-        $<$<CONFIG:Release>:${bpfilter_cflags_release}>
-        $<$<CONFIG:Debug>:${bpfilter_cflags_debug}>
-)
-
-# We don't want to compute coverage statistics for unit testing code.
-set(bf_coverage_srcs ${bf_test_srcs} ${bpfilter_daemon_srcs} ${bpfilter_shared_srcs})
-set_source_files_properties(${bf_coverage_srcs}
+set_source_files_properties(${bf_test_srcs} ${shared_srcs} ${core_srcs} ${generator_srcs} ${xlate_srcs} ${lib_srcs}
     PROPERTIES
         COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
 )
 
-target_include_directories(tests_unit
+target_compile_options(unit_tests
     PRIVATE
-        ${CMAKE_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/shared/include
-        ${CMAKE_SOURCE_DIR}/shared/include/bpfilter
+        ${bf_cflags}
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
 )
 
-target_link_libraries(tests_unit
+target_include_directories(unit_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(unit_tests
     PRIVATE
         PkgConfig::bpf
         gcov
@@ -164,14 +169,9 @@ target_link_libraries(tests_unit
         PkgConfig::nl
 )
 
-target_link_options(tests_unit
-    PUBLIC
-        ${bpfilter_ldflags}
-        $<$<CONFIG:Release>:${bpfilter_ldflags_release}>
-        $<$<CONFIG:Debug>:${bpfilter_ldflags_debug}>
-)
+target_link_options(unit_tests PUBLIC ${bf_ldflags})
 
-bf_test_mock(tests_unit
+bf_test_mock(unit_tests
     FUNCTIONS
         calloc
         malloc
@@ -184,10 +184,4 @@ bf_test_mock(tests_unit
         nlmsg_put
         nlmsg_append
         bf_bpf_obj_get
-)
-
-add_custom_target(test
-    COMMAND $<TARGET_FILE:tests_unit>
-    DEPENDS tests_unit
-    COMMENT "Running unit tests"
 )

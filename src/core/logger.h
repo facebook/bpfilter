@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-#include "opts.h"
+#include "core/opts.h"
 #include "shared/helper.h"
 
 enum bf_style

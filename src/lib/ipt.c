@@ -7,16 +7,14 @@
 
 #include <linux/netfilter_ipv4/ip_tables.h>
 
-#include <bpfilter/bpfilter.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "shared/front.h"
-#include "shared/helper.h"
-#include "shared/request.h"
-#include "shared/response.h"
+#include "lib/generic.h"
+
+int bf_send(const struct bf_request *request, struct bf_response **response);
 
 int bf_ipt_replace(struct ipt_replace *ipt_replace)
 {

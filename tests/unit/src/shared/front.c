@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "shared/src/front.c"
+#include "shared/front.c"
 
 #include "harness/cmocka.h"
 #include "harness/mock.h"

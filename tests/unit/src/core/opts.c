@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "src/opts.c"
+#include "core/opts.c"
 
 #include "harness/cmocka.h"
 #include "harness/helper.h"

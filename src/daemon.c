@@ -18,7 +18,7 @@
 #include "core/helper.h"
 #include "core/logger.h"
 #include "core/marsh.h"
-#include "opts.h"
+#include "core/opts.h"
 #include "shared/front.h"
 #include "shared/generic.h"
 #include "shared/helper.h"

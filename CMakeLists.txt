@@ -55,88 +55,14 @@ else ()
     endif ()
 endif ()
 
-set(bpfilter_shared_srcs
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/generic.h ${CMAKE_SOURCE_DIR}/shared/src/generic.c
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/front.h ${CMAKE_SOURCE_DIR}/shared/src/front.c
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/helper.h
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/ipt.h
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/request.h ${CMAKE_SOURCE_DIR}/shared/src/request.c
-    ${CMAKE_SOURCE_DIR}/shared/include/bpfilter/shared/response.h ${CMAKE_SOURCE_DIR}/shared/src/response.c
-)
-
-# Include headers to the list of sources, so dependencies are re-built
-# on change.
-set(bpfilter_daemon_srcs
-    ${CMAKE_SOURCE_DIR}/src/opts.h ${CMAKE_SOURCE_DIR}/src/opts.c
-
-    ${CMAKE_SOURCE_DIR}/src/core/bpf.h ${CMAKE_SOURCE_DIR}/src/core/bpf.c
-    ${CMAKE_SOURCE_DIR}/src/core/btf.h ${CMAKE_SOURCE_DIR}/src/core/btf.c
-    ${CMAKE_SOURCE_DIR}/src/core/chain.h ${CMAKE_SOURCE_DIR}/src/core/chain.c
-    ${CMAKE_SOURCE_DIR}/src/core/counter.h
-    ${CMAKE_SOURCE_DIR}/src/core/context.h ${CMAKE_SOURCE_DIR}/src/core/context.c
-    ${CMAKE_SOURCE_DIR}/src/core/dump.h ${CMAKE_SOURCE_DIR}/src/core/dump.c
-    ${CMAKE_SOURCE_DIR}/src/core/flavor.h ${CMAKE_SOURCE_DIR}/src/core/flavor.c
-    ${CMAKE_SOURCE_DIR}/src/core/helper.h ${CMAKE_SOURCE_DIR}/src/core/helper.c
-    ${CMAKE_SOURCE_DIR}/src/core/hook.h ${CMAKE_SOURCE_DIR}/src/core/hook.c
-    ${CMAKE_SOURCE_DIR}/src/core/list.h ${CMAKE_SOURCE_DIR}/src/core/list.c
-    ${CMAKE_SOURCE_DIR}/src/core/logger.h ${CMAKE_SOURCE_DIR}/src/core/logger.c
-    ${CMAKE_SOURCE_DIR}/src/core/matcher.h ${CMAKE_SOURCE_DIR}/src/core/matcher.c
-    ${CMAKE_SOURCE_DIR}/src/core/rule.h ${CMAKE_SOURCE_DIR}/src/core/rule.c
-    ${CMAKE_SOURCE_DIR}/src/core/marsh.h ${CMAKE_SOURCE_DIR}/src/core/marsh.c
-    ${CMAKE_SOURCE_DIR}/src/core/verdict.h ${CMAKE_SOURCE_DIR}/src/core/verdict.c
-
-    ${CMAKE_SOURCE_DIR}/src/generator/codegen.h ${CMAKE_SOURCE_DIR}/src/generator/codegen.c
-    ${CMAKE_SOURCE_DIR}/src/generator/dump.h ${CMAKE_SOURCE_DIR}/src/generator/dump.c
-    ${CMAKE_SOURCE_DIR}/src/generator/jmp.h ${CMAKE_SOURCE_DIR}/src/generator/jmp.c
-    ${CMAKE_SOURCE_DIR}/src/generator/swich.h ${CMAKE_SOURCE_DIR}/src/generator/swich.c
-    ${CMAKE_SOURCE_DIR}/src/generator/nf.h ${CMAKE_SOURCE_DIR}/src/generator/nf.c
-    ${CMAKE_SOURCE_DIR}/src/generator/printer.h ${CMAKE_SOURCE_DIR}/src/generator/printer.c
-    ${CMAKE_SOURCE_DIR}/src/generator/program.h ${CMAKE_SOURCE_DIR}/src/generator/program.c
-    ${CMAKE_SOURCE_DIR}/src/generator/reg.h
-    ${CMAKE_SOURCE_DIR}/src/generator/stub.h ${CMAKE_SOURCE_DIR}/src/generator/stub.c
-    ${CMAKE_SOURCE_DIR}/src/generator/fixup.h ${CMAKE_SOURCE_DIR}/src/generator/fixup.c
-    ${CMAKE_SOURCE_DIR}/src/generator/tc.h ${CMAKE_SOURCE_DIR}/src/generator/tc.c
-    ${CMAKE_SOURCE_DIR}/src/generator/xdp.h ${CMAKE_SOURCE_DIR}/src/generator/xdp.c
-    ${CMAKE_SOURCE_DIR}/src/generator/matcher/ip.h ${CMAKE_SOURCE_DIR}/src/generator/matcher/ip.c
-
-    ${CMAKE_SOURCE_DIR}/src/xlate/front.h ${CMAKE_SOURCE_DIR}/src/xlate/front.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.h ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nft.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.h ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/cli.c
-)
-
-set(bpfilter_library_srcs
-    ${CMAKE_SOURCE_DIR}/lib/include/bpfilter/bpfilter.h
-    ${CMAKE_SOURCE_DIR}/lib/src/generic.c
-    ${CMAKE_SOURCE_DIR}/lib/src/ipt.c
-    ${CMAKE_SOURCE_DIR}/lib/src/nft.c
-)
-
-set(bpfilter_cflags
+set(bf_cflags
     -std=gnu17 -Wall -Wextra
+    $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
+    $<$<CONFIG:release>:-O2>
 )
 
-set(bpfilter_ldflags
-)
-
-set(bpfilter_cflags_release
-    -O2
-)
-
-set(bpfilter_ldflags_release
-)
-
-set(bpfilter_cflags_debug
-    -O0 -g3 -ggdb -fno-omit-frame-pointer
-    -fsanitize=address -fsanitize=undefined
-)
-
-set(bpfilter_ldflags_debug
-    -fsanitize=address -fsanitize=undefined
+set(bf_ldflags
+    $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
 )
 
 configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc.in @ONLY)
@@ -152,7 +78,5 @@ install(
 )
 
 add_subdirectory(src)
-add_subdirectory(cli)
-add_subdirectory(lib)
 add_subdirectory(tests)
 add_subdirectory(doc)
