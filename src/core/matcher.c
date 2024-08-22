@@ -130,6 +130,8 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP_SRC_ADDR] = "ip.saddr",
     [BF_MATCHER_IP_DST_ADDR] = "ip.daddr",
     [BF_MATCHER_IP_PROTO] = "ip.proto",
+    [BF_MATCHER_TCP_SPORT] = "tcp.sport",
+    [BF_MATCHER_TCP_DPORT] = "tcp.dport",
 };
 
 static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,

@@ -14,6 +14,7 @@
 
 %s STATE_MATCHER_IPPROTO
 %s STATE_MATCHER_IPADDR
+%s STATE_MATCHER_PORT
 
 %%
 
@@ -47,6 +48,14 @@ ip\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); ret
     (\!)?[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
         yylval.sval = strdup(yytext);
         return MATCHER_IPADDR;
+    }
+}
+
+tcp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_PORT>{
+    (\!)?[0-9]+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_PORT;
     }
 }
 
