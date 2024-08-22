@@ -132,6 +132,8 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP_PROTO] = "ip.proto",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
+    [BF_MATCHER_UDP_SPORT] = "udp.sport",
+    [BF_MATCHER_UDP_DPORT] = "udp.dport",
 };
 
 static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,

@@ -51,6 +51,10 @@ enum bf_matcher_type
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
     BF_MATCHER_TCP_DPORT,
+    /// Matches against the UDP source port
+    BF_MATCHER_UDP_SPORT,
+    /// Matches against the UDP destination port
+    BF_MATCHER_UDP_DPORT,
     _BF_MATCHER_TYPE_MAX,
 };
 

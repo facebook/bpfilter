@@ -52,6 +52,7 @@ ip\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); ret
 }
 
 tcp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_PORT>{
     (\!)?[0-9]+ {
         yylval.sval = strdup(yytext);
