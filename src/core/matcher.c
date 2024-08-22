@@ -161,16 +161,31 @@ int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type)
     return -EINVAL;
 }
 
+static const char *_bf_matcher_ops_strs[] = {
+    [BF_MATCHER_EQ] = "eq",
+    [BF_MATCHER_NE] = "not",
+};
+
+static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX);
+
 const char *bf_matcher_op_to_str(enum bf_matcher_op op)
 {
-    static const char *ops_str[] = {
-        [BF_MATCHER_EQ] = "BF_MATCHER_EQ",
-        [BF_MATCHER_NE] = "BF_MATCHER_NE",
-    };
-
     bf_assert(0 <= op && op < _BF_MATCHER_OP_MAX);
-    static_assert(ARRAY_SIZE(ops_str) == _BF_MATCHER_OP_MAX,
-                  "missing entries in the ops_str array");
 
-    return ops_str[op];
+    return _bf_matcher_ops_strs[op];
+}
+
+int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op)
+{
+    bf_assert(str);
+    bf_assert(op);
+
+    for (size_t i = 0; i < _BF_MATCHER_OP_MAX; ++i) {
+        if (bf_streq(_bf_matcher_ops_strs[i], str)) {
+            *op = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
 }

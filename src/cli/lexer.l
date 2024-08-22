@@ -36,6 +36,7 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
     /* Matcher types */
 ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPPROTO>{
+    eq { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-z]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_IPPROTO;
@@ -45,7 +46,8 @@ ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); re
 ip\.saddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPADDR>{
-    (\!)?[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
         yylval.sval = strdup(yytext);
         return MATCHER_IPADDR;
     }
@@ -54,6 +56,7 @@ ip\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); ret
 tcp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_PORT>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     (\!)?[0-9]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_PORT;

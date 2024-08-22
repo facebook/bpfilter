@@ -37,6 +37,7 @@
     struct bf_matcher *matcher;
     struct bf_rule *rule;
     struct bf_chain *chain;
+    enum bf_matcher_op matcher_op;
 }
 
 // Tokens
@@ -46,13 +47,14 @@
 %token COUNTER
 %token <sval> MATCHER_IPPROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> STRING
-%token <sval> HOOK VERDICT MATCHER_TYPE
+%token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 
 // Grammar types
 %type <bval> counter
 %type <hook> hook
 %type <verdict> verdict
 %type <matcher_type> matcher_type
+%type <matcher_op> matcher_op
 %type <list> matchers
 %type <matcher> matcher
 %type <list> rules
@@ -205,46 +207,36 @@ matchers        : matcher
                     $$ = TAKE_PTR($1);
                 }
                 ;
-matcher         : matcher_type MATCHER_IPPROTO
+matcher         : matcher_type matcher_op MATCHER_IPPROTO
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint16_t proto;
 
-                    if (bf_streq($2, "icmp")) {
+                    if (bf_streq($3, "icmp")) {
                         proto = IPPROTO_ICMP;
                     } else {
-                        yyerror(chains, "unsupported IPPROTO to match '%s'\n", $2);
-                        free($2);
+                        yyerror(chains, "unsupported IPPROTO to match '%s'\n", $3);
                         YYABORT;
                     }
     
-                    free($2);
+                    free($3);
                     
-                    if (bf_matcher_new(&matcher, BF_MATCHER_IP_PROTO, BF_MATCHER_EQ, &proto, sizeof(proto)) < 0) {
+                    if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0) {
                         yyerror(chains, "failed to create a new matcher\n");
                         YYABORT;
                     } 
                     
                     $$ = TAKE_PTR(matcher);
                 }
-                | matcher_type MATCHER_IPADDR
+                | matcher_type matcher_op MATCHER_IPADDR
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     struct bf_matcher_ip_addr addr;
-                    char *ip = $2;
                     char *mask;
-                    bool inv = false;
                     int r;
 
-                    // If the payload starts with '!', it's an inverse match,
-                    // and the IP starts at the next character.
-                    if (*$2 == '!') {
-                        inv = true;
-                        ++ip;
-                    }
-
                     // If '/' is found, parse the mask, otherwise use /32.
-                    mask = strchr($2, '/');
+                    mask = strchr($3, '/');
                     if (mask) {
                         *mask = '\0';
                         ++mask;
@@ -261,45 +253,38 @@ matcher         : matcher_type MATCHER_IPPROTO
                     }
 
                     // Convert the IPv4 from string to uint32_t.
-                    r = inet_pton(AF_INET, ip, &addr.addr);
+                    r = inet_pton(AF_INET, $3, &addr.addr);
                     if (r != 1) {
-                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", ip);
+                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", $3);
                         YYABORT;
                     }
 
-                    free($2);
+                    free($3);
 
-                    if (bf_matcher_new(&matcher, $1, inv ? BF_MATCHER_NE : BF_MATCHER_EQ, &addr, sizeof(addr))) {
+                    if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr))) {
                         yyerror(chains, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
                     $$ = TAKE_PTR(matcher);
                 }
-                | matcher_type MATCHER_PORT
+                | matcher_type matcher_op MATCHER_PORT
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    char *str = $2;
                     long raw_val;
                     uint16_t port;
-                    bool inv = false;
 
-                    if (*str == '!') {
-                        inv = true;
-                        ++str;
-                    }
-                    
-                    raw_val = atol(str);
+                    raw_val = atol($3);
                     if (raw_val <= 0 || USHRT_MAX < raw_val) {
-                        yyerror(chains, "invalid port value: %s\n", str);
+                        yyerror(chains, "invalid port value: %s\n", $3);
                         YYABORT;
                     }
 
                     port = (uint16_t)raw_val;
 
-                    free($2);
+                    free($3);
 
-                    if (bf_matcher_new(&matcher, $1, inv ? BF_MATCHER_NE : BF_MATCHER_EQ, &port, sizeof(port))) {
+                    if (bf_matcher_new(&matcher, $1, $2, &port, sizeof(port))) {
                         yyerror(chains, "failed to create new matcher\n");
                         YYABORT;
                     }
@@ -320,6 +305,20 @@ matcher_type    : MATCHER_TYPE
                     free($1);
                     $$ = type;
                 }
+matcher_op      : %empty { $$ = BF_MATCHER_EQ; }
+                | MATCHER_OP
+                {
+                    enum bf_matcher_op op;
+
+                    if (bf_matcher_op_from_str($1, &op) < 0) {
+                        yyerror(chains, "unknown matcher operator '%s'\n", $1);
+                        YYABORT;
+                    }
+
+                    free($1);
+                    $$ = op;
+                }
+                ;
 
 counter         : %empty    { $$ = false; }
                 | COUNTER   { $$ = true; }
