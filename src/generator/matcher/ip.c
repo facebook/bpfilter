@@ -33,7 +33,7 @@ static int _bf_matcher_generate_ip_addr(struct bf_program *program,
 static int _bf_matcher_generate_ip_proto(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
-    uint16_t proto = *(uint16_t *)&matcher->payload;
+    uint8_t proto = *(uint8_t *)&matcher->payload;
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_L3,
                               offsetof(struct iphdr, protocol)));
