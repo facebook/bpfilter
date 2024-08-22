@@ -66,7 +66,7 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
 
 tcp\.flags      { BEGIN(STATE_MATCHER_TCP_FLAGS); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_TCP_FLAGS>{
-    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not|any|all) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     ([A-Z]+,?)+ {
         yylval.sval = strdup(yytext);
         return MATCHER_TCP_FLAGS;
