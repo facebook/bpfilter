@@ -57,6 +57,7 @@ add_library(generator OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/fixup.h       ${CMAKE_CURRENT_SOURCE_DIR}/generator/fixup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/jmp.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/jmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip.h  ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/tcp.h ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/tcp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/nf.h          ${CMAKE_CURRENT_SOURCE_DIR}/generator/nf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.c

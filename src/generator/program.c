@@ -29,6 +29,7 @@
 #include "core/verdict.h"
 #include "generator/jmp.h"
 #include "generator/matcher/ip.h"
+#include "generator/matcher/tcp.h"
 #include "generator/printer.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
@@ -339,6 +340,12 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_IP_DST_ADDR:
         case BF_MATCHER_IP_PROTO:
             r = bf_matcher_generate_ip(program, matcher);
+            if (r)
+                return r;
+            break;
+        case BF_MATCHER_TCP_SPORT:
+        case BF_MATCHER_TCP_DPORT:
+            r = bf_matcher_generate_tcp(program, matcher);
             if (r)
                 return r;
             break;

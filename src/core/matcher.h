@@ -47,6 +47,10 @@ enum bf_matcher_type
     BF_MATCHER_IP_DST_ADDR,
     /// Matches against the IP protocol field
     BF_MATCHER_IP_PROTO,
+    /// Matches against the TCP source port
+    BF_MATCHER_TCP_SPORT,
+    /// Matches against the TCP destination port
+    BF_MATCHER_TCP_DPORT,
     _BF_MATCHER_TYPE_MAX,
 };
 

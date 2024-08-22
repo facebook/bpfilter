@@ -15,6 +15,7 @@
 %code requires {
     #include <arpa/inet.h>
     #include <linux/in.h>
+    #include <limits.h>
     #include "core/verdict.h"
     #include "core/hook.h"
     #include "core/matcher.h"
@@ -43,7 +44,7 @@
 %token POLICY
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_IPPROTO MATCHER_IPADDR
+%token <sval> MATCHER_IPPROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE
 
@@ -270,6 +271,36 @@ matcher         : matcher_type MATCHER_IPPROTO
 
                     if (bf_matcher_new(&matcher, $1, inv ? BF_MATCHER_NE : BF_MATCHER_EQ, &addr, sizeof(addr))) {
                         yyerror(chains, "failed to create a new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type MATCHER_PORT
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    char *str = $2;
+                    long raw_val;
+                    uint16_t port;
+                    bool inv = false;
+
+                    if (*str == '!') {
+                        inv = true;
+                        ++str;
+                    }
+                    
+                    raw_val = atol(str);
+                    if (raw_val <= 0 || USHRT_MAX < raw_val) {
+                        yyerror(chains, "invalid port value: %s\n", str);
+                        YYABORT;
+                    }
+
+                    port = (uint16_t)raw_val;
+
+                    free($2);
+
+                    if (bf_matcher_new(&matcher, $1, inv ? BF_MATCHER_NE : BF_MATCHER_EQ, &port, sizeof(port))) {
+                        yyerror(chains, "failed to create new matcher\n");
                         YYABORT;
                     }
 
