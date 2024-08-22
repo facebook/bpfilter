@@ -80,6 +80,19 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_strerror(v) strerrordesc_np(abs(v))
 
 /**
+ * Swap two values.
+ *
+ * @param a First value to swap.
+ * @param b Second value to swap.
+ */
+#define bf_swap(a, b)                                                          \
+    do {                                                                       \
+        typeof(a) __a = (a);                                                   \
+        (a) = (b);                                                             \
+        (b) = __a;                                                             \
+    } while (0)
+
+/**
  * @brief Free a pointer and set it to NULL.
  * @param ptr Pointer to free.
  */
