@@ -38,7 +38,8 @@ static int _bf_matcher_generate_ip_proto(struct bf_program *program,
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_L3,
                               offsetof(struct iphdr, protocol)));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_4, proto, 0));
+               BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                           BF_REG_4, proto, 0));
 
     return 0;
 }
