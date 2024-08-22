@@ -34,6 +34,16 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
+                                          const struct bf_matcher *matcher)
+{
+    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L4, 13));
+    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+               BPF_JMP_IMM(BPF_JNE, BF_REG_1, *(uint8_t *)matcher->payload, 0));
+
+    return 0;
+}
+
 int bf_matcher_generate_tcp(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -48,6 +58,9 @@ int bf_matcher_generate_tcp(struct bf_program *program,
     case BF_MATCHER_TCP_SPORT:
     case BF_MATCHER_TCP_DPORT:
         r = _bf_matcher_generate_tcp_port(program, matcher);
+        break;
+    case BF_MATCHER_TCP_FLAGS:
+        r = _bf_matcher_generate_tcp_flags(program, matcher);
         break;
     default:
         return bf_err_code(-EINVAL, "unknown matcher type %d", matcher->type);

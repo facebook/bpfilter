@@ -51,6 +51,8 @@ enum bf_matcher_type
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
     BF_MATCHER_TCP_DPORT,
+    /// Matchers against the TCP flags
+    BF_MATCHER_TCP_FLAGS,
     /// Matches against the UDP source port
     BF_MATCHER_UDP_SPORT,
     /// Matches against the UDP destination port
@@ -66,6 +68,22 @@ struct bf_matcher_ip_addr
 {
     uint32_t addr;
     uint32_t mask;
+};
+
+/**
+ * Define the TCP flags values as number of shifts of 1.
+ */
+enum bf_matcher_tcp_flag
+{
+    BF_MATCHER_TCP_FLAG_FIN = 0,
+    BF_MATCHER_TCP_FLAG_SYN = 1,
+    BF_MATCHER_TCP_FLAG_RST = 2,
+    BF_MATCHER_TCP_FLAG_PSH = 3,
+    BF_MATCHER_TCP_FLAG_ACK = 4,
+    BF_MATCHER_TCP_FLAG_URG = 5,
+    BF_MATCHER_TCP_FLAG_ECE = 6,
+    BF_MATCHER_TCP_FLAG_CWR = 7,
+    _BF_MATCHER_TCP_FLAG_MAX,
 };
 
 /**
@@ -185,3 +203,21 @@ const char *bf_matcher_op_to_str(enum bf_matcher_op op);
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op);
+
+/**
+ * Convert a TCP flag to a string.
+ *
+ * @param flag TCP flag to convert.
+ * @return String representation of the TCP flag.
+ */
+const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag);
+
+/**
+ * Convert a string to the corresponding TCP flag.
+ *
+ * @param str String containing the name of the TCP flag.
+ * @param flag TCP flag value, if the parsing succeeds.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_matcher_tcp_flag_from_str(const char *str,
+                                 enum bf_matcher_tcp_flag *flag);

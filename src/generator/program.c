@@ -346,6 +346,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
             break;
         case BF_MATCHER_TCP_SPORT:
         case BF_MATCHER_TCP_DPORT:
+        case BF_MATCHER_TCP_FLAGS:
             r = bf_matcher_generate_tcp(program, matcher);
             if (r)
                 return r;
