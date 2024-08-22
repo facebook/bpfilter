@@ -24,7 +24,7 @@ static int _bf_matcher_generate_ip_addr(struct bf_program *program,
     if (addr->mask != 0xffffffff)
         EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, addr->mask));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+               BPF_JMP32_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
                            BF_REG_2, addr->addr, 0));
 
     return 0;
