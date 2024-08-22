@@ -230,9 +230,19 @@ matcher         : matcher_type MATCHER_IPPROTO
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     struct bf_matcher_ip_addr addr;
+                    char *ip = $2;
                     char *mask;
+                    bool inv = false;
                     int r;
 
+                    // If the payload starts with '!', it's an inverse match,
+                    // and the IP starts at the next character.
+                    if (*$2 == '!') {
+                        inv = true;
+                        ++ip;
+                    }
+
+                    // If '/' is found, parse the mask, otherwise use /32.
                     mask = strchr($2, '/');
                     if (mask) {
                         *mask = '\0';
@@ -249,15 +259,16 @@ matcher         : matcher_type MATCHER_IPPROTO
                         addr.mask = (uint32_t)~0;
                     }
 
-                    r = inet_pton(AF_INET, $2, &addr.addr);
+                    // Convert the IPv4 from string to uint32_t.
+                    r = inet_pton(AF_INET, ip, &addr.addr);
                     if (r != 1) {
-                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", $2);
+                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", ip);
                         YYABORT;
                     }
 
                     free($2);
 
-                    if (bf_matcher_new(&matcher, $1, BF_MATCHER_EQ, &addr, sizeof(addr))) {
+                    if (bf_matcher_new(&matcher, $1, inv ? BF_MATCHER_NE : BF_MATCHER_EQ, &addr, sizeof(addr))) {
                         yyerror(chains, "failed to create a new matcher\n");
                         YYABORT;
                     }
