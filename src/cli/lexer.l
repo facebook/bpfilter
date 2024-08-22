@@ -36,7 +36,7 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
     /* Matcher types */
 ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPPROTO>{
-    eq { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-z]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_IPPROTO;
