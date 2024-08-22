@@ -15,6 +15,7 @@
 %s STATE_MATCHER_IPPROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_PORT
+%s STATE_MATCHER_TCP_FLAGS
 
 %%
 
@@ -60,6 +61,15 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
     (\!)?[0-9]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_PORT;
+    }
+}
+
+tcp\.flags      { BEGIN(STATE_MATCHER_TCP_FLAGS); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_TCP_FLAGS>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    ([A-Z]+,?)+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_TCP_FLAGS;
     }
 }
 

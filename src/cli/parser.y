@@ -47,7 +47,7 @@
 %token COUNTER
 %token <sval> MATCHER_IPPROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> STRING
-%token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
+%token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 
 // Grammar types
 %type <bval> counter
@@ -286,6 +286,40 @@ matcher         : matcher_type matcher_op MATCHER_IPPROTO
 
                     if (bf_matcher_new(&matcher, $1, $2, &port, sizeof(port))) {
                         yyerror(chains, "failed to create new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_TCP_FLAGS
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    uint8_t flags = 0;
+                    char *flags_str;
+                    char *saveptr;
+                    char *token;
+                    int r;
+
+                    for (flags_str = $3; ; flags_str = NULL) {
+                        enum bf_matcher_tcp_flag flag;
+
+                        token = strtok_r(flags_str, ",", &saveptr);
+                        if (!token)
+                            break;
+
+                        r = bf_matcher_tcp_flag_from_str(token, &flag);
+                        if (r) {
+                            yyerror(chains, "Unknown TCP flag '%s', ignoring\n", token);
+                            continue;
+                        }
+
+                        flags |= 1 << flag;
+                    }
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &flags, sizeof(flags))) {
+                        yyerror(chains, "failed to create a new matcher\n");
                         YYABORT;
                     }
 

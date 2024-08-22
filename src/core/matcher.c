@@ -132,6 +132,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP_PROTO] = "ip.proto",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
+    [BF_MATCHER_TCP_FLAGS] = "tcp.flags",
     [BF_MATCHER_UDP_SPORT] = "udp.sport",
     [BF_MATCHER_UDP_DPORT] = "udp.dport",
 };
@@ -183,6 +184,36 @@ int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op)
     for (size_t i = 0; i < _BF_MATCHER_OP_MAX; ++i) {
         if (bf_streq(_bf_matcher_ops_strs[i], str)) {
             *op = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
+static const char *_bf_matcher_tcp_flags_strs[] = {
+    [BF_MATCHER_TCP_FLAG_FIN] = "FIN", [BF_MATCHER_TCP_FLAG_SYN] = "SYN",
+    [BF_MATCHER_TCP_FLAG_RST] = "RST", [BF_MATCHER_TCP_FLAG_PSH] = "PSH",
+    [BF_MATCHER_TCP_FLAG_ACK] = "ACK", [BF_MATCHER_TCP_FLAG_URG] = "URG",
+    [BF_MATCHER_TCP_FLAG_ECE] = "ECE", [BF_MATCHER_TCP_FLAG_CWR] = "CWR",
+};
+
+const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag)
+{
+    bf_assert(0 <= flag && flag < _BF_MATCHER_TCP_FLAG_MAX);
+
+    return _bf_matcher_tcp_flags_strs[flag];
+}
+
+int bf_matcher_tcp_flag_from_str(const char *str,
+                                 enum bf_matcher_tcp_flag *flag)
+{
+    bf_assert(str);
+    bf_assert(flag);
+
+    for (size_t i = 0; i < _BF_MATCHER_TCP_FLAG_MAX; ++i) {
+        if (bf_streq(_bf_matcher_tcp_flags_strs[i], str)) {
+            *flag = i;
             return 0;
         }
     }
