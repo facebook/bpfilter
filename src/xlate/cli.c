@@ -62,10 +62,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
     }
 
     codegen->policy = chain->policy;
-    codegen->rules = chain->rules;
-    chain->rules.len = 0;
-    chain->rules.head = NULL;
-    chain->rules.tail = NULL;
+    bf_swap(codegen->rules, chain->rules);
 
     if (bf_context_get_codegen(chain->hook, BF_FRONT_CLI)) {
         r = bf_codegen_update(codegen);
