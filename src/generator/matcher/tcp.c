@@ -37,9 +37,33 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
 static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
+    uint8_t flags = *(uint8_t *)matcher->payload;
+
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L4, 13));
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1, *(uint8_t *)matcher->payload, 0));
+
+    switch (matcher->op) {
+    case BF_MATCHER_EQ:
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+                   BPF_JMP_IMM(BPF_JNE, BF_REG_1, flags, 0));
+        break;
+    case BF_MATCHER_NE:
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+                   BPF_JMP_IMM(BPF_JEQ, BF_REG_1, flags, 0));
+        break;
+    case BF_MATCHER_ANY:
+        EMIT(program, BPF_ALU32_IMM(BPF_AND, BPF_REG_1, flags));
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+                   BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0));
+        break;
+    case BF_MATCHER_ALL:
+        EMIT(program, BPF_ALU32_IMM(BPF_AND, BPF_REG_1, flags));
+        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+                   BPF_JMP_IMM(BPF_JNE, BPF_REG_1, flags, 0));
+        break;
+    default:
+        return bf_err_code(-EINVAL, "unsupported matcher for tcp.flags: %s",
+                           bf_matcher_op_to_str(matcher->op));
+    }
 
     return 0;
 }
