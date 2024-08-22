@@ -165,6 +165,8 @@ int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type)
 static const char *_bf_matcher_ops_strs[] = {
     [BF_MATCHER_EQ] = "eq",
     [BF_MATCHER_NE] = "not",
+    [BF_MATCHER_ANY] = "any",
+    [BF_MATCHER_ALL] = "all",
 };
 
 static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX);

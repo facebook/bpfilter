@@ -98,6 +98,10 @@ enum bf_matcher_op
     BF_MATCHER_EQ,
     /// Test for inequality.
     BF_MATCHER_NE,
+    /// Test for partial subset match
+    BF_MATCHER_ANY,
+    /// Test for complete subset match
+    BF_MATCHER_ALL,
     _BF_MATCHER_OP_MAX,
 };
 
