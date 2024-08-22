@@ -40,7 +40,7 @@ int bf_matcher_generate_tcp(struct bf_program *program,
     int r;
 
     EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
                BPF_JMP_IMM(BPF_JNE, BF_REG_1, IPPROTO_TCP, 0));
 

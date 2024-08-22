@@ -210,7 +210,7 @@ matchers        : matcher
 matcher         : matcher_type matcher_op MATCHER_IPPROTO
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    uint16_t proto;
+                    uint8_t proto;
 
                     if (bf_streq($3, "icmp")) {
                         proto = IPPROTO_ICMP;
