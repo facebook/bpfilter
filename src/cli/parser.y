@@ -13,6 +13,7 @@
 %}
 
 %code requires {
+    #include <arpa/inet.h>
     #include <linux/in.h>
     #include "core/verdict.h"
     #include "core/hook.h"
@@ -42,7 +43,7 @@
 %token POLICY
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_IPPROTO
+%token <sval> MATCHER_IPPROTO MATCHER_IPADDR
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE
 
@@ -225,6 +226,45 @@ matcher         : matcher_type MATCHER_IPPROTO
                     
                     $$ = TAKE_PTR(matcher);
                 }
+                | matcher_type MATCHER_IPADDR
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    struct bf_matcher_ip_addr addr;
+                    char *mask;
+                    int r;
+
+                    mask = strchr($2, '/');
+                    if (mask) {
+                        *mask = '\0';
+                        ++mask;
+
+                        int m = atoi(mask);
+                        if (m == 0) {
+                            yyerror(chains, "failed to parse IPv4 mask: %s\n", mask);
+                            YYABORT;
+                        }
+
+                        addr.mask = ((uint32_t)~0) << (32 - m);
+                    } else {
+                        addr.mask = (uint32_t)~0;
+                    }
+
+                    r = inet_pton(AF_INET, $2, &addr.addr);
+                    if (r != 1) {
+                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", $2);
+                        YYABORT;
+                    }
+
+                    free($2);
+
+                    if (bf_matcher_new(&matcher, $1, BF_MATCHER_EQ, &addr, sizeof(addr))) {
+                        yyerror(chains, "failed to create a new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                ;
 matcher_type    : MATCHER_TYPE
                 {
                     enum bf_matcher_type type;
