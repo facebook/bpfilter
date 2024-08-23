@@ -474,6 +474,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     memcpy(_cache->hook_entry, replace->hook_entry, sizeof(_cache->hook_entry));
     memcpy(_cache->underflow, replace->underflow, sizeof(_cache->underflow));
     _cache->size = replace->size;
+    _cache->num_entries = replace->num_entries;
 
     free(_cache->entries);
     _cache->entries = TAKE_PTR(entries);
