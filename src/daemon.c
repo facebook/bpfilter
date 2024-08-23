@@ -208,6 +208,9 @@ static int _bf_save(const char *path)
     for (int i = 0; i < _BF_FRONT_MAX; ++i) {
         _cleanup_free_ struct bf_marsh *child = NULL;
 
+        if (!bf_opts_is_front_enabled(i))
+            continue;
+
         r = bf_marsh_new(&child, NULL, 0);
         if (r < 0)
             return r;
