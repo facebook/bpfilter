@@ -440,19 +440,34 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     }
 
     for (int i = 0; i < _BF_HOOK_MAX; i++) {
-        _cleanup_bf_codegen_ struct bf_codegen *codegen = TAKE_PTR(codegens[i]);
+        _cleanup_bf_codegen_ struct bf_codegen *new_cgen =
+            TAKE_PTR(codegens[i]);
+        struct bf_codegen *cur_cgen;
 
-        if (!codegen)
+        if (!new_cgen)
             continue;
 
-        r = bf_codegen_up(codegen);
-        if (r) {
-            bf_err_code(r, "failed to generate bytecode for hook %d, skipping",
-                        codegen->hook);
-            goto end_free_codegens;
-        }
+        cur_cgen = bf_context_get_codegen(new_cgen->hook, new_cgen->front);
+        if (cur_cgen) {
+            bf_swap(cur_cgen->rules, new_cgen->rules);
+            cur_cgen->policy = new_cgen->policy;
 
-        bf_context_replace_codegen(i, BF_FRONT_IPT, TAKE_PTR(codegen));
+            r = bf_codegen_update(cur_cgen);
+            if (r) {
+                bf_err_code(r, "failed to update existing codegen for hook %s",
+                            bf_hook_to_str(new_cgen->hook));
+                goto end_free_codegens;
+            }
+        } else {
+            r = bf_codegen_up(new_cgen);
+            if (r) {
+                bf_err_code(r, "failed to generate bytecode for hook %s",
+                            bf_hook_to_str(new_cgen->hook));
+                goto end_free_codegens;
+            }
+
+            bf_context_replace_codegen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
+        }
     }
 
     _cache->valid_hooks = replace->valid_hooks;
