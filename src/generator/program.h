@@ -161,9 +161,13 @@ struct bf_program
     char prog_name[BPF_OBJ_NAME_LEN];
     /// Counters map name.
     char cmap_name[BPF_OBJ_NAME_LEN];
+    /// Printer map name.
+    char pmap_name[BPF_OBJ_NAME_LEN];
     char prog_pin_path[PIN_PATH_LEN];
     /// Counters map pinning path.
     char cmap_pin_path[PIN_PATH_LEN];
+    /// Pinter map pinning path.
+    char pmap_pin_path[PIN_PATH_LEN];
 
     /// Log messages printer.
     struct bf_printer *printer;
@@ -188,6 +192,8 @@ struct bf_program
         int prog_fd;
         /** File descriptor of the counters map. */
         int cmap_fd;
+        /** File descriptor of the printer map. */
+        int pmap_fd;
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
     } runtime;
