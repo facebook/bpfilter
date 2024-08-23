@@ -39,16 +39,10 @@ struct bf_printer
 {
     /// List of messages.
     bf_list msgs;
-    /// File descriptor of the BPF map containing the messages. Contains -1 if
-    /// no map has been created yet.
-    int fd;
 };
 
 #define _cleanup_bf_printer_msg_                                               \
     __attribute__((__cleanup__(_bf_printer_msg_free)))
-
-/// Path to the pinned messages map on the system.
-static const char *_bf_printer_pin_path = "/sys/fs/bpf/bf_printer";
 
 static void _bf_printer_msg_free(struct bf_printer_msg **msg);
 
@@ -209,7 +203,6 @@ int bf_printer_new(struct bf_printer **printer)
     bf_list_init(
         &_printer->msgs,
         (bf_list_ops[]) {{.free = (bf_list_ops_free)_bf_printer_msg_free}});
-    _printer->fd = -1;
 
     *printer = TAKE_PTR(_printer);
 
@@ -241,12 +234,6 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
         TAKE_PTR(msg);
     }
 
-    if (!bf_list_is_empty(&_printer->msgs)) {
-        r = bf_bpf_obj_get(_bf_printer_pin_path, &_printer->fd);
-        if (r < 0)
-            return bf_err_code(r, "failed to get printer map fd");
-    }
-
     *printer = TAKE_PTR(_printer);
 
     return 0;
@@ -260,7 +247,6 @@ void bf_printer_free(struct bf_printer **printer)
         return;
 
     bf_list_clean(&(*printer)->msgs);
-    closep(&(*printer)->fd);
 
     free(*printer);
     *printer = NULL;
@@ -317,12 +303,6 @@ void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
     }
     bf_dump_prefix_pop(prefix);
 
-    if (bf_opts_transient()) {
-        DUMP(bf_dump_prefix_last(prefix), "fd: <transient>");
-    } else {
-        DUMP(bf_dump_prefix_last(prefix), "fd: %d", printer->fd);
-    }
-
     bf_dump_prefix_pop(prefix);
 }
 
@@ -345,12 +325,6 @@ static size_t _bf_printer_total_size(const struct bf_printer *printer)
     last_msg = bf_list_node_get_data(last_msg_node);
 
     return last_msg->offset + last_msg->len;
-}
-
-int bf_printer_get_fd(const struct bf_printer *printer)
-{
-    bf_assert(printer);
-    return printer->fd;
 }
 
 const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
@@ -394,61 +368,41 @@ const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
     return TAKE_PTR(msg);
 }
 
-int bf_printer_publish(struct bf_printer *printer)
+int bf_printer_assemble(const struct bf_printer *printer, void **str,
+                        size_t *str_len)
 {
-    _cleanup_free_ char *strings = NULL;
-    _cleanup_close_ int fd = -1;
-    size_t total_size;
-    int r;
+    _cleanup_free_ char *_str = NULL;
+    size_t _str_len;
 
     bf_assert(printer);
+    bf_assert(str);
+    bf_assert(str_len);
 
-    // If there are no messages in the printer, assume it's published.
-    if (bf_list_is_empty(&printer->msgs))
-        return 0;
+    _str_len = _bf_printer_total_size(printer);
 
-    // Create the concatenated string of messages
-    total_size = _bf_printer_total_size(printer);
+    // If the printer doesn't contain any message, the string should only
+    // contain \0.
+    if (_str_len == 0) {
+        _str = malloc(1);
+        if (!_str)
+            return -ENOMEM;
 
-    strings = malloc(total_size);
-    if (!strings)
-        return -ENOMEM;
+        *_str = '\0';
+        _str_len = 1;
+    } else {
+        _str_len = _bf_printer_total_size(printer);
+        _str = malloc(_str_len);
+        if (!_str)
+            return -ENOMEM;
 
-    bf_list_foreach (&printer->msgs, msg_node) {
-        struct bf_printer_msg *msg = bf_list_node_get_data(msg_node);
-        memcpy(strings + msg->offset, msg->str, msg->len);
-    }
-
-    fd = printer->fd;
-
-    // If no map has been created yet, do it now
-    if (fd == -1) {
-        r = bf_bpf_map_create("bf_printer", BPF_MAP_TYPE_ARRAY,
-                              sizeof(uint32_t), total_size, 1,
-                              BPF_F_RDONLY_PROG, &fd);
-        if (r < 0)
-            return bf_err_code(r, "failed to create the BPF map 'bf_printer'");
-    }
-
-    // Replace the existing messages in the map
-    r = bf_bpf_map_update_elem(fd, (void *)(uint32_t[]) {0}, strings);
-    if (r < 0) {
-        // Do not destroy the existing map if we can't replace the fist element
-        TAKE_FD(fd);
-        return bf_err_code(
-            r, "failed to insert the messages into the BPF map 'bf_printer'");
-    }
-
-    // Pin and save the map file descriptor if needed
-    if (printer->fd == -1) {
-        if (!bf_opts_transient()) {
-            r = bf_bpf_obj_pin(_bf_printer_pin_path, fd);
-            if (r < 0)
-                return bf_err_code(r, "failed to pin the printer map");
+        bf_list_foreach (&printer->msgs, msg_node) {
+            struct bf_printer_msg *msg = bf_list_node_get_data(msg_node);
+            memcpy(_str + msg->offset, msg->str, msg->len);
         }
     }
 
-    printer->fd = TAKE_FD(fd);
+    *str = TAKE_PTR(_str);
+    *str_len = _str_len;
 
     return 0;
 }

@@ -53,14 +53,18 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
     _program->front = front;
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
 
-    snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%02x%02x%02x", hook,
-             front, ifindex);
-    snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bf_cmap_%02x%02x%02x", hook,
-             front, ifindex);
+    snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%02x%02x%02x",
+             hook, front, ifindex);
+    snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bf_cmap_%02x%02x%02x",
+             hook, front, ifindex);
+    snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%02x%02x%02x",
+             hook, front, ifindex);
     snprintf(_program->prog_pin_path, PIN_PATH_LEN,
              "/sys/fs/bpf/bf_prog_%02x%02x%02x", hook, front, ifindex);
     snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
              "/sys/fs/bpf/bf_cmap_%02x%02x%02x", hook, front, ifindex);
+    snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
+             "/sys/fs/bpf/bf_pmap_%02x%02x%02x", hook, front, ifindex);
 
     r = bf_printer_new(&_program->printer);
     if (r)
@@ -71,6 +75,7 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
 
     _program->runtime.cmap_fd = -1;
     _program->runtime.prog_fd = -1;
+    _program->runtime.pmap_fd = -1;
 
     *program = TAKE_PTR(_program);
 
@@ -92,6 +97,7 @@ void bf_program_free(struct bf_program **program)
      * safely. */
     closep(&(*program)->runtime.prog_fd);
     closep(&(*program)->runtime.cmap_fd);
+    closep(&(*program)->runtime.pmap_fd);
 
     bf_printer_free(&(*program)->printer);
 
@@ -197,11 +203,15 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     r = bf_bpf_obj_get(_program->cmap_pin_path, &_program->runtime.cmap_fd);
     if (r < 0)
-        return bf_err_code(r, "failed to get map fd");
+        return bf_err_code(r, "failed to get counter map fd");
 
     r = bf_bpf_obj_get(_program->prog_pin_path, &_program->runtime.prog_fd);
     if (r < 0)
         return bf_err_code(r, "failed to get prog fd");
+
+    r = bf_bpf_obj_get(_program->pmap_pin_path, &_program->runtime.pmap_fd);
+    if (r < 0)
+        return bf_err_code(r, "failed to get printer map fd");
 
     *program = TAKE_PTR(_program);
 
@@ -225,10 +235,13 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
     DUMP(prefix, "cmap_name: %s", program->cmap_name);
+    DUMP(prefix, "pmap_name: %s", program->pmap_name);
     DUMP(prefix, "prog_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->prog_pin_path);
     DUMP(prefix, "cmap_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->cmap_pin_path);
+    DUMP(prefix, "pmap_pin_path: %s",
+         bf_opts_transient() ? "<transient>" : program->pmap_pin_path);
 
     DUMP(prefix, "printer: struct bf_printer *");
     bf_dump_prefix_push(prefix);
@@ -256,6 +269,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
     DUMP(prefix, "cmap_fd: %d", program->runtime.cmap_fd);
+    DUMP(prefix, "pmap_fd: %d", program->runtime.pmap_fd);
     DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
     bf_dump_prefix_pop(prefix);
 
@@ -556,21 +570,35 @@ static int _bf_program_load_counters_map(struct bf_program *program)
 
 static int _bf_program_load_printer_map(struct bf_program *program)
 {
+    _cleanup_free_ void *pstr = NULL;
+    _cleanup_close_ int fd = -1;
+    size_t pstr_len;
     union bf_fixup_attr fixup_attr = {};
     int r;
 
     bf_assert(program);
 
-    // Will publish the printer if not published yet.
-    r = bf_printer_publish(program->printer);
+    r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
     if (r)
-        return bf_err_code(r, "can't publish printer map");
+        return bf_err_code(r, "failed to assemble printer map string");
 
-    fixup_attr.map_fd = bf_printer_get_fd(program->printer);
+    r = bf_bpf_map_create(program->pmap_name, BPF_MAP_TYPE_ARRAY,
+                          sizeof(uint32_t), pstr_len, 1, BPF_F_RDONLY_PROG,
+                          &fd);
+    if (r)
+        return bf_err_code(r, "failed to create printer map");
+
+    r = bf_bpf_map_update_elem(fd, (void *)(uint32_t[]) {0}, pstr);
+    if (r)
+        return bf_err_code(r, "failed to insert messages in printer map");
+
+    fixup_attr.map_fd = fd;
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
                           &fixup_attr);
     if (r)
         return bf_err_code(r, "can't update instruction with printer map fd");
+
+    program->runtime.pmap_fd = TAKE_FD(fd);
 
     return 0;
 }
@@ -806,11 +834,18 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
                                new_prog->prog_pin_path);
         }
 
-        // Pin map
+        // Pin counter map
         r = bf_bpf_obj_pin(new_prog->cmap_pin_path, new_prog->runtime.cmap_fd);
         if (r < 0) {
             return bf_err_code(r, "failed to pin counters map fd to %s",
                                new_prog->cmap_pin_path);
+        }
+
+        // Pin printer map
+        r = bf_bpf_obj_pin(new_prog->pmap_pin_path, new_prog->runtime.pmap_fd);
+        if (r < 0) {
+            return bf_err_code(r, "failed to pin printer map fd to %s",
+                               new_prog->pmap_pin_path);
         }
     }
 
@@ -829,6 +864,7 @@ int bf_program_unload(struct bf_program *program)
 
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.cmap_fd);
+    closep(&program->runtime.pmap_fd);
 
     bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
@@ -836,9 +872,7 @@ int bf_program_unload(struct bf_program *program)
     if (!bf_opts_transient()) {
         unlink(program->prog_pin_path);
         unlink(program->cmap_pin_path);
-
-        bf_dbg("  prog pin path: %s", program->prog_pin_path);
-        bf_dbg("  counters map pin path: %s", program->cmap_pin_path);
+        unlink(program->pmap_pin_path);
     }
 
     return 0;
@@ -894,11 +928,18 @@ int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
                                new_prog->prog_pin_path);
         }
 
-        // Pin map
+        // Pin counter map
         r = bf_bpf_obj_pin(new_prog->cmap_pin_path, new_prog->runtime.cmap_fd);
         if (r < 0) {
-            return bf_err_code(r, "failed to pin map fd to %s",
+            return bf_err_code(r, "failed to pin counters map fd to %s",
                                new_prog->cmap_pin_path);
+        }
+
+        // Pin printer map
+        r = bf_bpf_obj_pin(new_prog->pmap_pin_path, new_prog->runtime.pmap_fd);
+        if (r < 0) {
+            return bf_err_code(r, "failed to pin printer map fd to %s",
+                               new_prog->pmap_pin_path);
         }
     }
 

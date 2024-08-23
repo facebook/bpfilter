@@ -135,14 +135,6 @@ int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh);
 void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix);
 
 /**
- * @brief Get the printer map's file descriptor.
- *
- * @param printer Printer context. Can't be NULL.
- * @return File descriptor of the printer's BPF map.
- */
-int bf_printer_get_fd(const struct bf_printer *printer);
-
-/**
  * @brief Return the offset of a specific printer message.
  *
  * @param msg Printer message. Can't be NULL.
@@ -170,9 +162,15 @@ const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
                                                 const char *str);
 
 /**
- * @brief Publish the printer's messages in the BPF map.
+ * Assemble the messages defined inside the printer into a single nul-separated
+ * string.
  *
- * @param printer Printer context. Can't be NULL.
+ * @param printer Printer containing the messages to assemble. Can't be NULL.
+ * @param str On success, contains the pointer to the result string. Can't be
+ * NULL.
+ * @param str_len On success, contains the length of the result string,
+ * including the nul termination character. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_printer_publish(struct bf_printer *printer);
+int bf_printer_assemble(const struct bf_printer *printer, void **str,
+                        size_t *str_len);
