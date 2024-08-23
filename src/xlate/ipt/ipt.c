@@ -293,8 +293,12 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     }
 
     if (ipt_rule->ip.proto) {
+        uint8_t ip_proto = (uint8_t)ipt_rule->ip.proto;
+
+        if (ip_proto != ipt_rule->ip.proto)
+            return bf_err_code(-EINVAL, "invalid ip.proto %d", ipt_rule->ip.proto);
         r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_PROTO, BF_MATCHER_EQ,
-                                &ipt_rule->ip.proto, sizeof(uint16_t));
+                                &ip_proto, sizeof(uint8_t));
     }
 
     if (offset < ipt_rule->target_offset) {
