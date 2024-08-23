@@ -24,8 +24,8 @@ ExternalProject_Add(nftables
             ${CMAKE_COMMAND} -E env
                 LDFLAGS=$<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
                 CFLAGS=$<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
-                BPFILTER_LIBS=-L${CMAKE_BINARY_DIR}/lib\ -lbpfilter\ -Wl,-rpath=${CMAKE_BINARY_DIR}/lib
-                BPFILTER_CFLAGS=-I${CMAKE_SOURCE_DIR}/lib/include\ -I${CMAKE_SOURCE_DIR}/shared/include
+                BPFILTER_LIBS=-L${CMAKE_BINARY_DIR}/output/lib\ -lbpfilter\ -Wl,-rpath=${CMAKE_BINARY_DIR}/output/lib
+                BPFILTER_CFLAGS=-I${CMAKE_BINARY_DIR}/output/include
                 ./configure
                     --with-bpfilter
                     --disable-man-doc
@@ -51,8 +51,8 @@ ExternalProject_Add(iptables
     CONFIGURE_COMMAND ./autogen.sh
         COMMAND
             ${CMAKE_COMMAND} -E env
-                bpfilter_LIBS=-Wl,-rpath=${CMAKE_BINARY_DIR}/lib\ -L${CMAKE_BINARY_DIR}/lib\ -lbpfilter\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
-                bpfilter_CFLAGS=-I${CMAKE_SOURCE_DIR}/lib/include\ -I${CMAKE_SOURCE_DIR}/shared/include\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
+                bpfilter_LIBS=-Wl,-rpath=${CMAKE_BINARY_DIR}/output/lib\ -L${CMAKE_BINARY_DIR}/output/lib\ -lbpfilter\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
+                bpfilter_CFLAGS=-I${CMAKE_BINARY_DIR}/output/include\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
                 ./configure
                     --enable-bpfilter
                     --disable-ipv6

@@ -55,6 +55,16 @@ else ()
     endif ()
 endif ()
 
+# Ensure artefacts are moved to a common directory
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/include/bpfilter)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/bin)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/lib/bpfilter.h
+    ${CMAKE_BINARY_DIR}/output/include/bpfilter/bpfilter.h
+)
+
 set(bf_cflags
     -std=gnu17 -Wall -Wextra
     $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
