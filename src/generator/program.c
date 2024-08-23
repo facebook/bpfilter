@@ -930,30 +930,3 @@ int bf_codegen_set_counters(struct bf_program *program,
 
     return -ENOTSUP;
 }
-
-int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
-{
-    int r;
-
-    bf_assert(new_prog);
-
-    r = _bf_program_load_counters_map(new_prog);
-    if (r)
-        return r;
-
-    r = _bf_program_load_printer_map(new_prog);
-    if (r)
-        return r;
-
-    r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
-    if (r)
-        return r;
-
-    if (!bf_opts_transient()) {
-        if (old_prog)
-            _bf_program_unpin(old_prog);
-        r = _bf_program_pin(new_prog);
-    }
-
-    return r;
-}
