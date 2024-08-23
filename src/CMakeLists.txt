@@ -4,7 +4,7 @@
 #[[
     shared
 #]]
-add_library(shared OBJECT
+set(shared_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/shared/front.h          ${CMAKE_CURRENT_SOURCE_DIR}/shared/front.c
     ${CMAKE_CURRENT_SOURCE_DIR}/shared/generic.h        ${CMAKE_CURRENT_SOURCE_DIR}/shared/generic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/shared/helper.h
@@ -13,9 +13,15 @@ add_library(shared OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/shared/response.h       ${CMAKE_CURRENT_SOURCE_DIR}/shared/response.c
 )
 
+add_library(shared OBJECT ${shared_srcs})
 target_include_directories(shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(shared PUBLIC ${bf_cflags})
 target_link_options(shared PUBLIC ${bf_ldflags})
+
+add_library(shared_pic OBJECT ${shared_srcs})
+target_include_directories(shared_pic PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(shared_pic PUBLIC -fPIC ${bf_cflags})
+target_link_options(shared_pic PUBLIC ${bf_ldflags})
 
 #[[
     core
@@ -105,17 +111,22 @@ target_link_libraries(xlate
 #[[
     lib
 #]]
-add_library(lib OBJECT
+set(lib_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/bpfilter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/generic.h           ${CMAKE_CURRENT_SOURCE_DIR}/lib/generic.c
                                                         ${CMAKE_CURRENT_SOURCE_DIR}/lib/ipt.c
                                                         ${CMAKE_CURRENT_SOURCE_DIR}/lib/nft.c
 )
 
-target_include_directories(shared PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(lib PRIVATE -fPIC ${bf_cflags})
+add_library(lib OBJECT ${lib_srcs})
+target_include_directories(lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(lib PRIVATE ${bf_cflags})
 target_link_options(lib PUBLIC ${bf_ldflags})
-target_link_libraries(lib PRIVATE shared)
+
+add_library(lib_pic OBJECT ${lib_srcs})
+target_include_directories(lib_pic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(lib_pic PRIVATE -fPIC ${bf_cflags})
+target_link_options(lib_pic PUBLIC ${bf_ldflags})
 
 #[[
     daemon
@@ -191,12 +202,15 @@ install(
 #[[
     libraries
 #]]
-add_library(libbpfilter_static STATIC $<TARGET_OBJECTS:lib>)
+add_library(libbpfilter_static STATIC)
 set_target_properties(libbpfilter_static PROPERTIES OUTPUT_NAME bpfilter)
+target_compile_options(libbpfilter_static PRIVATE -fPIC)
+target_link_libraries(libbpfilter_static PRIVATE shared_pic lib_pic)
 
-add_library(libbpfilter_shared SHARED $<TARGET_OBJECTS:lib>)
+add_library(libbpfilter_shared SHARED)
 set_target_properties(libbpfilter_shared PROPERTIES OUTPUT_NAME bpfilter)
 target_compile_options(libbpfilter_shared PRIVATE -fPIC)
+target_link_libraries(libbpfilter_shared PRIVATE shared_pic lib_pic)
 
 add_custom_target(library
     ALL
