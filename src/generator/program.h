@@ -158,9 +158,11 @@ struct bf_program
     enum bf_hook hook;
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
-    char map_name[BPF_OBJ_NAME_LEN];
+    /// Counters map name.
+    char cmap_name[BPF_OBJ_NAME_LEN];
     char prog_pin_path[PIN_PATH_LEN];
-    char map_pin_path[PIN_PATH_LEN];
+    /// Counters map pinning path.
+    char cmap_pin_path[PIN_PATH_LEN];
 
     /** Number of counters in the counters map. Not all of them are used by
      * the program, but this value is common for all the programs of a given
@@ -181,7 +183,7 @@ struct bf_program
         /** File descriptor of the program. */
         int prog_fd;
         /** File descriptor of the counters map. */
-        int map_fd;
+        int cmap_fd;
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
     } runtime;
