@@ -358,8 +358,13 @@ static int _process_request(struct bf_request *request,
     bf_assert(request);
     bf_assert(response);
 
-    if (!bf_opts_is_front_enabled(request->front))
+    if (!bf_opts_is_front_enabled(request->front)) {
+        bf_warn("received a request from %s, but front is disabled, ignoring",
+                bf_front_to_str(request->front));
         return bf_response_new_failure(response, -ENOTSUP);
+    }
+
+    bf_info("received a request from %s", bf_front_to_str(request->front)); 
 
     ops = bf_front_ops_get(request->front);
     r = ops->request_handler(request, response);
@@ -430,8 +435,6 @@ static int _run(void)
         r = bf_recv_request(client_fd, &request);
         if (r < 0)
             return bf_err_code(r, "failed to receive request");
-
-        bf_dbg("received request from client on FD %d", client_fd);
 
         r = _process_request(request, &response);
         if (r) {
