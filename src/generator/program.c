@@ -808,6 +808,55 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     return 0;
 }
 
+/**
+ * Pin the BPF objects that should survive the daemon's lifetime.
+ *
+ * @param program Program containing the objects to pin. Can't be NULL.
+ * @return 0 on success, or negative erron value on failure.
+ */
+static int _bf_program_pin(const struct bf_program *program)
+{
+    int r;
+
+    bf_assert(program);
+
+    r = bf_bpf_obj_pin(program->prog_pin_path, program->runtime.prog_fd);
+    if (r < 0) {
+        return bf_err_code(r, "failed to pin program fd to %s",
+                           program->prog_pin_path);
+    }
+
+    r = bf_bpf_obj_pin(program->cmap_pin_path, program->runtime.cmap_fd);
+    if (r < 0) {
+        return bf_err_code(r, "failed to pin counter map fd to %s",
+                           program->cmap_pin_path);
+    }
+
+    r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
+    if (r < 0) {
+        return bf_err_code(r, "failed to pin printer map fd to %s",
+                           program->pmap_pin_path);
+    }
+    return 0;
+}
+
+/**
+ * Unpin the BPF objects owned by a program.
+ *
+ * If the @p program object is deleted, the BPF object will disappear from
+ * the system.
+ *
+ * @param program Program containing the objects to unpin. Can't be NULL.
+ */
+static void _bf_program_unpin(const struct bf_program *program)
+{
+    bf_assert(program);
+
+    unlink(program->prog_pin_path);
+    unlink(program->cmap_pin_path);
+    unlink(program->pmap_pin_path);
+}
+
 int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
 {
     int r;
@@ -827,29 +876,12 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
         return r;
 
     if (!bf_opts_transient()) {
-        // Pin program
-        r = bf_bpf_obj_pin(new_prog->prog_pin_path, new_prog->runtime.prog_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin program fd to %s",
-                               new_prog->prog_pin_path);
-        }
-
-        // Pin counter map
-        r = bf_bpf_obj_pin(new_prog->cmap_pin_path, new_prog->runtime.cmap_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin counters map fd to %s",
-                               new_prog->cmap_pin_path);
-        }
-
-        // Pin printer map
-        r = bf_bpf_obj_pin(new_prog->pmap_pin_path, new_prog->runtime.pmap_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin printer map fd to %s",
-                               new_prog->pmap_pin_path);
-        }
+        if (old_prog)
+            _bf_program_unpin(old_prog);
+        r = _bf_program_pin(new_prog);
     }
 
-    return 0;
+    return r;
 }
 
 int bf_program_unload(struct bf_program *program)
@@ -862,18 +894,15 @@ int bf_program_unload(struct bf_program *program)
     if (r)
         return r;
 
+    if (!bf_opts_transient())
+        _bf_program_unpin(program);
+
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.cmap_fd);
     closep(&program->runtime.pmap_fd);
 
     bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
-
-    if (!bf_opts_transient()) {
-        unlink(program->prog_pin_path);
-        unlink(program->cmap_pin_path);
-        unlink(program->pmap_pin_path);
-    }
 
     return 0;
 }
@@ -921,27 +950,10 @@ int bf_program_attach(struct bf_program *new_prog, struct bf_program *old_prog)
         return r;
 
     if (!bf_opts_transient()) {
-        // Pin program
-        r = bf_bpf_obj_pin(new_prog->prog_pin_path, new_prog->runtime.prog_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin program fd to %s",
-                               new_prog->prog_pin_path);
-        }
-
-        // Pin counter map
-        r = bf_bpf_obj_pin(new_prog->cmap_pin_path, new_prog->runtime.cmap_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin counters map fd to %s",
-                               new_prog->cmap_pin_path);
-        }
-
-        // Pin printer map
-        r = bf_bpf_obj_pin(new_prog->pmap_pin_path, new_prog->runtime.pmap_fd);
-        if (r < 0) {
-            return bf_err_code(r, "failed to pin printer map fd to %s",
-                               new_prog->pmap_pin_path);
-        }
+        if (old_prog)
+            _bf_program_unpin(old_prog);
+        r = _bf_program_pin(new_prog);
     }
 
-    return 0;
+    return r;
 }
