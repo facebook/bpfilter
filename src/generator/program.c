@@ -53,14 +53,14 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
     _program->front = front;
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
 
-    snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bpfltr_%02d%02d%04d", hook,
+    snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%02x%02x%02x", hook,
              front, ifindex);
-    snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bpfltr_%02d%02d%04d", hook,
+    snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bf_cmap_%02x%02x%02x", hook,
              front, ifindex);
     snprintf(_program->prog_pin_path, PIN_PATH_LEN,
-             "/sys/fs/bpf/bpfltr_p_%02d%02d%04d", hook, front, ifindex);
+             "/sys/fs/bpf/bf_prog_%02x%02x%02x", hook, front, ifindex);
     snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
-             "/sys/fs/bpf/bpfltr_m_%02d%02d%04d", hook, front, ifindex);
+             "/sys/fs/bpf/bf_cmap_%02x%02x%02x", hook, front, ifindex);
 
     r = bf_printer_new(&_program->printer);
     if (r)
