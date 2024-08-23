@@ -22,6 +22,7 @@
 #include "core/list.h"
 #include "core/verdict.h"
 #include "generator/fixup.h"
+#include "generator/printer.h"
 #include "generator/reg.h"
 #include "shared/front.h"
 
@@ -163,6 +164,9 @@ struct bf_program
     char prog_pin_path[PIN_PATH_LEN];
     /// Counters map pinning path.
     char cmap_pin_path[PIN_PATH_LEN];
+
+    /// Log messages printer.
+    struct bf_printer *printer;
 
     /** Number of counters in the counters map. Not all of them are used by
      * the program, but this value is common for all the programs of a given

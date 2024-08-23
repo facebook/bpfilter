@@ -31,7 +31,6 @@
 #include "generator/matcher/ip.h"
 #include "generator/matcher/tcp.h"
 #include "generator/matcher/udp.h"
-#include "generator/printer.h"
 #include "generator/stub.h"
 #include "shared/helper.h"
 
@@ -41,6 +40,7 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
                    enum bf_front front)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
+    int r;
 
     bf_assert(ifindex);
 
@@ -61,6 +61,10 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
              "/sys/fs/bpf/bpfltr_p_%02d%02d%04d", hook, front, ifindex);
     snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
              "/sys/fs/bpf/bpfltr_m_%02d%02d%04d", hook, front, ifindex);
+
+    r = bf_printer_new(&_program->printer);
+    if (r)
+        return r;
 
     bf_list_init(&_program->fixups,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
@@ -89,6 +93,8 @@ void bf_program_free(struct bf_program **program)
     closep(&(*program)->runtime.prog_fd);
     closep(&(*program)->runtime.cmap_fd);
 
+    bf_printer_free(&(*program)->printer);
+
     free(*program);
     *program = NULL;
 }
@@ -110,6 +116,20 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &program->hook, sizeof(program->hook));
     r |= bf_marsh_add_child_raw(&_marsh, &program->front,
                                 sizeof(program->front));
+
+    {
+        // Serialise bf_program.printer
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_printer_marsh(program->printer, &child);
+        if (r)
+            return bf_err_code(r, "failed to marsh bf_printer object");
+
+        r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r)
+            return bf_err_code(r, "failed to append object to marsh");
+    }
+
     r |= bf_marsh_add_child_raw(&_marsh, &program->num_counters,
                                 sizeof(program->num_counters));
     r |= bf_marsh_add_child_raw(&_marsh, program->img,
@@ -150,6 +170,16 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     r = bf_program_new(&_program, ifindex, hook, front);
     if (r < 0)
         return r;
+
+    // Unmarsh bf_program.printer
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return bf_err_code(-EINVAL, "failed to find valid child");
+
+    freep(&_program->printer);
+    r = bf_printer_new_from_marsh(&_program->printer, child);
+    if (r)
+        return bf_err_code(r, "failed to restore bf_printer object");
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -199,6 +229,12 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
          bf_opts_transient() ? "<transient>" : program->prog_pin_path);
     DUMP(prefix, "cmap_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->cmap_pin_path);
+
+    DUMP(prefix, "printer: struct bf_printer *");
+    bf_dump_prefix_push(prefix);
+    bf_printer_dump(program->printer, prefix);
+    bf_dump_prefix_pop(prefix);
+
     DUMP(prefix, "img: %p", program->img);
     DUMP(prefix, "img_size: %lu", program->img_size);
     DUMP(prefix, "img_cap: %lu", program->img_cap);
@@ -526,11 +562,11 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     bf_assert(program);
 
     // Will publish the printer if not published yet.
-    r = bf_printer_publish(bf_context_get_printer());
+    r = bf_printer_publish(program->printer);
     if (r)
         return bf_err_code(r, "can't publish printer map");
 
-    fixup_attr.map_fd = bf_printer_get_fd(bf_context_get_printer());
+    fixup_attr.map_fd = bf_printer_get_fd(program->printer);
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
                           &fixup_attr);
     if (r)
