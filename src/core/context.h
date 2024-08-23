@@ -35,7 +35,6 @@
 
 struct bf_codegen;
 struct bf_marsh;
-struct bf_printer;
 
 /**
  * @struct bf_context
@@ -45,8 +44,6 @@ struct bf_printer;
  */
 struct bf_context
 {
-    /// Printer context, required to print custom strings from the BPF programs.
-    struct bf_printer *printer;
     /// Codegens used by bpfilter. One codegen per (hook, front) set.
     struct bf_codegen *codegens[_BF_HOOK_MAX][_BF_FRONT_MAX];
 };
@@ -153,11 +150,3 @@ int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
  */
 void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
                                 struct bf_codegen *codegen);
-
-/**
- * @brief Returns a pointer to the printer context.
- *
- * @return Pointer to the printer context, can't be NULL as the printer context
- *  is always created.
- */
-struct bf_printer *bf_context_get_printer(void);

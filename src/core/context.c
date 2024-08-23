@@ -11,7 +11,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "generator/codegen.h"
-#include "generator/printer.h"
 #include "shared/helper.h"
 
 #define _cleanup_bf_context_ __attribute__((cleanup(_bf_context_free)))
@@ -32,17 +31,12 @@ static void _bf_context_free(struct bf_context **context);
 static int _bf_context_new(struct bf_context **context)
 {
     _cleanup_bf_context_ struct bf_context *_context = NULL;
-    int r;
 
     bf_assert(context);
 
     _context = calloc(1, sizeof(struct bf_context));
     if (!_context)
         return bf_err_code(errno, "failed to allocate memory");
-
-    r = bf_printer_new(&_context->printer);
-    if (r)
-        return bf_err_code(r, "failed to create new bf_printer object");
 
     *context = TAKE_PTR(_context);
 
@@ -53,7 +47,7 @@ static int _bf_context_new(struct bf_context **context)
  * @brief Allocate a new context and initialise it from serialised data.
  *
  * @param context On success, points to the newly allocated and initialised
- *  printer context. Can't be NULL.
+ *  context. Can't be NULL.
  * @param marsh Serialised data to use to initialise the context.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -72,15 +66,6 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
     _context = calloc(1, sizeof(*_context));
     if (!_context)
         return -ENOMEM;
-
-    // Unmarsh bf_context.printer
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return bf_err_code(-EINVAL, "failed to find valid child");
-
-    r = bf_printer_new_from_marsh(&_context->printer, child);
-    if (r)
-        return bf_err_code(r, "failed to restore bf_printer object");
 
     // Unmarsh bf_context.codegens
     child = bf_marsh_next_child(marsh, child);
@@ -134,8 +119,6 @@ static void _bf_context_free(struct bf_context **context)
             bf_codegen_free(&(*context)->codegens[i][j]);
     }
 
-    bf_printer_free(&(*context)->printer);
-
     free(*context);
     *context = NULL;
 }
@@ -148,11 +131,6 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
     DUMP(prefix, "struct bf_context at %p", context);
 
     bf_dump_prefix_push(prefix);
-
-    DUMP(prefix, "printer: struct bf_printer *");
-    bf_dump_prefix_push(prefix);
-    bf_printer_dump(context->printer, bf_dump_prefix_last(prefix));
-    bf_dump_prefix_pop(prefix);
 
     DUMP(bf_dump_prefix_last(prefix), "codegens: bf_codegen[%d][%d]",
          _BF_HOOK_MAX, _BF_FRONT_MAX);
@@ -205,19 +183,6 @@ static int _bf_context_marsh(const struct bf_context *context,
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r)
         return bf_err_code(r, "failed to create marsh for context");
-
-    {
-        // Serialise bf_context.printer
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_printer_marsh(context->printer, &child);
-        if (r)
-            return bf_err_code(r, "failed to marsh bf_printer object");
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
-            return bf_err_code(r, "failed to append object to marsh");
-    }
 
     {
         // Serialize bf_context.codegens content
@@ -423,9 +388,4 @@ void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
                                 struct bf_codegen *codegen)
 {
     _bf_context_replace_codegen(_global_context, hook, front, codegen);
-}
-
-struct bf_printer *bf_context_get_printer(void)
-{
-    return _global_context->printer;
 }
