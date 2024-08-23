@@ -20,6 +20,7 @@
 #include "generator/program.h"
 #include "generator/reg.h"
 #include "generator/stub.h"
+#include "generator/swich.h"
 #include "shared/helper.h"
 
 static int _nf_gen_inline_prologue(struct bf_program *program);
@@ -37,6 +38,9 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .detach_prog = _nf_detach_prog,
 };
 
+// Forward definition to avoid headers clusterfuck.
+uint16_t htons(uint16_t hostshort);
+
 static int _nf_gen_inline_prologue(struct bf_program *program)
 {
     int r;
@@ -48,6 +52,13 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
+
+    // Copy bpf_nf_ctx.state.pf to the runtime context
+    if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_2, BF_REG_1, offset));
+    EMIT(program,
+         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_proto)));
 
     // Copy nf_hook_state.in in BF_REG_1.
     if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
@@ -94,8 +105,31 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     if (r)
         return r;
 
-    // BPF_PROG_TYPE_NETFILTER's skb is stripped from the Ethernet header,
-    // so we don't get it.
+    /* BPF_PROG_TYPE_NETFILTER doesn't provide access the the Ethernet header,
+     * so we can't parse it. Fill the runtime context's l3_proto and l3_offset
+     * manually instead. */
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    {
+        _cleanup_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BF_REG_1);
+
+        EMIT_SWICH_OPTION(
+            &swich, AF_INET, BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IP)),
+            BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)),
+            BPF_MOV64_IMM(BF_REG_1, 0),
+            BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
+                        BF_PROG_CTX_OFF(l3_offset)));
+        EMIT_SWICH_DEFAULT(
+            &swich,
+            BPF_MOV64_IMM(BF_REG_RET,
+                          program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT)),
+            BPF_EXIT_INSN());
+
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
+    }
 
     r = bf_stub_parse_l3_hdr(program);
     if (r)
