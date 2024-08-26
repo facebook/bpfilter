@@ -10,7 +10,7 @@ author = ''
 templates_path = ['_templates']
 exclude_patterns = []
 
-extensions = ['breathe']
+extensions = ['breathe', 'linuxdoc.rstFlatTable']
 breathe_default_project = '@PROJECT_NAME@'
 breathe_default_members = ('members', 'private-members', 'undoc-members')
 breathe_domain_by_extension = { "h": "c", "c": "c" }

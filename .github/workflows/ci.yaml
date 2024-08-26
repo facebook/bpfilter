@@ -44,6 +44,7 @@ jobs:
             libubsan \
             python3-breathe \
             python3-furo \
+            python3-linuxdoc \
             python3-sphinx \
             pkgconf
       - name: Configure build
@@ -97,6 +98,7 @@ jobs:
             libubsan \
             python3-breathe \
             python3-furo \
+            python3-linuxdoc \
             python3-sphinx \
             pkgconf
       - name: Install dependencies (Ubuntu)
@@ -121,7 +123,8 @@ jobs:
             python3-breathe \
             python3-pip \
             python3-sphinx \
-            pkgconf
+            pkgconf && \
+          pip3 install --break-system-packages linuxdoc
       - name: Configure build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Build

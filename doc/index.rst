@@ -7,13 +7,14 @@
    :caption: Users
 
    overview
-   build
+   usage
 
 .. toctree::
    :hidden:
    :maxdepth: 2
    :caption: Developers
 
+   developers/build
    developers/packets_processing
    developers/generation
    developers/fronts/index
@@ -23,7 +24,7 @@
 
 The ``bpfilter`` daemon running on the system receives a request from a client (``iptables``, ``nftables``, or any other client that could be created) and converts the client-provided ruleset into one or more BPF program(s).
 
-If you want to try ``bpfilter`` with ``nftables`` or ``iptables``, have a look at :doc:`build`.
+If you want to try ``bpfilter`` with ``nftables`` or ``iptables``, have a look at :doc:`developers/build`.
 
 If you want to know more about ``bpfilter``'s internals, take a look at the following talks about the project:
 

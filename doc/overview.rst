@@ -1,21 +1,7 @@
 Overview
 ========
 
-Command line options
---------------------
-
-The bpfilter daemon must be run as root in order to write to `/run` and manipulate BPF programs. It supports the following arguments:
-
-- ``-t``, ``--transient``: if used, ``bpfilter`` won't pin any BPF program or map, and no data will be serialized to the filesystem. Hence, as soon as the daemon is stopped, the loaded BPF programs and maps will be removed from the system.
-- ``--no-iptables``: disable ``iptables`` support. If ``iptables`` is enabled, ``bpfilter`` will create pass-through programs to represent the ``INPUT``, ``OUTPUT``, and ``FORWARD`` hook used by ``iptables``, with ``ACCEPT`` as the default policy. If ``iptables`` support is disabled, no BPF program will be generated for ``iptables`` and ``bpfilter`` will answer to every request coming from ``iptables`` with a failure response.
-- ``-b``, ``--buffer-len=BUF_LEN_POW``: size of the ``BPF_PROG_LOAD`` buffer as a power of 2. Only available if ``--verbose`` is used. ``BPF_PROG_LOAD`` system call can be provided a buffer for the BPF verifier to provide details in case the program can't be loaded. The required size for the buffer being hardly predictable, this option allows for the user to control it. The final buffer will have a size of ``1 << BUF_LEN_POWER``.
-- ``-v``, ``--verbose``: print more detailed log messages.
-- ``--debug``: generate the BPF programs in debug mode: if a call to a kfunc or a BPF helper fails, a log message will be printed to ``/sys/kernel/debug/tracing/trace_pipe``.
-- ``--usage``: print a short usage message.
-- ``-?``, ``--help``: print the help message
-
-``bpfilter`` on the system
---------------------------
+``bpfilter`` is a framework to convert packet filtering rules into BPF programs.
 
 When ``bpfilter`` is started, the daemon will check if ``/run/bpfilter`` exists, if it doesn't, the daemon will try to create it. The content of this directory depends on which mode ``bpfilter`` has been started in: **standard** or **transient**.
 
