@@ -46,6 +46,7 @@ jobs:
             libubsan \
             python3-breathe \
             python3-furo \
+            python3-linuxdoc \
             python3-sphinx \
             pkgconf
       - name: Configure build

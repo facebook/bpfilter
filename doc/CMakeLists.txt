@@ -7,7 +7,9 @@ configure_file(conf.py.in conf.py)
 file(COPY _static DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 set(doc_srcs
-	index.rst reference.rst
+	index.rst overview.rst usage.rst reference.rst
+	developers/build.rst developers/generation.rst developers/packets_processing.rst
+	developers/fronts/index.rst developers/fronts/nftables.rst
 )
 
 get_target_property(shared_srcs shared SOURCES)
