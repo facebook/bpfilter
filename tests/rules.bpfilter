@@ -1,8 +1,104 @@
+# Create an XDP chain
 chain BF_HOOK_NFT_INGRESS policy ACCEPT
     rule
-        ip4.proto icmp
-        DROP
+        ip4.saddr 192.168.1.1
+        counter
+        ACCEPT
     rule
-        tcp.flags any SYN,ACK,FIN
+        ip4.daddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.proto icmp
+        counter
+        ACCEPT
+    rule
+        tcp.sport 22
+        counter
+        ACCEPT
+    rule
+        tcp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.flags any SYN,ACK
+        counter
+        ACCEPT
+    rule
+        udp.sport 22
+        counter
+        ACCEPT
+    rule
+        udp.dport 22
+        counter
+        ACCEPT
+
+# Create a TC chain
+chain BF_HOOK_TC_INGRESS policy ACCEPT
+    rule
+        ip4.saddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.daddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.proto icmp
+        counter
+        ACCEPT
+    rule
+        tcp.sport 22
+        counter
+        ACCEPT
+    rule
+        tcp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.flags any SYN,ACK
+        counter
+        ACCEPT
+    rule
+        udp.sport 22
+        counter
+        ACCEPT
+    rule
+        udp.dport 22
+        counter
+        ACCEPT
+
+# Create a BPF_NETFILTER chain
+chain BF_HOOK_IPT_LOCAL_IN policy ACCEPT
+    rule
+        ip4.saddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.daddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.proto icmp
+        counter
+        ACCEPT
+    rule
+        tcp.sport 22
+        counter
+        ACCEPT
+    rule
+        tcp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.flags any SYN,ACK
+        counter
+        ACCEPT
+    rule
+        udp.sport 22
+        counter
+        ACCEPT
+    rule
+        udp.dport 22
         counter
         ACCEPT
