@@ -20,6 +20,7 @@
 %%
 
 [ \t\n]         ;
+"#".*           ;
 
 chain           { return CHAIN; }
 rule            { return RULE; }
