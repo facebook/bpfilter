@@ -122,7 +122,7 @@ With:
 
     - ``eq``: exact equality.
     - ``not``: inequality.
-    - ``any``: match the packet against a set of data defined as the payload. If any of the member of the payload set is found in the packet, the matcher is positive. For example, if you want to match all the ``icmp`` and ``udp`` packets: ``ip.proto any icmp,udp``.
+    - ``any``: match the packet against a set of data defined as the payload. If any of the member of the payload set is found in the packet, the matcher is positive. For example, if you want to match all the ``icmp`` and ``udp`` packets: ``ip4.proto any icmp,udp``.
     - ``all``: match the packet against a set of data defined as the payload. If all the member of the payload set are found in the packet, the matcher is positive, even if the packet contains more than only the members defined in the payload. For example, to match all the packets containing *at least* the ``ACK`` TCP flag: ``tcp.flags all ACK``.
 
   - ``$PAYLOAD``: payload to compare to the processed network packet. The exact payload format depends on ``$TYPE``.
@@ -141,17 +141,17 @@ With:
       - Payload
       - Notes
     * - :rspan:`1` Source address
-      - :rspan:`1` ``ip.saddr``
+      - :rspan:`1` ``ip4.saddr``
       - ``eq``
       - :rspan:`3` ``$IP/$MASK``
       - :rspan:`3` ``/$MASK`` is optional, `/32` is used by default.
     * - ``not``
     * - :rspan:`1` Destination address
-      - :rspan:`1` ``ip.daddr``
+      - :rspan:`1` ``ip4.daddr``
       - ``eq``
     * - ``not``
     * - Protocol
-      - ``ip.proto``
+      - ``ip4.proto``
       - ``eq``
       - ``$PROTOCOL``
       - Only ``icmp`` is supported for now, more protocols will be added.

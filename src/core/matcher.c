@@ -127,9 +127,9 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 }
 
 static const char *_bf_matcher_type_strs[] = {
-    [BF_MATCHER_IP_SRC_ADDR] = "ip.saddr",
-    [BF_MATCHER_IP_DST_ADDR] = "ip.daddr",
-    [BF_MATCHER_IP_PROTO] = "ip.proto",
+    [BF_MATCHER_IP4_SRC_ADDR] = "ip4.saddr",
+    [BF_MATCHER_IP4_DST_ADDR] = "ip4.daddr",
+    [BF_MATCHER_IP4_PROTO] = "ip4.proto",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
     [BF_MATCHER_TCP_FLAGS] = "tcp.flags",
