@@ -62,6 +62,10 @@ A ruleset is composed of chain(s), rule(s), and matcher(s):
   - A **rule** defines an action to take on a packet if it matches all its specified criteria. A rule will then apply a defined action to the packet if it's matched.
   - A **matcher** is a matching criterion within a rule. It can match a specific protocol, a specific field, a network interface... The number of matchers supported by ``bpfilter`` and ``bfcli`` is constantly growing.
 
+.. note::
+
+    Lines starting with ``#`` are comments and ``bfcli`` will ignore them. 
+
 
 Chains
 ------
