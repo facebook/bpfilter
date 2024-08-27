@@ -7,15 +7,20 @@ BPF-based packet filtering framework
 
 ## Quick start
 
-To quickly get `bpfilter` up and running on Fedora (38+):
+To quickly get `bpfilter` up and running on Fedora 40:
 
 ```shell
 # Install dependencies
-sudo dnf install \
+sudo dnf install -y \
+    bison \
+    bpftool \
+    clang \
     clang-tools-extra \
     cmake \
+    flex \
     libcmocka-devel \
     doxygen \
+    git \
     lcov \
     libasan \
     libbpf-devel \
@@ -23,6 +28,7 @@ sudo dnf install \
     libubsan \
     python3-breathe \
     python3-furo \
+    python3-linuxdoc \
     python3-sphinx \
     pkgconf
 

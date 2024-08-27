@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["fedora:38", "fedora:39", "ubuntu:23.10", "ubuntu:24.04"]
+        image: ["fedora:39", "ubuntu:24.04"]
         arch: ["X64", "ARM64"]
     container: ${{ matrix.image }}
     runs-on: [self-hosted, "${{ matrix.arch }}"]
@@ -79,7 +79,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install dependencies (Fedora)
-        if: ${{ (matrix.image == 'fedora:38') || (matrix.image == 'fedora:39') }}
+        if: matrix.image == 'fedora:39'
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
             bison \
@@ -102,7 +102,7 @@ jobs:
             python3-sphinx \
             pkgconf
       - name: Install dependencies (Ubuntu)
-        if: ${{ (matrix.image == 'ubuntu:23.10') || (matrix.image == 'ubuntu:24.04') }}
+        if: matrix.image == 'ubuntu:24.04'
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \

@@ -1,25 +1,18 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon.
-
-``bpfilter`` development is mostly done using Fedora (40, but 38+ supported), but Ubuntu (23.10+) is also officially supported. Other distributions may work as long as Linux 6.4+ is available, but they are not officially supported at the moment.
-
-.. note::
-    Ubuntu 22.04 LTS allows for Linux 6.5 to be installed through its Hardware Enablement Stack (HWE). However, this feature only allows for the kernel and the headers **used to build the kernel modules** to be installed in v6.5. The main system kernel headers, located in ``/usr/include``, used to build userspace application, are still in the non-HWE version. This means Ubuntu 22.04 LTS is not supported by ``bpfilter``, even with the HWE stack.
-
-.. note::
-    Ubuntu 23.10 is running Linux 6.5, which is too old to support TCX hooks used by ``bpfilter``. Creating a TCX BPF program with ``bpfilter`` will return an error on Ubuntu 23.10.
+This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39 and 40, and Ubuntu 24.04 LTS.
 
 Required dependencies on Fedora and Ubuntu:
 
 .. code-block:: shell
 
-    # Fedora 40
-    bpftool clang clang-tools-extra cmake libcmocka-devel doxygen lcov libasan libbpf-devel libnl3-devel libubsan python3-breathe python3-furo python3-sphinx pkgconf
+    # Fedora
+    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex git lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan python3-breathe python3-furo python3-linuxdoc python3-sphinx pkgconf
 
-    # Ubuntu 24.04
-    clang clang-format clang-tidy cmake doxygen furo lcov libbpf-dev libcmocka-dev libnl-3-dev linux-tools-common pkgconf python3-breathe python3-sphinx
+    # Ubuntu
+    sudo apt-get install -y bison clang clang-format clang-tidy cmake doxygen flex git furo lcov libpf-dev libcmocka-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf
+    pip3 install linuxdoc
 
 You can then use CMake to generate the build system:
 
