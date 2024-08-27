@@ -30,7 +30,7 @@ static int _bf_matcher_generate_udp_port(struct bf_program *program,
     EMIT(program, BPF_LDX_MEM(BPF_H, BF_REG_4, BF_REG_L4, offset));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
                BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                           BF_REG_4, htons(port), 0));
+                           BF_REG_4, htonl(port), 0));
 
     return 0;
 }
@@ -43,7 +43,7 @@ int bf_matcher_generate_udp(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1, IPPROTO_UDP, 0));
+               BPF_JMP_IMM(BPF_JNE, BF_REG_1, htonl(IPPROTO_UDP), 0));
 
     switch (matcher->type) {
     case BF_MATCHER_UDP_SPORT:
