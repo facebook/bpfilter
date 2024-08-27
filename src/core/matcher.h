@@ -41,12 +41,12 @@ struct bf_marsh;
  */
 enum bf_matcher_type
 {
-    /// Matches IP source address.
-    BF_MATCHER_IP_SRC_ADDR,
-    /// Matches IP destination address.
-    BF_MATCHER_IP_DST_ADDR,
-    /// Matches against the IP protocol field
-    BF_MATCHER_IP_PROTO,
+    /// Matches IPv4 source address.
+    BF_MATCHER_IP4_SRC_ADDR,
+    /// Matches IPv4 destination address.
+    BF_MATCHER_IP4_DST_ADDR,
+    /// Matches against the IPv4 protocol field
+    BF_MATCHER_IP4_PROTO,
     /// Matches against the TCP source port
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
@@ -62,9 +62,9 @@ enum bf_matcher_type
 
 /**
  * @brief Defines the structure of the payload for bf_matcher's
- * BF_MATCHER_IP_SRC_ADDR and BF_MATCHER_IP_DST_ADDR types.
+ * BF_MATCHER_IP4_SRC_ADDR and BF_MATCHER_IP4_DST_ADDR types.
  */
-struct bf_matcher_ip_addr
+struct bf_matcher_ip4_addr
 {
     uint32_t addr;
     uint32_t mask;

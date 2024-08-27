@@ -35,7 +35,7 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
-ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPPROTO>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-z]+ {
@@ -44,8 +44,8 @@ ip\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); re
     }
 }
 
-ip\.saddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-ip\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.saddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPADDR>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {

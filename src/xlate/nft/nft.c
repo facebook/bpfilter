@@ -509,27 +509,27 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     rule->counters = counter;
     switch (off) {
     case 9:
-        r = bf_rule_add_matcher(rule, BF_MATCHER_IP_PROTO, BF_MATCHER_EQ,
+        r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                 (uint16_t[]) {htonl(cmp_value)},
                                 sizeof(uint16_t));
         if (r)
             return r;
         break;
     case 12:
-        r = bf_rule_add_matcher(rule, BF_MATCHER_IP_SRC_ADDR, BF_MATCHER_EQ,
-                                (struct bf_matcher_ip_addr[]) {
+        r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_SRC_ADDR, BF_MATCHER_EQ,
+                                (struct bf_matcher_ip4_addr[]) {
                                     {.addr = htonl(cmp_value),
                                      .mask = 0xffffffff >> (32 - len * 8)}},
-                                sizeof(struct bf_matcher_ip_addr));
+                                sizeof(struct bf_matcher_ip4_addr));
         if (r)
             return r;
         break;
     case 16:
-        r = bf_rule_add_matcher(rule, BF_MATCHER_IP_DST_ADDR, BF_MATCHER_EQ,
-                                (struct bf_matcher_ip_addr[]) {
+        r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
+                                (struct bf_matcher_ip4_addr[]) {
                                     {.addr = htonl(cmp_value),
                                      .mask = 0xffffffff >> (32 - len * 8)}},
-                                sizeof(struct bf_matcher_ip_addr));
+                                sizeof(struct bf_matcher_ip4_addr));
         if (r)
             return r;
         break;

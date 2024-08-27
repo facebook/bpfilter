@@ -28,7 +28,7 @@
 #include "core/rule.h"
 #include "core/verdict.h"
 #include "generator/jmp.h"
-#include "generator/matcher/ip.h"
+#include "generator/matcher/ip4.h"
 #include "generator/matcher/tcp.h"
 #include "generator/matcher/udp.h"
 #include "generator/stub.h"
@@ -387,10 +387,10 @@ static int _bf_program_generate_rule(struct bf_program *program,
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
         switch (matcher->type) {
-        case BF_MATCHER_IP_SRC_ADDR:
-        case BF_MATCHER_IP_DST_ADDR:
-        case BF_MATCHER_IP_PROTO:
-            r = bf_matcher_generate_ip(program, matcher);
+        case BF_MATCHER_IP4_SRC_ADDR:
+        case BF_MATCHER_IP4_DST_ADDR:
+        case BF_MATCHER_IP4_PROTO:
+            r = bf_matcher_generate_ip4(program, matcher);
             if (r)
                 return r;
             break;

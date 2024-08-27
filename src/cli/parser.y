@@ -231,7 +231,7 @@ matcher         : matcher_type matcher_op MATCHER_IPPROTO
                 | matcher_type matcher_op MATCHER_IPADDR
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    struct bf_matcher_ip_addr addr;
+                    struct bf_matcher_ip4_addr addr;
                     char *mask;
                     int r;
 

@@ -125,7 +125,7 @@ struct bf_program_context
 
         union
         {
-            struct iphdr _iphdr;
+            struct iphdr _ip4hdr;
             char l3_raw;
         };
     };

@@ -263,12 +263,12 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     _rule->counters = true;
 
     if (ipt_rule->ip.src.s_addr || ipt_rule->ip.smsk.s_addr) {
-        struct bf_matcher_ip_addr addr = {
+        struct bf_matcher_ip4_addr addr = {
             .addr = ipt_rule->ip.src.s_addr,
             .mask = ipt_rule->ip.smsk.s_addr,
         };
 
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_SRC_ADDR,
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_SRC_ADDR,
                                 ipt_rule->ip.invflags & IPT_INV_SRCIP ?
                                     BF_MATCHER_EQ :
                                     BF_MATCHER_NE,
@@ -278,12 +278,12 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     }
 
     if (ipt_rule->ip.dst.s_addr || ipt_rule->ip.dmsk.s_addr) {
-        struct bf_matcher_ip_addr addr = {
+        struct bf_matcher_ip4_addr addr = {
             .addr = ipt_rule->ip.dst.s_addr,
             .mask = ipt_rule->ip.dmsk.s_addr,
         };
 
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_DST_ADDR,
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_DST_ADDR,
                                 ipt_rule->ip.invflags & IPT_INV_DSTIP ?
                                     BF_MATCHER_EQ :
                                     BF_MATCHER_NE,
@@ -296,8 +296,9 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
         uint8_t ip_proto = (uint8_t)ipt_rule->ip.proto;
 
         if (ip_proto != ipt_rule->ip.proto)
-            return bf_err_code(-EINVAL, "invalid ip.proto %d", ipt_rule->ip.proto);
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP_PROTO, BF_MATCHER_EQ,
+            return bf_err_code(-EINVAL, "invalid ip.proto %d",
+                               ipt_rule->ip.proto);
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                 &ip_proto, sizeof(uint8_t));
     }
 
