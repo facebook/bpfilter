@@ -732,11 +732,6 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_ARG_1, BF_PROG_CTX_OFF(arg)));
 
-    // Set slices registers to 0
-    EMIT(program, BPF_MOV64_IMM(BF_REG_L2, 0));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_L3, 0));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_L4, 0));
-
     return 0;
 }
 
