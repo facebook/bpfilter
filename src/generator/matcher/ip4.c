@@ -20,12 +20,17 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_L3, offset));
-    if (addr->mask != 0xffffffff)
-        EMIT(program, BPF_ALU32_IMM(BPF_AND, BF_REG_2, htonl(addr->mask)));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_L3, offset));
+    EMIT(program, BPF_MOV32_IMM(BF_REG_2, addr->addr));
+
+    if (addr->mask != 0xffffffff) {
+        EMIT(program, BPF_MOV32_IMM(BF_REG_3, addr->mask));
+        EMIT(program, BPF_ALU32_REG(BPF_AND, BF_REG_2, BF_REG_3));
+    }
+
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BF_REG_2, htonl(addr->addr), 0));
+               BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                           BF_REG_1, BF_REG_2, 0));
 
     return 0;
 }
