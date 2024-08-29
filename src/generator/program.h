@@ -87,15 +87,17 @@ struct bf_counter;
  * macro @ref BF_PROG_CTX_OFF.
  *
  * Layer 2, 3, and 4 headers are stored in an anonymous union, accessed through
- * the field named `lXraw`. The various header structures stored in anonymous
- * union are used to ensure `lXraw` is big enough to store any supported header.
+ * the field named `lX_raw`. The various header structures stored in anonymous
+ * union are used to ensure `lX_raw` is big enough to store any supported
+ * header.
  *
- * @warning A static assertion is defined to ensure this structure is aligned
- * on 8-bytes boundaries. This is required by @ref bf_stub_memclear.
+ * @warning Be very careful when it comes to modifying this structure, as
+ * misaligned could prevent the BPF verifier from accepting the program in
+ * certain circumstances.
  */
 struct bf_program_context
 {
-    /** Argument passed to the BPF program, it content depends on the BPF
+    /** Argument passed to the BPF program, its content depends on the BPF
      * program type. */
     void *arg;
 
@@ -106,48 +108,42 @@ struct bf_program_context
     /** Total size of the packet. */
     uint64_t pkt_size;
 
+    /** Offset of the layer 3 protocol. */
+    uint32_t l3_offset;
+
+    /** Offset of the layer 4 protocol. */
+    uint32_t l4_offset;
+
+    /** Layer 3 protocol, set when processing layer 2 protocol header. Required
+     * to process the layer 3 header. */
+    uint16_t bf_aligned(8) l3_proto;
+
+    /** Layer 4 protocol, set when processing layer 3 protocol header. Required
+     * to process the layer 4 header. */
+    uint8_t bf_aligned(8) l4_proto;
+
     /** Layer 2 header. */
     union
     {
         struct ethhdr _ethhdr;
-        char l2_raw;
-    };
+        char l2_raw[0];
+    } bf_aligned(8);
 
     /** Layer 3 header. */
-    struct
+    union
     {
-        /** Offset of the layer 3 header in the packet. */
-        uint32_t l3_offset;
+        struct iphdr _ip4hdr;
+        char l3_raw[0];
+    } bf_aligned(8);
 
-        /** Layer 3 protocol. Set when the L2 header is processed. Used to
-         * define how many bytes to read when processing the packet. */
-        uint16_t l3_proto;
-
-        union
-        {
-            struct iphdr _ip4hdr;
-            char l3_raw;
-        };
-    };
-
-    /** Layer 4 header. */
-    struct
+    /** Layer 3 header. */
+    union
     {
-        /** Offset of the layer 4 header in the packet. */
-        uint32_t l4_offset;
-
-        /** Layer 4 protocol. Set when the L3 header is processed. Used to
-         * define how many bytes to read when processing the packet. */
-        uint8_t l4_proto;
-
-        union
-        {
-            struct icmphdr _icmphdr;
-            struct udphdr _udphdr;
-            struct tcphdr _tcphdr;
-            char l4_raw;
-        };
-    };
+        struct icmphdr _icmphdr;
+        struct udphdr _udphdr;
+        struct tcphdr _tcphdr;
+        char l4_raw[0];
+    } bf_aligned(8);
 } bf_aligned(8);
 
 static_assert(sizeof(struct bf_program_context) % 8 == 0,
