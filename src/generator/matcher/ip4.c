@@ -39,7 +39,7 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
                               offsetof(struct iphdr, protocol)));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
                BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                           BF_REG_4, htonl(proto), 0));
+                           BF_REG_4, proto, 0));
 
     return 0;
 }
@@ -52,7 +52,7 @@ int bf_matcher_generate_ip4(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1, htonl(ETH_P_IP), 0));
+               BPF_JMP_IMM(BPF_JNE, BF_REG_1, htons(ETH_P_IP), 0));
 
     switch (matcher->type) {
     case BF_MATCHER_IP4_SRC_ADDR:
