@@ -50,10 +50,6 @@ static int _xdp_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_stub_make_ctx_xdp_dynptr(program, BF_REG_1);
-    if (r)
-        return r;
-
     // Copy xdp_md pointer into BF_REG_1
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
@@ -72,6 +68,13 @@ static int _xdp_gen_inline_prologue(struct bf_program *program)
     // Copy packet size into context
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
+
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
+
+    r = bf_stub_make_ctx_xdp_dynptr(program, BF_REG_1);
+    if (r)
+        return r;
 
     r = bf_stub_parse_l2_ethhdr(program);
     if (r)
