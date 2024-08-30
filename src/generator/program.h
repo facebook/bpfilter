@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <net/if.h>
-
 #include <linux/bpf.h>
 #include <linux/icmp.h>
 #include <linux/if_ether.h>

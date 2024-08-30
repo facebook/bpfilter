@@ -3,10 +3,10 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include <arpa/inet.h>
-
 #include <linux/netfilter.h>
 #include <linux/netfilter/nf_tables.h>
+
+#include <endian.h>
 
 #include "core/context.h"
 #include "core/hook.h"
@@ -229,7 +229,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
             -EINVAL, "missing or invalid hook (NF_INET_PRE_ROUTING required)");
     }
 
-    switch (ntohl(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY]))) {
+    switch (be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY]))) {
     case NF_ACCEPT:
         verdict = BF_VERDICT_ACCEPT;
         break;
@@ -239,7 +239,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
     default:
         return bf_err_code(
             -ENOTSUP, "unsupported policy %u",
-            ntohl(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
+            be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
     };
 
     codegen = bf_context_get_codegen(BF_HOOK_NFT_INGRESS, BF_FRONT_NFT);
@@ -318,19 +318,19 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_NAME, _bf_chain_name);
     bf_nfmsg_push_u64_or_jmp(msg, NFTA_CHAIN_HANDLE, BF_HOOK_NFT_INGRESS);
     bf_nfmsg_push_u64_or_jmp(msg, NFTA_CHAIN_HANDLE, BF_HOOK_NFT_INGRESS);
-    bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_POLICY, htonl(policy));
+    bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_POLICY, htobe32(policy));
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TYPE, "filter");
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_FLAGS, NFT_CHAIN_BASE);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_USE,
-                             htonl(bf_list_size(&codegen->rules)));
+                             htobe32(bf_list_size(&codegen->rules)));
 
     {
         _cleanup_bf_nfnest_ struct bf_nfnest _ =
             bf_nfnest_or_jmp(msg, NFTA_CHAIN_HOOK);
 
         bf_nfmsg_push_u32_or_jmp(msg, NFTA_HOOK_HOOKNUM,
-                                 htonl(NF_INET_PRE_ROUTING));
-        bf_nfmsg_push_u32_or_jmp(msg, NFTA_HOOK_PRIORITY, htonl(0));
+                                 htobe32(NF_INET_PRE_ROUTING));
+        bf_nfmsg_push_u32_or_jmp(msg, NFTA_HOOK_PRIORITY, htobe32(0));
     }
 
     return 0;
@@ -397,14 +397,15 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
         return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
 
     if (!payload_attrs[NFTA_PAYLOAD_BASE] ||
-        ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_BASE])) !=
+        be32toh(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_BASE])) !=
             NFT_PAYLOAD_NETWORK_HEADER) {
         return bf_err_code(-EINVAL,
                            "expecting payload base NFT_PAYLOAD_NETWORK_HEADER");
     }
 
-    uint32_t len = ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_LEN]));
-    uint32_t off = ntohl(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_OFFSET]));
+    uint32_t len = be32toh(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_LEN]));
+    uint32_t off =
+        be32toh(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_OFFSET]));
 
     attr = bf_nfattr_next(attr, &rem);
     if (!bf_nfattr_is_ok(attr, rem))
@@ -425,7 +426,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     if (r < 0)
         return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
 
-    uint32_t op = ntohl(bf_nfattr_get_u32(cmp_attrs[NFTA_CMP_OP]));
+    uint32_t op = be32toh(bf_nfattr_get_u32(cmp_attrs[NFTA_CMP_OP]));
     if (op != NFT_CMP_EQ)
         return bf_err_code(-EINVAL, "only NFTA_CMP_OP is supported");
 
@@ -434,7 +435,8 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     if (r < 0)
         return bf_err_code(r, "failed to parse NFTA_CMP_DATA attributes");
 
-    uint32_t cmp_value = ntohl(bf_nfattr_get_u32(data_attrs[NFTA_DATA_VALUE]));
+    uint32_t cmp_value =
+        be32toh(bf_nfattr_get_u32(data_attrs[NFTA_DATA_VALUE]));
 
     attr = bf_nfattr_next(attr, &rem);
     if (!bf_nfattr_is_ok(attr, rem))
@@ -490,7 +492,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
         return bf_err_code(-EINVAL, "missing NFTA_VERDICT_CODE attribute");
 
     int32_t verdict =
-        ntohl(bf_nfattr_get_s32(verdict_attrs[NFTA_VERDICT_CODE]));
+        be32toh(bf_nfattr_get_s32(verdict_attrs[NFTA_VERDICT_CODE]));
     if (verdict < 0) {
         return bf_err_code(-EINVAL,
                            "only ACCEPT and DROP verdicts are supported");
@@ -510,7 +512,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     switch (off) {
     case 9:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                                (uint16_t[]) {htonl(cmp_value)},
+                                (uint16_t[]) {htobe32(cmp_value)},
                                 sizeof(uint16_t));
         if (r)
             return r;
@@ -518,7 +520,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     case 12:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_SRC_ADDR, BF_MATCHER_EQ,
                                 (struct bf_matcher_ip4_addr[]) {
-                                    {.addr = htonl(cmp_value),
+                                    {.addr = htobe32(cmp_value),
                                      .mask = 0xffffffff >> (32 - len * 8)}},
                                 sizeof(struct bf_matcher_ip4_addr));
         if (r)
@@ -527,7 +529,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     case 16:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
                                 (struct bf_matcher_ip4_addr[]) {
-                                    {.addr = htonl(cmp_value),
+                                    {.addr = htobe32(cmp_value),
                                      .mask = 0xffffffff >> (32 - len * 8)}},
                                 sizeof(struct bf_matcher_ip4_addr));
         if (r)

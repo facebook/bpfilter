@@ -36,6 +36,7 @@ add_library(core OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/core/flavor.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/flavor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/helper.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/hook.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/hook.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/if.h               ${CMAKE_CURRENT_SOURCE_DIR}/core/if.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/list.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/logger.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/marsh.h            ${CMAKE_CURRENT_SOURCE_DIR}/core/marsh.c

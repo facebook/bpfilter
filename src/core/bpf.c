@@ -5,8 +5,6 @@
 
 #include "core/bpf.h"
 
-#include <net/if.h>
-
 #include <linux/bpf.h>
 #include <linux/netfilter.h>
 

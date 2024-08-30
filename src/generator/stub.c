@@ -5,9 +5,10 @@
 
 #include "generator/stub.h"
 
-#include <arpa/inet.h>
-
 #include <linux/bpf.h>
+#include <linux/in.h>
+
+#include <endian.h>
 
 #include "core/flavor.h"
 #include "core/opts.h"
@@ -169,7 +170,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         _cleanup_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BF_ARG_4);
 
-        EMIT_SWICH_OPTION(&swich, htons(ETH_P_IP),
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
                           BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
         EMIT_SWICH_DEFAULT(
             &swich,

@@ -65,8 +65,6 @@ IncludeCategories:
   # net/if.h needs to be included BEFORE linux/if.h to avoid conflicts
   - Regex: '<net/if.h>'
     Priority: 1
-  - Regex: '<arpa/inet.h>'
-    Priority: 1
   - Regex: '^<linux/'
     Priority: 2
   - Regex: '^"external/.*'
