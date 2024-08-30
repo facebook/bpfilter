@@ -172,6 +172,8 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
         EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
                           BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
+                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ipv6hdr)));
         EMIT_SWICH_DEFAULT(
             &swich,
             BPF_MOV64_IMM(BF_REG_RET,
@@ -198,36 +200,43 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         EMIT(program, BPF_EXIT_INSN());
     }
 
-    // Copy the L3 header pointer to BF_REG_L3.
     EMIT(program, BPF_MOV64_REG(BF_REG_L3, BF_REG_RET));
 
-    // Load ip.ihl into BF_REG_1
-    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3, 0));
-
-    // Only keep the 4 IHL bits
-    EMIT(program, BPF_ALU64_IMM(BPF_AND, BF_REG_1, 0x0f));
-
-    // Convert the number of words stored in ip.ihl into a number of bytes.
-    EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_1, 2));
-
-    // Store the L3 offset in BF_REG_2
     EMIT(program,
-         BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_CTX, BF_PROG_CTX_OFF(l3_offset)));
+         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    {
+        _cleanup_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BF_REG_1);
 
-    // Add the L3 offset to the L4 offset
-    EMIT(program, BPF_ALU64_REG(BPF_ADD, BF_REG_1, BF_REG_2));
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
+                          BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3, 0),
+                          BPF_ALU64_IMM(BPF_AND, BF_REG_1, 0x0f),
+                          BPF_ALU64_IMM(BPF_LSH, BF_REG_1, 2),
+                          BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_CTX,
+                                      BF_PROG_CTX_OFF(l3_offset)),
+                          BPF_ALU64_REG(BPF_ADD, BF_REG_1, BF_REG_2),
+                          BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
+                                      BF_PROG_CTX_OFF(l4_offset)),
+                          BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3,
+                                      offsetof(struct iphdr, protocol)),
+                          BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_1,
+                                      BF_PROG_CTX_OFF(l4_proto)));
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
+                          BPF_MOV64_IMM(BF_REG_1, sizeof(struct ipv6hdr)),
+                          BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_CTX,
+                                      BF_PROG_CTX_OFF(l3_offset)),
+                          BPF_ALU64_REG(BPF_ADD, BF_REG_1, BF_REG_2),
+                          BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
+                                      BF_PROG_CTX_OFF(l4_offset)),
+                          BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3,
+                                      offsetof(struct ipv6hdr, nexthdr)),
+                          BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_1,
+                                      BF_PROG_CTX_OFF(l4_proto)));
 
-    // Store the L4 header offset back into the context.
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l4_offset)));
-
-    // Copy the L4 protocol into BF_REG_1
-    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L3,
-                              offsetof(struct iphdr, protocol)));
-
-    // Store the L4 protocol into the context.
-    EMIT(program,
-         BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l4_proto)));
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
+    }
 
     return 0;
 }

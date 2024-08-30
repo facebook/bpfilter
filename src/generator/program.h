@@ -9,6 +9,7 @@
 #include <linux/icmp.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
@@ -131,6 +132,7 @@ struct bf_program_context
     union
     {
         struct iphdr _ip4hdr;
+        struct ipv6hdr _ip6hdr;
         char l3_raw[0];
     } bf_aligned(8);
 
