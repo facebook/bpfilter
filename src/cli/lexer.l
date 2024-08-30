@@ -12,7 +12,7 @@
 %option noinput
 %option nounput
 
-%s STATE_MATCHER_IPPROTO
+%s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_TCP_FLAGS
@@ -36,12 +36,12 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
-ip4\.proto       { BEGIN(STATE_MATCHER_IPPROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_IPPROTO>{
+ip4\.proto      { BEGIN(STATE_MATCHER_IP_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP_PROTO>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-z]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_IPPROTO;
+        return MATCHER_IP_PROTO;
     }
 }
 

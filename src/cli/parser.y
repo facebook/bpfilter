@@ -48,7 +48,7 @@
 %token POLICY
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_IPPROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 
@@ -210,7 +210,7 @@ matchers        : matcher
                     $$ = TAKE_PTR($1);
                 }
                 ;
-matcher         : matcher_type matcher_op MATCHER_IPPROTO
+matcher         : matcher_type matcher_op MATCHER_IP_PROTO
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint8_t proto;
@@ -218,7 +218,7 @@ matcher         : matcher_type matcher_op MATCHER_IPPROTO
                     if (bf_streq($3, "icmp")) {
                         proto = IPPROTO_ICMP;
                     } else {
-                        yyerror(chains, "unsupported IPPROTO to match '%s'\n", $3);
+                        yyerror(chains, "unsupported ip4.proto value '%s'\n", $3);
                         YYABORT;
                     }
     
