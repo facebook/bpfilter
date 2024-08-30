@@ -7,6 +7,7 @@
 
 #include <linux/bpf.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 
 #include <endian.h>
 
@@ -272,6 +273,8 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMP,
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
+                          BPF_MOV64_IMM(BF_REG_4, sizeof(struct icmp6hdr)));
 
         r = bf_swich_generate(&swich);
         if (r)
