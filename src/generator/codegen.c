@@ -5,14 +5,13 @@
 
 #include "codegen.h"
 
-#include <net/if.h>
-
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "core/dump.h"
+#include "core/if.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
@@ -302,47 +301,45 @@ int bf_codegen_get_counter(const struct bf_codegen *codegen,
 
 int bf_codegen_up(struct bf_codegen *codegen)
 {
-    struct if_nameindex *if_ni;
-    struct if_nameindex *it;
+    _cleanup_free_ struct bf_if_iface *ifaces = NULL;
+    ssize_t n_ifaces;
     int r = 0;
 
     bf_assert(codegen);
 
-    if_ni = if_nameindex();
-    if (!if_ni) {
-        r = bf_err_code(errno, "failed to get local interfaces");
-        goto end;
-    }
+    n_ifaces = bf_if_get_ifaces(&ifaces);
+    if (n_ifaces < 0)
+        return bf_err_code((int)n_ifaces,
+                           "failed to fetch interfaces for codegen");
 
-    for (it = if_ni; it->if_index != 0 || it->if_name != NULL; it++) {
+    for (ssize_t i = 0; i < n_ifaces; ++i) {
         _cleanup_bf_program_ struct bf_program *prog = NULL;
 
-        if (bf_streq("lo", it->if_name))
+        if (bf_streq("lo", ifaces[i].name))
             continue;
 
-        r = bf_program_new(&prog, it->if_index, codegen->hook, codegen->front);
+        r = bf_program_new(&prog, ifaces[i].index, codegen->hook,
+                           codegen->front);
         if (r)
-            goto end;
+            return r;
 
         r = bf_program_generate(prog, &codegen->rules, codegen->policy);
         if (r) {
-            bf_err_code(r, "failed to generate bf_program for %s", it->if_name);
-            goto end;
+            return bf_err_code(r, "failed to generate bf_program for %s",
+                               ifaces[i].name);
         }
 
         r = bf_program_load(prog, NULL);
         if (r)
-            goto end;
+            return r;
 
         r = bf_list_add_tail(&codegen->programs, prog);
         if (r)
-            goto end;
+            return r;
 
         TAKE_PTR(prog);
     }
 
-end:
-    if_freenameindex(if_ni);
     return r;
 }
 

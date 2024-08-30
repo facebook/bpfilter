@@ -5,8 +5,6 @@
 
 #include "shared/ipt.h"
 
-#include <net/if.h>
-
 #include <linux/in.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
@@ -20,6 +18,7 @@
 #include "core/counter.h"
 #include "core/flavor.h"
 #include "core/hook.h"
+#include "core/if.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -253,11 +252,13 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
         return r;
 
     if (strlen(ipt_rule->ip.iniface)) {
-        _rule->ifindex = if_nametoindex(ipt_rule->ip.iniface);
-        if (!_rule->ifindex) {
+        r = bf_if_index_from_name(ipt_rule->ip.iniface);
+        if (r < 0) {
             return bf_err_code(errno, "can't find index for interface %s",
                                ipt_rule->ip.iniface);
         }
+
+        _rule->ifindex = r;
     }
 
     _rule->counters = true;

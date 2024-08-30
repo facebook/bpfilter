@@ -5,8 +5,6 @@
 
 #include "generator/tc.h"
 
-#include <arpa/inet.h>
-
 #include <linux/pkt_cls.h>
 
 #include <bpf/libbpf.h>

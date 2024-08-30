@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <net/if.h>
-
 #include <linux/netfilter.h>
 
 #include "core/flavor.h"

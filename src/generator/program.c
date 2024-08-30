@@ -5,8 +5,6 @@
 
 #include "generator/program.h"
 
-#include <net/if.h>
-
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
@@ -23,6 +21,7 @@
 #include "core/context.h"
 #include "core/counter.h"
 #include "core/flavor.h"
+#include "core/if.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
@@ -220,8 +219,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 {
-    char ifname_buf[IF_NAMESIZE] = {};
-
     bf_assert(program);
     bf_assert(prefix);
 
@@ -229,7 +226,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
-    DUMP(prefix, "ifindex: %s", if_indextoname(program->ifindex, ifname_buf));
+    DUMP(prefix, "ifindex: %s", bf_if_name_from_index(program->ifindex));
     DUMP(prefix, "hook: %s", bf_hook_to_str(program->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
     DUMP(prefix, "num_counters: %lu", program->num_counters);
@@ -738,13 +735,12 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
 int bf_program_generate(struct bf_program *program, bf_list *rules,
                         enum bf_verdict policy)
 {
-    char ifname_buf[IFNAMSIZ] = {};
     int r;
 
     bf_info("generating %s program for %s::%s::%s",
             bf_flavor_to_str(bf_hook_to_flavor(program->hook)),
             bf_front_to_str(program->front), bf_hook_to_str(program->hook),
-            if_indextoname(program->ifindex, ifname_buf));
+            bf_if_name_from_index(program->ifindex));
 
     r = _bf_program_generate_runtime_init(program);
     if (r)

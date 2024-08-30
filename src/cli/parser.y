@@ -13,7 +13,6 @@
 %}
 
 %code requires {
-    #include <arpa/inet.h>
     #include <linux/in.h>
     #include <limits.h>
     #include "core/verdict.h"
@@ -22,6 +21,10 @@
     #include "core/list.h"
     #include "core/rule.h"
     #include "core/chain.h"
+
+    extern int inet_pton(int af, const char *restrict src, void *restrict dst);
+
+    #define AF_INET 2
 }
 
 %define parse.error detailed
