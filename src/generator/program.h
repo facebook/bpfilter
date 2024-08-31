@@ -13,7 +13,6 @@
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
-#include <linux/icmpv6.h>
 
 #include <stddef.h>
 #include <stdint.h>

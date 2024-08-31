@@ -127,6 +127,7 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 }
 
 static const char *_bf_matcher_type_strs[] = {
+    [BF_MATCHER_META_L3_PROTO] = "meta.l3_proto",
     [BF_MATCHER_IP4_SRC_ADDR] = "ip4.saddr",
     [BF_MATCHER_IP4_DST_ADDR] = "ip4.daddr",
     [BF_MATCHER_IP4_PROTO] = "ip4.proto",

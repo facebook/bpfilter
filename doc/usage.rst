@@ -132,6 +132,24 @@ With:
   - ``$PAYLOAD``: payload to compare to the processed network packet. The exact payload format depends on ``$TYPE``.
 
 
+**Meta matchers**
+
+.. flat-table::
+    :header-rows: 1
+    :widths: 2 2 1 4 12
+    :fill-cells:
+
+    * - Matches
+      - Type
+      - Operator
+      - Payload
+      - Notes
+    * - L3 protocol
+      - ``meta.l3_proto``
+      - ``eq``
+      - ``$PROTOCOL``
+      - ``ipv4`` and ``ipv6`` are supported.
+
 **IPv4 matchers**
 
 .. flat-table::
