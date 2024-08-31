@@ -5,6 +5,10 @@ chain BF_HOOK_NFT_INGRESS policy ACCEPT
         counter
         ACCEPT
     rule
+        meta.l4_proto tcp
+        counter
+        ACCEPT
+    rule
         ip4.saddr 192.168.1.1
         counter
         ACCEPT

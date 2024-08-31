@@ -149,6 +149,11 @@ With:
       - ``eq``
       - ``$PROTOCOL``
       - ``ipv4`` and ``ipv6`` are supported.
+    * - L4 protocol
+      - ``meta.l4_proto``
+      - ``eq``
+      - ``$PROTOCOL``
+      - ``icmp``, ``icmpv6``, ``tcp``, ``udp`` are supported.
 
 **IPv4 matchers**
 

@@ -14,6 +14,7 @@
 
 %code requires {
     #include <linux/in.h>
+    #include <linux/in6.h>
     #include <linux/if_ether.h>
     #include <limits.h>
     #include "core/verdict.h"
@@ -49,7 +50,7 @@
 %token POLICY
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_META_L3_PROTO MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 
@@ -222,6 +223,33 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                         proto = ETH_P_IPV6;
                     } else {
                         yyerror(chains, "unsupported L3 protocol to match '%s'\n", $3);
+                        YYABORT;
+                    }
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0) {
+                        yyerror(chains, "failed to create a new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_META_L4_PROTO
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    uint8_t proto;
+
+                    if (bf_streq($3, "icmp")) {
+                        proto = IPPROTO_ICMP;
+                    } else if (bf_streq($3, "tcp")) {
+                        proto = IPPROTO_TCP;
+                    } else if (bf_streq($3, "udp")) {
+                        proto = IPPROTO_UDP;
+                    } else if (bf_streq($3, "icmp6")) {
+                        proto = IPPROTO_ICMPV6;
+                    } else {
+                        yyerror(chains, "unsupported L4 protocol to match '%s'\n", $3);
                         YYABORT;
                     }
 
