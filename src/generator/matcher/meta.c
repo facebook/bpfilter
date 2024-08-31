@@ -20,6 +20,19 @@ static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
                BPF_JMP_IMM(BPF_JNE, BF_REG_1,
                            htobe16(*(uint16_t *)&matcher->payload), 0));
+
+    return 0;
+}
+
+static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
+                                              const struct bf_matcher *matcher)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+    EMIT_FIXUP(
+        program, BF_CODEGEN_FIXUP_NEXT_RULE,
+        BPF_JMP_IMM(BPF_JNE, BF_REG_1, *(uint8_t *)&matcher->payload, 0));
+
     return 0;
 }
 
@@ -31,6 +44,9 @@ int bf_matcher_generate_meta(struct bf_program *program,
     switch (matcher->type) {
     case BF_MATCHER_META_L3_PROTO:
         r = _bf_matcher_generate_meta_l3_proto(program, matcher);
+        break;
+    case BF_MATCHER_META_L4_PROTO:
+        r = _bf_matcher_generate_meta_l4_proto(program, matcher);
         break;
     default:
         return bf_err_code(-EINVAL, "unknown matcher type %d", matcher->type);

@@ -386,6 +386,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
         switch (matcher->type) {
         case BF_MATCHER_META_L3_PROTO:
+        case BF_MATCHER_META_L4_PROTO:
             r = bf_matcher_generate_meta(program, matcher);
             if (r)
                 return r;
