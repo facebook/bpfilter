@@ -12,6 +12,7 @@
 %option noinput
 %option nounput
 
+%s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_PORT
@@ -36,6 +37,15 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
+meta\.l3_proto  { BEGIN(STATE_MATCHER_META_L3_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_L3_PROTO>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    [a-z0-9]+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_META_L3_PROTO;
+    }
+}
+
 ip4\.proto      { BEGIN(STATE_MATCHER_IP_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP_PROTO>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }

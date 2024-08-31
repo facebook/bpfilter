@@ -41,6 +41,8 @@ struct bf_marsh;
  */
 enum bf_matcher_type
 {
+    /// Matches the L3 protocol.
+    BF_MATCHER_META_L3_PROTO,
     /// Matches IPv4 source address.
     BF_MATCHER_IP4_SRC_ADDR,
     /// Matches IPv4 destination address.

@@ -1,6 +1,10 @@
 # Create an XDP chain
 chain BF_HOOK_NFT_INGRESS policy ACCEPT
     rule
+        meta.l3_proto ipv6
+        counter
+        ACCEPT
+    rule
         ip4.saddr 192.168.1.1
         counter
         ACCEPT
