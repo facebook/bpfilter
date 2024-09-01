@@ -73,7 +73,7 @@ Detailed information can be found in the [documentation](https://bpfilter.io).
 5. **Configure the filtering rules**
     - For `bfcli`:
         ```shell
-        $BUILD_DIR/outputbin/bfcli --file $RULESET
+        $BUILD_DIR/output/bin/bfcli --file $RULESET
         ```
     - For `nftables`:
         ```shell
