@@ -51,6 +51,10 @@ enum bf_matcher_type
     BF_MATCHER_IP4_DST_ADDR,
     /// Matches against the IPv4 protocol field
     BF_MATCHER_IP4_PROTO,
+    /// Matches IPv6 source address.
+    BF_MATCHER_IP6_SADDR,
+    /// Matches IPv6 destination address.
+    BF_MATCHER_IP6_DADDR,
     /// Matches against the TCP source port
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
@@ -72,6 +76,17 @@ struct bf_matcher_ip4_addr
 {
     uint32_t addr;
     uint32_t mask;
+};
+
+/**
+ * Defines the payload for the IPv6 address matcher.
+ */
+struct bf_matcher_ip6_addr
+{
+    /// 128-bits IPv6 address.
+    uint64_t addr[2];
+    /// 128-bits IPv6 mask.
+    uint64_t mask[2];
 };
 
 /**
