@@ -16,6 +16,7 @@
 %s STATE_MATCHER_META_L4_PROTO
 %s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
+%s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_TCP_FLAGS
 
@@ -72,6 +73,18 @@ ip4\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); re
     [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
         yylval.sval = strdup(yytext);
         return MATCHER_IPADDR;
+    }
+}
+
+ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP6_ADDR>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    [a-zA-Z0-9:/]+ {
+        /* Let's not try to be smarter than we are (for now) and use a fancy
+         * regex for IPv6 detection, it will be validated by inet_pton()
+         * anyway! */
+        yylval.sval = strdup(yytext);
+        return MATCHER_IP6_ADDR;
     }
 }
 

@@ -26,7 +26,15 @@
 
     extern int inet_pton(int af, const char *restrict src, void *restrict dst);
 
-    #define AF_INET 2
+    #define AF_INET     2
+    #define AF_INET6    10
+
+    #define min(a,b)             \
+    ({                           \
+        __typeof__ (a) _a = (a); \
+        __typeof__ (b) _b = (b); \
+        _a < _b ? _a : _b;       \
+    })
 }
 
 %define parse.error detailed
@@ -50,7 +58,9 @@
 %token POLICY
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO
+%token <sval> MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_IP6_ADDR
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 
@@ -311,6 +321,53 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     r = inet_pton(AF_INET, $3, &addr.addr);
                     if (r != 1) {
                         yyerror(chains, "failed to parse IPv4 adddress: %s\n", $3);
+                        YYABORT;
+                    }
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr))) {
+                        yyerror(chains, "failed to create a new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_IP6_ADDR
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    struct bf_matcher_ip6_addr addr;
+                    int shift, lsb_shift, msb_shift;
+                    char *mask;
+                    int r;
+
+                    // If '/' is found, parse the mask, otherwise use /128.
+                    mask = strchr($3, '/');
+                    if (mask) {
+                        *mask = '\0';
+                        ++mask;
+
+                        int m = atoi(mask);
+                        if (m == 0) {
+                            yyerror(chains, "failed to parse IPv6 mask: %s\n", mask);
+                            YYABORT;
+                        }
+
+                        shift = 128 - m;
+                        lsb_shift = min(64, shift);
+                        msb_shift = shift - lsb_shift;
+
+                        addr.mask[0] = msb_shift == 64 ? 0 : ~0ULL << msb_shift;
+                        addr.mask[1] = lsb_shift == 64 ? 0 : ~0ULL << lsb_shift;
+                    } else {
+                        addr.mask[0] = ~0ULL;
+                        addr.mask[1] = ~0ULL;
+                    }
+
+                    // Convert the IPv6 from string to uint64_t[2].
+                    r = inet_pton(AF_INET6, $3, addr.addr);
+                    if (r != 1) {
+                        yyerror(chains, "failed to parse IPv6 adddress: %s\n", $3);
                         YYABORT;
                     }
 

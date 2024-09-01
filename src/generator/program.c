@@ -28,6 +28,7 @@
 #include "core/verdict.h"
 #include "generator/jmp.h"
 #include "generator/matcher/ip4.h"
+#include "generator/matcher/ip6.h"
 #include "generator/matcher/meta.h"
 #include "generator/matcher/tcp.h"
 #include "generator/matcher/udp.h"
@@ -395,6 +396,12 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_IP4_DST_ADDR:
         case BF_MATCHER_IP4_PROTO:
             r = bf_matcher_generate_ip4(program, matcher);
+            if (r)
+                return r;
+            break;
+        case BF_MATCHER_IP6_SADDR:
+        case BF_MATCHER_IP6_DADDR:
+            r = bf_matcher_generate_ip6(program, matcher);
             if (r)
                 return r;
             break;

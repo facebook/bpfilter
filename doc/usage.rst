@@ -184,6 +184,30 @@ With:
       - Only ``icmp`` is supported for now, more protocols will be added.
 
 
+**IPv6 matchers**
+
+.. flat-table::
+    :header-rows: 1
+    :widths: 2 2 1 4 12
+    :fill-cells:
+
+    * - Matches
+      - Type
+      - Operator
+      - Payload
+      - Notes
+    * - :rspan:`1` Source address
+      - :rspan:`1` ``ip6.saddr``
+      - ``eq``
+      - :rspan:`3` ``$IP/$MASK``
+      - :rspan:`3` ``/$MASK`` is optional, `/128` is used by default.
+    * - ``not``
+    * - :rspan:`1` Destination address
+      - :rspan:`1` ``ip6.daddr``
+      - ``eq``
+    * - ``not``
+
+
 **TCP matchers**
 
 .. flat-table::
