@@ -156,11 +156,11 @@
             <div class="copyright">
               {%- if hasdoc('copyright') %}
                 {% trans path=pathto('copyright'), copyright=copyright|e -%}
-                  <a href="{{ path }}">Copyright</a> &#169; {{ copyright }}
+                  <a href="{{ path }}">Copyright ©{{ copyright }}</a>
                 {%- endtrans %}
               {%- else %}
                 {% trans copyright=copyright|e -%}
-                  Copyright &#169; {{ copyright }}
+                  Copyright ©{{ copyright }}
                 {%- endtrans %}
               {%- endif %}
             </div>
