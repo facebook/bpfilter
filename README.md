@@ -1,5 +1,9 @@
 <p align="center">
-    <img src="doc/_static/logo-light-mode.png" height="250" alt="bpfilter"/>
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="doc/_static/logo-dark-mode.png">
+        <source media="(prefers-color-scheme: light)" srcset="doc/_static/logo-light-mode.png">
+        <img src="doc/_static/logo-light-mode.png"  height="250" alt="bpfilter">
+    </picture>
 </p>
 
 <h3 align="center">An <a href="https://ebpf.io/">eBPF</a>-based packet filtering framework.</h3>
