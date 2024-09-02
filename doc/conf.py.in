@@ -3,8 +3,8 @@
 
 # -- Project information -----------------------------------------------------
 project = '@PROJECT_NAME@'
-copyright = '2023 Meta Platforms, Inc. and affiliates'
 author = ''
+copyright = '2024 Meta Platforms, Inc'
 
 # -- General configuration ---------------------------------------------------
 templates_path = ['_templates']
