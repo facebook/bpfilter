@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     bf_list_foreach (&chains, chain_node) {
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
         uint32_t index = 0;
-    
+
         bf_list_foreach (&chain->rules, rule_node) {
             struct bf_rule *rule = bf_list_node_get_data(rule_node);
             rule->index = index++;

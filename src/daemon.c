@@ -367,7 +367,7 @@ static int _process_request(struct bf_request *request,
         return bf_response_new_failure(response, -ENOTSUP);
     }
 
-    bf_info("received a request from %s", bf_front_to_str(request->front)); 
+    bf_info("received a request from %s", bf_front_to_str(request->front));
 
     ops = bf_front_ops_get(request->front);
     r = ops->request_handler(request, response);
