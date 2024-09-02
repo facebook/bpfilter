@@ -25,7 +25,7 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_L3, offset));
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_L3, offset + 8));
 
-    if (0 && addr->mask[0] != ~0ULL || addr->mask[1] != ~0ULL) {
+    if (addr->mask[0] != ~0ULL || addr->mask[1] != ~0ULL) {
         EMIT(program, BPF_MOV32_IMM(BF_REG_3, addr->mask[0] >> 32));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_3, 32));
         EMIT(program, BPF_MOV32_IMM(BF_REG_4, addr->mask[0] & 0xffffffff));
