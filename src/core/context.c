@@ -21,7 +21,7 @@ static struct bf_context *_global_context = NULL;
 static void _bf_context_free(struct bf_context **context);
 
 /**
- * @brief Create and initialize a new context.
+ * Create and initialize a new context.
  *
  * On failure, @p context is left unchanged.
  *
@@ -44,10 +44,10 @@ static int _bf_context_new(struct bf_context **context)
 }
 
 /**
- * @brief Allocate a new context and initialise it from serialised data.
+ * Allocate a new context and initialise it from serialised data.
  *
  * @param context On success, points to the newly allocated and initialised
- *  context. Can't be NULL.
+ *        context. Can't be NULL.
  * @param marsh Serialised data to use to initialise the context.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -100,7 +100,7 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
 }
 
 /**
- * @brief Free a context.
+ * Free a context.
  *
  * If @p context points to a NULL pointer, this function does nothing. Once
  * the function returns, @p context points to a NULL pointer.
@@ -163,7 +163,7 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
 }
 
 /**
- * @brief Marsh a context.
+ * Marsh a context.
  *
  * If the function succeeds, @p marsh will contain the marshalled context.
  *

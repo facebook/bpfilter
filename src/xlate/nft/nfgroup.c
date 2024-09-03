@@ -45,9 +45,9 @@ int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
 {
     bf_assert(group);
     bf_assert(nlh);
-    bf_assert(length <
-              INT_MAX); // nlmsg_ok() takes an int. length should not be larger
-                        // than INT_MAX, but we check anyway to be safe.
+    bf_assert(length < INT_MAX);
+    /* nlmsg_ok() takes an int. length should not be larger than INT_MAX, but
+     * we check anyway to be safe. */
 
     _cleanup_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
     int len = (int)length;

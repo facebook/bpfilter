@@ -43,9 +43,9 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
  * Allocate a new chain object and intialize it from serialized data.
  *
  * @param chain On success, points to the newly allocated and initialized chain
- * object. Can't be NULL.
+ *        object. Can't be NULL.
  * @param marsh Serialized data to use to initialize the chain object. Can't be
- * NULL.
+ *        NULL.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_chain_new_from_marsh(struct bf_chain **chain,

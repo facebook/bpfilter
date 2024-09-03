@@ -102,7 +102,7 @@ int bf_nfmsg_new_done(struct bf_nfmsg **msg);
  *
  * @param msg The new message to allocate and initialise. Can't be NULL.
  * @param nlh Netlink message to create the Netfilter Netlink message from.
- * Can't be NULL.
+ *        Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh);
@@ -326,7 +326,7 @@ size_t bf_nfattr_data_len(bf_nfattr *attr);
  *
  * @param attr Attribute to validate. Can't be NULL.
  * @param remaining Remaining bytes in the parent message or attribute. Can't be
- * negative.
+ *        negative.
  * @return true if the attribute is valid, false otherwise.
  */
 bool bf_nfattr_is_ok(bf_nfattr *attr, size_t remaining);
@@ -336,8 +336,8 @@ bool bf_nfattr_is_ok(bf_nfattr *attr, size_t remaining);
  *
  * @param attr Attribute to get the next attribute from. Can't be NULL.
  * @param remaining Remaining bytes in the parent message or attribute. Can't be
- * NULL. When the function succeeds, it is updated with the remaining bytes in
- * the parent message or attribute.
+ *        NULL. When the function succeeds, it is updated with the remaining
+ *        bytes in the parent message or attribute.
  * @return Pointer to the next attribute, or NULL if there are no more
  */
 bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining);
@@ -427,7 +427,7 @@ bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining);
  * bf_nfnest_cleanup must be called to close the nested attribute.
 
  * The nested attribute is a stack, so it is possible to have nested attributes
- *within nested attributes.
+ * within nested attributes.
  */
 
 /**
@@ -440,7 +440,7 @@ bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining);
  * @c bf_nfmsg_push_failure on failure.
  *
  * @param parent @ref bf_nfmsg to create the nested attribute into. Can't be
- * NULL.
+ *        NULL.
  * @param type Type of the nested attribute.
  * @return 0 on success, or negative errno value on error.
  */
@@ -460,7 +460,7 @@ struct bf_nfnest
 };
 
 /**
- * @brief Declares a new nested attribute within @p parent.
+ * Declares a new nested attribute within @p parent.
  *
  * Once a nested attribute has been defined, all the attributes added to the
  * part (@p parent here) will be added within the nested attribute, until it
@@ -476,7 +476,7 @@ int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
                        uint16_t type);
 
 /**
- * @brief Close a nested attribute.
+ * Close a nested attribute.
  *
  * @param nest Nested attribute to close. Can't be NULL.
  */

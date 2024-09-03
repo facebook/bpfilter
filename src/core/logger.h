@@ -39,7 +39,7 @@ enum bf_style
 };
 
 /**
- * @brief Log an error message to stderr.
+ * Log an error message to stderr.
  *
  * @param fmt Format string.
  * @param ... Format arguments.
@@ -89,15 +89,17 @@ enum bf_style
 #endif
 
 /**
- * @brief Log an error message to stderr, append the detail of the error code
- *  provided and return the given error code.
+ * Log an error message to stderr, append the detail of the error code
+ * provided and return the given error code.
  *
  * Convenience function to be used during error checks. It will log the error
  * message to stderr, append the detail of the error code provided and return
  * the given error code as a negative value. For example:
  *
+ * @code{.c}
  *  if (ret < 0)
  *    return bf_err_code(ret, "failed to do something");
+ * @endcode
  *
  * @param code Error code, can be positive or negative.
  * @param fmt Format string.
@@ -144,7 +146,7 @@ enum bf_style
 #endif
 
 /**
- * @brief Initialise the logging system.
+ * Initialise the logging system.
  *
  * Defines whether the logging system will print in colors or not. If both
  * `stdout` and `stderr` are TTYs, then @ref _can_print_color is set to true.
@@ -152,7 +154,7 @@ enum bf_style
 void bf_logger_setup(void);
 
 /**
- * @brief Get color string for a given style.
+ * Get color string for a given style.
  *
  * @p style can be a combination of @ref bf_style weight and color. If
  * @ref _can_print_color is set to false, then an empty string will be returned

@@ -29,6 +29,7 @@
  *      EMIT(program, BPF_EXIT_INSN());
  *  }
  * @endcode
+ *
  * \c ctx is a variable local to the scope, marked with \c _cleanup_bf_jmpctx_ .
  * The second argument to \c bf_jmpctx_get is the jump instruction to emit, with
  * the correct condition. When the scope is exited, the jump instruction is
@@ -51,7 +52,7 @@ struct bf_program;
  * Create a new @ref bf_jmpctx variable.
  *
  * @param program The program to emit the jump instruction to. It must be
- * non-NULL.
+ *        non-NULL.
  * @param insn The jump instruction to emit.
  * @return A new @ref bf_jmpctx variable.
  */

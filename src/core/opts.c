@@ -12,7 +12,7 @@
 #include "shared/helper.h"
 
 /**
- * @brief bpfilter runtime configuration
+ * bpfilter runtime configuration
  */
 static struct bf_options
 {
@@ -59,7 +59,7 @@ static struct argp_option options[] = {
 };
 
 /**
- * @brief argp callback to process command line arguments.
+ * argp callback to process command line arguments.
  *
  * @return 0 on succcess, non-zero on failure.
  */

@@ -36,7 +36,7 @@ struct bf_if_iface
  *
  * @param name Name of the interface. Can't be NULL.
  * @return Index of the interface. If the interface name is unknown, a
- * negative errno value is returned.
+ *         negative errno value is returned.
  */
 int bf_if_index_from_name(const char *name);
 
@@ -59,8 +59,8 @@ const char *bf_if_name_from_index(int index);
  * Get the index and name of all the interfaces on the host.
  *
  * @param ifaces Array of @ref bf_if_iface structures. The array will be
- * allocated by the function and the caller is responsible for freeing it.
+ *        allocated by the function and the caller is responsible for freeing it.
  * @return On success, return the number of interfaces contained in @p ifaces .
- * On failure, return a negative errno value.
+ *         On failure, return a negative errno value.
  */
 ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces);

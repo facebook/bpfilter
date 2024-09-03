@@ -35,11 +35,11 @@ int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
 }
 
 /**
- * @brief Generate stub to create a dynptr.
+ * Generate stub to create a dynptr.
  *
  * @param program Program to generate the stub for. Must not be NULL.
  * @param arg_reg Register where the first argument to the dynptr creation
- *  function is located (SKB or xdp_md structure).
+ *        function is located (SKB or xdp_md structure).
  * @param kfunc Name of the kfunc to use to create the dynamic pointer.
  * @return 0 on success, or negative errno value on error.
  */

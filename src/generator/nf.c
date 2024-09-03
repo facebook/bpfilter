@@ -150,7 +150,8 @@ static int _nf_gen_inline_epilogue(struct bf_program *program)
 }
 
 /**
- * @brief Convert a standard verdict into a return value.
+ * Convert a standard verdict into a return value.
+ *
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
@@ -210,7 +211,7 @@ static int _nf_attach_prog(struct bf_program *new_prog,
 }
 
 /**
- * @brief Unload the Netfilter BPF bytecode image.
+ * Unload the Netfilter BPF bytecode image.
  *
  * @param program Codegen containing the image to unload. Can't be NULL.
  * @return 0 on success, negative error code on failure.

@@ -34,7 +34,7 @@ struct bf_marsh;
 #define _cleanup_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
 
 /**
- * @brief Matcher type.
+ * Matcher type.
  *
  * The matcher type define which header/field of a packet is to be used to
  * match against the payload.
@@ -69,8 +69,8 @@ enum bf_matcher_type
 };
 
 /**
- * @brief Defines the structure of the payload for bf_matcher's
- * BF_MATCHER_IP4_SRC_ADDR and BF_MATCHER_IP4_DST_ADDR types.
+ * Defines the structure of the payload for bf_matcher's
+ * @ref BF_MATCHER_IP4_SRC_ADDR and @ref BF_MATCHER_IP4_DST_ADDR types.
  */
 struct bf_matcher_ip4_addr
 {
@@ -106,7 +106,7 @@ enum bf_matcher_tcp_flag
 };
 
 /**
- * @brief Matcher comparison operator.
+ * Matcher comparison operator.
  *
  * The matcher comparison operator defines the type of comparison to operator
  * for a specific matcher.
@@ -125,7 +125,7 @@ enum bf_matcher_op
 };
 
 /**
- * @brief Matcher definition.
+ * Matcher definition.
  *
  * Matchers are criterias to match the packet against. A set of matcher defines
  * what a rule should match on.
@@ -143,10 +143,10 @@ struct bf_matcher
 };
 
 /**
- * @brief Allocate and initalise a new matcher.
+ * Allocate and initalise a new matcher.
  *
  * @param matcher Matcher object to allocate and initialise. Can't be NULL. On
- *  success, contain a pointer to the matcher object, unchanged on error.
+ *        success, contain a pointer to the matcher object, unchanged on error.
  * @param type Matcher type.
  * @param op Comparison operator.
  * @param payload Payload of the matcher, its content and size depends on
@@ -160,10 +160,10 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    size_t payload_len);
 
 /**
- * @brief Allocate a new matcher and initialise it from serialised data.
+ * Allocate a new matcher and initialise it from serialised data.
  *
  * @param matcher On success, points to the newly allocated and initialised
- *  matcher. Can't be NULL.
+ *        matcher. Can't be NULL.
  * @param marsh Serialised data to use to initialise the matcher.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -178,7 +178,7 @@ int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
 void bf_matcher_free(struct bf_matcher **matcher);
 
 /**
- * @brief Serialise a matcher.
+ * Serialise a matcher.
  *
  * @param matcher Matcher object to serialise. Can't be NULL.
  * @param marsh On success, contains the serialised matcher. Can't be NULL.
@@ -186,7 +186,7 @@ void bf_matcher_free(struct bf_matcher **matcher);
 int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh);
 
 /**
- * @brief Dump a matcher.
+ * Dump a matcher.
  *
  * @param matcher Matcher to dump.
  * @param prefix Prefix for each printed line.
@@ -194,7 +194,7 @@ int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh);
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
 
 /**
- * @brief Convert a matcher type to a string.
+ * Convert a matcher type to a string.
  *
  * @param type The matcher type to convert. Must be a valid
  *        @ref bf_matcher_type .
@@ -212,7 +212,7 @@ const char *bf_matcher_type_to_str(enum bf_matcher_type type);
 int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type);
 
 /**
- * @brief Convert a matcher operator to a string.
+ * Convert a matcher operator to a string.
  *
  * @param op The matcher operator to convert. Must be a valid @ref bf_matcher_op
  * @return String representation of the matcher operator.

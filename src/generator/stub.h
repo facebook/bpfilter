@@ -12,7 +12,7 @@
 struct bf_program;
 
 /**
- * @brief Emit instructions to clear a memory region.
+ * Emit instructions to clear a memory region.
  *
  * Generate BPF instructions to clear (set to 0) a memory region, from a
  * register containing the address of the memory region to clear, and the size.
@@ -28,7 +28,7 @@ struct bf_program;
 int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
                      size_t size);
 /**
- * @brief Emit instructions to get a dynptr for an XDP program.
+ * Emit instructions to get a dynptr for an XDP program.
  *
  * Prepare arguments and call bpf_dynptr_from_xdp(). If the return value is
  * different from 0, jump to the end of the program and accept the packet.
@@ -42,7 +42,7 @@ int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
 int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg);
 
 /**
- * @brief Emit instructions to get a dynptr for an XDP program.
+ * Emit instructions to get a dynptr for an XDP program.
  *
  * Prepare arguments and call bpf_dynptr_from_skb(). If the return value is
  * different from 0, jump to the end of the program and accept the packet.
@@ -57,7 +57,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program,
                                 enum bf_reg skb_reg);
 
 /**
- * @brief Emit instructions to get a dynptr slice for the packet's L2 Ethernet
+ * Emit instructions to get a dynptr slice for the packet's L2 Ethernet
  * header.
  *
  * Store bpf_dynptr_slice arguments into:
@@ -83,7 +83,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program,
 int bf_stub_parse_l2_ethhdr(struct bf_program *program);
 
 /**
- * @brief Emit instructions to get a dynptr slice for the packet's L3 IPv4
+ * Emit instructions to get a dynptr slice for the packet's L3 IPv4
  * header.
  *
  * Store bpf_dynptr_slice arguments into:
@@ -109,7 +109,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program);
 int bf_stub_parse_l3_hdr(struct bf_program *program);
 
 /**
- * @brief Emit instructions to get a dynptr slice for the packet's L4 header.
+ * Emit instructions to get a dynptr slice for the packet's L4 header.
  *
  * Store bpf_dynptr_slice arguments into:
  * - BF_ARG_1: pointer to the dynptr located in the context.

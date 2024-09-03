@@ -11,7 +11,7 @@
 #include "shared/helper.h"
 
 /**
- * @brief Marshalled data.
+ * Marshalled data.
  *
  * @var bf_marsh::data_len
  *  Length of marshalled data. It doesn't include the length of the header.
@@ -27,7 +27,7 @@ struct bf_marsh
 #define _cleanup_bf_marsh_ __attribute__((__cleanup__(bf_marsh_free)))
 
 /**
- * @brief Get the total size of marshalled data.
+ * Get the total size of marshalled data.
  *
  * @param marsh Marshalled data.
  * @return Total size of marshalled data, including the header.
@@ -40,7 +40,7 @@ static inline size_t bf_marsh_size(const struct bf_marsh *marsh)
 }
 
 /**
- * @brief Get pointer to the end of a @ref bf_marsh structure.
+ * Get pointer to the end of a @ref bf_marsh structure.
  *
  * "End" here, means the first byte after the content of the marshalled data.
  *
@@ -55,11 +55,11 @@ static inline void *bf_marsh_end(const struct bf_marsh *marsh)
 }
 
 /**
- * @brief Check if `child` is a valid child for `marsh`.
+ * Check if `child` is a valid child for `marsh`.
  *
  * A valid marsh is defined by the following criteria:
- *  - It starts within its parent's data.
- *  - Its full length (including the header) is within its parent's data.
+ * - It starts within its parent's data.
+ * - Its full length (including the header) is within its parent's data.
  * A marsh can only be validated relative to its parent. By recursively
  * validating all the children of a marsh, we can validate the whole marsh.
  *
@@ -97,13 +97,13 @@ static inline bool bf_marsh_child_is_valid(const struct bf_marsh *marsh,
 }
 
 /**
- * @brief Get `marsh`'s child located after `child`.
+ * Get `marsh`'s child located after `child`.
  *
  * @param marsh Parent marsh, must be valid.
  * @param child Child of `marsh`, must be a valid child of `marsh` or NULL. If
- *  `child` is NULL, the first child of `marsh` is returned.
+ *        `child` is NULL, the first child of `marsh` is returned.
  * @return Next child of `marsh` after `child`, or NULL if `child` is the
- *  last valid child of `marsh`.
+ *         last valid child of `marsh`.
  */
 static inline struct bf_marsh *bf_marsh_next_child(const struct bf_marsh *marsh,
                                                    const struct bf_marsh *child)
@@ -118,11 +118,11 @@ static inline struct bf_marsh *bf_marsh_next_child(const struct bf_marsh *marsh,
 }
 
 /**
- * @brief Allocate and initialise a @ref bf_marsh structure.
+ * Allocate and initialise a @ref bf_marsh structure.
  *
  * @param marsh Marsh to be allocated. On success, contains a pointer to the
- *  marsh structure, and is owned by the caller. If the function fails, it's
- *  left unchanged.
+ *        marsh structure, and is owned by the caller. If the function fails, it's
+ *        left unchanged.
  * @param data Data to be marshalled.
  * @param data_len Length of @p data.
  * @return 0 on success, negative errno value on error.
@@ -130,7 +130,7 @@ static inline struct bf_marsh *bf_marsh_next_child(const struct bf_marsh *marsh,
 int bf_marsh_new(struct bf_marsh **marsh, const void *data, size_t data_len);
 
 /**
- * @brief Free a marsh, including its data.
+ * Free a marsh, including its data.
  *
  * If @p marsh points to NULL, then nothing is done.
  *
@@ -139,7 +139,7 @@ int bf_marsh_new(struct bf_marsh **marsh, const void *data, size_t data_len);
 void bf_marsh_free(struct bf_marsh **marsh);
 
 /**
- * @brief Add a child to a marsh, from another marsh.
+ * Add a child to a marsh, from another marsh.
  *
  * @p obj will be added to the data in @p marsh.
  *
@@ -150,7 +150,7 @@ void bf_marsh_free(struct bf_marsh **marsh);
 int bf_marsh_add_child_obj(struct bf_marsh **marsh, const struct bf_marsh *obj);
 
 /**
- * @brief Add a child to a marsh, from raw data.
+ * Add a child to a marsh, from raw data.
  *
  * If @p data is NULL, nothing is done and @p marsh remain unchanged. In this
  * case, @p data_len must be 0.

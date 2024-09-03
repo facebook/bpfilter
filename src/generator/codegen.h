@@ -50,7 +50,7 @@ struct bf_codegen
 };
 
 /**
- * @brief Allocate and initialise a new codegen.
+ * Allocate and initialise a new codegen.
  *
  * @param codegen Codegen to initialise. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
@@ -58,7 +58,7 @@ struct bf_codegen
 int bf_codegen_new(struct bf_codegen **codegen);
 
 /**
- * @brief Free a codegen.
+ * Free a codegen.
  *
  * If one or more programs are loaded, they won't be unloaded. Use @ref
  * bf_codegen_unload first to ensure programs are unloaded. This behaviour
@@ -70,7 +70,7 @@ int bf_codegen_new(struct bf_codegen **codegen);
 void bf_codegen_free(struct bf_codegen **codegen);
 
 /**
- * @brief Update the BPF programs for a codegen.
+ * Update the BPF programs for a codegen.
  *
  * @param codegen Codegen to update. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
@@ -90,7 +90,7 @@ int bf_codegen_update(struct bf_codegen *codegen);
 int bf_codegen_up(struct bf_codegen *codegen);
 
 /**
- * @brief Unload a codegen's BPF programs.
+ * Unload a codegen's BPF programs.
  *
  * @param codegen Codegen containing the BPF program to unload. Can't be NULL.
  * @return 0 on success, negative error code on failure.
@@ -105,7 +105,7 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
 void bf_codegen_dump(const struct bf_codegen *codegen, prefix_t *prefix);
 
 /**
- * @brief Get a codegen's BPF program for a given interface.
+ * Get a codegen's BPF program for a given interface.
  *
  * @param codegen Codegen containing the BPF program to get. Can't be NULL.
  * @param ifindex Interface to get the BPF program for.
@@ -115,7 +115,7 @@ struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
                                           uint32_t ifindex);
 
 /**
- * @brief Get packets and bytes counter at a specific index.
+ * Get packets and bytes counter at a specific index.
  *
  * Counters are referenced by their index in the counters map. There are 1 more
  * counter in the map than the number of rules. This last counter (the last in
@@ -126,9 +126,9 @@ struct bf_program *bf_codegen_get_program(const struct bf_codegen *codegen,
  *
  * @param codegen Codegen to get the counter for. Can't be NULL.
  * @param counter_idx Index of the counter to get. If @p counter_idx doesn't
- * correspond to a valid index, -E2BIG is returned.
+ *        correspond to a valid index, -E2BIG is returned.
  * @param counter Counter structure to fill with the counter values. Can't be
- * NULL.
+ *        NULL.
  * @return 0 on success, or a negative errno  value on failure.
  */
 int bf_codegen_get_counter(const struct bf_codegen *codegen,

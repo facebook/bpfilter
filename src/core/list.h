@@ -18,7 +18,7 @@ typedef void (*bf_list_ops_free)(void **data);
 
 /**
  * @struct bf_list_ops
- * @brief Operation to manipulate @ref bf_list data.
+ * Operation to manipulate @ref bf_list data.
  *
  * @var bf_list_ops::free
  *  Free the data stored in a node. Should be able to handle NULL data.
@@ -30,7 +30,7 @@ typedef struct
 
 /**
  * @struct bf_list_node
- * @brief Node composing a @ref bf_list.
+ * Node composing a @ref bf_list.
  *
  * @warning From the user's perspective, the inside of this structure should
  * not be directly accessed. Directly modifying any of the fields should be
@@ -52,7 +52,7 @@ struct bf_list_node
 
 /**
  * @struct bf_list
- * @brief Base structure for the doubly-linked-list data structure.
+ * Base structure for the doubly-linked-list data structure.
  *
  * @warning From the user's perspective, the inside of this structure should
  * not be directly accessed. Directly modifying any of the fields should be
@@ -76,15 +76,15 @@ typedef struct
 #define _cleanup_bf_list_ __attribute__((cleanup(bf_list_free)))
 
 /**
- * @brief Iterate over a @ref bf_list.
+ * Iterate over a @ref bf_list.
  *
  * Use a temporary variable to store the next node (if any). Hence, a node
  * can be removed from the list during iteration.
  *
  * @param list Pointer to the list to iterate over. Must be non-NULL.
  * @param node Name of the variable containing the current node. This variable
- * 	will be created automatically and the caller will be able to use it to
- * 	access the node.
+ *        will be created automatically and the caller will be able to use it to
+ * 	      access the node.
  */
 #define bf_list_foreach(list, node)                                            \
     for (bf_list_node *node = (list)->head,                                    \
@@ -92,15 +92,15 @@ typedef struct
          node; node = __next, __next = __next ? __next->next : NULL)
 
 /**
- * @brief Reverse iterate over a @ref bf_list.
+ * Reverse iterate over a @ref bf_list.
  *
  * Use a temporary variable to store the next node (if any). Hence, a node
  * can be removed from the list during iteration.
  *
  * @param list Pointer to the list to iterate over. Must be non-NULL.
  * @param node Name of the variable containing the current node. This variable
- * 	will be created automatically and the caller will be able to use it to
- * 	access the node.
+ * 	      will be created automatically and the caller will be able to use it to
+ * 	      access the node.
  */
 #define bf_list_foreach_rev(list, node)                                        \
     for (bf_list_node *node = (list)->tail,                                    \
@@ -108,7 +108,7 @@ typedef struct
          node; node = __next, __next = __next ? __next->prev : NULL)
 
 /**
- * @brief Returns an initialised @ref bf_list.
+ * Returns an initialised @ref bf_list.
  *
  * @param list_ops Operations to use to manipulate the list's data. Must be
  *        non-NULL.
@@ -117,7 +117,7 @@ typedef struct
 #define bf_list_default(list_ops) ((bf_list) {.ops = list_ops})
 
 /**
- * @brief Allocate and initialise a new list.
+ * Allocate and initialise a new list.
  *
  * @param list Pointer to the list to initialise. Must be non-NULL.
  * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
@@ -126,23 +126,23 @@ typedef struct
 int bf_list_new(bf_list **list, const bf_list_ops *ops);
 
 /**
- * @brief Free a list.
+ * Free a list.
  *
  * @param list Pointer to the list to free. Must be non-NULL.
  */
 void bf_list_free(bf_list **list);
 
 /**
- * @brief Initialize an allocated list.
+ * Initialize an allocated list.
  *
  * @param list List to initialise. Must be non-NULL.
  * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
- *  @p ops shouldn't contain any NULL field.
+ *        @p ops shouldn't contain any NULL field.
  */
 void bf_list_init(bf_list *list, const bf_list_ops *ops);
 
 /**
- * @brief Clean up a list.
+ * Clean up a list.
  *
  * Every node in the list is freed. The node's data is freed using the function
  * provided during initialisation (through @ref bf_list_ops).
@@ -152,7 +152,7 @@ void bf_list_init(bf_list *list, const bf_list_ops *ops);
 void bf_list_clean(bf_list *list);
 
 /**
- * @brief Get the number of nodes in the list.
+ * Get the number of nodes in the list.
  *
  * @param list Initialised list. Must be non-NULL.
  * @return Number of nodes in the list.
@@ -164,7 +164,7 @@ static inline size_t bf_list_size(const bf_list *list)
 }
 
 /**
- * @brief Check if a list is empty.
+ * Check if a list is empty.
  *
  * @param list Initialised list. Must be non-NULL.
  * @return True if the list is empty, false otherwise.
@@ -177,7 +177,7 @@ static inline bool bf_list_is_empty(const bf_list *list)
 }
 
 /**
- * @brief Check if @p node is the head of @p list.
+ * Check if @p node is the head of @p list.
  *
  * @param list List. Must be non NULL.
  * @param node Node. Must be non NULL.
@@ -193,7 +193,7 @@ static inline bool bf_list_is_head(const bf_list *list,
 }
 
 /**
- * @brief Check if @p node is the tail of @p list.
+ * Check if @p node is the tail of @p list.
  *
  * @param list List. Must be non NULL.
  * @param node Node. Must be non NULL.
@@ -209,27 +209,27 @@ static inline bool bf_list_is_tail(const bf_list *list,
 }
 
 /**
- * @brief Add data at the beginning of the list.
+ * Add data at the beginning of the list.
  *
  * @param list List to append data to. Must be initialised and non-NULL.
  * @param data Data to append to the list. Can be NULL. @p list takes
- * 	ownership of the data: it should not be freed.
+ * 	      ownership of the data: it should not be freed.
  * @return 0 on success or negative errno code on failure.
  */
 int bf_list_add_head(bf_list *list, void *data);
 
 /**
- * @brief Add data at the end of the list.
+ * Add data at the end of the list.
  *
  * @param list List to append data to. Must be initialised and non-NULL.
  * @param data Data to append to the list. Can be NULL. @p list takes
- * 	ownership of the data: it should not be freed.
+ * 	      ownership of the data: it should not be freed.
  * @return 0 on success or negative errno code on failure.
  */
 int bf_list_add_tail(bf_list *list, void *data);
 
 /**
- * @brief Delete @p node from @p list.
+ * Delete @p node from @p list.
  *
  * @p node is freed and shouldn't be used once the function returns. The node's
  * data will be freed using the function provided during initialisation (through
@@ -241,7 +241,7 @@ int bf_list_add_tail(bf_list *list, void *data);
 void bf_list_delete(bf_list *list, bf_list_node *node);
 
 /**
- * @brief Returns the first element of the list.
+ * Returns the first element of the list.
  *
  * A @p bf_list_node object it returned. Use @ref bf_list_node_get_data to
  * get a pointer to the data.
@@ -256,7 +256,7 @@ static inline bf_list_node *bf_list_get_head(const bf_list *list)
 }
 
 /**
- * @brief Returns the last element of the list.
+ * Returns the last element of the list.
  *
  * A @p bf_list_node object it returned. Use @ref bf_list_node_get_data to
  * get a pointer to the data.
@@ -271,7 +271,7 @@ static inline bf_list_node *bf_list_get_tail(const bf_list *list)
 }
 
 /**
- * @brief Get next node.
+ * Get next node.
  *
  * @param node Current node. Must be non-NULL.
  * @return Pointer to the next node, or NULL if end of list.
@@ -283,7 +283,7 @@ static inline bf_list_node *bf_list_node_next(const bf_list_node *node)
 }
 
 /**
- * @brief Get previous node.
+ * Get previous node.
  *
  * @param node Current node. Must be non-NULL.
  * @return Pointer to the previous node, or NULL if end of list.
@@ -295,7 +295,7 @@ static inline bf_list_node *bf_list_node_prev(const bf_list_node *node)
 }
 
 /**
- * @brief Get the node's data.
+ * Get the node's data.
  *
  * Note that the pointer returned can be NULL, as nothing prevents NULL data
  * to be stored in the node.
@@ -311,7 +311,7 @@ static inline void *bf_list_node_get_data(const bf_list_node *node)
 }
 
 /**
- * @brief Get the node's data and remove it from the node.
+ * Get the node's data and remove it from the node.
  *
  * Once the function returns, the node's data is set to NULL. The pointer
  * returned is then owned by the caller.

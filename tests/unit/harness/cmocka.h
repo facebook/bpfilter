@@ -5,7 +5,7 @@
 
 /**
  * @file
- * @brief CMocka test harness
+ * CMocka test harness
  *
  * CMocka doesn't impot the headers it uses, so we have to do it here.
  */

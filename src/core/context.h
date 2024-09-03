@@ -49,28 +49,29 @@ struct bf_context
 };
 
 /**
- * @brief Initialise the global bpfilter context.
+ * Initialise the global bpfilter context.
  *
  * @return 0 on success, negative error code on failure.
  */
 int bf_context_setup(void);
 
 /**
- * @brief Teardown the global bpfilter context.
+ * Teardown the global bpfilter context.
  *
  * @param clear If true, all the BPF programs will be unloaded before clearing
- * the context.
+ *        the context.
  */
 void bf_context_teardown(bool clear);
 
 /**
- * @brief Dump content of the context.
+ * Dump content of the context.
+ *
  * @param prefix Prefix to use for the dump.
  */
 void bf_context_dump(prefix_t *prefix);
 
 /**
- * @brief Marshel the global bpfilter context.
+ * Marshel the global bpfilter context.
  *
  * @param marsh @ref bf_marsh structure to fill with the marshalled context.
  * @return 0 on success, negative error code on failure.
@@ -78,7 +79,7 @@ void bf_context_dump(prefix_t *prefix);
 int bf_context_save(struct bf_marsh **marsh);
 
 /**
- * @brief Unmarshal the global bpfilter context.
+ * Unmarshal the global bpfilter context.
  *
  * Once this function completes, the global context has been restored from the
  * marshalled context. On failure, the global context is left uninitialized.
@@ -89,19 +90,19 @@ int bf_context_save(struct bf_marsh **marsh);
 int bf_context_load(const struct bf_marsh *marsh);
 
 /**
- * @brief Get codegen for a given (hook, front) set.
+ * Get codegen for a given (hook, front) set.
  *
  * @param hook Hook to get the codegen from. Must be a valid hook.
  * @param front Front-end to get the codegen from. Must be a valid
- * front-end.
+ *        front-end.
  * @return The codegen for the given hook and front-end, or NULL if there is
- * no such codegen.
+ *         no such codegen.
  */
 struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
                                           enum bf_front front);
 
 /**
- * @brief Take a codegen out of the context for a given (hook, front) set.
+ * Take a codegen out of the context for a given (hook, front) set.
  *
  * The codegen returned must then be freed by the caller. It's not part of
  * the context anymore.
@@ -109,13 +110,13 @@ struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
  * @param hook Hook to get the codegen from. Must be a valid hook.
  * @param front Front-end to get the codegen from. Must be a valid front-end.
  * @return The codegen for the given hook and front-end, or NULL if there is no
- * such codegen.
+ *         such codegen.
  */
 struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
                                            enum bf_front front);
 
 /**
- * @brief Delete a codegen from the context for a given (hook, front) set.
+ * Delete a codegen from the context for a given (hook, front) set.
  *
  * If a corresponding codegen has been found, then it is removed from the
  * context and deleted. Otherwise the context remain unchanged.
@@ -126,19 +127,19 @@ struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
 void bf_context_delete_codegen(enum bf_hook hook, enum bf_front front);
 
 /**
- * @brief Add a codegen to the context.
+ * Add a codegen to the context.
  *
  * @param hook Hook to add the codegen to. Must be a valid hook.
  * @param front Front-end to add the codegen to. Must be a valid front-end.
  * @param codegen Codegen to add to the context. Can't be NULL.
  * @return 0 on success, negative error code on failure. If a codegen already
- *  exists for the given (hook, front) set, then -EEXIST is returned.
+ *         exists for the given (hook, front) set, then -EEXIST is returned.
  */
 int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
                            struct bf_codegen *codegen);
 
 /**
- * @brief Replace the codegen for a given (hook, front) set, if any.
+ * Replace the codegen for a given (hook, front) set, if any.
  *
  * If a codegen already exists for the given (hook, front) set, then it is
  * deleted and replaced by @p codegen. Otherwise, @p codegen is added to the

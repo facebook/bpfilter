@@ -27,12 +27,12 @@
 #include "xlate/front.h"
 
 /**
- * @brief Global flag to indicate whether the daemon should stop.
+ * Global flag to indicate whether the daemon should stop.
  */
 static volatile sig_atomic_t _stop_received = 0;
 
 /**
- * @brief Path to bpfilter's runtime context file.
+ * Path to bpfilter's runtime context file.
  *
  * bpfilter will periodically save its internal context back to disk, to prevent
  * spurious service interruption to lose information about the current state of
@@ -44,8 +44,7 @@ static volatile sig_atomic_t _stop_received = 0;
 static const char *context_path = BF_RUNTIME_DIR "/data.bin";
 
 /**
- * @brief Set atomic flag to stop the daemon if specific signals are
- * received.
+ * Set atomic flag to stop the daemon if specific signals are received.
  *
  * @param sig Signal number.
  */
@@ -57,7 +56,7 @@ void _sig_handler(int sig)
 }
 
 /**
- * @brief Ensure the daemon can use the runtime directory.
+ * Ensure the daemon can use the runtime directory.
  *
  * Check if the current process can access @ref BF_RUNTIME_DIR. If it doesn't
  * exists, create it with the appropriate permissions. If it exists, check
@@ -99,16 +98,16 @@ static int _bf_ensure_runtime_dir(void)
 }
 
 /**
- * @brief Load bpfilter's runtime context from disk.
+ * Load bpfilter's runtime context from disk.
  *
  * Read the daemon's runtime context from @p path and initialize the internal
  * context with it.
  *
  * @param path Path to the context file.
  * @return This function will return:
- *  - 1 if the runtime context has been succesfully restored from the disk.
- *  - 0 if no serialized context has been found on the disk.
- *  - < 0 on error.
+ *         - 1 if the runtime context has been succesfully restored from the disk.
+ *         - 0 if no serialized context has been found on the disk.
+ *         - < 0 on error.
  */
 static int _bf_load(const char *path)
 {
@@ -175,7 +174,7 @@ static int _bf_load(const char *path)
 }
 
 /**
- * @brief Save bpfilter's runtime context to disk.
+ * Save bpfilter's runtime context to disk.
  *
  * Marshel the daemon's runtime context and save it to @p path.
  *
@@ -234,7 +233,7 @@ static int _bf_save(const char *path)
 }
 
 /**
- * @brief Initialize bpfilter's daemon runtime.
+ * Initialize bpfilter's daemon runtime.
  *
  * Setup signal handler (for graceful shutdown), load context from disk, and
  * initialise various front-ends.
@@ -310,7 +309,7 @@ static int _bf_init(int argc, char *argv[])
 }
 
 /**
- * @brief Clean up bpfilter's daemon runtime.
+ * Clean up bpfilter's daemon runtime.
  *
  * @return 0 on success, negative error code on failure.
  */
@@ -335,7 +334,7 @@ static int _bf_clean(void)
 }
 
 /**
- * @brief Process a request.
+ * Process a request.
  *
  * The handler corresponding to @p request->front will be called (if any).
  * If the handler returns 0, @p response is expected to be filled, and ready
@@ -385,7 +384,7 @@ static int _process_request(struct bf_request *request,
 }
 
 /**
- * @brief Loop and process requests.
+ * Loop and process requests.
  *
  * Create a socket and perform blocking accept() calls. For each connection,
  * receive a request, process it, and send the response back.

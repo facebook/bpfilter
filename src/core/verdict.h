@@ -6,7 +6,7 @@
 #pragma once
 
 /**
- * @brief Verdict to apply for a rule or chain.
+ * Verdict to apply for a rule or chain.
  */
 enum bf_verdict
 {

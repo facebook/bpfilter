@@ -8,7 +8,7 @@
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 /**
- * @brief Check whether @p hook is enabled in @p ipt_replace structure.
+ * Check whether @p hook is enabled in @p ipt_replace structure.
  *
  * @param replace @p ipt_replace structure.
  * @param hook Hook to test.
@@ -18,19 +18,18 @@
     ((replace)->valid_hooks & (1 << (hook)))
 
 /**
- * @brief Get @p ipt_entry's match at @p offset.
+ * Get @p ipt_entry's match at @p offset.
  *
  * @param entry @p ipt_entry structure the get the match from. Must
- * 	be non-NULL.
+ * 	      be non-NULL.
  * @param offset Offset of the match to get.
- *
  * @return Pointer to the match at @p offset in @p ipt_entry.
  */
 #define ipt_get_match(entry, offset)                                           \
     ((struct ipt_entry_match *)((void *)(entry) + (offset)))
 
 /**
- * @brief Get @p ipt_entry's target.
+ * Get @p ipt_entry's target.
  *
  * @param entry @p ipt_entry structure to get the target from.
  * @return Pointer to the target assigned to @p ipt_entry.
@@ -39,7 +38,8 @@
     (struct ipt_entry_target *)((void *)(entry) + (entry)->target_offset)
 
 /**
- * @brief Get first rule for @p hook in @p ipt_replace.
+ * Get first rule for @p hook in @p ipt_replace.
+ *
  * @param replace @p ipt_replace structure.
  * @param hook Hook to get the first rule for.
  * @return Pointer to the first rule for @p hook.
@@ -49,7 +49,7 @@
                          (replace)->hook_entry[hook])
 
 /**
- * @brief Get rule following @p ipt_entry.
+ * Get rule following @p ipt_entry.
  *
  * @param entry @p ipt_entry structure.
  * @return Pointer to the next rule.
@@ -58,7 +58,7 @@
     (struct ipt_entry *)((void *)(entry) + (entry)->next_offset)
 
 /**
- * @brief Get last rule for @p hook in @p ipt_replace.
+ * Get last rule for @p hook in @p ipt_replace.
  *
  * @param replace @p ipt_replace structure.
  * @param hook Hook to get the last rule for.

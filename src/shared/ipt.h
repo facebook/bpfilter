@@ -8,7 +8,7 @@
 #include <linux/netfilter/x_tables.h>
 
 /**
- * @brief Get size of an ipt_replace structure.
+ * Get size of an ipt_replace structure.
  *
  * @param ipt_replace_ptr Pointer to a valid ipt_replace structure.
  * @return Size of the structure, including variable length entries field.
@@ -17,7 +17,7 @@
     (sizeof(struct ipt_replace) + (ipt_replace_ptr)->size)
 
 /**
- * @brief Get size of an xt_counters_info structure.
+ * Get size of an xt_counters_info structure.
  *
  * @param xt_counters_info_ptr Pointer to a valid xt_counters_info structure.
  * @return Size of the structure, including variable length counters field.
@@ -27,7 +27,7 @@
      (xt_counters_info_ptr)->num_counters * sizeof(struct xt_counters))
 
 /**
- * @brief Get size of an ipt_get_entries structure.
+ * Get size of an ipt_get_entries structure.
  *
  * @param ipt_get_entries_ptr Pointer to a valid ipt_get_entries structure.
  * @return Size of the structure, including variable length entries field.
@@ -36,7 +36,7 @@
     (sizeof(struct ipt_get_entries) + (ipt_get_entries_ptr)->size)
 
 /**
- * @brief Get rule from an ipt_entry structure at a given offset.
+ * Get rule from an ipt_entry structure at a given offset.
  *
  * @param ipt_entry_ptr Pointer to a valid ipt_entry structure.
  * @param offset Offset of the rule to get. Must be a valid offset.

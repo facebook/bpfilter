@@ -451,7 +451,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
 }
 
 /**
- * @brief Generate a function to update the packets counter
+ * Generate a function to update the packets counter
  *
  * Assuming:
  * - BF_ARG_1: file descriptor of the counters map.
