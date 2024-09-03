@@ -15,6 +15,7 @@
    :caption: Developers
 
    developers/build
+   developers/style
    developers/packets_processing
    developers/generation
    developers/fronts/index
