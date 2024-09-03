@@ -50,7 +50,7 @@ struct bf_program;
 #define _cleanup_bf_swich_ __attribute__((cleanup(bf_swich_cleanup)))
 
 /**
- * @brief Create, initialize, and return a new @ref bf_swich object.
+ * Create, initialize, and return a new @ref bf_swich object.
  *
  * @param program @ref bf_program object to create the switch in.
  * @param reg Register to use to compare the cases values to.
@@ -66,7 +66,7 @@ struct bf_program;
     })
 
 /**
- * @brief Add a case to the @ref bf_swich
+ * Add a case to the @ref bf_swich
  *
  * @param swich Pointer to a valid @ref bf_swich .
  * @param imm Immediate value to compare against the switch's register.
@@ -82,8 +82,7 @@ struct bf_program;
     } while (0)
 
 /**
- * @brief Set the default instruction if no cases of the switch matches the
- * register.
+ * Set the default instruction if no cases of the switch matches the register.
  *
  * Defining a default option to a @ref bf_swich is optional. If this macro is
  * called twice, the existing default options will be replaced by the new ones.
@@ -121,7 +120,7 @@ struct bf_swich
  *
  * @param swich @ref bf_swich object to initialize, can't be NULL.
  * @param program @ref bf_program object to generate the switch-case for. Can't
- * be NULL.
+ *        be NULL.
  * @param reg Register to compare to the cases of the switch.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -143,7 +142,7 @@ void bf_swich_cleanup(struct bf_swich *swich);
  *
  * @param swich @ref bf_swich object to add the option to. Can't be NULL.
  * @param imm Immediate value to compare the switch's register to. If the
- * values are equal, the option's instructions are executed.
+ *        values are equal, the option's instructions are executed.
  * @param insns Array of BPF instructions to execute if the case matches.
  * @param insns_len Number of instructions in @p insns .
  * @return 0 on success, or negative errno value on failure.
@@ -155,7 +154,7 @@ int bf_swich_add_option(struct bf_swich *swich, uint32_t imm,
  * Set the switch's default actions if no case matches.
  *
  * @param swich @ref bf_swich object to set the default action for. Can't be
- * NULL.
+ *        NULL.
  * @param insns Array of BPF instructions to execute.
  * @param insns_len Number of instructions in @p insns .
  * @return 0 on success, or negative errno value on failure.
@@ -170,7 +169,7 @@ int bf_swich_set_default(struct bf_swich *swich, const struct bpf_insn *insns,
  * until this function is called.
  *
  * @param swich @ref bf_swich object to generate the bytecode for. Can't be
- * NULL.
+ *        NULL.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_swich_generate(struct bf_swich *swich);

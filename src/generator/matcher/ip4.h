@@ -9,7 +9,7 @@ struct bf_matcher;
 struct bf_program;
 
 /**
- * @brief Generate the bytecode for the BF_MATCHER_IP4_* matcher types.
+ * Generate the bytecode for the BF_MATCHER_IP4_* matcher types.
  *
  * @param program Program to generate the bytecode into. Can't be NULL.
  * @param matcher Matcher to generate the bytecode for. Can't be NULL.

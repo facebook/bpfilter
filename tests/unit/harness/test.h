@@ -17,7 +17,7 @@ struct CMUnitTest;
 typedef void (*bf_test_func)(void **state);
 
 /**
- * @brief bpfilter test
+ * bpfilter test
  */
 typedef struct
 {
@@ -28,7 +28,7 @@ typedef struct
 } bf_test;
 
 /**
- * @brief bpfilter test group
+ * bpfilter test group
  *
  * A test group contains one or more tests.
  */
@@ -40,7 +40,7 @@ typedef struct
 } bf_test_group;
 
 /**
- * @brief bpfilter test suite
+ * bpfilter test suite
  *
  * A test suite contains one or more test groups.
  */

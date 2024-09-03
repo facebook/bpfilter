@@ -25,15 +25,14 @@ extern const char *strerrordesc_np(int errnum);
 #endif
 
 /**
- * @brief Mark a variable as unused, to prevent the compiler from emitting a
- * warning.
+ * Mark a variable as unused, to prevent the compiler from emitting a warning.
  *
  * @param x The variable to mark as unused.
  */
 #define UNUSED(x) (void)(x)
 
 /**
- * @brief Set @p ptr to NULL and return its previous value.
+ * Set @p ptr to NULL and return its previous value.
  *
  * Inspired from systemd's TAKE_PTR() macro, which is itself inspired from
  * Rust's Option::take() method:
@@ -60,7 +59,7 @@ extern const char *strerrordesc_np(int errnum);
 #define TAKE_FD(fd) TAKE_GENERIC(fd, int, -1)
 
 /**
- * @brief Get the number of element in an array.
+ * Get the number of element in an array.
  *
  * @param x The array.
  * @return size_t The number of elements in the array.
@@ -71,7 +70,7 @@ extern const char *strerrordesc_np(int errnum);
 #define _cleanup_close_ __attribute__((__cleanup__(closep)))
 
 /**
- * @brief Return a string describing the given error code.
+ * Return a string describing the given error code.
  *
  * This function must be used over strerror(), which is marked at mt-unsafe.
  *
@@ -93,7 +92,8 @@ extern const char *strerrordesc_np(int errnum);
     } while (0)
 
 /**
- * @brief Free a pointer and set it to NULL.
+ * Free a pointer and set it to NULL.
+ *
  * @param ptr Pointer to free.
  */
 static inline void freep(void *ptr)
@@ -103,7 +103,7 @@ static inline void freep(void *ptr)
 }
 
 /**
- * @brief Close a file descriptor and set it to -1.
+ * Close a file descriptor and set it to -1.
  *
  * File descriptors are expected to be uninitialized to -1, so this function
  * can be used to close a file descriptor and set it to -1 in a single
@@ -119,7 +119,7 @@ static inline void closep(int *fd)
 }
 
 /**
- * @brief Duplicate a memory region.
+ * Duplicate a memory region.
  *
  * Allocate a new buffer of size @p len and copy @p src into it. Requirements
  * applicable to @p src and @p len:
@@ -148,7 +148,7 @@ static inline void *bf_memdup(const void *src, size_t len)
 }
 
 /**
- * @brief Copy @p len bytes from @p src to @p dst.
+ * Copy @p len bytes from @p src to @p dst.
  *
  * Allow for @p src to be NULL and/or @p len to be zero:
  * - If @p src is NULL, @p len must be equal 0. @p dst is not modified.
@@ -156,7 +156,7 @@ static inline void *bf_memdup(const void *src, size_t len)
  *   not modified.
  *
  * @param dst Destination buffer. Can't be NULL, and must be big enough to store
- *  @p len bytes from @p src.
+ *        @p len bytes from @p src.
  * @param src Source buffer to copy to @p dst.
  * @param len Number of bytes to copy to @p dst.
  * @return Pointer to @p dst.
@@ -173,7 +173,7 @@ static inline void *bf_memcpy(void *dst, const void *src, size_t len)
 }
 
 /**
- * @brief Reallocate @p ptr into a new buffer of size @p size.
+ * Reallocate @p ptr into a new buffer of size @p size.
  *
  * Behaves similarly to realloc(), except that @p ptr is left unchanged if
  * allocation fails, and an error is returned.
@@ -198,7 +198,7 @@ static inline int bf_realloc(void **ptr, size_t size)
 }
 
 /**
- * @brief Returns true if @p a is equal to @p b.
+ * Returns true if @p a is equal to @p b.
  *
  * @param a First string.
  * @param b Second string.

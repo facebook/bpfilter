@@ -14,7 +14,7 @@ enum bf_front
 };
 
 /**
- * @brief Get a bpfilter front type as a string.
+ * Get a bpfilter front type as a string.
  *
  * @param front Valid front type.
  * @return String representation of the front type.

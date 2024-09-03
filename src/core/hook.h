@@ -30,7 +30,7 @@ enum bf_hook
 };
 
 /**
- * @brief Convert a bpfilter hook to a string.
+ * Convert a bpfilter hook to a string.
  *
  * @param hook The hook to convert. Must be a valid hook.
  * @return String representation of the hook.
@@ -47,7 +47,7 @@ const char *bf_hook_to_str(enum bf_hook hook);
 int bf_hook_from_str(const char *str, enum bf_hook *hook);
 
 /**
- * @brief Convert a bpfilter hook to a BPF program type.
+ * Convert a bpfilter hook to a BPF program type.
  *
  * @param hook The hook to convert. Must be a valid hook.
  * @return The BPF program type corresponding to @p hook.
@@ -55,7 +55,7 @@ int bf_hook_from_str(const char *str, enum bf_hook *hook);
 unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook);
 
 /**
- * @brief Get the expected flavor for a given hook.
+ * Get the expected flavor for a given hook.
  *
  * @param hook BPF hook. Must be valid.
  * @return bpfilter flavor corresponding to @p hook.
@@ -63,7 +63,7 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook);
 enum bf_flavor bf_hook_to_flavor(enum bf_hook hook);
 
 /**
- * @brief Convert a bpfilter hook to a BPF attach type.
+ * Convert a bpfilter hook to a BPF attach type.
  *
  * @param hook The hook to convert. Must be a valid hook.
  * @return The BPF attach type corresponding to @p hook.

@@ -140,7 +140,7 @@ const struct bf_front_ops ipt_front = {
 };
 
 /**
- * @brief Convert an iptables hook to a bpfilter hook.
+ * Convert an iptables hook to a bpfilter hook.
  *
  * @param ipt_hook iptables hook. Must be valid.
  * @return bpfilter hook.
@@ -192,7 +192,7 @@ static void _bf_ipt_cache_free(struct bf_ipt_cache **cache)
 }
 
 /**
- * @brief Convert an iptables target to a bpfilter verdict.
+ * Convert an iptables target to a bpfilter verdict.
  *
  * @param ipt_target iptables target to convert.
  * @param verdict Verdict to store the conversion in.
@@ -231,7 +231,7 @@ static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
 }
 
 /**
- * @brief Translate an iptables rule into a bpfilter rule.
+ * Translate an iptables rule into a bpfilter rule.
  *
  * @todo Bound check the target.
  *
@@ -329,11 +329,11 @@ static bool _ipt_entry_is_empty(const struct ipt_entry *entry)
 }
 
 /**
- * @brief Translate iptables rules into bpfilter format.
+ * Translate iptables rules into bpfilter format.
  *
  * @param ipt iptables rules.
  * @param codegens Array of codegens, indexed by hook. At most one codegen per
- *  hook will be generated.
+ *        hook will be generated.
  * @return 0 on success, negative error code on failure.
  */
 static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
@@ -409,7 +409,7 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
 }
 
 /**
- * @brief Modify existing iptables rules.
+ * Modify existing iptables rules.
  *
  * @todo If processing for any codegen fails, all codegens should be unloaded
  * and/or discarded.
@@ -489,7 +489,7 @@ end_free_codegens:
 }
 
 /**
- * @brief Set counters for a rule.
+ * Set counters for a rule.
  *
  * @todo Actually update the counters.
  *
@@ -530,7 +530,7 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
 }
 
 /**
- * @brief Get the entries of a table, including counters.
+ * Get the entries of a table, including counters.
  *
  * @param request
  * @param response
@@ -628,8 +628,6 @@ static int _bf_ipt_teardown(void)
 }
 
 /**
- * @brief
- *
  * @todo Wouldn't it be better to have a separate handler for each request type?
  *  In which case struct bf_front_ops would contain a handler for each request
  *  type, and the front would handle custom (BF_REQ_CUSTOM) requests itself.

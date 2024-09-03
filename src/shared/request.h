@@ -67,7 +67,7 @@ struct bf_request
 };
 
 /**
- * @brief Allocate and initialise a new request.
+ * Allocate and initialise a new request.
  *
  * @param request Pointer to the request to allocate. Must be non-NULL.
  * @param data Client-specific data.
@@ -78,7 +78,7 @@ int bf_request_new(struct bf_request **request, const void *data,
                    size_t data_len);
 
 /**
- * @brief Free a request.
+ * Free a request.
  *
  * If @p request points to a NULL pointer, this function does nothing. Once the
  * function returns, @p request points to a NULL pointer.
@@ -88,17 +88,17 @@ int bf_request_new(struct bf_request **request, const void *data,
 void bf_request_free(struct bf_request **request);
 
 /**
- * @brief Copy a request.
+ * Copy a request.
  *
  * @param dest The destination request. It will be allocated during the call.
- *  Can't be NULL.
+ *        Can't be NULL.
  * @param src The source request, to copy. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src);
 
 /**
- * @brief Get the total size of the request: request structure and data.
+ * Get the total size of the request: request structure and data.
  *
  * @param request Request to get the size of. Can't be NULL.
  * @return Total size of the request.

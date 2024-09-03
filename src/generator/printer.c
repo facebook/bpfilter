@@ -47,10 +47,10 @@ struct bf_printer
 static void _bf_printer_msg_free(struct bf_printer_msg **msg);
 
 /**
- * @brief Allocate and initialise a new printer message.
+ * Allocate and initialise a new printer message.
  *
  * @param msg On success, points to the newly allocated and initialised
- *  printer message. Can't be NULL.
+ *        printer message. Can't be NULL.
  * @return 0 on success, or negative errno value on error.
  */
 static int _bf_printer_msg_new(struct bf_printer_msg **msg)
@@ -69,11 +69,11 @@ static int _bf_printer_msg_new(struct bf_printer_msg **msg)
 }
 
 /**
- * @brief Allocate a new printer message and initialise it from serialized
- *  data.
+ * Allocate a new printer message and initialise it from serialized
+ * data.
  *
  * @param msg On success, points to the newly allocated and initialised
- *  printer message. Can't be NULL.
+ *        printer message. Can't be NULL.
  * @param marsh Serialized data to use to initialise the printer message.
  * @return 0 on success, or negative errno value on error.
  */
@@ -111,7 +111,7 @@ static int _bf_printer_msg_new_from_marsh(struct bf_printer_msg **msg,
 }
 
 /**
- * @brief Deinitialise and deallocate a printer message.
+ * Deinitialise and deallocate a printer message.
  *
  * @param msg Printer message. Can't be NULL.
  */
@@ -130,13 +130,13 @@ static void _bf_printer_msg_free(struct bf_printer_msg **msg)
 }
 
 /**
- * @brief Serialize a printer message.
+ * Serialize a printer message.
  *
  * The message's string is serialized with its trailing '/0'.
  *
  * @param msg Printer message to serialise. Can't be NULL.
  * @param marsh On success, contains the serialised printer message. Can't be
- *  NULL.
+ *        NULL.
  * @return 0 on success, or negative errno value on failure.
  */
 static int _bf_printer_msg_marsh(const struct bf_printer_msg *msg,
@@ -307,7 +307,7 @@ void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
 }
 
 /**
- * @brief Get the total size of the concatenated messages.
+ * Get the total size of the concatenated messages.
  *
  * @param printer Printer context. Can't be NULL.
  * @return Total size of the concatenated messages.

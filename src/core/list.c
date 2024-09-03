@@ -9,10 +9,10 @@
 #include <stdlib.h>
 
 /**
- * @brief Create a new list node, with the given data.
+ * Create a new list node, with the given data.
  *
  * @param node New node pointer. Must be non-NULL.. If the function fails, this
- * 	parameter remains unchanged.
+ * 	      parameter remains unchanged.
  * @param data Data to store in the new node. Can be NULL.
  * @return 0 on success or negative errno code on failure.
  */
@@ -33,7 +33,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 }
 
 /**
- * @brief Free a list node. Must be non-NULL.
+ * Free a list node. Must be non-NULL.
  *
  * The data contained in the node will also be freed using the function provided
  * in the list's ops.

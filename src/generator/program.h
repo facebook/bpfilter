@@ -29,7 +29,7 @@
 #define PIN_PATH_LEN 64
 
 /**
- * @brief Convenience macro to get the offset of a field in @ref
+ * Convenience macro to get the offset of a field in @ref
  * bf_program_context.
  */
 #define BF_PROG_CTX_OFF(field) offsetof(struct bf_program_context, field)
@@ -79,7 +79,7 @@ struct bf_rule;
 struct bf_counter;
 
 /**
- * @brief BPF program runtime context.
+ * BPF program runtime context.
  *
  * This structure is used to map data located in the first frame of the
  * generated BPF program. Address to this structure will be stored in

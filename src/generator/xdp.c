@@ -36,7 +36,7 @@ const struct bf_flavor_ops bf_flavor_ops_xdp = {
 };
 
 /**
- * @brief Generate XDP program prologue.
+ * Generate XDP program prologue.
  *
  * @warning @ref bf_stub_parse_l2_ethhdr will check for L3 protocol. If L3 is
  * not IPv4, the program will be terminated.

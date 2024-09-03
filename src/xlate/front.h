@@ -12,7 +12,7 @@ struct bf_response;
 struct bf_marsh;
 
 /**
- * @brief struct bf_front_ops
+ * @struct bf_front_ops
  *
  * @todo Make bf_front_ops.request_handler take a const struct bf_request.
  *
@@ -34,7 +34,7 @@ struct bf_front_ops
 };
 
 /**
- * @brief Retrieve the @ref bf_front_ops structure for a specific front.
+ * Retrieve the @ref bf_front_ops structure for a specific front.
  *
  * @param front Front to get the @ref bf_front_ops for.
  * @return

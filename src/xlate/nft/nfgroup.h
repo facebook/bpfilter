@@ -39,7 +39,7 @@ struct bf_nfmsg;
  * Create a new Netlink messages group.
  *
  * @param group Pointer to the new messages group. Must not be NULL. Will be
- * allocated and initialised by this function. Can't be NULL.
+ *        allocated and initialised by this function. Can't be NULL.
  * @return 0 on success, or negative errno value on error.
  */
 int bf_nfgroup_new(struct bf_nfgroup **group);
@@ -111,8 +111,8 @@ int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg);
  *
  * @param group Netlink messages group to add the message to. Can't be NULL.
  * @param msg Pointer to the new message. Once the function succeeds, this
- * pointer will be set to the new message. Can be NULL, in which case the
- * caller won't have access to the new message.
+ *        pointer will be set to the new message. Can be NULL, in which case the
+ *        caller won't have access to the new message.
  * @param command Netlink message command.
  * @param seqnr Netlink message sequence number.
  * @return 0 on success, or negative errno value on error.
@@ -136,8 +136,8 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
  *
  * @param group Netlink messages group to convert. Can't be NULL.
  * @param resp Pointer to the new response. Can't be NULL. A new response will
- * be allocated by this function and the caller will be responsible for freeing
- * it.
+ *        be allocated by this function and the caller will be responsible for
+ *        freeing it.
  * @return 0 on success, or negative errno value on error.
  */
 int bf_nfgroup_to_response(const struct bf_nfgroup *group,

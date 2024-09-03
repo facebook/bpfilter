@@ -22,12 +22,12 @@
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 
 /**
- * @brief BPF system call.
+ * BPF system call.
  *
  * @param cmd BPF command to run.
  * @param attr Attributes of the system call.
  * @return System call return value on success, or negative errno value on
- * failure.
+ *         failure.
  */
 static int _bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 {

@@ -10,7 +10,7 @@
 #include "external/filter.h"
 
 /**
- * @brief BPF registers aliases adapted to bpfilter usage.
+ * BPF registers aliases adapted to bpfilter usage.
  */
 enum bf_reg
 {

@@ -8,7 +8,7 @@
 #include "core/logger.h"
 
 /**
- * @brief Dump prefixed-formatted string.
+ * Dump prefixed-formatted string.
  *
  * @param p Prefix string.
  * @param fmt Log format string.
@@ -17,7 +17,7 @@
 #define DUMP(p, fmt, ...) bf_dbg("%s" fmt, (*p), ##__VA_ARGS__);
 
 /**
- * @brief Split 32 bits IPv4 representation into four 8 bits components.
+ * Split 32 bits IPv4 representation into four 8 bits components.
  *
  * @param addr 32 bits IPv4 address to split.
  */
@@ -29,7 +29,7 @@
 #define IP4_FMT "%d.%d.%d.%d"
 
 /**
- * @brief Split a byte into 8 characters representing each bit.
+ * Split a byte into 8 characters representing each bit.
  *
  * @param byte Byte to split.
  */
@@ -51,14 +51,14 @@
 typedef char(prefix_t)[DUMP_PREFIX_LEN];
 
 /**
- * @brief Add a symbol to the prefix string.
+ * Add a symbol to the prefix string.
  *
  * @param prefix Prefix string.
  */
 void bf_dump_prefix_push(prefix_t *prefix);
 
 /**
- * @brief Convert previous node to make is the last of the branch.
+ * Convert previous node to make is the last of the branch.
  *
  * @param prefix Prefix string.
  * @return @p prefix
@@ -66,7 +66,7 @@ void bf_dump_prefix_push(prefix_t *prefix);
 prefix_t *bf_dump_prefix_last(prefix_t *prefix);
 
 /**
- * @brief Remove rightmost branch from the prefix string.
+ * Remove rightmost branch from the prefix string.
  *
  * When a subtree is completed and we backout to a different branch, we need
  * to remove the rightmost branch from the prefix to continue.
@@ -76,7 +76,7 @@ prefix_t *bf_dump_prefix_last(prefix_t *prefix);
 void bf_dump_prefix_pop(prefix_t *prefix);
 
 /**
- * @brief Dump the data buffer in hexedecimal format.
+ * Dump the data buffer in hexedecimal format.
  *
  * Each byte in @p data will be printed as 0x%02x, with 8 bytes on each row.
  *

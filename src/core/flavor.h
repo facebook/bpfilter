@@ -39,7 +39,7 @@ enum bf_flavor
 };
 
 /**
- * @brief Extra attribute to share between call during 2-steps attach.
+ * Extra attribute to share between call during 2-steps attach.
  */
 union bf_flavor_attach_attr
 {
@@ -59,7 +59,7 @@ union bf_flavor_attach_attr
 struct bf_flavor_ops
 {
     /**
-     * @brief Generate the flavor-specific prologue of the BPF program.
+     * Generate the flavor-specific prologue of the BPF program.
      *
      * This function can assume BF_ARG_1 contains the first argument passed
      * to the program, and BF_REG_CTX is properly set, pointing to an
@@ -78,7 +78,7 @@ struct bf_flavor_ops
     int (*get_verdict)(enum bf_verdict verdict);
 
     /**
-     * @brief Attach a loaded BPF program to the kernel, before unloading the
+     * Attach a loaded BPF program to the kernel, before unloading the
      * out-of-date program.
      *
      * There are two callbacks used to attach a program for a given flavor,
@@ -101,7 +101,7 @@ struct bf_flavor_ops
                                   union bf_flavor_attach_attr *attr);
 
     /**
-     * @brief Attach a loaded BPF program to the kernel, after the out-of-date
+     * Attach a loaded BPF program to the kernel, after the out-of-date
      * program has been detached.
      *
      * See @ref attach_prog_pre_unload for details.
@@ -137,7 +137,7 @@ struct bf_flavor_ops
 };
 
 /**
- * @brief Get the operations structure for a given BPF flavor.
+ * Get the operations structure for a given BPF flavor.
  *
  * @param flavor BPF flavor. Must be valid.
  * @return Ops structure for a given BPF flavor.
@@ -145,7 +145,7 @@ struct bf_flavor_ops
 const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor);
 
 /**
- * @brief Convert a bpfilter flavor to a string.
+ * Convert a bpfilter flavor to a string.
  *
  * @param flavor Flavor to convert. Must be valid.
  * @return String representation of @p flavor.

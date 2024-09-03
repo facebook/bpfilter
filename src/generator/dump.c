@@ -230,8 +230,8 @@ static void _bf_program_dump_imm64_insn(const struct bf_program *program,
 
     next_insn = &program->img[*insn_idx + 1];
 
-    (*insn_idx)++; // Skip the next one as this is a 64 bits immediate value
-                   // instruction.
+    // Skip the next one as this is a 64 bits immediate value instruction.
+    (*insn_idx)++;
 
     bf_assert(insn->code == (BPF_IMM | BPF_DW | BPF_LD));
 

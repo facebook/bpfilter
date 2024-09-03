@@ -10,7 +10,7 @@
 struct ipt_replace;
 
 /**
- * @brief Dump content of bpfilter_ipt_replace structure.
+ * Dump content of bpfilter_ipt_replace structure.
  *
  * @param ipt iptable's ipt_replace structure. Must be non-NULL.
  * @param prefix Prefix to print on each line.

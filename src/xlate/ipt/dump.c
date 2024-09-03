@@ -18,7 +18,7 @@
 #include "shared/helper.h"
 
 /**
- * @brief Map each hook to its name as a string.
+ * Map each hook to its name as a string.
  */
 static const char *hook_name[] = {
     [NF_INET_PRE_ROUTING] = "PRE_ROUTING",   [NF_INET_LOCAL_IN] = "LOCAL_IN",
@@ -27,7 +27,7 @@ static const char *hook_name[] = {
 };
 
 /**
- * @brief Map each target to its name as a string.
+ * Map each target to its name as a string.
  */
 static const char *target_name[] = {
     [NF_DROP] = "DROP",   [NF_ACCEPT] = "ACCEPT", [NF_STOLEN] = "STOLEN",
@@ -35,7 +35,7 @@ static const char *target_name[] = {
 };
 
 /**
- * @brief  Dump content of @p ipt_counters structure.
+ * Dump content of @p ipt_counters structure.
  *
  * @param counters @p ipt_counters structure. Must be non-NULL.
  * @param prefix @p log_prefix structure.
@@ -50,7 +50,7 @@ static inline void ipt_dump_counters(const struct ipt_counters *counters,
 }
 
 /**
- * @brief Dump content of @p ipt_ip structure.
+ * Dump content of @p ipt_ip structure.
  *
  * @param ip @p ipt_ip structure. Must be non-NULL.
  * @param prefix @p log_prefix structure.
@@ -78,7 +78,7 @@ static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
 }
 
 /**
- * @brief Dump content of @p ipt_entry_match structure.
+ * Dump content of @p ipt_entry_match structure.
  *
  * @param match @p ipt_entry_match structure. Must be non-NULL.
  * @param prefix @p log_prefix structure.
@@ -109,7 +109,7 @@ static inline int _bf_ipt_convert_verdict(int verdict)
 }
 
 /**
- * @brief Dump content of @p ipt_entry_target structure.
+ * Dump content of @p ipt_entry_target structure.
  *
  * @param target @p ipt_entry_target structure. Must be non-NULL.
  * @param prefix @p log_prefix structure.
