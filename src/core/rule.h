@@ -87,9 +87,9 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
  * @param rule Rule to add the matcher to. Can't be NULL.
  * @param type Matcher type.
  * @param op Comparison operator.
- * @param payload Payload of the matcher, its content and size depends on @ref
- * type. Can be NULL but only if @ref payload_len is 0, in which case there is
- * no payload.
+ * @param payload Payload of the matcher, its content and size depends on @p
+ *        type . Can be NULL but only if @p payload_len is 0, in which case
+ *        there is no payload.
  * @param payload_len Length of the payload.
  * @return 0 on success, or negative errno value on failure.
  */

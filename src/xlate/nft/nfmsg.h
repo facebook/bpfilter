@@ -467,7 +467,7 @@ struct bf_nfnest
  * is closed (@ref bf_nfnest_cleanup).
  *
  * @param nest Pointer to the nested attribute. Must be an allocated @ref
- * bf_nfmsg_next structure. Can't be NULL.
+ *        bf_nfnest structure. Can't be NULL.
  * @param parent @ref bf_nfmsg containing the nested attribute.
  * @param type Type of the nested attribute.
  * @return 0 on success, negative errno value on error.

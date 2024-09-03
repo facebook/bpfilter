@@ -212,7 +212,7 @@ static int _nf_attach_prog(struct bf_program *new_prog,
 /**
  * @brief Unload the Netfilter BPF bytecode image.
  *
- * @param codegen Codegen containing the image to unload. Can't be NULL.
+ * @param program Codegen containing the image to unload. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
 static int _nf_detach_prog(struct bf_program *program)

@@ -139,7 +139,7 @@ struct bf_flavor_ops
 /**
  * @brief Get the operations structure for a given BPF flavor.
  *
- * @param type BPF flavor. Must be valid.
+ * @param flavor BPF flavor. Must be valid.
  * @return Ops structure for a given BPF flavor.
  */
 const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor);

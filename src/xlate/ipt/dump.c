@@ -38,7 +38,7 @@ static const char *target_name[] = {
  * @brief  Dump content of @p ipt_counters structure.
  *
  * @param counters @p ipt_counters structure. Must be non-NULL.
- * @param p @p log_prefix structure.
+ * @param prefix @p log_prefix structure.
  */
 static inline void ipt_dump_counters(const struct ipt_counters *counters,
                                      prefix_t *prefix)
@@ -53,7 +53,7 @@ static inline void ipt_dump_counters(const struct ipt_counters *counters,
  * @brief Dump content of @p ipt_ip structure.
  *
  * @param ip @p ipt_ip structure. Must be non-NULL.
- * @param p @p log_prefix structure.
+ * @param prefix @p log_prefix structure.
  */
 static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
 {
@@ -81,7 +81,7 @@ static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
  * @brief Dump content of @p ipt_entry_match structure.
  *
  * @param match @p ipt_entry_match structure. Must be non-NULL.
- * @param p @p log_prefix structure.
+ * @param prefix @p log_prefix structure.
  */
 static void ipt_dump_match(const struct ipt_entry_match *match,
                            prefix_t *prefix)
@@ -112,7 +112,7 @@ static inline int _bf_ipt_convert_verdict(int verdict)
  * @brief Dump content of @p ipt_entry_target structure.
  *
  * @param target @p ipt_entry_target structure. Must be non-NULL.
- * @param p @p log_prefix structure.
+ * @param prefix @p log_prefix structure.
  */
 static void ipt_dump_target(const struct ipt_entry_target *target,
                             prefix_t *prefix)

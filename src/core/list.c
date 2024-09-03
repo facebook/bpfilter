@@ -39,6 +39,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
  * in the list's ops.
  *
  * @param node Node to free.
+ * @param free_data Pointer to a function use to free the node's data.
  */
 static void bf_list_node_free(bf_list_node **node,
                               void (*free_data)(void **data))

@@ -110,7 +110,8 @@ typedef struct
 /**
  * @brief Returns an initialised @ref bf_list.
  *
- * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
+ * @param list_ops Operations to use to manipulate the list's data. Must be
+ *        non-NULL.
  * @return An initialised @ref bf_list.
  */
 #define bf_list_default(list_ops) ((bf_list) {.ops = list_ops})
