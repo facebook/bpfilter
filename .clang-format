@@ -89,7 +89,7 @@ PackConstructorInitializers: Never
 PointerAlignment: Right
 QualifierAlignment: Leave
 ReferenceAlignment: Right
-ReflowComments: true
+ReflowComments: false
 SeparateDefinitionBlocks: Always
 SortIncludes: CaseSensitive
 SortUsingDeclarations: true
