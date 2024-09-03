@@ -30,8 +30,8 @@
  *  }
  * @endcode
  *
- * \c ctx is a variable local to the scope, marked with \c _cleanup_bf_jmpctx_ .
- * The second argument to \c bf_jmpctx_get is the jump instruction to emit, with
+ * @c ctx is a variable local to the scope, marked with @c _cleanup_bf_jmpctx_ .
+ * The second argument to @c bf_jmpctx_get is the jump instruction to emit, with
  * the correct condition. When the scope is exited, the jump instruction is
  * automatically updated to point to the current instruction, which is after the
  * scope.
