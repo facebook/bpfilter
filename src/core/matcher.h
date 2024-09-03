@@ -21,7 +21,7 @@
  *   against. In the example about, the type would be related to IPv4
  *   destination address field.
  * - An operator, to know how to compare the data in the packet defined by
- *   the @ref type to the payload contained in the matcher. For example, we
+ *   the type to the payload contained in the matcher. For example, we
  *   want the matcher to match when the IPv4 destination address is equal to
  *   the IP address in the payload.
  * - A payload, which is compared to the similar value in the network packet.
@@ -149,9 +149,9 @@ struct bf_matcher
  *  success, contain a pointer to the matcher object, unchanged on error.
  * @param type Matcher type.
  * @param op Comparison operator.
- * @param payload Payload of the matcher, its content and size depends on @ref
- * type. Can be NULL but only if @ref payload_len is 0, in which case there is
- * no payload.
+ * @param payload Payload of the matcher, its content and size depends on
+ *        @p type . Can be NULL but only if @p payload_len is 0, in which case
+ *        there is no payload.
  * @param payload_len Length of the payload.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -196,7 +196,8 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
 /**
  * @brief Convert a matcher type to a string.
  *
- * @param op The matcher type to convert. Must be a valid @ref bf_matcher_type
+ * @param type The matcher type to convert. Must be a valid
+ *        @ref bf_matcher_type .
  * @return String representation of the matcher type.
  */
 const char *bf_matcher_type_to_str(enum bf_matcher_type type);
@@ -205,7 +206,7 @@ const char *bf_matcher_type_to_str(enum bf_matcher_type type);
  * Convert a string to the corresponding matcher type.
  *
  * @param str String containing the name of a matcher type.
- * @param hook Matcher type value, if the parsing succeeds.
+ * @param type Matcher type value, if the parsing succeeds.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type);
@@ -222,7 +223,7 @@ const char *bf_matcher_op_to_str(enum bf_matcher_op op);
  * Convert a string to the corresponding matcher operator.
  *
  * @param str String containing the name of a matcher operator.
- * @param hook Matcher operator value, if the parsing succeeds.
+ * @param op Matcher operator value, if the parsing succeeds.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op);

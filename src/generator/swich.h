@@ -15,13 +15,13 @@
  *
  * @ref bf_swich is used to generate a switch-case logic in BPF bytecode, the
  * logic is the following:
- * - Create a new @ref bf_swich object and initialize it. Use @ref bf_switch_get
- * to simplify this step. A @ref bf_switch object contains a pointer to the
- * generated program, and the register to perform the switch comparison against.
+ * - Create a new @ref bf_swich object and initialize it. Use @ref bf_swich_get
+ *   to simplify this step. A @ref bf_swich object contains a pointer to the
+ *   generated program, and the register to perform the switch comparison against.
  * - Call @ref EMIT_SWICH_OPTION to define the various cases for the switch, and
- * the associated BPF bytecode to run.
- * - Call @ref EMIT_DEFAULT_OPTION to define the default case of the switch,
- * this is optional.
+ *   the associated BPF bytecode to run.
+ * - Call @ref EMIT_SWICH_DEFAULT to define the default case of the switch,
+ *   this is optional.
  * - Call @ref bf_swich_generate to generate the BPF bytecode for the switch.
  *
  * Once @ref bf_swich_generate has been called, this is what the switch
@@ -129,12 +129,12 @@ int bf_swich_init(struct bf_swich *swich, struct bf_program *program,
                   enum bf_reg reg);
 
 /**
- * Cleanup a @ref bf_switch object.
+ * Cleanup a @ref bf_swich object.
  *
  * Once this function returns, the @p swich object can be reused by calling
  * @ref bf_swich_init .
  *
- * @param swich The @ref bf_switch object to clean up.
+ * @param swich The @ref bf_swich object to clean up.
  */
 void bf_swich_cleanup(struct bf_swich *swich);
 

@@ -341,7 +341,7 @@ static int _bf_clean(void)
  * If the handler returns 0, @p response is expected to be filled, and ready
  * to be returned to the client.
  * If the handler returns a negative error code, @p response is filled by @ref
- * process_request with a generated error response and 0 is returned. If
+ * _process_request with a generated error response and 0 is returned. If
  * generating the error response fails, then 0 is returned.
  *
  * In other words, if 0 is returned, @p response is ready to be sent back, if

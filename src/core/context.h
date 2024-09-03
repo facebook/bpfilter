@@ -26,8 +26,8 @@
  *
  * Like every other bf_* structure, most bf_* functions should expect a valid
  * pointer to a @ref bf_context structure. This is not exactly how it works
- * for @ref bf_context: public functions defined in this header do not require
- * any @ref bf_context, but those are only wrappers around private functions
+ * for @ref bf_context : public functions defined in this header do not require
+ * any @ref bf_context , but those are only wrappers around private functions
  * defined in context.c, which do expect a valid pointer to a @ref bf_context.
  * This is done to prevent the user from creating and manipulating multiple
  * contexts, while keeping the API consistent with the other bf_* structures.
