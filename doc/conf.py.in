@@ -2,24 +2,32 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 # -- Project information -----------------------------------------------------
-project = '@PROJECT_NAME@'
-copyright = '2024 Meta Platforms, Inc'
-author = 'Quentin Deslandes'
+project = "@PROJECT_NAME@"
+copyright = "2024 Meta Platforms, Inc"
+author = "Quentin Deslandes"
 
 # -- General configuration ---------------------------------------------------
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
-extensions = ['breathe', 'linuxdoc.rstFlatTable']
-breathe_default_project = '@PROJECT_NAME@'
-breathe_default_members = ('members', 'private-members', 'undoc-members')
-breathe_domain_by_extension = { "h": "c", "c": "c" }
+extensions = ["breathe", "linuxdoc.rstFlatTable"]
+breathe_projects = {
+    "@PROJECT_NAME@": "@CMAKE_CURRENT_BINARY_DIR@/xml"
+}
+breathe_default_project = "@PROJECT_NAME@"
+breathe_default_members = ("members", "private-members", "undoc-members")
+breathe_domain_by_extension = {
+    "h": "c",
+    "c": "c"
+}
+
 breathe_show_define_initializer = False # Avoid showing badly formatted functions-like macros code.
 breathe_show_enumvalue_initializer = True
 breathe_show_include = True
+breathe_implementation_filename_extensions = [".c"]
 
 # -- Options for HTML output -------------------------------------------------
-html_theme = 'furo'
+html_theme = "furo"
 html_static_path = ["_static"]
 html_favicon = "_static/favicon.ico"
 html_theme_options = {
