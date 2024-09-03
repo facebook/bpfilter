@@ -12,32 +12,32 @@
 /**
  * @file printer.h
  *
- * \c bpfilter defines a way for generated BPF programs to print log messages
- * through \c bpf_trace_printk . This requires:
- * - A set of \c bf_printer_* primitives to manipulate the printer context
+ * @c bpfilter defines a way for generated BPF programs to print log messages
+ * through @c bpf_trace_printk . This requires:
+ * - A set of @c bf_printer_* primitives to manipulate the printer context
  *   during the bytecode generation.
- * - A \c EMIT_PRINT macro to insert BPF instructions to print a given string.
- * - A BPF map, created by \c bpfilter before the BPF programs are attached
+ * - A @c EMIT_PRINT macro to insert BPF instructions to print a given string.
+ * - A BPF map, created by @c bpfilter before the BPF programs are attached
  *   to the kernel.
  *
- * The printer context \c bf_printer stores all the log messages to be printed
+ * The printer context @c bf_printer stores all the log messages to be printed
  * by the generated BPF programs. Log messages are deduplicated to limit memory
  * usage.
  *
- * During the BPF programs generation, \c EMIT_PRINT is used to print a given
+ * During the BPF programs generation, @c EMIT_PRINT is used to print a given
  * log message from a BPF program. Under the hood, this macro will insert the
  * log message into the global printer context, so it can be used by the BPF
  * programs at runtime.
  *
- * Before the BPF programs are attached to their hook in the kernel, \c bpfilter
+ * Before the BPF programs are attached to their hook in the kernel, @c bpfilter
  * will create a BPF map to contain a unique string, which is the concatenation
  * of all the log messages defined during the generation step. The various BPF
  * programs will be updated to request their log messages from this map
  * directly.
  *
  * @note All the message strings are stored in a single BPF map entry in order
- * to benefit from \c BPF_PSEUDO_MAP_VALUE which allows lookup free direct
- * value access for maps. Hence, using a unique instruction, \c bpfilter can
+ * to benefit from @c BPF_PSEUDO_MAP_VALUE which allows lookup free direct
+ * value access for maps. Hence, using a unique instruction, @c bpfilter can
  * load the map's file descriptor and get the address of a message in the
  * buffer. See
  * <https://lore.kernel.org/bpf/20190409210910.32048-2-daniel@iogearbox.net>.
@@ -54,9 +54,9 @@ struct bf_printer_msg;
  *
  * This function will insert mulitple instruction into the BPF program to load
  * a given log message from a BPF map into a register, store its size, and
- * call \c bpf_trace_printk() to print the message.
+ * call @c bpf_trace_printk() to print the message.
  *
- * @warning As every \c EMIT_* macro, \c EMIT_PRINT() will call \c return if
+ * @warning As every @c EMIT_* macro, @c EMIT_PRINT() will call @c return if
  * an error occurs. Hence, it must be used within a function that returns an
  * integer.
  *
