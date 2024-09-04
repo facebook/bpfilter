@@ -7,8 +7,8 @@
 
 #include <stdio.h>
 
+#include "core/helper.h"
 #include "core/opts.h"
-#include "shared/helper.h"
 
 enum bf_style
 {

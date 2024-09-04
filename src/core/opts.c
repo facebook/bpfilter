@@ -8,8 +8,8 @@
 #include <argp.h>
 #include <stdint.h>
 
+#include "core/helper.h"
 #include "core/logger.h"
-#include "shared/helper.h"
 
 /**
  * bpfilter runtime configuration

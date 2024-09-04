@@ -5,8 +5,8 @@
 
 #include "core/matcher.h"
 
+#include "core/helper.h"
 #include "core/marsh.h"
-#include "shared/helper.h"
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,

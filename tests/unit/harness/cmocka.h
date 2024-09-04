@@ -17,7 +17,7 @@
 #include <cmocka.h>
 // clanf-format on
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 #define NOT_NULL ((void *)0xdeadbeef)
 

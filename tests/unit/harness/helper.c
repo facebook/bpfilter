@@ -10,11 +10,11 @@
 #include <unistd.h>
 
 #include "core/rule.h"
-#include "generator/codegen.h"
-#include "generator/program.h"
+#include "daemon/cgen/codegen.h"
+#include "daemon/cgen/program.h"
 #include "harness/cmocka.h"
-#include "shared/helper.h"
-#include "xlate/nft/nfgroup.h"
+#include "core/helper.h"
+#include "daemon/xlate/nft/nfgroup.h"
 
 struct nlmsghdr;
 

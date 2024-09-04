@@ -9,11 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/verdict.h"
-#include "shared/helper.h"
 
 int bf_rule_new(struct bf_rule **rule)
 {

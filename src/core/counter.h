@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 /**
  * @struct bf_counter

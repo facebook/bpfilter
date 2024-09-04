@@ -2,7 +2,7 @@ ignore:
   # System calls
   - src/core/bpf.c
   # To test end-to-end using BPF_PROG_TEST_RUN
-  - src/generator/**
+  - src/daemon/cgen/**
   # To test using integration tests
-  - src/xlate/ipt/**
-  - src/xlate/nft/**
+  - src/daemon/xlate/ipt/**
+  - src/daemon/xlate/nft/**

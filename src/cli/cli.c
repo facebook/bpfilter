@@ -14,9 +14,9 @@
 #include "core/dump.h"
 #include "core/list.h"
 #include "core/marsh.h"
-#include "generator/set.h"
-#include "shared/request.h"
-#include "shared/response.h"
+#include "core/request.h"
+#include "core/response.h"
+#include "core/set.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
 

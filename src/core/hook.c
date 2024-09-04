@@ -5,7 +5,7 @@
 
 #include "core/hook.h"
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 static const char *_bf_hook_strs[] = {
     [BF_HOOK_XDP] = "BF_HOOK_XDP",

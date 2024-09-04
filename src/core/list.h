@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 /* This has to be defined here, otherwise struct bf_list_node definition is
  * self-referencing... */

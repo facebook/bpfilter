@@ -81,8 +81,8 @@ enable_testing()
 set(bf_test_srcs
     src/core/opts.c
     src/core/btf.c
-    src/core/context.c
     src/core/flavor.c
+    src/core/front.c
     src/core/helper.c
     src/core/hook.c
     src/core/list.c
@@ -90,23 +90,22 @@ set(bf_test_srcs
     src/core/matcher.c
     src/core/rule.c
     src/core/verdict.c
-    src/generator/codegen.c
-    src/generator/jmp.c
-    src/generator/nf.c
-    src/generator/printer.c
-    src/generator/program.c
-    src/generator/swich.c
-    src/shared/front.c
-    src/xlate/nft/nft.c
-    src/xlate/nft/nfmsg.c
-    src/xlate/nft/nfgroup.c
+    src/daemon/cgen/codegen.c
+    src/daemon/cgen/jmp.c
+    src/daemon/cgen/printer.c
+    src/daemon/cgen/program.c
+    src/daemon/cgen/swich.c
+    src/daemon/context.c
+    src/daemon/xlate/nft/nft.c
+    src/daemon/xlate/nft/nfmsg.c
+    src/daemon/xlate/nft/nfgroup.c
 )
 
-get_target_property(shared_srcs shared SOURCES)
 get_target_property(core_srcs core SOURCES)
-get_target_property(generator_srcs generator SOURCES)
-get_target_property(xlate_srcs xlate SOURCES)
+get_target_property(daemon_srcs daemon SOURCES)
 get_target_property(lib_srcs lib SOURCES)
+
+list(REMOVE_ITEM daemon_srcs ${CMAKE_SOURCE_DIR}/src/daemon/daemon.c)
 
 add_executable(unit_tests
     assert_override.h
@@ -122,10 +121,8 @@ add_executable(unit_tests
 
     ${bf_test_srcs}
 
-    ${shared_srcs}
     ${core_srcs}
-    ${generator_srcs}
-    ${xlate_srcs}
+    ${daemon_srcs}
     ${lib_srcs}
 )
 
@@ -133,17 +130,15 @@ bf_test_configure_non_build_srcs(unit_tests
     TESTS
         ${bf_test_srcs}
     SOURCES
-        ${shared_srcs}
         ${core_srcs}
-        ${generator_srcs}
-        ${xlate_srcs}
+        ${daemon_srcs}
         ${lib_srcs}
 )
 
 # The unit tests executable needs PIC disabled for test auto-discovery to work.
 set_property(TARGET unit_tests PROPERTY POSITION_INDEPENDENT_CODE FALSE)
 
-set_source_files_properties(${bf_test_srcs} ${shared_srcs} ${core_srcs} ${generator_srcs} ${xlate_srcs} ${lib_srcs}
+set_source_files_properties(${bf_test_srcs} ${core_srcs} ${lib_srcs}
     PROPERTIES
         COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
 )

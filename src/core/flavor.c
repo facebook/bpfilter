@@ -5,25 +5,10 @@
 
 #include "core/flavor.h"
 
-#include "generator/nf.h"
-#include "generator/tc.h"
-#include "generator/xdp.h"
-#include "shared/helper.h"
-
-const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
-{
-    static const struct bf_flavor_ops *flavor_ops[] = {
-        [BF_FLAVOR_TC] = &bf_flavor_ops_tc,
-        [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
-        [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
-    };
-
-    bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
-    static_assert(ARRAY_SIZE(flavor_ops) == _BF_FLAVOR_MAX,
-                  "missing entries in fronts array");
-
-    return flavor_ops[flavor];
-}
+#include "core/helper.h"
+#include "daemon/cgen/nf.h"
+#include "daemon/cgen/tc.h"
+#include "daemon/cgen/xdp.h"
 
 const char *bf_flavor_to_str(enum bf_flavor flavor)
 {

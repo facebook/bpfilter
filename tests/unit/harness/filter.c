@@ -8,7 +8,7 @@
 #include <regex.h>
 #include <stdio.h>
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 static void _bf_test_filter_regex_free(regex_t **regex)
 {

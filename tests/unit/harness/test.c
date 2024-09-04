@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/helper.h"
 #include "harness/cmocka.h"
-#include "shared/helper.h"
 
 int bf_test_new(bf_test **test, const char *name, bf_test_func func)
 {

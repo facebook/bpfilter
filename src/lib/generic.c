@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "shared/generic.h"
+#include "lib/generic.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -11,7 +11,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "shared/helper.h"
+#include "core/helper.h"
+#include "core/io.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response)
 {
