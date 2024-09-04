@@ -7,10 +7,11 @@
 
 #include "core/marsh.h"
 #include "core/rule.h"
+#include "generator/set.h"
 #include "shared/helper.h"
 
 int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
-                 enum bf_verdict policy, bf_list *rules)
+                 enum bf_verdict policy, bf_list *sets, bf_list *rules)
 {
     _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
     int r;
@@ -24,9 +25,13 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
     _chain->hook = hook;
     _chain->policy = policy;
 
+    bf_list_init(&_chain->sets,
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_set_free}});
+    if (sets)
+        bf_swap(_chain->sets, *sets);
+
     bf_list_init(&_chain->rules,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_rule_free}});
-
     if (rules) {
         bf_list_foreach (rules, rule_node) {
             r = bf_list_add_tail(&_chain->rules,
@@ -64,9 +69,27 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
         return -EINVAL;
     memcpy(&policy, child->data, sizeof(policy));
 
-    r = bf_chain_new(&_chain, hook, policy, NULL);
+    r = bf_chain_new(&_chain, hook, policy, NULL, NULL);
     if (r)
         return r;
+
+    // Unmarsh bf_chain.sets
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+
+    while ((subchild = bf_marsh_next_child(child, subchild))) {
+        _cleanup_bf_set_ struct bf_set *set = NULL;
+
+        r = bf_set_new_from_marsh(&set, subchild);
+        if (r)
+            return r;
+
+        r = bf_list_add_tail(&_chain->sets, set);
+        if (r)
+            return r;
+
+        TAKE_PTR(set);
+    }
 
     // Unmarsh bf_chain.rules
     if (!(child = bf_marsh_next_child(marsh, child)))
@@ -98,6 +121,7 @@ void bf_chain_free(struct bf_chain **chain)
     if (!*chain)
         return;
 
+    bf_list_clean(&(*chain)->sets);
     bf_list_clean(&(*chain)->rules);
     freep(chain);
 }
@@ -118,6 +142,31 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &chain->policy, sizeof(chain->policy));
     if (r)
         return r;
+
+    {
+        // Serialize bf_chain.sets
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_marsh_new(&child, NULL, 0);
+        if (r < 0)
+            return bf_err_code(r, "failed to create marsh for bf_chain");
+
+        bf_list_foreach (&chain->sets, set_node) {
+            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
+
+            r = bf_set_marsh(bf_list_node_get_data(set_node), &subchild);
+            if (r < 0)
+                return r;
+
+            r = bf_marsh_add_child_obj(&child, subchild);
+            if (r < 0)
+                return r;
+        }
+
+        r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r < 0)
+            return r;
+    }
 
     {
         // Serialize bf_chain.rules
@@ -159,6 +208,20 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "hook: %s", bf_hook_to_str(chain->hook));
     DUMP(prefix, "policy: %s", bf_verdict_to_str(chain->policy));
+
+    DUMP(bf_dump_prefix_last(prefix), "sets: bf_list<bf_set>[%lu]",
+         bf_list_size(&chain->rules));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+
+        if (bf_list_is_tail(&chain->sets, set_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_set_dump(set, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+
     DUMP(bf_dump_prefix_last(prefix), "rules: bf_list<bf_rule>[%lu]",
          bf_list_size(&chain->rules));
     bf_dump_prefix_push(prefix);
