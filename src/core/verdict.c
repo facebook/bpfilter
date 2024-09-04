@@ -5,7 +5,7 @@
 
 #include "core/verdict.h"
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 static const char *_bf_verdict_strs[] = {
     [BF_VERDICT_ACCEPT] = "ACCEPT",

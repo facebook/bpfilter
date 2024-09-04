@@ -2,115 +2,44 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 #[[
-    shared
-#]]
-set(shared_srcs
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/front.h          ${CMAKE_CURRENT_SOURCE_DIR}/shared/front.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/generic.h        ${CMAKE_CURRENT_SOURCE_DIR}/shared/generic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/helper.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/ipt.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/request.h        ${CMAKE_CURRENT_SOURCE_DIR}/shared/request.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/shared/response.h       ${CMAKE_CURRENT_SOURCE_DIR}/shared/response.c
-)
-
-add_library(shared OBJECT ${shared_srcs})
-target_include_directories(shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(shared PUBLIC ${bf_cflags})
-target_link_options(shared PUBLIC ${bf_ldflags})
-
-add_library(shared_pic OBJECT ${shared_srcs})
-target_include_directories(shared_pic PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(shared_pic PUBLIC -fPIC ${bf_cflags})
-target_link_options(shared_pic PUBLIC ${bf_ldflags})
-
-#[[
     core
 #]]
-add_library(core OBJECT
+set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/core/bpf.h              ${CMAKE_CURRENT_SOURCE_DIR}/core/bpf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/btf.h              ${CMAKE_CURRENT_SOURCE_DIR}/core/btf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/chain.h            ${CMAKE_CURRENT_SOURCE_DIR}/core/chain.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/context.h          ${CMAKE_CURRENT_SOURCE_DIR}/core/context.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/counter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/core/dump.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/flavor.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/flavor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/front.h            ${CMAKE_CURRENT_SOURCE_DIR}/core/front.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/helper.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/hook.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/hook.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/if.h               ${CMAKE_CURRENT_SOURCE_DIR}/core/if.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/io.h               ${CMAKE_CURRENT_SOURCE_DIR}/core/io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/list.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/logger.h           ${CMAKE_CURRENT_SOURCE_DIR}/core/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/marsh.h            ${CMAKE_CURRENT_SOURCE_DIR}/core/marsh.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/matcher.h          ${CMAKE_CURRENT_SOURCE_DIR}/core/matcher.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/nf.h               ${CMAKE_CURRENT_SOURCE_DIR}/core/nf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/opts.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/opts.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/request.h          ${CMAKE_CURRENT_SOURCE_DIR}/core/request.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/response.h         ${CMAKE_CURRENT_SOURCE_DIR}/core/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/rule.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/rule.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/set.h              ${CMAKE_CURRENT_SOURCE_DIR}/core/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/verdict.h          ${CMAKE_CURRENT_SOURCE_DIR}/core/verdict.c
 )
 
+add_library(core OBJECT ${core_srcs})
 target_include_directories(core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(core PUBLIC ${bf_cflags})
 target_link_options(core PUBLIC ${bf_ldflags})
-target_link_libraries(core
-    PUBLIC
-        PkgConfig::bpf
-        shared
-)
+target_link_libraries(core PUBLIC PkgConfig::bpf)
 
-#[[
-    generator
-#]]
-add_library(generator OBJECT
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/codegen.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/codegen.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/dump.h            ${CMAKE_CURRENT_SOURCE_DIR}/generator/dump.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/fixup.h           ${CMAKE_CURRENT_SOURCE_DIR}/generator/fixup.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/jmp.h             ${CMAKE_CURRENT_SOURCE_DIR}/generator/jmp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip4.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip4.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip6.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/ip6.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/tcp.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/tcp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/udp.h     ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/udp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/meta.h    ${CMAKE_CURRENT_SOURCE_DIR}/generator/matcher/meta.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/nf.h              ${CMAKE_CURRENT_SOURCE_DIR}/generator/nf.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/reg.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/set.h             ${CMAKE_CURRENT_SOURCE_DIR}/generator/set.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/stub.h            ${CMAKE_CURRENT_SOURCE_DIR}/generator/stub.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/swich.h           ${CMAKE_CURRENT_SOURCE_DIR}/generator/swich.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/tc.h              ${CMAKE_CURRENT_SOURCE_DIR}/generator/tc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator/xdp.h             ${CMAKE_CURRENT_SOURCE_DIR}/generator/xdp.c
-)
-
-target_include_directories(generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(generator PUBLIC ${bf_cflags})
-target_link_options(generator PUBLIC ${bf_ldflags})
-target_link_libraries(generator
-    PUBLIC
-        core
-        shared
-)
-
-#[[
-    xlate
-#]]
-add_library(xlate OBJECT
-    ${CMAKE_SOURCE_DIR}/src/xlate/cli.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/front.h               ${CMAKE_SOURCE_DIR}/src/xlate/front.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.h            ${CMAKE_SOURCE_DIR}/src/xlate/ipt/dump.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/helpers.h
-    ${CMAKE_SOURCE_DIR}/src/xlate/ipt/ipt.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.h         ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfgroup.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.h           ${CMAKE_SOURCE_DIR}/src/xlate/nft/nfmsg.c
-    ${CMAKE_SOURCE_DIR}/src/xlate/nft/nft.c
-)
-
-target_include_directories(xlate PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(xlate PUBLIC ${bf_cflags})
-target_link_options(xlate PUBLIC ${bf_ldflags})
-target_link_libraries(xlate
-    PUBLIC
-        core
-        shared
-        PkgConfig::nl
-)
+add_library(core_pic OBJECT ${core_srcs})
+target_include_directories(core_pic PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(core_pic PUBLIC -fPIC ${bf_cflags})
+target_link_options(core_pic PUBLIC ${bf_ldflags})
+target_link_libraries(core_pic PUBLIC PkgConfig::bpf)
 
 #[[
     lib
@@ -126,16 +55,46 @@ add_library(lib OBJECT ${lib_srcs})
 target_include_directories(lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(lib PRIVATE ${bf_cflags})
 target_link_options(lib PUBLIC ${bf_ldflags})
+target_link_libraries(lib PUBLIC core)
 
 add_library(lib_pic OBJECT ${lib_srcs})
 target_include_directories(lib_pic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(lib_pic PRIVATE -fPIC ${bf_cflags})
 target_link_options(lib_pic PUBLIC ${bf_ldflags})
+target_link_libraries(lib_pic PUBLIC core_pic)
 
 #[[
     daemon
 #]]
-add_executable(daemon ${CMAKE_CURRENT_SOURCE_DIR}/daemon.c)
+add_executable(daemon
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/daemon.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/codegen.h           ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/codegen.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/dump.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/fixup.h             ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/fixup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/jmp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/ip4.h       ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/ip4.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/ip6.h       ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/ip6.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/tcp.h       ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/tcp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/udp.h       ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/udp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/meta.h      ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/matcher/meta.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/nf.h                ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/nf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/printer.h           ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/printer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/program.h           ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/program.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/reg.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/stub.h              ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/stub.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/swich.h             ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/swich.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/tc.h                ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/tc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/xdp.h               ${CMAKE_CURRENT_SOURCE_DIR}/daemon/cgen/xdp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/context.h                ${CMAKE_CURRENT_SOURCE_DIR}/daemon/context.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/cli.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/front.h            ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/front.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/ipt/dump.h         ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/ipt/dump.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/ipt/helpers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/ipt/ipt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/nft/nfgroup.h      ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/nft/nfgroup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/nft/nfmsg.h        ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/nft/nfmsg.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/daemon/xlate/nft/nft.c
+)
 
 set_target_properties(daemon PROPERTIES OUTPUT_NAME bpfilter)
 
@@ -144,9 +103,7 @@ target_link_options(daemon PRIVATE ${bf_ldflags})
 target_link_libraries(daemon
     PRIVATE
         core
-        shared
-        generator
-        xlate
+        PkgConfig::nl
 )
 
 install(
@@ -193,9 +150,7 @@ target_link_options(cli PRIVATE ${bf_ldflags})
 target_link_libraries(cli
 PRIVATE
         lib
-        shared
         core
-        generator
 )
 
 install(
@@ -209,12 +164,12 @@ install(
 add_library(libbpfilter_static STATIC)
 set_target_properties(libbpfilter_static PROPERTIES OUTPUT_NAME bpfilter)
 target_compile_options(libbpfilter_static PRIVATE -fPIC)
-target_link_libraries(libbpfilter_static PRIVATE shared_pic lib_pic)
+target_link_libraries(libbpfilter_static PRIVATE core_pic lib_pic)
 
 add_library(libbpfilter_shared SHARED)
 set_target_properties(libbpfilter_shared PROPERTIES OUTPUT_NAME bpfilter)
 target_compile_options(libbpfilter_shared PRIVATE -fPIC)
-target_link_libraries(libbpfilter_shared PRIVATE shared_pic lib_pic)
+target_link_libraries(libbpfilter_shared PRIVATE core_pic lib_pic)
 
 add_custom_target(library
     ALL

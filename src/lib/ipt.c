@@ -3,8 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "shared/ipt.h"
-
+#include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <errno.h>
@@ -13,6 +12,33 @@
 #include <string.h>
 
 #include "lib/generic.h"
+
+/**
+ * Get size of an ipt_get_entries structure.
+ *
+ * @param ipt_get_entries_ptr Pointer to a valid ipt_get_entries structure.
+ * @return Size of the structure, including variable length entries field.
+ */
+#define bf_ipt_get_entries_size(ipt_get_entries_ptr)                           \
+    (sizeof(struct ipt_get_entries) + (ipt_get_entries_ptr)->size)
+
+/**
+ * Get size of an xt_counters_info structure.
+ *
+ * @param xt_counters_info_ptr Pointer to a valid xt_counters_info structure.
+ * @return Size of the structure, including variable length counters field.
+ */
+#define bf_xt_counters_info_size(xt_counters_info_ptr)                         \
+    (sizeof(struct xt_counters_info) +                                         \
+     (xt_counters_info_ptr)->num_counters * sizeof(struct xt_counters))
+/**
+ * Get size of an ipt_replace structure.
+ *
+ * @param ipt_replace_ptr Pointer to a valid ipt_replace structure.
+ * @return Size of the structure, including variable length entries field.
+ */
+#define bf_ipt_replace_size(ipt_replace_ptr)                                   \
+    (sizeof(struct ipt_replace) + (ipt_replace_ptr)->size)
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
 

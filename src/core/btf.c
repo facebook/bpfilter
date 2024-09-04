@@ -9,8 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "core/helper.h"
 #include "core/logger.h"
-#include "shared/helper.h"
 
 static struct btf *_btf = NULL;
 

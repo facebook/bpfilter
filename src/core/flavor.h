@@ -137,14 +137,6 @@ struct bf_flavor_ops
 };
 
 /**
- * Get the operations structure for a given BPF flavor.
- *
- * @param flavor BPF flavor. Must be valid.
- * @return Ops structure for a given BPF flavor.
- */
-const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor);
-
-/**
  * Convert a bpfilter flavor to a string.
  *
  * @param flavor Flavor to convert. Must be valid.

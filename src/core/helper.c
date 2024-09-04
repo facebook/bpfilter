@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #include "core/logger.h"
-#include "shared/helper.h"
 
 int bf_read_file(const char *path, void **buf, size_t *len)
 {

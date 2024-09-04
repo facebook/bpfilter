@@ -11,7 +11,7 @@
 #include "harness/filter.h"
 #include "harness/opts.h"
 #include "harness/test.h"
-#include "shared/helper.h"
+#include "core/helper.h"
 
 int main(int argc, char *argv[])
 {

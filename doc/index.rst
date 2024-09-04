@@ -18,6 +18,7 @@
    developers/style
    developers/packets_processing
    developers/generation
+   developers/modules/index
    developers/fronts/index
 
 ``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).

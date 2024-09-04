@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "shared/front.h"
-#include "shared/request.h"
-#include "shared/response.h"
+#include "core/front.h"
+#include "core/request.h"
+#include "core/response.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response);

@@ -14,7 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "shared/helper.h"
+#include "core/helper.h"
 
 #define _cleanup_bf_elf_ __attribute__((cleanup(_bf_elf_cleanup)))
 

@@ -12,8 +12,8 @@
 
 #include <errno.h>
 
+#include "core/helper.h"
 #include "core/logger.h"
-#include "shared/helper.h"
 
 static char _bf_if_name[IFNAMSIZ];
 

@@ -5,10 +5,10 @@
 
 #include "chain.h"
 
+#include "core/helper.h"
 #include "core/marsh.h"
 #include "core/rule.h"
-#include "generator/set.h"
-#include "shared/helper.h"
+#include "core/set.h"
 
 int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)

@@ -14,10 +14,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "core/helper.h"
 #include "core/logger.h"
 #include "core/opts.h"
-#include "generator/nf.h"
-#include "shared/helper.h"
+#include "core/nf.h"
 
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 

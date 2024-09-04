@@ -5,10 +5,7 @@ add_subdirectory(unit)
 add_subdirectory(integration)
 add_subdirectory(bpf)
 
-get_target_property(shared_srcs shared SOURCES)
 get_target_property(core_srcs core SOURCES)
-get_target_property(generator_srcs generator SOURCES)
-get_target_property(xlate_srcs xlate SOURCES)
 get_target_property(lib_srcs lib SOURCES)
 get_target_property(daemon_srcs daemon SOURCES)
 
@@ -17,10 +14,7 @@ add_custom_target(lint
         ${CLANG_TIDY_BIN}
             --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
-            ${shared_srcs}
             ${core_srcs}
-            ${generator_srcs}
-            ${xlate_srcs}
             ${lib_srcs}
             ${daemon_srcs}
             ${CMAKE_SOURCE_DIR}/src/cli/cli.c
@@ -32,10 +26,7 @@ add_custom_target(checkstyle
         ${CLANG_FORMAT_BIN}
             --style=file:${CMAKE_SOURCE_DIR}/.clang-format
             --dry-run
-            ${shared_srcs}
             ${core_srcs}
-            ${generator_srcs}
-            ${xlate_srcs}
             ${lib_srcs}
             ${daemon_srcs}
             ${CMAKE_SOURCE_DIR}/src/cli/cli.c
