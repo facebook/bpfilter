@@ -106,7 +106,7 @@ chain           : CHAIN hook POLICY verdict rules
                 {
                     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
 
-                    if (bf_chain_new(&chain, $2, $4, $5) < 0) {
+                    if (bf_chain_new(&chain, $2, $4, NULL, $5) < 0) {
                         yyerror(chains, "failed to create a new bf_chain\n");
                         YYABORT;
                     }

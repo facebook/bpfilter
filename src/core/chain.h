@@ -19,6 +19,7 @@ struct bf_chain
 {
     enum bf_hook hook;
     enum bf_verdict policy;
+    bf_list sets;
     bf_list rules;
 };
 
@@ -33,11 +34,13 @@ struct bf_chain
  * @param chain Chain to allocate an intialize. Can't be NULL.
  * @param hook Kernel attach point.
  * @param policy Default action of the chain if no rule matched.
+ * @param sets List of sets used by @p rules . The content of the list will be
+ *        stolen. On success, @p sets will be in a usable state, but empty.
  * @param rules List of rules.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
-                 enum bf_verdict policy, bf_list *rules);
+                 enum bf_verdict policy, bf_list *sets, bf_list *rules);
 
 /**
  * Allocate a new chain object and intialize it from serialized data.
