@@ -43,6 +43,7 @@ file(GLOB_RECURSE bf_srcs
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/overview.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/generation.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/packets_processing.rst
@@ -82,7 +83,6 @@ add_custom_command(
 			${CMAKE_CURRENT_BINARY_DIR}/_templates
 	COMMAND
 		${SPHINX_BIN}
-			-a				# Always write all files to update the file's timestamp.
 			-W 				# Return non-zero if a warning is triggered...
 			--keep-going	# ... but don't stop as soon as there is a warning.
 			-q				# Quiet.
@@ -90,6 +90,7 @@ add_custom_command(
 			-c ${CMAKE_CURRENT_BINARY_DIR}
 			${CMAKE_CURRENT_SOURCE_DIR}
 			${CMAKE_CURRENT_BINARY_DIR}/html
+			${doc_srcs}
 	DEPENDS
 		${CMAKE_CURRENT_BINARY_DIR}/conf.py
 		${CMAKE_CURRENT_BINARY_DIR}/xml/index.xml
