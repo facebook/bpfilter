@@ -14,6 +14,7 @@
 #include "core/dump.h"
 #include "core/list.h"
 #include "core/marsh.h"
+#include "generator/set.h"
 #include "shared/request.h"
 #include "shared/response.h"
 
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
 {
     struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
     bf_list chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free});
+    bf_list sets = bf_list_default({.free = (bf_list_ops_free)bf_set_free});
     int r;
 
     r = argp_parse(&argp, argc, argv, 0, 0, &_opts);
@@ -80,7 +82,7 @@ int main(int argc, char *argv[])
 
     yyin = rules;
 
-    r = yyparse(&chains);
+    r = yyparse(&chains, &sets);
     if (r == 1) {
         fprintf(stderr, "failed to parse rules, syntax invalid\n");
         return EXIT_FAILURE;
@@ -141,9 +143,10 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void yyerror(bf_list *chains, const char *fmt, ...)
+void yyerror(bf_list *chains, bf_list *sets, const char *fmt, ...)
 {
     UNUSED(chains);
+    UNUSED(sets);
 
     va_list args;
 

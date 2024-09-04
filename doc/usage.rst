@@ -168,16 +168,24 @@ With:
       - Operator
       - Payload
       - Notes
-    * - :rspan:`1` Source address
-      - :rspan:`1` ``ip4.saddr``
+    * - :rspan:`2` Source address
+      - :rspan:`2` ``ip4.saddr``
       - ``eq``
-      - :rspan:`3` ``$IP/$MASK``
-      - :rspan:`3` ``/$MASK`` is optional, `/32` is used by default.
+      - :rspan:`1` ``$IP/$MASK``
+      - :rspan:`1` ``/$MASK`` is optional, ``/32`` is used by default.
     * - ``not``
-    * - :rspan:`1` Destination address
-      - :rspan:`1` ``ip4.daddr``
+    * - ``in``
+      - ``{$IP[,...]}``
+      - Only support ``/32`` mask.
+    * - :rspan:`2` Destination address
+      - :rspan:`2` ``ip4.daddr``
       - ``eq``
+      - :rspan:`1` ``$IP/$MASK``
+      - :rspan:`1` ``/$MASK`` is optional, ``/32`` is used by default.
     * - ``not``
+    * - ``in``
+      - ``{$IP[,...]}``
+      - Only support ``/32`` mask.
     * - Protocol
       - ``ip4.proto``
       - ``eq``
