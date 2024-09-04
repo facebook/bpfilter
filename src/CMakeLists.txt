@@ -72,6 +72,7 @@ add_library(generator OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/printer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.h         ${CMAKE_CURRENT_SOURCE_DIR}/generator/program.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/reg.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/generator/set.h             ${CMAKE_CURRENT_SOURCE_DIR}/generator/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/stub.h            ${CMAKE_CURRENT_SOURCE_DIR}/generator/stub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/swich.h           ${CMAKE_CURRENT_SOURCE_DIR}/generator/swich.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generator/tc.h              ${CMAKE_CURRENT_SOURCE_DIR}/generator/tc.c
