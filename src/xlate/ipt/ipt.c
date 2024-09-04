@@ -151,15 +151,15 @@ static enum bf_hook _bf_ipt_hook_to_bf_hook(enum nf_inet_hooks ipt_hook)
 
     switch (ipt_hook) {
     case NF_INET_PRE_ROUTING:
-        return BF_HOOK_IPT_PRE_ROUTING;
+        return BF_HOOK_NF_PRE_ROUTING;
     case NF_INET_LOCAL_IN:
-        return BF_HOOK_IPT_LOCAL_IN;
+        return BF_HOOK_NF_LOCAL_IN;
     case NF_INET_FORWARD:
-        return BF_HOOK_IPT_FORWARD;
+        return BF_HOOK_NF_FORWARD;
     case NF_INET_LOCAL_OUT:
-        return BF_HOOK_IPT_LOCAL_OUT;
+        return BF_HOOK_NF_LOCAL_OUT;
     case NF_INET_POST_ROUTING:
-        return BF_HOOK_IPT_POST_ROUTING;
+        return BF_HOOK_NF_POST_ROUTING;
     default:
         bf_abort("invalid ipt_hook: %d", ipt_hook);
     }
