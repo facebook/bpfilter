@@ -14,7 +14,7 @@
     extern int yyparse();
     extern FILE *yyin;
 
-    void yyerror(bf_list *chains, const char *fmt, ...);
+    void yyerror(bf_list *chains, bf_list *sets, const char *fmt, ...);
 %}
 
 %code requires {
@@ -28,6 +28,7 @@
     #include "core/list.h"
     #include "core/rule.h"
     #include "core/chain.h"
+    #include "generator/set.h"
 
     extern int inet_pton(int af, const char *restrict src, void *restrict dst);
 
@@ -43,7 +44,7 @@
 }
 
 %define parse.error detailed
-%parse-param {bf_list *chains}
+%parse-param {bf_list *chains} {bf_list *sets}
 
 %union {
     bool bval;
@@ -65,6 +66,7 @@
 %token COUNTER
 %token <sval> MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO
 %token <sval> MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP6_ADDR
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
@@ -85,7 +87,7 @@
 chains          : chain
                 {
                     if (bf_list_add_tail(chains, $1) < 0) {
-                        yyerror(chains, "failed to add chain into bf_list\n");
+                        yyerror(chains, sets, "failed to add chain into bf_list\n");
                         YYABORT;
                     }
 
@@ -94,7 +96,7 @@ chains          : chain
                 | chains chain
                 {
                     if (bf_list_add_tail(chains, $2) < 0) {
-                        yyerror(chains, "failed to insert chain into bf_list\n");
+                        yyerror(chains, sets, "failed to insert chain into bf_list\n");
                         YYABORT;
                     }
 
@@ -106,8 +108,8 @@ chain           : CHAIN hook POLICY verdict rules
                 {
                     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
 
-                    if (bf_chain_new(&chain, $2, $4, NULL, $5) < 0) {
-                        yyerror(chains, "failed to create a new bf_chain\n");
+                    if (bf_chain_new(&chain, $2, $4, sets, $5) < 0) {
+                        yyerror(chains, sets, "failed to create a new bf_chain\n");
                         YYABORT;
                     }
 
@@ -120,11 +122,11 @@ verdict         : VERDICT
                     enum bf_verdict verdict;
 
                     if (bf_verdict_from_str($1, &verdict) < 0) {
-                        yyerror(chains, "unknown verdict '%s'\n", $1);
+                        yyerror(chains, sets, "unknown verdict '%s'\n", $1);
                         free($1);
                         YYABORT;
                     }
- 
+
                     free($1);
                     $$ = verdict;
                 }
@@ -134,7 +136,7 @@ hook            : HOOK
                     enum bf_hook hook;
 
                     if (bf_hook_from_str($1, &hook) < 0) {
-                        yyerror(chains, "unknown hook '%s'\n", $1);
+                        yyerror(chains, sets, "unknown hook '%s'\n", $1);
                         free($1);
                         YYABORT;
                     }
@@ -148,12 +150,12 @@ rules           : rule
                     _cleanup_bf_list_ bf_list *list = NULL;
 
                     if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_rule_free}}) < 0) {
-                        yyerror(chains, "failed to allocate a new bf_list for bf_rule\n");
+                        yyerror(chains, sets, "failed to allocate a new bf_list for bf_rule\n");
                         YYABORT;
                     }
 
                     if (bf_list_add_tail(list, $1) < 0) {
-                        yyerror(chains, "failed to add rule into bf_list\n");
+                        yyerror(chains, sets, "failed to add rule into bf_list\n");
                         YYABORT;
                     }
 
@@ -163,7 +165,7 @@ rules           : rule
                 | rules rule
                 {
                     if (bf_list_add_tail($1, $2) < 0) {
-                        yyerror(chains, "failed to insert rule into bf_list\n");
+                        yyerror(chains, sets, "failed to insert rule into bf_list\n");
                         YYABORT;
                     }
 
@@ -176,7 +178,7 @@ rule            : RULE matchers counter verdict
                     _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 
                     if (bf_rule_new(&rule) < 0) {
-                        yyerror(chains, "failed to create a new bf_rule\n");
+                        yyerror(chains, sets, "failed to create a new bf_rule\n");
                         YYABORT;
                     }
 
@@ -187,7 +189,7 @@ rule            : RULE matchers counter verdict
                         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
                         if (bf_list_add_tail(&rule->matchers, matcher) < 0) {
-                            yyerror(chains, "failed to add matcher to the rule\n");
+                            yyerror(chains, sets, "failed to add matcher to the rule\n");
                             YYABORT;
                         }
 
@@ -204,22 +206,22 @@ matchers        : matcher
                     _cleanup_bf_list_ bf_list *list = NULL;
 
                     if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_matcher_free}}) < 0) {
-                        yyerror(chains, "failed to allocate a new bf_list for bf_matcher\n");
+                        yyerror(chains, sets, "failed to allocate a new bf_list for bf_matcher\n");
                         YYABORT;
                     }
 
                     if (bf_list_add_tail(list, $1) < 0) {
-                        yyerror(chains, "failed to insert matcher into bf_list\n");
+                        yyerror(chains, sets, "failed to insert matcher into bf_list\n");
                         YYABORT;
                     }
 
                     TAKE_PTR($1);
-                    $$ = TAKE_PTR(list);         
+                    $$ = TAKE_PTR(list);
                 }
                 | matchers matcher
                 {
                     if (bf_list_add_tail($1, $2) < 0) {
-                        yyerror(chains, "failed to insert matcher into bf_list\n");
+                        yyerror(chains, sets, "failed to insert matcher into bf_list\n");
                         YYABORT;
                     }
 
@@ -237,14 +239,14 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     } else if (bf_streq($3, "ipv6")) {
                         proto = ETH_P_IPV6;
                     } else {
-                        yyerror(chains, "unsupported L3 protocol to match '%s'\n", $3);
+                        yyerror(chains, sets, "unsupported L3 protocol to match '%s'\n", $3);
                         YYABORT;
                     }
 
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
@@ -264,14 +266,14 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     } else if (bf_streq($3, "icmp6")) {
                         proto = IPPROTO_ICMPV6;
                     } else {
-                        yyerror(chains, "unsupported L4 protocol to match '%s'\n", $3);
+                        yyerror(chains, sets, "unsupported L4 protocol to match '%s'\n", $3);
                         YYABORT;
                     }
 
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
@@ -285,17 +287,17 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     if (bf_streq($3, "icmp")) {
                         proto = IPPROTO_ICMP;
                     } else {
-                        yyerror(chains, "unsupported ip4.proto value '%s'\n", $3);
+                        yyerror(chains, sets, "unsupported ip4.proto value '%s'\n", $3);
                         YYABORT;
                     }
-    
+
                     free($3);
-                    
+
                     if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
-                    } 
-                    
+                    }
+
                     $$ = TAKE_PTR(matcher);
                 }
                 | matcher_type matcher_op MATCHER_IPADDR
@@ -313,7 +315,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
 
                         int m = atoi(mask);
                         if (m == 0) {
-                            yyerror(chains, "failed to parse IPv4 mask: %s\n", mask);
+                            yyerror(chains, sets, "failed to parse IPv4 mask: %s\n", mask);
                             YYABORT;
                         }
 
@@ -325,14 +327,88 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     // Convert the IPv4 from string to uint32_t.
                     r = inet_pton(AF_INET, $3, &addr.addr);
                     if (r != 1) {
-                        yyerror(chains, "failed to parse IPv4 adddress: %s\n", $3);
+                        yyerror(chains, sets, "failed to parse IPv4 adddress: %s\n", $3);
                         YYABORT;
                     }
 
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr))) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
+                        YYABORT;
+                    }
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_IP_ADDR_SET
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _cleanup_bf_set_ struct bf_set *set = NULL;
+                    struct bf_matcher_ip4_addr addr;
+                    uint32_t set_id = bf_list_size(sets);
+                    int r;
+
+                    char *data = $3 + 1;
+                    data[strlen(data) - 1] = '\0';
+
+                    r = bf_set_new(&set, BF_SET_IP4);
+                    if (r < 0) {
+                        yyerror(chains, sets, "failed to create a new set\n");
+                        YYABORT;
+                    }
+
+                    fprintf(stderr, "set matching for: %s\n", data);
+
+                    char *ip;
+                    char *next = data;
+                    do {
+                        _cleanup_free_ uint32_t *value = malloc(sizeof(uint32_t));
+                        if (!value) {
+                            yyerror(chains, sets, "failed to allocate memory for IPv4 address\n");
+                            YYABORT;
+                        }
+
+                        ip = next;
+                        next = strchr(ip, ',');
+
+                        if (next) {
+                            *next = '\0';
+                            ++next;
+
+                            // Handle trailing comma
+                            if (*next == '\0')
+                                next = NULL;
+                        }
+
+                        r = inet_pton(AF_INET, ip, value);
+                        if (r != 1) {
+                            yyerror(chains, sets, "failed to parse IPv4 address: %s\n", ip);
+                            YYABORT;
+                        } else {
+                            uint8_t *i = (void *)&addr.addr;
+
+                            fprintf(stderr, "Found IP: %d.%d.%d.%d\n", i[0], i[1], i[2], i[3]);
+                        }
+
+                        r = bf_set_add_elem(set, value);
+                        if (r < 0) {
+                            yyerror(chains, sets, "failed to add element to set\n");
+                            YYABORT;
+                        }
+                    } while (next);
+
+                    r = bf_list_add_tail(sets, set);
+                    if (r < 0) {
+                        yyerror(chains, sets, "failed to add new set to list of sets\n");
+                        YYABORT;
+                    }
+
+                    TAKE_PTR(set);
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id))) {
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
@@ -354,7 +430,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
 
                         int m = atoi(mask);
                         if (m == 0) {
-                            yyerror(chains, "failed to parse IPv6 mask: %s\n", mask);
+                            yyerror(chains, sets, "failed to parse IPv6 mask: %s\n", mask);
                             YYABORT;
                         }
 
@@ -372,14 +448,14 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     // Convert the IPv6 from string to uint64_t[2].
                     r = inet_pton(AF_INET6, $3, addr.addr);
                     if (r != 1) {
-                        yyerror(chains, "failed to parse IPv6 adddress: %s\n", $3);
+                        yyerror(chains, sets, "failed to parse IPv6 adddress: %s\n", $3);
                         YYABORT;
                     }
 
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr))) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
@@ -393,7 +469,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
 
                     raw_val = atol($3);
                     if (raw_val <= 0 || USHRT_MAX < raw_val) {
-                        yyerror(chains, "invalid port value: %s\n", $3);
+                        yyerror(chains, sets, "invalid port value: %s\n", $3);
                         YYABORT;
                     }
 
@@ -402,7 +478,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &port, sizeof(port))) {
-                        yyerror(chains, "failed to create new matcher\n");
+                        yyerror(chains, sets, "failed to create new matcher\n");
                         YYABORT;
                     }
 
@@ -426,7 +502,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
 
                         r = bf_matcher_tcp_flag_from_str(token, &flag);
                         if (r) {
-                            yyerror(chains, "Unknown TCP flag '%s', ignoring\n", token);
+                            yyerror(chains, sets, "Unknown TCP flag '%s', ignoring\n", token);
                             continue;
                         }
 
@@ -436,7 +512,7 @@ matcher         : matcher_type matcher_op MATCHER_META_L3_PROTO
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &flags, sizeof(flags))) {
-                        yyerror(chains, "failed to create a new matcher\n");
+                        yyerror(chains, sets, "failed to create a new matcher\n");
                         YYABORT;
                     }
 
@@ -448,7 +524,7 @@ matcher_type    : MATCHER_TYPE
                     enum bf_matcher_type type;
 
                     if (bf_matcher_type_from_str($1, &type) < 0) {
-                        yyerror(chains, "unknown matcher type '%s'\n", $1);
+                        yyerror(chains, sets, "unknown matcher type '%s'\n", $1);
                         free($1);
                         YYABORT;
                     }
@@ -462,7 +538,7 @@ matcher_op      : %empty { $$ = BF_MATCHER_EQ; }
                     enum bf_matcher_op op;
 
                     if (bf_matcher_op_from_str($1, &op) < 0) {
-                        yyerror(chains, "unknown matcher operator '%s'\n", $1);
+                        yyerror(chains, sets, "unknown matcher operator '%s'\n", $1);
                         YYABORT;
                     }
 

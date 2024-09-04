@@ -74,10 +74,14 @@ ip4\.proto      { BEGIN(STATE_MATCHER_IP_PROTO); yylval.sval = strdup(yytext); r
 ip4\.saddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPADDR>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
         yylval.sval = strdup(yytext);
         return MATCHER_IPADDR;
+    }
+    \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3},?)+\} {
+        yylval.sval = strdup(yytext);
+        return MATCHER_IP_ADDR_SET;
     }
 }
 

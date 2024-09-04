@@ -1,6 +1,10 @@
 # Create an XDP chain
 chain BF_HOOK_NFT_INGRESS policy ACCEPT
     rule
+        ip4.saddr in {192.168.1.131,192.168.1.132}
+        counter
+        ACCEPT
+    rule
         ip6.saddr fc00::fbaf:7b6b:ba41:abce
         counter
         ACCEPT
@@ -48,6 +52,10 @@ chain BF_HOOK_NFT_INGRESS policy ACCEPT
 # Create a TC chain
 chain BF_HOOK_TC_INGRESS policy ACCEPT
     rule
+        ip4.saddr in {192.168.1.131,192.168.1.132}
+        counter
+        ACCEPT
+    rule
         ip4.saddr 192.168.1.1
         counter
         ACCEPT
@@ -82,6 +90,10 @@ chain BF_HOOK_TC_INGRESS policy ACCEPT
 
 # Create a BPF_NETFILTER chain
 chain BF_HOOK_IPT_LOCAL_IN policy ACCEPT
+    rule
+        ip4.saddr in {192.168.1.131,192.168.1.132}
+        counter
+        ACCEPT
     rule
         ip4.saddr 192.168.1.1
         counter
