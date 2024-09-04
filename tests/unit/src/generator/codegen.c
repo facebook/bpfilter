@@ -13,7 +13,7 @@ Test(codegen, get_program)
 {
     _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
 
-    assert_int_equal(bf_test_make_codegen(&codegen, BF_HOOK_IPT_FORWARD, 5), 0);
+    assert_int_equal(bf_test_make_codegen(&codegen, BF_HOOK_NF_FORWARD, 5), 0);
 
     {
         // Get first program in the list
