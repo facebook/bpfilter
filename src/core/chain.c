@@ -48,6 +48,7 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
 {
     _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
     struct bf_marsh *child = NULL;
+    struct bf_marsh *subchild = NULL;
     enum bf_hook hook;
     enum bf_verdict policy;
     int r;
@@ -67,10 +68,14 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     if (r)
         return r;
 
-    while ((child = bf_marsh_next_child(marsh, child))) {
+    // Unmarsh bf_chain.rules
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    subchild = NULL;
+    while ((subchild = bf_marsh_next_child(child, subchild))) {
         _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 
-        r = bf_rule_unmarsh(child, &rule);
+        r = bf_rule_unmarsh(subchild, &rule);
         if (r)
             return r;
 
@@ -114,14 +119,29 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
     if (r)
         return r;
 
-    bf_list_foreach (&chain->rules, rule_node) {
+    {
+        // Serialize bf_chain.rules
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-        r = bf_rule_marsh(bf_list_node_get_data(rule_node), &child);
-        if (r)
-            return r;
+        r = bf_marsh_new(&child, NULL, 0);
+        if (r < 0)
+            return bf_err_code(r, "failed to create marsh for bf_chain");
+
+        bf_list_foreach (&chain->rules, rule_node) {
+            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
+
+            r = bf_rule_marsh(bf_list_node_get_data(rule_node), &subchild);
+            if (r < 0)
+                return r;
+
+            r = bf_marsh_add_child_obj(&child, subchild);
+            if (r < 0)
+                return r;
+        }
 
         r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r < 0)
+            return r;
     }
 
     *marsh = TAKE_PTR(_marsh);
