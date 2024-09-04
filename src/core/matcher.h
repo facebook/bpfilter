@@ -121,6 +121,8 @@ enum bf_matcher_op
     BF_MATCHER_ANY,
     /// Test for complete subset match
     BF_MATCHER_ALL,
+    /// Test if the value is in a set
+    BF_MATCHER_IN,
     _BF_MATCHER_OP_MAX,
 };
 

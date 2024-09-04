@@ -12,8 +12,9 @@
 #include "generator/fixup.h"
 #include "generator/program.h"
 
-static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
-                                         const struct bf_matcher *matcher)
+static int
+_bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
+                                     const struct bf_matcher *matcher)
 {
     struct bf_matcher_ip4_addr *addr = (void *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP4_SRC_ADDR ?
@@ -31,6 +32,22 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
                BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
                            BF_REG_1, BF_REG_2, 0));
+
+    return 0;
+}
+
+static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
+                                         const struct bf_matcher *matcher)
+{
+    switch (matcher->op) {
+    case BF_MATCHER_EQ:
+    case BF_MATCHER_NE:
+        return _bf_matcher_generate_ip4_addr_unique(program, matcher);
+    case BF_MATCHER_IN:
+        return 0;
+    default:
+        return -EINVAL;
+    }
 
     return 0;
 }
