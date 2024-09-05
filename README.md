@@ -30,6 +30,7 @@ Detailed information can be found in the [documentation](https://bpfilter.io).
         clang-tools-extra \
         cmake \
         flex \
+        jq \
         libcmocka-devel \
         doxygen \
         git \

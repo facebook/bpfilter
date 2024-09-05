@@ -14,11 +14,19 @@ file(GLOB_RECURSE bf_srcs
 
 add_custom_target(lint
     COMMAND
+        # Create a new compile_commands.json file without tests/unit files,
+        # as they use specific build flags to file include mock_assert(), which
+        # creates false positive with clang-tidy.
+        ${JQ_BIN}
+            "del(.[] | select((.directory == \"${CMAKE_CURRENT_BINARY_DIR}/unit\")))"
+            ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+    COMMAND
         ${CLANG_TIDY_BIN}
             --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            -p ${CMAKE_BINARY_DIR}
+            -p ${CMAKE_CURRENT_BINARY_DIR}
             ${bf_srcs}
-    COMMENT "Run linter on source files"
+    COMMENT "Lint source files"
+    VERBATIM
 )
 
 add_custom_target(checkstyle
