@@ -16,8 +16,8 @@
 
 #include "core/helper.h"
 #include "core/logger.h"
-#include "core/opts.h"
 #include "core/nf.h"
+#include "core/opts.h"
 
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 

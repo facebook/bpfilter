@@ -5,10 +5,10 @@
 
 #include "core/flavor.h"
 
+#include "bpfilter/cgen/nf.h"
+#include "bpfilter/cgen/tc.h"
+#include "bpfilter/cgen/xdp.h"
 #include "core/helper.h"
-#include "daemon/cgen/nf.h"
-#include "daemon/cgen/tc.h"
-#include "daemon/cgen/xdp.h"
 
 const char *bf_flavor_to_str(enum bf_flavor flavor)
 {

@@ -24,11 +24,11 @@ There is no ``bpfilter``-specific CMake option, but you can use the CMake-provid
 
 Once CMake completes, you can build ``bpfilter``. The following Make targets are available:
 
-* ``daemon``: build ``bpfilter`` daemon.
+* ``bpfilter``: build the ``bpfilter`` daemon.
 
-* ``library``: build a static and dynamic version of ``libbpfilter``.
+* ``libbpfilter``: build a static and dynamic version of ``libbpfilter``.
 
-* ``cli``: build ``bfcli`` command line interface.
+* ``bfcli``: build ``bfcli`` command line interface.
 
 * ``test``: build and run the test suite.
 
@@ -36,7 +36,7 @@ Once CMake completes, you can build ``bpfilter``. The following Make targets are
 
 * ``coverage``: generate an HTML coverage report in ``$BUILD_DIRECTORY/doc/coverage``. This target will fail if ``make test`` hasn't been called before.
 
-``bpfilter`` daemon will be in ``$BUILD/src/bpfilter``, and ``libbpfilter.so`` will be in ``$BUILD/lib/libbpfilter.so``.
+The build artefacts are located in ``$BUILD_DIRECTORY/output``.
 
 
 Building ``nftables`` and ``iptables``

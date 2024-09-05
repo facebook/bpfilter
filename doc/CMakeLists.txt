@@ -49,7 +49,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/packets_processing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/daemon.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/nftables.rst
 )

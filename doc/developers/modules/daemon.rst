@@ -1,4 +1,0 @@
-Daemon
-======
-
-.. doxygenfile:: context.h
