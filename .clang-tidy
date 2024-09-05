@@ -1,41 +1,23 @@
 ---
-# Disable checks:
-# - bugprone-reserved-identifier:
-#   Functions starting with `_[A-Z]` are flagged as erroneous, but it's valid in C.
-# - bugprone-suspicious-include:
-#   Not a huge issue, and leading to false positive as unit tests include the tested
-#   C file.
-# - bugprone-assignment-in-if-condition:
-#   Assignment in if conditions sometimes make the code simpler and shorter. However,
-#   they should be used sparingly.
-# - bugprone-macro-parentheses
-#   This must not be enforced, as it would break macros using a parameter's content
-#   as a type name for example.
-# - bugprone-easily-swappable-parameters
-#   More noisy than necessary.
-# - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling:
-#   Warn on occurrences of unsafe or deprecated buffer handling functions, but
-#   requires usage of optional component of the C language.
-# - readability-function-cognitive-complexity
-#   This is getting in the way too often.
-
+# All generic Clang-Tidy check are enabled by default, meaning project-specific
+# checks are disabled. From there, unrelevant checks are disable on a
+# check-by-check basis.
+#
+# Disabled checks:
+# - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+#   Avoid usage of Annex K functions for portability reasons.
 Checks: >
   -*,
   bugprone-*,
-    -bugprone-reserved-identifier,
-    -bugprone-suspicious-include,
-    -bugprone-assignment-in-if-condition,
-    -bugprone-macro-parentheses,
-    -bugprone-easily-swappable-parameters,
+  cert-*,
   clang-analyzer-*,
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   concurrency-*,
   misc-*,
+  modernize-*,
   performance-*,
   portability-*,
-  readability-*,
-    -readability-suspicious-call-argument,
-    -readability-function-cognitive-complexity
+  readability-*
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '^(?!external\/filter.h).*'
@@ -43,13 +25,9 @@ FormatStyle: none
 UseColor: yes
 
 CheckOptions:
-  # It's OK to use the following short variable names:
+  # Allowed short variable names
   - key: readability-identifier-length.IgnoredVariableNames
-    value: 'i|r|fd|n|v'
-  # It's OK to use the following short parameters names:
-  - key: readability-identifier-length.IgnoredParameterNames
-    value: 'fe|fd|a|b|ip|x|v'
-  # Do not put braces around single-line statements, except it they visually
-  # span over multiple lines.
+    value: 'fd|r'
+  # Unless a *statement* takes 1 line, it should be in braces
   - key: readability-braces-around-statements.ShortStatementLines
     value: 2

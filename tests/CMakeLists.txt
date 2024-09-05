@@ -5,19 +5,19 @@ add_subdirectory(unit)
 add_subdirectory(integration)
 add_subdirectory(bpf)
 
-get_target_property(core_srcs core SOURCES)
-get_target_property(lib_srcs libbpfilter_a SOURCES)
-get_target_property(bpfilter_srcs bpfilter SOURCES)
+# It's OK to use GLOB_RECURSE here, as it's not the main target for the source
+# files but a secondary one.
+file(GLOB_RECURSE bf_srcs
+	${CMAKE_SOURCE_DIR}/src/*.c
+	${CMAKE_SOURCE_DIR}/src/*.h
+)
 
 add_custom_target(lint
     COMMAND
         ${CLANG_TIDY_BIN}
             --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
-            ${core_srcs}
-            ${lib_srcs}
-            ${bpfilter_srcs}
-            ${CMAKE_SOURCE_DIR}/src/cli/cli.c
+            ${bf_srcs}
     COMMENT "Run linter on source files"
 )
 
@@ -26,10 +26,7 @@ add_custom_target(checkstyle
         ${CLANG_FORMAT_BIN}
             --style=file:${CMAKE_SOURCE_DIR}/.clang-format
             --dry-run
-            ${core_srcs}
-            ${lib_srcs}
-            ${bpfilter_srcs}
-            ${CMAKE_SOURCE_DIR}/src/bfcli/main.c
+            ${bf_srcs}
     COMMENT "Check source code formatting"
 )
 
