@@ -62,8 +62,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
 int main(int argc, char *argv[])
 {
     struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
-    bf_list chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free});
-    bf_list sets = bf_list_default({.free = (bf_list_ops_free)bf_set_free});
+    struct bf_ruleset ruleset = {
+        .chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free}),
+        .sets = bf_list_default({.free = (bf_list_ops_free)bf_set_free}),
+    };
     int r;
 
     r = argp_parse(&argp, argc, argv, 0, 0, &_opts);
@@ -72,27 +74,35 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    printf("Using source file: %s\n", _opts.input_file);
+    r = argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
+    if (r) {
+        r = errno;
+        bf_err_code(r, "failed to parse arguments");
+        goto end_clean;
+    }
 
     FILE *rules = fopen(_opts.input_file, "r");
     if (!rules) {
-        fprintf(stderr, "Failed to read rules from 'rule.bpfilter'\n");
-        return -1;
+        r = errno;
+        bf_err_code(r, "failed to read rules from %s:", _bf_opts.input_file);
+        goto end_clean;
     }
 
     yyin = rules;
 
-    r = yyparse(&chains, &sets);
+    r = yyparse(&ruleset);
     if (r == 1) {
-        fprintf(stderr, "failed to parse rules, syntax invalid\n");
-        return EXIT_FAILURE;
+        bf_err("failed to parse rules, invalid syntax");
+        r = -EINVAL;
+        goto end_close;
     } else if (r == 2) {
-        fprintf(stderr, "failed to parse rules, not enough memory\n");
-        return EXIT_FAILURE;
+        bf_err("failed to parse rules, not enough memory");
+        r = -EINVAL;
+        goto end_close;
     }
 
     // Set rules indexes
-    bf_list_foreach (&chains, chain_node) {
+    bf_list_foreach (&ruleset.chains, chain_node) {
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
         uint32_t index = 0;
 
@@ -102,7 +112,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    bf_list_foreach (&chains, chain_node) {
+    bf_list_foreach (&ruleset.chains, chain_node) {
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
         _cleanup_bf_request_ struct bf_request *request = NULL;
         _cleanup_bf_response_ struct bf_response *response = NULL;
@@ -137,22 +147,23 @@ int main(int argc, char *argv[])
         }
     }
 
-    bf_list_clean(&chains);
-    fclose(rules);
+end_close:
+    (void)fclose(rules);
+end_clean:
+    bf_list_clean(&ruleset.chains);
+    bf_list_clean(&ruleset.sets);
 
-    return 0;
+    return r;
 }
 
-void yyerror(bf_list *chains, bf_list *sets, const char *fmt, ...)
+void yyerror(struct bf_ruleset *ruleset, const char *fmt, ...)
 {
-    UNUSED(chains);
-    UNUSED(sets);
+    UNUSED(ruleset);
 
     va_list args;
 
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    (void)vfprintf(stderr, fmt, args);
+    (void)fprintf(stderr, "\n");
     va_end(args);
-
-    exit(-1);
 }
