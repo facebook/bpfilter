@@ -14,10 +14,15 @@ add_library(libbpfilter_a STATIC
 
 set_target_properties(libbpfilter_a PROPERTIES OUTPUT_NAME bpfilter)
 
+target_include_directories(libbpfilter_a
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+)
+
 target_link_libraries(libbpfilter_a
     PRIVATE
         bf_global_flags
-        core.pic
+        core
 )
 
 add_library(libbpfilter_so SHARED
@@ -25,6 +30,11 @@ add_library(libbpfilter_so SHARED
 )
 
 set_target_properties(libbpfilter_so PROPERTIES OUTPUT_NAME bpfilter)
+
+target_include_directories(libbpfilter_so
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+)
 
 target_compile_options(libbpfilter_so
     PRIVATE
