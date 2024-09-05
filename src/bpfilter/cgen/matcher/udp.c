@@ -5,19 +5,23 @@
 
 #include "bpfilter/cgen/matcher/udp.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/in.h> // NOLINT
 #include <linux/udp.h>
 
 #include <endian.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
 #include "core/matcher.h"
 
-// clang-format off
-// Required because of conflicting definitions from glibc
-#include <linux/in.h>
-// clang-format on
+#include "external/filter.h"
 
 static int _bf_matcher_generate_udp_port(struct bf_program *program,
                                          const struct bf_matcher *matcher)

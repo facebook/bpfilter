@@ -5,12 +5,20 @@
 
 #include "bpfilter/cgen/matcher/meta.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+
 #include <endian.h>
+#include <errno.h>
+#include <stdint.h>
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
 #include "core/matcher.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
                                               const struct bf_matcher *matcher)

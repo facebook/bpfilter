@@ -11,7 +11,6 @@
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/hook.h"
-#include "core/list.h"
 
 /**
  * @file context.h

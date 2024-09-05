@@ -11,7 +11,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 extern const char *strerrordesc_np(int errnum);
@@ -45,9 +44,11 @@ extern const char *strerrordesc_np(int errnum);
  */
 #define TAKE_GENERIC(var, type, nullvalue)                                     \
     ({                                                                         \
+        /* NOLINTBEGIN: do not enclose 'type' in parentheses */                \
         type *_pvar_ = &(var);                                                 \
         type _var_ = *_pvar_;                                                  \
         type _nullvalue_ = nullvalue;                                          \
+        /* NOLINTEND */                                                        \
         *_pvar_ = _nullvalue_;                                                 \
         _var_;                                                                 \
     })
@@ -200,13 +201,13 @@ static inline int bf_realloc(void **ptr, size_t size)
 /**
  * Returns true if @p a is equal to @p b.
  *
- * @param a First string.
- * @param b Second string.
+ * @param lhs First string.
+ * @param rhs Second string.
  * @return True if @p a == @p b, false otherwise.
  */
-static inline bool bf_streq(const char *a, const char *b)
+static inline bool bf_streq(const char *lhs, const char *rhs) // NOLINT
 {
-    return strcmp(a, b) == 0;
+    return strcmp(lhs, rhs) == 0;
 }
 
 /**

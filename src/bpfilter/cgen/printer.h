@@ -5,9 +5,12 @@
 
 #pragma once
 
+#include <linux/bpf.h>
+
 #include <stddef.h>
 
 #include "bpfilter/context.h"
+#include "core/dump.h"
 
 /**
  * @file printer.h
@@ -67,7 +70,7 @@ struct bf_printer_msg;
     ({                                                                         \
         int __r;                                                               \
         const struct bf_printer_msg *__msg =                                   \
-            bf_printer_add_msg(program->printer, msg);                         \
+            bf_printer_add_msg((program)->printer, (msg));                     \
         struct bpf_insn __ld_insn[2] = {                                       \
             BPF_LD_MAP_FD(BF_ARG_1, 0),                                        \
         };                                                                     \

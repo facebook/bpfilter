@@ -3,6 +3,8 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+// NOLINTBEGIN
+
 #include "bpfilter/cgen/dump.h"
 
 #include <linux/bpf.h>
@@ -390,3 +392,5 @@ void bf_program_dump_bytecode(const struct bf_program *program, bool with_raw)
     // Force flush, otherwise output on stderr might appear.
     fflush(stdout);
 }
+
+// NOLINTEND

@@ -5,6 +5,11 @@
 
 #include "core/hook.h"
 
+#include <linux/bpf.h>
+
+#include <errno.h>
+
+#include "core/flavor.h"
 #include "core/helper.h"
 
 static const char *_bf_hook_strs[] = {

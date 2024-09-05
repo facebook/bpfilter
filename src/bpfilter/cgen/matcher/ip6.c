@@ -5,13 +5,23 @@
 
 #include "bpfilter/cgen/matcher/ip6.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/if_ether.h>
+#include <linux/ipv6.h>
+
 #include <endian.h>
+#include <errno.h>
+#include <stddef.h>
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
 #include "core/matcher.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
                                          const struct bf_matcher *matcher)

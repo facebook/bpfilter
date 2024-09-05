@@ -8,6 +8,7 @@
 #include <linux/if.h>
 
 #include <stddef.h>
+#include <sys/types.h>
 
 /**
  * @file if.h

@@ -5,9 +5,11 @@
 
 #include "bpfilter/cgen/printer.h"
 
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "core/bpf.h"
+#include "core/dump.h"
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
@@ -231,6 +233,9 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
             return r;
 
         r = bf_list_add_tail(&_printer->msgs, msg);
+        if (r < 0)
+            return r;
+
         TAKE_PTR(msg);
     }
 

@@ -9,14 +9,17 @@
 #include <stdlib.h>
 
 #include "bpfilter/cgen/codegen.h"
+#include "core/dump.h"
+#include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 
 #define _cleanup_bf_context_ __attribute__((cleanup(_bf_context_free)))
 
 /// Global daemon context. Hidden in this translation unit.
-static struct bf_context *_global_context = NULL;
+static struct bf_context *_bf_global_context = NULL;
 
 static void _bf_context_free(struct bf_context **context);
 
@@ -55,8 +58,8 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
                                       const struct bf_marsh *marsh)
 {
     _cleanup_bf_context_ struct bf_context *_context = NULL;
-    struct bf_marsh *child = NULL;
-    struct bf_marsh *subchild = NULL;
+    struct bf_marsh *ctx_elem = NULL;
+    struct bf_marsh *cgen_elem = NULL;
     int r;
 
     bf_assert(context);
@@ -68,16 +71,16 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
         return -ENOMEM;
 
     // Unmarsh bf_context.codegens
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
+    ctx_elem = bf_marsh_next_child(marsh, ctx_elem);
+    if (!ctx_elem)
         return bf_err_code(-EINVAL, "failed to find valid child");
 
-    while ((subchild = bf_marsh_next_child(child, subchild))) {
+    while ((cgen_elem = bf_marsh_next_child(ctx_elem, cgen_elem))) {
         _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
         enum bf_hook hook;
         enum bf_front front;
 
-        r = bf_codegen_unmarsh(subchild, &codegen);
+        r = bf_codegen_unmarsh(cgen_elem, &codegen);
         if (r)
             return bf_err_code(r, "failed to unmarsh codegen");
 
@@ -303,7 +306,7 @@ int bf_context_setup(void)
     if (r)
         return bf_err_code(r, "failed to create new context");
 
-    _global_context = TAKE_PTR(_context);
+    _bf_global_context = TAKE_PTR(_context);
 
     return 0;
 }
@@ -313,15 +316,15 @@ void bf_context_teardown(bool clear)
     if (clear) {
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
-                if (!_global_context->codegens[i][j])
+                if (!_bf_global_context->codegens[i][j])
                     continue;
 
-                bf_codegen_unload(_global_context->codegens[i][j]);
+                bf_codegen_unload(_bf_global_context->codegens[i][j]);
             }
         }
     }
 
-    _bf_context_free(&_global_context);
+    _bf_context_free(&_bf_global_context);
 }
 
 int bf_context_save(struct bf_marsh **marsh)
@@ -331,7 +334,7 @@ int bf_context_save(struct bf_marsh **marsh)
 
     bf_assert(marsh);
 
-    r = _bf_context_marsh(_global_context, &_marsh);
+    r = _bf_context_marsh(_bf_global_context, &_marsh);
     if (r)
         return bf_err_code(r, "failed to serialize context");
 
@@ -351,41 +354,41 @@ int bf_context_load(const struct bf_marsh *marsh)
     if (r)
         return bf_err_code(r, "failed to deserialize context");
 
-    _global_context = TAKE_PTR(context);
+    _bf_global_context = TAKE_PTR(context);
 
     return 0;
 }
 
 void bf_context_dump(prefix_t *prefix)
 {
-    _bf_context_dump(_global_context, prefix);
+    _bf_context_dump(_bf_global_context, prefix);
 }
 
 struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
                                           enum bf_front front)
 {
-    return _bf_context_get_codegen(_global_context, hook, front);
+    return _bf_context_get_codegen(_bf_global_context, hook, front);
 }
 
 struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
                                            enum bf_front front)
 {
-    return _bf_context_take_codegen(_global_context, hook, front);
+    return _bf_context_take_codegen(_bf_global_context, hook, front);
 }
 
 void bf_context_delete_codegen(enum bf_hook hook, enum bf_front front)
 {
-    _bf_context_delete_codegen(_global_context, hook, front);
+    _bf_context_delete_codegen(_bf_global_context, hook, front);
 }
 
 int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
                            struct bf_codegen *codegen)
 {
-    return _bf_context_set_codegen(_global_context, hook, front, codegen);
+    return _bf_context_set_codegen(_bf_global_context, hook, front, codegen);
 }
 
 void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
                                 struct bf_codegen *codegen)
 {
-    _bf_context_replace_codegen(_global_context, hook, front, codegen);
+    _bf_context_replace_codegen(_bf_global_context, hook, front, codegen);
 }

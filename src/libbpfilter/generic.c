@@ -6,7 +6,6 @@
 #include "libbpfilter/generic.h"
 
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -24,31 +23,24 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
     bf_assert(response);
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) {
-        fprintf(stderr, "Failed to create socket: %s\n", bf_strerror(errno));
-        return -errno;
-    }
+    if (fd < 0)
+        return bf_err(errno, "bpfilter: can't create socket");
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     r = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
-    if (r < 0) {
-        fprintf(stderr, "Failed to connect to socket: %s\n",
-                bf_strerror(errno));
-        return -errno;
-    }
+    if (r < 0)
+        return bf_err(errno, "bpfilter: failed to connect to socket");
 
     r = bf_send_request(fd, request);
-    if (r < 0) {
-        fprintf(stderr, "Failed to send request: %s\n", bf_strerror(r));
-        return r;
-    }
+    if (r < 0)
+        return bf_err(errno, "bpfilter: failed to send request to the daemon");
 
     r = bf_recv_response(fd, response);
     if (r < 0) {
-        fprintf(stderr, "Failed to receive response: %s\n", bf_strerror(r));
-        return r;
+        return bf_err(errno,
+                      "bpfilter: failed to receive response from the daemon");
     }
 
     return 0;

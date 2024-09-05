@@ -11,6 +11,10 @@
 #include "core/if.h"
 
 #include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 #include "core/helper.h"
 #include "core/logger.h"
@@ -19,7 +23,7 @@ static char _bf_if_name[IFNAMSIZ];
 
 int bf_if_index_from_name(const char *name)
 {
-    int r;
+    unsigned int r;
 
     bf_assert(name);
 
@@ -29,7 +33,10 @@ int bf_if_index_from_name(const char *name)
                            name);
     }
 
-    return r;
+    if (r > INT_MAX)
+        return bf_err_code(-E2BIG, "ifindex is too big: %d", r);
+
+    return (int)r;
 }
 
 const char *bf_if_name_from_index(int index)
@@ -46,7 +53,7 @@ ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces)
 {
     _cleanup_free_ struct bf_if_iface *_ifaces = NULL;
     struct if_nameindex *if_ni, *it;
-    size_t n_ifaces = 0;
+    ssize_t n_ifaces = 0;
     size_t i = 0;
 
     bf_assert(ifaces);
@@ -58,6 +65,9 @@ ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces)
     // Gather the number of interfaces to allocate the memory.
     for (it = if_ni; it->if_index != 0 || it->if_name != NULL; ++it)
         ++n_ifaces;
+
+    if (n_ifaces == 0)
+        return 0;
 
     _ifaces = malloc(n_ifaces * sizeof(*_ifaces));
     if (!_ifaces) {

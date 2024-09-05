@@ -231,5 +231,5 @@ void bf_ipt_dump_replace(struct ipt_replace *ipt, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     // Force flush, otherwise output on stderr might appear.
-    fflush(stdout);
+    (void)fflush(stdout);
 }

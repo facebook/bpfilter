@@ -87,9 +87,9 @@ typedef struct
  * 	      access the node.
  */
 #define bf_list_foreach(list, node)                                            \
-    for (bf_list_node *node = (list)->head,                                    \
-                      *__next = (list)->head ? (list)->head->next : NULL;      \
-         node; node = __next, __next = __next ? __next->next : NULL)
+    for (bf_list_node * (node) = (list)->head,                                 \
+                        *__next = (list)->head ? (list)->head->next : NULL;    \
+         (node); (node) = __next, __next = __next ? __next->next : NULL)
 
 /**
  * Reverse iterate over a @ref bf_list.
@@ -103,9 +103,9 @@ typedef struct
  * 	      access the node.
  */
 #define bf_list_foreach_rev(list, node)                                        \
-    for (bf_list_node *node = (list)->tail,                                    \
-                      *__next = (list)->tail ? (list)->tail->prev : NULL;      \
-         node; node = __next, __next = __next ? __next->prev : NULL)
+    for (bf_list_node * (node) = (list)->tail,                                 \
+                        *__next = (list)->tail ? (list)->tail->prev : NULL;    \
+         (node); (node) = __next, __next = __next ? __next->prev : NULL)
 
 /**
  * Returns an initialised @ref bf_list.
@@ -114,7 +114,7 @@ typedef struct
  *        non-NULL.
  * @return An initialised @ref bf_list.
  */
-#define bf_list_default(list_ops) ((bf_list) {.ops = list_ops})
+#define bf_list_default(list_ops) ((bf_list) {.ops = list_ops /* NOLINT */})
 
 /**
  * Allocate and initialise a new list.

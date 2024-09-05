@@ -12,9 +12,9 @@
 #include <string.h>
 
 #include "core/front.h"
+#include "core/helper.h"
 #include "core/request.h"
 #include "core/response.h"
-#include "core/helper.h"
 #include "libbpfilter/generic.h"
 
 /**
@@ -65,9 +65,9 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
 
     if (response->type == BF_RES_SUCCESS) {
         if (response->data_len != request->data_len) {
-            fprintf(stdout, "Response data has wrong size: %lu instead of %lu",
-                    response->data_len, request->data_len);
-            return -EINVAL;
+            return bf_err(EINVAL,
+                          "bpfilter: response size is %lu, expected %lu",
+                          response->data_len, request->data_len);
         }
 
         memcpy(ipt_replace, response->data, response->data_len);
@@ -97,9 +97,9 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
 
     if (response->type == BF_RES_SUCCESS) {
         if (response->data_len != request->data_len) {
-            fprintf(stdout, "Response data has wrong size: %lu instead of %lu",
-                    response->data_len, request->data_len);
-            return -EINVAL;
+            return bf_err(EINVAL,
+                          "bpfilter: response size is %lu, expected %lu",
+                          response->data_len, request->data_len);
         }
 
         memcpy(counters, response->data, response->data_len);
@@ -130,9 +130,9 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
 
     if (response->type == BF_RES_SUCCESS) {
         if (response->data_len != request->data_len) {
-            fprintf(stdout, "Response data has wrong size: %lu instead of %lu",
-                    response->data_len, request->data_len);
-            return -EINVAL;
+            return bf_err(EINVAL,
+                          "bpfilter: response size is %lu, expected %lu",
+                          response->data_len, request->data_len);
         }
 
         memcpy(info, response->data, response->data_len);
@@ -163,9 +163,9 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
 
     if (response->type == BF_RES_SUCCESS) {
         if (response->data_len != request->data_len) {
-            fprintf(stdout, "Response data has wrong size: %lu instead of %lu",
-                    response->data_len, request->data_len);
-            return -EINVAL;
+            return bf_err(EINVAL,
+                          "bpfilter: response size is %lu, expected %lu",
+                          response->data_len, request->data_len);
         }
 
         memcpy(entries, response->data, response->data_len);

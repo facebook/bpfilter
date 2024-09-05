@@ -10,8 +10,9 @@
 #include <linux/if_ether.h>
 #include <linux/netfilter.h>
 
-#include <errno.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <sys/socket.h>
 
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/program.h"
@@ -20,29 +21,33 @@
 #include "bpfilter/cgen/swich.h"
 #include "core/bpf.h"
 #include "core/btf.h"
+#include "core/flavor.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/logger.h"
 #include "core/verdict.h"
 
-static int _nf_gen_inline_prologue(struct bf_program *program);
-static int _nf_gen_inline_epilogue(struct bf_program *program);
-static int _nf_get_verdict(enum bf_verdict verdict);
-static int _nf_attach_prog(struct bf_program *new_prog,
-                           struct bf_program *old_prog);
-static int _nf_detach_prog(struct bf_program *program);
+#include "external/filter.h"
+
+static int _bf_nf_gen_inline_prologue(struct bf_program *program);
+static int _bf_nf_gen_inline_epilogue(struct bf_program *program);
+static int _bf_nf_get_verdict(enum bf_verdict verdict);
+static int _bf_nf_attach_prog(struct bf_program *new_prog,
+                              struct bf_program *old_prog);
+static int _bf_nf_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_nf = {
-    .gen_inline_prologue = _nf_gen_inline_prologue,
-    .gen_inline_epilogue = _nf_gen_inline_epilogue,
-    .get_verdict = _nf_get_verdict,
-    .attach_prog = _nf_attach_prog,
-    .detach_prog = _nf_detach_prog,
+    .gen_inline_prologue = _bf_nf_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
+    .get_verdict = _bf_nf_get_verdict,
+    .attach_prog = _bf_nf_attach_prog,
+    .detach_prog = _bf_nf_detach_prog,
 };
 
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);
 
-static int _nf_gen_inline_prologue(struct bf_program *program)
+static int _bf_nf_gen_inline_prologue(struct bf_program *program)
 {
     int r;
     int offset;
@@ -143,7 +148,7 @@ static int _nf_gen_inline_prologue(struct bf_program *program)
     return 0;
 }
 
-static int _nf_gen_inline_epilogue(struct bf_program *program)
+static int _bf_nf_gen_inline_epilogue(struct bf_program *program)
 {
     UNUSED(program);
 
@@ -156,7 +161,7 @@ static int _nf_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _nf_get_verdict(enum bf_verdict verdict)
+static int _bf_nf_get_verdict(enum bf_verdict verdict)
 {
     bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
@@ -170,8 +175,8 @@ static int _nf_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _nf_attach_prog(struct bf_program *new_prog,
-                           struct bf_program *old_prog)
+static int _bf_nf_attach_prog(struct bf_program *new_prog,
+                              struct bf_program *old_prog)
 {
     _cleanup_close_ int prog_fd = -1;
     _cleanup_close_ int link_fd = -1;
@@ -192,18 +197,19 @@ static int _nf_attach_prog(struct bf_program *new_prog,
 
         closep(&old_prog->runtime.prog_fd);
 
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, new_prog->ifindex,
-                                  &link_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook,
+                                  (int)new_prog->ifindex, &link_fd);
         if (r)
             return bf_err_code(r, "failed to create final link");
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     } else {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, new_prog->ifindex,
-                                  &link_fd);
-        if (r)
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook,
+                                  (int)new_prog->ifindex, &link_fd);
+        if (r) {
             return bf_err_code(
                 r, "failed to create a new link for BPF_NETFILTER bf_program");
+        }
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     }
@@ -217,9 +223,9 @@ static int _nf_attach_prog(struct bf_program *new_prog,
  * @param program Codegen containing the image to unload. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
-static int _nf_detach_prog(struct bf_program *program)
+static int _bf_nf_detach_prog(struct bf_program *program)
 {
-    assert(program);
+    bf_assert(program);
 
     return bf_bpf_link_detach(program->runtime.prog_fd);
 }

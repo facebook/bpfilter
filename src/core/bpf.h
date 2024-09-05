@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <linux/bpf.h>
 #include <linux/if_link.h>
 
 #include <stddef.h>
@@ -102,8 +103,8 @@ int bf_bpf_obj_get(const char *path, int *fd);
  *        function is 0.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_bpf_tc_link_create(int prog_fd, int ifindex, enum bpf_attach_type hook,
-                          int *link_fd);
+int bf_bpf_tc_link_create(int prog_fd, unsigned int ifindex,
+                          enum bpf_attach_type hook, int *link_fd);
 
 /**
  * Create a Netfilter BPF link.
@@ -128,7 +129,7 @@ int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
  * @param mode XDP program attach mode. See @ref bf_xdp_attach_mode.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
+int bf_bpf_xdp_link_create(int prog_fd, unsigned int ifindex, int *link_fd,
                            enum bf_xdp_attach_mode mode);
 
 /**

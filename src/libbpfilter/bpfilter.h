@@ -13,7 +13,6 @@ struct ipt_replace;
 struct xt_counters_info;
 struct nlmsghdr;
 
-
 /**
  * Send iptable's ipt_replace data to bpfilter daemon.
  *

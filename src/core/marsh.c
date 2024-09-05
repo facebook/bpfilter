@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/helper.h"
+
 int bf_marsh_new(struct bf_marsh **marsh, const void *data, size_t data_len)
 {
     struct bf_marsh *_marsh = NULL;

@@ -7,7 +7,6 @@
 #include <linux/bpf_common.h>
 
 #include <stddef.h>
-#include <unistd.h>
 
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
@@ -15,24 +14,25 @@
 #include "core/bpf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/logger.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
 
-static int _xdp_gen_inline_prologue(struct bf_program *program);
-static int _xdp_gen_inline_epilogue(struct bf_program *program);
-static int _xdp_get_verdict(enum bf_verdict verdict);
-static int _xdp_attach_prog(struct bf_program *new_prog,
-                            struct bf_program *old_prog);
-static int _xdp_detach_prog(struct bf_program *program);
+static int _bf_xdp_gen_inline_prologue(struct bf_program *program);
+static int _bf_xdp_gen_inline_epilogue(struct bf_program *program);
+static int _bf_xdp_get_verdict(enum bf_verdict verdict);
+static int _bf_xdp_attach_prog(struct bf_program *new_prog,
+                               struct bf_program *old_prog);
+static int _bf_xdp_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_xdp = {
-    .gen_inline_prologue = _xdp_gen_inline_prologue,
-    .gen_inline_epilogue = _xdp_gen_inline_epilogue,
-    .get_verdict = _xdp_get_verdict,
-    .attach_prog = _xdp_attach_prog,
-    .detach_prog = _xdp_detach_prog,
+    .gen_inline_prologue = _bf_xdp_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_xdp_gen_inline_epilogue,
+    .get_verdict = _bf_xdp_get_verdict,
+    .attach_prog = _bf_xdp_attach_prog,
+    .detach_prog = _bf_xdp_detach_prog,
 };
 
 /**
@@ -44,7 +44,7 @@ const struct bf_flavor_ops bf_flavor_ops_xdp = {
  * @param program Program to generate the prologue for. Must not be NULL.
  * @return 0 on success, or negative errno value on error.
  */
-static int _xdp_gen_inline_prologue(struct bf_program *program)
+static int _bf_xdp_gen_inline_prologue(struct bf_program *program)
 {
     int r;
 
@@ -91,14 +91,14 @@ static int _xdp_gen_inline_prologue(struct bf_program *program)
     return 0;
 }
 
-static int _xdp_gen_inline_epilogue(struct bf_program *program)
+static int _bf_xdp_gen_inline_epilogue(struct bf_program *program)
 {
     UNUSED(program);
 
     return 0;
 }
 
-static int _xdp_get_verdict(enum bf_verdict verdict)
+static int _bf_xdp_get_verdict(enum bf_verdict verdict)
 {
     bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
@@ -112,8 +112,8 @@ static int _xdp_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _xdp_attach_prog(struct bf_program *new_prog,
-                            struct bf_program *old_prog)
+static int _bf_xdp_attach_prog(struct bf_program *new_prog,
+                               struct bf_program *old_prog)
 {
     _cleanup_close_ int prog_fd = -1;
     _cleanup_close_ int link_fd = -1;
@@ -130,17 +130,19 @@ static int _xdp_attach_prog(struct bf_program *new_prog,
 
     if (old_prog) {
         r = bf_bpf_xdp_link_update(old_prog->runtime.prog_fd, prog_fd);
-        if (r)
+        if (r) {
             return bf_err_code(
                 r, "failed to update existing link for XDP bf_program");
+        }
 
         new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
     } else {
         r = bf_bpf_xdp_link_create(prog_fd, new_prog->ifindex, &link_fd,
                                    BF_XDP_MODE_SKB);
-        if (r)
+        if (r) {
             return bf_err_code(r,
                                "failed to create new link for XDP bf_program");
+        }
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     }
@@ -148,7 +150,7 @@ static int _xdp_attach_prog(struct bf_program *new_prog,
     return 0;
 }
 
-static int _xdp_detach_prog(struct bf_program *program)
+static int _bf_xdp_detach_prog(struct bf_program *program)
 {
     bf_assert(program);
 

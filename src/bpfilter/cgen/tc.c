@@ -5,39 +5,41 @@
 
 #include "bpfilter/cgen/tc.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
 #include <linux/pkt_cls.h>
 
-#include <bpf/libbpf.h>
-#include <errno.h>
+#include <stddef.h>
 
 #include "bpfilter/cgen/codegen.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
-#include "bpfilter/context.h"
 #include "core/bpf.h"
-#include "core/front.h"
+#include "core/flavor.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/logger.h"
+#include "core/verdict.h"
 
 #include "external/filter.h"
 
-static int _tc_gen_inline_prologue(struct bf_program *program);
-static int _tc_gen_inline_epilogue(struct bf_program *program);
-static int _tc_get_verdict(enum bf_verdict verdict);
-static int _tc_attach_prog(struct bf_program *new_prog,
-                           struct bf_program *old_prog);
-static int _tc_detach_prog(struct bf_program *program);
+static int _bf_tc_gen_inline_prologue(struct bf_program *program);
+static int _bf_tc_gen_inline_epilogue(struct bf_program *program);
+static int _bf_tc_get_verdict(enum bf_verdict verdict);
+static int _bf_tc_attach_prog(struct bf_program *new_prog,
+                              struct bf_program *old_prog);
+static int _bf_tc_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {
-    .gen_inline_prologue = _tc_gen_inline_prologue,
-    .gen_inline_epilogue = _tc_gen_inline_epilogue,
-    .get_verdict = _tc_get_verdict,
-    .attach_prog = _tc_attach_prog,
-    .detach_prog = _tc_detach_prog,
+    .gen_inline_prologue = _bf_tc_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_tc_gen_inline_epilogue,
+    .get_verdict = _bf_tc_get_verdict,
+    .attach_prog = _bf_tc_attach_prog,
+    .detach_prog = _bf_tc_detach_prog,
 };
 
-static int _tc_gen_inline_prologue(struct bf_program *program)
+static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 {
     int r;
 
@@ -81,7 +83,7 @@ static int _tc_gen_inline_prologue(struct bf_program *program)
     return 0;
 }
 
-static int _tc_gen_inline_epilogue(struct bf_program *program)
+static int _bf_tc_gen_inline_epilogue(struct bf_program *program)
 {
     UNUSED(program);
 
@@ -94,7 +96,7 @@ static int _tc_gen_inline_epilogue(struct bf_program *program)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _tc_get_verdict(enum bf_verdict verdict)
+static int _bf_tc_get_verdict(enum bf_verdict verdict)
 {
     bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
 
@@ -108,8 +110,8 @@ static int _tc_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _tc_attach_prog(struct bf_program *new_prog,
-                           struct bf_program *old_prog)
+static int _bf_tc_attach_prog(struct bf_program *new_prog,
+                              struct bf_program *old_prog)
 {
     _cleanup_close_ int prog_fd = -1;
     _cleanup_close_ int link_fd = -1;
@@ -126,18 +128,20 @@ static int _tc_attach_prog(struct bf_program *new_prog,
 
     if (old_prog) {
         r = bf_bpf_link_update(old_prog->runtime.prog_fd, prog_fd);
-        if (r)
+        if (r) {
             return bf_err_code(
                 r, "failed to updated existing link for TC bf_program");
+        }
 
         new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
     } else {
         r = bf_bpf_tc_link_create(prog_fd, new_prog->ifindex,
                                   bf_hook_to_attach_type(new_prog->hook),
                                   &link_fd);
-        if (r)
+        if (r) {
             return bf_err_code(r,
                                "failed to create new link for TC bf_program");
+        }
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     }
@@ -151,7 +155,7 @@ static int _tc_attach_prog(struct bf_program *new_prog,
  * @param program Attached TC BPF program. Can't be NULL.
  * @return 0 on success, negative errno value on failure.
  */
-static int _tc_detach_prog(struct bf_program *program)
+static int _bf_tc_detach_prog(struct bf_program *program)
 {
     bf_assert(program);
 

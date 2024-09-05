@@ -9,9 +9,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "core/logger.h"
+
+#define OPEN_MODE_644 (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
 int bf_read_file(const char *path, void **buf, size_t *len)
 {
@@ -57,7 +60,7 @@ int bf_write_file(const char *path, const void *buf, size_t len)
     bf_assert(path);
     bf_assert(buf);
 
-    fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, 0644);
+    fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, OPEN_MODE_644);
     if (fd < 0)
         return bf_err_code(errno, "failed to open %s", path);
 

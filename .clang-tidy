@@ -4,30 +4,67 @@
 # check-by-check basis.
 #
 # Disabled checks:
+# - bugprone-assignment-in-if-condition
+#   Very carefully used, but useful when reading a bf_marsh.
+# - bugprone-easily-swappable-parameters
+#   Too many false positives, especially when swapable arguments are of different
+#   types (which will be flagged by the compiler).
+# - cert-dcl37-c
+#   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
+# - cert-dcl51-cpp
+#   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
 # - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 #   Avoid usage of Annex K functions for portability reasons.
+# - clang-analyzer-unix.Malloc
+#   Generates false positives.
+# - modernize-macro-to-enum
+#   No benefit.
+# - readability-function-cognitive-complexity
+#   Functions generating BPF bytecode will trigger this rule anytime, but they're
+#   not that complex due to heavy use of macros.
+# - readability-isolate-declaration
+#   Rely on manual check: it's uncommon in bpfilter for multiple variable to be
+#   defined on a single line, but it's sometimes for the better.
 Checks: >
   -*,
   bugprone-*,
+    -bugprone-assignment-in-if-condition,
+    -bugprone-easily-swappable-parameters,
   cert-*,
+    -cert-dcl37-c,
+    -cert-dcl51-cpp,
   clang-analyzer-*,
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
-  concurrency-*,
+    -clang-analyzer-unix.Malloc,
   misc-*,
   modernize-*,
+    -modernize-macro-to-enum,
   performance-*,
   portability-*,
-  readability-*
+  readability-*,
+    -readability-function-cognitive-complexity,
+    -readability-isolate-declaration
 
 WarningsAsErrors: ''
-HeaderFilterRegex: '^(?!external\/filter.h).*'
 FormatStyle: none
 UseColor: yes
 
 CheckOptions:
-  # Allowed short variable names
-  - key: readability-identifier-length.IgnoredVariableNames
-    value: 'fd|r'
+  # Allow use of reserved identifiers as long as they start with "_bf_"
+  - key: bugprone-reserved-identifier.AllowedIdentifiers
+    value: _(bf|BF)_[a-zA-Z0-9_]+
   # Unless a *statement* takes 1 line, it should be in braces
   - key: readability-braces-around-statements.ShortStatementLines
-    value: 2
+    value: 6
+  # Allowed short variable names
+  - key: readability-identifier-length.IgnoredVariableNames
+    value: '_|i|fd|r|j[0-9]|op'
+  # Allowed short parameter names
+  - key: readability-identifier-length.IgnoredParameterNames
+    value: 'ip|fd|op'
+  # Allow for magic constants that are power of 2.
+  - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  # Allow specific masks
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: 255;65535

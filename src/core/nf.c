@@ -5,11 +5,14 @@
 
 #include "core/nf.h"
 
+#include <linux/netfilter.h>
+
 #include "core/helper.h"
+#include "core/hook.h"
 
 enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
 {
-    bf_assert(hook >= BF_HOOK_NF_PRE_ROUTING ||
+    bf_assert(hook >= BF_HOOK_NF_PRE_ROUTING &&
               hook <= BF_HOOK_NF_POST_ROUTING);
 
     enum nf_inet_hooks hooks[] = {

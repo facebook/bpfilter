@@ -9,6 +9,7 @@
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +21,6 @@
 #include "bpfilter/xlate/ipt/dump.h"
 #include "bpfilter/xlate/ipt/helpers.h"
 #include "core/counter.h"
-#include "core/flavor.h"
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
@@ -83,12 +83,12 @@ struct bf_ipt_cache
 #define bf_ipt_replace_size(ipt_replace_ptr)                                   \
     (sizeof(struct ipt_replace) + (ipt_replace_ptr)->size)
 
-static struct bf_ipt_cache *_cache = NULL;
+static struct bf_ipt_cache *_bf_cache = NULL;
 
 static void _bf_ipt_cache_free(struct bf_ipt_cache **cache);
 
-/// Default iptables filter table. Required to initialize iptables.
-static unsigned char _default_ipt_filter[] = {
+/// Default iptables filter table. Required to initialize iptables. NOLINTBEGIN
+static unsigned char _bf_default_ipt_filter[] = {
     0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
@@ -150,7 +150,7 @@ static unsigned char _default_ipt_filter[] = {
     0x45, 0x52, 0x52, 0x4f, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
+}; // NOLINTEND
 
 static int _bf_ipt_setup(void);
 static int _bf_ipt_teardown(void);
@@ -271,7 +271,6 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
                            struct bf_rule **rule)
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
-    enum bf_verdict verdict;
     size_t offset = sizeof(*ipt_rule);
     int r;
 
@@ -324,11 +323,14 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     if (ipt_rule->ip.proto) {
         uint8_t ip_proto = (uint8_t)ipt_rule->ip.proto;
 
-        if (ip_proto != ipt_rule->ip.proto)
+        if (ip_proto != ipt_rule->ip.proto) {
             return bf_err_code(-EINVAL, "invalid ip.proto %d",
                                ipt_rule->ip.proto);
+        }
         r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                 &ip_proto, sizeof(uint8_t));
+        if (r < 0)
+            return r;
     }
 
     if (offset < ipt_rule->target_offset) {
@@ -336,17 +338,16 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
                            "iptables custom matchers are not (yet) supported!");
     }
 
-    r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &verdict);
+    r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &_rule->verdict);
     if (r < 0)
         return r;
-    _rule->verdict = verdict;
 
     *rule = TAKE_PTR(_rule);
 
     return 0;
 }
 
-static bool _ipt_entry_is_empty(const struct ipt_entry *entry)
+static bool _bf_ipt_entry_is_empty(const struct ipt_entry *entry)
 {
     return entry->ip.dmsk.s_addr == 0 && entry->ip.dst.s_addr == 0 &&
            entry->ip.flags == 0 && entry->ip.iniface[0] == 0 &&
@@ -364,8 +365,8 @@ static bool _ipt_entry_is_empty(const struct ipt_entry *entry)
  *        hook will be generated.
  * @return 0 on success, negative error code on failure.
  */
-static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
-                                struct bf_codegen *(*codegens)[_BF_HOOK_MAX])
+static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
+                                   struct bf_codegen *(*codegens)[_BF_HOOK_MAX])
 {
     struct ipt_entry *first_rule;
     struct ipt_entry *last_rule;
@@ -393,16 +394,13 @@ static int _ipt_xlate_set_rules(struct ipt_replace *ipt,
         first_rule = ipt_get_first_rule(ipt, i);
         last_rule = ipt_get_last_rule(ipt, i);
 
-        if (_ipt_entry_is_empty(last_rule)) {
+        if (_bf_ipt_entry_is_empty(last_rule)) {
             /* We assume the last rule is a policy (ipt_entry.ip field is filled
              * with 0), and use it as the verdict if true. */
-            enum bf_verdict verdict;
-
-            r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule), &verdict);
-            if (r)
+            r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule),
+                                          &codegen->policy);
+            if (r < 0)
                 return bf_err_code(r, "invalid IPT policy verdict");
-
-            codegen->policy = verdict;
         } else {
             return bf_err_code(-EINVAL, "last IPT rule isn't a valid policy");
         }
@@ -457,7 +455,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 
     bf_ipt_dump_replace(replace, NULL);
 
-    r = _ipt_xlate_set_rules(replace, &codegens);
+    r = _bf_ipt_xlate_set_rules(replace, &codegens);
     if (r < 0)
         return bf_err_code(r, "failed to translate iptables rules");
 
@@ -500,14 +498,16 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
         }
     }
 
-    _cache->valid_hooks = replace->valid_hooks;
-    memcpy(_cache->hook_entry, replace->hook_entry, sizeof(_cache->hook_entry));
-    memcpy(_cache->underflow, replace->underflow, sizeof(_cache->underflow));
-    _cache->size = replace->size;
-    _cache->num_entries = replace->num_entries;
+    _bf_cache->valid_hooks = replace->valid_hooks;
+    memcpy(_bf_cache->hook_entry, replace->hook_entry,
+           sizeof(_bf_cache->hook_entry));
+    memcpy(_bf_cache->underflow, replace->underflow,
+           sizeof(_bf_cache->underflow));
+    _bf_cache->size = replace->size;
+    _bf_cache->num_entries = replace->num_entries;
 
-    free(_cache->entries);
-    _cache->entries = TAKE_PTR(entries);
+    free(_bf_cache->entries);
+    _bf_cache->entries = TAKE_PTR(entries);
 
 end_free_codegens:
     for (int i = 0; i < _BF_HOOK_MAX; i++)
@@ -547,11 +547,12 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
             -EINVAL, "can't process IPT_SO_GET_INFO for table %s", info->name);
     }
 
-    info->valid_hooks = _cache->valid_hooks;
-    memcpy(info->hook_entry, _cache->hook_entry, sizeof(_cache->hook_entry));
-    memcpy(info->underflow, _cache->underflow, sizeof(_cache->underflow));
-    info->num_entries = _cache->num_entries;
-    info->size = _cache->size;
+    info->valid_hooks = _bf_cache->valid_hooks;
+    memcpy(info->hook_entry, _bf_cache->hook_entry,
+           sizeof(_bf_cache->hook_entry));
+    memcpy(info->underflow, _bf_cache->underflow, sizeof(_bf_cache->underflow));
+    info->num_entries = _bf_cache->num_entries;
+    info->size = _bf_cache->size;
 
     return bf_response_new_success(response, (const char *)info,
                                    sizeof(struct ipt_getinfo));
@@ -581,14 +582,14 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
                            entries->name);
     }
 
-    if (entries->size != _cache->size) {
+    if (entries->size != _bf_cache->size) {
         return bf_err_code(
             -EINVAL,
             "not enough space to store entries: %u available, %u required",
-            entries->size, _cache->size);
+            entries->size, _bf_cache->size);
     }
 
-    memcpy(entries->entrytable, _cache->entries, _cache->size);
+    memcpy(entries->entrytable, _bf_cache->entries, _bf_cache->size);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         struct ipt_entry *first_rule;
@@ -596,13 +597,13 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
         struct bf_codegen *codegen;
         uint32_t counter_idx;
 
-        if (!(_cache->valid_hooks & (1 << i))) {
+        if (!(_bf_cache->valid_hooks & (1 << i))) {
             bf_dbg("ipt hook %d is not enabled, skipping", i);
             continue;
         }
 
-        first_rule = bf_ipt_entries_get_rule(entries, _cache->hook_entry[i]);
-        last_rule = bf_ipt_entries_get_rule(entries, _cache->underflow[i]);
+        first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
+        last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
         codegen =
             bf_context_get_codegen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
 
@@ -635,22 +636,23 @@ static int _bf_ipt_setup(void)
 {
     int r;
 
-    if (_cache) {
+    if (_bf_cache) {
         bf_info("cache already initialised, skipping initialisation");
         return 0;
     }
 
-    r = _bf_ipt_cache_new(&_cache);
+    r = _bf_ipt_cache_new(&_bf_cache);
     if (r < 0)
         return r;
 
-    return _bf_ipt_set_rules_handler((struct ipt_replace *)_default_ipt_filter,
-                                     sizeof(_default_ipt_filter));
+    return _bf_ipt_set_rules_handler(
+        (struct ipt_replace *)_bf_default_ipt_filter,
+        sizeof(_bf_default_ipt_filter));
 }
 
 static int _bf_ipt_teardown(void)
 {
-    _cleanup_bf_ipt_cache_ struct bf_ipt_cache *cache = _cache;
+    _cleanup_bf_ipt_cache_ struct bf_ipt_cache *cache = _bf_cache;
 
     return 0;
 }
@@ -716,26 +718,27 @@ static int _bf_ipt_marsh(struct bf_marsh **marsh)
 
     bf_assert(marsh);
 
-    if (!_cache)
+    if (!_bf_cache)
         return 0;
 
-    r |= bf_marsh_add_child_raw(marsh, &_cache->valid_hooks,
-                                sizeof(_cache->valid_hooks));
-    r |= bf_marsh_add_child_raw(marsh, &_cache->hook_entry,
-                                sizeof(_cache->hook_entry));
-    r |= bf_marsh_add_child_raw(marsh, &_cache->underflow,
-                                sizeof(_cache->underflow));
-    r |= bf_marsh_add_child_raw(marsh, &_cache->num_entries,
-                                sizeof(_cache->num_entries));
-    r |= bf_marsh_add_child_raw(marsh, &_cache->size, sizeof(_cache->size));
-    r |= bf_marsh_add_child_raw(marsh, _cache->entries, _cache->size);
+    r |= bf_marsh_add_child_raw(marsh, &_bf_cache->valid_hooks,
+                                sizeof(_bf_cache->valid_hooks));
+    r |= bf_marsh_add_child_raw(marsh, &_bf_cache->hook_entry,
+                                sizeof(_bf_cache->hook_entry));
+    r |= bf_marsh_add_child_raw(marsh, &_bf_cache->underflow,
+                                sizeof(_bf_cache->underflow));
+    r |= bf_marsh_add_child_raw(marsh, &_bf_cache->num_entries,
+                                sizeof(_bf_cache->num_entries));
+    r |= bf_marsh_add_child_raw(marsh, &_bf_cache->size,
+                                sizeof(_bf_cache->size));
+    r |= bf_marsh_add_child_raw(marsh, _bf_cache->entries, _bf_cache->size);
     if (r)
         return r;
 
-    bf_dbg("Saved bf_ipt_cache at %p:", _cache);
-    bf_dbg("  valid_hooks: %u", _cache->valid_hooks);
-    bf_dbg("  num_entries: %u", _cache->num_entries);
-    bf_dbg("  size: %u", _cache->size);
+    bf_dbg("Saved bf_ipt_cache at %p:", _bf_cache);
+    bf_dbg("  valid_hooks: %u", _bf_cache->valid_hooks);
+    bf_dbg("  num_entries: %u", _bf_cache->num_entries);
+    bf_dbg("  size: %u", _bf_cache->size);
 
     return 0;
 }
@@ -784,12 +787,12 @@ static int _bf_ipt_unmarsh(struct bf_marsh *marsh)
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
 
-    _cache = TAKE_PTR(cache);
+    _bf_cache = TAKE_PTR(cache);
 
-    bf_dbg("Restored bf_ipt_cache at %p:", _cache);
-    bf_dbg("  valid_hooks: %u", _cache->valid_hooks);
-    bf_dbg("  num_entries: %u", _cache->num_entries);
-    bf_dbg("  size: %u", _cache->size);
+    bf_dbg("Restored bf_ipt_cache at %p:", _bf_cache);
+    bf_dbg("  valid_hooks: %u", _bf_cache->valid_hooks);
+    bf_dbg("  num_entries: %u", _bf_cache->num_entries);
+    bf_dbg("  size: %u", _bf_cache->size);
 
     return 0;
 }

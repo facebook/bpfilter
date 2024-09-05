@@ -10,8 +10,13 @@
 #include <linux/netlink.h>
 
 #include <errno.h>
+#include <libnl3/netlink/attr.h>
 #include <limits.h>
 #include <netlink/msg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/socket.h>
 
 #include "core/helper.h"
 #include "core/logger.h"
@@ -243,7 +248,7 @@ size_t bf_nfmsg_len(const struct bf_nfmsg *msg)
 {
     bf_assert(msg);
 
-    return nlmsg_total_size(bf_nfmsg_data_len(msg));
+    return nlmsg_total_size((int)bf_nfmsg_data_len(msg));
 }
 
 uint8_t bf_nfmsg_command(const struct bf_nfmsg *msg)
@@ -266,7 +271,7 @@ int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
     bf_assert(msg);
     bf_assert(data);
 
-    return nla_put(msg->msg, type, len, data);
+    return nla_put(msg->msg, type, (int)len, data);
 }
 
 int bf_nfmsg_parse(const struct bf_nfmsg *msg, bf_nfattr **attrs, int maxtype,

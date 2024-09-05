@@ -11,19 +11,19 @@
 Test(btf, init)
 {
     assert_success(bf_btf_setup());
-    assert_non_null(_btf);
+    assert_non_null(_bf_btf);
 
     bf_btf_teardown();
-    assert_null(_btf);
+    assert_null(_bf_btf);
 }
 
 Test(btf, failed_init)
 {
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(btf__load_vmlinux_btf, NULL);
 
-    assert_null(_btf);
+    assert_null(_bf_btf);
     assert_error(bf_btf_setup());
-    assert_null(_btf);
+    assert_null(_bf_btf);
 }
 
 Test(btf, get_field_offset)
