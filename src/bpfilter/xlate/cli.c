@@ -3,11 +3,16 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
+#include <errno.h>
+#include <stdlib.h>
+
 #include "bpfilter/cgen/codegen.h"
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
 #include "core/chain.h"
-#include "core/dump.h"
+#include "core/front.h"
+#include "core/helper.h"
+#include "core/logger.h"
 #include "core/marsh.h"
 #include "core/request.h"
 #include "core/response.h"

@@ -11,8 +11,12 @@
 #include <errno.h>
 #include <limits.h>
 #include <netlink/msg.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "bpfilter/xlate/nft/nfmsg.h"
+#include "core/helper.h"
 #include "core/list.h"
 #include "core/response.h"
 
@@ -148,9 +152,9 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
         return r;
 
     if (msg)
-        *msg = TAKE_PTR(_msg);
-    else
-        TAKE_PTR(_msg);
+        *msg = _msg;
+
+    TAKE_PTR(_msg);
 
     return 0;
 }

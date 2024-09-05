@@ -7,33 +7,45 @@
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
-#include <linux/if_ether.h>
-#include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <errno.h>
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/matcher/ip4.h"
 #include "bpfilter/cgen/matcher/ip6.h"
 #include "bpfilter/cgen/matcher/meta.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
+#include "bpfilter/cgen/printer.h"
+#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/context.h"
 #include "core/bpf.h"
 #include "core/btf.h"
 #include "core/counter.h"
+#include "core/dump.h"
 #include "core/flavor.h"
+#include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/if.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/matcher.h"
+#include "core/opts.h"
 #include "core/rule.h"
 #include "core/verdict.h"
+
+#include "external/filter.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
@@ -56,8 +68,8 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
     return flavor_ops[flavor];
 }
 
-int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
-                   enum bf_front front)
+int bf_program_new(struct bf_program **program, unsigned int ifindex,
+                   enum bf_hook hook, enum bf_front front)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     int r;
@@ -73,18 +85,18 @@ int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
     _program->front = front;
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
 
-    snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%02x%02x%02x",
-             hook, front, ifindex);
-    snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bf_cmap_%02x%02x%02x",
-             hook, front, ifindex);
-    snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%02x%02x%02x",
-             hook, front, ifindex);
-    snprintf(_program->prog_pin_path, PIN_PATH_LEN,
-             "/sys/fs/bpf/bf_prog_%02x%02x%02x", hook, front, ifindex);
-    snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
-             "/sys/fs/bpf/bf_cmap_%02x%02x%02x", hook, front, ifindex);
-    snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
-             "/sys/fs/bpf/bf_pmap_%02x%02x%02x", hook, front, ifindex);
+    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN,
+                   "bf_prog_%02hx%02hx%02hx", hook, front, ifindex);
+    (void)snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN,
+                   "bf_cmap_%02hx%02hx%02hx", hook, front, ifindex);
+    (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN,
+                   "bf_pmap_%02hx%02hx%02hx", hook, front, ifindex);
+    (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN,
+                   "/sys/fs/bpf/bf_prog_%02x%02x%02x", hook, front, ifindex);
+    (void)snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
+                   "/sys/fs/bpf/bf_cmap_%02x%02x%02x", hook, front, ifindex);
+    (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
+                   "/sys/fs/bpf/bf_pmap_%02x%02x%02x", hook, front, ifindex);
 
     r = bf_printer_new(&_program->printer);
     if (r)
@@ -142,6 +154,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &program->hook, sizeof(program->hook));
     r |= bf_marsh_add_child_raw(&_marsh, &program->front,
                                 sizeof(program->front));
+    if (r)
+        return r;
 
     {
         // Serialise bf_program.printer
@@ -202,7 +216,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!child)
         return bf_err_code(-EINVAL, "failed to find valid child");
 
-    freep(&_program->printer);
+    bf_printer_free(&_program->printer);
     r = bf_printer_new_from_marsh(&_program->printer, child);
     if (r)
         return bf_err_code(r, "failed to restore bf_printer object");
@@ -294,16 +308,16 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-static inline size_t _round_next_power_of_2(size_t x)
+static inline size_t _bf_round_next_power_of_2(size_t value)
 {
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
+    value--;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
 
-    return ++x;
+    return ++value;
 }
 
 int bf_program_grow_img(struct bf_program *program)
@@ -314,7 +328,7 @@ int bf_program_grow_img(struct bf_program *program)
     bf_assert(program);
 
     if (program->img)
-        new_cap = _round_next_power_of_2(program->img_cap << 1);
+        new_cap = _bf_round_next_power_of_2(program->img_cap << 1);
 
     r = bf_realloc((void **)&program->img, new_cap * sizeof(struct bpf_insn));
     if (r < 0) {
@@ -328,19 +342,23 @@ int bf_program_grow_img(struct bf_program *program)
 }
 
 static void _bf_program_fixup_insn(struct bpf_insn *insn,
-                                   enum bf_fixup_insn_type type, int32_t v)
+                                   enum bf_fixup_insn_type type, int32_t value)
 {
     switch (type) {
     case BF_CODEGEN_FIXUP_INSN_OFF:
         bf_assert(!insn->off);
-        insn->off = v;
+        bf_assert(value < SHRT_MAX);
+        insn->off = (int16_t)value;
         break;
     case BF_CODEGEN_FIXUP_INSN_IMM:
         bf_assert(!insn->imm);
-        insn->imm = v;
+        insn->imm = value;
         break;
     default:
-        bf_assert(0);
+        bf_abort(
+            "unsupported fixup instruction type, this should not happen: %d",
+            type);
+        break;
     }
 }
 
@@ -353,7 +371,8 @@ static int _bf_program_fixup(struct bf_program *program,
 
     bf_list_foreach (&program->fixups, fixup_node) {
         enum bf_fixup_insn_type insn_type = _BF_CODEGEN_FIXUP_INSN_MAX_MAX;
-        int32_t v;
+        int32_t value;
+        size_t offset;
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
         struct bpf_insn *insn = &program->img[fixup->insn];
 
@@ -363,16 +382,19 @@ static int _bf_program_fixup(struct bf_program *program,
         switch (type) {
         case BF_CODEGEN_FIXUP_NEXT_RULE:
             insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
-            v = (int)(program->img_size - fixup->insn - 1U);
+            value = (int)(program->img_size - fixup->insn - 1U);
             break;
         case BF_CODEGEN_FIXUP_MAP_FD:
         case BF_CODEGEN_FIXUP_PRINTER_MAP_FD:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
-            v = attr->map_fd;
+            value = attr->map_fd;
             break;
         case BF_CODEGEN_FIXUP_FUNCTION_CALL:
             insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
-            v = program->functions_location[fixup->function] - fixup->insn - 1;
+            offset =
+                program->functions_location[fixup->function] - fixup->insn - 1;
+            bf_assert(offset < INT_MAX);
+            value = (int32_t)offset;
             break;
         case BF_CODEGEN_FIXUP_JUMP_TO_CHAIN:
         case BF_CODEGEN_FIXUP_COUNTERS_INDEX:
@@ -380,13 +402,12 @@ static int _bf_program_fixup(struct bf_program *program,
                 "BF_CODEGEN_FIXUP_JUMP_TO_CHAIN and BF_CODEGEN_FIXUP_COUNTERS_INDEX are not supported yet");
             return -ENOTSUP;
         default:
-            // Avoid `enumeration value not handled` warning, this should never
-            // happen as we check the type is valid before the switch.
-            bf_assert(0);
+            bf_abort("unsupported fixup type, this should not happen: %d",
+                     type);
             break;
         }
 
-        _bf_program_fixup_insn(insn, insn_type, v);
+        _bf_program_fixup_insn(insn, insn_type, value);
         bf_list_delete(&program->fixups, fixup_node);
     }
 
@@ -564,9 +585,8 @@ static int _bf_program_generate_functions(struct bf_program *program)
                 return r;
             break;
         default:
-            // Avoid `enumeration value not handled` warning, this should never
-            // happen as we check the type is valid before the switch.
-            bf_assert(0);
+            bf_abort("unsupported fixup function, this should not happen: %d",
+                     fixup->function);
             break;
         }
 

@@ -6,10 +6,18 @@
 #include "bpfilter/cgen/stub.h"
 
 #include <linux/bpf.h>
-#include <linux/in.h>
+#include <linux/bpf_common.h>
+#include <linux/icmpv6.h>
+#include <linux/if_ether.h>
+#include <linux/in.h> // NOLINT
 #include <linux/in6.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 #include <endian.h>
+#include <stddef.h>
 
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/printer.h"
@@ -19,16 +27,19 @@
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/opts.h"
+#include "core/verdict.h"
 
 #include "external/filter.h"
 
 int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
                      size_t size)
 {
+    static const size_t write_size = 8;
+
     bf_assert(program);
     bf_assert(!(size % 8));
 
-    for (size_t i = 0; i < size; i += 8)
+    for (size_t i = 0; i < size; i += write_size)
         EMIT(program, BPF_ST_MEM(BPF_DW, addr_reg, i, 0));
 
     return 0;
@@ -43,8 +54,8 @@ int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
  * @param kfunc Name of the kfunc to use to create the dynamic pointer.
  * @return 0 on success, or negative errno value on error.
  */
-static int _stub_make_ctx_dynptr(struct bf_program *program,
-                                 enum bf_reg arg_reg, const char *kfunc)
+static int _bf_stub_make_ctx_dynptr(struct bf_program *program,
+                                    enum bf_reg arg_reg, const char *kfunc)
 {
     bf_assert(program);
     bf_assert(kfunc);
@@ -84,16 +95,16 @@ static int _stub_make_ctx_dynptr(struct bf_program *program,
 
 int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg)
 {
-    assert(program);
+    bf_assert(program);
 
-    return _stub_make_ctx_dynptr(program, md_reg, "bpf_dynptr_from_xdp");
+    return _bf_stub_make_ctx_dynptr(program, md_reg, "bpf_dynptr_from_xdp");
 }
 
 int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, enum bf_reg skb_reg)
 {
-    assert(program);
+    bf_assert(program);
 
-    return _stub_make_ctx_dynptr(program, skb_reg, "bpf_dynptr_from_skb");
+    return _bf_stub_make_ctx_dynptr(program, skb_reg, "bpf_dynptr_from_skb");
 }
 
 int bf_stub_parse_l2_ethhdr(struct bf_program *program)

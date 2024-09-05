@@ -11,15 +11,17 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/syscall.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/logger.h"
 #include "core/nf.h"
 #include "core/opts.h"
 
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
+#define BPF_SYSCALL_NR 321
 
 /**
  * BPF system call.
@@ -29,9 +31,9 @@
  * @return System call return value on success, or negative errno value on
  *         failure.
  */
-static int _bpf(enum bpf_cmd cmd, union bpf_attr *attr)
+static int _bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 {
-    int r = (int)syscall(__NR_bpf, cmd, attr, sizeof(*attr));
+    int r = (int)syscall(BPF_SYSCALL_NR, cmd, attr, sizeof(*attr));
     if (r < 0)
         return -errno;
 
@@ -65,9 +67,9 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
         attr.log_level = 1;
     }
 
-    snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
+    (void)snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
 
-    r = _bpf(BPF_PROG_LOAD, &attr);
+    r = _bf_bpf(BPF_PROG_LOAD, &attr);
     if (r < 0) {
         return bf_err_code(r, "failed to load BPF program (%lu bytes):\n%s\n",
                            img_len, log_buf ?: "(no log buffer available)");
@@ -91,9 +93,9 @@ int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
     };
     int r;
 
-    snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", name);
+    (void)snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", name);
 
-    r = _bpf(BPF_MAP_CREATE, &attr);
+    r = _bf_bpf(BPF_MAP_CREATE, &attr);
     if (r < 0)
         return r;
 
@@ -113,7 +115,7 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
     bf_assert(key);
     bf_assert(value);
 
-    return _bpf(BPF_MAP_LOOKUP_ELEM, &attr);
+    return _bf_bpf(BPF_MAP_LOOKUP_ELEM, &attr);
 }
 
 int bf_bpf_map_update_elem(int fd, const void *key, void *value)
@@ -125,7 +127,7 @@ int bf_bpf_map_update_elem(int fd, const void *key, void *value)
         .flags = BPF_ANY,
     };
 
-    return _bpf(BPF_MAP_UPDATE_ELEM, &attr);
+    return _bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
 }
 
 int bf_bpf_obj_pin(const char *path, int fd)
@@ -135,7 +137,7 @@ int bf_bpf_obj_pin(const char *path, int fd)
         .bpf_fd = fd,
     };
 
-    return _bpf(BPF_OBJ_PIN, &attr);
+    return _bf_bpf(BPF_OBJ_PIN, &attr);
 }
 
 int bf_bpf_obj_get(const char *path, int *fd)
@@ -148,7 +150,7 @@ int bf_bpf_obj_get(const char *path, int *fd)
     bf_assert(path);
     bf_assert(fd);
 
-    r = _bpf(BPF_OBJ_GET, &attr);
+    r = _bf_bpf(BPF_OBJ_GET, &attr);
     if (r < 0)
         return r;
 
@@ -157,8 +159,8 @@ int bf_bpf_obj_get(const char *path, int *fd)
     return 0;
 }
 
-int bf_bpf_tc_link_create(int prog_fd, int ifindex, enum bpf_attach_type hook,
-                          int *link_fd)
+int bf_bpf_tc_link_create(int prog_fd, unsigned int ifindex,
+                          enum bpf_attach_type hook, int *link_fd)
 {
     union bpf_attr attr = {};
     int r;
@@ -167,7 +169,7 @@ int bf_bpf_tc_link_create(int prog_fd, int ifindex, enum bpf_attach_type hook,
     attr.link_create.target_fd = ifindex;
     attr.link_create.attach_type = hook;
 
-    r = _bpf(BPF_LINK_CREATE, &attr);
+    r = _bf_bpf(BPF_LINK_CREATE, &attr);
     if (r < 0)
         return r;
 
@@ -188,7 +190,7 @@ int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
     attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
     attr.link_create.netfilter.priority = priority;
 
-    r = _bpf(BPF_LINK_CREATE, &attr);
+    r = _bf_bpf(BPF_LINK_CREATE, &attr);
     if (r < 0)
         return r;
 
@@ -197,7 +199,7 @@ int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
     return 0;
 }
 
-int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
+int bf_bpf_xdp_link_create(int prog_fd, unsigned int ifindex, int *link_fd,
                            enum bf_xdp_attach_mode mode)
 {
     union bpf_attr attr = {};
@@ -208,7 +210,7 @@ int bf_bpf_xdp_link_create(int prog_fd, int ifindex, int *link_fd,
     attr.link_create.attach_type = BPF_XDP;
     attr.link_create.flags = mode;
 
-    r = _bpf(BPF_LINK_CREATE, &attr);
+    r = _bf_bpf(BPF_LINK_CREATE, &attr);
     if (r < 0)
         return r;
 
@@ -224,7 +226,7 @@ int bf_bpf_xdp_link_update(int link_fd, int prog_fd)
     attr.link_update.link_fd = link_fd;
     attr.link_update.new_prog_fd = prog_fd;
 
-    return _bpf(BPF_LINK_UPDATE, &attr);
+    return _bf_bpf(BPF_LINK_UPDATE, &attr);
 }
 
 int bf_bpf_link_update(int link_fd, int prog_fd)
@@ -234,7 +236,7 @@ int bf_bpf_link_update(int link_fd, int prog_fd)
     attr.link_update.link_fd = link_fd;
     attr.link_update.new_prog_fd = prog_fd;
 
-    return _bpf(BPF_LINK_UPDATE, &attr);
+    return _bf_bpf(BPF_LINK_UPDATE, &attr);
 }
 
 int bf_bpf_link_detach(int link_fd)
@@ -243,5 +245,5 @@ int bf_bpf_link_detach(int link_fd)
         .link_detach.link_fd = link_fd,
     };
 
-    return _bpf(BPF_LINK_DETACH, &attr);
+    return _bf_bpf(BPF_LINK_DETACH, &attr);
 }

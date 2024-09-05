@@ -5,10 +5,19 @@
 
 #include "chain.h"
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "core/dump.h"
 #include "core/helper.h"
+#include "core/hook.h"
+#include "core/list.h"
+#include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
 #include "core/set.h"
+#include "core/verdict.h"
 
 int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)
@@ -52,8 +61,8 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
                             const struct bf_marsh *marsh)
 {
     _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
-    struct bf_marsh *child = NULL;
-    struct bf_marsh *subchild = NULL;
+    struct bf_marsh *chain_elem = NULL;
+    struct bf_marsh *list_elem = NULL;
     enum bf_hook hook;
     enum bf_verdict policy;
     int r;
@@ -61,26 +70,26 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     bf_assert(chain);
     bf_assert(marsh);
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
         return -EINVAL;
-    memcpy(&hook, child->data, sizeof(hook));
+    memcpy(&hook, chain_elem->data, sizeof(hook));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
         return -EINVAL;
-    memcpy(&policy, child->data, sizeof(policy));
+    memcpy(&policy, chain_elem->data, sizeof(policy));
 
     r = bf_chain_new(&_chain, hook, policy, NULL, NULL);
     if (r)
         return r;
 
     // Unmarsh bf_chain.sets
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
         return -EINVAL;
 
-    while ((subchild = bf_marsh_next_child(child, subchild))) {
+    while ((list_elem = bf_marsh_next_child(chain_elem, list_elem))) {
         _cleanup_bf_set_ struct bf_set *set = NULL;
 
-        r = bf_set_new_from_marsh(&set, subchild);
+        r = bf_set_new_from_marsh(&set, list_elem);
         if (r)
             return r;
 
@@ -92,13 +101,13 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     }
 
     // Unmarsh bf_chain.rules
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
         return -EINVAL;
-    subchild = NULL;
-    while ((subchild = bf_marsh_next_child(child, subchild))) {
+    list_elem = NULL;
+    while ((list_elem = bf_marsh_next_child(chain_elem, list_elem))) {
         _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 
-        r = bf_rule_unmarsh(subchild, &rule);
+        r = bf_rule_unmarsh(list_elem, &rule);
         if (r)
             return r;
 
@@ -123,7 +132,7 @@ void bf_chain_free(struct bf_chain **chain)
 
     bf_list_clean(&(*chain)->sets);
     bf_list_clean(&(*chain)->rules);
-    freep(chain);
+    freep((void *)chain);
 }
 
 int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)

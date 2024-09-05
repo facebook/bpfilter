@@ -9,10 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/dump.h"
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/matcher.h"
 #include "core/verdict.h"
 
 int bf_rule_new(struct bf_rule **rule)
@@ -60,6 +62,8 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 
     r |= bf_marsh_add_child_raw(&_marsh, &rule->index, sizeof(rule->index));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->ifindex, sizeof(rule->ifindex));
+    if (r)
+        return r;
 
     {
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
@@ -100,7 +104,7 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
-    struct bf_marsh *child = NULL;
+    struct bf_marsh *rule_elem = NULL;
     int r;
 
     bf_assert(marsh);
@@ -110,24 +114,24 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
     if (r < 0)
         return r;
 
-    if (!(child = bf_marsh_next_child(marsh, NULL)))
+    if (!(rule_elem = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
-    memcpy(&_rule->index, child->data, sizeof(_rule->index));
+    memcpy(&_rule->index, rule_elem->data, sizeof(_rule->index));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
-    memcpy(&_rule->ifindex, child->data, sizeof(_rule->ifindex));
+    memcpy(&_rule->ifindex, rule_elem->data, sizeof(_rule->ifindex));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
 
     {
-        struct bf_marsh *subchild = NULL;
+        struct bf_marsh *matcher_elem = NULL;
 
-        while ((subchild = bf_marsh_next_child(child, subchild))) {
+        while ((matcher_elem = bf_marsh_next_child(rule_elem, matcher_elem))) {
             _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
 
-            r = bf_matcher_new_from_marsh(&matcher, subchild);
+            r = bf_matcher_new_from_marsh(&matcher, matcher_elem);
             if (r)
                 return r;
 
@@ -139,15 +143,15 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
         }
     }
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
-    memcpy(&_rule->counters, child->data, sizeof(_rule->counters));
+    memcpy(&_rule->counters, rule_elem->data, sizeof(_rule->counters));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
-    memcpy(&_rule->verdict, child->data, sizeof(_rule->verdict));
+    memcpy(&_rule->verdict, rule_elem->data, sizeof(_rule->verdict));
 
-    if (bf_marsh_next_child(marsh, child))
+    if (bf_marsh_next_child(marsh, rule_elem))
         bf_warn("codegen marsh has more children than expected");
 
     *rule = TAKE_PTR(_rule);

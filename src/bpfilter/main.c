@@ -3,7 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bits/types/sig_atomic_t.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -16,6 +15,7 @@
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
 #include "core/btf.h"
+#include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/io.h"
@@ -25,10 +25,12 @@
 #include "core/request.h"
 #include "core/response.h"
 
+#define BF_PERM_755 (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
+
 /**
  * Global flag to indicate whether the daemon should stop.
  */
-static volatile sig_atomic_t _stop_received = 0;
+static volatile sig_atomic_t _bf_stop_received = 0;
 
 /**
  * Path to bpfilter's runtime context file.
@@ -47,11 +49,11 @@ static const char *context_path = BF_RUNTIME_DIR "/data.bin";
  *
  * @param sig Signal number.
  */
-void _sig_handler(int sig)
+void _bf_sig_handler(int sig)
 {
     UNUSED(sig);
 
-    _stop_received = 1;
+    _bf_stop_received = 1;
 }
 
 /**
@@ -70,15 +72,19 @@ static int _bf_ensure_runtime_dir(void)
 
     r = access(BF_RUNTIME_DIR, R_OK | W_OK);
     if (r < 0 && errno == ENOENT) {
-        if (mkdir(BF_RUNTIME_DIR, 0755) == 0)
+        if (mkdir(BF_RUNTIME_DIR, BF_PERM_755) == 0)
             return 0;
 
         return bf_err_code(errno, "failed to create runtime directory '%s'",
                            BF_RUNTIME_DIR);
-    } else if (r < 0 && errno == EACCES) {
+    }
+
+    if (r < 0 && errno == EACCES) {
         return bf_err_code(errno, "can't access runtime directory '%s'",
                            BF_RUNTIME_DIR);
-    } else if (r < 0) {
+    }
+
+    if (r < 0) {
         return bf_err_code(errno, "failed to access runtime directory '%s'",
                            BF_RUNTIME_DIR);
     }
@@ -118,14 +124,15 @@ static int _bf_load(const char *path)
     bf_assert(path);
 
     if (access(context_path, F_OK)) {
-        if (errno == ENOENT) {
-            bf_info("no serialized context found on disk, "
-                    "a new context will be created");
-            return 0;
-        } else {
+        if (errno != ENOENT) {
             return bf_info_code(errno, "failed test access to context file: %s",
                                 path);
         }
+
+        bf_info("no serialized context found on disk, "
+                "a new context will be created");
+
+        return 0;
     }
 
     r = bf_read_file(path, (void **)&marsh, &len);
@@ -251,7 +258,7 @@ static int _bf_save(const char *path)
  */
 static int _bf_init(int argc, char *argv[])
 {
-    struct sigaction sighandler = {.sa_handler = _sig_handler};
+    struct sigaction sighandler = {.sa_handler = _bf_sig_handler};
     int r = 0;
 
     if (sigaction(SIGINT, &sighandler, NULL) < 0)
@@ -339,7 +346,7 @@ static int _bf_clean(void)
  * If the handler returns 0, @p response is expected to be filled, and ready
  * to be returned to the client.
  * If the handler returns a negative error code, @p response is filled by @ref
- * _process_request with a generated error response and 0 is returned. If
+ * _bf_process_request with a generated error response and 0 is returned. If
  * generating the error response fails, then 0 is returned.
  *
  * In other words, if 0 is returned, @p response is ready to be sent back, if
@@ -350,8 +357,8 @@ static int _bf_clean(void)
  * @param response Response to fill.
  * @return 0 on success, negative error code on failure.
  */
-static int _process_request(struct bf_request *request,
-                            struct bf_response **response)
+static int _bf_process_request(struct bf_request *request,
+                               struct bf_response **response)
 {
     const struct bf_front_ops *ops;
     int r;
@@ -388,12 +395,12 @@ static int _process_request(struct bf_request *request,
  * Create a socket and perform blocking accept() calls. For each connection,
  * receive a request, process it, and send the response back.
  *
- * If a signal is received, @ref _stop_received will be set to 1 by @ref
- * _sig_handler and blocking call to `accept()` will be interrupted.
+ * If a signal is received, @ref _bf_stop_received will be set to 1 by @ref
+ * _bf_sig_handler and blocking call to `accept()` will be interrupted.
  *
  * @return 0 on success, negative error code on failure.
  */
-static int _run(void)
+static int _bf_run(void)
 {
     _cleanup_close_ int fd = -1;
     struct sockaddr_un addr = {};
@@ -418,14 +425,14 @@ static int _run(void)
 
     bf_info("waiting for requests...");
 
-    while (!_stop_received) {
+    while (!_bf_stop_received) {
         _cleanup_close_ int client_fd = -1;
         _cleanup_bf_request_ struct bf_request *request = NULL;
         _cleanup_bf_response_ struct bf_response *response = NULL;
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {
-            if (_stop_received) {
+            if (_bf_stop_received) {
                 bf_info("received stop signal, exiting...");
                 continue;
             }
@@ -437,7 +444,7 @@ static int _run(void)
         if (r < 0)
             return bf_err_code(r, "failed to receive request");
 
-        r = _process_request(request, &response);
+        r = _bf_process_request(request, &response);
         if (r) {
             bf_err("failed to process request");
             continue;
@@ -465,7 +472,7 @@ int main(int argc, char *argv[])
     if (r < 0)
         return bf_err_code(r, "failed to initialize bpfilter");
 
-    r = _run();
+    r = _bf_run();
     if (r < 0)
         return bf_err_code(r, "run() failed");
 

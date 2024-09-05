@@ -9,6 +9,8 @@
 #include "harness/helper.h"
 #include "harness/mock.h"
 
+#include "bpfilter/cgen/reg.h"
+
 /**
  * Create a context and emit a given number of instructions.
  *

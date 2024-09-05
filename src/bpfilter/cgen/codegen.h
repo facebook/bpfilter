@@ -15,6 +15,7 @@
 #include "core/verdict.h"
 
 struct bf_marsh;
+struct bf_program;
 
 #define _cleanup_bf_codegen_ __attribute__((cleanup(bf_codegen_free)))
 

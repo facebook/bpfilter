@@ -5,9 +5,12 @@
 
 #pragma once
 
+#include <linux/bpf.h>
+
 #include <stdint.h>
 
 #include "bpfilter/cgen/reg.h"
+#include "core/helper.h"
 #include "core/list.h"
 
 /**

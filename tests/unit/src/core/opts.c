@@ -13,7 +13,7 @@ Test(opts, no_nftables)
 {
     char *opt0[] = {"tests_unit", "--no-nftables"};
 
-    _opts.fronts = 0xffff;
+    _bf_opts.fronts = 0xffff;
     assert_success(bf_opts_init(ARRAY_SIZE(opt0), opt0));
-    assert(0 == (_opts.fronts & (1 << BF_FRONT_NFT)));
+    assert(0 == (_bf_opts.fronts & (1 << BF_FRONT_NFT)));
 }

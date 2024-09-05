@@ -7,13 +7,22 @@
 #include <linux/netfilter/nf_tables.h>
 
 #include <endian.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "bpfilter/cgen/codegen.h"
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
 #include "bpfilter/xlate/nft/nfmsg.h"
+#include "core/counter.h"
+#include "core/dump.h"
+#include "core/front.h"
+#include "core/helper.h"
 #include "core/hook.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/matcher.h"
@@ -23,6 +32,13 @@
 #include "core/verdict.h"
 
 struct bf_marsh;
+
+enum
+{
+    BF_IP4HDR_PROTO_OFFSET = 9,
+    BF_IP4HDR_SADDR_OFFSET = 12,
+    BF_IP4HDR_DADDR_OFFSET = 16,
+};
 
 static const char *_bf_table_name = "bpfilter";
 static const char *_bf_chain_name = "prerouting";
@@ -371,7 +387,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
                   _bf_chain_name))
         return bf_err_code(-EINVAL, "invalid chain name");
 
-    parent = attr = rule_attrs[NFTA_RULE_EXPRESSIONS];
+    parent = rule_attrs[NFTA_RULE_EXPRESSIONS];
     if (!parent)
         return bf_err_code(-EINVAL, "missing NFTA_RULE_EXPRESSIONS attribute");
     rem = bf_nfattr_data_len(parent);
@@ -509,28 +525,28 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     rule->counters = counter;
     switch (off) {
-    case 9:
+    case BF_IP4HDR_PROTO_OFFSET:
         r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                 (uint16_t[]) {htobe32(cmp_value)},
                                 sizeof(uint16_t));
         if (r)
             return r;
         break;
-    case 12:
-        r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_SRC_ADDR, BF_MATCHER_EQ,
-                                (struct bf_matcher_ip4_addr[]) {
-                                    {.addr = htobe32(cmp_value),
-                                     .mask = 0xffffffff >> (32 - len * 8)}},
-                                sizeof(struct bf_matcher_ip4_addr));
+    case BF_IP4HDR_SADDR_OFFSET:
+        r = bf_rule_add_matcher(
+            rule, BF_MATCHER_IP4_SRC_ADDR, BF_MATCHER_EQ,
+            (struct bf_matcher_ip4_addr[]) {
+                {.addr = htobe32(cmp_value), .mask = ~0ULL >> (32 - len * 8)}},
+            sizeof(struct bf_matcher_ip4_addr));
         if (r)
             return r;
         break;
-    case 16:
-        r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
-                                (struct bf_matcher_ip4_addr[]) {
-                                    {.addr = htobe32(cmp_value),
-                                     .mask = 0xffffffff >> (32 - len * 8)}},
-                                sizeof(struct bf_matcher_ip4_addr));
+    case BF_IP4HDR_DADDR_OFFSET:
+        r = bf_rule_add_matcher(
+            rule, BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
+            (struct bf_matcher_ip4_addr[]) {
+                {.addr = htobe32(cmp_value), .mask = ~0ULL >> (32 - len * 8)}},
+            sizeof(struct bf_matcher_ip4_addr));
         if (r)
             return r;
         break;

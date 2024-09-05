@@ -5,9 +5,23 @@
 
 #include "bpfilter/cgen/swich.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/cgen/reg.h"
 #include "core/helper.h"
+#include "core/list.h"
+#include "core/logger.h"
+
+#include "external/filter.h"
 
 /// Cleanup attribute for a @ref bf_swich_option variable.
 #define _cleanup_bf_swich_option_                                              \

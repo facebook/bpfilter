@@ -4,15 +4,20 @@
  */
 
 #include <argp.h>
+#include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
 #include "core/chain.h"
-#include "core/dump.h"
+#include "core/front.h"
+#include "core/helper.h"
 #include "core/list.h"
+#include "core/logger.h"
 #include "core/marsh.h"
 #include "core/request.h"
 #include "core/response.h"
@@ -23,7 +28,7 @@ int bf_send(const struct bf_request *request, struct bf_response **response);
 static struct bf_options
 {
     const char *input_file;
-} _opts = {
+} _bf_opts = {
     .input_file = NULL,
 };
 
@@ -41,16 +46,12 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     switch (key) {
     case 'f':
         opts->input_file = strdup(arg);
-        if (!opts->input_file) {
-            fprintf(stderr, "failed to allocate memory for '%s'\n", arg);
-            return -ENOMEM;
-        }
+        if (!opts->input_file)
+            return bf_err_code(-ENOMEM, "failed to copy input file path");
         break;
     case ARGP_KEY_END:
-        if (!opts->input_file) {
-            fprintf(stderr, "--file is required\n");
-            return -EINVAL;
-        }
+        if (!opts->input_file)
+            return bf_err_code(-EINVAL, "--file argument is required");
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -68,11 +69,7 @@ int main(int argc, char *argv[])
     };
     int r;
 
-    r = argp_parse(&argp, argc, argv, 0, 0, &_opts);
-    if (r) {
-        fprintf(stderr, "failed to parse arguments\n");
-        return EXIT_FAILURE;
-    }
+    bf_logger_setup();
 
     r = argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
     if (r) {
@@ -81,7 +78,9 @@ int main(int argc, char *argv[])
         goto end_clean;
     }
 
-    FILE *rules = fopen(_opts.input_file, "r");
+    bf_info("using source file: %s", _bf_opts.input_file);
+
+    FILE *rules = fopen(_bf_opts.input_file, "r");
     if (!rules) {
         r = errno;
         bf_err_code(r, "failed to read rules from %s:", _bf_opts.input_file);
@@ -120,13 +119,13 @@ int main(int argc, char *argv[])
 
         r = bf_chain_marsh(chain, &marsh);
         if (r) {
-            fprintf(stderr, "failed to marsh chain, skipping\n");
+            bf_err_code(r, "failed to marsh chain, skipping");
             continue;
         }
 
         r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
         if (r) {
-            fprintf(stderr, "failed to create request for chain, skipping\n");
+            bf_err_code(r, "failed to create request for chain, skipping");
             continue;
         }
 
@@ -135,14 +134,12 @@ int main(int argc, char *argv[])
 
         r = bf_send(request, &response);
         if (r) {
-            fprintf(stderr,
-                    "failed to send chain creation request, skipping\n");
+            bf_err_code(r, "failed to send chain creation request, skipping");
             continue;
         }
 
         if (response->type == BF_RES_FAILURE) {
-            fprintf(stderr, "chain creation request failed, %d received\n",
-                    response->error);
+            bf_err_code(response->error, "chain creation request failed");
             continue;
         }
     }

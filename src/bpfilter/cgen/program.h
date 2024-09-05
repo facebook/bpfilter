@@ -19,12 +19,15 @@
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/printer.h"
-#include "bpfilter/cgen/reg.h"
 #include "core/dump.h"
+#include "core/flavor.h"
 #include "core/front.h"
+#include "core/helper.h"
 #include "core/hook.h"
 #include "core/list.h"
 #include "core/verdict.h"
+
+#include "external/filter.h"
 
 #define PIN_PATH_LEN 64
 
@@ -199,8 +202,8 @@ struct bf_program
 
 #define _cleanup_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
-int bf_program_new(struct bf_program **program, int ifindex, enum bf_hook hook,
-                   enum bf_front front);
+int bf_program_new(struct bf_program **program, unsigned int ifindex,
+                   enum bf_hook hook, enum bf_front front);
 void bf_program_free(struct bf_program **program);
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
 int bf_program_unmarsh(const struct bf_marsh *marsh,

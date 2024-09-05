@@ -5,7 +5,13 @@
 
 #include "core/matcher.h"
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "core/dump.h"
 #include "core/helper.h"
+#include "core/logger.h"
 #include "core/marsh.h"
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,

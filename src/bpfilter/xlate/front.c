@@ -5,6 +5,7 @@
 
 #include "bpfilter/xlate/front.h"
 
+#include "core/front.h"
 #include "core/helper.h"
 
 extern const struct bf_front_ops ipt_front;

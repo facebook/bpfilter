@@ -6,19 +6,20 @@
 #include "core/logger.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <unistd.h>
 
 /// If true, log messages will be printed in colors.
-static bool _can_print_color = false;
+static bool _bf_can_print_color = false;
 
 void bf_logger_setup(void)
 {
-    _can_print_color = isatty(fileno(stdout)) && isatty(fileno(stderr));
+    _bf_can_print_color = isatty(fileno(stdout)) && isatty(fileno(stderr));
 }
 
 const char *bf_logger_get_color(enum bf_color color, enum bf_style style)
 {
-    if (!_can_print_color) {
+    if (!_bf_can_print_color) {
         return "";
     }
 

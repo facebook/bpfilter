@@ -5,12 +5,23 @@
 
 #include "bpfilter/cgen/matcher/ip4.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+
 #include <endian.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
 #include "core/matcher.h"
+
+#include "external/filter.h"
 
 static int
 _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
@@ -24,7 +35,7 @@ _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
     EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_L3, offset));
     EMIT(program, BPF_MOV32_IMM(BF_REG_2, addr->addr));
 
-    if (addr->mask != 0xffffffff) {
+    if (addr->mask != ~0U) {
         EMIT(program, BPF_MOV32_IMM(BF_REG_3, addr->mask));
         EMIT(program, BPF_ALU32_REG(BPF_AND, BF_REG_2, BF_REG_3));
     }

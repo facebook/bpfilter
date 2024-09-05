@@ -7,18 +7,24 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "bpfilter/cgen/dump.h"
 #include "bpfilter/cgen/program.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/if.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
+#include "core/verdict.h"
 
 int bf_codegen_new(struct bf_codegen **codegen)
 {
@@ -146,7 +152,7 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
                        struct bf_codegen **codegen)
 {
     _cleanup_bf_codegen_ struct bf_codegen *_codegen = NULL;
-    struct bf_marsh *child = NULL;
+    struct bf_marsh *marsh_elem = NULL;
     int r;
 
     bf_assert(marsh);
@@ -156,15 +162,15 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
     if (r)
         return bf_err_code(r, "failed to allocate codegen object");
 
-    if (!(child = bf_marsh_next_child(marsh, NULL)))
+    if (!(marsh_elem = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
 
     {
-        struct bf_marsh *subchild = NULL;
+        struct bf_marsh *rule_elem = NULL;
 
-        while ((subchild = bf_marsh_next_child(child, subchild))) {
+        while ((rule_elem = bf_marsh_next_child(marsh_elem, rule_elem))) {
             _cleanup_bf_rule_ struct bf_rule *rule = NULL;
-            r = bf_rule_unmarsh(subchild, &rule);
+            r = bf_rule_unmarsh(rule_elem, &rule);
             if (r)
                 return r;
 
@@ -176,14 +182,15 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
         }
     }
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
 
     {
-        struct bf_marsh *subchild = NULL;
-        while ((subchild = bf_marsh_next_child(child, subchild))) {
+        struct bf_marsh *prog_elem = NULL;
+
+        while ((prog_elem = bf_marsh_next_child(marsh_elem, prog_elem))) {
             _cleanup_bf_program_ struct bf_program *program = NULL;
-            r = bf_program_unmarsh(subchild, &program);
+            r = bf_program_unmarsh(prog_elem, &program);
             if (r)
                 return r;
 
@@ -195,19 +202,19 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
         }
     }
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
-    memcpy(&_codegen->hook, child->data, sizeof(_codegen->hook));
+    memcpy(&_codegen->hook, marsh_elem->data, sizeof(_codegen->hook));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
-    memcpy(&_codegen->front, child->data, sizeof(_codegen->front));
+    memcpy(&_codegen->front, marsh_elem->data, sizeof(_codegen->front));
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
-    memcpy(&_codegen->policy, child->data, sizeof(_codegen->policy));
+    memcpy(&_codegen->policy, marsh_elem->data, sizeof(_codegen->policy));
 
-    if (bf_marsh_next_child(marsh, child))
+    if (bf_marsh_next_child(marsh, marsh_elem))
         bf_warn("codegen marsh has more children than expected");
 
     *codegen = TAKE_PTR(_codegen);
@@ -308,9 +315,13 @@ int bf_codegen_up(struct bf_codegen *codegen)
     bf_assert(codegen);
 
     n_ifaces = bf_if_get_ifaces(&ifaces);
-    if (n_ifaces < 0)
+    if (n_ifaces < 0) {
         return bf_err_code((int)n_ifaces,
                            "failed to fetch interfaces for codegen");
+    }
+
+    if (n_ifaces == 0)
+        return bf_err_code(-ENOENT, "no interface found!");
 
     for (ssize_t i = 0; i < n_ifaces; ++i) {
         _cleanup_bf_program_ struct bf_program *prog = NULL;
@@ -359,14 +370,18 @@ int bf_codegen_update(struct bf_codegen *codegen)
             return bf_err_code(r, "failed to create a new bf_program");
 
         r = bf_program_generate(new_prog, &codegen->rules, codegen->policy);
-        if (r)
-            return bf_err_code(
-                r, "failed to generate the bytecode for a new bf_program");
+        if (r) {
+            {
+                return bf_err_code(
+                    r, "failed to generate the bytecode for a new bf_program");
+            }
+        }
 
         r = bf_program_load(new_prog, old_prog);
-        if (r)
+        if (r) {
             return bf_err_code(
                 r, "failed to attach the new bf_program, keeping the old one");
+        }
 
         program_node->data = TAKE_PTR(new_prog);
         bf_program_free(&old_prog);

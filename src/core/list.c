@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "core/helper.h"
+
 /**
  * Create a new list node, with the given data.
  *

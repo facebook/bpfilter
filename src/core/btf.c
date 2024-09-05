@@ -5,19 +5,22 @@
 
 #include "core/btf.h"
 
+#include <linux/btf.h>
+
 #include <bpf/btf.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 
 #include "core/helper.h"
 #include "core/logger.h"
 
-static struct btf *_btf = NULL;
+static struct btf *_bf_btf = NULL;
 
 int bf_btf_setup(void)
 {
-    _btf = btf__load_vmlinux_btf();
-    if (!_btf)
+    _bf_btf = btf__load_vmlinux_btf();
+    if (!_bf_btf)
         return bf_err_code(errno, "failed to load vmlinux BTF");
 
     return 0;
@@ -25,8 +28,8 @@ int bf_btf_setup(void)
 
 void bf_btf_teardown(void)
 {
-    btf__free(_btf);
-    _btf = NULL;
+    btf__free(_bf_btf);
+    _bf_btf = NULL;
 }
 
 int bf_btf_get_id(const char *name)
@@ -35,7 +38,7 @@ int bf_btf_get_id(const char *name)
 
     bf_assert(name);
 
-    id = btf__find_by_name(_btf, name);
+    id = btf__find_by_name(_bf_btf, name);
     if (id < 0)
         return bf_err_code(errno, "failed to find BTF type for \"%s\"", name);
 
@@ -49,26 +52,31 @@ int bf_btf_get_field_off(const char *struct_name, const char *field_name)
     struct btf_member *member;
     const struct btf_type *type;
 
-    struct_id = btf__find_by_name_kind(_btf, struct_name, BTF_KIND_STRUCT);
+    struct_id = btf__find_by_name_kind(_bf_btf, struct_name, BTF_KIND_STRUCT);
     if (struct_id < 0) {
         return bf_err_code(struct_id, "can't find structure '%s' in kernel BTF",
                            struct_name);
     }
 
-    type = btf__type_by_id(_btf, struct_id);
+    type = btf__type_by_id(_bf_btf, struct_id);
     if (!type)
         return bf_err_code(errno, "can't get btf_type for '%s'", struct_name);
 
     member = (struct btf_member *)(type + 1);
     for (size_t i = 0; i < BTF_INFO_VLEN(type->info); ++i, ++member) {
-        const char *cur_name = btf__name_by_offset(_btf, member->name_off);
+        const char *cur_name = btf__name_by_offset(_bf_btf, member->name_off);
         if (!cur_name || !bf_streq(cur_name, field_name))
             continue;
 
-        if (BTF_INFO_KFLAG(type->info))
+        if (BTF_INFO_KFLAG(type->info)) {
             offset = BTF_MEMBER_BIT_OFFSET(member->offset);
-        else
-            offset = member->offset;
+        } else {
+            if (member->offset > INT_MAX) {
+                return bf_err_code(-E2BIG, "BTF member offset is too big: %u",
+                                   member->offset);
+            }
+            offset = (int)member->offset;
+        }
 
         break;
     }

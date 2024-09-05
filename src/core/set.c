@@ -6,8 +6,12 @@
 #include "core/set.h"
 
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "core/dump.h"
 #include "core/helper.h"
+#include "core/list.h"
 #include "core/marsh.h"
 
 size_t _bf_set_type_elem_size(enum bf_set_type type)
@@ -85,7 +89,7 @@ void bf_set_free(struct bf_set **set)
         return;
 
     bf_list_clean(&(*set)->elems);
-    freep(set);
+    freep((void *)set);
 }
 
 int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)

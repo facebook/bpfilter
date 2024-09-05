@@ -6,10 +6,22 @@
 #include "core/opts.h"
 
 #include <argp.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 
+#include "core/front.h"
 #include "core/helper.h"
 #include "core/logger.h"
+
+enum
+{
+    BF_OPT_NO_IPTABLES_KEY,
+    BF_OPT_NO_NFTABLES_KEY,
+    BF_OPT_NO_CLI_KEY,
+    BF_OPT_DEBUG_KEY,
+};
 
 /**
  * bpfilter runtime configuration
@@ -35,7 +47,7 @@ static struct bf_options
      * a BPF helper or kfunc fails.
      */
     bool debug;
-} _opts = {
+} _bf_opts = {
     .transient = false,
     .bpf_log_buf_len_pow = 16,
     .fronts = 0xffff,
@@ -50,11 +62,14 @@ static struct argp_option options[] = {
     {"buffer-len", 'b', "BUF_LEN_POW", 0,
      "Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
      0},
-    {"no-iptables", 0x01, 0, 0, "Disable iptables support", 0},
-    {"no-nftables", 0x02, 0, 0, "Disable nftables support", 0},
-    {"no-cli", 0x04, 0, 0, "Disable CLI support", 0},
+    {"no-iptables", BF_OPT_NO_IPTABLES_KEY, 0, 0, "Disable iptables support",
+     0},
+    {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0, "Disable nftables support",
+     0},
+    {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
     {"verbose", 'v', 0, 0, "Print debug logs", 0},
-    {"debug", 0x03, 0, 0, "Generate BPF programs with debug logs", 0},
+    {"debug", BF_OPT_DEBUG_KEY, 0, 0, "Generate BPF programs with debug logs",
+     0},
     {0},
 };
 
@@ -68,30 +83,44 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     UNUSED(arg);
 
     struct bf_options *args = state->input;
+    long pow;
+    char *end;
 
     switch (key) {
     case 't':
         args->transient = true;
         break;
     case 'b':
-        args->bpf_log_buf_len_pow = atoi(arg);
+        errno = 0;
+        pow = strtol(arg, &end, 0);
+        if (errno == ERANGE) {
+            return bf_err_code(EINVAL, "failed to convert '%s' into an integer",
+                               arg);
+        }
+        if (pow > UINT_MAX) {
+            return bf_err_code(EINVAL, "--buffer-len can't be bigger than %d",
+                               UINT_MAX);
+        }
+        if (pow < 0)
+            return bf_err_code(EINVAL, "--buffer-len can't be negative");
+        args->bpf_log_buf_len_pow = (unsigned int)pow;
         break;
-    case 0x01:
+    case BF_OPT_NO_IPTABLES_KEY:
         bf_info("disabling iptables support");
         args->fronts &= ~(1 << BF_FRONT_IPT);
         break;
-    case 0x02:
+    case BF_OPT_NO_NFTABLES_KEY:
         bf_info("disabling nftables support");
         args->fronts &= ~(1 << BF_FRONT_NFT);
         break;
-    case 0x04:
+    case BF_OPT_NO_CLI_KEY:
         bf_info("disabling CLI support");
         args->fronts &= ~(1 << BF_FRONT_CLI);
         break;
     case 'v':
         args->verbose = true;
         break;
-    case 0x03:
+    case BF_OPT_DEBUG_KEY:
         bf_info("generating BPF programs with debug logs");
         args->debug = true;
         break;
@@ -106,30 +135,30 @@ int bf_opts_init(int argc, char *argv[])
 {
     struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
 
-    return argp_parse(&argp, argc, argv, 0, 0, &_opts);
+    return argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
 }
 
 bool bf_opts_transient(void)
 {
-    return _opts.transient;
+    return _bf_opts.transient;
 }
 
 unsigned int bf_opts_bpf_log_buf_len_pow(void)
 {
-    return _opts.bpf_log_buf_len_pow;
+    return _bf_opts.bpf_log_buf_len_pow;
 }
 
 bool bf_opts_is_front_enabled(enum bf_front front)
 {
-    return _opts.fronts & (1 << front);
+    return _bf_opts.fronts & (1 << front);
 }
 
 bool bf_opts_verbose(void)
 {
-    return _opts.verbose;
+    return _bf_opts.verbose;
 }
 
 bool bf_opts_debug(void)
 {
-    return _opts.debug;
+    return _bf_opts.debug;
 }
