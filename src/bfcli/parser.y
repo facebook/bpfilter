@@ -73,15 +73,29 @@
 
 // Grammar types
 %type <bval> counter
+
 %type <hook> hook
+
 %type <verdict> verdict
+
 %type <matcher_type> matcher_type
+
 %type <matcher_op> matcher_op
+
 %type <list> matchers
+%destructor { bf_list_free(&$$); } matchers
+
 %type <matcher> matcher
+%destructor { bf_matcher_free(&$$); } matcher
+
 %type <list> rules
+%destructor { bf_list_free(&$$); } rules
+
 %type <rule> rule
+%destructor { bf_rule_free(&$$); } rule
+
 %type <chain> chain
+%destructor { bf_chain_free(&$$); } chain
 
 %%
 chains          : chain
