@@ -37,6 +37,7 @@ find_program(CLANG_TIDY_BIN clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN clang-format REQUIRED)
 find_program(CLANG_BIN clang REQUIRED)
 find_program(BPFTOOL_BIN bpftool REQUIRED)
+find_program(JQ_BIN jq REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

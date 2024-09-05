@@ -37,6 +37,7 @@ jobs:
             libcmocka-devel \
             doxygen \
             git \
+            jq \
             lcov \
             libasan \
             libbpf-devel \
@@ -90,6 +91,7 @@ jobs:
             doxygen \
             flex \
             git \
+            jq \
             lcov \
             libasan \
             libbpf-devel \
@@ -113,8 +115,9 @@ jobs:
             cmake \
             doxygen \
             flex \
-            git \
             furo \
+            git \
+            jq \
             lcov \
             libbpf-dev \
             libcmocka-dev \

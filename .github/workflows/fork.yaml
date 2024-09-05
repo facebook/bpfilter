@@ -35,6 +35,7 @@ jobs:
             doxygen \
             flex \
             git \
+            jq \
             lcov \
             libasan \
             libbpf-devel \

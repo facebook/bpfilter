@@ -8,11 +8,10 @@ Required dependencies on Fedora and Ubuntu:
 .. code-block:: shell
 
     # Fedora
-    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex git lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan python3-breathe python3-furo python3-linuxdoc python3-sphinx pkgconf
+    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex git jq lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan python3-breathe python3-furo python3-linuxdoc python3-sphinx pkgconf
 
     # Ubuntu
-    sudo apt-get install -y bison clang clang-format clang-tidy cmake doxygen flex git furo lcov libpf-dev libcmocka-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf
-    pip3 install linuxdoc
+    sudo apt-get install -y bison clang clang-format clang-tidy cmake doxygen flex furo git jq lcov libpf-dev libcmocka-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf pip3 install linuxdoc
 
 You can then use CMake to generate the build system:
 
