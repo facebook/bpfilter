@@ -6,8 +6,8 @@ add_subdirectory(integration)
 add_subdirectory(bpf)
 
 get_target_property(core_srcs core SOURCES)
-get_target_property(lib_srcs lib SOURCES)
-get_target_property(daemon_srcs daemon SOURCES)
+get_target_property(lib_srcs libbpfilter_a SOURCES)
+get_target_property(bpfilter_srcs bpfilter SOURCES)
 
 add_custom_target(lint
     COMMAND
@@ -16,7 +16,7 @@ add_custom_target(lint
             -p ${CMAKE_BINARY_DIR}
             ${core_srcs}
             ${lib_srcs}
-            ${daemon_srcs}
+            ${bpfilter_srcs}
             ${CMAKE_SOURCE_DIR}/src/cli/cli.c
     COMMENT "Run linter on source files"
 )
@@ -28,8 +28,8 @@ add_custom_target(checkstyle
             --dry-run
             ${core_srcs}
             ${lib_srcs}
-            ${daemon_srcs}
-            ${CMAKE_SOURCE_DIR}/src/cli/cli.c
+            ${bpfilter_srcs}
+            ${CMAKE_SOURCE_DIR}/src/bfcli/main.c
     COMMENT "Check source code formatting"
 )
 

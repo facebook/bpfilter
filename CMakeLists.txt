@@ -57,36 +57,43 @@ endif ()
 
 # Ensure artefacts are moved to a common directory
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/include/bpfilter)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib/pkgconfig)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/bin)
 configure_file(
-    ${CMAKE_SOURCE_DIR}/src/lib/bpfilter.h
+    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
     ${CMAKE_BINARY_DIR}/output/include/bpfilter/bpfilter.h
 )
-
-set(bf_cflags
-    -std=gnu17 -Wall -Wextra
-    $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
-    $<$<CONFIG:release>:-O2>
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.pc.in
+    ${CMAKE_BINARY_DIR}/output/lib/pkgconfig/bpfilter.pc
 )
 
-set(bf_ldflags
-    $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
+add_library(bf_global_flags INTERFACE)
+target_compile_options(bf_global_flags
+    INTERFACE
+        -std=gnu17 -Wall -Wextra
+        $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
+        $<$<CONFIG:release>:-O2>
 )
-
-configure_file(resources/bpfilter.pc.in ${CMAKE_BINARY_DIR}/bpfilter.pc.in @ONLY)
-file(
-  GENERATE
-  OUTPUT ${CMAKE_BINARY_DIR}/bpfilter.pc
-  INPUT ${CMAKE_BINARY_DIR}/bpfilter.pc.in
-)
-
-install(
-    FILES ${CMAKE_BINARY_DIR}/bpfilter.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+target_link_options(bf_global_flags
+    INTERFACE
+        $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
 )
 
 add_subdirectory(src)
 add_subdirectory(tests)
 add_subdirectory(doc)
+
+install(TARGETS bpfilter libbpfilter_a libbpfilter_so bfcli)
+
+install(
+    FILES ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bpfilter
+)
+
+install(
+    FILES ${CMAKE_BINARY_DIR}/output/lib/pkgconfig/bpfilter.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)

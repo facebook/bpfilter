@@ -90,22 +90,22 @@ set(bf_test_srcs
     src/core/matcher.c
     src/core/rule.c
     src/core/verdict.c
-    src/daemon/cgen/codegen.c
-    src/daemon/cgen/jmp.c
-    src/daemon/cgen/printer.c
-    src/daemon/cgen/program.c
-    src/daemon/cgen/swich.c
-    src/daemon/context.c
-    src/daemon/xlate/nft/nft.c
-    src/daemon/xlate/nft/nfmsg.c
-    src/daemon/xlate/nft/nfgroup.c
+    src/bpfilter/cgen/codegen.c
+    src/bpfilter/cgen/jmp.c
+    src/bpfilter/cgen/printer.c
+    src/bpfilter/cgen/program.c
+    src/bpfilter/cgen/swich.c
+    src/bpfilter/context.c
+    src/bpfilter/xlate/nft/nft.c
+    src/bpfilter/xlate/nft/nfmsg.c
+    src/bpfilter/xlate/nft/nfgroup.c
 )
 
 get_target_property(core_srcs core SOURCES)
-get_target_property(daemon_srcs daemon SOURCES)
-get_target_property(lib_srcs lib SOURCES)
+get_target_property(bpfilter_srcs bpfilter SOURCES)
+get_target_property(lib_srcs libbpfilter_a SOURCES)
 
-list(REMOVE_ITEM daemon_srcs ${CMAKE_SOURCE_DIR}/src/daemon/daemon.c)
+list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 
 add_executable(unit_tests
     assert_override.h
@@ -122,7 +122,7 @@ add_executable(unit_tests
     ${bf_test_srcs}
 
     ${core_srcs}
-    ${daemon_srcs}
+    ${bpfilter_srcs}
     ${lib_srcs}
 )
 
@@ -131,21 +131,20 @@ bf_test_configure_non_build_srcs(unit_tests
         ${bf_test_srcs}
     SOURCES
         ${core_srcs}
-        ${daemon_srcs}
+        ${bpfilter_srcs}
         ${lib_srcs}
 )
 
 # The unit tests executable needs PIC disabled for test auto-discovery to work.
 set_property(TARGET unit_tests PROPERTY POSITION_INDEPENDENT_CODE FALSE)
 
-set_source_files_properties(${bf_test_srcs} ${core_srcs} ${lib_srcs}
+set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_srcs}
     PROPERTIES
         COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
 )
 
 target_compile_options(unit_tests
     PRIVATE
-        ${bf_cflags}
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
 )
 
@@ -157,14 +156,13 @@ target_include_directories(unit_tests
 
 target_link_libraries(unit_tests
     PRIVATE
+        bf_global_flags
         PkgConfig::bpf
         gcov
         PkgConfig::cmocka
         PkgConfig::elf
         PkgConfig::nl
 )
-
-target_link_options(unit_tests PUBLIC ${bf_ldflags})
 
 bf_test_mock(unit_tests
     FUNCTIONS
