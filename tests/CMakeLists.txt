@@ -14,7 +14,9 @@ file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/bfcli/*.h       ${CMAKE_SOURCE_DIR}/src/bfcli/*.c
 )
 
-add_custom_target(lint
+add_custom_command(
+    DEPENDS
+        ${CMAKE_BINARY_DIR}/compile_commands.json
     COMMAND
         # Create a new compile_commands.json file without tests/unit files,
         # as they use specific build flags to file include mock_assert(), which
@@ -22,26 +24,54 @@ add_custom_target(lint
         ${JQ_BIN}
             "del(.[] | select((.directory == \"${CMAKE_CURRENT_BINARY_DIR}/unit\")))"
             ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-    COMMAND
-        ${CLANG_TIDY_BIN}
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            -p ${CMAKE_CURRENT_BINARY_DIR}
-            ${bf_srcs}
-    COMMENT "Lint source files"
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+    COMMENT
+        "Generating filtered compile_commands.json"
     VERBATIM
 )
 
-add_custom_target(checkstyle
-    COMMAND
-        ${CLANG_FORMAT_BIN}
-            --style=file:${CMAKE_SOURCE_DIR}/.clang-format
-            --dry-run
-            ${bf_srcs}
-    COMMENT "Check source code formatting"
-)
+set(check_stamps "")
 
-add_custom_target(test
-    COMMAND $<TARGET_FILE:unit_tests>
-    DEPENDS unit_tests
-    COMMENT "Running tests"
+foreach (filepath ${bf_srcs})
+    get_filename_component(directory ${filepath} DIRECTORY)
+    file(RELATIVE_PATH rel_directory ${CMAKE_SOURCE_DIR} ${directory})
+    set(stamp_dir ${CMAKE_CURRENT_BINARY_DIR}/check_stamps/${rel_directory})
+
+    get_filename_component(filename ${filepath} NAME)
+    set(stamp_file ${stamp_dir}/${filename}.checked)
+
+    file(MAKE_DIRECTORY ${stamp_dir})
+
+    add_custom_command(
+        DEPENDS
+            ${filepath}
+            ${CMAKE_SOURCE_DIR}/.clang-tidy
+            ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+        COMMAND
+            ${CLANG_TIDY_BIN}
+                --quiet
+                --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+                -p ${CMAKE_CURRENT_BINARY_DIR}
+                --extra-arg=-fno-caret-diagnostics
+                ${filepath}
+        COMMAND
+            ${CLANG_FORMAT_BIN}
+                --style=file:${CMAKE_SOURCE_DIR}/.clang-format
+                --dry-run
+                ${filepath}
+        COMMAND
+            ${CMAKE_COMMAND} -E touch ${stamp_file}
+        OUTPUT ${stamp_file}
+        COMMENT "Checking ${rel_directory}/${filename}"
+    )
+
+    list(APPEND check_stamps ${stamp_file})
+endforeach ()
+
+# Generated files (especially from Bison and Flex) are required.
+add_custom_target(check
+    DEPENDS
+        bfcli
+        ${check_stamps}
 )
