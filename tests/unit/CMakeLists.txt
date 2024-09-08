@@ -178,3 +178,9 @@ bf_test_mock(unit_tests
         nlmsg_append
         bf_bpf_obj_get
 )
+
+add_custom_target(test
+    COMMAND $<TARGET_FILE:unit_tests>
+    DEPENDS unit_tests
+    COMMENT "Running tests"
+)
