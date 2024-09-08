@@ -5,7 +5,7 @@ Coding style
 
     This document is not yet complete, it will evolve gradually over time. If you are unsure about a specific rule: check ClangFormat's configuration (``.clang-format``), check this document, and check the existing code. If none of those can answer your question, do as you want.
 
-``bpfilter`` coding style is enforced by ClangFormat, as defined in its configuration file ``.clang-format`` at the root of the repository. The ``checkstyle`` build target can be used to validate all the source files under ``src``, but the issues won't be resolved automatically: changes performed by ClangFormat should be controlled by a developer.
+``bpfilter`` coding style is enforced by ClangFormat, as defined in its configuration file ``.clang-format`` at the root of the repository. The ``check`` build target can be used to validate all the source files under ``src``, but the issues won't be resolved automatically: changes performed by ClangFormat should be controlled by a developer.
 
 To format a source file using ClangFormat (from the root of the repository):
 

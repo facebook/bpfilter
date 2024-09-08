@@ -54,6 +54,6 @@ jobs:
       # Skip unit tests, the GitHub-hosted runners' kernel is too old.
       # Skip coverage as unit tests are not run.
       - name: Check style
-        run: make -C $GITHUB_WORKSPACE/build checkstyle
+        run: make -C $GITHUB_WORKSPACE/build check
       - name: Generate documentation
         run: make -C $GITHUB_WORKSPACE/build doc

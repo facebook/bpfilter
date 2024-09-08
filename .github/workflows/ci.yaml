@@ -63,7 +63,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Check style
-        run: make -C $GITHUB_WORKSPACE/build checkstyle
+        run: make -C $GITHUB_WORKSPACE/build check
       - name: Generate documentation
         run: make -C $GITHUB_WORKSPACE/build doc
 
