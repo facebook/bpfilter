@@ -75,3 +75,12 @@ add_custom_target(check
         bfcli
         ${check_stamps}
 )
+
+add_custom_target(fixstyle
+    COMMAND
+        ${CLANG_FORMAT_BIN}
+            --style=file:${CMAKE_SOURCE_DIR}/.clang-format
+            -i
+            ${bf_srcs}
+    COMMENT "Fixing style for all the source files"
+)
