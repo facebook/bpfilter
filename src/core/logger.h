@@ -86,7 +86,7 @@ enum bf_style
  *
  * @code{.c}
  *  if (ret < 0)
- *    return bf_err_code(ret, "failed to do something");
+ *    return bf_err_r(ret, "failed to do something");
  * @endcode
  *
  * @param level Log level, as a string. Will prefix the log message.
@@ -105,16 +105,16 @@ enum bf_style
         -abs(code);                                                            \
     })
 
-#define bf_err_code(code, fmt, ...)                                            \
+#define bf_err_r(code, fmt, ...)                                               \
     _bf_log_code_impl("error", BF_COLOR_RED, code, fmt, ##__VA_ARGS__)
 
-#define bf_warn_code(code, fmt, ...)                                           \
+#define bf_warn_r(code, fmt, ...)                                              \
     _bf_log_code_impl("warning", BF_COLOR_YELLOW, code, fmt, ##__VA_ARGS__)
 
-#define bf_info_code(code, fmt, ...)                                           \
+#define bf_info_r(code, fmt, ...)                                              \
     _bf_log_code_impl("info", BF_COLOR_GREEN, code, fmt, ##__VA_ARGS__)
 
-#define bf_dbg_code(code, fmt, ...)                                            \
+#define bf_dbg_r(code, fmt, ...)                                               \
     _bf_log_code_impl("debug", BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
 
 /**

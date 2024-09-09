@@ -71,7 +71,7 @@ int bf_codegen_unload(struct bf_codegen *codegen)
         struct bf_program *program = bf_list_node_get_data(program_node);
         r = bf_program_unload(program);
         if (r)
-            return bf_err_code(r, "failed to unload program");
+            return bf_err_r(r, "failed to unload program");
     }
 
     return 0;
@@ -141,7 +141,7 @@ int bf_codegen_marsh(const struct bf_codegen *codegen, struct bf_marsh **marsh)
                                 sizeof(codegen->policy));
 
     if (r)
-        return bf_err_code(r, "failed to serialize codegen");
+        return bf_err_r(r, "failed to serialize codegen");
 
     *marsh = TAKE_PTR(_marsh);
 
@@ -160,7 +160,7 @@ int bf_codegen_unmarsh(const struct bf_marsh *marsh,
 
     r = bf_codegen_new(&_codegen);
     if (r)
-        return bf_err_code(r, "failed to allocate codegen object");
+        return bf_err_r(r, "failed to allocate codegen object");
 
     if (!(marsh_elem = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
@@ -316,12 +316,12 @@ int bf_codegen_up(struct bf_codegen *codegen)
 
     n_ifaces = bf_if_get_ifaces(&ifaces);
     if (n_ifaces < 0) {
-        return bf_err_code((int)n_ifaces,
-                           "failed to fetch interfaces for codegen");
+        return bf_err_r((int)n_ifaces,
+                        "failed to fetch interfaces for codegen");
     }
 
     if (n_ifaces == 0)
-        return bf_err_code(-ENOENT, "no interface found!");
+        return bf_err_r(-ENOENT, "no interface found!");
 
     for (ssize_t i = 0; i < n_ifaces; ++i) {
         _cleanup_bf_program_ struct bf_program *prog = NULL;
@@ -336,8 +336,8 @@ int bf_codegen_up(struct bf_codegen *codegen)
 
         r = bf_program_generate(prog, &codegen->rules, codegen->policy);
         if (r) {
-            return bf_err_code(r, "failed to generate bf_program for %s",
-                               ifaces[i].name);
+            return bf_err_r(r, "failed to generate bf_program for %s",
+                            ifaces[i].name);
         }
 
         r = bf_program_load(prog, NULL);
@@ -367,19 +367,19 @@ int bf_codegen_update(struct bf_codegen *codegen)
         r = bf_program_new(&new_prog, old_prog->ifindex, codegen->hook,
                            codegen->front);
         if (r)
-            return bf_err_code(r, "failed to create a new bf_program");
+            return bf_err_r(r, "failed to create a new bf_program");
 
         r = bf_program_generate(new_prog, &codegen->rules, codegen->policy);
         if (r) {
             {
-                return bf_err_code(
+                return bf_err_r(
                     r, "failed to generate the bytecode for a new bf_program");
             }
         }
 
         r = bf_program_load(new_prog, old_prog);
         if (r) {
-            return bf_err_code(
+            return bf_err_r(
                 r, "failed to attach the new bf_program, keeping the old one");
         }
 

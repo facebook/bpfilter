@@ -47,11 +47,11 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case 'f':
         opts->input_file = strdup(arg);
         if (!opts->input_file)
-            return bf_err_code(-ENOMEM, "failed to copy input file path");
+            return bf_err_r(-ENOMEM, "failed to copy input file path");
         break;
     case ARGP_KEY_END:
         if (!opts->input_file)
-            return bf_err_code(-EINVAL, "--file argument is required");
+            return bf_err_r(-EINVAL, "--file argument is required");
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     r = argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
     if (r) {
         r = errno;
-        bf_err_code(r, "failed to parse arguments");
+        bf_err_r(r, "failed to parse arguments");
         goto end_clean;
     }
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     FILE *rules = fopen(_bf_opts.input_file, "r");
     if (!rules) {
         r = errno;
-        bf_err_code(r, "failed to read rules from %s:", _bf_opts.input_file);
+        bf_err_r(r, "failed to read rules from %s:", _bf_opts.input_file);
         goto end_clean;
     }
 
@@ -119,13 +119,13 @@ int main(int argc, char *argv[])
 
         r = bf_chain_marsh(chain, &marsh);
         if (r) {
-            bf_err_code(r, "failed to marsh chain, skipping");
+            bf_err_r(r, "failed to marsh chain, skipping");
             continue;
         }
 
         r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
         if (r) {
-            bf_err_code(r, "failed to create request for chain, skipping");
+            bf_err_r(r, "failed to create request for chain, skipping");
             continue;
         }
 
@@ -134,12 +134,12 @@ int main(int argc, char *argv[])
 
         r = bf_send(request, &response);
         if (r) {
-            bf_err_code(r, "failed to send chain creation request, skipping");
+            bf_err_r(r, "failed to send chain creation request, skipping");
             continue;
         }
 
         if (response->type == BF_RES_FAILURE) {
-            bf_err_code(response->error, "chain creation request failed");
+            bf_err_r(response->error, "chain creation request failed");
             continue;
         }
     }

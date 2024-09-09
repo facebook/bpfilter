@@ -91,7 +91,7 @@ static int _bf_printer_msg_new_from_marsh(struct bf_printer_msg **msg,
 
     r = _bf_printer_msg_new(&_msg);
     if (r)
-        return bf_err_code(r, "failed to allocate a new bf_printer_msg object");
+        return bf_err_r(r, "failed to allocate a new bf_printer_msg object");
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -158,7 +158,7 @@ static int _bf_printer_msg_marsh(const struct bf_printer_msg *msg,
     r |= bf_marsh_add_child_raw(&_marsh, &msg->len, sizeof(msg->len));
     r |= bf_marsh_add_child_raw(&_marsh, msg->str, msg->len);
     if (r)
-        return bf_err_code(r, "failed to serialize bf_printer_msg object");
+        return bf_err_r(r, "failed to serialize bf_printer_msg object");
 
     *marsh = TAKE_PTR(_marsh);
 
@@ -223,7 +223,7 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
 
     r = bf_printer_new(&_printer);
     if (r)
-        return bf_err_code(r, "failed to allocate a new bf_printer object");
+        return bf_err_r(r, "failed to allocate a new bf_printer object");
 
     while ((child = bf_marsh_next_child(marsh, child))) {
         _cleanup_bf_printer_msg_ struct bf_printer_msg *msg = NULL;

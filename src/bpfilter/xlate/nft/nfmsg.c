@@ -143,11 +143,11 @@ int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
     nlh = nlmsg_put(_msg->msg, 0, seqnr, NFNL_SUBSYS_NFTABLES << 8 | command, 0,
                     0);
     if (!nlh)
-        return bf_err_code(-ENOMEM, "failed to insert Netlink header");
+        return bf_err_r(-ENOMEM, "failed to insert Netlink header");
 
     r = nlmsg_append(_msg->msg, &extra_hdr, sizeof(extra_hdr), NLMSG_ALIGNTO);
     if (r)
-        return bf_err_code(r, "failed to insert Netfilter extra header");
+        return bf_err_r(r, "failed to insert Netfilter extra header");
 
     *msg = TAKE_PTR(_msg);
 
@@ -177,11 +177,11 @@ int bf_nfmsg_new_done(struct bf_nfmsg **msg)
 
     nlh = nlmsg_put(_msg->msg, 0, 0, NLMSG_DONE, 0, NLM_F_MULTI);
     if (!nlh)
-        return bf_err_code(-ENOMEM, "failed to insert Netlink header");
+        return bf_err_r(-ENOMEM, "failed to insert Netlink header");
 
     r = nlmsg_append(_msg->msg, &extra_hdr, sizeof(extra_hdr), NLMSG_ALIGNTO);
     if (r)
-        return bf_err_code(r, "failed to insert Netfilter extra header");
+        return bf_err_r(r, "failed to insert Netfilter extra header");
 
     *msg = TAKE_PTR(_msg);
 
@@ -196,13 +196,13 @@ int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh)
     _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
 
     if (nlh->nlmsg_type >> 8 != NFNL_SUBSYS_NFTABLES) {
-        return bf_err_code(-EINVAL, "invalid Netlink message type: %u",
-                           nlh->nlmsg_type);
+        return bf_err_r(-EINVAL, "invalid Netlink message type: %u",
+                        nlh->nlmsg_type);
     }
 
     if ((size_t)nlmsg_datalen(nlh) < sizeof(struct nfgenmsg)) {
-        return bf_err_code(-EINVAL, "invalid Netlink message payload size: %d",
-                           nlmsg_datalen(nlh));
+        return bf_err_r(-EINVAL, "invalid Netlink message payload size: %d",
+                        nlmsg_datalen(nlh));
     }
 
     _msg = calloc(1, sizeof(*_msg));

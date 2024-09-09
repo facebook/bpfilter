@@ -234,7 +234,7 @@ static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
             (struct xt_standard_target *)ipt_target;
 
         if (ipt_std_target->verdict >= 0) {
-            return bf_err_code(
+            return bf_err_r(
                 -ENOTSUP,
                 "target expects jump to a user-defined chain, this is not supported");
         }
@@ -247,12 +247,12 @@ static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
             *verdict = BF_VERDICT_DROP;
             break;
         default:
-            return bf_err_code(-ENOTSUP, "unsupported verdict: %d",
-                               ipt_std_target->verdict);
+            return bf_err_r(-ENOTSUP, "unsupported verdict: %d",
+                            ipt_std_target->verdict);
         }
     } else {
-        return bf_err_code(-ENOTSUP, "unsupported target: %s",
-                           ipt_target->u.user.name);
+        return bf_err_r(-ENOTSUP, "unsupported target: %s",
+                        ipt_target->u.user.name);
     }
 
     return 0;
@@ -281,8 +281,8 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     if (strlen(ipt_rule->ip.iniface)) {
         r = bf_if_index_from_name(ipt_rule->ip.iniface);
         if (r < 0) {
-            return bf_err_code(errno, "can't find index for interface %s",
-                               ipt_rule->ip.iniface);
+            return bf_err_r(errno, "can't find index for interface %s",
+                            ipt_rule->ip.iniface);
         }
 
         _rule->ifindex = r;
@@ -324,8 +324,7 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
         uint8_t ip_proto = (uint8_t)ipt_rule->ip.proto;
 
         if (ip_proto != ipt_rule->ip.proto) {
-            return bf_err_code(-EINVAL, "invalid ip.proto %d",
-                               ipt_rule->ip.proto);
+            return bf_err_r(-EINVAL, "invalid ip.proto %d", ipt_rule->ip.proto);
         }
         r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                 &ip_proto, sizeof(uint8_t));
@@ -334,8 +333,8 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     }
 
     if (offset < ipt_rule->target_offset) {
-        return bf_err_code(-EINVAL,
-                           "iptables custom matchers are not (yet) supported!");
+        return bf_err_r(-EINVAL,
+                        "iptables custom matchers are not (yet) supported!");
     }
 
     r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &_rule->verdict);
@@ -400,9 +399,9 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
             r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule),
                                           &codegen->policy);
             if (r < 0)
-                return bf_err_code(r, "invalid IPT policy verdict");
+                return bf_err_r(r, "invalid IPT policy verdict");
         } else {
-            return bf_err_code(-EINVAL, "last IPT rule isn't a valid policy");
+            return bf_err_r(-EINVAL, "last IPT rule isn't a valid policy");
         }
 
         /* Loop from the first rule, to the last rule (excluded). As we assume
@@ -457,13 +456,13 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 
     r = _bf_ipt_xlate_set_rules(replace, &codegens);
     if (r < 0)
-        return bf_err_code(r, "failed to translate iptables rules");
+        return bf_err_r(r, "failed to translate iptables rules");
 
     /* Copy entries now, so we don't have to unload the codegens if the copy
      * fails. */
     entries = bf_memdup(replace->entries, replace->size);
     if (!entries) {
-        r = bf_err_code(-ENOMEM, "failed to duplicate iptables rules");
+        r = bf_err_r(-ENOMEM, "failed to duplicate iptables rules");
         goto end_free_codegens;
     }
 
@@ -482,15 +481,15 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 
             r = bf_codegen_update(cur_cgen);
             if (r) {
-                bf_err_code(r, "failed to update existing codegen for hook %s",
-                            bf_hook_to_str(new_cgen->hook));
+                bf_err_r(r, "failed to update existing codegen for hook %s",
+                         bf_hook_to_str(new_cgen->hook));
                 goto end_free_codegens;
             }
         } else {
             r = bf_codegen_up(new_cgen);
             if (r) {
-                bf_err_code(r, "failed to generate bytecode for hook %s",
-                            bf_hook_to_str(new_cgen->hook));
+                bf_err_r(r, "failed to generate bytecode for hook %s",
+                         bf_hook_to_str(new_cgen->hook));
                 goto end_free_codegens;
             }
 
@@ -543,8 +542,8 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
     bf_assert(sizeof(*info) == request->data_len);
 
     if (!bf_streq(info->name, "filter")) {
-        return bf_err_code(
-            -EINVAL, "can't process IPT_SO_GET_INFO for table %s", info->name);
+        return bf_err_r(-EINVAL, "can't process IPT_SO_GET_INFO for table %s",
+                        info->name);
     }
 
     info->valid_hooks = _bf_cache->valid_hooks;
@@ -577,13 +576,12 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
     entries = (struct ipt_get_entries *)request->data;
 
     if (!bf_streq(entries->name, "filter")) {
-        return bf_err_code(-EINVAL,
-                           "can't process IPT_SO_GET_INFO for table %s",
-                           entries->name);
+        return bf_err_r(-EINVAL, "can't process IPT_SO_GET_INFO for table %s",
+                        entries->name);
     }
 
     if (entries->size != _bf_cache->size) {
-        return bf_err_code(
+        return bf_err_r(
             -EINVAL,
             "not enough space to store entries: %u available, %u required",
             entries->size, _bf_cache->size);
@@ -613,8 +611,8 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
             r = bf_codegen_get_counter(codegen, counter_idx, &counter);
             if (r) {
-                return bf_err_code(r, "failed to get IPT counter for index %u",
-                                   counter_idx);
+                return bf_err_r(r, "failed to get IPT counter for index %u",
+                                counter_idx);
             }
 
             first_rule->counters.bcnt = counter.bytes;
@@ -624,7 +622,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
         if (counter_idx != bf_list_size(&codegen->rules) + 1) {
             /* We expect len(codegen->rules) + 1 as the policy is considered
              * a rule for iptables, but not for bpfilter. */
-            return bf_err_code(-EINVAL, "invalid number of rules requested");
+            return bf_err_r(-EINVAL, "invalid number of rules requested");
         }
     }
 
@@ -700,13 +698,13 @@ static int _bf_ipt_request_handler(struct bf_request *request,
         case IPT_SO_GET_ENTRIES:
             return _bf_ipt_get_entries_handler(request, response);
         default:
-            return bf_warn_code(-ENOTSUP,
-                                "unsupported custom ipt request type: %d",
-                                request->ipt_cmd);
+            return bf_warn_r(-ENOTSUP,
+                             "unsupported custom ipt request type: %d",
+                             request->ipt_cmd);
         };
     default:
-        return bf_warn_code(-ENOTSUP, "unsupported ipt request type: %d",
-                            request->cmd);
+        return bf_warn_r(-ENOTSUP, "unsupported ipt request type: %d",
+                         request->cmd);
     };
 
     return 0;

@@ -124,12 +124,12 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
                          new_prog->img, new_prog->img_size,
                          bf_hook_to_attach_type(new_prog->hook), &prog_fd);
     if (r)
-        return bf_err_code(r, "failed to load new bf_program");
+        return bf_err_r(r, "failed to load new bf_program");
 
     if (old_prog) {
         r = bf_bpf_link_update(old_prog->runtime.prog_fd, prog_fd);
         if (r) {
-            return bf_err_code(
+            return bf_err_r(
                 r, "failed to updated existing link for TC bf_program");
         }
 
@@ -139,8 +139,7 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
                                   bf_hook_to_attach_type(new_prog->hook),
                                   &link_fd);
         if (r) {
-            return bf_err_code(r,
-                               "failed to create new link for TC bf_program");
+            return bf_err_r(r, "failed to create new link for TC bf_program");
         }
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);

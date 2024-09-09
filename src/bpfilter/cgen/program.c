@@ -163,11 +163,11 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
         r = bf_printer_marsh(program->printer, &child);
         if (r)
-            return bf_err_code(r, "failed to marsh bf_printer object");
+            return bf_err_r(r, "failed to marsh bf_printer object");
 
         r = bf_marsh_add_child_obj(&_marsh, child);
         if (r)
-            return bf_err_code(r, "failed to append object to marsh");
+            return bf_err_r(r, "failed to append object to marsh");
     }
 
     r |= bf_marsh_add_child_raw(&_marsh, &program->num_counters,
@@ -175,7 +175,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, program->img,
                                 program->img_size * sizeof(struct bpf_insn));
     if (r)
-        return bf_err_code(r, "Failed to serialize program");
+        return bf_err_r(r, "Failed to serialize program");
 
     *marsh = TAKE_PTR(_marsh);
 
@@ -214,12 +214,12 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     // Unmarsh bf_program.printer
     child = bf_marsh_next_child(marsh, child);
     if (!child)
-        return bf_err_code(-EINVAL, "failed to find valid child");
+        return bf_err_r(-EINVAL, "failed to find valid child");
 
     bf_printer_free(&_program->printer);
     r = bf_printer_new_from_marsh(&_program->printer, child);
     if (r)
-        return bf_err_code(r, "failed to restore bf_printer object");
+        return bf_err_r(r, "failed to restore bf_printer object");
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -237,15 +237,15 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     r = bf_bpf_obj_get(_program->cmap_pin_path, &_program->runtime.cmap_fd);
     if (r < 0)
-        return bf_err_code(r, "failed to get counter map fd");
+        return bf_err_r(r, "failed to get counter map fd");
 
     r = bf_bpf_obj_get(_program->prog_pin_path, &_program->runtime.prog_fd);
     if (r < 0)
-        return bf_err_code(r, "failed to get prog fd");
+        return bf_err_r(r, "failed to get prog fd");
 
     r = bf_bpf_obj_get(_program->pmap_pin_path, &_program->runtime.pmap_fd);
     if (r < 0)
-        return bf_err_code(r, "failed to get printer map fd");
+        return bf_err_r(r, "failed to get printer map fd");
 
     *program = TAKE_PTR(_program);
 
@@ -332,8 +332,8 @@ int bf_program_grow_img(struct bf_program *program)
 
     r = bf_realloc((void **)&program->img, new_cap * sizeof(struct bpf_insn));
     if (r < 0) {
-        return bf_err_code(r, "failed to grow program img from %lu to %lu insn",
-                           program->img_cap, new_cap);
+        return bf_err_r(r, "failed to grow program img from %lu to %lu insn",
+                        program->img_cap, new_cap);
     }
 
     program->img_cap = new_cap;
@@ -459,8 +459,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
                 return r;
             break;
         default:
-            return bf_err_code(-EINVAL, "unknown matcher type %d",
-                               matcher->type);
+            return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
         };
     }
 
@@ -485,7 +484,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_NEXT_RULE, NULL);
     if (r)
-        return bf_err_code(r, "failed to generate next rule fixups");
+        return bf_err_r(r, "failed to generate next rule fixups");
 
     return 0;
 }
@@ -608,7 +607,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
                           sizeof(uint32_t), sizeof(struct bf_counter),
                           program->num_counters, 0, &_fd);
     if (r < 0)
-        return bf_err_code(errno, "failed to create counters map");
+        return bf_err_r(errno, "failed to create counters map");
 
     bf_attr.map_fd = _fd;
     _bf_program_fixup(program, BF_CODEGEN_FIXUP_MAP_FD, &bf_attr);
@@ -630,23 +629,23 @@ static int _bf_program_load_printer_map(struct bf_program *program)
 
     r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
     if (r)
-        return bf_err_code(r, "failed to assemble printer map string");
+        return bf_err_r(r, "failed to assemble printer map string");
 
     r = bf_bpf_map_create(program->pmap_name, BPF_MAP_TYPE_ARRAY,
                           sizeof(uint32_t), pstr_len, 1, BPF_F_RDONLY_PROG,
                           &fd);
     if (r)
-        return bf_err_code(r, "failed to create printer map");
+        return bf_err_r(r, "failed to create printer map");
 
     r = bf_bpf_map_update_elem(fd, (void *)(uint32_t[]) {0}, pstr);
     if (r)
-        return bf_err_code(r, "failed to insert messages in printer map");
+        return bf_err_r(r, "failed to insert messages in printer map");
 
     fixup_attr.map_fd = fd;
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
                           &fixup_attr);
     if (r)
-        return bf_err_code(r, "can't update instruction with printer map fd");
+        return bf_err_r(r, "can't update instruction with printer map fd");
 
     program->runtime.pmap_fd = TAKE_FD(fd);
 
@@ -844,7 +843,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
 
     r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_FUNCTION_CALL, NULL);
     if (r)
-        return bf_err_code(r, "failed to generate function call fixups");
+        return bf_err_r(r, "failed to generate function call fixups");
 
     // Add 1 to the number of counters for the policy counter.
     program->num_counters = bf_list_size(rules) + 1;
@@ -866,20 +865,20 @@ static int _bf_program_pin(const struct bf_program *program)
 
     r = bf_bpf_obj_pin(program->prog_pin_path, program->runtime.prog_fd);
     if (r < 0) {
-        return bf_err_code(r, "failed to pin program fd to %s",
-                           program->prog_pin_path);
+        return bf_err_r(r, "failed to pin program fd to %s",
+                        program->prog_pin_path);
     }
 
     r = bf_bpf_obj_pin(program->cmap_pin_path, program->runtime.cmap_fd);
     if (r < 0) {
-        return bf_err_code(r, "failed to pin counter map fd to %s",
-                           program->cmap_pin_path);
+        return bf_err_r(r, "failed to pin counter map fd to %s",
+                        program->cmap_pin_path);
     }
 
     r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
     if (r < 0) {
-        return bf_err_code(r, "failed to pin printer map fd to %s",
-                           program->pmap_pin_path);
+        return bf_err_r(r, "failed to pin printer map fd to %s",
+                        program->pmap_pin_path);
     }
     return 0;
 }
@@ -961,7 +960,7 @@ int bf_program_get_counter(const struct bf_program *program,
 
     r = bf_bpf_map_lookup_elem(program->runtime.cmap_fd, &counter_idx, counter);
     if (r < 0)
-        return bf_err_code(errno, "failed to lookup counters map");
+        return bf_err_r(errno, "failed to lookup counters map");
 
     return 0;
 }

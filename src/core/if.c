@@ -29,12 +29,12 @@ int bf_if_index_from_name(const char *name)
 
     r = if_nametoindex(name);
     if (r == 0) {
-        return bf_err_code(errno, "failed to get ifindex for interface '%s'",
-                           name);
+        return bf_err_r(errno, "failed to get ifindex for interface '%s'",
+                        name);
     }
 
     if (r > INT_MAX)
-        return bf_err_code(-E2BIG, "ifindex is too big: %d", r);
+        return bf_err_r(-E2BIG, "ifindex is too big: %d", r);
 
     return (int)r;
 }
@@ -42,7 +42,7 @@ int bf_if_index_from_name(const char *name)
 const char *bf_if_name_from_index(int index)
 {
     if (!if_indextoname(index, _bf_if_name)) {
-        bf_warn_code(errno, "failed to get ifname for interface '%d'", index);
+        bf_warn_r(errno, "failed to get ifname for interface '%d'", index);
         strncpy(_bf_if_name, "<unknown>", IFNAMSIZ);
     }
 
@@ -60,7 +60,7 @@ ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces)
 
     if_ni = if_nameindex();
     if (!if_ni)
-        return bf_err_code(errno, "failed to fetch interfaces details");
+        return bf_err_r(errno, "failed to fetch interfaces details");
 
     // Gather the number of interfaces to allocate the memory.
     for (it = if_ni; it->if_index != 0 || it->if_name != NULL; ++it)
@@ -72,8 +72,8 @@ ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces)
     _ifaces = malloc(n_ifaces * sizeof(*_ifaces));
     if (!_ifaces) {
         if_freenameindex(if_ni);
-        return bf_err_code(-ENOMEM,
-                           "failed to allocate memory for interfaces buffer");
+        return bf_err_r(-ENOMEM,
+                        "failed to allocate memory for interfaces buffer");
     }
 
     for (it = if_ni; it->if_index != 0 || it->if_name != NULL; ++it) {

@@ -29,20 +29,20 @@ int bf_read_file(const char *path, void **buf, size_t *len)
 
     fd = open(path, O_RDONLY);
     if (fd < 0)
-        return bf_err_code(errno, "failed to open %s", path);
+        return bf_err_r(errno, "failed to open %s", path);
 
     _len = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
 
     _buf = malloc(_len);
     if (!_buf)
-        return bf_err_code(errno, "failed to allocate memory");
+        return bf_err_r(errno, "failed to allocate memory");
 
     r = read(fd, _buf, _len);
     if (r < 0)
-        return bf_err_code(errno, "failed to read serialized data");
+        return bf_err_r(errno, "failed to read serialized data");
     if ((size_t)r != _len)
-        return bf_err_code(EIO, "can't read full serialized data");
+        return bf_err_r(EIO, "can't read full serialized data");
 
     closep(&fd);
 
@@ -62,13 +62,13 @@ int bf_write_file(const char *path, const void *buf, size_t len)
 
     fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, OPEN_MODE_644);
     if (fd < 0)
-        return bf_err_code(errno, "failed to open %s", path);
+        return bf_err_r(errno, "failed to open %s", path);
 
     r = write(fd, buf, len);
     if (r < 0)
-        return bf_err_code(errno, "failed to write to %s", path);
+        return bf_err_r(errno, "failed to write to %s", path);
     if ((size_t)r != len)
-        return bf_err_code(EIO, "can't write full data to %s", path);
+        return bf_err_r(EIO, "can't write full data to %s", path);
 
     closep(&fd);
 

@@ -39,7 +39,7 @@ static int _bf_context_new(struct bf_context **context)
 
     _context = calloc(1, sizeof(struct bf_context));
     if (!_context)
-        return bf_err_code(errno, "failed to allocate memory");
+        return bf_err_r(errno, "failed to allocate memory");
 
     *context = TAKE_PTR(_context);
 
@@ -73,7 +73,7 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
     // Unmarsh bf_context.codegens
     ctx_elem = bf_marsh_next_child(marsh, ctx_elem);
     if (!ctx_elem)
-        return bf_err_code(-EINVAL, "failed to find valid child");
+        return bf_err_r(-EINVAL, "failed to find valid child");
 
     while ((cgen_elem = bf_marsh_next_child(ctx_elem, cgen_elem))) {
         _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
@@ -82,13 +82,13 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
 
         r = bf_codegen_unmarsh(cgen_elem, &codegen);
         if (r)
-            return bf_err_code(r, "failed to unmarsh codegen");
+            return bf_err_r(r, "failed to unmarsh codegen");
 
         hook = codegen->hook;
         front = codegen->front;
 
         if (_context->codegens[hook][front]) {
-            return bf_err_code(
+            return bf_err_r(
                 -EEXIST,
                 "restored codegen for %s::%s, but codegen already exists in context!",
                 bf_hook_to_str(hook), bf_front_to_str(front));
@@ -185,7 +185,7 @@ static int _bf_context_marsh(const struct bf_context *context,
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r)
-        return bf_err_code(r, "failed to create marsh for context");
+        return bf_err_r(r, "failed to create marsh for context");
 
     {
         // Serialize bf_context.codegens content
@@ -193,7 +193,7 @@ static int _bf_context_marsh(const struct bf_context *context,
 
         r = bf_marsh_new(&child, NULL, 0);
         if (r)
-            return bf_err_code(r, "failed to create marsh for codegens");
+            return bf_err_r(r, "failed to create marsh for codegens");
 
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
@@ -205,11 +205,11 @@ static int _bf_context_marsh(const struct bf_context *context,
 
                 r = bf_codegen_marsh(codegen, &subchild);
                 if (r)
-                    return bf_err_code(r, "failed to marsh codegen");
+                    return bf_err_r(r, "failed to marsh codegen");
 
                 r = bf_marsh_add_child_obj(&child, subchild);
                 if (r)
-                    return bf_err_code(r, "failed to append codegen marsh");
+                    return bf_err_r(r, "failed to append codegen marsh");
 
                 /* Don't TAKE_PTR(subchild), it's copied to child, so now
                  * it can be destroyed. */
@@ -218,7 +218,7 @@ static int _bf_context_marsh(const struct bf_context *context,
 
         r = bf_marsh_add_child_obj(&_marsh, child);
         if (r)
-            return bf_err_code(r, "failed to append object to marsh");
+            return bf_err_r(r, "failed to append object to marsh");
 
         /* Don't TAKE_PTR(child), it's copied to child, so now
          * it can be destroyed. */
@@ -275,7 +275,7 @@ static int _bf_context_set_codegen(struct bf_context *context,
     bf_assert(codegen && codegen->hook == hook && codegen->front == front);
 
     if (context->codegens[hook][front])
-        return bf_err_code(-EEXIST, "codegen already exists in context");
+        return bf_err_r(-EEXIST, "codegen already exists in context");
 
     context->codegens[hook][front] = codegen;
 
@@ -304,7 +304,7 @@ int bf_context_setup(void)
 
     r = _bf_context_new(&_context);
     if (r)
-        return bf_err_code(r, "failed to create new context");
+        return bf_err_r(r, "failed to create new context");
 
     _bf_global_context = TAKE_PTR(_context);
 
@@ -336,7 +336,7 @@ int bf_context_save(struct bf_marsh **marsh)
 
     r = _bf_context_marsh(_bf_global_context, &_marsh);
     if (r)
-        return bf_err_code(r, "failed to serialize context");
+        return bf_err_r(r, "failed to serialize context");
 
     *marsh = TAKE_PTR(_marsh);
 
@@ -352,7 +352,7 @@ int bf_context_load(const struct bf_marsh *marsh)
 
     r = _bf_context_new_from_marsh(&context, marsh);
     if (r)
-        return bf_err_code(r, "failed to deserialize context");
+        return bf_err_r(r, "failed to deserialize context");
 
     _bf_global_context = TAKE_PTR(context);
 

@@ -21,7 +21,7 @@ int bf_btf_setup(void)
 {
     _bf_btf = btf__load_vmlinux_btf();
     if (!_bf_btf)
-        return bf_err_code(errno, "failed to load vmlinux BTF");
+        return bf_err_r(errno, "failed to load vmlinux BTF");
 
     return 0;
 }
@@ -40,7 +40,7 @@ int bf_btf_get_id(const char *name)
 
     id = btf__find_by_name(_bf_btf, name);
     if (id < 0)
-        return bf_err_code(errno, "failed to find BTF type for \"%s\"", name);
+        return bf_err_r(errno, "failed to find BTF type for \"%s\"", name);
 
     return id;
 }
@@ -54,13 +54,13 @@ int bf_btf_get_field_off(const char *struct_name, const char *field_name)
 
     struct_id = btf__find_by_name_kind(_bf_btf, struct_name, BTF_KIND_STRUCT);
     if (struct_id < 0) {
-        return bf_err_code(struct_id, "can't find structure '%s' in kernel BTF",
-                           struct_name);
+        return bf_err_r(struct_id, "can't find structure '%s' in kernel BTF",
+                        struct_name);
     }
 
     type = btf__type_by_id(_bf_btf, struct_id);
     if (!type)
-        return bf_err_code(errno, "can't get btf_type for '%s'", struct_name);
+        return bf_err_r(errno, "can't get btf_type for '%s'", struct_name);
 
     member = (struct btf_member *)(type + 1);
     for (size_t i = 0; i < BTF_INFO_VLEN(type->info); ++i, ++member) {
@@ -72,8 +72,8 @@ int bf_btf_get_field_off(const char *struct_name, const char *field_name)
             offset = BTF_MEMBER_BIT_OFFSET(member->offset);
         } else {
             if (member->offset > INT_MAX) {
-                return bf_err_code(-E2BIG, "BTF member offset is too big: %u",
-                                   member->offset);
+                return bf_err_r(-E2BIG, "BTF member offset is too big: %u",
+                                member->offset);
             }
             offset = (int)member->offset;
         }
