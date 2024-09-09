@@ -118,6 +118,32 @@ enum bf_style
     _bf_log_code_impl("debug", BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
 
 /**
+ * Identical to @ref _bf_log_impl but for @p va_list arguments.
+ *
+ * @param level Log level, as a string. Will prefix the log message.
+ * @param color Color to print the prefix with, as a @ref bf_color .
+ * @param fmt Format string.
+ * @param vargs @p va_list of arguments.
+ */
+#define _bf_log_v_impl(level, color, fmt, vargs)                               \
+    do {                                                                       \
+        (void)fprintf(                                                         \
+            stderr, "%s%-7s%s: ", bf_logger_get_color((color), BF_STYLE_BOLD), \
+            (level), bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));     \
+        (void)vfprintf(stderr, (fmt), (vargs));                                \
+        (void)fprintf(stderr, "\n");                                           \
+    } while (0)
+
+#define bf_err_v(fmt, vargs) _bf_log_v_impl("error", BF_COLOR_RED, fmt, vargs)
+
+#define bf_warn_v(fmt, vargs)                                                  \
+    _bf_log_v_impl("warning", BF_COLOR_YELLOW, fmt, vargs)
+
+#define bf_info_v(fmt, vargs) _bf_log_v_impl("info", BF_COLOR_GREEN, fmt, vargs)
+
+#define bf_dbg_v(fmt, vargs) _bf_log_v_impl("debug", BF_COLOR_BLUE, fmt, vargs)
+
+/**
  * Initialise the logging system.
  *
  * Defines whether the logging system will print in colors or not. If both

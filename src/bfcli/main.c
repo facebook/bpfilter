@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
 
     r = argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
     if (r) {
-        r = errno;
         bf_err_r(r, "failed to parse arguments");
         goto end_clean;
     }
@@ -160,7 +159,6 @@ void yyerror(struct bf_ruleset *ruleset, const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    (void)vfprintf(stderr, fmt, args);
-    (void)fprintf(stderr, "\n");
+    bf_err_v(fmt, args);
     va_end(args);
 }
