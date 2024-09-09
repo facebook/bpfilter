@@ -94,7 +94,7 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
                                 sizeof(enum bf_verdict));
     if (r)
-        return bf_err_code(r, "Failed to serialize rule");
+        return bf_err_r(r, "Failed to serialize rule");
 
     *marsh = TAKE_PTR(_marsh);
 

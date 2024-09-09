@@ -69,8 +69,7 @@ int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
 
     r = bf_matcher_new(matcher, type, op, payload, payload_len);
     if (r)
-        return bf_err_code(r,
-                           "failed to restore bf_matcher from serialised data");
+        return bf_err_r(r, "failed to restore bf_matcher from serialised data");
 
     return 0;
 }
@@ -104,7 +103,7 @@ int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh)
     r |= bf_marsh_add_child_raw(&_marsh, matcher->payload,
                                 matcher->len - sizeof(struct bf_matcher));
     if (r)
-        return bf_err_code(r, "failed to serialise bf_matcher object");
+        return bf_err_r(r, "failed to serialise bf_matcher object");
 
     *marsh = TAKE_PTR(_marsh);
 

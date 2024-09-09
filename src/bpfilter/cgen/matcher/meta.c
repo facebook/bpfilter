@@ -57,7 +57,7 @@ int bf_matcher_generate_meta(struct bf_program *program,
         r = _bf_matcher_generate_meta_l4_proto(program, matcher);
         break;
     default:
-        return bf_err_code(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
     };
 
     if (r)

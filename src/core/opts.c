@@ -94,15 +94,15 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         errno = 0;
         pow = strtol(arg, &end, 0);
         if (errno == ERANGE) {
-            return bf_err_code(EINVAL, "failed to convert '%s' into an integer",
-                               arg);
+            return bf_err_r(EINVAL, "failed to convert '%s' into an integer",
+                            arg);
         }
         if (pow > UINT_MAX) {
-            return bf_err_code(EINVAL, "--buffer-len can't be bigger than %d",
-                               UINT_MAX);
+            return bf_err_r(EINVAL, "--buffer-len can't be bigger than %d",
+                            UINT_MAX);
         }
         if (pow < 0)
-            return bf_err_code(EINVAL, "--buffer-len can't be negative");
+            return bf_err_r(EINVAL, "--buffer-len can't be negative");
         args->bpf_log_buf_len_pow = (unsigned int)pow;
         break;
     case BF_OPT_NO_IPTABLES_KEY:

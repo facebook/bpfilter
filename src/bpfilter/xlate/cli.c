@@ -54,7 +54,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
 
     r = bf_chain_new_from_marsh(&chain, (void *)request->data);
     if (r)
-        return bf_err_code(r, "failed to create chain from marsh");
+        return bf_err_r(r, "failed to create chain from marsh");
 
     codegen = bf_context_get_codegen(chain->hook, BF_FRONT_CLI);
     if (!codegen) {
@@ -72,15 +72,15 @@ int _bf_cli_set_rules(const struct bf_request *request,
     if (bf_context_get_codegen(chain->hook, BF_FRONT_CLI)) {
         r = bf_codegen_update(codegen);
         if (r)
-            return bf_err_code(r, "failed to update codegen");
+            return bf_err_r(r, "failed to update codegen");
     } else {
         r = bf_codegen_up(codegen);
         if (r)
-            return bf_err_code(r, "failed to load codegen");
+            return bf_err_r(r, "failed to load codegen");
 
         r = bf_context_set_codegen(chain->hook, BF_FRONT_CLI, codegen);
         if (r)
-            return bf_err_code(r, "failed to set codegen in context");
+            return bf_err_r(r, "failed to set codegen in context");
     }
 
     return bf_response_new_success(response, NULL, 0);
@@ -102,8 +102,8 @@ static int _bf_cli_request_handler(struct bf_request *request,
         r = _bf_cli_set_rules(request, response);
         break;
     default:
-        r = bf_err_code(-EINVAL, "unsupported command %d for CLI front-end",
-                        request->cmd);
+        r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
+                     request->cmd);
         break;
     }
 

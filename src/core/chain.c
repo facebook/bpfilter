@@ -158,7 +158,7 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
 
         r = bf_marsh_new(&child, NULL, 0);
         if (r < 0)
-            return bf_err_code(r, "failed to create marsh for bf_chain");
+            return bf_err_r(r, "failed to create marsh for bf_chain");
 
         bf_list_foreach (&chain->sets, set_node) {
             _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
@@ -183,7 +183,7 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
 
         r = bf_marsh_new(&child, NULL, 0);
         if (r < 0)
-            return bf_err_code(r, "failed to create marsh for bf_chain");
+            return bf_err_r(r, "failed to create marsh for bf_chain");
 
         bf_list_foreach (&chain->rules, rule_node) {
             _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;

@@ -66,8 +66,8 @@ static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
                    BPF_JMP_IMM(BPF_JNE, BPF_REG_1, flags, 0));
         break;
     default:
-        return bf_err_code(-EINVAL, "unsupported matcher for tcp.flags: %s",
-                           bf_matcher_op_to_str(matcher->op));
+        return bf_err_r(-EINVAL, "unsupported matcher for tcp.flags: %s",
+                        bf_matcher_op_to_str(matcher->op));
     }
 
     return 0;
@@ -92,7 +92,7 @@ int bf_matcher_generate_tcp(struct bf_program *program,
         r = _bf_matcher_generate_tcp_flags(program, matcher);
         break;
     default:
-        return bf_err_code(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
     };
 
     return r;

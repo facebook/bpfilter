@@ -75,28 +75,28 @@ static int _bf_ensure_runtime_dir(void)
         if (mkdir(BF_RUNTIME_DIR, BF_PERM_755) == 0)
             return 0;
 
-        return bf_err_code(errno, "failed to create runtime directory '%s'",
-                           BF_RUNTIME_DIR);
+        return bf_err_r(errno, "failed to create runtime directory '%s'",
+                        BF_RUNTIME_DIR);
     }
 
     if (r < 0 && errno == EACCES) {
-        return bf_err_code(errno, "can't access runtime directory '%s'",
-                           BF_RUNTIME_DIR);
+        return bf_err_r(errno, "can't access runtime directory '%s'",
+                        BF_RUNTIME_DIR);
     }
 
     if (r < 0) {
-        return bf_err_code(errno, "failed to access runtime directory '%s'",
-                           BF_RUNTIME_DIR);
+        return bf_err_r(errno, "failed to access runtime directory '%s'",
+                        BF_RUNTIME_DIR);
     }
 
     if (stat(BF_RUNTIME_DIR, &stats)) {
-        return bf_err_code(errno, "failed to stat runtime directory '%s'",
-                           BF_RUNTIME_DIR);
+        return bf_err_r(errno, "failed to stat runtime directory '%s'",
+                        BF_RUNTIME_DIR);
     }
 
     if (!S_ISDIR(stats.st_mode)) {
-        return bf_err_code(ENOTDIR, "runtime directory '%s' is not a directory",
-                           BF_RUNTIME_DIR);
+        return bf_err_r(ENOTDIR, "runtime directory '%s' is not a directory",
+                        BF_RUNTIME_DIR);
     }
 
     return 0;
@@ -125,8 +125,8 @@ static int _bf_load(const char *path)
 
     if (access(context_path, F_OK)) {
         if (errno != ENOENT) {
-            return bf_info_code(errno, "failed test access to context file: %s",
-                                path);
+            return bf_info_r(errno, "failed test access to context file: %s",
+                             path);
         }
 
         bf_info("no serialized context found on disk, "
@@ -140,18 +140,18 @@ static int _bf_load(const char *path)
         return r;
 
     if (len < sizeof(struct bf_marsh))
-        return bf_err_code(EIO, "marshalled data is invalid");
+        return bf_err_r(EIO, "marshalled data is invalid");
 
     if (bf_marsh_size(marsh) != len) {
-        return bf_err_code(
+        return bf_err_r(
             EINVAL, "conflicting marshalled data size: got %zu, expected %zu",
             len, bf_marsh_size(marsh));
     }
 
     child = bf_marsh_next_child(marsh, child);
     if (!child) {
-        return bf_err_code(-EINVAL,
-                           "expecting a child in main marshalled context");
+        return bf_err_r(-EINVAL,
+                        "expecting a child in main marshalled context");
     }
 
     r = bf_context_load(child);
@@ -169,8 +169,8 @@ static int _bf_load(const char *path)
 
         r = bf_front_ops_get(i)->unmarsh(child);
         if (r < 0) {
-            return bf_err_code(r, "failed to restore context for %s",
-                               bf_front_to_str(i));
+            return bf_err_r(r, "failed to restore context for %s",
+                            bf_front_to_str(i));
         }
     }
 
@@ -262,30 +262,30 @@ static int _bf_init(int argc, char *argv[])
     int r = 0;
 
     if (sigaction(SIGINT, &sighandler, NULL) < 0)
-        return bf_err_code(errno, "can't override handler for SIGINT");
+        return bf_err_r(errno, "can't override handler for SIGINT");
 
     if (sigaction(SIGTERM, &sighandler, NULL) < 0)
-        return bf_err_code(errno, "can't override handler for SIGTERM");
+        return bf_err_r(errno, "can't override handler for SIGTERM");
 
     r = _bf_ensure_runtime_dir();
     if (r < 0)
-        return bf_err_code(r, "failed to ensure runtime directory exists");
+        return bf_err_r(r, "failed to ensure runtime directory exists");
 
     r = bf_opts_init(argc, argv);
     if (r < 0)
-        return bf_err_code(r, "failed to parse command line arguments");
+        return bf_err_r(r, "failed to parse command line arguments");
 
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {
         r = _bf_load(context_path);
         if (r < 0)
-            return bf_err_code(r, "failed to restore bpfilter context");
+            return bf_err_r(r, "failed to restore bpfilter context");
     }
 
     if (bf_opts_transient() || r == 0) {
         r = bf_context_setup();
         if (r < 0)
-            return bf_err_code(r, "failed to setup context");
+            return bf_err_r(r, "failed to setup context");
     }
 
     bf_context_dump(EMPTY_PREFIX);
@@ -296,8 +296,8 @@ static int _bf_init(int argc, char *argv[])
 
         r = bf_front_ops_get(front)->setup();
         if (r < 0) {
-            return bf_err_code(r, "failed to setup front-end %s",
-                               bf_front_to_str(front));
+            return bf_err_r(r, "failed to setup front-end %s",
+                            bf_front_to_str(front));
         }
 
         bf_dbg("completed setup for %s", bf_front_to_str(front));
@@ -306,8 +306,7 @@ static int _bf_init(int argc, char *argv[])
     if (!bf_opts_transient()) {
         r = _bf_save(context_path);
         if (r < 0) {
-            return bf_err_code(r, "failed to backup context at %s",
-                               context_path);
+            return bf_err_r(r, "failed to backup context at %s", context_path);
         }
     }
 
@@ -329,8 +328,8 @@ static int _bf_clean(void)
 
         r = bf_front_ops_get(front)->teardown();
         if (r < 0) {
-            bf_warn_code(r, "failed to teardown front-end %s, continuing",
-                         bf_front_to_str(front));
+            bf_warn_r(r, "failed to teardown front-end %s, continuing",
+                      bf_front_to_str(front));
         }
     }
 
@@ -408,20 +407,19 @@ static int _bf_run(void)
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
-        return bf_err_code(errno, "failed to create socket");
+        return bf_err_r(errno, "failed to create socket");
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     r = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
     if (r < 0) {
-        return bf_err_code(errno, "failed to bind socket to %s",
-                           BF_SOCKET_PATH);
+        return bf_err_r(errno, "failed to bind socket to %s", BF_SOCKET_PATH);
     }
 
     r = listen(fd, 1);
     if (r < 0)
-        return bf_err_code(errno, "listen() failed");
+        return bf_err_r(errno, "listen() failed");
 
     bf_info("waiting for requests...");
 
@@ -437,12 +435,12 @@ static int _bf_run(void)
                 continue;
             }
 
-            return bf_err_code(errno, "failed to accept connection");
+            return bf_err_r(errno, "failed to accept connection");
         }
 
         r = bf_recv_request(client_fd, &request);
         if (r < 0)
-            return bf_err_code(r, "failed to receive request");
+            return bf_err_r(r, "failed to receive request");
 
         r = _bf_process_request(request, &response);
         if (r) {
@@ -452,7 +450,7 @@ static int _bf_run(void)
 
         r = bf_send_response(client_fd, response);
         if (r < 0)
-            return bf_err_code(r, "failed to send response");
+            return bf_err_r(r, "failed to send response");
     }
 
     return 0;
@@ -466,15 +464,15 @@ int main(int argc, char *argv[])
 
     r = bf_btf_setup();
     if (r < 0)
-        return bf_err_code(r, "failed to setup BTF module");
+        return bf_err_r(r, "failed to setup BTF module");
 
     r = _bf_init(argc, argv);
     if (r < 0)
-        return bf_err_code(r, "failed to initialize bpfilter");
+        return bf_err_r(r, "failed to initialize bpfilter");
 
     r = _bf_run();
     if (r < 0)
-        return bf_err_code(r, "run() failed");
+        return bf_err_r(r, "run() failed");
 
     _bf_clean();
     bf_btf_teardown();

@@ -72,7 +72,7 @@ static int _bf_nft_setup(void)
         &_bf_nft_rules,
         (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_nfmsg_free}});
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_list");
+        return bf_err_r(r, "failed to create bf_list");
 
     return 0;
 }
@@ -95,7 +95,7 @@ static int _bf_nft_marsh(struct bf_marsh **marsh)
 
         r = bf_marsh_add_child_raw(marsh, bf_nfmsg_hdr(msg), bf_nfmsg_len(msg));
         if (r < 0)
-            return bf_err_code(r, "failed to add rule to marsh");
+            return bf_err_r(r, "failed to add rule to marsh");
     }
 
     return 0;
@@ -112,7 +112,7 @@ static int _bf_nft_unmarsh(struct bf_marsh *marsh)
     r = bf_list_new(
         &list, (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_nfmsg_free}});
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_list");
+        return bf_err_r(r, "failed to create bf_list");
 
     while ((child = bf_marsh_next_child(marsh, child))) {
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
@@ -120,11 +120,11 @@ static int _bf_nft_unmarsh(struct bf_marsh *marsh)
 
         r = bf_nfmsg_new_from_nlmsghdr(&msg, nlh);
         if (r < 0)
-            return bf_err_code(r, "failed to create bf_nfmsg from marsh");
+            return bf_err_r(r, "failed to create bf_nfmsg from marsh");
 
         r = bf_list_add_tail(list, msg);
         if (r < 0)
-            return bf_err_code(r, "failed to add bf_nfmsg to bf_list");
+            return bf_err_r(r, "failed to add bf_nfmsg to bf_list");
         TAKE_PTR(msg);
     }
 
@@ -144,7 +144,7 @@ static int _bf_nft_getgen_cb(const struct bf_nfmsg *req, struct bf_nfgroup *res)
     r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWGEN,
                                    bf_nfmsg_seqnr(req));
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_nfmsg");
+        return bf_err_r(r, "failed to create bf_nfmsg");
 
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_GEN_ID, 0);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_GEN_PROC_PID, getpid());
@@ -168,7 +168,7 @@ static int _bf_nft_gettable_cb(const struct bf_nfmsg *req,
     r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWTABLE,
                                    bf_nfmsg_seqnr(req));
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_nfmsg");
+        return bf_err_r(r, "failed to create bf_nfmsg");
 
     bf_nfmsg_push_str_or_jmp(msg, NFTA_TABLE_NAME, _bf_table_name);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_TABLE_FLAGS, 0);
@@ -190,14 +190,14 @@ static int _bf_nft_newtable_cb(const struct bf_nfmsg *req)
 
     r = bf_nfmsg_parse(req, attrs, __NFTA_TABLE_MAX, bf_nf_table_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFT_MSG_GETTABLE attributes");
+        return bf_err_r(r, "failed to parse NFT_MSG_GETTABLE attributes");
 
     if (!attrs[NFTA_TABLE_NAME])
-        return bf_warn_code(-EINVAL, "missing NFTA_TABLE_NAME attribute");
+        return bf_warn_r(-EINVAL, "missing NFTA_TABLE_NAME attribute");
 
     if (!bf_streq(bf_nfattr_get_str(attrs[NFTA_TABLE_NAME]), _bf_table_name)) {
-        return bf_warn_code(-EINVAL, "invalid table name '%s'",
-                            bf_nfattr_get_str(attrs[NFTA_TABLE_NAME]));
+        return bf_warn_r(-EINVAL, "invalid table name '%s'",
+                         bf_nfattr_get_str(attrs[NFTA_TABLE_NAME]));
     }
 
     return 0;
@@ -215,33 +215,33 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
 
     r = bf_nfmsg_parse(req, chain_attrs, __NFTA_CHAIN_MAX, bf_nf_chain_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFT_MSG_NEWCHAIN attributes");
+        return bf_err_r(r, "failed to parse NFT_MSG_NEWCHAIN attributes");
 
     if (!chain_attrs[NFTA_CHAIN_TABLE] ||
         !bf_streq(bf_nfattr_get_str(chain_attrs[NFTA_CHAIN_TABLE]),
                   _bf_table_name))
-        return bf_err_code(-EINVAL, "invalid table name");
+        return bf_err_r(-EINVAL, "invalid table name");
 
     if (!chain_attrs[NFTA_CHAIN_NAME] ||
         !bf_streq(bf_nfattr_get_str(chain_attrs[NFTA_CHAIN_NAME]),
                   _bf_chain_name))
-        return bf_err_code(-EINVAL, "invalid table name");
+        return bf_err_r(-EINVAL, "invalid table name");
 
     if (!chain_attrs[NFTA_CHAIN_POLICY])
-        return bf_err_code(-EINVAL, "missing NFTA_CHAIN_POLICY attribute");
+        return bf_err_r(-EINVAL, "missing NFTA_CHAIN_POLICY attribute");
 
     if (!chain_attrs[NFTA_CHAIN_HOOK])
-        return bf_err_code(-EINVAL, "missing NFTA_CHAIN_HOOK attribute");
+        return bf_err_r(-EINVAL, "missing NFTA_CHAIN_HOOK attribute");
 
     r = bf_nfattr_parse(chain_attrs[NFTA_CHAIN_HOOK], hook_attrs,
                         __NFTA_HOOK_MAX, bf_nf_hook_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_CHAIN_HOOK attributes");
+        return bf_err_r(r, "failed to parse NFTA_CHAIN_HOOK attributes");
 
     if (!hook_attrs[NFTA_HOOK_HOOKNUM] ||
         NF_INET_PRE_ROUTING !=
             bf_nfattr_get_u32(hook_attrs[NFTA_HOOK_HOOKNUM])) {
-        return bf_err_code(
+        return bf_err_r(
             -EINVAL, "missing or invalid hook (NF_INET_PRE_ROUTING required)");
     }
 
@@ -253,7 +253,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         verdict = BF_VERDICT_DROP;
         break;
     default:
-        return bf_err_code(
+        return bf_err_r(
             -ENOTSUP, "unsupported policy %u",
             be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
     };
@@ -263,13 +263,13 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         codegen->policy = verdict;
         r = bf_codegen_update(codegen);
         if (r < 0)
-            return bf_err_code(r, "failed to update codegen");
+            return bf_err_r(r, "failed to update codegen");
 
         bf_info("existing codegen updated with new policy");
     } else if (!codegen) {
         r = bf_codegen_new(&codegen);
         if (r < 0)
-            return bf_err_code(r, "failed to create bf_codegen");
+            return bf_err_r(r, "failed to create bf_codegen");
 
         codegen->front = BF_FRONT_NFT;
         codegen->hook = BF_HOOK_XDP;
@@ -277,7 +277,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
 
         r = bf_codegen_up(codegen);
         if (r < 0)
-            return bf_err_code(r, "failed to generate codegen");
+            return bf_err_r(r, "failed to generate codegen");
 
         bf_context_set_codegen(BF_HOOK_XDP, BF_FRONT_NFT, codegen);
 
@@ -314,7 +314,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWCHAIN,
                                    bf_nfmsg_seqnr(req));
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_nfmsg");
+        return bf_err_r(r, "failed to create bf_nfmsg");
 
     bf_codegen_dump(codegen, EMPTY_PREFIX);
 
@@ -326,8 +326,8 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
         policy = NF_DROP;
         break;
     default:
-        return bf_err_code(-ENOTSUP, "unsupported codegen policy %u",
-                           codegen->policy);
+        return bf_err_r(-ENOTSUP, "unsupported codegen policy %u",
+                        codegen->policy);
     };
 
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TABLE, _bf_table_name);
@@ -351,7 +351,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     return 0;
 
 bf_nfmsg_push_failure:
-    return bf_err_code(-EINVAL, "failed to add attribute to Netlink message");
+    return bf_err_r(-EINVAL, "failed to add attribute to Netlink message");
 }
 
 static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
@@ -375,47 +375,46 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     r = bf_nfmsg_parse(req, rule_attrs, __NFTA_RULE_MAX, bf_nf_rule_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFT_MSG_NEWRULE attributes");
+        return bf_err_r(r, "failed to parse NFT_MSG_NEWRULE attributes");
 
     if (!rule_attrs[NFTA_RULE_TABLE] ||
         !bf_streq(bf_nfattr_get_str(rule_attrs[NFTA_RULE_TABLE]),
                   _bf_table_name))
-        return bf_err_code(-EINVAL, "invalid table name");
+        return bf_err_r(-EINVAL, "invalid table name");
 
     if (!rule_attrs[NFTA_RULE_CHAIN] ||
         !bf_streq(bf_nfattr_get_str(rule_attrs[NFTA_RULE_CHAIN]),
                   _bf_chain_name))
-        return bf_err_code(-EINVAL, "invalid chain name");
+        return bf_err_r(-EINVAL, "invalid chain name");
 
     parent = rule_attrs[NFTA_RULE_EXPRESSIONS];
     if (!parent)
-        return bf_err_code(-EINVAL, "missing NFTA_RULE_EXPRESSIONS attribute");
+        return bf_err_r(-EINVAL, "missing NFTA_RULE_EXPRESSIONS attribute");
     rem = bf_nfattr_data_len(parent);
 
     attr = (bf_nfattr *)bf_nfattr_data(parent);
     if (!bf_nfattr_is_ok(attr, rem))
-        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+        return bf_err_r(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
 
     r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
     if (r < 0) {
-        return bf_err_code(r,
-                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+        return bf_err_r(r, "failed to parse NFTA_RULE_EXPRESSIONS attributes");
     }
 
     if (!expr_attrs[NFTA_EXPR_NAME] ||
         !bf_streq(bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]), "payload"))
-        return bf_err_code(-EINVAL, "expecting rule expression 'payload'");
+        return bf_err_r(-EINVAL, "expecting rule expression 'payload'");
 
     r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], payload_attrs,
                         __NFTA_PAYLOAD_MAX, bf_nf_payload_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+        return bf_err_r(r, "failed to parse NFTA_EXPR_DATA attributes");
 
     if (!payload_attrs[NFTA_PAYLOAD_BASE] ||
         be32toh(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_BASE])) !=
             NFT_PAYLOAD_NETWORK_HEADER) {
-        return bf_err_code(-EINVAL,
-                           "expecting payload base NFT_PAYLOAD_NETWORK_HEADER");
+        return bf_err_r(-EINVAL,
+                        "expecting payload base NFT_PAYLOAD_NETWORK_HEADER");
     }
 
     uint32_t len = be32toh(bf_nfattr_get_u32(payload_attrs[NFTA_PAYLOAD_LEN]));
@@ -424,43 +423,41 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     attr = bf_nfattr_next(attr, &rem);
     if (!bf_nfattr_is_ok(attr, rem))
-        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+        return bf_err_r(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
 
     r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
     if (r < 0) {
-        return bf_err_code(r,
-                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+        return bf_err_r(r, "failed to parse NFTA_RULE_EXPRESSIONS attributes");
     }
 
     if (!expr_attrs[NFTA_EXPR_NAME] ||
         !bf_streq(bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]), "cmp"))
-        return bf_err_code(-EINVAL, "expecting rule expression 'cmp'");
+        return bf_err_r(-EINVAL, "expecting rule expression 'cmp'");
 
     r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], cmp_attrs, __NFTA_CMP_MAX,
                         bf_nf_cmp_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+        return bf_err_r(r, "failed to parse NFTA_EXPR_DATA attributes");
 
     uint32_t op = be32toh(bf_nfattr_get_u32(cmp_attrs[NFTA_CMP_OP]));
     if (op != NFT_CMP_EQ)
-        return bf_err_code(-EINVAL, "only NFTA_CMP_OP is supported");
+        return bf_err_r(-EINVAL, "only NFTA_CMP_OP is supported");
 
     r = bf_nfattr_parse(cmp_attrs[NFTA_CMP_DATA], data_attrs, __NFTA_DATA_MAX,
                         bf_nf_data_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_CMP_DATA attributes");
+        return bf_err_r(r, "failed to parse NFTA_CMP_DATA attributes");
 
     uint32_t cmp_value =
         be32toh(bf_nfattr_get_u32(data_attrs[NFTA_DATA_VALUE]));
 
     attr = bf_nfattr_next(attr, &rem);
     if (!bf_nfattr_is_ok(attr, rem))
-        return bf_err_code(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
+        return bf_err_r(-EINVAL, "invalid NFTA_RULE_EXPRESSIONS attribute");
 
     r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX, bf_nf_expr_policy);
     if (r < 0) {
-        return bf_err_code(r,
-                           "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+        return bf_err_r(r, "failed to parse NFTA_RULE_EXPRESSIONS attributes");
     }
 
     bool counter = false;
@@ -469,59 +466,58 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
         attr = bf_nfattr_next(attr, &rem);
         if (!bf_nfattr_is_ok(attr, rem))
-            return bf_err_code(-EINVAL, "expecting cmp, got invalid attribute");
+            return bf_err_r(-EINVAL, "expecting cmp, got invalid attribute");
 
         r = bf_nfattr_parse(attr, expr_attrs, __NFTA_EXPR_MAX,
                             bf_nf_expr_policy);
         if (r < 0) {
-            return bf_err_code(
-                r, "failed to parse NFTA_RULE_EXPRESSIONS attributes");
+            return bf_err_r(r,
+                            "failed to parse NFTA_RULE_EXPRESSIONS attributes");
         }
     }
 
     if (!bf_streq(bf_nfattr_data(expr_attrs[NFTA_EXPR_NAME]), "immediate")) {
-        return bf_err_code(
-            r, "expected immediate attribute, but have '%s' instead",
-            bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]));
+        return bf_err_r(r,
+                        "expected immediate attribute, but have '%s' instead",
+                        bf_nfattr_get_str(expr_attrs[NFTA_EXPR_NAME]));
     }
 
     r = bf_nfattr_parse(expr_attrs[NFTA_EXPR_DATA], immediate_attrs,
                         __NFTA_IMMEDIATE_MAX, bf_nf_immediate_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_EXPR_DATA attributes");
+        return bf_err_r(r, "failed to parse NFTA_EXPR_DATA attributes");
 
     r = bf_nfattr_parse(immediate_attrs[NFTA_IMMEDIATE_DATA], data_attrs,
                         __NFTA_DATA_MAX, bf_nf_data_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_IMMEDIATE_DATA attributes");
+        return bf_err_r(r, "failed to parse NFTA_IMMEDIATE_DATA attributes");
 
     if (!data_attrs[NFTA_DATA_VERDICT])
-        return bf_err_code(-EINVAL, "missing NFTA_DATA_VERDICT attribute");
+        return bf_err_r(-EINVAL, "missing NFTA_DATA_VERDICT attribute");
 
     r = bf_nfattr_parse(data_attrs[NFTA_DATA_VERDICT], verdict_attrs,
                         __NFTA_VERDICT_MAX, bf_nf_verdict_policy);
     if (r < 0)
-        return bf_err_code(r, "failed to parse NFTA_DATA_VERDICT attributes");
+        return bf_err_r(r, "failed to parse NFTA_DATA_VERDICT attributes");
 
     if (!verdict_attrs[NFTA_VERDICT_CODE])
-        return bf_err_code(-EINVAL, "missing NFTA_VERDICT_CODE attribute");
+        return bf_err_r(-EINVAL, "missing NFTA_VERDICT_CODE attribute");
 
     int32_t verdict =
         be32toh(bf_nfattr_get_s32(verdict_attrs[NFTA_VERDICT_CODE]));
     if (verdict < 0) {
-        return bf_err_code(-EINVAL,
-                           "only ACCEPT and DROP verdicts are supported");
+        return bf_err_r(-EINVAL, "only ACCEPT and DROP verdicts are supported");
     }
 
     // Add the rule to the relevant codegen
     codegen = bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT);
 
     if (!codegen)
-        return bf_err_code(-EINVAL, "no codegen found for hook");
+        return bf_err_r(-EINVAL, "no codegen found for hook");
 
     r = bf_rule_new(&rule);
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_rule");
+        return bf_err_r(r, "failed to create bf_rule");
 
     rule->counters = counter;
     switch (off) {
@@ -551,7 +547,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
             return r;
         break;
     default:
-        return bf_err_code(-EINVAL, "unknown IP header offset %d", off);
+        return bf_err_r(-EINVAL, "unknown IP header offset %d", off);
     };
 
     rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
@@ -559,21 +555,21 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     r = bf_list_add_tail(&codegen->rules, rule);
     if (r < 0)
-        return bf_err_code(r, "failed to add rule to codegen");
+        return bf_err_r(r, "failed to add rule to codegen");
     TAKE_PTR(rule);
 
     r = bf_codegen_update(codegen);
     if (r < 0)
-        return bf_err_code(r, "failed to update codegen");
+        return bf_err_r(r, "failed to update codegen");
 
     // Backup the rule in the front-end context
     r = bf_nfmsg_new_from_nlmsghdr(&req_copy, bf_nfmsg_hdr(req));
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_nfmsg from nlmsghdr");
+        return bf_err_r(r, "failed to create bf_nfmsg from nlmsghdr");
 
     r = bf_list_add_tail(_bf_nft_rules, req_copy);
     if (r < 0)
-        return bf_err_code(r, "failed to add rule to bf_list");
+        return bf_err_r(r, "failed to add rule to bf_list");
     TAKE_PTR(req_copy);
 
     return 0;
@@ -596,7 +592,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
         r = bf_nfgroup_add_new_message(res, &msg, NFT_MSG_NEWRULE,
                                        bf_nfmsg_seqnr(req));
         if (r < 0)
-            return bf_err_code(r, "failed to create bf_nfmsg");
+            return bf_err_r(r, "failed to create bf_nfmsg");
 
         bf_nfmsg_push_str_or_jmp(msg, NFTA_RULE_TABLE, _bf_table_name);
         bf_nfmsg_push_str_or_jmp(msg, NFTA_RULE_CHAIN, _bf_chain_name);
@@ -606,7 +602,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
         r = bf_nfmsg_parse(cached_msg, rule_attrs, __NFTA_RULE_MAX,
                            bf_nf_rule_policy);
         if (r < 0)
-            return bf_err_code(r, "failed to parse NFT_MSG_NEWRULE attributes");
+            return bf_err_r(r, "failed to parse NFT_MSG_NEWRULE attributes");
 
         {
             _cleanup_bf_nfnest_ struct bf_nfnest _ =
@@ -624,8 +620,8 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
                 r = bf_nfattr_parse(expression, expr_attrs, __NFTA_EXPR_MAX,
                                     bf_nf_expr_policy);
                 if (r < 0) {
-                    return bf_err_code(
-                        r, "failed to parse NFTA_EXPR_* attributes");
+                    return bf_err_r(r,
+                                    "failed to parse NFTA_EXPR_* attributes");
                 }
 
                 bf_nfmsg_push_str_or_jmp(
@@ -641,7 +637,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
                         bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT), i,
                         &counter);
                     if (r < 0)
-                        return bf_err_code(r, "failed to get counter");
+                        return bf_err_r(r, "failed to get counter");
 
                     bf_nfmsg_push_u64_or_jmp(msg, NFTA_COUNTER_BYTES,
                                              be64toh(counter.bytes));
@@ -665,7 +661,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
     return 0;
 
 bf_nfmsg_push_failure:
-    return bf_err_code(-EINVAL, "failed to add attribute to Netlink message");
+    return bf_err_r(-EINVAL, "failed to add attribute to Netlink message");
 }
 
 static int _bf_nft_request_handle(const struct bf_nfmsg *req,
@@ -703,8 +699,8 @@ static int _bf_nft_request_handle(const struct bf_nfmsg *req,
     case NFT_MSG_GETSET:
         break;
     default:
-        r = bf_warn_code(-ENOTSUP, "unsupported nft command %hu",
-                         bf_nfmsg_command(req));
+        r = bf_warn_r(-ENOTSUP, "unsupported nft command %hu",
+                      bf_nfmsg_command(req));
         break;
     }
 
@@ -724,17 +720,17 @@ static int _bf_nft_request_handler(struct bf_request *request,
     r = bf_nfgroup_new_from_stream(&req, (struct nlmsghdr *)request->data,
                                    request->data_len);
     if (r < 0)
-        return bf_err_code(r, "failed to get bf_nfgroup from request");
+        return bf_err_r(r, "failed to get bf_nfgroup from request");
 
     r = bf_nfgroup_new(&res);
     if (r < 0)
-        return bf_err_code(r, "failed to create bf_nfgroup");
+        return bf_err_r(r, "failed to create bf_nfgroup");
 
     bf_list_foreach (bf_nfgroup_messages(req), msg_node) {
         struct bf_nfmsg *msg = bf_list_node_get_data(msg_node);
         r = _bf_nft_request_handle(msg, res);
         if (r)
-            return bf_err_code(r, "failed to handle nft request");
+            return bf_err_r(r, "failed to handle nft request");
     }
 
     return bf_nfgroup_to_response(res, response);
