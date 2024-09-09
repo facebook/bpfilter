@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include <stdio.h>          // NOLINT: fprintf is used
+#include <stdio.h> // NOLINT: fprintf is used
 
 #include "core/helper.h"
-#include "core/opts.h"      // NOLINT: bf_opts_verbose() is used
+#include "core/opts.h" // NOLINT: bf_opts_verbose() is used
 
 enum bf_color
 {
@@ -45,53 +45,36 @@ enum bf_style
 /**
  * Log an error message to stderr.
  *
+ * @param level Log level, as a string. Will prefix the log message.
+ * @param color Color to print the prefix with, as a @ref bf_color .
  * @param fmt Format string.
  * @param ... Format arguments.
  */
-#define _bf_log_impl(fmt, ...) ({ fprintf(stderr, fmt "\n", ##__VA_ARGS__); })
+#define _bf_log_impl(level, color, fmt, ...)                                   \
+    (void)fprintf(stderr, "%s%-7s%s: " fmt "\n",                               \
+                  bf_logger_get_color((color), BF_STYLE_BOLD), (level),        \
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),         \
+                  ##__VA_ARGS__)
 
 #define bf_abort(fmt, ...)                                                     \
     ({                                                                         \
-        _bf_log_impl("%sabort%s  : " fmt,                                      \
-                     bf_logger_get_color(BF_COLOR_RED, BF_STYLE_BOLD),         \
-                     bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),      \
-                     ##__VA_ARGS__);                                           \
+        _bf_log_impl("abort", BF_COLOR_RED, fmt, ##__VA_ARGS__);               \
         abort();                                                               \
     })
 
-#define bf_err(fmt, ...)                                                       \
-    ({                                                                         \
-        _bf_log_impl("%serror%s  : " fmt,                                      \
-                     bf_logger_get_color(BF_COLOR_RED, BF_STYLE_BOLD),         \
-                     bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),      \
-                     ##__VA_ARGS__);                                           \
-    })
+#define bf_err(fmt, ...) _bf_log_impl("error", BF_COLOR_RED, fmt, ##__VA_ARGS__)
 
 #define bf_warn(fmt, ...)                                                      \
-    ({                                                                         \
-        _bf_log_impl("%swarning%s: " fmt,                                      \
-                     bf_logger_get_color(BF_COLOR_YELLOW, BF_STYLE_BOLD),      \
-                     bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),      \
-                     ##__VA_ARGS__);                                           \
-    })
+    _bf_log_impl("warning", BF_COLOR_YELLOW, fmt, ##__VA_ARGS__)
 
 #define bf_info(fmt, ...)                                                      \
-    ({                                                                         \
-        _bf_log_impl("%sinfo%s   : " fmt,                                      \
-                     bf_logger_get_color(BF_COLOR_GREEN, BF_STYLE_BOLD),       \
-                     bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),      \
-                     ##__VA_ARGS__);                                           \
-    })
+    _bf_log_impl("info", BF_COLOR_GREEN, fmt, ##__VA_ARGS__)
 
 #ifndef NDEBUG
 #define bf_dbg(fmt, ...)                                                       \
     ({                                                                         \
-        if (bf_opts_verbose()) {                                               \
-            _bf_log_impl("%sdebug%s  : " fmt,                                  \
-                         bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_BOLD),    \
-                         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),  \
-                         ##__VA_ARGS__);                                       \
-        }                                                                      \
+        if (bf_opts_verbose())                                                 \
+            _bf_log_impl("debug", BF_COLOR_BLUE, fmt, ##__VA_ARGS__);          \
     })
 #else
 #define bf_dbg(...)
@@ -110,49 +93,34 @@ enum bf_style
  *    return bf_err_code(ret, "failed to do something");
  * @endcode
  *
+ * @param level Log level, as a string. Will prefix the log message.
+ * @param color Color to print the prefix with, as a @ref bf_color .
  * @param code Error code, can be positive or negative.
  * @param fmt Format string.
  * @param ... Format arguments.
  * @return The given error code, as a negative value.
  */
-#define _bf_log_code_impl(code, fmt, ...)                                      \
+#define _bf_log_code_impl(level, color, code, fmt, ...)                        \
     ({                                                                         \
-        fprintf(stderr, fmt ": %s\n", ##__VA_ARGS__, bf_strerror(code));       \
+        fprintf(stderr, "%s%-7s%s: " fmt ": %s\n",                             \
+                bf_logger_get_color((color), BF_STYLE_BOLD), (level),          \
+                bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),           \
+                ##__VA_ARGS__, bf_strerror(code));                             \
         -abs(code);                                                            \
     })
 
 #define bf_err_code(code, fmt, ...)                                            \
-    ({                                                                         \
-        _bf_log_code_impl(code, "%serror%s  : " fmt,                           \
-                          bf_logger_get_color(BF_COLOR_RED, BF_STYLE_BOLD),    \
-                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
-                          ##__VA_ARGS__);                                      \
-    })
+    _bf_log_code_impl("error", BF_COLOR_RED, code, fmt, ##__VA_ARGS__)
 
 #define bf_warn_code(code, fmt, ...)                                           \
-    ({                                                                         \
-        _bf_log_code_impl(code, "%swarning%s: " fmt,                           \
-                          bf_logger_get_color(BF_COLOR_YELLOW, BF_STYLE_BOLD), \
-                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
-                          ##__VA_ARGS__);                                      \
-    })
+    _bf_log_code_impl("warning", BF_COLOR_YELLOW, code, fmt, ##__VA_ARGS__)
 
 #define bf_info_code(code, fmt, ...)                                           \
-    ({                                                                         \
-        _bf_log_code_impl(code, "%sinfo%s   : " fmt,                           \
-                          bf_logger_get_color(BF_COLOR_GREEN, BF_STYLE_BOLD),  \
-                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
-                          ##__VA_ARGS__);                                      \
-    })
+    _bf_log_code_impl("info", BF_COLOR_GREEN, code, fmt, ##__VA_ARGS__)
 
 #ifndef NDEBUG
 #define bf_dbg_code(code, fmt, ...)                                            \
-    ({                                                                         \
-        _bf_log_code_impl(code, "%sdebug%s  : " fmt,                           \
-                          bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_BOLD),   \
-                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
-                          ##__VA_ARGS__);                                      \
-    })
+    _bf_log_code_impl("debug", BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
 #else
 #define bf_dbg_code(code, fmt, ...)
 #endif
