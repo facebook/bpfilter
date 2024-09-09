@@ -70,15 +70,11 @@ enum bf_style
 #define bf_info(fmt, ...)                                                      \
     _bf_log_impl("info", BF_COLOR_GREEN, fmt, ##__VA_ARGS__)
 
-#ifndef NDEBUG
 #define bf_dbg(fmt, ...)                                                       \
     ({                                                                         \
         if (bf_opts_verbose())                                                 \
             _bf_log_impl("debug", BF_COLOR_BLUE, fmt, ##__VA_ARGS__);          \
     })
-#else
-#define bf_dbg(...)
-#endif
 
 /**
  * Log an error message to stderr, append the detail of the error code
@@ -118,12 +114,8 @@ enum bf_style
 #define bf_info_code(code, fmt, ...)                                           \
     _bf_log_code_impl("info", BF_COLOR_GREEN, code, fmt, ##__VA_ARGS__)
 
-#ifndef NDEBUG
 #define bf_dbg_code(code, fmt, ...)                                            \
     _bf_log_code_impl("debug", BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
-#else
-#define bf_dbg_code(code, fmt, ...)
-#endif
 
 /**
  * Initialise the logging system.
