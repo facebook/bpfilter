@@ -54,3 +54,8 @@ GENERATE_PERLMOD        = NO
 # Configuration options related to the preprocessor
 #---------------------------------------------------------------------------
 INCLUDE_PATH            = "@CMAKE_SOURCE_DIR@/src"
+
+#---------------------------------------------------------------------------
+# Configuration options related to diagram generator tools
+#---------------------------------------------------------------------------
+HAVE_DOT                = NO
