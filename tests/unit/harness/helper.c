@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include "core/rule.h"
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
 #include "harness/cmocka.h"
 #include "core/helper.h"
@@ -55,18 +55,18 @@ void bf_test_remove_tmp_file(char **path)
     *path = NULL;
 }
 
-int bf_test_make_codegen(struct bf_codegen **codegen, enum bf_hook hook,
+int bf_test_make_cgen(struct bf_cgen **cgen, enum bf_hook hook,
                          int nprogs)
 {
-    _cleanup_bf_codegen_ struct bf_codegen *c = NULL;
+    _cleanup_bf_cgen_ struct bf_cgen *c = NULL;
     int r;
 
-    bf_assert(codegen);
+    bf_assert(cgen);
 
     // So ifindex start a 1
     ++nprogs;
 
-    r = bf_codegen_new(&c);
+    r = bf_cgen_new(&c);
     if (r < 0)
         return r;
 
@@ -84,7 +84,7 @@ int bf_test_make_codegen(struct bf_codegen **codegen, enum bf_hook hook,
         TAKE_PTR(p);
     }
 
-    *codegen = TAKE_PTR(c);
+    *cgen = TAKE_PTR(c);
 
     return 0;
 }

@@ -90,7 +90,7 @@ set(bf_test_srcs
     src/core/matcher.c
     src/core/rule.c
     src/core/verdict.c
-    src/bpfilter/cgen/codegen.c
+    src/bpfilter/cgen/cgen.c
     src/bpfilter/cgen/jmp.c
     src/bpfilter/cgen/printer.c
     src/bpfilter/cgen/program.c

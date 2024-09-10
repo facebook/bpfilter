@@ -32,7 +32,7 @@
  * contexts, while keeping the API consistent with the other bf_* structures.
  */
 
-struct bf_codegen;
+struct bf_cgen;
 struct bf_marsh;
 
 /**
@@ -44,7 +44,7 @@ struct bf_marsh;
 struct bf_context
 {
     /// Codegens used by bpfilter. One codegen per (hook, front) set.
-    struct bf_codegen *codegens[_BF_HOOK_MAX][_BF_FRONT_MAX];
+    struct bf_cgen *cgens[_BF_HOOK_MAX][_BF_FRONT_MAX];
 };
 
 /**
@@ -97,8 +97,7 @@ int bf_context_load(const struct bf_marsh *marsh);
  * @return The codegen for the given hook and front-end, or NULL if there is
  *         no such codegen.
  */
-struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
-                                          enum bf_front front);
+struct bf_cgen *bf_context_get_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Take a codegen out of the context for a given (hook, front) set.
@@ -111,8 +110,7 @@ struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
  * @return The codegen for the given hook and front-end, or NULL if there is no
  *         such codegen.
  */
-struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
-                                           enum bf_front front);
+struct bf_cgen *bf_context_take_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Delete a codegen from the context for a given (hook, front) set.
@@ -123,30 +121,30 @@ struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
  * @param hook Hook to get the codegen from. Must be a valid hook.
  * @param front Front-end to get the codegen from. Must be a valid front-end.
  */
-void bf_context_delete_codegen(enum bf_hook hook, enum bf_front front);
+void bf_context_delete_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Add a codegen to the context.
  *
  * @param hook Hook to add the codegen to. Must be a valid hook.
  * @param front Front-end to add the codegen to. Must be a valid front-end.
- * @param codegen Codegen to add to the context. Can't be NULL.
+ * @param cgen Codegen to add to the context. Can't be NULL.
  * @return 0 on success, negative error code on failure. If a codegen already
  *         exists for the given (hook, front) set, then -EEXIST is returned.
  */
-int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
-                           struct bf_codegen *codegen);
+int bf_context_set_cgen(enum bf_hook hook, enum bf_front front,
+                        struct bf_cgen *cgen);
 
 /**
  * Replace the codegen for a given (hook, front) set, if any.
  *
  * If a codegen already exists for the given (hook, front) set, then it is
- * deleted and replaced by @p codegen. Otherwise, @p codegen is added to the
+ * deleted and replaced by @p cgen. Otherwise, @p cgen is added to the
  * context.
  *
  * @param hook Hook to update the codegen for. Must be a valid hook.
  * @param front Front-end to update the codegen for. Must be a valid
- * @param codegen Codegen to update the context with. Can't be NULL.
+ * @param cgen Codegen to update the context with. Can't be NULL.
  */
-void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
-                                struct bf_codegen *codegen);
+void bf_context_replace_cgen(enum bf_hook hook, enum bf_front front,
+                             struct bf_cgen *cgen);
