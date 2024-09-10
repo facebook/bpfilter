@@ -30,6 +30,7 @@
 #include "bpfilter/context.h"
 #include "core/bpf.h"
 #include "core/btf.h"
+#include "core/chain.h"
 #include "core/counter.h"
 #include "core/dump.h"
 #include "core/flavor.h"
@@ -784,8 +785,8 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
     return 0;
 }
 
-int bf_program_generate(struct bf_program *program, bf_list *rules,
-                        enum bf_verdict policy)
+int bf_program_generate(struct bf_program *program,
+                        const struct bf_chain *chain)
 {
     int r;
 
@@ -806,7 +807,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     if (r)
         return r;
 
-    bf_list_foreach (rules, rule_node) {
+    bf_list_foreach (&chain->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
 
         if (rule->ifindex != 0 && rule->ifindex != program->ifindex)
@@ -825,7 +826,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
     EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
 
     // BF_ARG_2: index of the current rule in counters map.
-    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, bf_list_size(rules)));
+    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, bf_list_size(&chain->rules)));
 
     // BF_ARG_3: packet size, from the context.
     EMIT(program,
@@ -833,8 +834,8 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
 
     EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
 
-    EMIT(program,
-         BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(policy)));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                                chain->policy)));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_generate_functions(program);
@@ -846,7 +847,7 @@ int bf_program_generate(struct bf_program *program, bf_list *rules,
         return bf_err_r(r, "failed to generate function call fixups");
 
     // Add 1 to the number of counters for the policy counter.
-    program->num_counters = bf_list_size(rules) + 1;
+    program->num_counters = bf_list_size(&chain->rules) + 1;
 
     return 0;
 }

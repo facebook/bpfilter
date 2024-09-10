@@ -25,7 +25,6 @@
 #include "core/helper.h"
 #include "core/hook.h"
 #include "core/list.h"
-#include "core/verdict.h"
 
 #include "external/filter.h"
 
@@ -77,8 +76,8 @@
             return __r;                                                        \
     })
 
+struct bf_chain;
 struct bf_marsh;
-struct bf_rule;
 struct bf_counter;
 
 /**
@@ -217,8 +216,8 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn);
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_function function);
-int bf_program_generate(struct bf_program *program, bf_list *rules,
-                        enum bf_verdict policy);
+int bf_program_generate(struct bf_program *program,
+                        const struct bf_chain *chain);
 
 /**
  * Load and attach the program to the kernel.

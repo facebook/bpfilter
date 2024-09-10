@@ -9,12 +9,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "core/rule.h"
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
-#include "harness/cmocka.h"
-#include "core/helper.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
+#include "core/chain.h"
+#include "core/helper.h"
+#include "core/rule.h"
+#include "harness/cmocka.h"
 
 struct nlmsghdr;
 
@@ -55,38 +56,32 @@ void bf_test_remove_tmp_file(char **path)
     *path = NULL;
 }
 
-int bf_test_make_cgen(struct bf_cgen **cgen, enum bf_hook hook,
-                         int nprogs)
+struct bf_chain *bf_test_chain(enum bf_hook hook, enum bf_verdict policy)
 {
-    _cleanup_bf_cgen_ struct bf_cgen *c = NULL;
-    int r;
+    struct bf_chain *chain;
 
-    bf_assert(cgen);
+    assert_int_equal(0, bf_chain_new(&chain, hook, policy, NULL, NULL));
+    
+    return chain;
+}
 
-    // So ifindex start a 1
-    ++nprogs;
+struct bf_cgen *bf_test_cgen(enum bf_front front, enum bf_hook hook,
+                             enum bf_verdict verdict, size_t nprogs)
+{
+    struct bf_cgen *cgen;
+    struct bf_chain *chain = bf_test_chain(hook, verdict);
 
-    r = bf_cgen_new(&c);
-    if (r < 0)
-        return r;
+    assert_int_equal(0, bf_cgen_new(&cgen, front, &chain));
 
-    for (int i = 1; i < nprogs; ++i) {
-        _cleanup_bf_program_ struct bf_program *p = NULL;
+    for (size_t i = 0; i < nprogs; ++i) {
+        struct bf_program *program;
 
-        r = bf_program_new(&p, i, hook, BF_FRONT_IPT);
-        if (r < 0)
-            return r;
-
-        r = bf_list_add_tail(&c->programs, p);
-        if (r < 0)
-            return r;
-
-        TAKE_PTR(p);
+        // ifindex should start at 1.
+        assert_int_equal(0, bf_program_new(&program, i + 1, hook, front));
+        assert_int_equal(0, bf_list_add_tail(&cgen->programs, program));
     }
 
-    *cgen = TAKE_PTR(c);
-
-    return 0;
+    return cgen;
 }
 
 struct nlmsghdr *bf_test_get_nlmsghdr(size_t nmsg, size_t *len)

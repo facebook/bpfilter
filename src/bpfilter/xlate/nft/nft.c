@@ -17,6 +17,7 @@
 #include "bpfilter/xlate/front.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
 #include "bpfilter/xlate/nft/nfmsg.h"
+#include "core/chain.h"
 #include "core/counter.h"
 #include "core/dump.h"
 #include "core/front.h"
@@ -208,6 +209,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
     bf_assert(req);
 
     _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
     bf_nfattr *chain_attrs[__NFTA_CHAIN_MAX] = {};
     bf_nfattr *hook_attrs[__NFTA_HOOK_MAX] = {};
     enum bf_verdict verdict;
@@ -258,29 +260,27 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
             be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
     };
 
+    r = bf_chain_new(&chain, BF_HOOK_XDP, verdict, NULL, NULL);
+    if (r < 0)
+        return bf_err_r(r, "failed to create new chain");
+
     cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
-    if (cgen && verdict != cgen->policy) {
-        cgen->policy = verdict;
-        r = bf_cgen_update(cgen);
+    if (cgen && verdict != cgen->chain->policy) {
+        r = bf_cgen_update(cgen, &chain);
         if (r < 0)
             return bf_err_r(r, "failed to update codegen");
 
         bf_info("existing codegen updated with new policy");
     } else if (!cgen) {
-        r = bf_cgen_new(&cgen);
+        r = bf_cgen_new(&cgen, BF_FRONT_NFT, &chain);
         if (r < 0)
             return bf_err_r(r, "failed to create bf_cgen");
-
-        cgen->front = BF_FRONT_NFT;
-        cgen->hook = BF_HOOK_XDP;
-        cgen->policy = verdict;
 
         r = bf_cgen_up(cgen);
         if (r < 0)
             return bf_err_r(r, "failed to generate codegen");
 
-        bf_context_set_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
-
+        bf_context_replace_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
         bf_info("new codegen created and loaded");
     } else {
         bf_info("codegen already properly configured, skipping generation");
@@ -318,7 +318,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
 
     bf_cgen_dump(cgen, EMPTY_PREFIX);
 
-    switch (cgen->policy) {
+    switch (cgen->chain->policy) {
     case BF_VERDICT_ACCEPT:
         policy = NF_ACCEPT;
         break;
@@ -327,7 +327,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
         break;
     default:
         return bf_err_r(-ENOTSUP, "unsupported codegen policy %u",
-                        cgen->policy);
+                        cgen->chain->policy);
     };
 
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TABLE, _bf_table_name);
@@ -337,7 +337,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TYPE, "filter");
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_FLAGS, NFT_CHAIN_BASE);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_USE,
-                             htobe32(bf_list_size(&cgen->rules)));
+                             htobe32(bf_list_size(&cgen->chain->rules)));
 
     {
         _cleanup_bf_nfnest_ struct bf_nfnest _ =
@@ -360,6 +360,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     _cleanup_bf_rule_ struct bf_rule *rule = NULL;
     _cleanup_bf_nfmsg_ struct bf_nfmsg *req_copy;
+    struct bf_chain *chain;
     struct bf_cgen *cgen;
     bf_nfattr *rule_attrs[__NFTA_RULE_MAX] = {};
     bf_nfattr *expr_attrs[__NFTA_EXPR_MAX] = {};
@@ -511,7 +512,6 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     // Add the rule to the relevant codegen
     cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
-
     if (!cgen)
         return bf_err_r(-EINVAL, "no codegen found for hook");
 
@@ -550,15 +550,16 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
         return bf_err_r(-EINVAL, "unknown IP header offset %d", off);
     };
 
-    rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
-    rule->index = bf_list_size(&cgen->rules);
+    chain = cgen->chain;
 
-    r = bf_list_add_tail(&cgen->rules, rule);
+    rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
+    rule->index = bf_list_size(&cgen->chain->rules);
+    r = bf_chain_add_rule(chain, rule);
     if (r < 0)
-        return bf_err_r(r, "failed to add rule to codegen");
+        return bf_err_r(r, "failed to add rule to chain");
     TAKE_PTR(rule);
 
-    r = bf_cgen_update(cgen);
+    r = bf_cgen_update(cgen, &cgen->chain);
     if (r < 0)
         return bf_err_r(r, "failed to update codegen");
 
