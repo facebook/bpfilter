@@ -11,7 +11,7 @@
 
 #include <stddef.h>
 
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"

@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
@@ -360,22 +360,22 @@ static bool _bf_ipt_entry_is_empty(const struct ipt_entry *entry)
  * Translate iptables rules into bpfilter format.
  *
  * @param ipt iptables rules.
- * @param codegens Array of codegens, indexed by hook. At most one codegen per
+ * @param cgens Array of codegens, indexed by hook. At most one codegen per
  *        hook will be generated.
  * @return 0 on success, negative error code on failure.
  */
 static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
-                                   struct bf_codegen *(*codegens)[_BF_HOOK_MAX])
+                                   struct bf_cgen *(*cgens)[_BF_HOOK_MAX])
 {
     struct ipt_entry *first_rule;
     struct ipt_entry *last_rule;
     int r;
 
     bf_assert(ipt);
-    bf_assert(codegens);
+    bf_assert(cgens);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
-        _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
         enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
 
         if (!ipt_is_hook_enabled(ipt, i)) {
@@ -383,12 +383,12 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
             continue;
         }
 
-        r = bf_codegen_new(&codegen);
+        r = bf_cgen_new(&cgen);
         if (r < 0)
             return r;
 
-        codegen->front = BF_FRONT_IPT;
-        codegen->hook = hook;
+        cgen->front = BF_FRONT_IPT;
+        cgen->hook = hook;
 
         first_rule = ipt_get_first_rule(ipt, i);
         last_rule = ipt_get_last_rule(ipt, i);
@@ -397,7 +397,7 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
             /* We assume the last rule is a policy (ipt_entry.ip field is filled
              * with 0), and use it as the verdict if true. */
             r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule),
-                                          &codegen->policy);
+                                          &cgen->policy);
             if (r < 0)
                 return bf_err_r(r, "invalid IPT policy verdict");
         } else {
@@ -415,7 +415,7 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
                 return r;
 
             rule->index = rule_idx++;
-            r = bf_list_add_tail(&codegen->rules, rule);
+            r = bf_list_add_tail(&cgen->rules, rule);
             if (r < 0)
                 return r;
 
@@ -424,10 +424,10 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
             TAKE_PTR(rule);
         }
 
-        bf_dbg("created codegen for %s::%s", bf_front_to_str(codegen->front),
-               bf_hook_to_str(codegen->hook));
+        bf_dbg("created codegen for %s::%s", bf_front_to_str(cgen->front),
+               bf_hook_to_str(cgen->hook));
 
-        (*codegens)[hook] = TAKE_PTR(codegen);
+        (*cgens)[hook] = TAKE_PTR(cgen);
     }
 
     return 0;
@@ -446,7 +446,7 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
 static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 {
     _cleanup_free_ struct ipt_entry *entries = NULL;
-    struct bf_codegen *codegens[_BF_HOOK_MAX] = {};
+    struct bf_cgen *cgens[_BF_HOOK_MAX] = {};
     int r;
 
     bf_assert(replace);
@@ -454,7 +454,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
 
     bf_ipt_dump_replace(replace, NULL);
 
-    r = _bf_ipt_xlate_set_rules(replace, &codegens);
+    r = _bf_ipt_xlate_set_rules(replace, &cgens);
     if (r < 0)
         return bf_err_r(r, "failed to translate iptables rules");
 
@@ -463,37 +463,36 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     entries = bf_memdup(replace->entries, replace->size);
     if (!entries) {
         r = bf_err_r(-ENOMEM, "failed to duplicate iptables rules");
-        goto end_free_codegens;
+        goto end_free_cgens;
     }
 
     for (int i = 0; i < _BF_HOOK_MAX; i++) {
-        _cleanup_bf_codegen_ struct bf_codegen *new_cgen =
-            TAKE_PTR(codegens[i]);
-        struct bf_codegen *cur_cgen;
+        _cleanup_bf_cgen_ struct bf_cgen *new_cgen = TAKE_PTR(cgens[i]);
+        struct bf_cgen *cur_cgen;
 
         if (!new_cgen)
             continue;
 
-        cur_cgen = bf_context_get_codegen(new_cgen->hook, new_cgen->front);
+        cur_cgen = bf_context_get_cgen(new_cgen->hook, new_cgen->front);
         if (cur_cgen) {
             bf_swap(cur_cgen->rules, new_cgen->rules);
             cur_cgen->policy = new_cgen->policy;
 
-            r = bf_codegen_update(cur_cgen);
+            r = bf_cgen_update(cur_cgen);
             if (r) {
                 bf_err_r(r, "failed to update existing codegen for hook %s",
                          bf_hook_to_str(new_cgen->hook));
-                goto end_free_codegens;
+                goto end_free_cgens;
             }
         } else {
-            r = bf_codegen_up(new_cgen);
+            r = bf_cgen_up(new_cgen);
             if (r) {
                 bf_err_r(r, "failed to generate bytecode for hook %s",
                          bf_hook_to_str(new_cgen->hook));
-                goto end_free_codegens;
+                goto end_free_cgens;
             }
 
-            bf_context_replace_codegen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
+            bf_context_replace_cgen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
         }
     }
 
@@ -508,9 +507,9 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     free(_bf_cache->entries);
     _bf_cache->entries = TAKE_PTR(entries);
 
-end_free_codegens:
+end_free_cgens:
     for (int i = 0; i < _BF_HOOK_MAX; i++)
-        bf_codegen_free(&codegens[i]);
+        bf_cgen_free(&cgens[i]);
 
     return r;
 }
@@ -592,7 +591,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         struct ipt_entry *first_rule;
         struct ipt_entry *last_rule;
-        struct bf_codegen *codegen;
+        struct bf_cgen *cgen;
         uint32_t counter_idx;
 
         if (!(_bf_cache->valid_hooks & (1 << i))) {
@@ -602,14 +601,13 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
         first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
         last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
-        codegen =
-            bf_context_get_codegen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
+        cgen = bf_context_get_cgen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
 
         for (counter_idx = 0; first_rule <= last_rule;
              ++counter_idx, first_rule = ipt_get_next_rule(first_rule)) {
             struct bf_counter counter = {};
 
-            r = bf_codegen_get_counter(codegen, counter_idx, &counter);
+            r = bf_cgen_get_counter(cgen, counter_idx, &counter);
             if (r) {
                 return bf_err_r(r, "failed to get IPT counter for index %u",
                                 counter_idx);
@@ -619,8 +617,8 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
             first_rule->counters.pcnt = counter.packets;
         }
 
-        if (counter_idx != bf_list_size(&codegen->rules) + 1) {
-            /* We expect len(codegen->rules) + 1 as the policy is considered
+        if (counter_idx != bf_list_size(&cgen->rules) + 1) {
+            /* We expect len(cgen->rules) + 1 as the policy is considered
              * a rule for iptables, but not for bpfilter. */
             return bf_err_r(-EINVAL, "invalid number of rules requested");
         }

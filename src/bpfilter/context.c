@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
@@ -65,36 +65,36 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
     bf_assert(context);
     bf_assert(marsh);
 
-    // Allocate a new codegen
+    // Allocate a new context
     _context = calloc(1, sizeof(*_context));
     if (!_context)
         return -ENOMEM;
 
-    // Unmarsh bf_context.codegens
+    // Unmarsh bf_context.cgens
     ctx_elem = bf_marsh_next_child(marsh, ctx_elem);
     if (!ctx_elem)
         return bf_err_r(-EINVAL, "failed to find valid child");
 
     while ((cgen_elem = bf_marsh_next_child(ctx_elem, cgen_elem))) {
-        _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
         enum bf_hook hook;
         enum bf_front front;
 
-        r = bf_codegen_unmarsh(cgen_elem, &codegen);
+        r = bf_cgen_unmarsh(cgen_elem, &cgen);
         if (r)
             return bf_err_r(r, "failed to unmarsh codegen");
 
-        hook = codegen->hook;
-        front = codegen->front;
+        hook = cgen->hook;
+        front = cgen->front;
 
-        if (_context->codegens[hook][front]) {
+        if (_context->cgens[hook][front]) {
             return bf_err_r(
                 -EEXIST,
                 "restored codegen for %s::%s, but codegen already exists in context!",
                 bf_hook_to_str(hook), bf_front_to_str(front));
         }
 
-        _context->codegens[hook][front] = TAKE_PTR(codegen);
+        _context->cgens[hook][front] = TAKE_PTR(cgen);
     }
 
     *context = TAKE_PTR(_context);
@@ -119,7 +119,7 @@ static void _bf_context_free(struct bf_context **context)
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         for (int j = 0; j < _BF_FRONT_MAX; ++j)
-            bf_codegen_free(&(*context)->codegens[i][j]);
+            bf_cgen_free(&(*context)->cgens[i][j]);
     }
 
     free(*context);
@@ -135,8 +135,8 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
-    DUMP(bf_dump_prefix_last(prefix), "codegens: bf_codegen[%d][%d]",
-         _BF_HOOK_MAX, _BF_FRONT_MAX);
+    DUMP(bf_dump_prefix_last(prefix), "cgens: bf_cgen[%d][%d]", _BF_HOOK_MAX,
+         _BF_FRONT_MAX);
     bf_dump_prefix_push(prefix);
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
@@ -150,11 +150,10 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
             if (j == _BF_FRONT_MAX - 1)
                 bf_dump_prefix_last(prefix);
 
-            if (context->codegens[i][j]) {
-                DUMP(prefix, "[%s]: struct bf_codegen *", bf_front_to_str(j));
+            if (context->cgens[i][j]) {
+                DUMP(prefix, "[%s]: struct bf_cgen *", bf_front_to_str(j));
                 bf_dump_prefix_push(prefix);
-                bf_codegen_dump(context->codegens[i][j],
-                                bf_dump_prefix_last(prefix));
+                bf_cgen_dump(context->cgens[i][j], bf_dump_prefix_last(prefix));
                 bf_dump_prefix_pop(prefix);
             } else {
                 DUMP(prefix, "[%s]: <null>", bf_front_to_str(j));
@@ -188,7 +187,7 @@ static int _bf_context_marsh(const struct bf_context *context,
         return bf_err_r(r, "failed to create marsh for context");
 
     {
-        // Serialize bf_context.codegens content
+        // Serialize bf_context.cgens content
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_marsh_new(&child, NULL, 0);
@@ -198,12 +197,12 @@ static int _bf_context_marsh(const struct bf_context *context,
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
                 _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-                struct bf_codegen *codegen = context->codegens[i][j];
+                struct bf_cgen *cgen = context->cgens[i][j];
 
-                if (!codegen)
+                if (!cgen)
                     continue;
 
-                r = bf_codegen_marsh(codegen, &subchild);
+                r = bf_cgen_marsh(cgen, &subchild);
                 if (r)
                     return bf_err_r(r, "failed to marsh codegen");
 
@@ -230,69 +229,68 @@ static int _bf_context_marsh(const struct bf_context *context,
 }
 
 /**
- * See @ref bf_context_get_codegen for details.
+ * See @ref bf_context_get_cgen for details.
  */
-static struct bf_codegen *
-_bf_context_get_codegen(const struct bf_context *context, enum bf_hook hook,
-                        enum bf_front front)
+static struct bf_cgen *_bf_context_get_cgen(const struct bf_context *context,
+                                            enum bf_hook hook,
+                                            enum bf_front front)
 {
     bf_assert(context);
 
-    return context->codegens[hook][front];
+    return context->cgens[hook][front];
 }
 
 /**
- * See @ref bf_context_take_codegen for details.
+ * See @ref bf_context_take_cgen for details.
  */
-static struct bf_codegen *_bf_context_take_codegen(struct bf_context *context,
-                                                   enum bf_hook hook,
-                                                   enum bf_front front)
+static struct bf_cgen *_bf_context_take_cgen(struct bf_context *context,
+                                             enum bf_hook hook,
+                                             enum bf_front front)
 {
     bf_assert(context);
 
-    return TAKE_PTR(context->codegens[hook][front]);
+    return TAKE_PTR(context->cgens[hook][front]);
 }
 
 /**
- * See @ref bf_context_delete_codegen for details.
+ * See @ref bf_context_delete_cgen for details.
  */
-static void _bf_context_delete_codegen(struct bf_context *context,
-                                       enum bf_hook hook, enum bf_front front)
+static void _bf_context_delete_cgen(struct bf_context *context,
+                                    enum bf_hook hook, enum bf_front front)
 {
     bf_assert(context);
 
-    bf_codegen_free(&context->codegens[hook][front]);
+    bf_cgen_free(&context->cgens[hook][front]);
 }
 
 /**
- * See @ref bf_context_set_codegen for details.
+ * See @ref bf_context_set_cgen for details.
  */
-static int _bf_context_set_codegen(struct bf_context *context,
-                                   enum bf_hook hook, enum bf_front front,
-                                   struct bf_codegen *codegen)
+static int _bf_context_set_cgen(struct bf_context *context, enum bf_hook hook,
+                                enum bf_front front, struct bf_cgen *cgen)
 {
     bf_assert(context);
-    bf_assert(codegen && codegen->hook == hook && codegen->front == front);
+    bf_assert(cgen && cgen->hook == hook && cgen->front == front);
 
-    if (context->codegens[hook][front])
+    if (context->cgens[hook][front])
         return bf_err_r(-EEXIST, "codegen already exists in context");
 
-    context->codegens[hook][front] = codegen;
+    context->cgens[hook][front] = cgen;
 
     return 0;
 }
 
 /**
- * See @ref bf_context_replace_codegen for details.
+ * See @ref bf_context_replace_cgen for details.
  */
-static void _bf_context_replace_codegen(struct bf_context *context,
-                                        enum bf_hook hook, enum bf_front front,
-                                        struct bf_codegen *codegen)
+static void _bf_context_replace_cgen(struct bf_context *context,
+                                     enum bf_hook hook, enum bf_front front,
+                                     struct bf_cgen *cgen)
 {
     bf_assert(context);
 
-    bf_codegen_free(&context->codegens[hook][front]);
-    context->codegens[hook][front] = codegen;
+    bf_cgen_free(&context->cgens[hook][front]);
+    context->cgens[hook][front] = cgen;
 }
 
 int bf_context_setup(void)
@@ -316,10 +314,10 @@ void bf_context_teardown(bool clear)
     if (clear) {
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
-                if (!_bf_global_context->codegens[i][j])
+                if (!_bf_global_context->cgens[i][j])
                     continue;
 
-                bf_codegen_unload(_bf_global_context->codegens[i][j]);
+                bf_cgen_unload(_bf_global_context->cgens[i][j]);
             }
         }
     }
@@ -364,31 +362,29 @@ void bf_context_dump(prefix_t *prefix)
     _bf_context_dump(_bf_global_context, prefix);
 }
 
-struct bf_codegen *bf_context_get_codegen(enum bf_hook hook,
-                                          enum bf_front front)
+struct bf_cgen *bf_context_get_cgen(enum bf_hook hook, enum bf_front front)
 {
-    return _bf_context_get_codegen(_bf_global_context, hook, front);
+    return _bf_context_get_cgen(_bf_global_context, hook, front);
 }
 
-struct bf_codegen *bf_context_take_codegen(enum bf_hook hook,
-                                           enum bf_front front)
+struct bf_cgen *bf_context_take_cgen(enum bf_hook hook, enum bf_front front)
 {
-    return _bf_context_take_codegen(_bf_global_context, hook, front);
+    return _bf_context_take_cgen(_bf_global_context, hook, front);
 }
 
-void bf_context_delete_codegen(enum bf_hook hook, enum bf_front front)
+void bf_context_delete_cgen(enum bf_hook hook, enum bf_front front)
 {
-    _bf_context_delete_codegen(_bf_global_context, hook, front);
+    _bf_context_delete_cgen(_bf_global_context, hook, front);
 }
 
-int bf_context_set_codegen(enum bf_hook hook, enum bf_front front,
-                           struct bf_codegen *codegen)
+int bf_context_set_cgen(enum bf_hook hook, enum bf_front front,
+                        struct bf_cgen *cgen)
 {
-    return _bf_context_set_codegen(_bf_global_context, hook, front, codegen);
+    return _bf_context_set_cgen(_bf_global_context, hook, front, cgen);
 }
 
-void bf_context_replace_codegen(enum bf_hook hook, enum bf_front front,
-                                struct bf_codegen *codegen)
+void bf_context_replace_cgen(enum bf_hook hook, enum bf_front front,
+                             struct bf_cgen *cgen)
 {
-    _bf_context_replace_codegen(_bf_global_context, hook, front, codegen);
+    _bf_context_replace_cgen(_bf_global_context, hook, front, cgen);
 }

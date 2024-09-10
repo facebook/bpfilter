@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
@@ -207,7 +207,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
 {
     bf_assert(req);
 
-    _cleanup_bf_codegen_ struct bf_codegen *codegen = NULL;
+    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
     bf_nfattr *chain_attrs[__NFTA_CHAIN_MAX] = {};
     bf_nfattr *hook_attrs[__NFTA_HOOK_MAX] = {};
     enum bf_verdict verdict;
@@ -258,35 +258,35 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
             be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
     };
 
-    codegen = bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT);
-    if (codegen && verdict != codegen->policy) {
-        codegen->policy = verdict;
-        r = bf_codegen_update(codegen);
+    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    if (cgen && verdict != cgen->policy) {
+        cgen->policy = verdict;
+        r = bf_cgen_update(cgen);
         if (r < 0)
             return bf_err_r(r, "failed to update codegen");
 
         bf_info("existing codegen updated with new policy");
-    } else if (!codegen) {
-        r = bf_codegen_new(&codegen);
+    } else if (!cgen) {
+        r = bf_cgen_new(&cgen);
         if (r < 0)
-            return bf_err_r(r, "failed to create bf_codegen");
+            return bf_err_r(r, "failed to create bf_cgen");
 
-        codegen->front = BF_FRONT_NFT;
-        codegen->hook = BF_HOOK_XDP;
-        codegen->policy = verdict;
+        cgen->front = BF_FRONT_NFT;
+        cgen->hook = BF_HOOK_XDP;
+        cgen->policy = verdict;
 
-        r = bf_codegen_up(codegen);
+        r = bf_cgen_up(cgen);
         if (r < 0)
             return bf_err_r(r, "failed to generate codegen");
 
-        bf_context_set_codegen(BF_HOOK_XDP, BF_FRONT_NFT, codegen);
+        bf_context_set_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
 
         bf_info("new codegen created and loaded");
     } else {
         bf_info("codegen already properly configured, skipping generation");
     }
 
-    TAKE_PTR(codegen);
+    TAKE_PTR(cgen);
 
     return 0;
 }
@@ -298,13 +298,13 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     bf_assert(res);
 
     struct bf_nfmsg *msg;
-    struct bf_codegen *codegen;
+    struct bf_cgen *cgen;
     uint32_t policy;
     int r;
 
     // Only BF_HOOK_XDP is supported.
-    codegen = bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT);
-    if (!codegen) {
+    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    if (!cgen) {
         /* If no codegen is found, do not fill the messages group and return
          * success. The response message will then contain only a DONE
          * message. */
@@ -316,9 +316,9 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     if (r < 0)
         return bf_err_r(r, "failed to create bf_nfmsg");
 
-    bf_codegen_dump(codegen, EMPTY_PREFIX);
+    bf_cgen_dump(cgen, EMPTY_PREFIX);
 
-    switch (codegen->policy) {
+    switch (cgen->policy) {
     case BF_VERDICT_ACCEPT:
         policy = NF_ACCEPT;
         break;
@@ -327,7 +327,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
         break;
     default:
         return bf_err_r(-ENOTSUP, "unsupported codegen policy %u",
-                        codegen->policy);
+                        cgen->policy);
     };
 
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TABLE, _bf_table_name);
@@ -337,7 +337,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TYPE, "filter");
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_FLAGS, NFT_CHAIN_BASE);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_USE,
-                             htobe32(bf_list_size(&codegen->rules)));
+                             htobe32(bf_list_size(&cgen->rules)));
 
     {
         _cleanup_bf_nfnest_ struct bf_nfnest _ =
@@ -360,7 +360,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     _cleanup_bf_rule_ struct bf_rule *rule = NULL;
     _cleanup_bf_nfmsg_ struct bf_nfmsg *req_copy;
-    struct bf_codegen *codegen;
+    struct bf_cgen *cgen;
     bf_nfattr *rule_attrs[__NFTA_RULE_MAX] = {};
     bf_nfattr *expr_attrs[__NFTA_EXPR_MAX] = {};
     bf_nfattr *payload_attrs[__NFTA_PAYLOAD_MAX] = {};
@@ -510,9 +510,9 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     }
 
     // Add the rule to the relevant codegen
-    codegen = bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
 
-    if (!codegen)
+    if (!cgen)
         return bf_err_r(-EINVAL, "no codegen found for hook");
 
     r = bf_rule_new(&rule);
@@ -551,14 +551,14 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     };
 
     rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
-    rule->index = bf_list_size(&codegen->rules);
+    rule->index = bf_list_size(&cgen->rules);
 
-    r = bf_list_add_tail(&codegen->rules, rule);
+    r = bf_list_add_tail(&cgen->rules, rule);
     if (r < 0)
         return bf_err_r(r, "failed to add rule to codegen");
     TAKE_PTR(rule);
 
-    r = bf_codegen_update(codegen);
+    r = bf_cgen_update(cgen);
     if (r < 0)
         return bf_err_r(r, "failed to update codegen");
 
@@ -633,8 +633,8 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
                         bf_nfnest_or_jmp(msg, NFTA_EXPR_DATA);
                     struct bf_counter counter;
 
-                    r = bf_codegen_get_counter(
-                        bf_context_get_codegen(BF_HOOK_XDP, BF_FRONT_NFT), i,
+                    r = bf_cgen_get_counter(
+                        bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT), i,
                         &counter);
                     if (r < 0)
                         return bf_err_r(r, "failed to get counter");

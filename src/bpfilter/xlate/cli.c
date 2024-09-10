@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "bpfilter/cgen/codegen.h"
+#include "bpfilter/cgen/cgen.h"
 #include "bpfilter/context.h"
 #include "bpfilter/xlate/front.h"
 #include "core/chain.h"
@@ -46,7 +46,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
                       struct bf_response **response)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    struct bf_codegen *codegen;
+    struct bf_cgen *cgen;
     int r;
 
     bf_assert(request);
@@ -56,29 +56,29 @@ int _bf_cli_set_rules(const struct bf_request *request,
     if (r)
         return bf_err_r(r, "failed to create chain from marsh");
 
-    codegen = bf_context_get_codegen(chain->hook, BF_FRONT_CLI);
-    if (!codegen) {
-        r = bf_codegen_new(&codegen);
+    cgen = bf_context_get_cgen(chain->hook, BF_FRONT_CLI);
+    if (!cgen) {
+        r = bf_cgen_new(&cgen);
         if (r)
             return r;
 
-        codegen->hook = chain->hook;
-        codegen->front = BF_FRONT_CLI;
+        cgen->hook = chain->hook;
+        cgen->front = BF_FRONT_CLI;
     }
 
-    codegen->policy = chain->policy;
-    bf_swap(codegen->rules, chain->rules);
+    cgen->policy = chain->policy;
+    bf_swap(cgen->rules, chain->rules);
 
-    if (bf_context_get_codegen(chain->hook, BF_FRONT_CLI)) {
-        r = bf_codegen_update(codegen);
+    if (bf_context_get_cgen(chain->hook, BF_FRONT_CLI)) {
+        r = bf_cgen_update(cgen);
         if (r)
             return bf_err_r(r, "failed to update codegen");
     } else {
-        r = bf_codegen_up(codegen);
+        r = bf_cgen_up(cgen);
         if (r)
             return bf_err_r(r, "failed to load codegen");
 
-        r = bf_context_set_codegen(chain->hook, BF_FRONT_CLI, codegen);
+        r = bf_context_set_cgen(chain->hook, BF_FRONT_CLI, cgen);
         if (r)
             return bf_err_r(r, "failed to set codegen in context");
     }

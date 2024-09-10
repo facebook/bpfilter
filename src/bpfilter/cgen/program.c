@@ -718,7 +718,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 
     /* This call could fail and return an error, in which case it is not
      * properly handled. However, this shouldn't be an issue as we previously
-     * test whether enough room is available in codegen.img, which is currently
+     * test whether enough room is available in cgen.img, which is currently
      * the only reason for EMIT() to fail. */
     EMIT(program, insn);
 
@@ -755,7 +755,7 @@ int bf_program_emit_fixup_call(struct bf_program *program,
 
     /* This call could fail and return an error, in which case it is not
      * properly handled. However, this shouldn't be an issue as we previously
-     * test whether enough room is available in codegen.img, which is currently
+     * test whether enough room is available in cgen.img, which is currently
      * the only reason for EMIT() to fail. */
     EMIT(program, BPF_CALL_REL(0));
 
@@ -965,8 +965,8 @@ int bf_program_get_counter(const struct bf_program *program,
     return 0;
 }
 
-int bf_codegen_set_counters(struct bf_program *program,
-                            const struct bf_counter *counters)
+int bf_cgen_set_counters(struct bf_program *program,
+                         const struct bf_counter *counters)
 {
     UNUSED(program);
     UNUSED(counters);
