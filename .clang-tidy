@@ -13,6 +13,8 @@
 #   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
 # - cert-dcl51-cpp
 #   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
+# - clang-analyzer-core.CallAndMessage
+#   Too many false positives with GCC statement expressions.
 # - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 #   Avoid usage of Annex K functions for portability reasons.
 # - clang-analyzer-unix.Malloc
@@ -34,6 +36,7 @@ Checks: >
     -cert-dcl37-c,
     -cert-dcl51-cpp,
   clang-analyzer-*,
+    -clang-analyzer-core.CallAndMessage,
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
     -clang-analyzer-unix.Malloc,
   misc-*,
