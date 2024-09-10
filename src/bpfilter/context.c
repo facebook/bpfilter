@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "bpfilter/cgen/cgen.h"
+#include "core/chain.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
@@ -84,7 +85,7 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
         if (r)
             return bf_err_r(r, "failed to unmarsh codegen");
 
-        hook = cgen->hook;
+        hook = cgen->chain->hook;
         front = cgen->front;
 
         if (_context->cgens[hook][front]) {
@@ -270,7 +271,7 @@ static int _bf_context_set_cgen(struct bf_context *context, enum bf_hook hook,
                                 enum bf_front front, struct bf_cgen *cgen)
 {
     bf_assert(context);
-    bf_assert(cgen && cgen->hook == hook && cgen->front == front);
+    bf_assert(cgen && cgen->chain->hook == hook && cgen->front == front);
 
     if (context->cgens[hook][front])
         return bf_err_r(-EEXIST, "codegen already exists in context");

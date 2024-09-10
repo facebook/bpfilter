@@ -15,34 +15,31 @@
 
 #include "bpfilter/cgen/dump.h"
 #include "bpfilter/cgen/program.h"
+#include "core/chain.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
-#include "core/hook.h"
 #include "core/if.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
-#include "core/verdict.h"
 
-int bf_cgen_new(struct bf_cgen **cgen)
+int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
+                struct bf_chain **chain)
 {
-    _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
-
     bf_assert(cgen);
+    bf_assert(chain && *chain);
 
-    _cgen = calloc(1, sizeof(*_cgen));
-    if (!_cgen)
+    (*cgen) = malloc(sizeof(struct bf_cgen));
+    if (!(*cgen))
         return -ENOMEM;
 
-    bf_list_init(&_cgen->rules,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_rule_free}});
+    (*cgen)->front = front;
+    (*cgen)->chain = TAKE_PTR(*chain);
 
-    bf_list_init(&_cgen->programs,
+    bf_list_init(&(*cgen)->programs,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_program_free}});
-
-    *cgen = TAKE_PTR(_cgen);
 
     return 0;
 }
@@ -54,7 +51,7 @@ void bf_cgen_free(struct bf_cgen **cgen)
     if (!*cgen)
         return;
 
-    bf_list_clean(&(*cgen)->rules);
+    bf_chain_free(&(*cgen)->chain);
     bf_list_clean(&(*cgen)->programs);
 
     free(*cgen);
@@ -86,27 +83,20 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
     if (r)
         return r;
 
+    r = bf_marsh_add_child_raw(&_marsh, &cgen->front, sizeof(cgen->front));
+    if (r < 0)
+        return bf_err_r(r, "failed to serialize codegen");
+
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
-        r = bf_marsh_new(&child, NULL, 0);
-        if (r)
+        // Serialize cgen.chain
+        _cleanup_bf_marsh_ struct bf_marsh *chain_elem = NULL;
+
+        r = bf_chain_marsh(cgen->chain, &chain_elem);
+        if (r < 0)
             return r;
 
-        bf_list_foreach (&cgen->rules, rule_node) {
-            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-            struct bf_rule *rule = bf_list_node_get_data(rule_node);
-
-            r = bf_rule_marsh(rule, &subchild);
-            if (r)
-                return r;
-
-            r = bf_marsh_add_child_obj(&child, subchild);
-            if (r)
-                return r;
-        }
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
+        r = bf_marsh_add_child_obj(&_marsh, chain_elem);
+        if (r < 0)
             return r;
     }
 
@@ -134,13 +124,6 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
             return r;
     }
 
-    r |= bf_marsh_add_child_raw(&_marsh, &cgen->hook, sizeof(cgen->hook));
-    r |= bf_marsh_add_child_raw(&_marsh, &cgen->front, sizeof(cgen->front));
-    r |= bf_marsh_add_child_raw(&_marsh, &cgen->policy, sizeof(cgen->policy));
-
-    if (r)
-        return bf_err_r(r, "failed to serialize codegen");
-
     *marsh = TAKE_PTR(_marsh);
 
     return 0;
@@ -149,35 +132,27 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
 int bf_cgen_unmarsh(const struct bf_marsh *marsh, struct bf_cgen **cgen)
 {
     _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    enum bf_front front;
     struct bf_marsh *marsh_elem = NULL;
     int r;
 
     bf_assert(marsh);
     bf_assert(cgen);
 
-    r = bf_cgen_new(&_cgen);
-    if (r)
-        return bf_err_r(r, "failed to allocate codegen object");
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
+        return -EINVAL;
+    memcpy(&front, marsh_elem->data, sizeof(front));
 
     if (!(marsh_elem = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
+    r = bf_chain_new_from_marsh(&chain, marsh_elem);
+    if (r < 0)
+        return r;
 
-    {
-        struct bf_marsh *rule_elem = NULL;
-
-        while ((rule_elem = bf_marsh_next_child(marsh_elem, rule_elem))) {
-            _cleanup_bf_rule_ struct bf_rule *rule = NULL;
-            r = bf_rule_unmarsh(rule_elem, &rule);
-            if (r)
-                return r;
-
-            r = bf_list_add_tail(&_cgen->rules, rule);
-            if (r)
-                return r;
-
-            TAKE_PTR(rule);
-        }
-    }
+    r = bf_cgen_new(&_cgen, front, &chain);
+    if (r)
+        return bf_err_r(r, "failed to allocate codegen object");
 
     if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
@@ -199,18 +174,6 @@ int bf_cgen_unmarsh(const struct bf_marsh *marsh, struct bf_cgen **cgen)
         }
     }
 
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    memcpy(&_cgen->hook, marsh_elem->data, sizeof(_cgen->hook));
-
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    memcpy(&_cgen->front, marsh_elem->data, sizeof(_cgen->front));
-
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    memcpy(&_cgen->policy, marsh_elem->data, sizeof(_cgen->policy));
-
     if (bf_marsh_next_child(marsh, marsh_elem))
         bf_warn("codegen marsh has more children than expected");
 
@@ -229,21 +192,12 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
     DUMP(prefix, "struct bf_cgen at %p", cgen);
 
     bf_dump_prefix_push(prefix);
-    DUMP(prefix, "hook: %s", bf_hook_to_str(cgen->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(cgen->front));
-    DUMP(prefix, "policy: %s", bf_verdict_to_str(cgen->policy));
 
-    // Rules
-    DUMP(prefix, "rules: bf_list<bf_rule>[%lu]", bf_list_size(&cgen->rules));
+    // Chain
+    DUMP(prefix, "chain: struct bf_chain *");
     bf_dump_prefix_push(prefix);
-    bf_list_foreach (&cgen->rules, rule_node) {
-        struct bf_rule *rule = bf_list_node_get_data(rule_node);
-
-        if (bf_list_is_tail(&cgen->rules, rule_node))
-            bf_dump_prefix_last(prefix);
-
-        bf_rule_dump(rule, prefix);
-    }
+    bf_chain_dump(cgen->chain, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
 
     // Programs
@@ -285,7 +239,7 @@ int bf_cgen_get_counter(const struct bf_cgen *cgen, uint32_t counter_idx,
 
     /* There are 1 more counter than number of rules. The last counter is
      * dedicated to the policy. */
-    if (counter_idx > bf_list_size(&cgen->rules))
+    if (counter_idx > bf_list_size(&cgen->chain->rules))
         return -EINVAL;
 
     bf_list_foreach (&cgen->programs, program_node) {
@@ -326,11 +280,12 @@ int bf_cgen_up(struct bf_cgen *cgen)
         if (bf_streq("lo", ifaces[i].name))
             continue;
 
-        r = bf_program_new(&prog, ifaces[i].index, cgen->hook, cgen->front);
+        r = bf_program_new(&prog, ifaces[i].index, cgen->chain->hook,
+                           cgen->front);
         if (r)
             return r;
 
-        r = bf_program_generate(prog, &cgen->rules, cgen->policy);
+        r = bf_program_generate(prog, cgen->chain);
         if (r) {
             return bf_err_r(r, "failed to generate bf_program for %s",
                             ifaces[i].name);
@@ -350,31 +305,30 @@ int bf_cgen_up(struct bf_cgen *cgen)
     return r;
 }
 
-int bf_cgen_update(struct bf_cgen *cgen)
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 {
     int r;
 
     bf_assert(cgen);
+    bf_assert(new_chain);
 
     bf_list_foreach (&cgen->programs, program_node) {
         _cleanup_bf_program_ struct bf_program *new_prog = NULL;
         struct bf_program *old_prog = bf_list_node_get_data(program_node);
 
-        r = bf_program_new(&new_prog, old_prog->ifindex, cgen->hook,
+        r = bf_program_new(&new_prog, old_prog->ifindex, (*new_chain)->hook,
                            cgen->front);
-        if (r)
+        if (r < 0)
             return bf_err_r(r, "failed to create a new bf_program");
 
-        r = bf_program_generate(new_prog, &cgen->rules, cgen->policy);
-        if (r) {
-            {
-                return bf_err_r(
-                    r, "failed to generate the bytecode for a new bf_program");
-            }
+        r = bf_program_generate(new_prog, *new_chain);
+        if (r < 0) {
+            return bf_err_r(
+                r, "failed to generate the bytecode for a new bf_program");
         }
 
         r = bf_program_load(new_prog, old_prog);
-        if (r) {
+        if (r < 0) {
             return bf_err_r(
                 r, "failed to attach the new bf_program, keeping the old one");
         }
@@ -382,6 +336,8 @@ int bf_cgen_update(struct bf_cgen *cgen)
         program_node->data = TAKE_PTR(new_prog);
         bf_program_free(&old_prog);
     }
+
+    bf_swap(cgen->chain, *new_chain);
 
     return 0;
 }

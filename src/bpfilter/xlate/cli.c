@@ -46,7 +46,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
                       struct bf_response **response)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    struct bf_cgen *cgen;
+    _cleanup_bf_cgen_ struct bf_cgen *cgen;
     int r;
 
     bf_assert(request);
@@ -58,29 +58,25 @@ int _bf_cli_set_rules(const struct bf_request *request,
 
     cgen = bf_context_get_cgen(chain->hook, BF_FRONT_CLI);
     if (!cgen) {
-        r = bf_cgen_new(&cgen);
+        r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
         if (r)
             return r;
 
-        cgen->hook = chain->hook;
-        cgen->front = BF_FRONT_CLI;
-    }
-
-    cgen->policy = chain->policy;
-    bf_swap(cgen->rules, chain->rules);
-
-    if (bf_context_get_cgen(chain->hook, BF_FRONT_CLI)) {
-        r = bf_cgen_update(cgen);
-        if (r)
-            return bf_err_r(r, "failed to update codegen");
-    } else {
         r = bf_cgen_up(cgen);
-        if (r)
-            return bf_err_r(r, "failed to load codegen");
+        if (r < 0)
+            return bf_err_r(r, "failed to generate and load new program");
 
         r = bf_context_set_cgen(chain->hook, BF_FRONT_CLI, cgen);
-        if (r)
-            return bf_err_r(r, "failed to set codegen in context");
+        if (r < 0)
+            return bf_err_r(r, "failed to store codegen in runtime context");
+
+        TAKE_PTR(cgen);
+    } else {
+        TAKE_PTR(cgen); // No need to free the codegen on error.
+
+        r = bf_cgen_update(cgen, &chain);
+        if (r < 0)
+            return bf_warn_r(r, "failed to update existing codegen");
     }
 
     return bf_response_new_success(response, NULL, 0);
