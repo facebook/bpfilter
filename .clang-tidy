@@ -48,7 +48,7 @@ Checks: >
     -readability-function-cognitive-complexity,
     -readability-isolate-declaration
 
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 FormatStyle: none
 UseColor: yes
 
