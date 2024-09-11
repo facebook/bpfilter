@@ -51,6 +51,17 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
                 struct bf_chain **chain);
 
 /**
+ * Allocate a new codegen and intialize it from serialized data.
+ *
+ * @param cgen Codegen to allocate and initialize. On success, @p *cgen will
+ *        point to the new codegen object. On failure, @p *cgen is unchanged.
+ *        Can't be NULL.
+ * @param marsh Serialized data to use to initialize the codegen.
+ * @return 0 on success, or negative errno value on error.
+ */
+int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh);
+
+/**
  * Free a codegen.
  *
  * If one or more programs are loaded, they won't be unloaded. Use @ref
@@ -61,6 +72,17 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
  * @param cgen Codegen to free. Can't be NULL.
  */
 void bf_cgen_free(struct bf_cgen **cgen);
+
+/**
+ * Serialize a @ref bf_cgen object.
+ *
+ * @param cgen Codegen object to serialize. Can't be NULL.
+ * @param marsh Marsh object to allocate. On success, @p *marsh points to the
+ *              serialized codegen object. On failure this parameter is
+ *              unchanged. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
 
 /**
  * Update the BPF programs for a codegen.
@@ -94,10 +116,6 @@ int bf_cgen_up(struct bf_cgen *cgen);
  * @return 0 on success, negative error code on failure.
  */
 int bf_cgen_unload(struct bf_cgen *cgen);
-
-int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
-
-int bf_cgen_unmarsh(const struct bf_marsh *marsh, struct bf_cgen **cgen);
 
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
 

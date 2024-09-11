@@ -44,6 +44,60 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
     return 0;
 }
 
+int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
+{
+    _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    struct bf_marsh *marsh_elem = NULL;
+    enum bf_front front;
+    int r;
+
+    bf_assert(cgen);
+    bf_assert(marsh);
+
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
+        return -EINVAL;
+    memcpy(&front, marsh_elem->data, sizeof(front));
+
+    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
+        return -EINVAL;
+
+    bf_info("Adding marsh of size %lu", marsh_elem->data_len);
+    r = bf_chain_new_from_marsh(&chain, marsh_elem);
+    if (r < 0)
+        return r;
+
+    r = bf_cgen_new(&_cgen, front, &chain);
+    if (r)
+        return bf_err_r(r, "failed to allocate codegen object");
+
+    if ((marsh_elem = bf_marsh_next_child(marsh, marsh_elem))) {
+        struct bf_marsh *prog_elem = NULL;
+
+        while ((prog_elem = bf_marsh_next_child(marsh_elem, prog_elem))) {
+            _cleanup_bf_program_ struct bf_program *program = NULL;
+            r = bf_program_unmarsh(prog_elem, &program);
+            if (r)
+                return r;
+
+            r = bf_list_add_tail(&_cgen->programs, program);
+            if (r)
+                return r;
+
+            TAKE_PTR(program);
+        }
+    } else {
+        return bf_err_r(-EINVAL, "no list of rules in codegen marsh");
+    }
+
+    if (bf_marsh_next_child(marsh, marsh_elem))
+        bf_warn("codegen marsh has more children than expected");
+
+    *cgen = TAKE_PTR(_cgen);
+
+    return 0;
+}
+
 void bf_cgen_free(struct bf_cgen **cgen)
 {
     bf_assert(cgen);
@@ -58,26 +112,13 @@ void bf_cgen_free(struct bf_cgen **cgen)
     *cgen = NULL;
 }
 
-int bf_cgen_unload(struct bf_cgen *cgen)
-{
-    int r;
-
-    bf_assert(cgen);
-
-    bf_list_foreach (&cgen->programs, program_node) {
-        struct bf_program *program = bf_list_node_get_data(program_node);
-        r = bf_program_unload(program);
-        if (r)
-            return bf_err_r(r, "failed to unload program");
-    }
-
-    return 0;
-}
-
 int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
 {
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
+
+    bf_assert(cgen);
+    bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r)
@@ -129,57 +170,18 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
     return 0;
 }
 
-int bf_cgen_unmarsh(const struct bf_marsh *marsh, struct bf_cgen **cgen)
+int bf_cgen_unload(struct bf_cgen *cgen)
 {
-    _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    enum bf_front front;
-    struct bf_marsh *marsh_elem = NULL;
     int r;
 
-    bf_assert(marsh);
     bf_assert(cgen);
 
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    memcpy(&front, marsh_elem->data, sizeof(front));
-
-    if (!(marsh_elem = bf_marsh_next_child(marsh, NULL)))
-        return -EINVAL;
-    r = bf_chain_new_from_marsh(&chain, marsh_elem);
-    if (r < 0)
-        return r;
-
-    r = bf_cgen_new(&_cgen, front, &chain);
-    if (r)
-        return bf_err_r(r, "failed to allocate codegen object");
-
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-
-    {
-        struct bf_marsh *prog_elem = NULL;
-
-        while ((prog_elem = bf_marsh_next_child(marsh_elem, prog_elem))) {
-            _cleanup_bf_program_ struct bf_program *program = NULL;
-            r = bf_program_unmarsh(prog_elem, &program);
-            if (r)
-                return r;
-
-            r = bf_list_add_tail(&_cgen->programs, program);
-            if (r)
-                return r;
-
-            TAKE_PTR(program);
-        }
+    bf_list_foreach (&cgen->programs, program_node) {
+        struct bf_program *program = bf_list_node_get_data(program_node);
+        r = bf_program_unload(program);
+        if (r)
+            return bf_err_r(r, "failed to unload program");
     }
-
-    if (bf_marsh_next_child(marsh, marsh_elem))
-        bf_warn("codegen marsh has more children than expected");
-
-    *cgen = TAKE_PTR(_cgen);
-
-    bf_info("restored new codegen at %p", *cgen);
 
     return 0;
 }

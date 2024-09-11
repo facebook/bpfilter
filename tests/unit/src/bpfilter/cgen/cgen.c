@@ -71,6 +71,22 @@ Test(cgen, marsh_unmarsh_assert)
     expect_assert_failure(bf_cgen_marsh(NOT_NULL, NULL));
 } 
 
+Test(cgen, marsh_unmarsh)
+{
+    _cleanup_bf_cgen_ struct bf_cgen *cgen0 = NULL;
+    _cleanup_bf_cgen_ struct bf_cgen *cgen1 = NULL;
+    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+
+    /* Create a codegen without any program, other bf_program_unmarsh()
+     * will try to open the pinned BPF objects.
+     */ 
+    cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT, 0);
+
+    assert_success(bf_cgen_marsh(cgen0, &marsh));
+    assert_success(bf_cgen_new_from_marsh(&cgen1, marsh));
+    assert_non_null(cgen1);
+}
+
 Test(cgen, get_program)
 {
     _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
