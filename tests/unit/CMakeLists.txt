@@ -180,6 +180,7 @@ bf_test_mock(unit_tests
         bf_bpf_obj_get
         snprintf
         vsnprintf
+        bf_bpf
 )
 
 add_custom_target(test

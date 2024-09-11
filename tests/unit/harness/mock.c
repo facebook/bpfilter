@@ -164,3 +164,11 @@ bf_mock_define(int, snprintf, (char *str, size_t size, const char *fmt, ...))
     
     return mock_type(int);
 }
+
+bf_mock_define(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr))
+{
+    if (!bf_mock_bf_bpf_is_enabled())
+        return bf_mock_real(bf_bpf)(cmd, attr);
+
+    return mock_type(int);
+}
