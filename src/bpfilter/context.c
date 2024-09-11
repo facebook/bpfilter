@@ -81,7 +81,7 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
         enum bf_hook hook;
         enum bf_front front;
 
-        r = bf_cgen_unmarsh(cgen_elem, &cgen);
+        r = bf_cgen_new_from_marsh(&cgen, cgen_elem);
         if (r)
             return bf_err_r(r, "failed to unmarsh codegen");
 
