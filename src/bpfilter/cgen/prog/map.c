@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "core/bpf.h"
+#include "core/dump.h"
 #include "core/helper.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -128,4 +129,18 @@ int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh)
     *marsh = TAKE_PTR(_marsh);
 
     return 0;
+}
+
+void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix)
+{
+    bf_assert(map);
+    bf_assert(prefix);
+
+    DUMP(prefix, "struct bf_bpf_map at %p", map);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "fd: %d", map->fd);
+    DUMP(prefix, "name: %s", map->name);
+    DUMP(bf_dump_prefix_last(prefix), "path: %s", map->path);
+    bf_dump_prefix_pop(prefix);
 }

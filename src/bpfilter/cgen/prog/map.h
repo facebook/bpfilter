@@ -7,6 +7,8 @@
 
 #include <linux/bpf.h>
 
+#include "core/dump.h"
+
 #define BF_PIN_PATH_LEN 64
 
 #define _cleanup_bf_bpf_map_ __attribute__((__cleanup__(bf_bpf_map_free)))
@@ -75,3 +77,12 @@ void bf_bpf_map_free(struct bf_bpf_map **map);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh);
+
+/**
+ * Dump a BPF map object.
+ *
+ * @param map BPF map object to dump. Can't be NULL.
+ * @param prefix String to prefix each log with. If no prefix is needed, use
+ *               @ref EMPTY_PREFIX . Can't be NULL.
+ */
+void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix);
