@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <linux/bpf.h>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -73,3 +75,4 @@ bf_mock_declare(int, bf_bpf_obj_get, (const char *path, int *fd));
 bf_mock_declare(int, vsnprintf, (char *str, size_t size, const char *fmt,
                 va_list args));
 bf_mock_declare(int, snprintf, (char *str, size_t size, const char *fmt, ...));
+bf_mock_declare(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr));
