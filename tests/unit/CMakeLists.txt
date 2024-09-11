@@ -94,6 +94,7 @@ set(bf_test_srcs
     src/bpfilter/cgen/jmp.c
     src/bpfilter/cgen/printer.c
     src/bpfilter/cgen/program.c
+    src/bpfilter/cgen/prog/map.c
     src/bpfilter/cgen/swich.c
     src/bpfilter/context.c
     src/bpfilter/xlate/nft/nft.c
