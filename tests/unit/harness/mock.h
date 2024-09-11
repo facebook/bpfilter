@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -69,3 +70,6 @@ bf_mock_declare(struct nlmsghdr *, nlmsg_put,
 bf_mock_declare(int, nlmsg_append,
                 (struct nl_msg * n, void *data, size_t len, int pad));
 bf_mock_declare(int, bf_bpf_obj_get, (const char *path, int *fd));
+bf_mock_declare(int, vsnprintf, (char *str, size_t size, const char *fmt,
+                va_list args));
+bf_mock_declare(int, snprintf, (char *str, size_t size, const char *fmt, ...));
