@@ -18,6 +18,8 @@ struct bf_bpf_map
     char path[BF_PIN_PATH_LEN];
 };
 
+struct bf_marsh;
+
 /**
  * Allocates and initializes a new BPF map object.
  *
@@ -35,6 +37,22 @@ struct bf_bpf_map
 int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix);
 
 /**
+ * Create a new BPF map object from serialized data.
+ *
+ * @note The new BPF map object will represent a BPF map from bpfilter's point
+ * of view, but it's not a BPF map.
+ *
+ * @param map BPF map object to allocate and initialize from the serialized
+ *            data. The caller will own the object. On success, @c *map points
+ *            to a valid BPF object map. On failure, @c *map is unchanged.
+ *            Can't be NULL.
+ * @param marsh Serialized BPF map object data. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_bpf_map_new_from_marsh(struct bf_bpf_map **map,
+                              const struct bf_marsh *marsh);
+
+/**
  * Free a BPF map object.
  *
  * The BPF map's file descriptor contained in @c map is closed and set to
@@ -44,3 +62,16 @@ int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix);
  *            NULL. On failure, @c *map remain unchanged.
  */
 void bf_bpf_map_free(struct bf_bpf_map **map);
+
+/**
+ * Serializes a BPF map object.
+ *
+ * @param map BPF map object to serialize. The object itself won't be modified.
+ *            Can't be NULL.
+ * @param marsh Marsh object, will be allocated by this function and owned by
+ *              the caller. On success, @c *marsh will point to the BPF map's
+ *              serialized data. On failure, @c *marsh is left unchanged. Can't
+ *              be NULL.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh);
