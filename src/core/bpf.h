@@ -21,6 +21,16 @@ enum bf_xdp_attach_mode
 };
 
 /**
+ * BPF system call.
+ *
+ * @param cmd BPF command to run.
+ * @param attr Attributes of the system call.
+ * @return System call return value on success, or negative errno value on
+ *         failure.
+ */
+int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
+
+/**
  * Load a BPF program.
  *
  * @param name Name of the BPF program. Can't be NULL.
