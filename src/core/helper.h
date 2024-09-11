@@ -23,6 +23,9 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_assert(x) assert(x)
 #endif
 
+#define BF_STR(s) _BF_STR(s)
+#define _BF_STR(s) #s
+
 /**
  * Mark a variable as unused, to prevent the compiler from emitting a warning.
  *

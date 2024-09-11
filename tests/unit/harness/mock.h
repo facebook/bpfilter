@@ -26,8 +26,23 @@
     ({                                                                         \
         bf_mock_##name##_enable();                                             \
         will_return(__wrap_##name, retval);                                    \
-        (bf_mock) {.disable = bf_mock_##name##_disable};                       \
+        (bf_mock) {                                                            \
+            .disable = bf_mock_##name##_disable,                               \
+            .wrap_name = BF_STR(__wrap_##name)                                 \
+        };                                                                     \
     })
+
+#define bf_mock_empty(name)                                                    \
+    ({                                                                         \
+        bf_mock_##name##_enable();                                             \
+        (bf_mock) {                                                            \
+            .disable = bf_mock_##name##_disable,                               \
+            .wrap_name = BF_STR(__wrap_##name),                                \
+        };  \
+    })
+
+#define bf_mock_will_return(mock, value)                                       \
+    _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), 1)
 
 struct nlmsghdr;
 struct nl_msg;
@@ -35,6 +50,7 @@ struct nl_msg;
 typedef struct
 {
     void (*disable)(void);
+    const char *wrap_name;
 } bf_mock;
 
 void bf_mock_cleanup(bf_mock *mock);
