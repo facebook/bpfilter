@@ -18,6 +18,9 @@ struct bf_nfgroup;
 struct bf_rule;
 struct nlmsghdr;
 
+#define bf_test_chain_quick() bf_test_chain(BF_HOOK_XDP, BF_VERDICT_ACCEPT)
+#define bf_test_cgen_quick() bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT, 5)
+
 char *bf_test_get_readable_tmp_filepath(void);
 void bf_test_remove_tmp_file(char **path);
 struct bf_chain *bf_test_chain(enum bf_hook hook, enum bf_verdict policy);
