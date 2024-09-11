@@ -604,9 +604,9 @@ static int _bf_program_load_counters_map(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_bpf_map_create(program->cmap_name, BPF_MAP_TYPE_ARRAY,
-                          sizeof(uint32_t), sizeof(struct bf_counter),
-                          program->num_counters, 0, &_fd);
+    r = bf_bpf__map_create(program->cmap_name, BPF_MAP_TYPE_ARRAY,
+                           sizeof(uint32_t), sizeof(struct bf_counter),
+                           program->num_counters, 0, &_fd);
     if (r < 0)
         return bf_err_r(errno, "failed to create counters map");
 
@@ -632,9 +632,9 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r)
         return bf_err_r(r, "failed to assemble printer map string");
 
-    r = bf_bpf_map_create(program->pmap_name, BPF_MAP_TYPE_ARRAY,
-                          sizeof(uint32_t), pstr_len, 1, BPF_F_RDONLY_PROG,
-                          &fd);
+    r = bf_bpf__map_create(program->pmap_name, BPF_MAP_TYPE_ARRAY,
+                           sizeof(uint32_t), pstr_len, 1, BPF_F_RDONLY_PROG,
+                           &fd);
     if (r)
         return bf_err_r(r, "failed to create printer map");
 

@@ -72,9 +72,9 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     return 0;
 }
 
-int bf_bpf_map_create(const char *name, unsigned int type, size_t key_size,
-                      size_t value_size, size_t max_entries, uint32_t flags,
-                      int *fd)
+int bf_bpf__map_create(const char *name, unsigned int type, size_t key_size,
+                       size_t value_size, size_t max_entries, uint32_t flags,
+                       int *fd)
 {
     union bpf_attr attr = {
         .map_type = type,
