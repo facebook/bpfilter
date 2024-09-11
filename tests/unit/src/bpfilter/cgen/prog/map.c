@@ -70,3 +70,17 @@ Test(map, marsh_unmarsh)
     assert_string_equal(map0->name, map1->name);
     assert_string_equal(map0->path, map1->path);
 }
+
+Test(map, dump_assert)
+{
+    expect_assert_failure(bf_bpf_map_dump(NULL, NOT_NULL));
+    expect_assert_failure(bf_bpf_map_dump(NOT_NULL, NULL));
+}
+
+Test(map, dump)
+{
+    _cleanup_bf_bpf_map_ struct bf_bpf_map *map = NULL;
+
+    assert_success(bf_bpf_map_new(&map, "012345"));
+    bf_bpf_map_dump(map, EMPTY_PREFIX);
+}
