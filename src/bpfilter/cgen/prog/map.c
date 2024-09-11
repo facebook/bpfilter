@@ -18,19 +18,27 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
-int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix)
+int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix,
+                   enum bf_bpf_map_type type, size_t key_size,
+                   size_t value_size, size_t n_elems)
 {
     _cleanup_bf_bpf_map_ struct bf_bpf_map *_map = NULL;
     int r;
 
     bf_assert(map);
     bf_assert(name_suffix);
+    bf_assert(key_size > 0);
+    bf_assert(n_elems > 0);
 
     _map = malloc(sizeof(*_map));
     if (!_map)
         return -ENOMEM;
 
     _map->fd = -1;
+    _map->type = type;
+    _map->key_size = key_size;
+    _map->value_size = value_size;
+    _map->n_elems = n_elems;
 
     r = snprintf(_map->name, BPF_OBJ_NAME_LEN, "bf_map_%.6s", name_suffix);
     if (r < 0) {
@@ -83,6 +91,22 @@ int bf_bpf_map_new_from_marsh(struct bf_bpf_map **map,
         return -EINVAL;
     memcpy(_map->path, elem->data, BF_PIN_PATH_LEN);
 
+    if (!(elem = bf_marsh_next_child(marsh, elem)))
+        return -EINVAL;
+    memcpy(&_map->type, elem->data, sizeof(_map->type));
+
+    if (!(elem = bf_marsh_next_child(marsh, elem)))
+        return -EINVAL;
+    memcpy(&_map->key_size, elem->data, sizeof(_map->key_size));
+
+    if (!(elem = bf_marsh_next_child(marsh, elem)))
+        return -EINVAL;
+    memcpy(&_map->value_size, elem->data, sizeof(_map->value_size));
+
+    if (!(elem = bf_marsh_next_child(marsh, elem)))
+        return -EINVAL;
+    memcpy(&_map->n_elems, elem->data, sizeof(_map->n_elems));
+
     if (bf_marsh_next_child(marsh, elem))
         return bf_err_r(-E2BIG, "too many elements in bf_bpf_map marsh");
 
@@ -126,6 +150,23 @@ int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh)
     if (r < 0)
         return r;
 
+    r = bf_marsh_add_child_raw(&_marsh, &map->type, sizeof(map->type));
+    if (r < 0)
+        return r;
+
+    r = bf_marsh_add_child_raw(&_marsh, &map->key_size, sizeof(map->key_size));
+    if (r < 0)
+        return r;
+
+    r = bf_marsh_add_child_raw(&_marsh, &map->value_size,
+                               sizeof(map->value_size));
+    if (r < 0)
+        return r;
+
+    r = bf_marsh_add_child_raw(&_marsh, &map->n_elems, sizeof(map->n_elems));
+    if (r < 0)
+        return r;
+
     *marsh = TAKE_PTR(_marsh);
 
     return 0;
@@ -141,6 +182,40 @@ void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "fd: %d", map->fd);
     DUMP(prefix, "name: %s", map->name);
-    DUMP(bf_dump_prefix_last(prefix), "path: %s", map->path);
+    DUMP(prefix, "path: %s", map->path);
+    DUMP(prefix, "type: %s", bf_bpf_map_type_to_str(map->type));
+    DUMP(prefix, "key_size: %lu", map->key_size);
+    DUMP(prefix, "value_size: %lu", map->value_size);
+    DUMP(bf_dump_prefix_last(prefix), "n_elems: %lu", map->n_elems);
     bf_dump_prefix_pop(prefix);
+}
+
+static const char *_bf_bpf_map_type_strs[] = {
+    [BF_BPF_MAP_TYPE_ARRAY] = "BF_BPF_MAP_TYPE_ARRAY",
+    [BF_BPF_MAP_TYPE_HASH] = "BF_BPF_MAP_TYPE_HASH",
+};
+
+static_assert(ARRAY_SIZE(_bf_bpf_map_type_strs) == _BF_BPF_MAP_TYPE_MAX,
+              "missing entries in _bf_bpf_map_type_strs array");
+
+const char *bf_bpf_map_type_to_str(enum bf_bpf_map_type type)
+{
+    bf_assert(0 <= type && type < _BF_BPF_MAP_TYPE_MAX);
+
+    return _bf_bpf_map_type_strs[type];
+}
+
+int bf_bpf_map_type_from_str(const char *str, enum bf_bpf_map_type *type)
+{
+    bf_assert(str);
+    bf_assert(type);
+
+    for (size_t i = 0; i < _BF_BPF_MAP_TYPE_MAX; ++i) {
+        if (bf_streq(_bf_bpf_map_type_strs[i], str)) {
+            *type = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
 }
