@@ -6,6 +6,7 @@
 #include "harness/mock.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -137,5 +138,29 @@ bf_mock_define(int, bf_bpf_obj_get, (const char *path, int *fd))
     if (!bf_mock_bf_bpf_obj_get_is_enabled())
         return bf_mock_real(bf_bpf_obj_get)(path, fd);
 
+    return mock_type(int);
+}
+
+bf_mock_define(int, vsnprintf, (char *str, size_t size, const char *fmt, va_list args))
+{
+    if (!bf_mock_vsnprintf_is_enabled())
+        return bf_mock_real(vsnprintf)(str, size, fmt, args);
+
+    return mock_type(int);
+}
+
+bf_mock_define(int, snprintf, (char *str, size_t size, const char *fmt, ...))
+{
+    if (!bf_mock_snprintf_is_enabled()) {
+        int r;
+        va_list args;
+
+        va_start(args, fmt);
+        r = bf_mock_real(vsnprintf)(str, size, fmt, args);
+        va_end(args);
+        
+        return r;
+    }
+    
     return mock_type(int);
 }
