@@ -62,7 +62,7 @@ CheckOptions:
   # and will behave differently for macros. Hence clang-tidy v18+ won't
   # warn about _cleanup_ identifiers.
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: '_(bf|BF|cleanup)_[a-zA-Z0-9_]+'
+    value: '^_(bf|BF|cleanup)_[a-zA-Z0-9_]+$'
   # Unless a *statement* takes 1 line, it should be in braces
   - key: readability-braces-around-statements.ShortStatementLines
     value: 6

@@ -44,7 +44,7 @@ enum bf_set_type
 {
     /// Keys are IPv4 addresses (4 bytes).
     BF_SET_IP4,
-    __BF_SET_MAX,
+    _BF_SET_MAX,
 };
 
 struct bf_set

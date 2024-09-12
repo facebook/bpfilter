@@ -16,11 +16,11 @@
 
 size_t _bf_set_type_elem_size(enum bf_set_type type)
 {
-    static const size_t sizes[__BF_SET_MAX] = {
+    static const size_t sizes[_BF_SET_MAX] = {
         [BF_SET_IP4] = 4,
     };
 
-    static_assert(ARRAY_SIZE(sizes) == __BF_SET_MAX,
+    static_assert(ARRAY_SIZE(sizes) == _BF_SET_MAX,
                   "missing entries in set elems size array");
 
     return sizes[type];
@@ -173,11 +173,11 @@ static const char *_bf_set_type_strs[] = {
     [BF_SET_IP4] = "BF_SET_IP4",
 };
 
-static_assert(ARRAY_SIZE(_bf_set_type_strs) == __BF_SET_MAX, "");
+static_assert(ARRAY_SIZE(_bf_set_type_strs) == _BF_SET_MAX, "");
 
 const char *bf_set_type_to_str(enum bf_set_type type)
 {
-    bf_assert(0 <= type && type < __BF_SET_MAX);
+    bf_assert(0 <= type && type < _BF_SET_MAX);
 
     return _bf_set_type_strs[type];
 }
@@ -187,7 +187,7 @@ int bf_set_type_from_str(const char *str, enum bf_set_type *type)
     bf_assert(str);
     bf_assert(type);
 
-    for (size_t i = 0; i < __BF_SET_MAX; ++i) {
+    for (size_t i = 0; i < _BF_SET_MAX; ++i) {
         if (bf_streq(_bf_set_type_strs[i], str)) {
             *type = i;
             return 0;
