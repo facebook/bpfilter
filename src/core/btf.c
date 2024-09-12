@@ -10,6 +10,7 @@
 #include <bpf/btf.h>
 #include <errno.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #include "core/helper.h"

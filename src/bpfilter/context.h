@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stddef.h>
 
 #include "core/dump.h"
 #include "core/front.h"

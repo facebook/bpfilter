@@ -6,6 +6,7 @@
 #include "context.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "bpfilter/cgen/cgen.h"

@@ -6,7 +6,6 @@
 #include "bpfilter/cgen/cgen.h"
 
 #include <errno.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>

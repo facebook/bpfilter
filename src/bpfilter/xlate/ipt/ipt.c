@@ -9,6 +9,8 @@
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
