@@ -76,7 +76,7 @@ int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
 
         while ((prog_elem = bf_marsh_next_child(marsh_elem, prog_elem))) {
             _cleanup_bf_program_ struct bf_program *program = NULL;
-            r = bf_program_unmarsh(prog_elem, &program);
+            r = bf_program_unmarsh(prog_elem, &program, chain);
             if (r)
                 return r;
 
@@ -283,11 +283,11 @@ int bf_cgen_up(struct bf_cgen *cgen)
             continue;
 
         r = bf_program_new(&prog, ifaces[i].index, cgen->chain->hook,
-                           cgen->front);
+                           cgen->front, cgen->chain);
         if (r)
             return r;
 
-        r = bf_program_generate(prog, cgen->chain);
+        r = bf_program_generate(prog);
         if (r) {
             return bf_err_r(r, "failed to generate bf_program for %s",
                             ifaces[i].name);
@@ -319,11 +319,11 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
         struct bf_program *old_prog = bf_list_node_get_data(program_node);
 
         r = bf_program_new(&new_prog, old_prog->ifindex, (*new_chain)->hook,
-                           cgen->front);
+                           cgen->front, *new_chain);
         if (r < 0)
             return bf_err_r(r, "failed to create a new bf_program");
 
-        r = bf_program_generate(new_prog, *new_chain);
+        r = bf_program_generate(new_prog);
         if (r < 0) {
             return bf_err_r(
                 r, "failed to generate the bytecode for a new bf_program");

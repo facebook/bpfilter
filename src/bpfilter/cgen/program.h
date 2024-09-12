@@ -19,6 +19,7 @@
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/printer.h"
+#include "core/chain.h"
 #include "core/dump.h"
 #include "core/flavor.h"
 #include "core/front.h"
@@ -196,17 +197,23 @@ struct bf_program
         int pmap_fd;
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
+
+        /** Chain the program is generated from. This is a non-owning pointer:
+         * the @ref bf_program doesn't have to manage its lifetime. */
+        const struct bf_chain *chain;
     } runtime;
 };
 
 #define _cleanup_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
 int bf_program_new(struct bf_program **program, unsigned int ifindex,
-                   enum bf_hook hook, enum bf_front front);
+                   enum bf_hook hook, enum bf_front front,
+                   const struct bf_chain *chain);
 void bf_program_free(struct bf_program **program);
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
 int bf_program_unmarsh(const struct bf_marsh *marsh,
-                       struct bf_program **program);
+                       struct bf_program **program,
+                       const struct bf_chain *chain);
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
 
@@ -216,8 +223,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn);
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_function function);
-int bf_program_generate(struct bf_program *program,
-                        const struct bf_chain *chain);
+int bf_program_generate(struct bf_program *program);
 
 /**
  * Load and attach the program to the kernel.

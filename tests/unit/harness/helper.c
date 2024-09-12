@@ -77,7 +77,7 @@ struct bf_cgen *bf_test_cgen(enum bf_front front, enum bf_hook hook,
         struct bf_program *program;
 
         // ifindex should start at 1.
-        assert_int_equal(0, bf_program_new(&program, i + 1, hook, front));
+        assert_int_equal(0, bf_program_new(&program, i + 1, hook, front, cgen->chain));
         assert_int_equal(0, bf_list_add_tail(&cgen->programs, program));
     }
 

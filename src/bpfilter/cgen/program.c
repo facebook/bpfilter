@@ -70,12 +70,14 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
 }
 
 int bf_program_new(struct bf_program **program, unsigned int ifindex,
-                   enum bf_hook hook, enum bf_front front)
+                   enum bf_hook hook, enum bf_front front,
+                   const struct bf_chain *chain)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     int r;
 
     bf_assert(ifindex);
+    bf_assert(chain);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
@@ -85,6 +87,7 @@ int bf_program_new(struct bf_program **program, unsigned int ifindex,
     _program->hook = hook;
     _program->front = front;
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
+    _program->runtime.chain = chain;
 
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN,
                    "bf_prog_%02hx%02hx%02hx", hook, front, ifindex);
@@ -184,7 +187,8 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 }
 
 int bf_program_unmarsh(const struct bf_marsh *marsh,
-                       struct bf_program **program)
+                       struct bf_program **program,
+                       const struct bf_chain *chain)
 {
     int ifindex;
     enum bf_hook hook;
@@ -208,7 +212,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         return -EINVAL;
     memcpy(&front, child->data, sizeof(front));
 
-    r = bf_program_new(&_program, ifindex, hook, front);
+    r = bf_program_new(&_program, ifindex, hook, front, chain);
     if (r < 0)
         return r;
 
@@ -785,9 +789,9 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
     return 0;
 }
 
-int bf_program_generate(struct bf_program *program,
-                        const struct bf_chain *chain)
+int bf_program_generate(struct bf_program *program)
 {
+    const struct bf_chain *chain = program->runtime.chain;
     int r;
 
     bf_info("generating %s program for %s::%s::%s",
