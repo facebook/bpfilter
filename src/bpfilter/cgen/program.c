@@ -74,6 +74,7 @@ int bf_program_new(struct bf_program **program, unsigned int ifindex,
                    const struct bf_chain *chain)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
+    char suffix[BPF_OBJ_NAME_LEN] = {};
     int r;
 
     bf_assert(ifindex);
@@ -89,18 +90,20 @@ int bf_program_new(struct bf_program **program, unsigned int ifindex,
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
     _program->runtime.chain = chain;
 
-    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN,
-                   "bf_prog_%02hx%02hx%02hx", hook, front, ifindex);
-    (void)snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN,
-                   "bf_cmap_%02hx%02hx%02hx", hook, front, ifindex);
-    (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN,
-                   "bf_pmap_%02hx%02hx%02hx", hook, front, ifindex);
+    (void)snprintf(suffix, BPF_OBJ_NAME_LEN, "%02hx%02hx%02hx", hook, front,
+                   ifindex);
+    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%.6s",
+                   suffix);
+    (void)snprintf(_program->cmap_name, BPF_OBJ_NAME_LEN, "bf_cmap_%.6s",
+                   suffix);
+    (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%.6s",
+                   suffix);
     (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_prog_%02x%02x%02x", hook, front, ifindex);
+                   "/sys/fs/bpf/bf_prog_%.6s", suffix);
     (void)snprintf(_program->cmap_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_cmap_%02x%02x%02x", hook, front, ifindex);
+                   "/sys/fs/bpf/bf_cmap_%.6s", suffix);
     (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_pmap_%02x%02x%02x", hook, front, ifindex);
+                   "/sys/fs/bpf/bf_pmap_%.6s", suffix);
 
     r = bf_printer_new(&_program->printer);
     if (r)
