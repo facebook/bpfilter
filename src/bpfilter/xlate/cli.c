@@ -46,7 +46,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
                       struct bf_response **response)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    _cleanup_bf_cgen_ struct bf_cgen *cgen;
+    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     bf_assert(request);
