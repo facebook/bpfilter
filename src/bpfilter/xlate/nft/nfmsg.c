@@ -13,6 +13,7 @@
 #include <libnl3/netlink/attr.h>
 #include <limits.h>
 #include <netlink/msg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>

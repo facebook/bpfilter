@@ -56,9 +56,13 @@ FormatStyle: none
 UseColor: yes
 
 CheckOptions:
-  # Allow use of reserved identifiers as long as they start with "_bf_"
+  # Allow use of reserved identifiers as long as they start with "_bf",
+  # "_BF", or "_cleanup". This check has been modified starting with
+  # clang-tools-extra v18 (https://releases.llvm.org/18.1.0/tools/clang/tools/extra/docs/ReleaseNotes.html#improvements-to-clang-tidy)
+  # and will behave differently for macros. Hence clang-tidy v18+ won't
+  # warn about _cleanup_ identifiers.
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: _(bf|BF)_[a-zA-Z0-9_]+
+    value: '_(bf|BF|cleanup)_[a-zA-Z0-9_]+'
   # Unless a *statement* takes 1 line, it should be in braces
   - key: readability-braces-around-statements.ShortStatementLines
     value: 6

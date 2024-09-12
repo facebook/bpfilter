@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <netlink/msg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
