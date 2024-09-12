@@ -170,6 +170,9 @@ struct bf_program
     /// Pinter map pinning path.
     char pmap_pin_path[PIN_PATH_LEN];
 
+    /// List of @ref bf_bpf_map used to store the sets.
+    bf_list sets;
+
     /// Log messages printer.
     struct bf_printer *printer;
 

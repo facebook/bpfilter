@@ -25,6 +25,7 @@
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
 #include "bpfilter/cgen/printer.h"
+#include "bpfilter/cgen/prog/map.h"
 #include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/context.h"
@@ -44,6 +45,7 @@
 #include "core/matcher.h"
 #include "core/opts.h"
 #include "core/rule.h"
+#include "core/set.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
@@ -105,6 +107,22 @@ int bf_program_new(struct bf_program **program, unsigned int ifindex,
     (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
                    "/sys/fs/bpf/bf_pmap_%.6s", suffix);
 
+    _program->sets = bf_bpf_map_list();
+    bf_list_foreach (&chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+        _cleanup_bf_bpf_map_ struct bf_bpf_map *map = NULL;
+
+        r = bf_bpf_map_new(&map, suffix, BF_BPF_MAP_TYPE_HASH, set->elem_size,
+                           1, bf_list_size(&set->elems));
+        if (r < 0)
+            return r;
+
+        r = bf_list_add_tail(&_program->sets, map);
+        if (r < 0)
+            return r;
+        TAKE_PTR(map);
+    };
+
     r = bf_printer_new(&_program->printer);
     if (r)
         return r;
@@ -138,6 +156,7 @@ void bf_program_free(struct bf_program **program)
     closep(&(*program)->runtime.cmap_fd);
     closep(&(*program)->runtime.pmap_fd);
 
+    bf_list_clean(&(*program)->sets);
     bf_printer_free(&(*program)->printer);
 
     free(*program);
@@ -163,6 +182,38 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
                                 sizeof(program->front));
     if (r)
         return r;
+
+    {
+        // Serialize bf_program.sets
+        _cleanup_bf_marsh_ struct bf_marsh *sets_elem = NULL;
+
+        r = bf_marsh_new(&sets_elem, NULL, 0);
+        if (r < 0)
+            return bf_err_r(r, "failed to create marsh for bf_program.sets");
+
+        bf_list_foreach (&program->sets, map_node) {
+            struct bf_bpf_map *map = bf_list_node_get_data(map_node);
+            _cleanup_bf_marsh_ struct bf_marsh *map_elem = NULL;
+
+            r = bf_bpf_map_marsh(map, &map_elem);
+            if (r < 0)
+                return r;
+
+            r = bf_marsh_add_child_obj(&sets_elem, map_elem);
+            if (r < 0) {
+                return bf_err_r(
+                    r,
+                    "failed to insert serialized set into bf_program.sets serialized data");
+            }
+        }
+
+        r = bf_marsh_add_child_obj(&_marsh, sets_elem);
+        if (r < 0) {
+            return bf_err_r(
+                r,
+                "failed to insert serialized sets into bf_program serialized data");
+        }
+    }
 
     {
         // Serialise bf_program.printer
@@ -218,6 +269,34 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     r = bf_program_new(&_program, ifindex, hook, front, chain);
     if (r < 0)
         return r;
+
+    /** @todo Avoid creating and filling the list in @ref bf_program_new before
+     * trashing it all here. Eventually, this function will be replaced with
+     * @c bf_program_new_from_marsh and this issue could be solved by **not**
+     * relying on @ref bf_program_new to allocate an initialize @p _program . */
+    bf_list_clean(&_program->sets);
+    _program->sets = bf_bpf_map_list();
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    {
+        // Unmarsh bf_program.sets
+        struct bf_marsh *set_elem = NULL;
+
+        while ((set_elem = bf_marsh_next_child(child, set_elem))) {
+            _cleanup_bf_bpf_map_ struct bf_bpf_map *map = NULL;
+
+            r = bf_bpf_map_new_from_marsh(&map, set_elem);
+            if (r < 0)
+                return r;
+
+            r = bf_list_add_tail(&_program->sets, map);
+            if (r < 0)
+                return r;
+
+            TAKE_PTR(map);
+        }
+    }
 
     // Unmarsh bf_program.printer
     child = bf_marsh_next_child(marsh, child);
@@ -282,6 +361,19 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
          bf_opts_transient() ? "<transient>" : program->cmap_pin_path);
     DUMP(prefix, "pmap_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->pmap_pin_path);
+
+    DUMP(prefix, "sets: bf_list<bf_bpf_map>[%lu]",
+         bf_list_size(&program->sets));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&program->sets, map_node) {
+        struct bf_bpf_map *map = bf_list_node_get_data(map_node);
+
+        if (bf_list_is_tail(&program->sets, map_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_bpf_map_dump(map, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "printer: struct bf_printer *");
     bf_dump_prefix_push(prefix);
@@ -908,11 +1000,55 @@ static void _bf_program_unpin(const struct bf_program *program)
     unlink(program->pmap_pin_path);
 }
 
+static int _bf_program_load_sets_maps(struct bf_program *new_prog)
+{
+    const bf_list_node *set_node;
+    const bf_list_node *map_node;
+    int r;
+
+    bf_assert(new_prog);
+
+    // Create the BPF maps
+    bf_list_foreach (&new_prog->sets, map_node) {
+        struct bf_bpf_map *map = bf_list_node_get_data(map_node);
+        r = bf_bpf_map_create(map, 0, !bf_opts_transient());
+        if (r < 0)
+            return r;
+    }
+
+    set_node = bf_list_get_head(&new_prog->runtime.chain->sets);
+    map_node = bf_list_get_head(&new_prog->sets);
+
+    // Fill the bf_bpf_map with the sets content
+    while (set_node && map_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+        struct bf_bpf_map *map = bf_list_node_get_data(map_node);
+
+        bf_list_foreach (&set->elems, elem_node) {
+            uint8_t fake_value = 1;
+            void *elem = bf_list_node_get_data(elem_node);
+
+            r = bf_bpf_map_set_elem(map, elem, &fake_value);
+            if (r < 0)
+                return bf_err_r(r, "failed to add element to map");
+        }
+
+        set_node = bf_list_node_next(set_node);
+        map_node = bf_list_node_next(map_node);
+    }
+
+    return 0;
+}
+
 int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
 {
     int r;
 
     bf_assert(new_prog);
+
+    r = _bf_program_load_sets_maps(new_prog);
+    if (r < 0)
+        return r;
 
     r = _bf_program_load_counters_map(new_prog);
     if (r)
@@ -951,6 +1087,11 @@ int bf_program_unload(struct bf_program *program)
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.cmap_fd);
     closep(&program->runtime.pmap_fd);
+
+    bf_list_foreach (&program->sets, map_node) {
+        struct bf_bpf_map *map = bf_list_node_get_data(map_node);
+        bf_bpf_map_destroy(map, !bf_opts_transient());
+    }
 
     bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
