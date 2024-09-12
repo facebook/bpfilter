@@ -27,6 +27,8 @@
 # - readability-isolate-declaration
 #   Rely on manual check: it's uncommon in bpfilter for multiple variable to be
 #   defined on a single line, but it's sometimes for the better.
+# - readability-suspicious-call-argument
+#   Raises non-issues.
 Checks: >
   -*,
   bugprone-*,
@@ -46,7 +48,8 @@ Checks: >
   portability-*,
   readability-*,
     -readability-function-cognitive-complexity,
-    -readability-isolate-declaration
+    -readability-isolate-declaration,
+    -readability-suspicious-call-argument
 
 WarningsAsErrors: '*'
 FormatStyle: none
