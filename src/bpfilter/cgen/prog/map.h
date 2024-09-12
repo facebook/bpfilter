@@ -144,6 +144,21 @@ int bf_bpf_map_create(struct bf_bpf_map *map, uint32_t flags, bool pin);
 void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin);
 
 /**
+ * Insert or update an element to the map.
+ *
+ * If an element already exist in the map for key @c key it is replaced, other
+ * it is inserted.
+ *
+ * @param map BPF map to update. Can't be NULL.
+ * @param key Pointer to the element key. The key size has been defined with
+ *            @ref bf_bpf_map_new . Can't be NULL.
+ * @param value Pointer to the value. The value size has been defined with
+ *              @ref bf_bpf_map_new . Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_bpf_map_set_elem(const struct bf_bpf_map *map, void *key, void *value);
+
+/**
  * Convert a @ref bf_bpf_map_type to a string.
  *
  * @param type Map type to convert to string. Must be a valid
