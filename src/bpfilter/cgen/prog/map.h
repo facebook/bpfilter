@@ -42,8 +42,6 @@ struct bf_marsh;
  * @note This function won't create a new BPF map, but a bpfilter-specific
  * object used to keep track of a BPF map on the system.
  *
- * @todo Can @c value_size be 0?
- *
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
  *            success, @c *map points to a valid @ref bf_bpf_map . On failure,
  *            @c *map remain unchanged.
@@ -53,7 +51,7 @@ struct bf_marsh;
  * @param type Map type. Not all BPF maps are supported, see
  *             @ref bf_bpf_map_type for the full list of supported types.
  * @param key_size Size (in bytes) of a key in the map. Can't be 0.
- * @param value_size Size (in bytes) of an element of the map.
+ * @param value_size Size (in bytes) of an element of the map. Can't be 0.
  * @param n_elems Number of elemets to reserve room for in the map. Can't be 0.
  * @return 0 on success, or a negative errno value on error.
  */
