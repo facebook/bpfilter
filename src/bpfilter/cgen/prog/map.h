@@ -12,16 +12,14 @@
 
 #include "core/dump.h"
 
-#define BF_PIN_PATH_LEN 64
-
-#define _cleanup_bf_bpf_map_ __attribute__((__cleanup__(bf_bpf_map_free)))
-
 enum bf_bpf_map_type
 {
     BF_BPF_MAP_TYPE_ARRAY,
     BF_BPF_MAP_TYPE_HASH,
     _BF_BPF_MAP_TYPE_MAX,
 };
+
+#define BF_PIN_PATH_LEN 64
 
 struct bf_bpf_map
 {
@@ -35,6 +33,17 @@ struct bf_bpf_map
 };
 
 struct bf_marsh;
+
+#define _cleanup_bf_bpf_map_ __attribute__((__cleanup__(bf_bpf_map_free)))
+
+/**
+ * Convenience macro to initialize a list of @ref bf_bpf_map .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_bpf_map object,
+ *         with its @ref bf_list_ops properly configured.
+ */
+#define bf_bpf_map_list()                                                      \
+    bf_list_default({.free = (bf_list_ops_free)bf_bpf_map_free})
 
 /**
  * Allocates and initializes a new BPF map object.
