@@ -11,6 +11,8 @@
 
 Test(program, emit_fixup_call)
 {
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
+
     expect_assert_failure(bf_program_emit_fixup_call(
         NULL, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER));
 
@@ -20,7 +22,7 @@ Test(program, emit_fixup_call)
         size_t start_cap;
 
         assert_int_equal(
-            0, bf_program_new(&program, 1, BF_HOOK_NF_FORWARD, BF_FRONT_IPT));
+            0, bf_program_new(&program, 1, BF_HOOK_NF_FORWARD, BF_FRONT_IPT, chain));
 
         start_cap = program->img_cap;
 
