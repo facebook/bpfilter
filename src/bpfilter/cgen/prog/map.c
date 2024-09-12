@@ -8,9 +8,12 @@
 #include <linux/bpf.h>
 
 #include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "core/bpf.h"
 #include "core/dump.h"
@@ -188,6 +191,65 @@ void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix)
     DUMP(prefix, "value_size: %lu", map->value_size);
     DUMP(bf_dump_prefix_last(prefix), "n_elems: %lu", map->n_elems);
     bf_dump_prefix_pop(prefix);
+}
+
+static enum bpf_map_type
+_bf_bpf_map_type_to_kernel_type(enum bf_bpf_map_type type)
+{
+    static const enum bpf_map_type _types[] = {
+        [BF_BPF_MAP_TYPE_ARRAY] = BPF_MAP_TYPE_ARRAY,
+        [BF_BPF_MAP_TYPE_HASH] = BPF_MAP_TYPE_HASH,
+    };
+
+    bf_assert(0 <= type && type < _BF_BPF_MAP_TYPE_MAX);
+
+    return _types[type];
+}
+
+int bf_bpf_map_create(struct bf_bpf_map *map, uint32_t flags, bool pin)
+{
+    union bpf_attr attr = {};
+    _cleanup_close_ int fd = -1;
+    int r;
+
+    bf_assert(map);
+
+    attr.map_type = _bf_bpf_map_type_to_kernel_type(map->type);
+    attr.key_size = map->key_size;
+    attr.value_size = map->value_size;
+    attr.max_entries = map->n_elems;
+    attr.map_flags = flags;
+
+    (void)snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", map->name);
+
+    r = bf_bpf(BPF_MAP_CREATE, &attr);
+    if (r < 0)
+        return bf_err_r(r, "failed to create BPF map '%s'", map->name);
+
+    fd = r;
+    if (pin) {
+        r = bf_bpf_obj_pin(map->path, fd);
+        if (r < 0)
+            return bf_err_r(r, "failed to pin BPF map to '%s'", map->path);
+    }
+
+    map->fd = TAKE_FD(fd);
+
+    return 0;
+}
+
+void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin)
+{
+    bf_assert(map);
+
+    closep(&map->fd);
+
+    if (unpin && unlink(map->path) < 0) {
+        bf_warn_r(
+            errno,
+            "failed to unlink BPF map '%s', assuming the map is destroyed",
+            map->path);
+    }
 }
 
 static const char *_bf_bpf_map_type_strs[] = {
