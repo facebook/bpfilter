@@ -251,6 +251,20 @@ void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin)
     }
 }
 
+int bf_bpf_map_set_elem(const struct bf_bpf_map *map, void *key, void *value)
+{
+    union bpf_attr attr = {};
+
+    bf_assert(map && key && value);
+
+    attr.map_fd = map->fd;
+    attr.key = (unsigned long long)key;
+    attr.value = (unsigned long long)value;
+    attr.flags = BPF_ANY;
+
+    return bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
+}
+
 static const char *_bf_bpf_map_type_strs[] = {
     [BF_BPF_MAP_TYPE_ARRAY] = "BF_BPF_MAP_TYPE_ARRAY",
     [BF_BPF_MAP_TYPE_HASH] = "BF_BPF_MAP_TYPE_HASH",

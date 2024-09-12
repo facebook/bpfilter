@@ -129,6 +129,13 @@ Test(map, map_destroy_assert)
     expect_assert_failure(bf_bpf_map_destroy(NULL, false));
 }
 
+Test(map, map_set_elem_assert)
+{
+    expect_assert_failure(bf_bpf_map_set_elem(NULL, NOT_NULL, NOT_NULL));
+    expect_assert_failure(bf_bpf_map_set_elem(NOT_NULL, NULL, NOT_NULL));
+    expect_assert_failure(bf_bpf_map_set_elem(NOT_NULL, NOT_NULL, NULL));
+}
+
 Test(map, bpf_map_type_to_from_assert)
 {
     expect_assert_failure(bf_bpf_map_type_to_str(-1));
