@@ -66,7 +66,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
         if (r < 0)
             return bf_err_r(r, "failed to generate and load new program");
 
-        r = bf_context_set_cgen(chain->hook, BF_FRONT_CLI, cgen);
+        r = bf_context_set_cgen(cgen->chain->hook, BF_FRONT_CLI, cgen);
         if (r < 0)
             return bf_err_r(r, "failed to store codegen in runtime context");
 
