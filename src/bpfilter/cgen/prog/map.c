@@ -30,8 +30,7 @@ int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix,
 
     bf_assert(map);
     bf_assert(name_suffix);
-    bf_assert(key_size > 0);
-    bf_assert(n_elems > 0);
+    bf_assert(key_size > 0 && value_size > 0 && n_elems > 0);
 
     _map = malloc(sizeof(*_map));
     if (!_map)
