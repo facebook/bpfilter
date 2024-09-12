@@ -90,3 +90,63 @@ Test(map, dump)
     assert_success(bf_bpf_map_new(&map, "012345", BF_BPF_MAP_TYPE_ARRAY, 1, 1, 1));
     bf_bpf_map_dump(map, EMPTY_PREFIX);
 }
+
+Test(map, bpf_map_type_to_kernel_type_assert)
+{
+    expect_assert_failure(_bf_bpf_map_type_to_kernel_type(-1));
+    expect_assert_failure(_bf_bpf_map_type_to_kernel_type(_BF_BPF_MAP_TYPE_MAX));
+}
+
+Test(map, map_create_assert)
+{
+    expect_assert_failure(bf_bpf_map_create(NULL, 0, false));
+}
+
+Test(map, map_create)
+{
+    _cleanup_bf_bpf_map_ struct bf_bpf_map *map = NULL;
+    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, 16);
+
+    assert_success(bf_bpf_map_new(&map, "suffix", BF_BPF_MAP_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_bpf_map_create(map, 0, false));
+
+    // So bf_bpf_map_free() doesn't try to close a random FD value
+    map->fd = -1;
+}
+
+Test(map, map_create_failure)
+{
+    _cleanup_bf_bpf_map_ struct bf_bpf_map *map = NULL;
+    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, -1);
+
+    assert_success(bf_bpf_map_new(&map, "suffix", BF_BPF_MAP_TYPE_ARRAY, 1, 1, 1));
+    assert_error(bf_bpf_map_create(map, 0, false));
+}
+
+Test(map, map_destroy_assert)
+{
+    expect_assert_failure(bf_bpf_map_destroy(NULL, false));
+}
+
+Test(map, bpf_map_type_to_from_assert)
+{
+    expect_assert_failure(bf_bpf_map_type_to_str(-1));
+    expect_assert_failure(bf_bpf_map_type_to_str(_BF_BPF_MAP_TYPE_MAX));
+    expect_assert_failure(bf_bpf_map_type_from_str(NULL, NOT_NULL));
+    expect_assert_failure(bf_bpf_map_type_from_str(NOT_NULL, NULL));
+}
+
+Test(map, bpf_map_type_to_from)
+{
+    enum bf_bpf_map_type type;
+
+    for (size_t i = 0; i < _BF_BPF_MAP_TYPE_MAX; ++i) {
+        enum bf_bpf_map_type type;
+        const char *str = bf_bpf_map_type_to_str(i);
+        assert_non_null(str);
+        assert_success(bf_bpf_map_type_from_str(str, &type));
+        assert_int_equal(i, type);
+    }
+
+    assert_error(bf_bpf_map_type_from_str("invalid", &type));
+}

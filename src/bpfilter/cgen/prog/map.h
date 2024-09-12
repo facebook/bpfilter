@@ -7,6 +7,9 @@
 
 #include <linux/bpf.h>
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "core/dump.h"
 
 #define BF_PIN_PATH_LEN 64
@@ -106,6 +109,32 @@ int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh);
  *               @ref EMPTY_PREFIX . Can't be NULL.
  */
 void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix);
+
+/**
+ * Create the BPF map.
+ *
+ * @param map BPF map to create. Can't be NULL.
+ * @param flags Flags to use during map creation. All the flags supported by
+ *              @c BPF_MAP_CREATE can be used.
+ * @param pin If true, the map will be pinned to the filesystem. This will
+ *            ensure it remains once bpfilter is stopped.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_bpf_map_create(struct bf_bpf_map *map, uint32_t flags, bool pin);
+
+/**
+ * Destroy the BPF map.
+ *
+ * While this function will effectively close the file descriptor used to
+ * reference the BPF map, it might survive if a BPF program uses it, or if
+ * it is pinned to the filesystem.
+ *
+ * @param map BPF map to destroy. Can't be NULL.
+ * @param unpin If true, unpin the map from the filesystem: the map will be
+ *              removed from the kernel as soon as no other program or map uses
+ *              it.
+ */
+void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin);
 
 /**
  * Convert a @ref bf_bpf_map_type to a string.
