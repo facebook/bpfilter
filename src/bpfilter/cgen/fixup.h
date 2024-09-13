@@ -51,7 +51,6 @@ enum bf_fixup_type
 
 union bf_fixup_attr
 {
-    size_t offset;
     size_t set_index;
     enum bf_fixup_func function;
 };
