@@ -12,7 +12,7 @@
 #include "core/helper.h"
 
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
-                 size_t insn_offset)
+                 size_t insn_offset, const union bf_fixup_attr *attr)
 {
     bf_assert(fixup);
 
@@ -22,6 +22,9 @@ int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
 
     (*fixup)->type = type;
     (*fixup)->insn = insn_offset;
+
+    if (attr)
+        (*fixup)->attr = *attr;
 
     return 0;
 }
@@ -84,7 +87,8 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
         // No specific value to dump
         break;
     case BF_FIXUP_TYPE_FUNC_CALL:
-        DUMP(prefix, "function: %s", _bf_fixup_func_to_str(fixup->function));
+        DUMP(prefix, "function: %s",
+             _bf_fixup_func_to_str(fixup->attr.function));
         break;
     default:
         DUMP(prefix, "unsupported bf_fixup_type: %d", fixup->type);

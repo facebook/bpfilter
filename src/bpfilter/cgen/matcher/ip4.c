@@ -15,7 +15,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
@@ -40,9 +39,9 @@ _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
         EMIT(program, BPF_ALU32_REG(BPF_AND, BF_REG_2, BF_REG_3));
     }
 
-    EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
-               BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                           BF_REG_1, BF_REG_2, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                             BF_REG_1, BF_REG_2, 0));
 
     return 0;
 }
@@ -70,9 +69,9 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_L3,
                               offsetof(struct iphdr, protocol)));
-    EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
-               BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                           BF_REG_4, proto, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                             BF_REG_4, proto, 0));
 
     return 0;
 }
@@ -84,8 +83,8 @@ int bf_matcher_generate_ip4(struct bf_program *program,
 
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IP), 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IP), 0));
 
     switch (matcher->type) {
     case BF_MATCHER_IP4_SRC_ADDR:

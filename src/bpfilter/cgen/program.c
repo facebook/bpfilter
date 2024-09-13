@@ -493,8 +493,8 @@ static int _bf_program_fixup(struct bf_program *program,
             break;
         case BF_FIXUP_TYPE_FUNC_CALL:
             insn_type = BF_FIXUP_INSN_IMM;
-            offset =
-                program->functions_location[fixup->function] - fixup->insn - 1;
+            offset = program->functions_location[fixup->attr.function] -
+                     fixup->insn - 1;
             bf_assert(offset < INT_MAX);
             value = (int32_t)offset;
             break;
@@ -605,7 +605,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
 static int _bf_program_generate_add_counter(struct bf_program *program)
 {
     // Load the map into BF_ARG_1.
-    EMIT_LOAD_FD_FIXUP(program, BF_ARG_1);
+    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BF_ARG_1);
 
     // Store the rule's key before the runtime context.
     EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_FP, BF_ARG_2, -8));
@@ -667,13 +667,14 @@ static int _bf_program_generate_functions(struct bf_program *program)
         if (fixup->type != BF_FIXUP_TYPE_FUNC_CALL)
             continue;
 
-        bf_assert(fixup->function >= 0 && fixup->function < _BF_FIXUP_FUNC_MAX);
+        bf_assert(fixup->attr.function >= 0 &&
+                  fixup->attr.function < _BF_FIXUP_FUNC_MAX);
 
         // Only generate each function once
-        if (program->functions_location[fixup->function])
+        if (program->functions_location[fixup->attr.function])
             continue;
 
-        switch (fixup->function) {
+        switch (fixup->attr.function) {
         case BF_FIXUP_FUNC_ADD_COUNTER:
             r = _bf_program_generate_add_counter(program);
             if (r)
@@ -681,11 +682,11 @@ static int _bf_program_generate_functions(struct bf_program *program)
             break;
         default:
             bf_abort("unsupported fixup function, this should not happen: %d",
-                     fixup->function);
+                     fixup->attr.function);
             break;
         }
 
-        program->functions_location[fixup->function] = off;
+        program->functions_location[fixup->attr.function] = off;
     }
 
     return 0;
@@ -704,11 +705,13 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     if (r < 0)
         return bf_err_r(errno, "failed to create counters map");
 
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
-    if (r < 0)
-        return bf_err_r(r, "failed to fixup counters map FD");
-
     program->runtime.cmap_fd = TAKE_FD(_fd);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
+    if (r < 0) {
+        // Not ideal, but will be resolved with bf_bpf_map
+        closep(&program->runtime.cmap_fd);
+        return bf_err_r(r, "failed to fixup counters map FD");
+    }
 
     return 0;
 }
@@ -736,11 +739,13 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r)
         return bf_err_r(r, "failed to insert messages in printer map");
 
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
-    if (r)
-        return bf_err_r(r, "can't update instruction with printer map fd");
-
     program->runtime.pmap_fd = TAKE_FD(fd);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
+    if (r) {
+        // Not ideal, but will be resolved with bf_bpf_map
+        closep(&program->runtime.pmap_fd);
+        return bf_err_r(r, "can't update instruction with printer map fd");
+    }
 
     return 0;
 }
@@ -783,7 +788,7 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
 }
 
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
-                          struct bpf_insn insn)
+                          struct bpf_insn insn, const union bf_fixup_attr *attr)
 {
     _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
@@ -796,7 +801,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
             return r;
     }
 
-    r = bf_fixup_new(&fixup, type, program->img_size);
+    r = bf_fixup_new(&fixup, type, program->img_size, attr);
     if (r)
         return r;
 
@@ -829,11 +834,11 @@ int bf_program_emit_fixup_call(struct bf_program *program,
             return r;
     }
 
-    r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_FUNC_CALL, program->img_size);
+    r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_FUNC_CALL, program->img_size, NULL);
     if (r)
         return r;
 
-    fixup->function = function;
+    fixup->attr.function = function;
 
     r = bf_list_add_tail(&program->fixups, fixup);
     if (r)
