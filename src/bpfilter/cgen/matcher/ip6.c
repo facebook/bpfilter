@@ -56,14 +56,14 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_3, 32));
         EMIT(program, BPF_MOV32_IMM(BF_REG_4, addr->addr[0] & 0xffffffff));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BF_REG_3, BF_REG_4));
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+        EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
                    BPF_JMP_REG(BPF_JNE, BF_REG_1, BF_REG_3, 0));
 
         EMIT(program, BPF_MOV32_IMM(BF_REG_3, addr->addr[1] >> 32));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BF_REG_3, 32));
         EMIT(program, BPF_MOV32_IMM(BF_REG_4, addr->addr[1] & 0xffffffff));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BF_REG_3, BF_REG_4));
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+        EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
                    BPF_JMP_REG(BPF_JNE, BF_REG_2, BF_REG_3, 0));
     } else {
         /* If we want to *not* match an IP, none of addr->addr[0] and
@@ -98,7 +98,7 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
         j1 =
             bf_jmpctx_get(program, BPF_JMP_REG(BPF_JNE, BF_REG_2, BF_REG_3, 0));
 
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE, BPF_JMP_A(0));
+        EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE, BPF_JMP_A(0));
 
         // j0 and j1 should jump here if they can't match the packet's IP.
         bf_jmpctx_cleanup(&j0);
@@ -115,7 +115,7 @@ int bf_matcher_generate_ip6(struct bf_program *program,
 
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_NEXT_RULE,
+    EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
                BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IPV6), 0));
 
     switch (matcher->type) {

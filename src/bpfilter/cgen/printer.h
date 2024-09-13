@@ -76,8 +76,8 @@ struct bf_printer_msg;
         };                                                                     \
         __ld_insn[0].src_reg = BPF_PSEUDO_MAP_VALUE;                           \
         __ld_insn[1].imm = bf_printer_msg_offset(__msg);                       \
-        __r = bf_program_emit_fixup(                                           \
-            (program), BF_CODEGEN_FIXUP_PRINTER_MAP_FD, __ld_insn[0]);         \
+        __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_PRINTER_MAP_FD,   \
+                                    __ld_insn[0]);                             \
         if (__r < 0)                                                           \
             return __r;                                                        \
         __r = bf_program_emit((program), __ld_insn[1]);                        \

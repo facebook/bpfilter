@@ -442,15 +442,15 @@ int bf_program_grow_img(struct bf_program *program)
 }
 
 static void _bf_program_fixup_insn(struct bpf_insn *insn,
-                                   enum bf_fixup_insn_type type, int32_t value)
+                                   enum bf_fixup_insn type, int32_t value)
 {
     switch (type) {
-    case BF_CODEGEN_FIXUP_INSN_OFF:
+    case BF_FIXUP_INSN_OFF:
         bf_assert(!insn->off);
         bf_assert(value < SHRT_MAX);
         insn->off = (int16_t)value;
         break;
-    case BF_CODEGEN_FIXUP_INSN_IMM:
+    case BF_FIXUP_INSN_IMM:
         bf_assert(!insn->imm);
         insn->imm = value;
         break;
@@ -467,10 +467,10 @@ static int _bf_program_fixup(struct bf_program *program,
                              const union bf_fixup_attr *attr)
 {
     bf_assert(program);
-    bf_assert(type >= 0 && type < _BF_CODEGEN_FIXUP_MAX);
+    bf_assert(type >= 0 && type < _BF_FIXUP_TYPE_MAX);
 
     bf_list_foreach (&program->fixups, fixup_node) {
-        enum bf_fixup_insn_type insn_type = _BF_CODEGEN_FIXUP_INSN_MAX_MAX;
+        enum bf_fixup_insn insn_type = _BF_FIXUP_INSN_MAX;
         int32_t value;
         size_t offset;
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
@@ -480,17 +480,17 @@ static int _bf_program_fixup(struct bf_program *program,
             continue;
 
         switch (type) {
-        case BF_CODEGEN_FIXUP_NEXT_RULE:
-            insn_type = BF_CODEGEN_FIXUP_INSN_OFF;
+        case BF_FIXUP_TYPE_JMP_NEXT_RULE:
+            insn_type = BF_FIXUP_INSN_OFF;
             value = (int)(program->img_size - fixup->insn - 1U);
             break;
-        case BF_CODEGEN_FIXUP_MAP_FD:
-        case BF_CODEGEN_FIXUP_PRINTER_MAP_FD:
-            insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
+        case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
+        case BF_FIXUP_TYPE_PRINTER_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
             value = attr->map_fd;
             break;
-        case BF_CODEGEN_FIXUP_FUNCTION_CALL:
-            insn_type = BF_CODEGEN_FIXUP_INSN_IMM;
+        case BF_FIXUP_TYPE_FUNC_CALL:
+            insn_type = BF_FIXUP_INSN_IMM;
             offset =
                 program->functions_location[fixup->function] - fixup->insn - 1;
             bf_assert(offset < INT_MAX);
@@ -560,7 +560,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     // BF_ARG_1: counters map file descriptor.
     if (rule->counters) {
-        EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD,
+        EMIT_FIXUP(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD,
                    BPF_MOV64_IMM(BF_ARG_1, 0));
 
         // BF_ARG_2: index of the current rule in counters map.
@@ -570,14 +570,14 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX,
                                   BF_PROG_CTX_OFF(pkt_size)));
 
-        EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_ADD_COUNTER);
     }
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                                 rule->verdict)));
     EMIT(program, BPF_EXIT_INSN());
 
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_NEXT_RULE, NULL);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE, NULL);
     if (r)
         return bf_err_r(r, "failed to generate next rule fixups");
 
@@ -662,18 +662,17 @@ static int _bf_program_generate_functions(struct bf_program *program)
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
         size_t off = program->img_size;
 
-        if (fixup->type != BF_CODEGEN_FIXUP_FUNCTION_CALL)
+        if (fixup->type != BF_FIXUP_TYPE_FUNC_CALL)
             continue;
 
-        bf_assert(fixup->function >= 0 &&
-                  fixup->function < _BF_CODEGEN_FIXUP_FUNCTION_MAX);
+        bf_assert(fixup->function >= 0 && fixup->function < _BF_FIXUP_FUNC_MAX);
 
         // Only generate each function once
         if (program->functions_location[fixup->function])
             continue;
 
         switch (fixup->function) {
-        case BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER:
+        case BF_FIXUP_FUNC_ADD_COUNTER:
             r = _bf_program_generate_add_counter(program);
             if (r)
                 return r;
@@ -705,7 +704,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
         return bf_err_r(errno, "failed to create counters map");
 
     bf_attr.map_fd = _fd;
-    _bf_program_fixup(program, BF_CODEGEN_FIXUP_MAP_FD, &bf_attr);
+    _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD, &bf_attr);
 
     program->runtime.cmap_fd = TAKE_FD(_fd);
 
@@ -737,8 +736,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
         return bf_err_r(r, "failed to insert messages in printer map");
 
     fixup_attr.map_fd = fd;
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
-                          &fixup_attr);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD, &fixup_attr);
     if (r)
         return bf_err_r(r, "can't update instruction with printer map fd");
 
@@ -821,7 +819,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 }
 
 int bf_program_emit_fixup_call(struct bf_program *program,
-                               enum bf_fixup_function function)
+                               enum bf_fixup_func function)
 {
     _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
@@ -838,7 +836,7 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     if (r)
         return r;
 
-    fixup->type = BF_CODEGEN_FIXUP_FUNCTION_CALL;
+    fixup->type = BF_FIXUP_TYPE_FUNC_CALL;
     fixup->insn = program->img_size;
     fixup->function = function;
 
@@ -917,7 +915,8 @@ int bf_program_generate(struct bf_program *program)
         return r;
 
     // BF_ARG_1: counters map file descriptor.
-    EMIT_FIXUP(program, BF_CODEGEN_FIXUP_MAP_FD, BPF_MOV64_IMM(BF_ARG_1, 0));
+    EMIT_FIXUP(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD,
+               BPF_MOV64_IMM(BF_ARG_1, 0));
 
     // BF_ARG_2: index of the current rule in counters map.
     EMIT(program, BPF_MOV32_IMM(BF_ARG_2, bf_list_size(&chain->rules)));
@@ -926,7 +925,7 @@ int bf_program_generate(struct bf_program *program)
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
 
-    EMIT_FIXUP_CALL(program, BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER);
+    EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_ADD_COUNTER);
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                                 chain->policy)));
@@ -936,7 +935,7 @@ int bf_program_generate(struct bf_program *program)
     if (r)
         return r;
 
-    r = _bf_program_fixup(program, BF_CODEGEN_FIXUP_FUNCTION_CALL, NULL);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL, NULL);
     if (r)
         return bf_err_r(r, "failed to generate function call fixups");
 
