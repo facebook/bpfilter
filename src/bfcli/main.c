@@ -28,16 +28,19 @@ int bf_send(const struct bf_request *request, struct bf_response **response);
 static struct bf_options
 {
     const char *input_file;
+    const char *input_string;
 } _bf_opts = {
     .input_file = NULL,
 };
 
 static struct argp_option options[] = {
     {"file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
+    {"str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
     {0},
 };
 
-static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
+static error_t _bf_opts_parser(int key, const char *arg,
+                               struct argp_state *state)
 {
     UNUSED(arg);
 
@@ -45,13 +48,16 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
 
     switch (key) {
     case 'f':
-        opts->input_file = strdup(arg);
-        if (!opts->input_file)
-            return bf_err_r(-ENOMEM, "failed to copy input file path");
+        opts->input_file = arg;
+        break;
+    case 's':
+        opts->input_string = arg;
         break;
     case ARGP_KEY_END:
-        if (!opts->input_file)
-            return bf_err_r(-EINVAL, "--file argument is required");
+        if (!opts->input_file && !opts->input_string)
+            return bf_err_r(-EINVAL, "--file or --str argument is required");
+        if (opts->input_file && opts->input_string)
+            return bf_err_r(-EINVAL, "--file is incompatible with --str");
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -60,9 +66,50 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     return 0;
 }
 
+static int _bf_cli_parse_file(const char *file, struct bf_ruleset *ruleset)
+{
+    FILE *rules;
+    int r;
+
+    rules = fopen(file, "r");
+    if (!rules) {
+        return bf_err_r(errno,
+                        "failed to read rules from %s:", _bf_opts.input_file);
+    }
+
+    yyin = rules;
+
+    r = yyparse(ruleset);
+    if (r == 1)
+        r = bf_err_r(-EINVAL, "failed to parse rules, invalid syntax");
+    else if (r == 2)
+        r = bf_err_r(-ENOMEM, "failed to parse rules, not enough memory");
+
+    return r;
+}
+
+static int _bf_cli_parse_str(const char *str, struct bf_ruleset *ruleset)
+{
+    YY_BUFFER_STATE buffer;
+    int r;
+
+    buffer = yy_scan_string(str);
+
+    r = yyparse(ruleset);
+    if (r == 1)
+        r = bf_err_r(-EINVAL, "failed to parse rules, invalid syntax");
+    else if (r == 2)
+        r = bf_err_r(-ENOMEM, "failed to parse rules, not enough memory");
+
+    yy_delete_buffer(buffer);
+
+    return r;
+}
+
 int main(int argc, char *argv[])
 {
-    struct argp argp = {options, _bf_opts_parser, NULL, NULL, 0, NULL, NULL};
+    struct argp argp = {
+        options, (argp_parser_t)_bf_opts_parser, NULL, NULL, 0, NULL, NULL};
     struct bf_ruleset ruleset = {
         .chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free}),
         .sets = bf_list_default({.free = (bf_list_ops_free)bf_set_free}),
@@ -77,27 +124,10 @@ int main(int argc, char *argv[])
         goto end_clean;
     }
 
-    bf_info("using source file: %s", _bf_opts.input_file);
-
-    FILE *rules = fopen(_bf_opts.input_file, "r");
-    if (!rules) {
-        r = errno;
-        bf_err_r(r, "failed to read rules from %s:", _bf_opts.input_file);
-        goto end_clean;
-    }
-
-    yyin = rules;
-
-    r = yyparse(&ruleset);
-    if (r == 1) {
-        bf_err("failed to parse rules, invalid syntax");
-        r = -EINVAL;
-        goto end_close;
-    } else if (r == 2) {
-        bf_err("failed to parse rules, not enough memory");
-        r = -EINVAL;
-        goto end_close;
-    }
+    if (_bf_opts.input_file)
+        r = _bf_cli_parse_file(_bf_opts.input_file, &ruleset);
+    else
+        r = _bf_cli_parse_str(_bf_opts.input_string, &ruleset);
 
     // Set rules indexes
     bf_list_foreach (&ruleset.chains, chain_node) {
@@ -143,8 +173,6 @@ int main(int argc, char *argv[])
         }
     }
 
-end_close:
-    (void)fclose(rules);
 end_clean:
     bf_list_clean(&ruleset.chains);
     bf_list_clean(&ruleset.sets);
