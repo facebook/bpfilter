@@ -560,19 +560,15 @@ static int _bf_program_generate_rule(struct bf_program *program,
         };
     }
 
-    // BF_ARG_1: counters map file descriptor.
     if (rule->counters) {
-        EMIT_FIXUP(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD,
-                   BPF_MOV64_IMM(BF_ARG_1, 0));
+        // BF_ARG_1: index of the current rule in counters map.
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, rule->index));
 
-        // BF_ARG_2: index of the current rule in counters map.
-        EMIT(program, BPF_MOV32_IMM(BF_ARG_2, rule->index));
-
-        // BF_ARG_3: packet size, from the context.
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX,
+        // BF_ARG_2: packet size, from the context.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
                                   BF_PROG_CTX_OFF(pkt_size)));
 
-        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_ADD_COUNTER);
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
     }
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
@@ -587,47 +583,42 @@ static int _bf_program_generate_rule(struct bf_program *program,
 }
 
 /**
- * Generate a function to update the packets counter
+ * Generate the BPF function to update a rule's counters.
  *
- * Assuming:
- * - BF_ARG_1: file descriptor of the counters map.
- * - BF_ARG_2: index of the rule in the counters map.
- * - BF_ARG_3: packet size
- *
- * @todo Random jump into the bytecode should be calculated by the daemon,
- * not the developer.
- * @todo Create a fixup to jump to the end of a function.
- * @todo Set BF_REG_0 to !0 on failure, so we don't drop the packet.
+ * Parameters:
+ * - @c BF_ARG_1 : index of the rule to update the counters for.
+ * - @c BF_ARG_2 : size of the packet.
+ * Returns:
+ * 0 on success, non-zero on error.
  *
  * @param program Program to emit the function into. Can not be NULL.
  * @return 0 on success, or negative errno value on error.
  */
-static int _bf_program_generate_add_counter(struct bf_program *program)
+static int _bf_program_generate_update_counters(struct bf_program *program)
 {
-    // Load the map into BF_ARG_1.
+    // Move the rule's key at FP - 8
+    EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_FP, BF_ARG_1, -8));
+
+    // Move the packet size at FP - 16
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_FP, BF_ARG_2, -16));
+
+    // BF_ARG_1: counters map file descriptor
     EMIT_LOAD_COUNTERS_FD_FIXUP(program, BF_ARG_1);
-
-    // Store the rule's key before the runtime context.
-    EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_FP, BF_ARG_2, -8));
-
-    // Store the packet size before the rule's key
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_FP, BF_ARG_3, -16));
 
     // BF_ARG_2: address of the rule's counters map key.
     EMIT(program, BPF_MOV64_REG(BF_ARG_2, BF_REG_FP));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_2, -8));
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
-
-    // If we can't find the entry, return.
     {
+        // If the counters doesn't exist, return from the function
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_0, 0, 0));
 
         if (bf_opts_debug())
             EMIT_PRINT(program, "failed to fetch the rule's counters");
 
-        EMIT(program, BPF_MOV32_IMM(BF_REG_0, 0));
+        EMIT(program, BPF_MOV32_IMM(BF_REG_0, 1));
         EMIT(program, BPF_EXIT_INSN());
     }
 
@@ -648,7 +639,6 @@ static int _bf_program_generate_add_counter(struct bf_program *program)
 
     // On success, BF_REG_0 is 0.
     EMIT(program, BPF_MOV32_IMM(BF_REG_0, 0));
-
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
@@ -675,8 +665,8 @@ static int _bf_program_generate_functions(struct bf_program *program)
             continue;
 
         switch (fixup->attr.function) {
-        case BF_FIXUP_FUNC_ADD_COUNTER:
-            r = _bf_program_generate_add_counter(program);
+        case BF_FIXUP_FUNC_UPDATE_COUNTERS:
+            r = _bf_program_generate_update_counters(program);
             if (r)
                 return r;
             break;
@@ -914,18 +904,14 @@ int bf_program_generate(struct bf_program *program)
     if (r)
         return r;
 
-    // BF_ARG_1: counters map file descriptor.
-    EMIT_FIXUP(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD,
-               BPF_MOV64_IMM(BF_ARG_1, 0));
+    // BF_ARG_1: index of the current rule in counters map.
+    EMIT(program, BPF_MOV32_IMM(BF_ARG_1, bf_list_size(&chain->rules)));
 
-    // BF_ARG_2: index of the current rule in counters map.
-    EMIT(program, BPF_MOV32_IMM(BF_ARG_2, bf_list_size(&chain->rules)));
-
-    // BF_ARG_3: packet size, from the context.
+    // BF_ARG_2: packet size, from the context.
     EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BF_ARG_3, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
+         BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
 
-    EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_ADD_COUNTER);
+    EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
     EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                                 chain->policy)));
