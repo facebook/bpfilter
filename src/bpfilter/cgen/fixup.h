@@ -49,19 +49,6 @@ enum bf_fixup_type
     _BF_FIXUP_TYPE_MAX
 };
 
-/**
- * @union bf_fixup_attr
- *
- * Attributes to use when processing the fixups.
- */
-union bf_fixup_attr
-{
-    struct
-    {
-        int map_fd;
-    };
-};
-
 struct bf_fixup
 {
     enum bf_fixup_type type;

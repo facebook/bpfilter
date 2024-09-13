@@ -463,8 +463,7 @@ static void _bf_program_fixup_insn(struct bpf_insn *insn,
 }
 
 static int _bf_program_fixup(struct bf_program *program,
-                             enum bf_fixup_type type,
-                             const union bf_fixup_attr *attr)
+                             enum bf_fixup_type type)
 {
     bf_assert(program);
     bf_assert(type >= 0 && type < _BF_FIXUP_TYPE_MAX);
@@ -485,9 +484,12 @@ static int _bf_program_fixup(struct bf_program *program,
             value = (int)(program->img_size - fixup->insn - 1U);
             break;
         case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = program->runtime.cmap_fd;
+            break;
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
-            value = attr->map_fd;
+            value = program->runtime.pmap_fd;
             break;
         case BF_FIXUP_TYPE_FUNC_CALL:
             insn_type = BF_FIXUP_INSN_IMM;
@@ -577,7 +579,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
                                                 rule->verdict)));
     EMIT(program, BPF_EXIT_INSN());
 
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE, NULL);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE);
     if (r)
         return bf_err_r(r, "failed to generate next rule fixups");
 
@@ -692,7 +694,6 @@ static int _bf_program_generate_functions(struct bf_program *program)
 static int _bf_program_load_counters_map(struct bf_program *program)
 {
     _cleanup_close_ int _fd = -1;
-    union bf_fixup_attr bf_attr = {};
     int r;
 
     bf_assert(program);
@@ -703,8 +704,9 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     if (r < 0)
         return bf_err_r(errno, "failed to create counters map");
 
-    bf_attr.map_fd = _fd;
-    _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD, &bf_attr);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
+    if (r < 0)
+        return bf_err_r(r, "failed to fixup counters map FD");
 
     program->runtime.cmap_fd = TAKE_FD(_fd);
 
@@ -716,7 +718,6 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     _cleanup_free_ void *pstr = NULL;
     _cleanup_close_ int fd = -1;
     size_t pstr_len;
-    union bf_fixup_attr fixup_attr = {};
     int r;
 
     bf_assert(program);
@@ -735,8 +736,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r)
         return bf_err_r(r, "failed to insert messages in printer map");
 
-    fixup_attr.map_fd = fd;
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD, &fixup_attr);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
     if (r)
         return bf_err_r(r, "can't update instruction with printer map fd");
 
@@ -935,7 +935,7 @@ int bf_program_generate(struct bf_program *program)
     if (r)
         return r;
 
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL, NULL);
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL);
     if (r)
         return bf_err_r(r, "failed to generate function call fixups");
 
