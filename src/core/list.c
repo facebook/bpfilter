@@ -177,3 +177,16 @@ void bf_list_delete(bf_list *list, bf_list_node *node)
 
     --list->len;
 }
+
+void *bf_list_get_at(const bf_list *list, size_t index)
+{
+    bf_assert(list);
+
+    bf_list_foreach (list, node) {
+        if (index == 0)
+            return node->data;
+        --index;
+    }
+
+    return NULL;
+}
