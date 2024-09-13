@@ -241,6 +241,17 @@ int bf_list_add_tail(bf_list *list, void *data);
 void bf_list_delete(bf_list *list, bf_list_node *node);
 
 /**
+ * Get the data of a node based on the node's index.
+ *
+ * @param list List to get the data from. Can't be NULL.
+ * @param index Index of the node to get the data from. Index 0 would be the
+ *              first node. If the node doesn't exist, NULL is returned.
+ * @return Data containing in the node at index @c index , or NULL if the
+ *         node doesn't exist.
+ */
+void *bf_list_get_at(const bf_list *list, size_t index);
+
+/**
  * Returns the first element of the list.
  *
  * A @p bf_list_node object it returned. Use @ref bf_list_node_get_data to

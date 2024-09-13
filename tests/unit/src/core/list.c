@@ -240,6 +240,26 @@ Test(list, iterate_and_remove)
     bf_list_clean(&l);
 }
 
+Test(list, get_at)
+{
+    bf_list l;
+
+    expect_assert_failure(bf_list_get_at(NULL, 1));
+
+    // Fill the list with values from 1 to 10
+    init_and_fill(&l, 10, &dummy_ops, dummy_filler_tail);
+
+    // Index 0 contains value 1 and so on
+    assert_int_equal(1, *(int *)bf_list_get_at(&l, 0));
+    assert_int_equal(5, *(int *)bf_list_get_at(&l, 4));
+    assert_int_equal(10, *(int *)bf_list_get_at(&l, 9));
+
+    // Index 20 is out of the list
+    assert_null(bf_list_get_at(&l, 20));
+
+    bf_list_clean(&l);
+}
+
 Test(list, fill_from_tail_and_check)
 {
     bf_list list;
