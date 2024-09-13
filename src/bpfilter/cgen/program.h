@@ -53,7 +53,7 @@
 
 #define EMIT_FIXUP(program, type, insn)                                        \
     ({                                                                         \
-        int __r = bf_program_emit_fixup((program), (type), (insn));            \
+        int __r = bf_program_emit_fixup((program), (type), (insn), NULL);      \
         if (__r < 0)                                                           \
             return __r;                                                        \
     })
@@ -65,11 +65,19 @@
             return __r;                                                        \
     })
 
-#define EMIT_LOAD_FD_FIXUP(program, reg)                                       \
+#define EMIT_FIXUP_JMP_NEXT_RULE(program, insn)                                \
+    ({                                                                         \
+        int __r = bf_program_emit_fixup(                                       \
+            (program), BF_FIXUP_TYPE_JMP_NEXT_RULE, (insn), NULL);             \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
+#define EMIT_LOAD_COUNTERS_FD_FIXUP(program, reg)                              \
     ({                                                                         \
         const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
         int __r = bf_program_emit_fixup(                                       \
-            (program), BF_FIXUP_TYPE_COUNTERS_MAP_FD, ld_insn[0]);             \
+            (program), BF_FIXUP_TYPE_COUNTERS_MAP_FD, ld_insn[0], NULL);       \
         if (__r < 0)                                                           \
             return __r;                                                        \
         __r = bf_program_emit((program), ld_insn[1]);                          \
@@ -223,7 +231,8 @@ int bf_program_grow_img(struct bf_program *program);
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn);
 int bf_program_emit_kfunc_call(struct bf_program *program, const char *name);
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
-                          struct bpf_insn insn);
+                          struct bpf_insn insn,
+                          const union bf_fixup_attr *attr);
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_func function);
 int bf_program_generate(struct bf_program *program);

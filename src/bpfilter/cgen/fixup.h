@@ -49,21 +49,23 @@ enum bf_fixup_type
     _BF_FIXUP_TYPE_MAX
 };
 
+union bf_fixup_attr
+{
+    size_t offset;
+    size_t set_index;
+    enum bf_fixup_func function;
+};
+
 struct bf_fixup
 {
     enum bf_fixup_type type;
     size_t insn;
-
-    union
-    {
-        size_t offset;
-        enum bf_fixup_func function;
-    };
+    union bf_fixup_attr attr;
 };
 
 #define _cleanup_bf_fixup_ __attribute__((cleanup(bf_fixup_free)))
 
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
-                 size_t insn_offset);
+                 size_t insn_offset, const union bf_fixup_attr *attr);
 void bf_fixup_free(struct bf_fixup **fixup);
 void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix);

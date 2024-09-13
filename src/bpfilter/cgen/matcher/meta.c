@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
@@ -25,9 +24,9 @@ static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
 {
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT_FIXUP(program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
-               BPF_JMP_IMM(BPF_JNE, BF_REG_1,
-                           htobe16(*(uint16_t *)&matcher->payload), 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(BPF_JNE, BF_REG_1,
+                             htobe16(*(uint16_t *)&matcher->payload), 0));
 
     return 0;
 }
@@ -37,8 +36,8 @@ static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
 {
     EMIT(program,
          BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
-    EMIT_FIXUP(
-        program, BF_FIXUP_TYPE_JMP_NEXT_RULE,
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
         BPF_JMP_IMM(BPF_JNE, BF_REG_1, *(uint8_t *)&matcher->payload, 0));
 
     return 0;
