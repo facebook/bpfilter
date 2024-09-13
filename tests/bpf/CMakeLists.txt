@@ -49,3 +49,4 @@ function(bf_test_make_bpf_example NAME)
 endfunction()
 
 bf_test_make_bpf_example(xdp_printk)
+bf_test_make_bpf_example(xdp_ipfilter)
