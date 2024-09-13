@@ -38,11 +38,12 @@ The daemon alone is not sufficient as, it doesn't define any filtering rule by d
 
 ``bfcli`` is part of ``bpfilter`` sources, it has been created in order to speed up ``bpfilter`` development by providing a CLI using a trivial communication format with the daemon. For this reason, ``bfcli`` is the main CLI used to develop ``bpfilter``, and it uses the new features of ``bpfilter`` before any other front-end.
 
-``bfcli`` reads a ruleset defined in a file and send it to the daemon to generate the filtering program(s):
+``bfcli`` can read a ruleset from a source file (using ``--file``) or from its arguments (using ``--str``): 
 
 .. code:: shell
 
-    bfcli --file $RULESET
+    bfcli --file myruleset.tx
+    bfcli --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
 
 The following sections will use the dollar sign (``$``) to prefix values that should be replaced by the user, and brackets (``[]``) for optional values (whether it's a literal or a user-provided value).
 
