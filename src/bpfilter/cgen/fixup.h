@@ -27,7 +27,7 @@ enum bf_fixup_insn
  */
 enum bf_fixup_func
 {
-    BF_FIXUP_FUNC_ADD_COUNTER,
+    BF_FIXUP_FUNC_UPDATE_COUNTERS,
     _BF_FIXUP_FUNC_MAX,
 };
 
