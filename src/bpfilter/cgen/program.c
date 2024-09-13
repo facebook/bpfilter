@@ -474,6 +474,7 @@ static int _bf_program_fixup(struct bf_program *program,
         size_t offset;
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
         struct bpf_insn *insn = &program->img[fixup->insn];
+        struct bf_bpf_map *map;
 
         if (type != fixup->type)
             continue;
@@ -490,6 +491,15 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
             value = program->runtime.pmap_fd;
+            break;
+        case BF_FIXUP_TYPE_SET_MAP_FD:
+            map = bf_list_get_at(&program->sets, insn->imm);
+            if (!map) {
+                return bf_err_r(-ENOENT, "can't find set map at index %d",
+                                insn->imm);
+            }
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = map->fd;
             break;
         case BF_FIXUP_TYPE_FUNC_CALL:
             insn_type = BF_FIXUP_INSN_IMM;
@@ -1016,6 +1026,8 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         set_node = bf_list_node_next(set_node);
         map_node = bf_list_node_next(map_node);
     }
+
+    _bf_program_fixup(new_prog, BF_FIXUP_TYPE_SET_MAP_FD);
 
     return 0;
 }

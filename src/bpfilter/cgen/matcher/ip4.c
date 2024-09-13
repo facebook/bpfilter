@@ -17,8 +17,11 @@
 
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/reg.h"
+#include "core/helper.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/matcher.h"
+#include "core/set.h"
 
 #include "external/filter.h"
 
@@ -46,6 +49,44 @@ _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_ip4_addr_set(struct bf_program *program,
+                                             const struct bf_matcher *matcher)
+{
+    uint32_t set_id;
+    struct bf_set *set;
+    int16_t offset;
+
+    bf_assert(program);
+    bf_assert(matcher);
+
+    set_id = *(uint32_t *)matcher->payload;
+    set = bf_list_get_at(&program->runtime.chain->sets, set_id);
+
+    switch (set->type) {
+    case BF_SET_IP4:
+        offset = matcher->type == BF_MATCHER_IP4_SRC_ADDR ?
+                     offsetof(struct iphdr, saddr) :
+                     offsetof(struct iphdr, daddr);
+        EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_L3, offset));
+        EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, -16));
+        break;
+    default:
+        return bf_err_r(-EINVAL, "unsupported set type: %s",
+                        bf_set_type_to_str(set->type));
+    }
+
+    EMIT_LOAD_SET_FD_FIXUP(program, BF_ARG_1, set_id);
+    EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_CTX));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, -16));
+
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+
+    // Jump to the next rule if map_lookup_elem returned 0
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 0));
+
+    return 0;
+}
+
 static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
@@ -54,7 +95,7 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
     case BF_MATCHER_NE:
         return _bf_matcher_generate_ip4_addr_unique(program, matcher);
     case BF_MATCHER_IN:
-        return 0;
+        return _bf_matcher_generate_ip4_addr_set(program, matcher);
     default:
         return -EINVAL;
     }

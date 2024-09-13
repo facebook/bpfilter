@@ -85,6 +85,30 @@
             return __r;                                                        \
     })
 
+/**
+ * Load a specific set's file descriptor.
+ *
+ * @note Similarly to every @c EMIT_* macro, it must be called from a function
+ * returning an @c int , if the call fails, the macro will return a negative
+ * errno value.
+ *
+ * @param program Program to generate the bytecode for. Can't be NULL.
+ * @param reg Register to store the set file descriptor in.
+ * @param index Index of the set in the program.
+ */
+#define EMIT_LOAD_SET_FD_FIXUP(program, reg, index)                            \
+    ({                                                                         \
+        union bf_fixup_attr __attr = {.set_index = (index)};                   \
+        const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
+        int __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_SET_MAP_FD,   \
+                                        ld_insn[0], &__attr);                  \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+        __r = bf_program_emit((program), ld_insn[1]);                          \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
 struct bf_chain;
 struct bf_marsh;
 struct bf_counter;
