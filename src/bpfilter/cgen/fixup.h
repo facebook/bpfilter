@@ -9,26 +9,44 @@
 
 #include "core/dump.h"
 
-enum bf_fixup_insn_type
+/**
+ * Field to fixup in a @c bpf_insn structure.
+ */
+enum bf_fixup_insn
 {
-    BF_CODEGEN_FIXUP_INSN_OFF,
-    BF_CODEGEN_FIXUP_INSN_IMM,
-    _BF_CODEGEN_FIXUP_INSN_MAX_MAX,
+    BF_FIXUP_INSN_OFF,
+    BF_FIXUP_INSN_IMM,
+    _BF_FIXUP_INSN_MAX,
 };
 
-enum bf_fixup_function
+/**
+ * Custom function to call.
+ *
+ * A fixup can be used to jump to a custom function defined later in the
+ * BPF program. This enum contains the list of functions available.
+ */
+enum bf_fixup_func
 {
-    BF_CODEGEN_FIXUP_FUNCTION_ADD_COUNTER,
-    _BF_CODEGEN_FIXUP_FUNCTION_MAX,
+    BF_FIXUP_FUNC_ADD_COUNTER,
+    _BF_FIXUP_FUNC_MAX,
 };
 
+/**
+ * Type of the fixup.
+ *
+ * Defines how a fixup should be processed.
+ */
 enum bf_fixup_type
 {
-    BF_CODEGEN_FIXUP_NEXT_RULE,
-    BF_CODEGEN_FIXUP_MAP_FD,
-    BF_CODEGEN_FIXUP_PRINTER_MAP_FD,
-    BF_CODEGEN_FIXUP_FUNCTION_CALL,
-    _BF_CODEGEN_FIXUP_MAX
+    /// Jump to the beginning of the next rule.
+    BF_FIXUP_TYPE_JMP_NEXT_RULE,
+    /// Set the counters map file descriptor in the @c BPF_LD_MAP_FD instruction.
+    BF_FIXUP_TYPE_COUNTERS_MAP_FD,
+    /// Set the printer map file descriptor in the @c BPF_LD_MAP_FD instruction.
+    BF_FIXUP_TYPE_PRINTER_MAP_FD,
+    /// Jump to a custom function.
+    BF_FIXUP_TYPE_FUNC_CALL,
+    _BF_FIXUP_TYPE_MAX
 };
 
 /**
@@ -52,14 +70,14 @@ struct bf_fixup
     union
     {
         size_t offset;
-        enum bf_fixup_function function;
+        enum bf_fixup_func function;
     };
 };
 
 #define _cleanup_bf_fixup_ __attribute__((cleanup(bf_fixup_free)))
 
 const char *bf_fixup_type_to_str(enum bf_fixup_type type);
-const char *bf_fixup_function_to_str(enum bf_fixup_function function);
+const char *bf_fixup_function_to_str(enum bf_fixup_func function);
 
 int bf_fixup_new(struct bf_fixup **fixup);
 void bf_fixup_free(struct bf_fixup **fixup);

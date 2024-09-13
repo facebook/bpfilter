@@ -68,8 +68,8 @@
 #define EMIT_LOAD_FD_FIXUP(program, reg)                                       \
     ({                                                                         \
         const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
-        int __r = bf_program_emit_fixup((program), BF_CODEGEN_FIXUP_MAP_FD,    \
-                                        ld_insn[0]);                           \
+        int __r = bf_program_emit_fixup(                                       \
+            (program), BF_FIXUP_TYPE_COUNTERS_MAP_FD, ld_insn[0]);             \
         if (__r < 0)                                                           \
             return __r;                                                        \
         __r = bf_program_emit((program), ld_insn[1]);                          \
@@ -182,7 +182,7 @@ struct bf_program
     size_t num_counters;
 
     /* Bytecode */
-    uint32_t functions_location[_BF_CODEGEN_FIXUP_FUNCTION_MAX];
+    uint32_t functions_location[_BF_FIXUP_FUNC_MAX];
     struct bpf_insn *img;
     size_t img_size;
     size_t img_cap;
@@ -225,7 +225,7 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name);
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn);
 int bf_program_emit_fixup_call(struct bf_program *program,
-                               enum bf_fixup_function function);
+                               enum bf_fixup_func function);
 int bf_program_generate(struct bf_program *program);
 
 /**
