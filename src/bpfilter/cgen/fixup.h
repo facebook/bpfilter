@@ -63,9 +63,7 @@ struct bf_fixup
 
 #define _cleanup_bf_fixup_ __attribute__((cleanup(bf_fixup_free)))
 
-const char *bf_fixup_type_to_str(enum bf_fixup_type type);
-const char *bf_fixup_function_to_str(enum bf_fixup_func function);
-
-int bf_fixup_new(struct bf_fixup **fixup);
+int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
+                 size_t insn_offset);
 void bf_fixup_free(struct bf_fixup **fixup);
 void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix);

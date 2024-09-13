@@ -796,12 +796,9 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
             return r;
     }
 
-    r = bf_fixup_new(&fixup);
+    r = bf_fixup_new(&fixup, type, program->img_size);
     if (r)
         return r;
-
-    fixup->type = type;
-    fixup->insn = program->img_size;
 
     r = bf_list_add_tail(&program->fixups, fixup);
     if (r)
@@ -832,12 +829,10 @@ int bf_program_emit_fixup_call(struct bf_program *program,
             return r;
     }
 
-    r = bf_fixup_new(&fixup);
+    r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_FUNC_CALL, program->img_size);
     if (r)
         return r;
 
-    fixup->type = BF_FIXUP_TYPE_FUNC_CALL;
-    fixup->insn = program->img_size;
     fixup->function = function;
 
     r = bf_list_add_tail(&program->fixups, fixup);
