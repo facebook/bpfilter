@@ -80,8 +80,6 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
 
     switch (fixup->type) {
     case BF_FIXUP_TYPE_JMP_NEXT_RULE:
-        DUMP(prefix, "offset: %zu", fixup->offset);
-        break;
     case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
     case BF_FIXUP_TYPE_PRINTER_MAP_FD:
         // No specific value to dump
