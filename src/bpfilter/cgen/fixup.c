@@ -15,8 +15,6 @@ const char *bf_fixup_type_to_str(enum bf_fixup_type type)
 {
     static const char *str[] = {
         [BF_CODEGEN_FIXUP_NEXT_RULE] = "BF_CODEGEN_FIXUP_NEXT_RULE",
-        [BF_CODEGEN_FIXUP_JUMP_TO_CHAIN] = "BF_CODEGEN_FIXUP_JUMP_TO_CHAIN",
-        [BF_CODEGEN_FIXUP_COUNTERS_INDEX] = "BF_CODEGEN_FIXUP_COUNTERS_INDEX",
         [BF_CODEGEN_FIXUP_MAP_FD] = "BF_CODEGEN_FIXUP_MAP_FD",
         [BF_CODEGEN_FIXUP_PRINTER_MAP_FD] = "BF_CODEGEN_FIXUP_PRINTER_MAP_FD",
         [BF_CODEGEN_FIXUP_FUNCTION_CALL] = "BF_CODEGEN_FIXUP_FUNCTION_CALL",
@@ -77,8 +75,6 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
 
     switch (fixup->type) {
     case BF_CODEGEN_FIXUP_NEXT_RULE:
-    case BF_CODEGEN_FIXUP_JUMP_TO_CHAIN:
-    case BF_CODEGEN_FIXUP_COUNTERS_INDEX:
         DUMP(prefix, "offset: %zu", fixup->offset);
         break;
     case BF_CODEGEN_FIXUP_MAP_FD:

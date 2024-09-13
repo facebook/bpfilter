@@ -496,11 +496,6 @@ static int _bf_program_fixup(struct bf_program *program,
             bf_assert(offset < INT_MAX);
             value = (int32_t)offset;
             break;
-        case BF_CODEGEN_FIXUP_JUMP_TO_CHAIN:
-        case BF_CODEGEN_FIXUP_COUNTERS_INDEX:
-            bf_err(
-                "BF_CODEGEN_FIXUP_JUMP_TO_CHAIN and BF_CODEGEN_FIXUP_COUNTERS_INDEX are not supported yet");
-            return -ENOTSUP;
         default:
             bf_abort("unsupported fixup type, this should not happen: %d",
                      type);
