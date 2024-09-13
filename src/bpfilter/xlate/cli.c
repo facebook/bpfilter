@@ -46,7 +46,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
                       struct bf_response **response)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+    struct bf_cgen *cgen;
     int r;
 
     bf_assert(request);
@@ -63,17 +63,17 @@ int _bf_cli_set_rules(const struct bf_request *request,
             return r;
 
         r = bf_cgen_up(cgen);
-        if (r < 0)
+        if (r < 0) {
+            bf_cgen_free(&cgen);
             return bf_err_r(r, "failed to generate and load new program");
+        }
 
         r = bf_context_set_cgen(cgen->chain->hook, BF_FRONT_CLI, cgen);
-        if (r < 0)
+        if (r < 0) {
+            bf_cgen_free(&cgen);
             return bf_err_r(r, "failed to store codegen in runtime context");
-
-        TAKE_PTR(cgen);
+        }
     } else {
-        TAKE_PTR(cgen); // No need to free the codegen on error.
-
         r = bf_cgen_update(cgen, &chain);
         if (r < 0)
             return bf_warn_r(r, "failed to update existing codegen");
