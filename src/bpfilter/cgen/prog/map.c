@@ -21,6 +21,12 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
+static const char _bf_map_type_key[] = {
+    [BF_MAP_TYPE_COUNTERS] = 'c',
+    [BF_MAP_TYPE_PRINTER] = 'p',
+    [BF_MAP_TYPE_SET] = 's',
+};
+
 int bf_map_new(struct bf_map **map, enum bf_map_type type,
                const char *name_suffix, enum bf_map_bpf_type bpf_type,
                size_t key_size, size_t value_size, size_t n_elems)
@@ -43,7 +49,8 @@ int bf_map_new(struct bf_map **map, enum bf_map_type type,
     _map->value_size = value_size;
     _map->n_elems = n_elems;
 
-    r = snprintf(_map->name, BPF_OBJ_NAME_LEN, "bf_map_%.6s", name_suffix);
+    r = snprintf(_map->name, BPF_OBJ_NAME_LEN, "bf_%cmap_%.6s",
+                 _bf_map_type_key[type], name_suffix);
     if (r < 0) {
         return bf_err_r(
             errno,
