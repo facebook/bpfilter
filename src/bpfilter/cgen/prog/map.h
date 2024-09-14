@@ -20,10 +20,19 @@ enum bf_map_bpf_type
     _BF_MAP_BPF_TYPE_MAX,
 };
 
+enum bf_map_type
+{
+    BF_MAP_TYPE_COUNTERS,
+    BF_MAP_TYPE_PRINTER,
+    BF_MAP_TYPE_SET,
+    _BF_MAP_TYPE_MAX,
+};
+
 #define BF_PIN_PATH_LEN 64
 
 struct bf_map
 {
+    enum bf_map_type type;
     int fd;
     char name[BPF_OBJ_NAME_LEN];
     char path[BF_PIN_PATH_LEN];
@@ -54,6 +63,7 @@ struct bf_marsh;
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
  *            success, @c *map points to a valid @ref bf_map . On failure,
  *            @c *map remain unchanged.
+ * @param type Map type, defines the set of available operations.
  * @param name_suffix Suffix to use for the map name. Usually specify the
  *                    hook, front-end, or program type the map is used for.
  *                    Can't be NULL.
@@ -64,9 +74,9 @@ struct bf_marsh;
  * @param n_elems Number of elemets to reserve room for in the map. Can't be 0.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_map_new(struct bf_map **map, const char *name_suffix,
-               enum bf_map_bpf_type type, size_t key_size, size_t value_size,
-               size_t n_elems);
+int bf_map_new(struct bf_map **map, enum bf_map_type type,
+               const char *name_suffix, enum bf_map_bpf_type bpf_type,
+               size_t key_size, size_t value_size, size_t n_elems);
 
 /**
  * Create a new BPF map object from serialized data.
