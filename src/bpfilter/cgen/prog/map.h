@@ -13,21 +13,21 @@
 
 #include "core/dump.h"
 
-enum bf_bpf_map_type
+enum bf_map_bpf_type
 {
-    BF_BPF_MAP_TYPE_ARRAY,
-    BF_BPF_MAP_TYPE_HASH,
-    _BF_BPF_MAP_TYPE_MAX,
+    BF_MAP_BPF_TYPE_ARRAY,
+    BF_MAP_BPF_TYPE_HASH,
+    _BF_MAP_BPF_TYPE_MAX,
 };
 
 #define BF_PIN_PATH_LEN 64
 
-struct bf_bpf_map
+struct bf_map
 {
     int fd;
     char name[BPF_OBJ_NAME_LEN];
     char path[BF_PIN_PATH_LEN];
-    enum bf_bpf_map_type type;
+    enum bf_map_bpf_type bpf_type;
     size_t key_size;
     size_t value_size;
     size_t n_elems;
@@ -35,16 +35,15 @@ struct bf_bpf_map
 
 struct bf_marsh;
 
-#define _cleanup_bf_bpf_map_ __attribute__((__cleanup__(bf_bpf_map_free)))
+#define _cleanup_bf_map_ __attribute__((__cleanup__(bf_map_free)))
 
 /**
- * Convenience macro to initialize a list of @ref bf_bpf_map .
+ * Convenience macro to initialize a list of @ref bf_map .
  *
- * @return An initialized @ref bf_list that can contain @ref bf_bpf_map object,
+ * @return An initialized @ref bf_list that can contain @ref bf_map object,
  *         with its @ref bf_list_ops properly configured.
  */
-#define bf_bpf_map_list()                                                      \
-    bf_list_default({.free = (bf_list_ops_free)bf_bpf_map_free})
+#define bf_map_list() bf_list_default({.free = (bf_list_ops_free)bf_map_free})
 
 /**
  * Allocates and initializes a new BPF map object.
@@ -53,21 +52,21 @@ struct bf_marsh;
  * object used to keep track of a BPF map on the system.
  *
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
- *            success, @c *map points to a valid @ref bf_bpf_map . On failure,
+ *            success, @c *map points to a valid @ref bf_map . On failure,
  *            @c *map remain unchanged.
  * @param name_suffix Suffix to use for the map name. Usually specify the
  *                    hook, front-end, or program type the map is used for.
  *                    Can't be NULL.
- * @param type Map type. Not all BPF maps are supported, see
- *             @ref bf_bpf_map_type for the full list of supported types.
+ * @param bpf_type Map type. Not all BPF maps are supported, see
+ *        @ref bf_map_bpf_type for the full list of supported types.
  * @param key_size Size (in bytes) of a key in the map. Can't be 0.
  * @param value_size Size (in bytes) of an element of the map. Can't be 0.
  * @param n_elems Number of elemets to reserve room for in the map. Can't be 0.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix,
-                   enum bf_bpf_map_type type, size_t key_size,
-                   size_t value_size, size_t n_elems);
+int bf_map_new(struct bf_map **map, const char *name_suffix,
+               enum bf_map_bpf_type type, size_t key_size, size_t value_size,
+               size_t n_elems);
 
 /**
  * Create a new BPF map object from serialized data.
@@ -82,8 +81,7 @@ int bf_bpf_map_new(struct bf_bpf_map **map, const char *name_suffix,
  * @param marsh Serialized BPF map object data. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_map_new_from_marsh(struct bf_bpf_map **map,
-                              const struct bf_marsh *marsh);
+int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh);
 
 /**
  * Free a BPF map object.
@@ -91,10 +89,10 @@ int bf_bpf_map_new_from_marsh(struct bf_bpf_map **map,
  * The BPF map's file descriptor contained in @c map is closed and set to
  * @c -1 . To prevent the BPF map from being destroyed, pin it beforehand.
  *
- * @param map @ref bf_bpf_map object to free. On success, @c *map is set to
+ * @param map @ref bf_map object to free. On success, @c *map is set to
  *            NULL. On failure, @c *map remain unchanged.
  */
-void bf_bpf_map_free(struct bf_bpf_map **map);
+void bf_map_free(struct bf_map **map);
 
 /**
  * Serializes a BPF map object.
@@ -107,7 +105,7 @@ void bf_bpf_map_free(struct bf_bpf_map **map);
  *              be NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh);
+int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh);
 
 /**
  * Dump a BPF map object.
@@ -116,7 +114,7 @@ int bf_bpf_map_marsh(const struct bf_bpf_map *map, struct bf_marsh **marsh);
  * @param prefix String to prefix each log with. If no prefix is needed, use
  *               @ref EMPTY_PREFIX . Can't be NULL.
  */
-void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix);
+void bf_map_dump(const struct bf_map *map, prefix_t *prefix);
 
 /**
  * Create the BPF map.
@@ -128,7 +126,7 @@ void bf_bpf_map_dump(const struct bf_bpf_map *map, prefix_t *prefix);
  *            ensure it remains once bpfilter is stopped.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_map_create(struct bf_bpf_map *map, uint32_t flags, bool pin);
+int bf_map_create(struct bf_map *map, uint32_t flags, bool pin);
 
 /**
  * Destroy the BPF map.
@@ -142,7 +140,7 @@ int bf_bpf_map_create(struct bf_bpf_map *map, uint32_t flags, bool pin);
  *              removed from the kernel as soon as no other program or map uses
  *              it.
  */
-void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin);
+void bf_map_destroy(struct bf_map *map, bool unpin);
 
 /**
  * Insert or update an element to the map.
@@ -152,31 +150,31 @@ void bf_bpf_map_destroy(struct bf_bpf_map *map, bool unpin);
  *
  * @param map BPF map to update. Can't be NULL.
  * @param key Pointer to the element key. The key size has been defined with
- *            @ref bf_bpf_map_new . Can't be NULL.
+ *            @ref bf_map_new . Can't be NULL.
  * @param value Pointer to the value. The value size has been defined with
- *              @ref bf_bpf_map_new . Can't be NULL.
+ *              @ref bf_map_new . Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_map_set_elem(const struct bf_bpf_map *map, void *key, void *value);
+int bf_map_set_elem(const struct bf_map *map, void *key, void *value);
 
 /**
- * Convert a @ref bf_bpf_map_type to a string.
+ * Convert a @ref bf_map_bpf_type to a string.
  *
- * @param type Map type to convert to string. Must be a valid
- *             @ref bf_bpf_map_type (except for @ref _BF_BPF_MAP_TYPE_MAX ).
+ * @param bpf_type Map type to convert to string. Must be a valid
+ *        @ref bf_map_bpf_type (except for @ref _BF_MAP_BPF_TYPE_MAX ).
  * @return The map type, as a string.
  */
-const char *bf_bpf_map_type_to_str(enum bf_bpf_map_type type);
+const char *bf_map_bpf_type_to_str(enum bf_map_bpf_type bpf_type);
 
 /**
- * Convert a string into a @ref bf_bpf_map_type value.
+ * Convert a string into a @ref bf_map_bpf_type value.
  *
- * If the string is an invalid @ref bf_bpf_map_type string representation,
+ * If the string is an invalid @ref bf_map_bpf_type string representation,
  * an error is returned.
  *
- * @param str String to convert to a @ref bf_bpf_map_type value. Can't be NULL.
- * @param type On success, contains the map type value. Unchanged on failure.
- *             Can't be NULL.
+ * @param str String to convert to a @ref bf_map_bpf_type value. Can't be NULL.
+ * @param bpf_type On success, contains the map type value. Unchanged on failure.
+ *        Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_map_type_from_str(const char *str, enum bf_bpf_map_type *type);
+int bf_map_bpf_type_from_str(const char *str, enum bf_map_bpf_type *bpf_type);
