@@ -112,8 +112,8 @@ int bf_program_new(struct bf_program **program, unsigned int ifindex,
         struct bf_set *set = bf_list_node_get_data(set_node);
         _cleanup_bf_map_ struct bf_map *map = NULL;
 
-        r = bf_map_new(&map, suffix, BF_MAP_BPF_TYPE_HASH, set->elem_size, 1,
-                       bf_list_size(&set->elems));
+        r = bf_map_new(&map, BF_MAP_TYPE_SET, suffix, BF_MAP_BPF_TYPE_HASH,
+                       set->elem_size, 1, bf_list_size(&set->elems));
         if (r < 0)
             return r;
 

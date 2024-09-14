@@ -11,11 +11,11 @@
 
 Test(map, create_delete_assert)
 {
-    expect_assert_failure(bf_map_new(NULL, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 0, 1, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 0, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 0));
+    expect_assert_failure(bf_map_new(NULL, BF_MAP_TYPE_SET, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    expect_assert_failure(bf_map_new(NOT_NULL, BF_MAP_TYPE_SET, NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    expect_assert_failure(bf_map_new(NOT_NULL, BF_MAP_TYPE_SET, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 0, 1, 1));
+    expect_assert_failure(bf_map_new(NOT_NULL, BF_MAP_TYPE_SET, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 0, 1));
+    expect_assert_failure(bf_map_new(NOT_NULL, BF_MAP_TYPE_SET, NOT_NULL, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 0));
     expect_assert_failure(bf_map_free(NULL));
 }
 
@@ -24,13 +24,13 @@ Test(map, create_delete)
     // Rely on the cleanup attribute
     _cleanup_bf_map_ struct bf_map *map0 = NULL;
 
-    assert_success(bf_map_new(&map0, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map0, BF_MAP_TYPE_SET, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_non_null(map0);
 
     // Use the cleanup attribute, but free manually
     _cleanup_bf_map_ struct bf_map *map1 = NULL;
 
-    assert_success(bf_map_new(&map1, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map1, BF_MAP_TYPE_SET, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_non_null(map1);
 
     bf_map_free(&map1);
@@ -39,7 +39,7 @@ Test(map, create_delete)
     // Free manually
     struct bf_map *map2;
 
-    assert_success(bf_map_new(&map2, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map2, BF_MAP_TYPE_SET, "", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_non_null(map2);
 
     bf_map_free(&map2);
@@ -62,7 +62,7 @@ Test(map, marsh_unmarsh)
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf_obj_get, 1);
 
-    assert_success(bf_map_new(&map0, "012345", BF_MAP_BPF_TYPE_ARRAY, 1, 2, 3));
+    assert_success(bf_map_new(&map0, BF_MAP_TYPE_SET, "012345", BF_MAP_BPF_TYPE_ARRAY, 1, 2, 3));
 
     assert_success(bf_map_marsh(map0, &marsh));
     assert_success(bf_map_new_from_marsh(&map1, marsh));
@@ -70,6 +70,7 @@ Test(map, marsh_unmarsh)
     // Ensure we won't try to close a garbage FD
     map1->fd = -1;
 
+    assert_string_equal(map0->name, map1->name);
     assert_string_equal(map0->name, map1->name);
     assert_string_equal(map0->path, map1->path);
     assert_int_equal(map0->bpf_type, map1->bpf_type);
@@ -88,7 +89,7 @@ Test(map, dump)
 {
     _cleanup_bf_map_ struct bf_map *map = NULL;
 
-    assert_success(bf_map_new(&map, "012345", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "012345", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     bf_map_dump(map, EMPTY_PREFIX);
 }
 
@@ -108,7 +109,7 @@ Test(map, map_create)
     _cleanup_bf_map_ struct bf_map *map = NULL;
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, 16);
 
-    assert_success(bf_map_new(&map, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_success(bf_map_create(map, 0, false));
 
     // So bf_map_free() doesn't try to close a random FD value
@@ -120,7 +121,7 @@ Test(map, map_create_failure)
     _cleanup_bf_map_ struct bf_map *map = NULL;
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, -1);
 
-    assert_success(bf_map_new(&map, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
+    assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_error(bf_map_create(map, 0, false));
 }
 

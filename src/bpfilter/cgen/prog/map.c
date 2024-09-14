@@ -21,9 +21,9 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
-int bf_map_new(struct bf_map **map, const char *name_suffix,
-               enum bf_map_bpf_type bpf_type, size_t key_size,
-               size_t value_size, size_t n_elems)
+int bf_map_new(struct bf_map **map, enum bf_map_type type,
+               const char *name_suffix, enum bf_map_bpf_type bpf_type,
+               size_t key_size, size_t value_size, size_t n_elems)
 {
     _cleanup_bf_map_ struct bf_map *_map = NULL;
     int r;
@@ -36,6 +36,7 @@ int bf_map_new(struct bf_map **map, const char *name_suffix,
     if (!_map)
         return -ENOMEM;
 
+    _map->type = type;
     _map->fd = -1;
     _map->bpf_type = bpf_type;
     _map->key_size = key_size;
@@ -83,6 +84,10 @@ int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh)
         return -ENOMEM;
 
     _map->fd = -1;
+
+    if (!(elem = bf_marsh_next_child(marsh, elem)))
+        return -EINVAL;
+    memcpy(&_map->type, elem->data, sizeof(_map->type));
 
     if (!(elem = bf_marsh_next_child(marsh, elem)))
         return -EINVAL;
@@ -143,6 +148,10 @@ int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh)
     if (r < 0)
         return r;
 
+    r = bf_marsh_add_child_raw(&_marsh, &map->type, sizeof(map->type));
+    if (r < 0)
+        return r;
+
     r = bf_marsh_add_child_raw(&_marsh, map->name, BPF_OBJ_NAME_LEN);
     if (r < 0)
         return r;
@@ -173,6 +182,21 @@ int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh)
     return 0;
 }
 
+static const char *_bf_map_type_to_str(enum bf_map_type type)
+{
+    static const char *type_strs[] = {
+        [BF_MAP_TYPE_COUNTERS] = "BF_MAP_TYPE_COUNTERS",
+        [BF_MAP_TYPE_PRINTER] = "BF_MAP_TYPE_PRINTER",
+        [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
+    };
+
+    static_assert(ARRAY_SIZE(type_strs) == _BF_MAP_TYPE_MAX,
+                  "missing entries in _bf_map_type_strs array");
+    bf_assert(0 <= type && type < _BF_MAP_TYPE_MAX);
+
+    return type_strs[type];
+}
+
 void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
 {
     bf_assert(map);
@@ -181,6 +205,7 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
     DUMP(prefix, "struct bf_map at %p", map);
 
     bf_dump_prefix_push(prefix);
+    DUMP(prefix, "type: %s", _bf_map_type_to_str(map->type));
     DUMP(prefix, "fd: %d", map->fd);
     DUMP(prefix, "name: %s", map->name);
     DUMP(prefix, "path: %s", map->path);
