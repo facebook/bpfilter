@@ -1018,17 +1018,26 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
             void *elem = bf_list_node_get_data(elem_node);
 
             r = bf_map_set_elem(map, elem, &fake_value);
-            if (r < 0)
-                return bf_err_r(r, "failed to add element to map");
+            if (r < 0) {
+                bf_err_r(r, "failed to add element to map");
+                goto err_destroy_maps;
+            }
         }
 
         set_node = bf_list_node_next(set_node);
         map_node = bf_list_node_next(map_node);
     }
 
-    _bf_program_fixup(new_prog, BF_FIXUP_TYPE_SET_MAP_FD);
+    r = _bf_program_fixup(new_prog, BF_FIXUP_TYPE_SET_MAP_FD);
+    if (r < 0)
+        goto err_destroy_maps;
 
     return 0;
+
+err_destroy_maps:
+    bf_list_foreach (&new_prog->sets, map_node)
+        bf_map_destroy(bf_list_node_get_data(map), !bf_opts_transient());
+    return r;
 }
 
 int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
