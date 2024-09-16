@@ -7,6 +7,7 @@
 
 #include <linux/bpf.h>
 
+#include <bpf/btf.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -243,10 +244,101 @@ _bf_map_bpf_type_to_kernel_type(enum bf_map_bpf_type bpf_type)
     return _kernel_types[bpf_type];
 }
 
+#define _cleanup_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
+
+struct bf_btf
+{
+    struct btf *btf;
+    uint32_t key_type_id;
+    uint32_t value_type_id;
+};
+
+static void _bf_btf_free(struct bf_btf **btf);
+
+static int _bf_btf_new(struct bf_btf **btf)
+{
+    _cleanup_bf_btf_ struct bf_btf *_btf = NULL;
+
+    bf_assert(btf);
+
+    _btf = malloc(sizeof(struct bf_btf));
+    if (!_btf)
+        return -ENOMEM;
+
+    _btf->btf = btf__new_empty();
+    if (!_btf->btf)
+        return -errno;
+
+    *btf = TAKE_PTR(_btf);
+
+    return 0;
+}
+
+static void _bf_btf_free(struct bf_btf **btf)
+{
+    bf_assert(btf);
+
+    if (!*btf)
+        return;
+
+    btf__free((*btf)->btf);
+    freep((void *)btf);
+}
+
+/**
+ * Create the BTF data for the map.
+ *
+ * @param map Map to create the BTF data for. @c map.type will define the
+ *        exact content of the BTF object. Can't be NULL.
+ * @return A @ref bf_btf structure on success, or NULL on error. The
+ *         @ref bf_btf structure is owned by the caller.
+ */
+static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
+{
+    _cleanup_bf_btf_ struct bf_btf *btf = NULL;
+    struct btf *kbtf;
+    int r;
+
+    bf_assert(map);
+
+    r = _bf_btf_new(&btf);
+    if (r < 0)
+        return NULL;
+
+    kbtf = btf->btf;
+
+    switch (map->type) {
+    case BF_MAP_TYPE_COUNTERS:
+        btf__add_int(kbtf, "u64", 8, 0);
+        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
+        btf->value_type_id = btf__add_struct(kbtf, "bf_counters", 16);
+        btf__add_field(kbtf, "packets", 1, 0, 0);
+        btf__add_field(kbtf, "bytes", 1, 64, 0);
+        break;
+    case BF_MAP_TYPE_PRINTER:
+    case BF_MAP_TYPE_SET:
+        bf_warn("bf_map type %s is not yet supported",
+                _bf_map_type_to_str(map->type));
+        return NULL;
+    default:
+        bf_err_r(-ENOTSUP, "bf_map type %d is not supported", map->type);
+        return NULL;
+    }
+
+    r = btf__load_into_kernel(kbtf);
+    if (r < 0) {
+        bf_err_r(r, "failed to load BPF map BTF data into kernel");
+        return NULL;
+    }
+
+    return TAKE_PTR(btf);
+}
+
 int bf_map_create(struct bf_map *map, uint32_t flags, bool pin)
 {
     union bpf_attr attr = {};
     _cleanup_close_ int fd = -1;
+    _cleanup_bf_btf_ struct bf_btf *btf = NULL;
     int r;
 
     bf_assert(map);
@@ -262,6 +354,21 @@ int bf_map_create(struct bf_map *map, uint32_t flags, bool pin)
     attr.value_size = map->value_size;
     attr.max_entries = map->n_elems;
     attr.map_flags = flags;
+
+    /** The BTF data is not mandatory to use the map, but a good addition.
+     * Hence, bpfilter will try to make the BTF data available, but will
+     * ignore if that fails. @ref _bf_map_make_btf is used to isolate the
+     * BTF data generation: if it fails we ignore the issue, but if it
+     * succeeds we update the @c bpf_attr structure with the BTF details.
+     * There is some boilerplate for @ref bf_btf structure, it could be
+     * simpler, but the current implementation ensure the BTF data is properly
+     * freed on error, without preventing the BPF map to be created. */
+    btf = _bf_map_make_btf(map);
+    if (btf) {
+        attr.btf_fd = btf__fd(btf->btf);
+        attr.btf_key_type_id = btf->key_type_id;
+        attr.btf_value_type_id = btf->value_type_id;
+    }
 
     (void)snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", map->name);
 
