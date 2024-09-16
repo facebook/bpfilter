@@ -30,6 +30,8 @@ enum bf_map_type
 
 #define BF_PIN_PATH_LEN 64
 
+#define BF_MAP_N_ELEMS_UNKNOWN SIZE_MAX
+
 struct bf_map
 {
     enum bf_map_type type;
@@ -72,6 +74,9 @@ struct bf_marsh;
  * @param key_size Size (in bytes) of a key in the map. Can't be 0.
  * @param value_size Size (in bytes) of an element of the map. Can't be 0.
  * @param n_elems Number of elemets to reserve room for in the map. Can't be 0.
+ *        If you don't yet know the number of elements in the map, use
+ *        @ref BF_MAP_N_ELEMS_UNKNOWN , but @ref bf_map_create can't be called
+ *        until you set an actual size with @ref bf_map_set_n_elems .
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_map_new(struct bf_map **map, enum bf_map_type type,
@@ -151,6 +156,19 @@ int bf_map_create(struct bf_map *map, uint32_t flags, bool pin);
  *              it.
  */
 void bf_map_destroy(struct bf_map *map, bool unpin);
+
+/**
+ * Set the number of elements in the map.
+ *
+ * This function can be used to change the number of element of a map, up
+ * until @ref bf_map_create is called. Once the map has been created, the
+ * number of elements can't be changed.
+ *
+ * @param map The map to set the number of elements for. Can't be NULL.
+ * @param n_elems Number of elements in the map. Can't be 0.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_map_set_n_elems(struct bf_map *map, size_t n_elems);
 
 /**
  * Insert or update an element to the map.
