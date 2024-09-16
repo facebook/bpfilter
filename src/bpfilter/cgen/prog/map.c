@@ -219,7 +219,14 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
     DUMP(prefix, "bpf_type: %s", bf_map_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "key_size: %lu", map->key_size);
     DUMP(prefix, "value_size: %lu", map->value_size);
-    DUMP(bf_dump_prefix_last(prefix), "n_elems: %lu", map->n_elems);
+
+    bf_dump_prefix_last(prefix);
+    if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
+        DUMP(prefix, "n_elems: unknown");
+    } else {
+        DUMP(prefix, "n_elems: %lu", map->n_elems);
+    }
+
     bf_dump_prefix_pop(prefix);
 }
 
@@ -243,6 +250,12 @@ int bf_map_create(struct bf_map *map, uint32_t flags, bool pin)
     int r;
 
     bf_assert(map);
+
+    if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
+        return bf_err_r(
+            -EINVAL,
+            "can't create a map with BF_MAP_N_ELEMS_UNKNOWN number of elements");
+    }
 
     attr.map_type = _bf_map_bpf_type_to_kernel_type(map->bpf_type);
     attr.key_size = map->key_size;
@@ -280,6 +293,21 @@ void bf_map_destroy(struct bf_map *map, bool unpin)
             "failed to unlink BPF map '%s', assuming the map is destroyed",
             map->path);
     }
+}
+
+int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
+{
+    bf_assert(n_elems != 0);
+
+    if (map->fd != -1) {
+        return bf_err_r(
+            -EPERM,
+            "can't change the number of elements in a map once the map has been created");
+    }
+
+    map->n_elems = n_elems;
+
+    return 0;
 }
 
 int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
