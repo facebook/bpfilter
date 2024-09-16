@@ -99,6 +99,40 @@ Test(map, bpf_map_type_to_kernel_type_assert)
     expect_assert_failure(_bf_map_bpf_type_to_kernel_type(_BF_MAP_BPF_TYPE_MAX));
 }
 
+Test(map, btf_create_delete_assert)
+{
+    expect_assert_failure(_bf_btf_new(NULL));
+    expect_assert_failure(_bf_btf_free(NULL));
+}
+
+Test(map, btf_create_delete)
+{
+    // Rely on the cleanup attribute
+    _cleanup_bf_btf_ struct bf_btf *btf0 = NULL;
+
+    assert_success(_bf_btf_new(&btf0));
+    assert_non_null(btf0);
+
+    // Use the cleanup attribute, but free manually
+    _cleanup_bf_btf_ struct bf_btf *btf1 = NULL;
+
+    assert_success(_bf_btf_new(&btf1));
+    assert_non_null(btf1);
+
+    _bf_btf_free(&btf1);
+    assert_null(btf1);
+
+    // Free manually
+    struct bf_btf *btf2;
+
+    assert_success(_bf_btf_new(&btf2));
+    assert_non_null(btf2);
+
+    _bf_btf_free(&btf2);
+    assert_null(btf2);
+    _bf_btf_free(&btf2);     
+}
+
 Test(map, map_create_assert)
 {
     expect_assert_failure(bf_map_create(NULL, 0, false));
