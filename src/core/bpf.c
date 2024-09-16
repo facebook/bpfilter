@@ -21,11 +21,20 @@
 #include "core/opts.h"
 
 #define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
-#define BPF_SYSCALL_NR 321
+
+#if defined(__i386__)
+#define _BF_NR_bpf 357
+#elif defined(__x86_64__)
+#define _BF_NR_bpf 321
+#elif defined(__aarch64__)
+#define _BF_NR_bpf 280
+#else
+#error _BF_NR_bpf not defined. bpfilter does not support your arch.
+#endif
 
 int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 {
-    int r = (int)syscall(BPF_SYSCALL_NR, cmd, attr, sizeof(*attr));
+    int r = (int)syscall(_BF_NR_bpf, cmd, attr, sizeof(*attr));
     if (r < 0)
         return -errno;
 
