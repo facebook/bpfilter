@@ -80,13 +80,13 @@ Chains are defined such as:
 With:
   - ``$HOOK``: hook in the kernel to attach the chain to:
 
-    - ``BF_HOOK_NFT_INGRESS``: XDP hook.
+    - ``BF_HOOK_XDP``: XDP hook.
     - ``BF_HOOK_TC_INGRESS``: ingress TC hook.
-    - ``BF_HOOK_IPT_PRE_ROUTING``: similar to ``nftables`` and ``iptables`` prerouting hook.
-    - ``BF_HOOK_IPT_LOCAL_IN``: similar to ``nftables`` and ``iptables`` input hook.
-    - ``BF_HOOK_IPT_FORWARD``: similar to ``nftables`` and ``iptables`` forward hook.
-    - ``BF_HOOK_IPT_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
-    - ``BF_HOOK_IPT_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
+    - ``BF_HOOK_NF_PRE_ROUTING``: similar to ``nftables`` and ``iptables`` prerouting hook.
+    - ``BF_HOOK_NF_LOCAL_IN``: similar to ``nftables`` and ``iptables`` input hook.
+    - ``BF_HOOK_NF_FORWARD``: similar to ``nftables`` and ``iptables`` forward hook.
+    - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
+    - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
 
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it.
