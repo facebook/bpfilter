@@ -851,18 +851,10 @@ int bf_program_emit_fixup_call(struct bf_program *program,
 
 static int _bf_program_generate_runtime_init(struct bf_program *program)
 {
-    int r;
-
     // Store the context's address in BF_REG_CTX.
     EMIT(program, BPF_MOV64_REG(BF_REG_CTX, BF_REG_FP));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_CTX,
                                 -(int)sizeof(struct bf_program_context)));
-
-    // Initialise the context to 0.
-    r = bf_stub_memclear(program, BF_REG_CTX,
-                         sizeof(struct bf_program_context));
-    if (r)
-        return r;
 
     // Save the program's argument into the context.
     EMIT(program,
