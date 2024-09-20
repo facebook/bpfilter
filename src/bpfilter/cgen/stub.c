@@ -31,20 +31,6 @@
 
 #include "external/filter.h"
 
-int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
-                     size_t size)
-{
-    static const size_t write_size = 8;
-
-    bf_assert(program);
-    bf_assert(!(size % 8));
-
-    for (size_t i = 0; i < size; i += write_size)
-        EMIT(program, BPF_ST_MEM(BPF_DW, addr_reg, i, 0));
-
-    return 0;
-}
-
 /**
  * Generate stub to create a dynptr.
  *

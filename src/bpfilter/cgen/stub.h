@@ -12,22 +12,6 @@
 struct bf_program;
 
 /**
- * Emit instructions to clear a memory region.
- *
- * Generate BPF instructions to clear (set to 0) a memory region, from a
- * register containing the address of the memory region to clear, and the size.
- *
- * @warning The memory area *must* be aligned on 8 bytes (address and size), as
- * the region is cleared 8 bytes at a time.
- *
- * @param program Program to emit instructions into.
- * @param addr_reg Register containing the address to clear.
- * @param size Size of the memory region to clear.
- * @return 0 on success, or negative errno value on error.
- */
-int bf_stub_memclear(struct bf_program *program, enum bf_reg addr_reg,
-                     size_t size);
-/**
  * Emit instructions to get a dynptr for an XDP program.
  *
  * Prepare arguments and call bpf_dynptr_from_xdp(). If the return value is
