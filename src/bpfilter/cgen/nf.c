@@ -47,6 +47,12 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);
 
+static inline bool _bf_nf_hook_is_ingress(enum bf_hook hook)
+{
+    return hook == BF_HOOK_NF_PRE_ROUTING || hook == BF_HOOK_NF_LOCAL_IN ||
+           hook == BF_HOOK_NF_FORWARD;
+}
+
 static int _bf_nf_gen_inline_prologue(struct bf_program *program)
 {
     int r;
@@ -65,6 +71,23 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_3, BF_REG_2, offset));
     EMIT(program,
          BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(l3_proto)));
+
+    // Copy the packet's ingress/egress ifindex to the runtime context.
+    if (_bf_nf_hook_is_ingress(program->hook)) {
+        if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
+            return offset;
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
+    } else {
+        if ((offset = bf_btf_get_field_off("nf_hook_state", "out")) < 0)
+            return offset;
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
+    }
+
+    if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_3, offset));
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(ifindex)));
 
     // Copy nf_hook_state.in in BF_REG_3.
     if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)

@@ -150,6 +150,10 @@ struct bf_program_context
     /** Offset of the layer 4 protocol. */
     uint32_t l4_offset;
 
+    /** On ingress, index of the input interface. On egress, index of the
+     * output interface. */
+    uint32_t ifindex;
+
     /** Layer 3 protocol, set when processing layer 2 protocol header. Required
      * to process the layer 3 header. */
     uint16_t bf_aligned(8) l3_proto;
