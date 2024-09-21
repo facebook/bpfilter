@@ -42,7 +42,6 @@ file(GLOB_RECURSE bf_srcs
 
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/overview.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/daemon.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
