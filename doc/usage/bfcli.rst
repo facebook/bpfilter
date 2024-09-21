@@ -1,44 +1,9 @@
-=====
-Usage
-=====
-
-This page describes usage of the ``bpfilter`` daemon, as well as command line tools available to communicate with the daemon and define filtering rules.
-
-.. note::
-
-    ``bpfilter`` is not yet distributed in any distribution, if you want to try it, you will have to build it from sources. See :doc:`developers/build`.
-
-
-``bpfilter`` daemon
-===================
-
-The ``bpfilter`` daemon is responsible for creating the BPF program corresponding to the user-provided filtering rules. The daemon will also load and manage the BPF programs on the system.
-
-It is possible to customize the daemon's behavior using the following command-line flags:
-
-- ``-t``, ``--transient``: if used, ``bpfilter`` won't pin any BPF program or map, and no data will be serialized to the filesystem. Hence, as soon as the daemon is stopped, the loaded BPF programs and maps will be removed from the system.
-- ``--no-cli``: disable ``bfcli`` support.
-- ``--no-nftables``: disable ``nftables`` support.
-- ``--no-iptables``: disable ``iptables`` support.
-- ``-b``, ``--buffer-len=BUF_LEN_POW``: size of the ``BPF_PROG_LOAD`` buffer as a power of 2. Only available if ``--verbose`` is used. ``BPF_PROG_LOAD`` system call can be provided a buffer for the BPF verifier to provide details in case the program can't be loaded. The required size for the buffer being hardly predictable, this option allows for the user to control it. The final buffer will have a size of ``1 << BUF_LEN_POWER``.
-- ``-v``, ``--verbose``: print more detailed log messages.
-- ``--debug``: generate the BPF programs in debug mode: if a call to a kfunc or a BPF helper fails, a log message will be printed to ``/sys/kernel/debug/tracing/trace_pipe``.
-- ``--usage``: print a short usage message.
-- ``-?``, ``--help``: print the help message.
-
-The daemon alone is not sufficient as, it doesn't define any filtering rule by default. This is the role of the front-end, or CLI, and ``bpfilter`` supports multiple CLIs for users to define filtering rules:
-
-- ``bfcli``: ``bpfilter``-specific CLI, developed as part of the project. ``bfcli`` supports new ``bpfilter`` features before other CLIs as it's used for development. It allows for a more flexible rule definition: you can use combination of filters and hooks that might not be possible with other CLIs. However, it doesn't support ``nftables`` or ``iptables`` rules format.
-- ``nftables``: requires a custom version of the ``nft`` binary with ``bpfilter`` support (see below), and support for new ``bpfilter`` features is usually a bit delayed.
-- ``iptables``: similar to ``nftables``, however ``iptables`` has been deprecated globally in favor of ``nftables``.
-
-
 ``bfcli``
 =========
 
 ``bfcli`` is part of ``bpfilter`` sources, it has been created in order to speed up ``bpfilter`` development by providing a CLI using a trivial communication format with the daemon. For this reason, ``bfcli`` is the main CLI used to develop ``bpfilter``, and it uses the new features of ``bpfilter`` before any other front-end.
 
-``bfcli`` can read a ruleset from a source file (using ``--file``) or from its arguments (using ``--str``): 
+``bfcli`` can read a ruleset from a source file (using ``--file``) or from its arguments (using ``--str``):
 
 .. code:: shell
 
@@ -65,7 +30,7 @@ A ruleset is composed of chain(s), rule(s), and matcher(s):
 
 .. note::
 
-    Lines starting with ``#`` are comments and ``bfcli`` will ignore them. 
+    Lines starting with ``#`` are comments and ``bfcli`` will ignore them.
 
 
 Chains
@@ -274,45 +239,3 @@ With:
       - ``eq``
       - :rspan:`1` ``$PORT``
     * - ``not``
-
-
-``nftables``
-============
-
-.. warning::
-
-    ``nftables`` support is currently broken. Work is in progress to fix it.
-
-
-``iptables``
-============
-
-A custom ``iptables`` binary is required to use with ``bpfilter``, but it can be build directly from the ``bpfilter`` source tree: ``make iptables``. Once you have build ``iptables``, you can force it to communicate with ``bpfilter`` instead of the kernel using ``--bpf``.
-
-The following filters are supported:
-
-- Source IPv4 address and mask.
-- Destination IPv4 address and mask.
-- Layer 4 protocol.
-
-Filtering rules can be defined for any table, and ``ACCEPT`` and ``DROP`` action are supported. The ruleset can also be fetched back from ``bpfilter``. For example:
-
-.. code:: shell
-
-    # Start bpfilter daemon
-    $ sudo bpfilter
-
-    # Add a new rule to block ping requests
-    $ sudo iptables -I INPUT --bpf -p icmp -j DROP
-
-    # Show the rules and counters after the host was pinged
-    $ sudo iptables --bpf -nv -L
-    Chain INPUT (policy ACCEPT 327 packets, 42757 bytes)
-    pkts bytes target     prot opt in     out     source               destination
-        2   196 DROP       icmp --  *      *       0.0.0.0/0            0.0.0.0/0
-
-    Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)
-    pkts bytes target     prot opt in     out     source               destination
-
-    Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
-    pkts bytes target     prot opt in     out     source               destination
