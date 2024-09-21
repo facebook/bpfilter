@@ -54,41 +54,38 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    // Copy bpf_nf_ctx.state in BF_REG_1.
+    // Copy bpf_nf_ctx.state in BF_REG_2.
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_1, offset));
 
     // Copy bpf_nf_ctx.state.pf to the runtime context
     if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_2, BF_REG_1, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_3, BF_REG_2, offset));
     EMIT(program,
-         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_proto)));
+         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(l3_proto)));
 
-    // Copy nf_hook_state.in in BF_REG_1.
+    // Copy nf_hook_state.in in BF_REG_3.
     if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
 
-    // Copy net_device.ifindex in BF_REG_1.
+    // Copy net_device.ifindex in BF_REG_3.
     if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_1, BF_REG_1, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_3, offset));
 
     // If the packet is coming from the wrong interface, then quit.
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
-            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_1, program->ifindex, 2));
+            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_3, program->ifindex, 2));
 
         EMIT(program,
              BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
                                            BF_VERDICT_ACCEPT)));
         EMIT(program, BPF_EXIT_INSN());
     }
-
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
 
     // Copy address of sk_buff into BF_REG_1.
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
