@@ -45,14 +45,6 @@ static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
-    if (r)
-        return r;
-
-    // Copy __sk_buff pointer into BF_REG_1
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(arg)));
-
     // Copy __sk_buff.data into BF_REG_2
     EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1,
                               offsetof(struct __sk_buff, data)));
@@ -67,6 +59,10 @@ static int _bf_tc_gen_inline_prologue(struct bf_program *program)
     // Copy packet size into context
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
+
+    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
+    if (r)
+        return r;
 
     r = bf_stub_parse_l2_ethhdr(program);
     if (r)
