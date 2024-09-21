@@ -7,7 +7,7 @@
    :caption: Users
 
    overview
-   usage
+   usage/index
 
 .. toctree::
    :hidden:
