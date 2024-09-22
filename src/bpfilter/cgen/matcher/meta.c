@@ -19,6 +19,18 @@
 
 #include "external/filter.h"
 
+static int _bf_matcher_generate_meta_ifindex(struct bf_program *program,
+                                             const struct bf_matcher *matcher)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(ifindex)));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP_IMM(BPF_JNE, BF_REG_1, *(uint32_t *)&matcher->payload, 0));
+
+    return 0;
+}
+
 static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
                                               const struct bf_matcher *matcher)
 {
@@ -49,6 +61,9 @@ int bf_matcher_generate_meta(struct bf_program *program,
     int r;
 
     switch (matcher->type) {
+    case BF_MATCHER_META_IFINDEX:
+        r = _bf_matcher_generate_meta_ifindex(program, matcher);
+        break;
     case BF_MATCHER_META_L3_PROTO:
         r = _bf_matcher_generate_meta_l3_proto(program, matcher);
         break;

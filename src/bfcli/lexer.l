@@ -17,6 +17,7 @@
 %option noinput
 %option nounput
 
+%s STATE_MATCHER_META_IFINDEX
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_META_L4_PROTO
 %s STATE_MATCHER_IP_PROTO
@@ -44,6 +45,15 @@ BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
+meta\.ifindex  { BEGIN(STATE_MATCHER_META_IFINDEX); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_IFINDEX>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    [0-9]+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_META_IFINDEX;
+    }
+}
+
 meta\.l3_proto  { BEGIN(STATE_MATCHER_META_L3_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_L3_PROTO>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
