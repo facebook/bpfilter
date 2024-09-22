@@ -551,6 +551,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
         switch (matcher->type) {
+        case BF_MATCHER_META_IFINDEX:
         case BF_MATCHER_META_L3_PROTO:
         case BF_MATCHER_META_L4_PROTO:
             r = bf_matcher_generate_meta(program, matcher);

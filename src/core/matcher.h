@@ -41,6 +41,9 @@ struct bf_marsh;
  */
 enum bf_matcher_type
 {
+    /// Matches the packet's network interface index. On ingress it represents
+    /// the input interface, on egress the output interface.
+    BF_MATCHER_META_IFINDEX,
     /// Matches the L3 protocol.
     BF_MATCHER_META_L3_PROTO,
     /// Matches the L4 protocol, idependently from the L3 protocol.

@@ -1,6 +1,10 @@
 # Create an XDP chain
 chain BF_HOOK_XDP policy ACCEPT
     rule
+        meta.ifindex 1
+        counter
+        ACCEPT
+    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -52,6 +56,10 @@ chain BF_HOOK_XDP policy ACCEPT
 # Create a TC chain
 chain BF_HOOK_TC_INGRESS policy ACCEPT
     rule
+        meta.ifindex 1
+        counter
+        ACCEPT
+    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -90,6 +98,10 @@ chain BF_HOOK_TC_INGRESS policy ACCEPT
 
 # Create a BPF_NETFILTER chain
 chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
+    rule
+        meta.ifindex 1
+        counter
+        ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter

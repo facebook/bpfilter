@@ -111,6 +111,11 @@ With:
       - Operator
       - Payload
       - Notes
+    * - Interface index
+      - ``meta.ifindex``
+      - ``eq``
+      - ``$IFINDEX``
+      - For chains attached to an ingress hook, ``$IFINDEX`` is the input interface index. For chains attached to an egress hook, ``$IFINDEX`` is the output interface index.
     * - L3 protocol
       - ``meta.l3_proto``
       - ``eq``
