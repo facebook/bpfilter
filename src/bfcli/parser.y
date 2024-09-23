@@ -349,7 +349,6 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     _cleanup_bf_set_ struct bf_set *set = NULL;
-                    struct bf_matcher_ip4_addr addr;
                     uint32_t set_id = bf_list_size(&ruleset->sets);
                     int r;
 
@@ -359,8 +358,6 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                     r = bf_set_new(&set, BF_SET_IP4);
                     if (r < 0)
                         bf_parse_err("failed to create a new set\n");
-
-                    fprintf(stderr, "set matching for: %s\n", data);
 
                     char *ip;
                     char *next = data;
@@ -382,13 +379,8 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                         }
 
                         r = inet_pton(AF_INET, ip, value);
-                        if (r != 1) {
+                        if (r != 1)
                             bf_parse_err("failed to parse IPv4 address: %s\n", ip);
-                        } else {
-                            uint8_t *i = (void *)&addr.addr;
-
-                            fprintf(stderr, "Found IP: %d.%d.%d.%d\n", i[0], i[1], i[2], i[3]);
-                        }
 
                         r = bf_set_add_elem(set, value);
                         if (r < 0)
