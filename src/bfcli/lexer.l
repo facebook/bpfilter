@@ -17,6 +17,7 @@
 %option noinput
 %option nounput
 
+%s STATE_HOOK_OPTS
 %s STATE_MATCHER_META_IFINDEX
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_META_L4_PROTO
@@ -39,8 +40,14 @@ policy          { return POLICY; }
 counter         { return COUNTER; }
 
     /* Hooks */
-BF_HOOK_[A-Z_]+ { yylval.sval = strdup(yytext); return HOOK; }
-
+BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return HOOK; }
+<STATE_HOOK_OPTS>{
+    (\{|\}) /* Ignore */
+    [a-zA-Z0-9_]+=[a-zA-Z0-9_]+ {
+        yylval.sval = strdup(yytext);
+        return HOOK_OPT;
+    }
+}
     /* Verdicts */
 (ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
 

@@ -78,6 +78,7 @@
 %token POLICY
 %token RULE
 %token COUNTER
+%token <sval> HOOK_OPT
 %token <sval> MATCHER_META_IFINDEX  MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO
 %token <sval> MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
 %token <sval> MATCHER_IP_ADDR_SET
@@ -89,6 +90,9 @@
 %type <bval> counter
 
 %type <hook> hook
+
+%type <list> raw_hook_opts
+%destructor { bf_list_free(&$$); } raw_hook_opts
 
 %type <verdict> verdict
 
@@ -128,14 +132,19 @@ chains          : chain
                 }
                 ;
 
-chain           : CHAIN hook POLICY verdict rules
+chain           : CHAIN hook raw_hook_opts POLICY verdict rules
                 {
                     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+                    _cleanup_bf_list_ bf_list *raw_hook_opts = $3;
+                    _cleanup_bf_list_ bf_list *rules = $6;
 
-                    if (bf_chain_new(&chain, $2, $4, &ruleset->sets, $5) < 0)
+                    if (bf_chain_new(&chain, $2, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
 
-                    bf_list_free(&$5);
+                    if (bf_hook_opts_init(&chain->hook_opts, chain->hook, raw_hook_opts) < 0)
+                        bf_parse_err("failed to parse hook options");
+
+
                     $$ = TAKE_PTR(chain);
                 }
 
@@ -160,6 +169,30 @@ hook            : HOOK
                     free($1);
                     $$ = hook;
                 }
+
+raw_hook_opts   : %empty { $$ = NULL; }
+                | raw_hook_opts HOOK_OPT
+                { 
+                    _cleanup_bf_list_ bf_list *list = $1;
+
+                    if (bf_list_add_tail(list, $2) < 0)
+                        bf_parse_err("failed to insert raw hook options '%s' in list", $2);                     
+
+                    $$ = TAKE_PTR(list);
+                }
+                | HOOK_OPT
+                {
+                    _cleanup_bf_list_ bf_list *hook_opts = NULL;
+
+                    if (bf_list_new(&hook_opts, (bf_list_ops[]){{.free = (bf_list_ops_free)freep}}) < 0)
+                        bf_parse_err("failed to allocate a new bf_list for raw hook options");
+
+                    if (bf_list_add_tail(hook_opts, $1) < 0)
+                        bf_parse_err("failed to insert raw hook option '%s' in list", $1);
+
+                    $$ = TAKE_PTR(hook_opts);
+                }
+                ;
 
 rules           : rule
                 {

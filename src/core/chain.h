@@ -18,6 +18,8 @@ struct bf_rule;
 struct bf_chain
 {
     enum bf_hook hook;
+    struct bf_hook_opts hook_opts;
+
     enum bf_verdict policy;
     bf_list sets;
     bf_list rules;

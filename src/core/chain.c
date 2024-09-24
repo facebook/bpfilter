@@ -32,6 +32,7 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
         return -ENOMEM;
 
     _chain->hook = hook;
+    _chain->hook_opts = (struct bf_hook_opts) {};
     _chain->policy = policy;
 
     bf_list_init(&_chain->sets,
@@ -82,10 +83,31 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     if (r)
         return r;
 
+    // Unmarsh bf_chain.hook_opts
+    if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
+        return -EINVAL;
+    {
+        if (!(list_elem = bf_marsh_next_child(chain_elem, NULL)))
+            return -EINVAL;
+        memcpy(&_chain->hook_opts.used_opts, list_elem->data,
+               sizeof(_chain->hook_opts.used_opts));
+
+        if (!(list_elem = bf_marsh_next_child(chain_elem, list_elem)))
+            return -EINVAL;
+        memcpy(&_chain->hook_opts.ifindex, list_elem->data,
+               sizeof(_chain->hook_opts.ifindex));
+
+        if (bf_marsh_next_child(chain_elem, list_elem)) {
+            return bf_err_r(-E2BIG,
+                            "too many serialized fields for bf_hook_opts");
+        }
+    }
+
     // Unmarsh bf_chain.sets
     if (!(chain_elem = bf_marsh_next_child(marsh, chain_elem)))
         return -EINVAL;
 
+    list_elem = NULL;
     while ((list_elem = bf_marsh_next_child(chain_elem, list_elem))) {
         _cleanup_bf_set_ struct bf_set *set = NULL;
 
@@ -153,6 +175,29 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
         return r;
 
     {
+        // Serialize bf_chain.hook_opts
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_marsh_new(&child, NULL, 0);
+        if (r < 0)
+            return bf_err_r(r, "failed to creaet marsh for bf_chain");
+
+        r = bf_marsh_add_child_raw(&child, &chain->hook_opts.used_opts,
+                                   sizeof(chain->hook_opts.used_opts));
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_raw(&child, &chain->hook_opts.ifindex,
+                                   sizeof(chain->hook_opts.ifindex));
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r < 0)
+            return r;
+    }
+
+    {
         // Serialize bf_chain.sets
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
@@ -216,6 +261,8 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "hook: %s", bf_hook_to_str(chain->hook));
+    DUMP(prefix, "hook_opts: struct bf_hook_opts");
+    bf_hook_opts_dump(&chain->hook_opts, prefix, chain->hook);
     DUMP(prefix, "policy: %s", bf_verdict_to_str(chain->policy));
 
     DUMP(bf_dump_prefix_last(prefix), "sets: bf_list<bf_set>[%lu]",
