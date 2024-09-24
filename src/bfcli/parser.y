@@ -267,17 +267,17 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
                     unsigned long lifindex;
                     uint32_t ifindex;
-                    
+
                     errno = 0;
                     lifindex = strtoul($3, NULL, 0);
                     if (errno != 0)
                         bf_parse_err("failed to parse interface index '%s'", $3);
-                    
+
                     if (lifindex > UINT_MAX)
                         bf_parse_err("interface index is expected to be at most %u, but is %lu", UINT_MAX, lifindex);
 
                     ifindex = (uint32_t)lifindex;
-                    
+
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &ifindex, sizeof(ifindex)) < 0)
