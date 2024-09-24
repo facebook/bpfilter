@@ -169,8 +169,11 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
     if (r)
         return r;
 
-    r |= bf_marsh_add_child_raw(&_marsh, &chain->hook, sizeof(chain->hook));
-    r |= bf_marsh_add_child_raw(&_marsh, &chain->policy, sizeof(chain->policy));
+    r = bf_marsh_add_child_raw(&_marsh, &chain->hook, sizeof(chain->hook));
+    if (r < 0)
+        return r;
+
+    r = bf_marsh_add_child_raw(&_marsh, &chain->policy, sizeof(chain->policy));
     if (r)
         return r;
 
