@@ -40,7 +40,7 @@ Chains are defined such as:
 
 .. code:: shell
 
-    chain $HOOK policy $POLICY
+    chain $HOOK{$OPTIONS} policy $POLICY
 
 With:
   - ``$HOOK``: hook in the kernel to attach the chain to:
@@ -55,6 +55,20 @@ With:
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
 
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it.
+
+``$OPTIONS`` are hook-specific comma separated key value pairs:
+
+.. flat-table::
+   :header-rows: 1
+   :widths: 2 2 12
+   :fill-cells:
+
+   * - Option
+     - Supported hooks
+     - Notes
+   * - ``ifindex=$IFINDEX``
+     - ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``
+     - Interface index to attach the program to.
 
 
 Rules
