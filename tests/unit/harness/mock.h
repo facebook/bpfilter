@@ -47,6 +47,10 @@
 #define bf_mock_will_return(mock, value)                                       \
     _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), 1)
 
+#define bf_mock_will_return_always(mock, value)                                \
+    _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), -1)
+
+
 struct nlmsghdr;
 struct nl_msg;
 
