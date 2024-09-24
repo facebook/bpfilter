@@ -94,22 +94,6 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
 
-    // Copy net_device.ifindex in BF_REG_3.
-    if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_3, offset));
-
-    // If the packet is coming from the wrong interface, then quit.
-    {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
-            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_3, program->ifindex, 2));
-
-        EMIT(program,
-             BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                           BF_VERDICT_ACCEPT)));
-        EMIT(program, BPF_EXIT_INSN());
-    }
-
     // Copy address of sk_buff into BF_REG_1.
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
         return offset;
