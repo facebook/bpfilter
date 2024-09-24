@@ -7,7 +7,11 @@
 
 #include <linux/bpf.h>
 
+#include <stdint.h>
+
+#include "core/dump.h"
 #include "core/flavor.h"
+#include "core/list.h"
 
 /**
  * @file hook.h
@@ -27,6 +31,20 @@ enum bf_hook
     BF_HOOK_NF_POST_ROUTING,
     BF_HOOK_TC_EGRESS,
     _BF_HOOK_MAX,
+};
+
+enum bf_hook_opt
+{
+    BF_HOOK_OPT_IFINDEX,
+    _BF_HOOK_OPT_MAX,
+};
+
+struct bf_hook_opts
+{
+    uint32_t used_opts;
+
+    // Options
+    uint32_t ifindex;
 };
 
 /**
@@ -69,3 +87,19 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook);
  * @return The BPF attach type corresponding to @p hook.
  */
 enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook);
+
+/**
+ * Initializes a hook options structure.
+ *
+ * @param opts Hook options structure to initialize. Can't be NULL.
+ * @param hook Hook the options are defined for. The hook will define which
+ *        options are allowed.
+ * @param raw_opts List of raw options formatted as @c KEY=VALUE , if @c NULL
+ *        no option is defined.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
+                      bf_list *raw_opts);
+
+void bf_hook_opts_dump(const struct bf_hook_opts *opts, prefix_t *prefix,
+                       enum bf_hook hook);
