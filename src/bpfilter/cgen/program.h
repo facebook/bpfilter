@@ -193,7 +193,6 @@ static_assert(sizeof(struct bf_program_context) % 8 == 0,
 
 struct bf_program
 {
-    uint32_t ifindex;
     enum bf_hook hook;
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
@@ -243,9 +242,8 @@ struct bf_program
 
 #define _cleanup_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
-int bf_program_new(struct bf_program **program, unsigned int ifindex,
-                   enum bf_hook hook, enum bf_front front,
-                   const struct bf_chain *chain);
+int bf_program_new(struct bf_program **program, enum bf_hook hook,
+                   enum bf_front front, const struct bf_chain *chain);
 void bf_program_free(struct bf_program **program);
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
 int bf_program_unmarsh(const struct bf_marsh *marsh,

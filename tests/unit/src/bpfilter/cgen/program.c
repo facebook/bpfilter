@@ -21,8 +21,7 @@ Test(program, emit_fixup_call)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         size_t start_cap;
 
-        assert_int_equal(
-            0, bf_program_new(&program, 1, BF_HOOK_NF_FORWARD, BF_FRONT_IPT, chain));
+        assert_success(bf_program_new(&program, BF_HOOK_NF_FORWARD, BF_FRONT_IPT, chain));
 
         start_cap = program->img_cap;
 

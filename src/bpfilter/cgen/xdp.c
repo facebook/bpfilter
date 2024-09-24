@@ -142,8 +142,9 @@ static int _bf_xdp_attach_prog(struct bf_program *new_prog,
 
         new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
     } else {
-        r = bf_bpf_xdp_link_create(prog_fd, new_prog->ifindex, &link_fd,
-                                   BF_XDP_MODE_SKB);
+        r = bf_bpf_xdp_link_create(prog_fd,
+                                   new_prog->runtime.chain->hook_opts.ifindex,
+                                   &link_fd, BF_XDP_MODE_SKB);
         if (r) {
             return bf_err_r(r, "failed to create new link for XDP bf_program");
         }
