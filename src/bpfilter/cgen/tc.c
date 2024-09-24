@@ -146,9 +146,9 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
 
         new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
     } else {
-        r = bf_bpf_tc_link_create(prog_fd, new_prog->ifindex,
-                                  bf_hook_to_attach_type(new_prog->hook),
-                                  &link_fd);
+        r = bf_bpf_tc_link_create(
+            prog_fd, new_prog->runtime.chain->hook_opts.ifindex,
+            bf_hook_to_attach_type(new_prog->hook), &link_fd);
         if (r) {
             return bf_err_r(r, "failed to create new link for TC bf_program");
         }

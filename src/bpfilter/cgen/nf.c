@@ -211,21 +211,19 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
         return bf_err_r(r, "failed to load new bf_program");
 
     if (old_prog) {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &tmp_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 2, &tmp_fd);
         if (r)
             return bf_err_r(r, "failed to create temporary link");
 
         closep(&old_prog->runtime.prog_fd);
 
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook,
-                                  (int)new_prog->ifindex, &link_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &link_fd);
         if (r)
             return bf_err_r(r, "failed to create final link");
 
         new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     } else {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook,
-                                  (int)new_prog->ifindex, &link_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &link_fd);
         if (r) {
             return bf_err_r(
                 r, "failed to create a new link for BPF_NETFILTER bf_program");

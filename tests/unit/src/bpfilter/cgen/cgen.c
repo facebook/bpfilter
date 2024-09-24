@@ -76,48 +76,16 @@ Test(cgen, marsh_unmarsh)
     _cleanup_bf_cgen_ struct bf_cgen *cgen0 = NULL;
     _cleanup_bf_cgen_ struct bf_cgen *cgen1 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _cleanup_bf_mock_ bf_mock _0 = bf_mock_empty(bf_bpf_obj_get);
+
+    bf_mock_will_return_always(_0, 0);
 
     /* Create a codegen without any program, other bf_program_unmarsh()
      * will try to open the pinned BPF objects.
      */ 
-    cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT, 0);
+    cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT);
 
     assert_success(bf_cgen_marsh(cgen0, &marsh));
     assert_success(bf_cgen_new_from_marsh(&cgen1, marsh));
     assert_non_null(cgen1);
-}
-
-Test(cgen, get_program)
-{
-    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
-
-    cgen = bf_test_cgen(BF_FRONT_IPT, BF_HOOK_NF_FORWARD, BF_VERDICT_ACCEPT, 5);
-    assert_non_null(cgen);
-
-    {
-        // Get first program in the list
-        struct bf_program *program = bf_cgen_get_program(cgen, 1);
-        assert_non_null(program);
-        assert_int_equal(program->ifindex, 1);
-    }
-
-    {
-        // Get program from the middle of the list
-        struct bf_program *program = bf_cgen_get_program(cgen, 3);
-        assert_non_null(program);
-        assert_int_equal(program->ifindex, 3);
-    }
-
-    {
-        // Get last program of the list
-        struct bf_program *program = bf_cgen_get_program(cgen, 5);
-        assert_non_null(program);
-        assert_int_equal(program->ifindex, 5);
-    }
-
-    {
-        // Get program with an invalid interface
-        struct bf_program *program = bf_cgen_get_program(cgen, 10);
-        assert_null(program);
-    }
 }

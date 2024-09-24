@@ -38,7 +38,6 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
-#include "core/if.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -71,29 +70,27 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
     return flavor_ops[flavor];
 }
 
-int bf_program_new(struct bf_program **program, unsigned int ifindex,
-                   enum bf_hook hook, enum bf_front front,
-                   const struct bf_chain *chain)
+int bf_program_new(struct bf_program **program, enum bf_hook hook,
+                   enum bf_front front, const struct bf_chain *chain)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     char suffix[BPF_OBJ_NAME_LEN] = {};
     int r;
 
-    bf_assert(ifindex);
     bf_assert(chain);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
         return -ENOMEM;
 
-    _program->ifindex = ifindex;
     _program->hook = hook;
     _program->front = front;
     _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
     _program->runtime.chain = chain;
 
+    // Subpar, but at least there won't be any name clash.
     (void)snprintf(suffix, BPF_OBJ_NAME_LEN, "%02hx%02hx%02hx", hook, front,
-                   ifindex);
+                   chain->hook_opts.ifindex);
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%.6s",
                    suffix);
     (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%.6s",
@@ -176,8 +173,6 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
     if (r < 0)
         return r;
 
-    r |= bf_marsh_add_child_raw(&_marsh, &program->ifindex,
-                                sizeof(program->ifindex));
     r |= bf_marsh_add_child_raw(&_marsh, &program->hook, sizeof(program->hook));
     r |= bf_marsh_add_child_raw(&_marsh, &program->front,
                                 sizeof(program->front));
@@ -258,7 +253,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
                        struct bf_program **program,
                        const struct bf_chain *chain)
 {
-    int ifindex;
     enum bf_hook hook;
     enum bf_front front;
     _cleanup_bf_program_ struct bf_program *_program = NULL;
@@ -271,17 +265,13 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     if (!(child = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
-    memcpy(&ifindex, child->data, sizeof(ifindex));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
     memcpy(&hook, child->data, sizeof(hook));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     memcpy(&front, child->data, sizeof(front));
 
-    r = bf_program_new(&_program, ifindex, hook, front, chain);
+    r = bf_program_new(&_program, hook, front, chain);
     if (r < 0)
         return r;
 
@@ -366,7 +356,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
-    DUMP(prefix, "ifindex: %s", bf_if_name_from_index(program->ifindex));
     DUMP(prefix, "hook: %s", bf_hook_to_str(program->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
     DUMP(prefix, "num_counters: %lu", program->num_counters);
@@ -869,10 +858,9 @@ int bf_program_generate(struct bf_program *program)
     const struct bf_chain *chain = program->runtime.chain;
     int r;
 
-    bf_info("generating %s program for %s::%s::%s",
+    bf_info("generating %s program for %s::%s",
             bf_flavor_to_str(bf_hook_to_flavor(program->hook)),
-            bf_front_to_str(program->front), bf_hook_to_str(program->hook),
-            bf_if_name_from_index(program->ifindex));
+            bf_front_to_str(program->front), bf_hook_to_str(program->hook));
 
     r = _bf_program_generate_runtime_init(program);
     if (r)
@@ -888,9 +876,6 @@ int bf_program_generate(struct bf_program *program)
 
     bf_list_foreach (&chain->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
-
-        if (rule->ifindex != 0 && rule->ifindex != program->ifindex)
-            continue;
 
         r = _bf_program_generate_rule(program, rule);
         if (r)

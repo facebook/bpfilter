@@ -66,20 +66,12 @@ struct bf_chain *bf_test_chain(enum bf_hook hook, enum bf_verdict policy)
 }
 
 struct bf_cgen *bf_test_cgen(enum bf_front front, enum bf_hook hook,
-                             enum bf_verdict verdict, size_t nprogs)
+                             enum bf_verdict verdict)
 {
     struct bf_cgen *cgen;
     struct bf_chain *chain = bf_test_chain(hook, verdict);
 
     assert_int_equal(0, bf_cgen_new(&cgen, front, &chain));
-
-    for (size_t i = 0; i < nprogs; ++i) {
-        struct bf_program *program;
-
-        // ifindex should start at 1.
-        assert_int_equal(0, bf_program_new(&program, i + 1, hook, front, cgen->chain));
-        assert_int_equal(0, bf_list_add_tail(&cgen->programs, program));
-    }
 
     return cgen;
 }
