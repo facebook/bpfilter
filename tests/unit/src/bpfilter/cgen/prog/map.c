@@ -135,7 +135,7 @@ Test(map, btf_create_delete)
 
 Test(map, map_create_assert)
 {
-    expect_assert_failure(bf_map_create(NULL, 0, false));
+    expect_assert_failure(bf_map_create(NULL, 0));
 }
 
 Test(map, map_create)
@@ -144,9 +144,9 @@ Test(map, map_create)
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, 16);
 
     assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, BF_MAP_N_ELEMS_UNKNOWN));
-    assert_error(bf_map_create(map, 0, false));
+    assert_error(bf_map_create(map, 0));
     assert_success(bf_map_set_n_elems(map, 1));
-    assert_success(bf_map_create(map, 0, false));
+    assert_success(bf_map_create(map, 0));
     assert_error(bf_map_set_n_elems(map, 1));
 
     // So bf_map_free() doesn't try to close a random FD value
@@ -159,12 +159,12 @@ Test(map, map_create_failure)
     _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, -1);
 
     assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
-    assert_error(bf_map_create(map, 0, false));
+    assert_error(bf_map_create(map, 0));
 }
 
 Test(map, map_destroy_assert)
 {
-    expect_assert_failure(bf_map_destroy(NULL, false));
+    expect_assert_failure(bf_map_destroy(NULL));
 }
 
 Test(map, map_set_elem_assert)

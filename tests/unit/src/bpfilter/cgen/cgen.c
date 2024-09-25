@@ -76,9 +76,6 @@ Test(cgen, marsh_unmarsh)
     _cleanup_bf_cgen_ struct bf_cgen *cgen0 = NULL;
     _cleanup_bf_cgen_ struct bf_cgen *cgen1 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_mock_ bf_mock _0 = bf_mock_empty(bf_bpf_obj_get);
-
-    bf_mock_will_return_always(_0, 0);
 
     /* Create a codegen without any program, other bf_program_unmarsh()
      * will try to open the pinned BPF objects.

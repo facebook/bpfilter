@@ -137,11 +137,9 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix);
  * @param map BPF map to create. Can't be NULL.
  * @param flags Flags to use during map creation. All the flags supported by
  *              @c BPF_MAP_CREATE can be used.
- * @param pin If true, the map will be pinned to the filesystem. This will
- *            ensure it remains once bpfilter is stopped.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_map_create(struct bf_map *map, uint32_t flags, bool pin);
+int bf_map_create(struct bf_map *map, uint32_t flags);
 
 /**
  * Destroy the BPF map.
@@ -151,11 +149,20 @@ int bf_map_create(struct bf_map *map, uint32_t flags, bool pin);
  * it is pinned to the filesystem.
  *
  * @param map BPF map to destroy. Can't be NULL.
- * @param unpin If true, unpin the map from the filesystem: the map will be
- *              removed from the kernel as soon as no other program or map uses
- *              it.
  */
-void bf_map_destroy(struct bf_map *map, bool unpin);
+void bf_map_destroy(struct bf_map *map);
+
+/**
+ * Pin the map to the filesystem.
+ *
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_map_pin(const struct bf_map *map);
+
+/**
+ * Unpin the map from the filesystem.
+ */
+void bf_map_unpin(const struct bf_map *map);
 
 /**
  * Set the number of elements in the map.
