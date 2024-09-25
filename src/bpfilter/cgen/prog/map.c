@@ -334,10 +334,9 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
     return TAKE_PTR(btf);
 }
 
-int bf_map_create(struct bf_map *map, uint32_t flags, bool pin)
+int bf_map_create(struct bf_map *map, uint32_t flags)
 {
     union bpf_attr attr = {};
-    _cleanup_close_ int fd = -1;
     _cleanup_bf_btf_ struct bf_btf *btf = NULL;
     int r;
 
@@ -376,25 +375,36 @@ int bf_map_create(struct bf_map *map, uint32_t flags, bool pin)
     if (r < 0)
         return bf_err_r(r, "failed to create BPF map '%s'", map->name);
 
-    fd = r;
-    if (pin) {
-        r = bf_bpf_obj_pin(map->path, fd);
-        if (r < 0)
-            return bf_err_r(r, "failed to pin BPF map to '%s'", map->path);
-    }
-
-    map->fd = TAKE_FD(fd);
+    map->fd = r;
 
     return 0;
 }
 
-void bf_map_destroy(struct bf_map *map, bool unpin)
+void bf_map_destroy(struct bf_map *map)
 {
     bf_assert(map);
 
     closep(&map->fd);
+}
 
-    if (unpin && unlink(map->path) < 0) {
+int bf_map_pin(const struct bf_map *map)
+{
+    int r;
+
+    bf_assert(map);
+
+    r = bf_bpf_obj_pin(map->path, map->fd);
+    if (r < 0)
+        return bf_err_r(r, "failed to pin BPF map to '%s'", map->path);
+
+    return 0;
+}
+
+void bf_map_unpin(const struct bf_map *map)
+{
+    bf_assert(map);
+
+    if (unlink(map->path) < 0) {
         bf_warn_r(
             errno,
             "failed to unlink BPF map '%s', assuming the map is destroyed",

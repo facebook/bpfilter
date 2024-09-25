@@ -26,24 +26,15 @@
 int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
                 struct bf_chain **chain)
 {
-    _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    int r;
+    bf_assert(cgen && chain && *chain);
 
-    bf_assert(cgen);
-    bf_assert(chain && *chain);
-
-    _cgen = malloc(sizeof(*_cgen));
-    if (!_cgen)
+    *cgen = malloc(sizeof(struct bf_cgen));
+    if (!*cgen)
         return -ENOMEM;
 
-    _cgen->front = front;
-
-    r = bf_program_new(&_cgen->program, (*chain)->hook, front, *chain);
-    if (r < 0)
-        return r;
-
-    _cgen->chain = TAKE_PTR(*chain);
-    *cgen = TAKE_PTR(_cgen);
+    (*cgen)->front = front;
+    (*cgen)->program = NULL;
+    (*cgen)->chain = TAKE_PTR(*chain);
 
     return 0;
 }
@@ -78,11 +69,11 @@ int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
 
     if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
-    r = bf_program_unmarsh(marsh_elem, &program, _cgen->chain);
-    if (r < 0)
-        return r;
-
-    bf_swap(_cgen->program, program);
+    if (!bf_marsh_is_empty(marsh_elem)) {
+        r = bf_program_unmarsh(marsh_elem, &_cgen->program, _cgen->chain);
+        if (r < 0)
+            return r;
+    }
 
     if (bf_marsh_next_child(marsh, marsh_elem))
         bf_warn("codegen marsh has more children than expected");
@@ -138,9 +129,15 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
     {
         _cleanup_bf_marsh_ struct bf_marsh *prog_elem = NULL;
 
-        r = bf_program_marsh(cgen->program, &prog_elem);
-        if (r < 0)
-            return r;
+        if (cgen->program) {
+            r = bf_program_marsh(cgen->program, &prog_elem);
+            if (r < 0)
+                return r;
+        } else {
+            r = bf_marsh_new(&prog_elem, NULL, 0);
+            if (r < 0)
+                return r;
+        }
 
         r = bf_marsh_add_child_obj(&_marsh, prog_elem);
         if (r)
@@ -176,10 +173,14 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     // Programs
-    DUMP(bf_dump_prefix_last(prefix), "program: struct bf_program *");
-    bf_dump_prefix_push(prefix);
-    bf_program_dump(cgen->program, bf_dump_prefix_last(prefix));
-    bf_dump_prefix_pop(prefix);
+    if (cgen->program) {
+        DUMP(bf_dump_prefix_last(prefix), "program: struct bf_program *");
+        bf_dump_prefix_push(prefix);
+        bf_program_dump(cgen->program, bf_dump_prefix_last(prefix));
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(bf_dump_prefix_last(prefix), "program: (struct bf_program *)NULL");
+    }
 
     bf_dump_prefix_pop(prefix);
 }

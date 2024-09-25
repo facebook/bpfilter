@@ -913,8 +913,13 @@ int bf_program_generate(struct bf_program *program)
     return 0;
 }
 
+static void _bf_program_unpin(const struct bf_program *program);
+
 /**
  * Pin the BPF objects that should survive the daemon's lifetime.
+ *
+ * If any of the BPF objects can't be pinned, unpin all of them to ensure
+ * there will be no leftovers.
  *
  * @param program Program containing the objects to pin. Can't be NULL.
  * @return 0 on success, or negative erron value on failure.
@@ -927,16 +932,32 @@ static int _bf_program_pin(const struct bf_program *program)
 
     r = bf_bpf_obj_pin(program->prog_pin_path, program->runtime.prog_fd);
     if (r < 0) {
-        return bf_err_r(r, "failed to pin program fd to %s",
-                        program->prog_pin_path);
+        bf_err_r(r, "failed to pin program fd to %s", program->prog_pin_path);
+        goto err;
     }
 
     r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
     if (r < 0) {
-        return bf_err_r(r, "failed to pin printer map fd to %s",
-                        program->pmap_pin_path);
+        bf_err_r(r, "failed to pin printer map fd to %s",
+                 program->pmap_pin_path);
+        goto err;
     }
+
+    r = bf_map_pin(program->counters);
+    if (r < 0)
+        goto err;
+
+    bf_list_foreach (&program->sets, set_node) {
+        r = bf_map_pin(bf_list_node_get_data(set_node));
+        if (r < 0)
+            goto err;
+    }
+
     return 0;
+
+err:
+    _bf_program_unpin(program);
+    return r;
 }
 
 /**
@@ -953,6 +974,10 @@ static void _bf_program_unpin(const struct bf_program *program)
 
     unlink(program->prog_pin_path);
     unlink(program->pmap_pin_path);
+    bf_map_unpin(program->counters);
+
+    bf_list_foreach (&program->sets, set_node)
+        bf_map_unpin(bf_list_node_get_data(set_node));
 }
 
 static int _bf_program_load_counters_map(struct bf_program *program)
@@ -966,13 +991,13 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     if (r < 0)
         return r;
 
-    r = bf_map_create(program->counters, 0, !bf_opts_transient());
+    r = bf_map_create(program->counters, 0);
     if (r < 0)
         return r;
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
     if (r < 0) {
-        bf_map_destroy(program->counters, !bf_opts_transient());
+        bf_map_destroy(program->counters);
         return bf_err_r(r, "failed to fixup counters map FD");
     }
 
@@ -990,7 +1015,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     // Create the BPF maps
     bf_list_foreach (&new_prog->sets, map_node) {
         struct bf_map *map = bf_list_node_get_data(map_node);
-        r = bf_map_create(map, 0, !bf_opts_transient());
+        r = bf_map_create(map, 0);
         if (r < 0)
             return r;
     }
@@ -1026,7 +1051,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 
 err_destroy_maps:
     bf_list_foreach (&new_prog->sets, map_node)
-        bf_map_destroy(bf_list_node_get_data(map_node), !bf_opts_transient());
+        bf_map_destroy(bf_list_node_get_data(map_node));
     return r;
 }
 
@@ -1077,10 +1102,8 @@ int bf_program_unload(struct bf_program *program)
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.pmap_fd);
 
-    bf_list_foreach (&program->sets, map_node) {
-        struct bf_map *map = bf_list_node_get_data(map_node);
-        bf_map_destroy(map, !bf_opts_transient());
-    }
+    bf_list_foreach (&program->sets, map_node)
+        bf_map_destroy(bf_list_node_get_data(map_node));
 
     bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
