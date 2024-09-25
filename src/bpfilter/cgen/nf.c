@@ -199,6 +199,13 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
         if (r)
             return bf_err_r(r, "failed to create temporary link");
 
+        /* As we perform a two-steps replacement of the link, we need to detach
+         * the link from the hook: if the link FD is pinned, closing it won't
+         * detach it and will prevent the creation of a link with the same
+         * priority. */
+        r = bf_bpf_link_detach(old_prog->runtime.prog_fd);
+        if (r < 0)
+            bf_warn_r(r, "failed to detach existing BPF_NETFILTER link");
         closep(&old_prog->runtime.prog_fd);
 
         r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &link_fd);
