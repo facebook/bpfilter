@@ -27,6 +27,19 @@ struct bf_marsh
 #define _cleanup_bf_marsh_ __attribute__((__cleanup__(bf_marsh_free)))
 
 /**
+ * Returns true if a marsh object is empty (only contains a header).
+ *
+ * @param marsh Marsh object to check for empty. Can't be NULL.
+ * @return True if the @c marsh object is empty, false otherwise.
+ */
+static inline bool bf_marsh_is_empty(const struct bf_marsh *marsh)
+{
+    bf_assert(marsh);
+
+    return marsh->data_len == 0;
+}
+
+/**
  * Get the total size of marshalled data.
  *
  * @param marsh Marshalled data.
