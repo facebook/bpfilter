@@ -60,9 +60,8 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
     if (r < 0)
         return r;
 
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->index, sizeof(rule->index));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->ifindex, sizeof(rule->ifindex));
-    if (r)
+    r = bf_marsh_add_child_raw(&_marsh, &rule->index, sizeof(rule->index));
+    if (r < 0)
         return r;
 
     {
@@ -120,10 +119,6 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
     if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
-    memcpy(&_rule->ifindex, rule_elem->data, sizeof(_rule->ifindex));
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
-        return -EINVAL;
 
     {
         struct bf_marsh *matcher_elem = NULL;
@@ -169,7 +164,6 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
 
     DUMP(prefix, "index: %u", rule->index);
-    DUMP(prefix, "ifindex: %u", rule->ifindex);
 
     // Matchers
     DUMP(prefix, "matchers: %lu", bf_list_size(&rule->matchers));

@@ -28,7 +28,6 @@ struct bf_marsh;
 struct bf_rule
 {
     uint32_t index;
-    uint32_t ifindex;
     bf_list matchers;
     bool counters;
     enum bf_verdict verdict;

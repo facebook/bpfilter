@@ -288,7 +288,10 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
                             ipt_rule->ip.iniface);
         }
 
-        _rule->ifindex = r;
+        r = bf_rule_add_matcher(_rule, BF_MATCHER_META_IFINDEX, BF_MATCHER_EQ,
+                                &r, sizeof(r));
+        if (r < 0)
+            return r;
     }
 
     _rule->counters = true;
@@ -428,8 +431,6 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
         if (r < 0)
             return r;
 
-        bf_dbg("created codegen for %s::%s", bf_front_to_str(cgen->front),
-               bf_hook_to_str(chain->hook));
         (*cgens)[hook] = TAKE_PTR(cgen);
     }
 
