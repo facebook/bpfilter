@@ -54,7 +54,6 @@ Test(rule, marsh_unmarsh)
         assert_int_equal(0, bf_rule_unmarsh(marsh, &rule1));
 
         assert_int_equal(rule0->index, rule1->index);
-        assert_int_equal(rule0->ifindex, rule1->ifindex);
         assert_int_equal(bf_list_size(&rule0->matchers),
                          bf_list_size(&rule1->matchers));
         assert_int_equal(rule0->counters, rule1->counters);

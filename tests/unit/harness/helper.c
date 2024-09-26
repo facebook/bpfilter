@@ -148,7 +148,6 @@ struct bf_rule *bf_test_get_rule(void)
     assert_int_equal(0, bf_rule_new(&rule));
 
     rule->index = 1;
-    rule->ifindex = 2;
 
     for (int i = 0; i < 10; ++i)
         assert_int_equal(
