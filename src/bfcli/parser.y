@@ -132,7 +132,17 @@ chains          : chain
                 }
                 ;
 
-chain           : CHAIN hook raw_hook_opts POLICY verdict rules
+chain           : CHAIN hook POLICY verdict rules
+                {
+                    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+                    _cleanup_bf_list_ bf_list *rules = $5;
+
+                    if (bf_chain_new(&chain, $2, $4, &ruleset->sets, rules) < 0)
+                        bf_parse_err("failed to create a new bf_chain\n");
+
+                    $$ = TAKE_PTR(chain);
+                }
+                | CHAIN hook raw_hook_opts POLICY verdict rules
                 {
                     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
                     _cleanup_bf_list_ bf_list *raw_hook_opts = $3;
@@ -170,8 +180,7 @@ hook            : HOOK
                     $$ = hook;
                 }
 
-raw_hook_opts   : %empty { $$ = NULL; }
-                | raw_hook_opts HOOK_OPT
+raw_hook_opts   : raw_hook_opts HOOK_OPT
                 { 
                     _cleanup_bf_list_ bf_list *list = $1;
 
