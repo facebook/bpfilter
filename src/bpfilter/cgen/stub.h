@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <stddef.h>
-
 #include "bpfilter/cgen/reg.h"
 
 struct bf_program;
