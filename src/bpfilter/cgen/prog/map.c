@@ -9,7 +9,6 @@
 
 #include <bpf/btf.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

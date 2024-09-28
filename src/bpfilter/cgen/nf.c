@@ -10,6 +10,7 @@
 #include <linux/if_ether.h>
 #include <linux/netfilter.h>
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/socket.h>
