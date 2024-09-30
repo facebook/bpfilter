@@ -100,17 +100,6 @@ int bf_ctx_load(const struct bf_marsh *marsh);
 struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
- * Delete a codegen from the context for a given (hook, front) set.
- *
- * If a corresponding codegen has been found, then it is removed from the
- * context and deleted. Otherwise the context remain unchanged.
- *
- * @param hook Hook to get the codegen from. Must be a valid hook.
- * @param front Front-end to get the codegen from. Must be a valid front-end.
- */
-void bf_ctx_delete_cgen(enum bf_hook hook, enum bf_front front);
-
-/**
  * Add a codegen to the context.
  *
  * @param hook Hook to add the codegen to. Must be a valid hook.
