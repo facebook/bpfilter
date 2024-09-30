@@ -241,17 +241,6 @@ static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
 }
 
 /**
- * See @ref bf_ctx_delete_cgen for details.
- */
-static void _bf_ctx_delete_cgen(struct bf_ctx *ctx, enum bf_hook hook,
-                                enum bf_front front)
-{
-    bf_assert(ctx);
-
-    bf_cgen_free(&ctx->cgens[hook][front]);
-}
-
-/**
  * See @ref bf_ctx_set_cgen for details.
  */
 static int _bf_ctx_set_cgen(struct bf_ctx *ctx, enum bf_hook hook,
@@ -352,11 +341,6 @@ void bf_ctx_dump(prefix_t *prefix)
 struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook, enum bf_front front)
 {
     return _bf_ctx_get_cgen(_bf_global_ctx, hook, front);
-}
-
-void bf_ctx_delete_cgen(enum bf_hook hook, enum bf_front front)
-{
-    _bf_ctx_delete_cgen(_bf_global_ctx, hook, front);
 }
 
 int bf_ctx_set_cgen(enum bf_hook hook, enum bf_front front,
