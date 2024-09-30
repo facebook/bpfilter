@@ -28,7 +28,7 @@
 #include "bpfilter/cgen/prog/map.h"
 #include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "core/bpf.h"
 #include "core/btf.h"
 #include "core/chain.h"

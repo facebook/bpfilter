@@ -14,7 +14,7 @@
 #include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
 #include "bpfilter/xlate/nft/nfmsg.h"
@@ -265,7 +265,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
     if (r < 0)
         return bf_err_r(r, "failed to create new chain");
 
-    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
     if (cgen && verdict != cgen->chain->policy) {
         r = bf_cgen_update(cgen, &chain);
         if (r < 0)
@@ -281,7 +281,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         if (r < 0)
             return bf_err_r(r, "failed to generate codegen");
 
-        bf_context_replace_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
+        bf_ctx_replace_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
         bf_info("new codegen created and loaded");
     } else {
         bf_info("codegen already properly configured, skipping generation");
@@ -304,7 +304,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     int r;
 
     // Only BF_HOOK_XDP is supported.
-    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
     if (!cgen) {
         /* If no codegen is found, do not fill the messages group and return
          * success. The response message will then contain only a DONE
@@ -512,7 +512,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     }
 
     // Add the rule to the relevant codegen
-    cgen = bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
     if (!cgen)
         return bf_err_r(-EINVAL, "no codegen found for hook");
 
@@ -636,7 +636,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
                     struct bf_counter counter;
 
                     r = bf_cgen_get_counter(
-                        bf_context_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT), i,
+                        bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT), i,
                         &counter);
                     if (r < 0)
                         return bf_err_r(r, "failed to get counter");

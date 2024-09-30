@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "context.h"
+#include "ctx.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -18,32 +18,32 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
-#define _cleanup_bf_context_ __attribute__((cleanup(_bf_context_free)))
+#define _cleanup_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
 /// Global daemon context. Hidden in this translation unit.
-static struct bf_context *_bf_global_context = NULL;
+static struct bf_ctx *_bf_global_ctx = NULL;
 
-static void _bf_context_free(struct bf_context **context);
+static void _bf_ctx_free(struct bf_ctx **ctx);
 
 /**
  * Create and initialize a new context.
  *
- * On failure, @p context is left unchanged.
+ * On failure, @p ctx is left unchanged.
  *
- * @param context New context to create. Can't be NULL.
+ * @param ctx New context to create. Can't be NULL.
  * @return 0 on success, negative errno value on failure.
  */
-static int _bf_context_new(struct bf_context **context)
+static int _bf_ctx_new(struct bf_ctx **ctx)
 {
-    _cleanup_bf_context_ struct bf_context *_context = NULL;
+    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
 
-    bf_assert(context);
+    bf_assert(ctx);
 
-    _context = calloc(1, sizeof(struct bf_context));
-    if (!_context)
+    _ctx = calloc(1, sizeof(struct bf_ctx));
+    if (!_ctx)
         return bf_err_r(errno, "failed to allocate memory");
 
-    *context = TAKE_PTR(_context);
+    *ctx = TAKE_PTR(_ctx);
 
     return 0;
 }
@@ -51,28 +51,28 @@ static int _bf_context_new(struct bf_context **context)
 /**
  * Allocate a new context and initialise it from serialised data.
  *
- * @param context On success, points to the newly allocated and initialised
+ * @param ctx On success, points to the newly allocated and initialised
  *        context. Can't be NULL.
  * @param marsh Serialised data to use to initialise the context.
  * @return 0 on success, or negative errno value on failure.
  */
-static int _bf_context_new_from_marsh(struct bf_context **context,
-                                      const struct bf_marsh *marsh)
+static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
+                                  const struct bf_marsh *marsh)
 {
-    _cleanup_bf_context_ struct bf_context *_context = NULL;
+    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
     struct bf_marsh *ctx_elem = NULL;
     struct bf_marsh *cgen_elem = NULL;
     int r;
 
-    bf_assert(context);
+    bf_assert(ctx);
     bf_assert(marsh);
 
-    // Allocate a new context
-    _context = calloc(1, sizeof(*_context));
-    if (!_context)
+    // Allocate a new ctx
+    _ctx = calloc(1, sizeof(*_ctx));
+    if (!_ctx)
         return -ENOMEM;
 
-    // Unmarsh bf_context.cgens
+    // Unmarsh bf_ctx.cgens
     ctx_elem = bf_marsh_next_child(marsh, ctx_elem);
     if (!ctx_elem)
         return bf_err_r(-EINVAL, "failed to find valid child");
@@ -89,17 +89,17 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
         hook = cgen->chain->hook;
         front = cgen->front;
 
-        if (_context->cgens[hook][front]) {
+        if (_ctx->cgens[hook][front]) {
             return bf_err_r(
                 -EEXIST,
                 "restored codegen for %s::%s, but codegen already exists in context!",
                 bf_hook_to_str(hook), bf_front_to_str(front));
         }
 
-        _context->cgens[hook][front] = TAKE_PTR(cgen);
+        _ctx->cgens[hook][front] = TAKE_PTR(cgen);
     }
 
-    *context = TAKE_PTR(_context);
+    *ctx = TAKE_PTR(_ctx);
 
     return 0;
 }
@@ -107,33 +107,33 @@ static int _bf_context_new_from_marsh(struct bf_context **context,
 /**
  * Free a context.
  *
- * If @p context points to a NULL pointer, this function does nothing. Once
- * the function returns, @p context points to a NULL pointer.
+ * If @p ctx points to a NULL pointer, this function does nothing. Once
+ * the function returns, @p ctx points to a NULL pointer.
  *
- * @param context Context to free. Can't be NULL.
+ * @param ctx Context to free. Can't be NULL.
  */
-static void _bf_context_free(struct bf_context **context)
+static void _bf_ctx_free(struct bf_ctx **ctx)
 {
-    bf_assert(context);
+    bf_assert(ctx);
 
-    if (!*context)
+    if (!*ctx)
         return;
 
     for (int i = 0; i < _BF_HOOK_MAX; ++i) {
         for (int j = 0; j < _BF_FRONT_MAX; ++j)
-            bf_cgen_free(&(*context)->cgens[i][j]);
+            bf_cgen_free(&(*ctx)->cgens[i][j]);
     }
 
-    free(*context);
-    *context = NULL;
+    free(*ctx);
+    *ctx = NULL;
 }
 
 /**
- * See @ref bf_context_dump for details.
+ * See @ref bf_ctx_dump for details.
  */
-static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
+static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
 {
-    DUMP(prefix, "struct bf_context at %p", context);
+    DUMP(prefix, "struct bf_ctx at %p", ctx);
 
     bf_dump_prefix_push(prefix);
 
@@ -152,10 +152,10 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
             if (j == _BF_FRONT_MAX - 1)
                 bf_dump_prefix_last(prefix);
 
-            if (context->cgens[i][j]) {
+            if (ctx->cgens[i][j]) {
                 DUMP(prefix, "[%s]: struct bf_cgen *", bf_front_to_str(j));
                 bf_dump_prefix_push(prefix);
-                bf_cgen_dump(context->cgens[i][j], bf_dump_prefix_last(prefix));
+                bf_cgen_dump(ctx->cgens[i][j], bf_dump_prefix_last(prefix));
                 bf_dump_prefix_pop(prefix);
             } else {
                 DUMP(prefix, "[%s]: <null>", bf_front_to_str(j));
@@ -171,17 +171,16 @@ static void _bf_context_dump(const struct bf_context *context, prefix_t *prefix)
  *
  * If the function succeeds, @p marsh will contain the marshalled context.
  *
- * @param context Context to marsh.
+ * @param ctx Context to marsh.
  * @param marsh Marsh'd context.
  * @return 0 on success, negative errno value on failure.
  */
-static int _bf_context_marsh(const struct bf_context *context,
-                             struct bf_marsh **marsh)
+static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
 {
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    bf_assert(context);
+    bf_assert(ctx);
     bf_assert(marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
@@ -189,7 +188,7 @@ static int _bf_context_marsh(const struct bf_context *context,
         return bf_err_r(r, "failed to create marsh for context");
 
     {
-        // Serialize bf_context.cgens content
+        // Serialize bf_ctx.cgens content
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_marsh_new(&child, NULL, 0);
@@ -199,7 +198,7 @@ static int _bf_context_marsh(const struct bf_context *context,
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
                 _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-                struct bf_cgen *cgen = context->cgens[i][j];
+                struct bf_cgen *cgen = ctx->cgens[i][j];
 
                 if (!cgen)
                     continue;
@@ -231,110 +230,107 @@ static int _bf_context_marsh(const struct bf_context *context,
 }
 
 /**
- * See @ref bf_context_get_cgen for details.
+ * See @ref bf_ctx_get_cgen for details.
  */
-static struct bf_cgen *_bf_context_get_cgen(const struct bf_context *context,
-                                            enum bf_hook hook,
-                                            enum bf_front front)
+static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
+                                        enum bf_hook hook, enum bf_front front)
 {
-    bf_assert(context);
+    bf_assert(ctx);
 
-    return context->cgens[hook][front];
+    return ctx->cgens[hook][front];
 }
 
 /**
- * See @ref bf_context_take_cgen for details.
+ * See @ref bf_ctx_take_cgen for details.
  */
-static struct bf_cgen *_bf_context_take_cgen(struct bf_context *context,
-                                             enum bf_hook hook,
-                                             enum bf_front front)
+static struct bf_cgen *_bf_ctx_take_cgen(struct bf_ctx *ctx, enum bf_hook hook,
+                                         enum bf_front front)
 {
-    bf_assert(context);
+    bf_assert(ctx);
 
-    return TAKE_PTR(context->cgens[hook][front]);
+    return TAKE_PTR(ctx->cgens[hook][front]);
 }
 
 /**
- * See @ref bf_context_delete_cgen for details.
+ * See @ref bf_ctx_delete_cgen for details.
  */
-static void _bf_context_delete_cgen(struct bf_context *context,
-                                    enum bf_hook hook, enum bf_front front)
+static void _bf_ctx_delete_cgen(struct bf_ctx *ctx, enum bf_hook hook,
+                                enum bf_front front)
 {
-    bf_assert(context);
+    bf_assert(ctx);
 
-    bf_cgen_free(&context->cgens[hook][front]);
+    bf_cgen_free(&ctx->cgens[hook][front]);
 }
 
 /**
- * See @ref bf_context_set_cgen for details.
+ * See @ref bf_ctx_set_cgen for details.
  */
-static int _bf_context_set_cgen(struct bf_context *context, enum bf_hook hook,
-                                enum bf_front front, struct bf_cgen *cgen)
+static int _bf_ctx_set_cgen(struct bf_ctx *ctx, enum bf_hook hook,
+                            enum bf_front front, struct bf_cgen *cgen)
 {
-    bf_assert(context);
+    bf_assert(ctx);
     bf_assert(cgen && cgen->chain->hook == hook && cgen->front == front);
 
-    if (context->cgens[hook][front])
+    if (ctx->cgens[hook][front])
         return bf_err_r(-EEXIST, "codegen already exists in context");
 
-    context->cgens[hook][front] = cgen;
+    ctx->cgens[hook][front] = cgen;
 
     return 0;
 }
 
 /**
- * See @ref bf_context_replace_cgen for details.
+ * See @ref bf_ctx_replace_cgen for details.
  */
-static void _bf_context_replace_cgen(struct bf_context *context,
-                                     enum bf_hook hook, enum bf_front front,
-                                     struct bf_cgen *cgen)
+static void _bf_ctx_replace_cgen(struct bf_ctx *ctx, enum bf_hook hook,
+                                 enum bf_front front, struct bf_cgen *cgen)
 {
-    bf_assert(context);
+    bf_assert(ctx);
 
-    bf_cgen_free(&context->cgens[hook][front]);
-    context->cgens[hook][front] = cgen;
+    bf_cgen_free(&ctx->cgens[hook][front]);
+    ctx->cgens[hook][front] = cgen;
 }
 
-int bf_context_setup(void)
+int bf_ctx_setup(void)
 {
-    _cleanup_bf_context_ struct bf_context *_context = NULL;
+    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    bf_assert(!_context);
+    bf_assert(!_ctx);
 
-    r = _bf_context_new(&_context);
+    r = _bf_ctx_new(&_ctx);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
-    _bf_global_context = TAKE_PTR(_context);
+    _bf_global_ctx = TAKE_PTR(_ctx);
 
     return 0;
 }
 
-void bf_context_teardown(bool clear)
+void bf_ctx_teardown(bool clear)
 {
     if (clear) {
         for (int i = 0; i < _BF_HOOK_MAX; ++i) {
             for (int j = 0; j < _BF_FRONT_MAX; ++j) {
-                if (!_bf_global_context->cgens[i][j])
+                if (!_bf_global_ctx->cgens[i][j])
                     continue;
 
-                bf_cgen_unload(_bf_global_context->cgens[i][j]);
+                bf_cgen_unload(_bf_global_ctx->cgens[i][j]);
             }
         }
     }
 
-    _bf_context_free(&_bf_global_context);
+    _bf_ctx_free(&_bf_global_ctx);
 }
 
-int bf_context_save(struct bf_marsh **marsh)
+int bf_ctx_save(struct bf_marsh **marsh)
 {
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(marsh);
 
-    r = _bf_context_marsh(_bf_global_context, &_marsh);
+    r = _bf_ctx_marsh(_bf_global_ctx, &_marsh);
     if (r)
         return bf_err_r(r, "failed to serialize context");
 
@@ -343,50 +339,50 @@ int bf_context_save(struct bf_marsh **marsh)
     return 0;
 }
 
-int bf_context_load(const struct bf_marsh *marsh)
+int bf_ctx_load(const struct bf_marsh *marsh)
 {
-    _cleanup_bf_context_ struct bf_context *context = NULL;
+    _cleanup_bf_ctx_ struct bf_ctx *ctx = NULL;
     int r;
 
     bf_assert(marsh);
 
-    r = _bf_context_new_from_marsh(&context, marsh);
+    r = _bf_ctx_new_from_marsh(&ctx, marsh);
     if (r)
         return bf_err_r(r, "failed to deserialize context");
 
-    _bf_global_context = TAKE_PTR(context);
+    _bf_global_ctx = TAKE_PTR(ctx);
 
     return 0;
 }
 
-void bf_context_dump(prefix_t *prefix)
+void bf_ctx_dump(prefix_t *prefix)
 {
-    _bf_context_dump(_bf_global_context, prefix);
+    _bf_ctx_dump(_bf_global_ctx, prefix);
 }
 
-struct bf_cgen *bf_context_get_cgen(enum bf_hook hook, enum bf_front front)
+struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook, enum bf_front front)
 {
-    return _bf_context_get_cgen(_bf_global_context, hook, front);
+    return _bf_ctx_get_cgen(_bf_global_ctx, hook, front);
 }
 
-struct bf_cgen *bf_context_take_cgen(enum bf_hook hook, enum bf_front front)
+struct bf_cgen *bf_ctx_take_cgen(enum bf_hook hook, enum bf_front front)
 {
-    return _bf_context_take_cgen(_bf_global_context, hook, front);
+    return _bf_ctx_take_cgen(_bf_global_ctx, hook, front);
 }
 
-void bf_context_delete_cgen(enum bf_hook hook, enum bf_front front)
+void bf_ctx_delete_cgen(enum bf_hook hook, enum bf_front front)
 {
-    _bf_context_delete_cgen(_bf_global_context, hook, front);
+    _bf_ctx_delete_cgen(_bf_global_ctx, hook, front);
 }
 
-int bf_context_set_cgen(enum bf_hook hook, enum bf_front front,
-                        struct bf_cgen *cgen)
+int bf_ctx_set_cgen(enum bf_hook hook, enum bf_front front,
+                    struct bf_cgen *cgen)
 {
-    return _bf_context_set_cgen(_bf_global_context, hook, front, cgen);
+    return _bf_ctx_set_cgen(_bf_global_ctx, hook, front, cgen);
 }
 
-void bf_context_replace_cgen(enum bf_hook hook, enum bf_front front,
-                             struct bf_cgen *cgen)
+void bf_ctx_replace_cgen(enum bf_hook hook, enum bf_front front,
+                         struct bf_cgen *cgen)
 {
-    _bf_context_replace_cgen(_bf_global_context, hook, front, cgen);
+    _bf_ctx_replace_cgen(_bf_global_ctx, hook, front, cgen);
 }

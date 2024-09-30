@@ -12,21 +12,22 @@
 #include "core/hook.h"
 
 /**
- * @file context.h
+ * @file ctx.h
  *
- * bpfilter runtime context. This file contains the definition of the
- * @ref bf_context structure, which is the main structure used to store the
- * daemon's runtime context.
+ * Global runtime context for @c bpfilter daemon.
  *
- * @ref bf_context can be serialized and deserialized, including all of its
+ * This file contains the definition of the @ref bf_ctx structure, which is 
+ * the main structure used to store the daemon's runtime context.
+ *
+ * @ref bf_ctx can be serialized and deserialized, including all of its
  * fields. This way, bpfilter can be restarted without unloading the BPF
  * programs and maps.
  *
  * Like every other bf_* structure, most bf_* functions should expect a valid
- * pointer to a @ref bf_context structure. This is not exactly how it works
- * for @ref bf_context : public functions defined in this header do not require
- * any @ref bf_context , but those are only wrappers around private functions
- * defined in context.c, which do expect a valid pointer to a @ref bf_context.
+ * pointer to a @ref bf_ctx structure. This is not exactly how it works
+ * for @ref bf_ctx : public functions defined in this header do not require
+ * any @ref bf_ctx , but those are only wrappers around private functions
+ * defined in @c ctx.c , which do expect a valid pointer to a @ref bf_ctx .
  * This is done to prevent the user from creating and manipulating multiple
  * contexts, while keeping the API consistent with the other bf_* structures.
  */
@@ -35,12 +36,12 @@ struct bf_cgen;
 struct bf_marsh;
 
 /**
- * @struct bf_context
+ * @struct bf_ctx
  *
  * bpfilter working context. Only one context is used during the daemon's
  * lifetime.
  */
-struct bf_context
+struct bf_ctx
 {
     /// Codegens used by bpfilter. One codegen per (hook, front) set.
     struct bf_cgen *cgens[_BF_HOOK_MAX][_BF_FRONT_MAX];
@@ -51,7 +52,7 @@ struct bf_context
  *
  * @return 0 on success, negative error code on failure.
  */
-int bf_context_setup(void);
+int bf_ctx_setup(void);
 
 /**
  * Teardown the global bpfilter context.
@@ -59,14 +60,14 @@ int bf_context_setup(void);
  * @param clear If true, all the BPF programs will be unloaded before clearing
  *        the context.
  */
-void bf_context_teardown(bool clear);
+void bf_ctx_teardown(bool clear);
 
 /**
  * Dump content of the context.
  *
  * @param prefix Prefix to use for the dump.
  */
-void bf_context_dump(prefix_t *prefix);
+void bf_ctx_dump(prefix_t *prefix);
 
 /**
  * Marshel the global bpfilter context.
@@ -74,7 +75,7 @@ void bf_context_dump(prefix_t *prefix);
  * @param marsh @ref bf_marsh structure to fill with the marshalled context.
  * @return 0 on success, negative error code on failure.
  */
-int bf_context_save(struct bf_marsh **marsh);
+int bf_ctx_save(struct bf_marsh **marsh);
 
 /**
  * Unmarshal the global bpfilter context.
@@ -85,7 +86,7 @@ int bf_context_save(struct bf_marsh **marsh);
  * @param marsh @ref bf_marsh structure containing the marshalled context.
  * @return 0 on success, negative error code on failure.
  */
-int bf_context_load(const struct bf_marsh *marsh);
+int bf_ctx_load(const struct bf_marsh *marsh);
 
 /**
  * Get codegen for a given (hook, front) set.
@@ -96,7 +97,7 @@ int bf_context_load(const struct bf_marsh *marsh);
  * @return The codegen for the given hook and front-end, or NULL if there is
  *         no such codegen.
  */
-struct bf_cgen *bf_context_get_cgen(enum bf_hook hook, enum bf_front front);
+struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Take a codegen out of the context for a given (hook, front) set.
@@ -109,7 +110,7 @@ struct bf_cgen *bf_context_get_cgen(enum bf_hook hook, enum bf_front front);
  * @return The codegen for the given hook and front-end, or NULL if there is no
  *         such codegen.
  */
-struct bf_cgen *bf_context_take_cgen(enum bf_hook hook, enum bf_front front);
+struct bf_cgen *bf_ctx_take_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Delete a codegen from the context for a given (hook, front) set.
@@ -120,7 +121,7 @@ struct bf_cgen *bf_context_take_cgen(enum bf_hook hook, enum bf_front front);
  * @param hook Hook to get the codegen from. Must be a valid hook.
  * @param front Front-end to get the codegen from. Must be a valid front-end.
  */
-void bf_context_delete_cgen(enum bf_hook hook, enum bf_front front);
+void bf_ctx_delete_cgen(enum bf_hook hook, enum bf_front front);
 
 /**
  * Add a codegen to the context.
@@ -131,8 +132,8 @@ void bf_context_delete_cgen(enum bf_hook hook, enum bf_front front);
  * @return 0 on success, negative error code on failure. If a codegen already
  *         exists for the given (hook, front) set, then -EEXIST is returned.
  */
-int bf_context_set_cgen(enum bf_hook hook, enum bf_front front,
-                        struct bf_cgen *cgen);
+int bf_ctx_set_cgen(enum bf_hook hook, enum bf_front front,
+                    struct bf_cgen *cgen);
 
 /**
  * Replace the codegen for a given (hook, front) set, if any.
@@ -145,5 +146,5 @@ int bf_context_set_cgen(enum bf_hook hook, enum bf_front front,
  * @param front Front-end to update the codegen for. Must be a valid
  * @param cgen Codegen to update the context with. Can't be NULL.
  */
-void bf_context_replace_cgen(enum bf_hook hook, enum bf_front front,
-                             struct bf_cgen *cgen);
+void bf_ctx_replace_cgen(enum bf_hook hook, enum bf_front front,
+                         struct bf_cgen *cgen);

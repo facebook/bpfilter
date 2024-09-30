@@ -96,7 +96,7 @@ set(bf_test_srcs
     src/bpfilter/cgen/program.c
     src/bpfilter/cgen/prog/map.c
     src/bpfilter/cgen/swich.c
-    src/bpfilter/context.c
+    src/bpfilter/ctx.c
     src/bpfilter/xlate/nft/nft.c
     src/bpfilter/xlate/nft/nfmsg.c
     src/bpfilter/xlate/nft/nfgroup.c

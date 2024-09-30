@@ -11,7 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
 #include "core/btf.h"
 #include "core/dump.h"
@@ -41,7 +41,7 @@ static volatile sig_atomic_t _bf_stop_received = 0;
  * This runtime context is read back when the daemon is restarted, so bpfilter
  * can manage the BPF programs that survived the daemon reboot.
  */
-static const char *context_path = BF_RUNTIME_DIR "/data.bin";
+static const char *ctx_path = BF_RUNTIME_DIR "/data.bin";
 
 /**
  * Set atomic flag to stop the daemon if specific signals are received.
@@ -122,7 +122,7 @@ static int _bf_load(const char *path)
 
     bf_assert(path);
 
-    if (access(context_path, F_OK)) {
+    if (access(ctx_path, F_OK)) {
         if (errno != ENOENT) {
             return bf_info_r(errno, "failed test access to context file: %s",
                              path);
@@ -153,7 +153,7 @@ static int _bf_load(const char *path)
                         "expecting a child in main marshalled context");
     }
 
-    r = bf_context_load(child);
+    r = bf_ctx_load(child);
     if (r < 0)
         return r;
 
@@ -200,7 +200,7 @@ static int _bf_save(const char *path)
     {
         _cleanup_free_ struct bf_marsh *child = NULL;
 
-        r = bf_context_save(&child);
+        r = bf_ctx_save(&child);
         if (r < 0)
             return r;
 
@@ -276,18 +276,18 @@ static int _bf_init(int argc, char *argv[])
 
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {
-        r = _bf_load(context_path);
+        r = _bf_load(ctx_path);
         if (r < 0)
             return bf_err_r(r, "failed to restore bpfilter context");
     }
 
     if (bf_opts_transient() || r == 0) {
-        r = bf_context_setup();
+        r = bf_ctx_setup();
         if (r < 0)
             return bf_err_r(r, "failed to setup context");
     }
 
-    bf_context_dump(EMPTY_PREFIX);
+    bf_ctx_dump(EMPTY_PREFIX);
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
         if (!bf_opts_is_front_enabled(front))
@@ -303,9 +303,9 @@ static int _bf_init(int argc, char *argv[])
     }
 
     if (!bf_opts_transient()) {
-        r = _bf_save(context_path);
+        r = _bf_save(ctx_path);
         if (r < 0) {
-            return bf_err_r(r, "failed to backup context at %s", context_path);
+            return bf_err_r(r, "failed to backup context at %s", ctx_path);
         }
     }
 
@@ -332,7 +332,7 @@ static int _bf_clean(void)
         }
     }
 
-    bf_context_teardown(bf_opts_transient());
+    bf_ctx_teardown(bf_opts_transient());
 
     return 0;
 }
@@ -382,7 +382,7 @@ static int _bf_process_request(struct bf_request *request,
     }
 
     if (!bf_opts_transient() && request->cmd == BF_REQ_SET_RULES)
-        r = _bf_save(context_path);
+        r = _bf_save(ctx_path);
 
     return r;
 }

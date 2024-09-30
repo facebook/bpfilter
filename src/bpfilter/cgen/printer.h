@@ -9,7 +9,7 @@
 
 #include <stddef.h>
 
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "core/dump.h"
 
 /**
