@@ -18,7 +18,7 @@
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
 #include "bpfilter/xlate/ipt/dump.h"
 #include "bpfilter/xlate/ipt/helpers.h"
@@ -477,7 +477,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
         if (!new_cgen)
             continue;
 
-        cur_cgen = bf_context_get_cgen(new_cgen->chain->hook, new_cgen->front);
+        cur_cgen = bf_ctx_get_cgen(new_cgen->chain->hook, new_cgen->front);
         if (cur_cgen) {
             r = bf_cgen_update(cur_cgen, &new_cgen->chain);
             if (r) {
@@ -493,7 +493,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
                 goto end_free_cgens;
             }
 
-            bf_context_replace_cgen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
+            bf_ctx_replace_cgen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
         }
     }
 
@@ -602,7 +602,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
         first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
         last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
-        cgen = bf_context_get_cgen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
+        cgen = bf_ctx_get_cgen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
 
         for (counter_idx = 0; first_rule <= last_rule;
              ++counter_idx, first_rule = ipt_get_next_rule(first_rule)) {

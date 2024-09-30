@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "bpfilter/cgen/cgen.h"
-#include "bpfilter/context.h"
+#include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
 #include "core/chain.h"
 #include "core/front.h"
@@ -56,7 +56,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
     if (r)
         return bf_err_r(r, "failed to create chain from marsh");
 
-    cgen = bf_context_get_cgen(chain->hook, BF_FRONT_CLI);
+    cgen = bf_ctx_get_cgen(chain->hook, BF_FRONT_CLI);
     if (!cgen) {
         r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
         if (r)
@@ -68,7 +68,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
             return bf_err_r(r, "failed to generate and load new program");
         }
 
-        r = bf_context_set_cgen(cgen->chain->hook, BF_FRONT_CLI, cgen);
+        r = bf_ctx_set_cgen(cgen->chain->hook, BF_FRONT_CLI, cgen);
         if (r < 0) {
             bf_cgen_free(&cgen);
             return bf_err_r(r, "failed to store codegen in runtime context");
