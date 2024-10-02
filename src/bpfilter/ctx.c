@@ -35,15 +35,11 @@ static void _bf_ctx_free(struct bf_ctx **ctx);
  */
 static int _bf_ctx_new(struct bf_ctx **ctx)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
-
     bf_assert(ctx);
 
-    _ctx = calloc(1, sizeof(struct bf_ctx));
-    if (!_ctx)
-        return bf_err_r(errno, "failed to allocate memory");
-
-    *ctx = TAKE_PTR(_ctx);
+    *ctx = calloc(1, sizeof(struct bf_ctx));
+    if (!*ctx)
+        return -ENOMEM;
 
     return 0;
 }
@@ -124,8 +120,7 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
             bf_cgen_free(&(*ctx)->cgens[i][j]);
     }
 
-    free(*ctx);
-    *ctx = NULL;
+    freep((void *)ctx);
 }
 
 /**
