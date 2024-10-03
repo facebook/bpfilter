@@ -122,15 +122,14 @@ int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
 
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
 {
-    bf_assert(set);
-    bf_assert(prefix);
+    bf_assert(set && prefix);
 
     DUMP(prefix, "struct bf_set at %p", set);
     bf_dump_prefix_push(prefix);
 
     DUMP(prefix, "type: %s", bf_set_type_to_str(set->type));
     DUMP(prefix, "elem_size: %lu", set->elem_size);
-    DUMP(bf_dump_prefix_last(prefix), "elems: bf_list<DATA>[%lu]",
+    DUMP(bf_dump_prefix_last(prefix), "elems: bf_list<bytes>[%lu]",
          bf_list_size(&set->elems));
 
     bf_dump_prefix_push(prefix);
@@ -138,7 +137,10 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
         if (bf_list_is_tail(&set->elems, elem_node))
             bf_dump_prefix_last(prefix);
 
+        DUMP(prefix, "void * @ %p", bf_list_node_get_data(elem_node));
+        bf_dump_prefix_push(prefix);
         bf_dump_hex(prefix, bf_list_node_get_data(elem_node), set->elem_size);
+        bf_dump_prefix_pop(prefix);
     }
     bf_dump_prefix_pop(prefix);
 
