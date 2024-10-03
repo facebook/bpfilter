@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "core/helper.h"
+#include "core/marsh.h"
 
 /**
  * Create a new list node, with the given data.
@@ -106,6 +107,35 @@ void bf_list_clean(bf_list *list)
     list->len = 0;
     list->head = NULL;
     list->tail = NULL;
+}
+
+int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh)
+{
+    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    int r;
+
+    bf_assert(list && marsh);
+    bf_assert(list->ops.marsh);
+
+    r = bf_marsh_new(&_marsh, NULL, 0);
+    if (r < 0)
+        return r;
+
+    bf_list_foreach (list, node) {
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = list->ops.marsh(bf_list_node_get_data(node), &child);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, child);
+        if (r < 0)
+            return r;
+    }
+
+    *marsh = TAKE_PTR(_marsh);
+
+    return 0;
 }
 
 int bf_list_add_head(bf_list *list, void *data)
