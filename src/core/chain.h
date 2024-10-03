@@ -15,6 +15,15 @@ struct bf_rule;
 
 #define _cleanup_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 
+/**
+ * Convenience macro to initialize a list of @ref bf_chain .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_chain objects.
+ */
+#define bf_chain_list()                                                        \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_chain_free,               \
+                        .marsh = (bf_list_ops_marsh)bf_chain_marsh}})
+
 struct bf_chain
 {
     enum bf_hook hook;

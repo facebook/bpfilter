@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
     struct argp argp = {
         options, (argp_parser_t)_bf_opts_parser, NULL, NULL, 0, NULL, NULL};
     struct bf_ruleset ruleset = {
-        .chains = bf_list_default({.free = (bf_list_ops_free)bf_chain_free}),
-        .sets = bf_list_default({.free = (bf_list_ops_free)bf_set_free}),
+        .chains = bf_chain_list(),
+        .sets = bf_set_list(),
     };
     int r;
 
