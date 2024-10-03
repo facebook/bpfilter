@@ -18,6 +18,15 @@ struct bf_marsh;
 #define _cleanup_bf_rule_ __attribute__((__cleanup__(bf_rule_free)))
 
 /**
+ * Convenience macro to initialize a list of @ref bf_rule .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_rule objects.
+ */
+#define bf_rule_list()                                                         \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_rule_free,                \
+                        .marsh = (bf_list_ops_marsh)bf_rule_marsh}})
+
+/**
  * @struct bf_rule
  *
  * Represents a rule to match against packets.
