@@ -242,8 +242,7 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
     bf_hook_opts_dump(&chain->hook_opts, prefix, chain->hook);
     DUMP(prefix, "policy: %s", bf_verdict_to_str(chain->policy));
 
-    DUMP(bf_dump_prefix_last(prefix), "sets: bf_list<bf_set>[%lu]",
-         bf_list_size(&chain->rules));
+    DUMP(prefix, "sets: bf_list<bf_set>[%lu]", bf_list_size(&chain->sets));
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&chain->sets, set_node) {
         struct bf_set *set = bf_list_node_get_data(set_node);
