@@ -24,7 +24,7 @@ struct bf_printer_msg
 {
     /// Offset of the message, in the concatenated messages string.
     size_t offset;
-    // Length of the message, including the nul termination character.
+    /// Length of the message, including the nul termination character.
     size_t len;
     /// Message.
     const char *str;
