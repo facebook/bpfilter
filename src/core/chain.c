@@ -36,12 +36,14 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
     _chain->policy = policy;
 
     bf_list_init(&_chain->sets,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_set_free}});
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_set_free,
+                                   .marsh = (bf_list_ops_marsh)bf_set_marsh}});
     if (sets)
         bf_swap(_chain->sets, *sets);
 
     bf_list_init(&_chain->rules,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_rule_free}});
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_rule_free,
+                                   .marsh = (bf_list_ops_marsh)bf_set_marsh}});
     if (rules) {
         bf_list_foreach (rules, rule_node) {
             r = bf_list_add_tail(&_chain->rules,
@@ -204,21 +206,9 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
         // Serialize bf_chain.sets
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-        r = bf_marsh_new(&child, NULL, 0);
+        r = bf_list_marsh(&chain->sets, &child);
         if (r < 0)
-            return bf_err_r(r, "failed to create marsh for bf_chain");
-
-        bf_list_foreach (&chain->sets, set_node) {
-            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-
-            r = bf_set_marsh(bf_list_node_get_data(set_node), &subchild);
-            if (r < 0)
-                return r;
-
-            r = bf_marsh_add_child_obj(&child, subchild);
-            if (r < 0)
-                return r;
-        }
+            return r;
 
         r = bf_marsh_add_child_obj(&_marsh, child);
         if (r < 0)
@@ -229,21 +219,9 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
         // Serialize bf_chain.rules
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-        r = bf_marsh_new(&child, NULL, 0);
+        r = bf_list_marsh(&chain->rules, &child);
         if (r < 0)
-            return bf_err_r(r, "failed to create marsh for bf_chain");
-
-        bf_list_foreach (&chain->rules, rule_node) {
-            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-
-            r = bf_rule_marsh(bf_list_node_get_data(rule_node), &subchild);
-            if (r < 0)
-                return r;
-
-            r = bf_marsh_add_child_obj(&child, subchild);
-            if (r < 0)
-                return r;
-        }
+            return r;
 
         r = bf_marsh_add_child_obj(&_marsh, child);
         if (r < 0)

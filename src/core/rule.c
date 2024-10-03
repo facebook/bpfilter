@@ -27,8 +27,10 @@ int bf_rule_new(struct bf_rule **rule)
     if (!_rule)
         return -ENOMEM;
 
-    bf_list_init(&_rule->matchers,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_matcher_free}});
+    bf_list_init(
+        &_rule->matchers,
+        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_matcher_free,
+                          .marsh = (bf_list_ops_marsh)bf_matcher_marsh}});
 
     *rule = _rule;
 
@@ -66,22 +68,10 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 
     {
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
-        r = bf_marsh_new(&child, NULL, 0);
-        if (r)
+
+        r = bf_list_marsh(&rule->matchers, &child);
+        if (r < 0)
             return r;
-
-        bf_list_foreach (&rule->matchers, matcher_node) {
-            _cleanup_bf_marsh_ struct bf_marsh *subchild = NULL;
-            struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-
-            r = bf_matcher_marsh(matcher, &subchild);
-            if (r)
-                return r;
-
-            r = bf_marsh_add_child_obj(&child, subchild);
-            if (r)
-                return r;
-        }
 
         r = bf_marsh_add_child_obj(&_marsh, child);
         if (r)
