@@ -126,13 +126,13 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     bf_assert(prefix);
 
     DUMP(prefix, "struct bf_set at %p", set);
-
     bf_dump_prefix_push(prefix);
+
     DUMP(prefix, "type: %s", bf_set_type_to_str(set->type));
     DUMP(prefix, "elem_size: %lu", set->elem_size);
-
     DUMP(bf_dump_prefix_last(prefix), "elems: bf_list<DATA>[%lu]",
          bf_list_size(&set->elems));
+
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&set->elems, elem_node) {
         if (bf_list_is_tail(&set->elems, elem_node))
@@ -142,7 +142,6 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     }
     bf_dump_prefix_pop(prefix);
 
-    bf_dump_prefix_pop(prefix);
     bf_dump_prefix_pop(prefix);
 }
 
