@@ -477,7 +477,8 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
         if (!new_cgen)
             continue;
 
-        cur_cgen = bf_ctx_get_cgen(new_cgen->chain->hook, new_cgen->front);
+        cur_cgen =
+            bf_ctx_get_cgen(new_cgen->chain->hook, &new_cgen->chain->hook_opts);
         if (cur_cgen) {
             r = bf_cgen_update(cur_cgen, &new_cgen->chain);
             if (r) {
@@ -493,7 +494,16 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
                 goto end_free_cgens;
             }
 
-            bf_ctx_replace_cgen(i, BF_FRONT_IPT, TAKE_PTR(new_cgen));
+            /** @todo This shouldn't be faillable: the complex part is to
+             * load and attach the codegen, we shouldn't be able to fail
+             * solely because we can't store the codegen! */
+            r = bf_ctx_set_cgen(new_cgen);
+            if (r < 0) {
+                bf_cgen_unload(new_cgen);
+                return r;
+            }
+
+            TAKE_PTR(cur_cgen);
         }
     }
 

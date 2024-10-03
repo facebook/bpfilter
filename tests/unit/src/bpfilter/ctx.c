@@ -10,28 +10,36 @@
 #include "harness/cmocka.h"
 #include "harness/mock.h"
 
-Test(ctx, new_assert_failure)
+Test(ctx, create_delete_assert)
 {
     expect_assert_failure(_bf_ctx_new(NULL));
+    expect_assert_failure(_bf_ctx_free(NULL));
 }
 
-Test(ctx, new)
+Test(ctx, create_delete)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *ctx = NULL;
+    // Rely on the cleanup attrubte
+    _cleanup_bf_ctx_ struct bf_ctx *ctx0 = NULL;
 
-    assert_return_code(_bf_ctx_new(&ctx), 0);
+    assert_success(_bf_ctx_new(&ctx0));
+    assert_non_null(ctx0);
 
-    _bf_ctx_free(&ctx);
-    assert_null(ctx);
-}
+    // Use the cleanup attribute, but free manually
+    _cleanup_bf_ctx_ struct bf_ctx *ctx1 = NULL;
 
-Test(ctx, new_malloc_fail)
-{
-    _cleanup_bf_ctx_ struct bf_ctx *ctx = NULL;
+    assert_success(_bf_ctx_new(&ctx1));
+    assert_non_null(ctx1);
 
-    will_return(__wrap_calloc, 0);
-    bf_mock_calloc_enable();
-    assert_true(_bf_ctx_new(&ctx) < 0);
-    bf_mock_calloc_disable();
-    assert_null(ctx);
+    _bf_ctx_free(&ctx1);
+    assert_null(ctx1);
+
+    // Free manually
+    struct bf_ctx *ctx2;
+
+    assert_success(_bf_ctx_new(&ctx2));
+    assert_non_null(ctx2);
+
+    _bf_ctx_free(&ctx2);
+    assert_null(ctx2);
+    _bf_ctx_free(&ctx2);
 }

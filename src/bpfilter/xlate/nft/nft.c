@@ -261,11 +261,11 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
             be32toh(bf_nfattr_get_u32(chain_attrs[NFTA_CHAIN_POLICY])));
     };
 
-    r = bf_chain_new(&chain, BF_HOOK_XDP, verdict, NULL, NULL);
+    r = bf_chain_new(&chain, BF_HOOK_NF_LOCAL_IN, verdict, NULL, NULL);
     if (r < 0)
         return bf_err_r(r, "failed to create new chain");
 
-    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_ctx_get_cgen(BF_HOOK_NF_LOCAL_IN, NULL);
     if (cgen && verdict != cgen->chain->policy) {
         r = bf_cgen_update(cgen, &chain);
         if (r < 0)
@@ -281,7 +281,12 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         if (r < 0)
             return bf_err_r(r, "failed to generate codegen");
 
-        bf_ctx_replace_cgen(BF_HOOK_XDP, BF_FRONT_NFT, cgen);
+        r = bf_ctx_set_cgen(cgen);
+        if (r < 0) {
+            bf_cgen_unload(cgen);
+            return r;
+        }
+
         bf_info("new codegen created and loaded");
     } else {
         bf_info("codegen already properly configured, skipping generation");
@@ -303,8 +308,8 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
     uint32_t policy;
     int r;
 
-    // Only BF_HOOK_XDP is supported.
-    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    // Only BF_HOOK_NF_LOCAL_IN is supported.
+    cgen = bf_ctx_get_cgen(BF_HOOK_NF_LOCAL_IN, NULL);
     if (!cgen) {
         /* If no codegen is found, do not fill the messages group and return
          * success. The response message will then contain only a DONE
@@ -333,7 +338,7 @@ static int _bf_nft_getchain_cb(const struct bf_nfmsg *req,
 
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TABLE, _bf_table_name);
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_NAME, _bf_chain_name);
-    bf_nfmsg_push_u64_or_jmp(msg, NFTA_CHAIN_HANDLE, BF_HOOK_XDP);
+    bf_nfmsg_push_u64_or_jmp(msg, NFTA_CHAIN_HANDLE, BF_HOOK_NF_LOCAL_IN);
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_POLICY, htobe32(policy));
     bf_nfmsg_push_str_or_jmp(msg, NFTA_CHAIN_TYPE, "filter");
     bf_nfmsg_push_u32_or_jmp(msg, NFTA_CHAIN_FLAGS, NFT_CHAIN_BASE);
@@ -512,7 +517,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     }
 
     // Add the rule to the relevant codegen
-    cgen = bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT);
+    cgen = bf_ctx_get_cgen(BF_HOOK_NF_LOCAL_IN, NULL);
     if (!cgen)
         return bf_err_r(-EINVAL, "no codegen found for hook");
 
@@ -636,7 +641,7 @@ static int _bf_nft_getrule_cb(const struct bf_nfmsg *req,
                     struct bf_counter counter;
 
                     r = bf_cgen_get_counter(
-                        bf_ctx_get_cgen(BF_HOOK_XDP, BF_FRONT_NFT), i,
+                        bf_ctx_get_cgen(BF_HOOK_NF_LOCAL_IN, NULL), i,
                         &counter);
                     if (r < 0)
                         return bf_err_r(r, "failed to get counter");

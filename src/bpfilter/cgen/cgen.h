@@ -18,6 +18,15 @@ struct bf_program;
 #define _cleanup_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
 /**
+ * Convenience macro to initialize a list of @ref bf_cgen .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_cgen objects.
+ */
+#define bf_cgen_list()                                                         \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_cgen_free,                \
+                        .marsh = (bf_list_ops_marsh)bf_cgen_marsh}})
+
+/**
  * @struct bf_cgen
  *
  * A codegen is a BPF bytecode generation context used to create a BPF program
