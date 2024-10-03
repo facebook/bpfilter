@@ -16,6 +16,15 @@
 #include "core/marsh.h"
 
 /**
+ * Convenience macro to initialize a list of @ref bf_printer_msg .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_printer_msg objects.
+ */
+#define bf_printer_msg_list()                                                  \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)_bf_printer_msg_free,        \
+                        .marsh = (bf_list_ops_marsh)_bf_printer_msg_marsh}})
+
+/**
  * @struct bf_printer_msg
  *
  * Represents a message to be printed by a generated BPF program.
@@ -202,9 +211,7 @@ int bf_printer_new(struct bf_printer **printer)
     if (!_printer)
         return -ENOMEM;
 
-    bf_list_init(
-        &_printer->msgs,
-        (bf_list_ops[]) {{.free = (bf_list_ops_free)_bf_printer_msg_free}});
+    _printer->msgs = bf_printer_msg_list();
 
     *printer = TAKE_PTR(_printer);
 
@@ -259,32 +266,9 @@ void bf_printer_free(struct bf_printer **printer)
 
 int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(printer && marsh);
 
-    bf_assert(printer);
-    bf_assert(marsh);
-
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return r;
-
-    bf_list_foreach (&printer->msgs, msg_node) {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
-        struct bf_printer_msg *msg = bf_list_node_get_data(msg_node);
-
-        r = _bf_printer_msg_marsh(msg, &child);
-        if (r)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
-            return r;
-    }
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_list_marsh(&printer->msgs, marsh);
 }
 
 void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
