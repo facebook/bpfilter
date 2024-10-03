@@ -53,7 +53,9 @@ struct bf_marsh;
  * @return An initialized @ref bf_list that can contain @ref bf_map object,
  *         with its @ref bf_list_ops properly configured.
  */
-#define bf_map_list() bf_list_default({.free = (bf_list_ops_free)bf_map_free})
+#define bf_map_list()                                                          \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_map_free,                 \
+                        .marsh = (bf_list_ops_marsh)bf_map_marsh}})
 
 /**
  * Allocates and initializes a new BPF map object.

@@ -196,25 +196,9 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
         // Serialize bf_program.sets
         _cleanup_bf_marsh_ struct bf_marsh *sets_elem = NULL;
 
-        r = bf_marsh_new(&sets_elem, NULL, 0);
+        r = bf_list_marsh(&program->sets, &sets_elem);
         if (r < 0)
-            return bf_err_r(r, "failed to create marsh for bf_program.sets");
-
-        bf_list_foreach (&program->sets, map_node) {
-            struct bf_map *map = bf_list_node_get_data(map_node);
-            _cleanup_bf_marsh_ struct bf_marsh *map_elem = NULL;
-
-            r = bf_map_marsh(map, &map_elem);
-            if (r < 0)
-                return r;
-
-            r = bf_marsh_add_child_obj(&sets_elem, map_elem);
-            if (r < 0) {
-                return bf_err_r(
-                    r,
-                    "failed to insert serialized set into bf_program.sets serialized data");
-            }
-        }
+            return r;
 
         r = bf_marsh_add_child_obj(&_marsh, sets_elem);
         if (r < 0) {
