@@ -10,11 +10,14 @@
 
 #include "core/helper.h"
 
+struct bf_marsh;
+
 /* This has to be defined here, otherwise struct bf_list_node definition is
  * self-referencing... */
 typedef struct bf_list_node bf_list_node;
 
 typedef void (*bf_list_ops_free)(void **data);
+typedef int (*bf_list_ops_marsh)(const void *data, struct bf_marsh **marsh);
 
 /**
  * @struct bf_list_ops
@@ -26,6 +29,9 @@ typedef void (*bf_list_ops_free)(void **data);
 typedef struct
 {
     bf_list_ops_free free;
+
+    /// Callback to serialize the data from a node.
+    bf_list_ops_marsh marsh;
 } bf_list_ops;
 
 /**
@@ -150,6 +156,21 @@ void bf_list_init(bf_list *list, const bf_list_ops *ops);
  * @param list Pointer to the initialised list to clean. Must be non-NULL.
  */
 void bf_list_clean(bf_list *list);
+
+/**
+ * Serialize a list.
+ *
+ * Allocate @c marsh and call @c list.ops.marsh for every node in the list. The
+ * serialized node data is added to @c marsh .
+ *
+ * @c list.ops.marsh must be a pointer to a valid serializing function.
+ *
+ * @param list List to serialize. Can't be NULL.
+ * @param marsh Serialized object. On success, @c *marsh points to the
+ *        serialized list. On error, @c marsh is unchanged. Can't be NULL.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh);
 
 /**
  * Get the number of nodes in the list.

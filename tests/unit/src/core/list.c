@@ -19,10 +19,16 @@ static void dummy_free(void **data)
     *data = NULL;
 }
 
+static int dummy_marsh(const void *data, struct bf_marsh **marsh)
+{
+    assert_success(bf_marsh_new(marsh, data, sizeof(int)));
+    return 0;
+}
+
 static int _dummy_filler(bf_list *l, void *data,
                          int (*add)(bf_list *l, void *data))
 {
-    _cleanup_free_ int *_data;
+    _cleanup_free_ int *_data = NULL;
     int r;
 
     _data = malloc(sizeof(*_data));
@@ -73,7 +79,7 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
 }
 
 static bf_list_ops noop_ops = {.free = noop_free};
-static bf_list_ops dummy_ops = {.free = dummy_free};
+static bf_list_ops dummy_ops = {.free = dummy_free, .marsh = dummy_marsh};
 
 Test(list, new_and_free)
 {
@@ -176,6 +182,46 @@ Test(list, init_and_clean)
         assert_null(l.head);
         assert_null(l.tail);
     }
+}
+
+Test(list, serialize_deserialize_assert)
+{
+    bf_list list = {};
+
+    expect_assert_failure(bf_list_marsh(&list, NOT_NULL));
+    expect_assert_failure(bf_list_marsh(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_marsh(NOT_NULL, NULL));
+}
+
+Test(list, serialize_deserialize)
+{
+    // bf_list_marsh() will be tested with actual data by the various
+    // xxx_marsh() functions.
+
+    _cleanup_bf_list_ bf_list *l0 = NULL;
+    _cleanup_bf_list_ bf_list *l1 = NULL;
+    _cleanup_bf_marsh_ struct bf_marsh *m0 = NULL;
+    _cleanup_bf_marsh_ struct bf_marsh *m1 = NULL;
+    struct bf_marsh *child = NULL;
+
+    // Empty list: marsh allocated but no child
+    new_and_fill(&l0, 0, &dummy_ops, dummy_filler_head);
+    assert_success(bf_list_marsh(l0, &m0));
+    assert_null(bf_marsh_next_child(m0, NULL));
+
+    // Non-empty list: marsh contains childs, which contain integers
+    new_and_fill(&l1, 10, &dummy_ops, dummy_filler_tail);
+    assert_success(bf_list_marsh(l1, &m1));
+    
+    for (int i = 1; i < 11; ++i) {
+        child = bf_marsh_next_child(m1, child);
+        assert_non_null(child);
+
+        assert_int_equal(child->data_len, sizeof(int));
+        assert_int_equal(i, *(int *)child->data);
+    }
+
+    assert_null(bf_marsh_next_child(m1, child));
 }
 
 Test(list, fill_from_head_and_check)
