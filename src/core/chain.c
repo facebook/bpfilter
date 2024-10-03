@@ -35,15 +35,11 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
     _chain->hook_opts = (struct bf_hook_opts) {};
     _chain->policy = policy;
 
-    bf_list_init(&_chain->sets,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_set_free,
-                                   .marsh = (bf_list_ops_marsh)bf_set_marsh}});
+    _chain->sets = bf_set_list();
     if (sets)
         bf_swap(_chain->sets, *sets);
 
-    bf_list_init(&_chain->rules,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_rule_free,
-                                   .marsh = (bf_list_ops_marsh)bf_set_marsh}});
+    _chain->rules = bf_rule_list();
     if (rules) {
         bf_list_foreach (rules, rule_node) {
             r = bf_list_add_tail(&_chain->rules,

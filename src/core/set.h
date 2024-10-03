@@ -35,6 +35,15 @@ struct bf_marsh;
 #define _cleanup_bf_set_ __attribute__((__cleanup__(bf_set_free)))
 
 /**
+ * Convenience macro to initialize a list of @ref bf_set .
+ *
+ * @return An initialized @ref bf_list that can contain @ref bf_set objects.
+ */
+#define bf_set_list()                                                          \
+    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_set_free,                 \
+                        .marsh = (bf_list_ops_marsh)bf_set_marsh}})
+
+/**
  * Supported set types.
  *
  * The set's type define the size of the elements in the set, as well as how
