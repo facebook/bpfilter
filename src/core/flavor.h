@@ -35,6 +35,14 @@ enum bf_flavor
     BF_FLAVOR_TC,
     BF_FLAVOR_NF,
     BF_FLAVOR_XDP,
+
+    /** cgroup BPF programs are a middle ground between TC and BPF_NETFILTER
+     * programs:
+     * - Input: <tt>struct __sk_buff</tt>
+     * - Headers available: from L3
+     * - Return code: 0 to drop, 1 to accept
+     */
+    BF_FLAVOR_CGROUP,
     _BF_FLAVOR_MAX,
 };
 

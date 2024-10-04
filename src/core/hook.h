@@ -27,6 +27,8 @@ enum bf_hook
     BF_HOOK_NF_PRE_ROUTING,
     BF_HOOK_NF_LOCAL_IN,
     BF_HOOK_NF_FORWARD,
+    BF_HOOK_CGROUP_INGRESS,
+    BF_HOOK_CGROUP_EGRESS,
     BF_HOOK_NF_LOCAL_OUT,
     BF_HOOK_NF_POST_ROUTING,
     BF_HOOK_TC_EGRESS,
@@ -36,6 +38,7 @@ enum bf_hook
 enum bf_hook_opt
 {
     BF_HOOK_OPT_IFINDEX,
+    BF_HOOK_OPT_CGROUP,
     _BF_HOOK_OPT_MAX,
 };
 
@@ -45,6 +48,7 @@ struct bf_hook_opts
 
     // Options
     uint32_t ifindex;
+    const char *cgroup;
 };
 
 /**
@@ -100,6 +104,13 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook);
  */
 int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
                       bf_list *raw_opts);
+
+/**
+ * Clean up a hook options structure.
+ *
+ * @param opts Hook options structure to clean up. Can't be NULL.
+ */
+void bf_hook_opts_clean(struct bf_hook_opts *opts);
 
 void bf_hook_opts_dump(const struct bf_hook_opts *opts, prefix_t *prefix,
                        enum bf_hook hook);

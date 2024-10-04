@@ -24,6 +24,8 @@ static const char *_bf_hook_strs[] = {
     [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
     [BF_HOOK_NF_PRE_ROUTING] = "BF_HOOK_NF_PRE_ROUTING",
     [BF_HOOK_NF_LOCAL_IN] = "BF_HOOK_NF_LOCAL_IN",
+    [BF_HOOK_CGROUP_INGRESS] = "BF_HOOK_CGROUP_INGRESS",
+    [BF_HOOK_CGROUP_EGRESS] = "BF_HOOK_CGROUP_EGRESS",
     [BF_HOOK_NF_FORWARD] = "BF_HOOK_NF_FORWARD",
     [BF_HOOK_NF_LOCAL_OUT] = "BF_HOOK_NF_LOCAL_OUT",
     [BF_HOOK_NF_POST_ROUTING] = "BF_HOOK_NF_POST_ROUTING",
@@ -62,6 +64,8 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
         [BF_HOOK_TC_INGRESS] = BPF_PROG_TYPE_SCHED_CLS,
         [BF_HOOK_NF_PRE_ROUTING] = BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_NF_LOCAL_IN] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_CGROUP_INGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
+        [BF_HOOK_CGROUP_EGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
         [BF_HOOK_NF_FORWARD] = BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_NF_LOCAL_OUT] = BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_NF_POST_ROUTING] = BPF_PROG_TYPE_NETFILTER,
@@ -82,6 +86,8 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
         [BF_HOOK_TC_INGRESS] = BF_FLAVOR_TC,
         [BF_HOOK_NF_PRE_ROUTING] = BF_FLAVOR_NF,
         [BF_HOOK_NF_LOCAL_IN] = BF_FLAVOR_NF,
+        [BF_HOOK_CGROUP_INGRESS] = BF_FLAVOR_CGROUP,
+        [BF_HOOK_CGROUP_EGRESS] = BF_FLAVOR_CGROUP,
         [BF_HOOK_NF_FORWARD] = BF_FLAVOR_NF,
         [BF_HOOK_NF_LOCAL_OUT] = BF_FLAVOR_NF,
         [BF_HOOK_NF_POST_ROUTING] = BF_FLAVOR_NF,
@@ -102,6 +108,8 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
         [BF_HOOK_TC_INGRESS] = BPF_TCX_INGRESS,
         [BF_HOOK_NF_PRE_ROUTING] = 0,
         [BF_HOOK_NF_LOCAL_IN] = BPF_NETFILTER,
+        [BF_HOOK_CGROUP_INGRESS] = BPF_CGROUP_INET_INGRESS,
+        [BF_HOOK_CGROUP_EGRESS] = BPF_CGROUP_INET_EGRESS,
         [BF_HOOK_NF_FORWARD] = BPF_NETFILTER,
         [BF_HOOK_NF_LOCAL_OUT] = BPF_NETFILTER,
         [BF_HOOK_NF_POST_ROUTING] = 0,
@@ -141,6 +149,22 @@ static void _bf_hook_opt_ifindex_dump(const struct bf_hook_opts *opts,
     DUMP(prefix, "ifindex: %d", opts->ifindex);
 }
 
+static int _bf_hook_opt_cgroup_parse(struct bf_hook_opts *opts,
+                                     const char *raw_opt)
+{
+    opts->cgroup = strdup(raw_opt);
+    if (!opts->cgroup)
+        return bf_err_r(-ENOMEM, "failed to copy cgroup path '%s'", raw_opt);
+
+    return 0;
+}
+
+static void _bf_hook_opt_cgroup_dump(const struct bf_hook_opts *opts,
+                                     prefix_t *prefix)
+{
+    DUMP(prefix, "cgroup: %s", opts->cgroup);
+}
+
 static struct bf_hook_opt_support
 {
     uint32_t required;
@@ -158,6 +182,10 @@ static struct bf_hook_opt_support
         },
     [BF_HOOK_NF_PRE_ROUTING] = {},
     [BF_HOOK_NF_LOCAL_IN] = {},
+    [BF_HOOK_CGROUP_INGRESS] = {.required = 1 << BF_HOOK_OPT_CGROUP,
+                                .supported = 1 << BF_HOOK_OPT_CGROUP},
+    [BF_HOOK_CGROUP_EGRESS] = {.required = 1 << BF_HOOK_OPT_CGROUP,
+                               .supported = 1 << BF_HOOK_OPT_CGROUP},
     [BF_HOOK_NF_FORWARD] = {},
     [BF_HOOK_NF_LOCAL_OUT] = {},
     [BF_HOOK_NF_POST_ROUTING] = {},
@@ -183,6 +211,12 @@ static struct bf_hook_opt_ops
         .opt = BF_HOOK_OPT_IFINDEX,
         .parse = _bf_hook_opt_ifindex_parse,
         .dump = _bf_hook_opt_ifindex_dump,
+    },
+    {
+        .name = "cgroup",
+        .opt = BF_HOOK_OPT_CGROUP,
+        .parse = _bf_hook_opt_cgroup_parse,
+        .dump = _bf_hook_opt_cgroup_dump,
     },
 };
 
@@ -269,6 +303,11 @@ int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
     }
 
     return 0;
+}
+
+void bf_hook_opts_clean(struct bf_hook_opts *opts)
+{
+    freep((void *)&opts->cgroup);
 }
 
 void bf_hook_opts_dump(const struct bf_hook_opts *opts, prefix_t *prefix,
