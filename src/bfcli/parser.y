@@ -203,7 +203,8 @@ raw_hook_opts   : raw_hook_opts HOOK_OPT
                 }
                 ;
 
-rules           : rule
+rules           : %empty { $$ = NULL; }
+                | rule
                 {
                     _cleanup_bf_list_ bf_list *list = NULL;
 
