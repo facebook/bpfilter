@@ -144,7 +144,6 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
-    _cleanup_bf_swich_ struct bf_swich swich;
     int r;
 
     bf_assert(program);
