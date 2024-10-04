@@ -138,3 +138,58 @@ chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
         udp.dport 22
         counter
         ACCEPT
+
+# Create a cgroup chain
+chain BF_HOOK_CGROUP_INGRESS{cgroup=/sys/fs/cgroup/user.slice} policy ACCEPT
+    rule
+        meta.ifindex 1
+        counter
+        ACCEPT
+    rule
+        ip4.saddr in {192.168.1.131,192.168.1.132}
+        counter
+        ACCEPT
+    rule
+        ip6.saddr fc00::fbaf:7b6b:ba41:abce
+        counter
+        ACCEPT
+    rule
+        meta.l3_proto ipv6
+        counter
+        ACCEPT
+    rule
+        meta.l4_proto tcp
+        counter
+        ACCEPT
+    rule
+        ip4.saddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.daddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.proto icmp
+        counter
+        ACCEPT
+    rule
+        tcp.sport 22
+        counter
+        ACCEPT
+    rule
+        tcp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.flags any SYN,ACK
+        counter
+        ACCEPT
+    rule
+        udp.sport 22
+        counter
+        ACCEPT
+    rule
+        udp.dport 22
+        counter
+        ACCEPT
