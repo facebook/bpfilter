@@ -131,6 +131,12 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
             BPF_MOV64_IMM(BF_REG_1, 0),
             BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
                         BF_PROG_CTX_OFF(l3_offset)));
+        EMIT_SWICH_OPTION(
+            &swich, AF_INET6, BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IPV6)),
+            BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)),
+            BPF_MOV64_IMM(BF_REG_1, 0),
+            BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
+                        BF_PROG_CTX_OFF(l3_offset)));
         EMIT_SWICH_DEFAULT(
             &swich,
             BPF_MOV64_IMM(BF_REG_RET,
