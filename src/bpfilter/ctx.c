@@ -83,12 +83,27 @@ static struct bf_cgen *_bf_ctx_get_nf_cgen(const bf_list *list,
     return node ? bf_list_node_get_data(node->data) : NULL;
 }
 
-static struct bf_cgen *(*_bf_cgen_getters[_BF_HOOK_MAX])(
+static struct bf_cgen *_bf_ctx_get_cgroup_cgen(const bf_list *list,
+                                               const struct bf_hook_opts *opts)
+{
+    bf_list_foreach (list, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+
+        if (bf_streq(cgen->chain->hook_opts.cgroup, opts->cgroup))
+            return cgen;
+    }
+
+    return NULL;
+}
+
+static struct bf_cgen *(*_bf_cgen_getters[])(
     const bf_list *list, const struct bf_hook_opts *opts) = {
     [BF_HOOK_XDP] = _bf_ctx_get_xdp_cgen,
     [BF_HOOK_TC_INGRESS] = _bf_ctx_get_xdp_cgen,
     [BF_HOOK_NF_PRE_ROUTING] = _bf_ctx_get_nf_cgen,
     [BF_HOOK_NF_LOCAL_IN] = _bf_ctx_get_nf_cgen,
+    [BF_HOOK_CGROUP_INGRESS] = _bf_ctx_get_cgroup_cgen,
+    [BF_HOOK_CGROUP_EGRESS] = _bf_ctx_get_cgroup_cgen,
     [BF_HOOK_NF_FORWARD] = _bf_ctx_get_nf_cgen,
     [BF_HOOK_NF_LOCAL_OUT] = _bf_ctx_get_nf_cgen,
     [BF_HOOK_NF_POST_ROUTING] = _bf_ctx_get_nf_cgen,

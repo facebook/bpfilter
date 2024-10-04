@@ -17,6 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "bpfilter/cgen/cgroup.h"
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/matcher/ip4.h"
@@ -61,6 +62,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_TC] = &bf_flavor_ops_tc,
         [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
         [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
+        [BF_FLAVOR_CGROUP] = &bf_flavor_ops_cgroup,
     };
 
     bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);

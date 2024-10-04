@@ -49,6 +49,8 @@ With:
     - ``BF_HOOK_TC_INGRESS``: ingress TC hook.
     - ``BF_HOOK_NF_PRE_ROUTING``: similar to ``nftables`` and ``iptables`` prerouting hook.
     - ``BF_HOOK_NF_LOCAL_IN``: similar to ``nftables`` and ``iptables`` input hook.
+    - ``BF_HOOK_CGROUP_INGRESS``: ingress cgroup hook.
+    - ``BF_HOOK_CGROUP_EGRESS``: egress cgroup hook.
     - ``BF_HOOK_NF_FORWARD``: similar to ``nftables`` and ``iptables`` forward hook.
     - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
@@ -69,6 +71,9 @@ With:
    * - ``ifindex=$IFINDEX``
      - ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``
      - Interface index to attach the program to.
+   * - ``cgroup=$CGROUP_PATH``
+     - ``BF_HOOK_CGROUP_INGRESS``, ``BF_HOOK_CGROUP_EGRESS``
+     - Path to the cgroup to attach to.
 
 
 Rules
