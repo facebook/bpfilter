@@ -220,6 +220,27 @@ int bf_bpf_xdp_link_create(int prog_fd, unsigned int ifindex, int *link_fd,
     return 0;
 }
 
+int bf_bpf_cgroup_link_create(int prog_fd, int cgroup_fd,
+                              enum bpf_attach_type type, int *link_fd)
+{
+    union bpf_attr attr = {};
+    int r;
+
+    bf_assert(link_fd);
+
+    attr.link_create.prog_fd = prog_fd;
+    attr.link_create.target_fd = cgroup_fd;
+    attr.link_create.attach_type = type;
+
+    r = bf_bpf(BPF_LINK_CREATE, &attr);
+    if (r < 0)
+        return r;
+
+    *link_fd = r;
+
+    return 0;
+}
+
 int bf_bpf_xdp_link_update(int link_fd, int prog_fd)
 {
     union bpf_attr attr = {};

@@ -143,6 +143,20 @@ int bf_bpf_xdp_link_create(int prog_fd, unsigned int ifindex, int *link_fd,
                            enum bf_xdp_attach_mode mode);
 
 /**
+ * Create a cgroup skb link.
+ *
+ * @param prog_fd File descriptor of the program to attach to the link.
+ * @param cgroup_fd File descriptor of the cgroup to attach the program to.
+ * @param type Hook type, defines if the program is attached to the ingress or
+ *        egress path.
+ * @param link_fd Link file descriptor, only valid if the return value of the
+ *        function is 0.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_bpf_cgroup_link_create(int prog_fd, int cgroup_fd,
+                              enum bpf_attach_type type, int *link_fd);
+
+/**
  * Update the program attached to an XDP BPF link.
  *
  * The type, interface, or XDP mode of the link are left unchanged.
