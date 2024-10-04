@@ -50,3 +50,4 @@ endfunction()
 
 bf_test_make_bpf_example(xdp_printk)
 bf_test_make_bpf_example(xdp_ipfilter)
+bf_test_make_bpf_example(cgroup_skb_ingress)
