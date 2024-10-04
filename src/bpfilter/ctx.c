@@ -110,6 +110,9 @@ static struct bf_cgen *(*_bf_cgen_getters[])(
     [BF_HOOK_TC_EGRESS] = _bf_ctx_get_xdp_cgen,
 };
 
+static_assert(ARRAY_SIZE(_bf_cgen_getters) == _BF_HOOK_MAX,
+              "missing entries in _bf_cgen_getters array");
+
 /**
  * Create and initialize a new context.
  *
