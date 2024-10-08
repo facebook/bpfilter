@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "core/opts.h"
-
 #define BF_DUMP_HEXDUMP_LEN 8
 #define BF_DUMP_TOKEN_LEN 5
 
@@ -64,11 +62,6 @@ void bf_dump_hex(prefix_t *prefix, const void *data, size_t len)
     // 5 characters per byte (0x%02x) + 1 for the null terminator.
     char buf[BF_DUMP_HEXDUMP_LEN * BF_DUMP_TOKEN_LEN + 1];
     const void *end = data + len;
-
-    /* DUMP() won't print anything if we're not verbose, so we might as well
-     * skip the dump generation too. */
-    if (!bf_opts_verbose())
-        return;
 
     while (data < end) {
         char *line = buf;
