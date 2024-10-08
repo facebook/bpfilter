@@ -54,9 +54,7 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     };
     int r;
 
-    bf_assert(name);
-    bf_assert(img);
-    bf_assert(fd);
+    bf_assert(name && img && fd);
 
     if (bf_opts_verbose()) {
         log_buf = malloc(1 << bf_opts_bpf_log_buf_len_pow());
