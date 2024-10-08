@@ -80,7 +80,7 @@ static struct bf_cgen *_bf_ctx_get_nf_cgen(const bf_list *list,
     bf_assert(list);
 
     node = bf_list_get_head(list);
-    return node ? bf_list_node_get_data(node->data) : NULL;
+    return node ? bf_list_node_get_data(node) : NULL;
 }
 
 static struct bf_cgen *_bf_ctx_get_cgroup_cgen(const bf_list *list,
