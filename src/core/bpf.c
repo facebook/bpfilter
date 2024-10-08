@@ -58,7 +58,7 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     bf_assert(img);
     bf_assert(fd);
 
-    if (bf_opts_verbose()) {
+    if (bf_opts_is_verbose(BF_VERBOSE_BPF)) {
         log_buf = malloc(1 << bf_opts_bpf_log_buf_len_pow());
         if (!log_buf)
             return -ENOMEM;

@@ -619,7 +619,7 @@ static int _bf_program_generate_update_counters(struct bf_program *program)
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_0, 0, 0));
 
-        if (bf_opts_debug())
+        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to fetch the rule's counters");
 
         EMIT(program, BPF_MOV32_IMM(BF_REG_0, 1));

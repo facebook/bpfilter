@@ -67,7 +67,7 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program,
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 0));
 
-        if (bf_opts_debug())
+        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create a new dynamic pointer");
 
         EMIT(program,
@@ -117,7 +117,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
-        if (bf_opts_debug())
+        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
 
         EMIT(program,
@@ -188,7 +188,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
-        if (bf_opts_debug())
+        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
 
         EMIT(program,
@@ -283,7 +283,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
 
-        if (bf_opts_debug())
+        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
 
         EMIT(program,
