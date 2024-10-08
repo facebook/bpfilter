@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -23,6 +24,28 @@ enum
     BF_OPT_NO_CLI_KEY,
     BF_OPT_DEBUG_KEY,
 };
+
+static const char *_bf_verbose_strs[] = {
+    [BF_VERBOSE_DEBUG] = "debug",
+    [BF_VERBOSE_BPF] = "bpf",
+};
+
+static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
+              "missing entries in _bf_verbose_strs array");
+
+int bf_verbose_to_str(const char *str, enum bf_verbose *opt)
+{
+    bf_assert(str && opt);
+
+    for (size_t i = 0; i < _BF_VERBOSE_MAX; ++i) {
+        if (bf_streq(_bf_verbose_strs[i], str)) {
+            *opt = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
 
 /**
  * bpfilter runtime configuration
@@ -41,19 +64,15 @@ static struct bf_options
     /** Bit flags for enabled fronts. */
     uint16_t fronts;
 
-    /** If true, print debug log messages (bf_debug). */
-    bool verbose;
-
-    /** If true, the BPF programs including log messages to be printed when
-     * a BPF helper or kfunc fails.
-     */
-    bool debug;
+    /** Verbose flags. Supported flags are:
+     * - @c debug Print all the debug logs.
+     * - @c bpf Add debug log messages in the generated BPF programs. */
+    uint16_t verbose;
 } _bf_opts = {
     .transient = false,
     .bpf_log_buf_len_pow = 16,
     .fronts = 0xffff,
-    .verbose = false,
-    .debug = false,
+    .verbose = 0,
 };
 
 static struct argp_option options[] = {
@@ -68,9 +87,8 @@ static struct argp_option options[] = {
     {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0, "Disable nftables support",
      0},
     {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
-    {"verbose", 'v', 0, 0, "Print debug logs", 0},
-    {"debug", BF_OPT_DEBUG_KEY, 0, 0, "Generate BPF programs with debug logs",
-     0},
+    {"verbose", 'v', "VERBOSE_FLAG", 0,
+     "Verbose flags to enable. Can be used more than once.", 0},
     {0},
 };
 
@@ -84,8 +102,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     UNUSED(arg);
 
     struct bf_options *args = state->input;
+    enum bf_verbose opt;
     long pow;
     char *end;
+    int r;
 
     switch (key) {
     case 't':
@@ -119,11 +139,11 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         args->fronts &= ~(1 << BF_FRONT_CLI);
         break;
     case 'v':
-        args->verbose = true;
-        break;
-    case BF_OPT_DEBUG_KEY:
-        bf_info("generating BPF programs with debug logs");
-        args->debug = true;
+        r = bf_verbose_to_str(arg, &opt);
+        if (r < 0)
+            return bf_err_r(EINVAL, "unknown --verbose option '%s'", arg);
+        bf_info("enabling verbose for '%s'", arg);
+        args->verbose |= (1 << opt);
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -154,12 +174,12 @@ bool bf_opts_is_front_enabled(enum bf_front front)
     return _bf_opts.fronts & (1 << front);
 }
 
-bool bf_opts_verbose(void)
+bool bf_opts_is_verbose(enum bf_verbose opt)
 {
-    return _bf_opts.verbose;
+    return _bf_opts.verbose & (1 << opt);
 }
 
-bool bf_opts_debug(void)
+void bf_opts_set_verbose(enum bf_verbose opt)
 {
-    return _bf_opts.debug;
+    _bf_opts.verbose |= (1 << opt);
 }

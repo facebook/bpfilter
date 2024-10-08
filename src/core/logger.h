@@ -72,7 +72,7 @@ enum bf_style
 
 #define bf_dbg(fmt, ...)                                                       \
     ({                                                                         \
-        if (bf_opts_verbose())                                                 \
+        if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))                              \
             _bf_log_impl("debug", BF_COLOR_BLUE, fmt, ##__VA_ARGS__);          \
     })
 
