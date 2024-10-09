@@ -196,9 +196,11 @@ struct bf_program
     enum bf_hook hook;
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
+    char link_name[BPF_OBJ_NAME_LEN];
     /// Printer map name.
     char pmap_name[BPF_OBJ_NAME_LEN];
     char prog_pin_path[PIN_PATH_LEN];
+    char link_pin_path[PIN_PATH_LEN];
     /// Pinter map pinning path.
     char pmap_pin_path[PIN_PATH_LEN];
 
@@ -229,6 +231,8 @@ struct bf_program
     {
         /** File descriptor of the program. */
         int prog_fd;
+        /** File descriptor of the program's link. */
+        int link_fd;
         /** File descriptor of the printer map. */
         int pmap_fd;
         /** Hook-specific ops to use to generate the program. */

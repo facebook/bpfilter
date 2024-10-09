@@ -190,13 +190,11 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
                               struct bf_program *old_prog)
 {
     _cleanup_close_ int tmp_fd = -1;
-    int prog_fd;
     int r;
 
-    prog_fd = new_prog->runtime.prog_fd;
-
     if (old_prog) {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 2, &tmp_fd);
+        r = bf_bpf_nf_link_create(new_prog->runtime.prog_fd, new_prog->hook, 2,
+                                  &tmp_fd);
         if (r)
             return bf_err_r(r, "failed to create temporary link");
 
@@ -204,25 +202,23 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
          * the link from the hook: if the link FD is pinned, closing it won't
          * detach it and will prevent the creation of a link with the same
          * priority. */
-        r = bf_bpf_link_detach(old_prog->runtime.prog_fd);
+        r = bf_bpf_link_detach(old_prog->runtime.link_fd);
         if (r < 0)
             bf_warn_r(r, "failed to detach existing BPF_NETFILTER link");
-        closep(&old_prog->runtime.prog_fd);
+        closep(&old_prog->runtime.link_fd);
 
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1,
-                                  &new_prog->runtime.prog_fd);
+        r = bf_bpf_nf_link_create(new_prog->runtime.prog_fd, new_prog->hook, 1,
+                                  &new_prog->runtime.link_fd);
         if (r)
             return bf_err_r(r, "failed to create final link");
     } else {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1,
-                                  &new_prog->runtime.prog_fd);
+        r = bf_bpf_nf_link_create(new_prog->runtime.prog_fd, new_prog->hook, 1,
+                                  &new_prog->runtime.link_fd);
         if (r) {
             return bf_err_r(
                 r, "failed to create a new link for BPF_NETFILTER bf_program");
         }
     }
-
-    closep(&prog_fd);
 
     return 0;
 }
