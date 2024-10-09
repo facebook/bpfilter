@@ -7,6 +7,7 @@
 
 #include <linux/bpf.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "core/dump.h"
@@ -40,6 +41,7 @@ enum bf_hook_opt
     BF_HOOK_OPT_IFINDEX,
     BF_HOOK_OPT_CGROUP,
     BF_HOOK_OPT_NAME,
+    BF_HOOK_OPT_ATTACH,
     _BF_HOOK_OPT_MAX,
 };
 
@@ -51,6 +53,7 @@ struct bf_hook_opts
     uint32_t ifindex;
     const char *cgroup;
     const char *name;
+    bool attach;
 };
 
 /**

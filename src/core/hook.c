@@ -186,6 +186,25 @@ static void _bf_hook_opt_name_dump(const struct bf_hook_opts *opts,
     DUMP(prefix, "name: %s", opts->name);
 }
 
+static int _bf_hook_opt_attach_parse(struct bf_hook_opts *opts,
+                                   const char *raw_opt)
+{
+    if (bf_streq(raw_opt, "yes"))
+        opts->attach = true;
+    else if (bf_streq(raw_opt, "no"))
+        opts->attach = false;
+    else
+        return bf_err_r(-EINVAL, "unknown attach value '%s'", raw_opt);
+
+    return 0;
+}
+
+static void _bf_hook_opt_attach_dump(const struct bf_hook_opts *opts,
+                                   prefix_t *prefix)
+{
+    DUMP(prefix, "attach: %s", opts->attach ? "yes" : "no");
+}
+
 static struct bf_hook_opt_support
 {
     uint32_t required;
@@ -194,47 +213,47 @@ static struct bf_hook_opt_support
     [BF_HOOK_XDP] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_TC_INGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_NF_PRE_ROUTING] =
         {
-            .supported = 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_NF_LOCAL_IN] =
         {
-            .supported = 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_CGROUP_INGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_CGROUP,
-            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_CGROUP_EGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_CGROUP,
-            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_NF_FORWARD] =
         {
-            .supported = 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_NF_LOCAL_OUT] =
         {
-            .supported = 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_NF_POST_ROUTING] =
         {
-            .supported = 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
     [BF_HOOK_TC_EGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
         },
 };
 
@@ -265,6 +284,12 @@ static struct bf_hook_opt_ops
         .opt = BF_HOOK_OPT_NAME,
         .parse = _bf_hook_opt_name_parse,
         .dump = _bf_hook_opt_name_dump,
+    },
+    {
+        .name = "attach",
+        .opt = BF_HOOK_OPT_ATTACH,
+        .parse = _bf_hook_opt_attach_parse,
+        .dump = _bf_hook_opt_attach_dump,
     },
 };
 
@@ -336,7 +361,10 @@ int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
 
     bf_assert(opts);
 
-    *opts = (struct bf_hook_opts) {};
+    *opts = (struct bf_hook_opts) {
+        .used_opts = 1 << BF_HOOK_OPT_ATTACH,
+        .attach = true,
+    };
 
     r = _bf_hook_opts_process_opts(opts, hook, raw_opts);
     if (r < 0)

@@ -330,9 +330,11 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (r < 0)
         return bf_err_r(r, "failed to get prog fd");
 
-    r = bf_bpf_obj_get(_program->link_pin_path, &_program->runtime.link_fd);
-    if (r < 0)
-        return bf_err_r(r, "failed to get link fd");
+    if (_program->runtime.chain->hook_opts.attach) {
+        r = bf_bpf_obj_get(_program->link_pin_path, &_program->runtime.link_fd);
+        if (r < 0)
+            return bf_err_r(r, "failed to get link fd");
+    }
 
     r = bf_bpf_obj_get(_program->pmap_pin_path, &_program->runtime.pmap_fd);
     if (r < 0)
@@ -936,10 +938,12 @@ static int _bf_program_pin(const struct bf_program *program)
         goto err;
     }
 
-    r = bf_bpf_obj_pin(program->link_pin_path, program->runtime.link_fd);
-    if (r < 0) {
-        bf_err_r(r, "failed to pin link fd to %s", program->link_pin_path);
-        goto err;
+    if (program->runtime.chain->hook_opts.attach) {
+        r = bf_bpf_obj_pin(program->link_pin_path, program->runtime.link_fd);
+        if (r < 0) {
+            bf_err_r(r, "failed to pin link fd to %s", program->link_pin_path);
+            goto err;
+        }
     }
 
     r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
@@ -1090,9 +1094,11 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
     if (r)
         return bf_err_r(r, "failed to load new bf_program");
 
-    r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
-    if (r)
-        return r;
+    if (new_prog->runtime.chain->hook_opts.attach) {
+        r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
+        if (r)
+            return r;
+    }
 
     if (!bf_opts_transient()) {
         if (old_prog)

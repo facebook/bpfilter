@@ -1,5 +1,5 @@
 # Create an XDP chain
-chain BF_HOOK_XDP{ifindex=2,name=my_xdp_program} policy ACCEPT
+chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
     rule
         meta.ifindex 1
         counter
@@ -54,7 +54,7 @@ chain BF_HOOK_XDP{ifindex=2,name=my_xdp_program} policy ACCEPT
         ACCEPT
 
 # Create a TC chain
-chain BF_HOOK_TC_INGRESS{ifindex=2} policy ACCEPT
+chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
     rule
         meta.ifindex 1
         counter
