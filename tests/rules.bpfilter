@@ -1,5 +1,5 @@
 # Create an XDP chain
-chain BF_HOOK_XDP{ifindex=2} policy ACCEPT
+chain BF_HOOK_XDP{ifindex=2,name=my_xdp_program} policy ACCEPT
     rule
         meta.ifindex 1
         counter
