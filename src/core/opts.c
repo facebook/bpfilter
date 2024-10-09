@@ -22,7 +22,6 @@ enum
     BF_OPT_NO_IPTABLES_KEY,
     BF_OPT_NO_NFTABLES_KEY,
     BF_OPT_NO_CLI_KEY,
-    BF_OPT_DEBUG_KEY,
 };
 
 static const char *_bf_verbose_strs[] = {
