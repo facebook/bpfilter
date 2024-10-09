@@ -189,18 +189,11 @@ static int _bf_nf_get_verdict(enum bf_verdict verdict)
 static int _bf_nf_attach_prog(struct bf_program *new_prog,
                               struct bf_program *old_prog)
 {
-    _cleanup_close_ int prog_fd = -1;
-    _cleanup_close_ int link_fd = -1;
     _cleanup_close_ int tmp_fd = -1;
-    const char *name =
-        new_prog->runtime.chain->hook_opts.name ?: new_prog->prog_name;
+    int prog_fd;
     int r;
 
-    r = bf_bpf_prog_load(name, bf_hook_to_bpf_prog_type(new_prog->hook),
-                         new_prog->img, new_prog->img_size,
-                         bf_hook_to_attach_type(new_prog->hook), &prog_fd);
-    if (r)
-        return bf_err_r(r, "failed to load new bf_program");
+    prog_fd = new_prog->runtime.prog_fd;
 
     if (old_prog) {
         r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 2, &tmp_fd);
@@ -216,20 +209,20 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
             bf_warn_r(r, "failed to detach existing BPF_NETFILTER link");
         closep(&old_prog->runtime.prog_fd);
 
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &link_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1,
+                                  &new_prog->runtime.prog_fd);
         if (r)
             return bf_err_r(r, "failed to create final link");
-
-        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     } else {
-        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1, &link_fd);
+        r = bf_bpf_nf_link_create(prog_fd, new_prog->hook, 1,
+                                  &new_prog->runtime.prog_fd);
         if (r) {
             return bf_err_r(
                 r, "failed to create a new link for BPF_NETFILTER bf_program");
         }
-
-        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     }
+
+    closep(&prog_fd);
 
     return 0;
 }
