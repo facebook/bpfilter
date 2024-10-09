@@ -192,7 +192,7 @@ static int _bf_nf_attach_prog(struct bf_program *new_prog,
     _cleanup_close_ int tmp_fd = -1;
     int r;
 
-    if (old_prog) {
+    if (old_prog && old_prog->runtime.link_fd != -1) {
         r = bf_bpf_nf_link_create(new_prog->runtime.prog_fd, new_prog->hook, 2,
                                   &tmp_fd);
         if (r)

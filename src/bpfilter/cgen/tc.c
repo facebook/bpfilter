@@ -128,7 +128,7 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
 
     bf_assert(new_prog);
 
-    if (old_prog) {
+    if (old_prog && old_prog->runtime.link_fd != -1) {
         r = bf_bpf_link_update(old_prog->runtime.link_fd,
                                new_prog->runtime.prog_fd);
         if (r) {
