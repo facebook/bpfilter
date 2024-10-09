@@ -179,7 +179,7 @@ static int _bf_cgroup_attach_prog(struct bf_program *new_prog,
 
     cgroup_path = new_prog->runtime.chain->hook_opts.cgroup;
 
-    if (old_prog) {
+    if (old_prog && old_prog->runtime.link_fd != -1) {
         r = bf_bpf_link_update(old_prog->runtime.link_fd,
                                new_prog->runtime.prog_fd);
         if (r) {
