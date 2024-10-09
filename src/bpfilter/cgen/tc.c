@@ -126,12 +126,13 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
 {
     _cleanup_close_ int prog_fd = -1;
     _cleanup_close_ int link_fd = -1;
+    const char *name =
+        new_prog->runtime.chain->hook_opts.name ?: new_prog->prog_name;
     int r;
 
     bf_assert(new_prog);
 
-    r = bf_bpf_prog_load(new_prog->prog_name,
-                         bf_hook_to_bpf_prog_type(new_prog->hook),
+    r = bf_bpf_prog_load(name, bf_hook_to_bpf_prog_type(new_prog->hook),
                          new_prog->img, new_prog->img_size,
                          bf_hook_to_attach_type(new_prog->hook), &prog_fd);
     if (r)
