@@ -1043,9 +1043,12 @@ err_destroy_maps:
 
 int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
 {
+    const char *name;
     int r;
 
     bf_assert(new_prog);
+
+    name = new_prog->runtime.chain->hook_opts.name ?: new_prog->prog_name;
 
     r = _bf_program_load_sets_maps(new_prog);
     if (r < 0)
@@ -1058,6 +1061,13 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
     r = _bf_program_load_printer_map(new_prog);
     if (r)
         return r;
+
+    r = bf_bpf_prog_load(name, bf_hook_to_bpf_prog_type(new_prog->hook),
+                         new_prog->img, new_prog->img_size,
+                         bf_hook_to_attach_type(new_prog->hook),
+                         &new_prog->runtime.prog_fd);
+    if (r)
+        return bf_err_r(r, "failed to load new bf_program");
 
     r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
     if (r)

@@ -124,19 +124,12 @@ static int _bf_tc_get_verdict(enum bf_verdict verdict)
 static int _bf_tc_attach_prog(struct bf_program *new_prog,
                               struct bf_program *old_prog)
 {
-    _cleanup_close_ int prog_fd = -1;
-    _cleanup_close_ int link_fd = -1;
-    const char *name =
-        new_prog->runtime.chain->hook_opts.name ?: new_prog->prog_name;
+    int prog_fd;
     int r;
 
     bf_assert(new_prog);
 
-    r = bf_bpf_prog_load(name, bf_hook_to_bpf_prog_type(new_prog->hook),
-                         new_prog->img, new_prog->img_size,
-                         bf_hook_to_attach_type(new_prog->hook), &prog_fd);
-    if (r)
-        return bf_err_r(r, "failed to load new bf_program");
+    prog_fd = new_prog->runtime.prog_fd;
 
     if (old_prog) {
         r = bf_bpf_link_update(old_prog->runtime.prog_fd, prog_fd);
@@ -149,13 +142,12 @@ static int _bf_tc_attach_prog(struct bf_program *new_prog,
     } else {
         r = bf_bpf_tc_link_create(
             prog_fd, new_prog->runtime.chain->hook_opts.ifindex,
-            bf_hook_to_attach_type(new_prog->hook), &link_fd);
-        if (r) {
+            bf_hook_to_attach_type(new_prog->hook), &new_prog->runtime.prog_fd);
+        if (r)
             return bf_err_r(r, "failed to create new link for TC bf_program");
-        }
-
-        new_prog->runtime.prog_fd = TAKE_FD(link_fd);
     }
+
+    closep(&prog_fd);
 
     return 0;
 }
