@@ -66,7 +66,7 @@ With:
    :fill-cells:
 
    * - Option
-     - Supported hooks
+     - Supported values
      - Notes
    * - ``ifindex=$IFINDEX``
      - ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``
