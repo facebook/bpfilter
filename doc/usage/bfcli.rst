@@ -74,6 +74,13 @@ With:
    * - ``cgroup=$CGROUP_PATH``
      - ``BF_HOOK_CGROUP_INGRESS``, ``BF_HOOK_CGROUP_EGRESS``
      - Path to the cgroup to attach to.
+   * - ``name=$CHAIN_NAME``
+     - Allowed patern: ``[a-zA-Z0-9_]+``
+     - Name of the chain, will be reused as the name of the BPF program. A same name can be reused for multiple chains. Must be at most ``BPF_OBJ_NAME_LEN - 1`` characters.
+
+.. note::
+
+    ``name=$CHAIN_NAME`` will only change the name of the BPF program loaded into the kernel. It won't affect the map names, not the pin path. Defining multiple programs with the same name is possible, but a name clash could prevent the program from being pinned.
 
 
 Rules

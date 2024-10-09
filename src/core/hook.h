@@ -39,6 +39,7 @@ enum bf_hook_opt
 {
     BF_HOOK_OPT_IFINDEX,
     BF_HOOK_OPT_CGROUP,
+    BF_HOOK_OPT_NAME,
     _BF_HOOK_OPT_MAX,
 };
 
@@ -49,6 +50,7 @@ struct bf_hook_opts
     // Options
     uint32_t ifindex;
     const char *cgroup;
+    const char *name;
 };
 
 /**

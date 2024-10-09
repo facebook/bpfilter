@@ -104,6 +104,15 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
                 return -ENOMEM;
         }
 
+        if (!(list_elem = bf_marsh_next_child(chain_elem, list_elem)))
+            return -EINVAL;
+
+        if (list_elem->data_len) {
+            _chain->hook_opts.name = strdup(list_elem->data);
+            if (!_chain->hook_opts.name)
+                return -ENOMEM;
+        }
+
         if (bf_marsh_next_child(chain_elem, list_elem)) {
             return bf_err_r(-E2BIG,
                             "too many serialized fields for bf_hook_opts");
@@ -189,6 +198,7 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
         // Serialize bf_chain.hook_opts
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
         const char *cg_path = chain->hook_opts.cgroup;
+        const char *name = chain->hook_opts.name;
 
         r = bf_marsh_new(&child, NULL, 0);
         if (r < 0)
@@ -209,6 +219,11 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
          * Otherwise, create an empty child marsh (NULL data and 0 length). */
         r = bf_marsh_add_child_raw(&child, cg_path,
                                    cg_path ? strlen(cg_path) + 1 : 0);
+        if (r)
+            return r;
+
+        // Similar to cg_path
+        r = bf_marsh_add_child_raw(&child, name, name ? strlen(name) + 1 : 0);
         if (r)
             return r;
 

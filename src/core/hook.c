@@ -165,6 +165,27 @@ static void _bf_hook_opt_cgroup_dump(const struct bf_hook_opts *opts,
     DUMP(prefix, "cgroup: %s", opts->cgroup);
 }
 
+static int _bf_hook_opt_name_parse(struct bf_hook_opts *opts,
+                                   const char *raw_opt)
+{
+    if (strlen(raw_opt) >= BPF_OBJ_NAME_LEN) {
+        return bf_err_r(E2BIG, "a chain name should be at most %d characters",
+                        BPF_OBJ_NAME_LEN - 1);
+    }
+
+    opts->name = strdup(raw_opt);
+    if (!opts->name)
+        return bf_err_r(-ENOMEM, "failed to copy chain name '%s'", raw_opt);
+
+    return 0;
+}
+
+static void _bf_hook_opt_name_dump(const struct bf_hook_opts *opts,
+                                   prefix_t *prefix)
+{
+    DUMP(prefix, "name: %s", opts->name);
+}
+
 static struct bf_hook_opt_support
 {
     uint32_t required;
@@ -173,26 +194,47 @@ static struct bf_hook_opt_support
     [BF_HOOK_XDP] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
         },
     [BF_HOOK_TC_INGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
         },
-    [BF_HOOK_NF_PRE_ROUTING] = {},
-    [BF_HOOK_NF_LOCAL_IN] = {},
-    [BF_HOOK_CGROUP_INGRESS] = {.required = 1 << BF_HOOK_OPT_CGROUP,
-                                .supported = 1 << BF_HOOK_OPT_CGROUP},
-    [BF_HOOK_CGROUP_EGRESS] = {.required = 1 << BF_HOOK_OPT_CGROUP,
-                               .supported = 1 << BF_HOOK_OPT_CGROUP},
-    [BF_HOOK_NF_FORWARD] = {},
-    [BF_HOOK_NF_LOCAL_OUT] = {},
-    [BF_HOOK_NF_POST_ROUTING] = {},
+    [BF_HOOK_NF_PRE_ROUTING] =
+        {
+            .supported = 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_NF_LOCAL_IN] =
+        {
+            .supported = 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_CGROUP_INGRESS] =
+        {
+            .required = 1 << BF_HOOK_OPT_CGROUP,
+            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_CGROUP_EGRESS] =
+        {
+            .required = 1 << BF_HOOK_OPT_CGROUP,
+            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_NF_FORWARD] =
+        {
+            .supported = 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_NF_LOCAL_OUT] =
+        {
+            .supported = 1 << BF_HOOK_OPT_NAME,
+        },
+    [BF_HOOK_NF_POST_ROUTING] =
+        {
+            .supported = 1 << BF_HOOK_OPT_NAME,
+        },
     [BF_HOOK_TC_EGRESS] =
         {
             .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX,
+            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME,
         },
 };
 
@@ -217,6 +259,12 @@ static struct bf_hook_opt_ops
         .opt = BF_HOOK_OPT_CGROUP,
         .parse = _bf_hook_opt_cgroup_parse,
         .dump = _bf_hook_opt_cgroup_dump,
+    },
+    {
+        .name = "name",
+        .opt = BF_HOOK_OPT_NAME,
+        .parse = _bf_hook_opt_name_parse,
+        .dump = _bf_hook_opt_name_dump,
     },
 };
 
@@ -308,6 +356,7 @@ int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
 void bf_hook_opts_clean(struct bf_hook_opts *opts)
 {
     freep((void *)&opts->cgroup);
+    freep((void *)&opts->name);
 }
 
 void bf_hook_opts_dump(const struct bf_hook_opts *opts, prefix_t *prefix,
