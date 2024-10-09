@@ -172,39 +172,36 @@ static int _bf_cgroup_attach_prog(struct bf_program *new_prog,
                                   struct bf_program *old_prog)
 {
     _cleanup_close_ int cgroup_fd = -1;
-    int prog_fd;
     const char *cgroup_path;
     int r;
 
     bf_assert(new_prog);
 
-    prog_fd = new_prog->runtime.prog_fd;
     cgroup_path = new_prog->runtime.chain->hook_opts.cgroup;
 
     if (old_prog) {
-        r = bf_bpf_link_update(old_prog->runtime.prog_fd, prog_fd);
+        r = bf_bpf_link_update(old_prog->runtime.link_fd,
+                               new_prog->runtime.prog_fd);
         if (r) {
             return bf_err_r(
                 r, "failed to updated existing link for cgroup bf_program");
         }
 
         // Copy the existing link FD to the new program
-        new_prog->runtime.prog_fd = TAKE_FD(old_prog->runtime.prog_fd);
+        new_prog->runtime.link_fd = TAKE_FD(old_prog->runtime.link_fd);
     } else {
         cgroup_fd = open(cgroup_path, O_DIRECTORY | O_RDONLY);
         if (cgroup_fd < 0)
             return bf_err_r(errno, "failed to open cgroup '%s'", cgroup_path);
 
-        r = bf_bpf_cgroup_link_create(prog_fd, cgroup_fd,
+        r = bf_bpf_cgroup_link_create(new_prog->runtime.prog_fd, cgroup_fd,
                                       bf_hook_to_attach_type(new_prog->hook),
-                                      &new_prog->runtime.prog_fd);
+                                      &new_prog->runtime.link_fd);
         if (r) {
             return bf_err_r(r,
                             "failed to create new link for cgroup bf_program");
         }
     }
-
-    closep(&prog_fd);
 
     return 0;
 }

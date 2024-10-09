@@ -95,10 +95,14 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
                    chain->hook_opts.ifindex);
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%.6s",
                    suffix);
+    (void)snprintf(_program->link_name, BPF_OBJ_NAME_LEN, "bf_link_%.6s",
+                   suffix);
     (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%.6s",
                    suffix);
     (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN,
                    "/sys/fs/bpf/bf_prog_%.6s", suffix);
+    (void)snprintf(_program->link_pin_path, PIN_PATH_LEN,
+                   "/sys/fs/bpf/bf_link_%.6s", suffix);
     (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
                    "/sys/fs/bpf/bf_pmap_%.6s", suffix);
 
@@ -132,6 +136,7 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
 
     _program->runtime.prog_fd = -1;
+    _program->runtime.link_fd = -1;
     _program->runtime.pmap_fd = -1;
 
     *program = TAKE_PTR(_program);
@@ -153,6 +158,7 @@ void bf_program_free(struct bf_program **program)
      * won't be called, but the programs are pinned, so they can be closed
      * safely. */
     closep(&(*program)->runtime.prog_fd);
+    closep(&(*program)->runtime.link_fd);
     closep(&(*program)->runtime.pmap_fd);
 
     bf_map_free(&(*program)->counters);
@@ -324,6 +330,10 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (r < 0)
         return bf_err_r(r, "failed to get prog fd");
 
+    r = bf_bpf_obj_get(_program->link_pin_path, &_program->runtime.link_fd);
+    if (r < 0)
+        return bf_err_r(r, "failed to get link fd");
+
     r = bf_bpf_obj_get(_program->pmap_pin_path, &_program->runtime.pmap_fd);
     if (r < 0)
         return bf_err_r(r, "failed to get printer map fd");
@@ -346,9 +356,12 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
     DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
+    DUMP(prefix, "link_name: %s", program->link_name);
     DUMP(prefix, "pmap_name: %s", program->pmap_name);
     DUMP(prefix, "prog_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->prog_pin_path);
+    DUMP(prefix, "link_pin_path: %s",
+         bf_opts_transient() ? "<transient>" : program->link_pin_path);
     DUMP(prefix, "pmap_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->pmap_pin_path);
 
@@ -394,6 +407,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(bf_dump_prefix_last(prefix), "runtime: <anonymous>");
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
+    DUMP(prefix, "link_fd: %d", program->runtime.link_fd);
     DUMP(prefix, "pmap_fd: %d", program->runtime.pmap_fd);
     DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
     bf_dump_prefix_pop(prefix);
@@ -922,6 +936,12 @@ static int _bf_program_pin(const struct bf_program *program)
         goto err;
     }
 
+    r = bf_bpf_obj_pin(program->link_pin_path, program->runtime.link_fd);
+    if (r < 0) {
+        bf_err_r(r, "failed to pin link fd to %s", program->link_pin_path);
+        goto err;
+    }
+
     r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
     if (r < 0) {
         bf_err_r(r, "failed to pin printer map fd to %s",
@@ -959,6 +979,7 @@ static void _bf_program_unpin(const struct bf_program *program)
     bf_assert(program);
 
     unlink(program->prog_pin_path);
+    unlink(program->link_pin_path);
     unlink(program->pmap_pin_path);
     bf_map_unpin(program->counters);
 
@@ -1096,6 +1117,7 @@ int bf_program_unload(struct bf_program *program)
         _bf_program_unpin(program);
 
     closep(&program->runtime.prog_fd);
+    closep(&program->runtime.link_fd);
     closep(&program->runtime.pmap_fd);
 
     bf_list_foreach (&program->sets, map_node)
