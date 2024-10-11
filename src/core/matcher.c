@@ -60,7 +60,7 @@ int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&payload_len, child->data, sizeof(op));
+    memcpy(&payload_len, child->data, sizeof(payload_len));
     payload_len -= sizeof(struct bf_matcher);
 
     if (!(child = bf_marsh_next_child(marsh, child)))
