@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+add_subdirectory(benchmark)
 add_subdirectory(unit)
 add_subdirectory(integration)
 add_subdirectory(bpf)
