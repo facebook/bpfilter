@@ -43,6 +43,27 @@
 #define err(fmt, ...) _log_impl(cerr, "ERROR: ", fmt, ##__VA_ARGS__)
 #define info(fmt, ...) _log_impl(cout, "", fmt, ##__VA_ARGS__)
 
+namespace benchmark
+{
+extern bool FLAGS_benchmark_list_tests;
+extern std::string FLAGS_benchmark_filter;
+extern std::string FLAGS_benchmark_min_time;
+extern double FLAGS_benchmark_min_warmup_time;
+extern int FLAGS_benchmark_repetitions;
+extern bool FLAGS_benchmark_dry_run;
+extern bool FLAGS_benchmark_enable_random_interleaving;
+extern bool FLAGS_benchmark_report_aggregates_only;
+extern bool FLAGS_benchmark_display_aggregates_only;
+extern std::string FLAGS_benchmark_format;
+extern std::string FLAGS_benchmark_out;
+extern std::string FLAGS_benchmark_out_format;
+extern std::string FLAGS_benchmark_color;
+extern bool FLAGS_benchmark_counters_tabular;
+extern std::string FLAGS_benchmark_perf_counters;
+extern std::string FLAGS_benchmark_time_unit;
+extern int FLAGS_v;
+} // namespace benchmark
+
 namespace bf
 {
 
@@ -55,6 +76,8 @@ static const struct argp_option options[] = {
      "Path to the bfcli binary. Default to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
      "Path to the bpfilter binary. Default to 'bpfilter' in $PATH.", 0},
+    {"output", 'o', "OUTPUT_FILE", 0,
+     "Path to the JSON file to write the results to.", 0},
     {0},
 };
 
@@ -62,6 +85,7 @@ struct Args
 {
     ::std::string bfcli = "bfcli";
     ::std::string bpfilter = "bpfilter";
+    ::std::optional<::std::string> output_file;
 };
 
 Args args;
@@ -84,6 +108,9 @@ static error_t optsParser(int key, char *arg, struct argp_state *state)
         break;
     case 'd':
         args->bpfilter = std::string(arg);
+        break;
+    case 'o':
+        args->output_file.emplace(arg);
         break;
     default:
         // Ignore unknown arguments, as Google Benchmark has their own
@@ -709,7 +736,13 @@ int main(int argc, char *argv[])
     info("  bfcli: {}", ::bf::args.bfcli);
     info("  bpfilter: {}", ::bf::args.bpfilter);
 
-    ::benchmark::Initialize(&argc, argv);
+    if (::bf::args.output_file) {
+        info("  output_file: {}", *::bf::args.output_file);
+        ::benchmark::FLAGS_benchmark_out = *::bf::args.output_file;
+        ::benchmark::FLAGS_benchmark_out_format = "json";
+    }
+
+    ::benchmark::Initialize(&argc, argv, nullptr);
 
     auto d =
         bf::Daemon(::bf::args.bpfilter,
