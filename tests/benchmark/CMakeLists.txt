@@ -23,7 +23,9 @@ target_link_libraries(benchmark_bin
 )
 
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/gitrev.txt
+    OUTPUT
+        ${CMAKE_BINARY_DIR}/_fake_dep.txt
+        ${CMAKE_BINARY_DIR}/gitrev.txt
     COMMAND
         /bin/sh -c "echo -n $(git rev-parse --short HEAD) > ${CMAKE_BINARY_DIR}/gitrev.txt"
     COMMAND
