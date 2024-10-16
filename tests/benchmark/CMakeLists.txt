@@ -39,6 +39,7 @@ add_custom_target(benchmark
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>
                 --srcdir ${CMAKE_SOURCE_DIR}
+                --outfile ${CMAKE_BINARY_DIR}/output/{gitrev}.json
     DEPENDS benchmark_bin bfcli bpfilter
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
