@@ -13,7 +13,6 @@ file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/bpfilter/*.h        ${CMAKE_SOURCE_DIR}/src/bpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.h     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/*.h           ${CMAKE_SOURCE_DIR}/src/bfcli/*.c
-    ${CMAKE_SOURCE_DIR}/tests/benchmark/*.hpp   ${CMAKE_SOURCE_DIR}/tests/benchmark/*.cpp
 )
 
 add_custom_command(
