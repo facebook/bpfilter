@@ -9,7 +9,15 @@ endif ()
 
 find_package(benchmark REQUIRED)
 
-add_executable(benchmark_bin benchmark.cpp)
+add_executable(benchmark_bin
+    main.cpp
+    benchmark.cpp benchmark.hpp
+)
+
+target_include_directories(benchmark_bin
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 target_compile_options(benchmark_bin
     PRIVATE
