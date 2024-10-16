@@ -8,6 +8,7 @@ if (NOT ENABLE_BENCHMARK)
 endif ()
 
 find_package(benchmark REQUIRED)
+pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 
 add_executable(benchmark_bin
     main.cpp
@@ -27,19 +28,8 @@ target_compile_options(benchmark_bin
 target_link_libraries(benchmark_bin
     PRIVATE
         PkgConfig::bpf
+        PkgConfig::git2
         benchmark::benchmark
-)
-
-add_custom_command(
-    OUTPUT
-        ${CMAKE_BINARY_DIR}/_fake_dep.txt
-        ${CMAKE_BINARY_DIR}/gitrev.txt
-    COMMAND
-        /bin/sh -c "echo -n $(git rev-parse --short HEAD) > ${CMAKE_BINARY_DIR}/gitrev.txt"
-    COMMAND
-        /bin/sh -c "if [[ $(git status --porcelain) ]]; then echo -n _dirty >> ${CMAKE_BINARY_DIR}/gitrev.txt; fi"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    VERBATIM
 )
 
 add_custom_target(benchmark
@@ -48,10 +38,8 @@ add_custom_target(benchmark
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>
-                --outfile ${CMAKE_BINARY_DIR}/output/`cat gitrev.txt`.json
-    DEPENDS
-        benchmark_bin bfcli bpfilter
-        ${CMAKE_BINARY_DIR}/gitrev.txt
+                --srcdir ${CMAKE_SOURCE_DIR}
+    DEPENDS benchmark_bin bfcli bpfilter
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
     COMMENT "Running benchmarks"
