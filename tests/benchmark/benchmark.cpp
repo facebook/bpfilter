@@ -87,11 +87,9 @@ constexpr int waitForDaemonSleepMs = 10;
 
 constexpr std::array<struct argp_option, 4> options {{
     {"cli", 'c', "CLI", 0,
-     "Path to the bfcli binary. Default to 'bfcli' in $PATH.", 0},
+     "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
-     "Path to the bpfilter binary. Default to 'bpfilter' in $PATH.", 0},
-    {"output", 'o', "OUTPUT_FILE", 0,
-     "Path to the JSON file to write the results to.", 0},
+     "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", 0},
     {nullptr},
 }};
 
