@@ -282,6 +282,11 @@ int setup(std::span<char *> args)
         config.gitdate = srcs.getLastCommitTime();
     }
 
+    const ::std::string pattern = "{gitrev}";
+    const auto pos = config.outfile.find(pattern);
+    if (pos != ::std::string::npos)
+        config.outfile.replace(pos, pattern.size(), config.gitrev);
+
     ::benchmark::AddCustomContext("gitrev", config.gitrev);
     ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
