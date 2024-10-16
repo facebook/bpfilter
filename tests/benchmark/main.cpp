@@ -29,6 +29,32 @@ void firstRuleDropCounter(::benchmark::State &state)
 }
 
 BENCHMARK(firstRuleDropCounter);
+
+void dropAfterXRules(::benchmark::State &state)
+{
+    ::bf::Chain chain(::bf::args.bfcli);
+    chain.repeat("rule meta.l3_proto ipv4 counter ACCEPT", state.range(0));
+    chain.apply();
+    auto prog = chain.getProgram();
+
+    benchLoop(state)
+    {
+        if (prog.run(::bf::CGROUP_DROP, ::bf::pkt_local_ip6_tcp) < 0)
+            state.SkipWithError("benchmark run failed");
+    }
+}
+
+BENCHMARK(dropAfterXRules)
+    ->Arg(0)
+    ->Arg(8)
+    ->Arg(16)
+    ->Arg(32)
+    ->Arg(64)
+    ->Arg(128)
+    ->Arg(256)
+    ->Arg(512)
+    ->Arg(1024)
+    ->Arg(2048);
 } // namespace
 
 int main(int argc, char *argv[])
