@@ -9,6 +9,7 @@
 
 #include <argp.h>
 #include <array>
+#include <benchmark/benchmark.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf_common.h>
 #include <cerrno>
@@ -19,6 +20,14 @@
 #include <cstring>
 #include <fcntl.h>
 #include <format>
+#include <git2/commit.h>
+#include <git2/errors.h>
+#include <git2/global.h>
+#include <git2/oid.h>
+#include <git2/refs.h>
+#include <git2/repository.h>
+#include <git2/status.h>
+#include <git2/types.h>
 #include <initializer_list>
 #include <iostream> // NOLINT
 #include <optional>
@@ -84,12 +93,16 @@ namespace
 {
 constexpr int waitForDaemonTimeoutS = 5;
 constexpr int waitForDaemonSleepMs = 10;
+constexpr int maxCommitHashLen = 7;
 
-constexpr std::array<struct argp_option, 4> options {{
+constexpr std::array<struct argp_option, 5> options {{
     {"cli", 'c', "CLI", 0,
      "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
      "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", 0},
+    {"srcdir", 's', "SOURCES_DIR", 0,
+     "Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
+     0},
     {"outfile", 'o', "OUTPUT_FILE", 0,
      "Path to the JSON file to write the results to. Defaults to 'results.json'.",
      0},
@@ -112,6 +125,9 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
         break;
     case 'd':
         config->bpfilter = ::std::string(arg);
+        break;
+    case 's':
+        config->srcdir = ::std::string(arg);
         break;
     case 'o':
         config->outfile = ::std::string(arg);
@@ -253,6 +269,21 @@ int setup(std::span<char *> args)
         return r;
     }
 
+    const ::bf::Sources srcs(::bf::config.srcdir);
+
+    if (srcs.isDirty()) {
+        config.gitrev = srcs.getLastCommitHash() + "+";
+        config.gitdate =
+            std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count();
+    } else {
+        config.gitrev = srcs.getLastCommitHash();
+        config.gitdate = srcs.getLastCommitTime();
+    }
+
+    ::benchmark::AddCustomContext("gitrev", config.gitrev);
+    ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
     ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
@@ -262,6 +293,92 @@ int setup(std::span<char *> args)
     ::benchmark::FLAGS_benchmark_out_format = "json";
 
     return 0;
+}
+
+Sources::Sources(::std::string path):
+    path_ {::std::move(path)}
+{
+    int r = git_libgit2_init();
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        abort("failed to initialize libgit2: {}/{}: {}", r, err->klass,
+              err->message);
+    }
+
+    r = git_repository_open(&repo_, path_.c_str());
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        abort("failed to open Git repository: {}/{}: {}", r, err->klass,
+              err->message);
+    }
+}
+
+Sources::~Sources()
+{
+    git_libgit2_shutdown();
+}
+
+::std::string Sources::getLastCommitHash() const
+{
+    git_oid oid;
+    ::std::array<char, GIT_OID_SHA1_HEXSIZE + 1> buff;
+
+    int r = git_reference_name_to_id(&oid, repo_, "HEAD");
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        err("failed to open Git repository: {}/{}: {}", r, err->klass,
+            err->message);
+        return "";
+    }
+
+    return {git_oid_tostr(buff.data(), buff.size(), &oid), maxCommitHashLen};
+}
+
+int64_t Sources::getLastCommitTime() const
+{
+    git_oid oid;
+    git_commit *commit;
+
+    int r = git_reference_name_to_id(&oid, repo_, "HEAD");
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        err("failed to convert Git reference to ID: {}/{}: {}", r, err->klass,
+            err->message);
+        return -1;
+    }
+
+    r = git_commit_lookup(&commit, repo_, &oid);
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        err("failed to get git commit: {}/{}: {}", r, err->klass, err->message);
+        return -1;
+    }
+
+    auto time = git_commit_time(commit);
+    git_commit_free(commit);
+
+    return time;
+}
+
+bool Sources::isDirty() const
+{
+    git_status_list *status;
+    const git_status_options opts = {
+        .version = GIT_STATUS_OPTIONS_VERSION,
+    };
+
+    int r = git_status_list_new(&status, repo_, &opts);
+    if (r < 0) {
+        const git_error *err = git_error_last();
+        err("failed to get repository status: {}/{}: {}", r, err->klass,
+            err->message);
+        return true;
+    }
+
+    auto count = git_status_list_entrycount(status);
+    git_status_list_free(status);
+
+    return count != 0;
 }
 
 Fd::Fd(int fd):

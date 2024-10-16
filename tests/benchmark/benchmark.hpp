@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format> // NOLINT: used by the logging macros
+#include <git2/types.h>
 #include <initializer_list>
 #include <iostream> // NOLINT: used by the logging macros
 #include <optional>
@@ -76,7 +77,10 @@ struct Config
 public:
     ::std::string bfcli = "bfcli";
     ::std::string bpfilter = "bpfilter";
+    ::std::string srcdir = ".";
     ::std::string outfile = "results.json";
+    ::std::string gitrev = "<unknown>";
+    int64_t gitdate = 0;
 
     Config() noexcept = default;
 };
@@ -84,6 +88,26 @@ public:
 extern Config config;
 
 int setup(std::span<char *> args);
+
+class Sources
+{
+public:
+    Sources(::std::string path);
+    Sources(Sources &other) = delete;
+    Sources(Sources &&other) = delete;
+    ~Sources();
+
+    Sources &operator=(Sources &other) = delete;
+    Sources &operator=(Sources &&other) = delete;
+
+    [[nodiscard]] ::std::string getLastCommitHash() const;
+    [[nodiscard]] int64_t getLastCommitTime() const;
+    [[nodiscard]] bool isDirty() const;
+
+private:
+    ::std::string path_;
+    git_repository *repo_ = nullptr;
+};
 
 class Fd
 {
