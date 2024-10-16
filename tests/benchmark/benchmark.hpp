@@ -83,7 +83,7 @@ public:
 
 extern Config config;
 
-int parseArgs(std::span<char *> args);
+int setup(std::span<char *> args);
 
 class Fd
 {

@@ -243,7 +243,7 @@ run(::std::string bin, const ::std::vector<::std::string> &args)
 }
 } // namespace
 
-int parseArgs(std::span<char *> args)
+int setup(std::span<char *> args)
 {
     const struct argp argp = {options.data(), optsParser};
 

@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
         return -EPERM;
     }
 
-    if (::bf::parseArgs(std::span<char *>(argv, argc)) < 0)
+    if (::bf::setup(std::span<char *>(argv, argc)) < 0)
         return -1;
 
     ::benchmark::Initialize(&argc, argv, nullptr);
