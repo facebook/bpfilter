@@ -107,10 +107,10 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
 
     switch (key) {
     case 'c':
-        config->bfcli = std::string(arg);
+        config->bfcli = ::std::string(arg);
         break;
     case 'd':
-        config->bpfilter = std::string(arg);
+        config->bpfilter = ::std::string(arg);
         break;
     case 'o':
         config->output_file.emplace(arg);
