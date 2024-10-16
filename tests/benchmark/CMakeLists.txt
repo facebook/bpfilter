@@ -48,7 +48,7 @@ add_custom_target(benchmark
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>
-                --output ${CMAKE_BINARY_DIR}/output/`cat gitrev.txt`.json
+                --outfile ${CMAKE_BINARY_DIR}/output/`cat gitrev.txt`.json
     DEPENDS
         benchmark_bin bfcli bpfilter
         ${CMAKE_BINARY_DIR}/gitrev.txt
