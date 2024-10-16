@@ -21,6 +21,8 @@
 #   Generates false positives.
 # - modernize-macro-to-enum
 #   No benefit.
+# - modernize-use-trailing-return-type
+#   No benefit.
 # - readability-function-cognitive-complexity
 #   Functions generating BPF bytecode will trigger this rule anytime, but they're
 #   not that complex due to heavy use of macros.
@@ -44,6 +46,7 @@ Checks: >
   misc-*,
   modernize-*,
     -modernize-macro-to-enum,
+    -modernize-use-trailing-return-type,
   performance-*,
   portability-*,
   readability-*,
@@ -63,6 +66,8 @@ CheckOptions:
   # warn about _cleanup_ identifiers.
   - key: bugprone-reserved-identifier.AllowedIdentifiers
     value: '^_(bf|BF|cleanup)_[a-zA-Z0-9_]+$'
+  - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
+    value: true
   # Unless a *statement* takes 1 line, it should be in braces
   - key: readability-braces-around-statements.ShortStatementLines
     value: 6
