@@ -76,7 +76,7 @@ struct Config
 public:
     ::std::string bfcli = "bfcli";
     ::std::string bpfilter = "bpfilter";
-    ::std::optional<::std::string> output_file;
+    ::std::string outfile = "results.json";
 
     Config() noexcept = default;
 };

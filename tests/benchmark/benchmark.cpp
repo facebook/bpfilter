@@ -90,6 +90,9 @@ constexpr std::array<struct argp_option, 4> options {{
      "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
      "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", 0},
+    {"outfile", 'o', "OUTPUT_FILE", 0,
+     "Path to the JSON file to write the results to. Defaults to 'results.json'.",
+     0},
     {nullptr},
 }};
 
@@ -111,9 +114,7 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
         config->bpfilter = ::std::string(arg);
         break;
     case 'o':
-        config->output_file.emplace(arg);
-        ::benchmark::FLAGS_benchmark_out = arg;
-        ::benchmark::FLAGS_benchmark_out_format = "json";
+        config->outfile = ::std::string(arg);
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -252,12 +253,13 @@ int setup(std::span<char *> args)
         return r;
     }
 
-    info("Using:");
-    info("  bfcli: {}", ::bf::args.bfcli);
-    info("  bpfilter: {}", ::bf::args.bpfilter);
+    ::benchmark::AddCustomContext("bfcli", config.bfcli);
+    ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
+    ::benchmark::AddCustomContext("srcdir", config.srcdir);
+    ::benchmark::AddCustomContext("outfile", config.outfile);
 
-    if (::bf::args.output_file)
-        info("  output_file: {}", *::bf::args.output_file);
+    ::benchmark::FLAGS_benchmark_out = config.outfile;
+    ::benchmark::FLAGS_benchmark_out_format = "json";
 
     return 0;
 }
