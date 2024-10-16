@@ -16,7 +16,7 @@ namespace
 {
 void firstRuleDropCounter(::benchmark::State &state)
 {
-    ::bf::Chain chain(::bf::args.bfcli);
+    ::bf::Chain chain(::bf::config.bfcli);
     chain << "rule meta.l3_proto ipv6 counter DROP";
     chain.apply();
     auto prog = chain.getProgram();
@@ -32,7 +32,7 @@ BENCHMARK(firstRuleDropCounter);
 
 void dropAfterXRules(::benchmark::State &state)
 {
-    ::bf::Chain chain(::bf::args.bfcli);
+    ::bf::Chain chain(::bf::config.bfcli);
     chain.repeat("rule meta.l3_proto ipv4 counter ACCEPT", state.range(0));
     chain.apply();
     auto prog = chain.getProgram();
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
     try {
         auto daemon = bf::Daemon(
-            ::bf::args.bpfilter,
+            ::bf::config.bpfilter,
             bf::Daemon::Options().transient().noIptables().noNftables());
         ::benchmark::RunSpecifiedBenchmarks();
     } catch (const ::std::exception &e) {

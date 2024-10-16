@@ -78,7 +78,7 @@ constexpr std::array<uint8_t, 80> pkt_local_ip6_tcp {
 
 constexpr int progRunRepeat = 1000000;
 
-Args args = {};
+Config config = {};
 
 namespace
 {
@@ -102,18 +102,18 @@ inline char *errStr(int value)
 
 int optsParser(int key, char *arg, struct ::argp_state *state)
 {
-    auto *args = static_cast<Args *>(state->input);
+    auto *config = static_cast<Config *>(state->input);
     int r;
 
     switch (key) {
     case 'c':
-        args->bfcli = std::string(arg);
+        config->bfcli = std::string(arg);
         break;
     case 'd':
-        args->bpfilter = std::string(arg);
+        config->bpfilter = std::string(arg);
         break;
     case 'o':
-        args->output_file.emplace(arg);
+        config->output_file.emplace(arg);
         ::benchmark::FLAGS_benchmark_out = arg;
         ::benchmark::FLAGS_benchmark_out_format = "json";
         break;
@@ -248,7 +248,7 @@ int parseArgs(std::span<char *> args)
     const struct argp argp = {options.data(), optsParser};
 
     const int r = argp_parse(&argp, static_cast<int>(args.size()), args.data(),
-                             0, nullptr, &::bf::args);
+                             0, nullptr, &::bf::config);
     if (r != 0) {
         err("failed to parse command line arguments: {}", errStr(r));
         return r;
