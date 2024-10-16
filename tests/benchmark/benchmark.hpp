@@ -71,17 +71,17 @@ extern const int progRunRepeat;
  */
 #define benchLoop(state) while ((state).KeepRunningBatch(::bf::progRunRepeat))
 
-struct Args
+struct Config
 {
 public:
     ::std::string bfcli = "bfcli";
     ::std::string bpfilter = "bpfilter";
     ::std::optional<::std::string> output_file;
 
-    Args() noexcept = default;
+    Config() noexcept = default;
 };
 
-extern Args args;
+extern Config config;
 
 int parseArgs(std::span<char *> args);
 
