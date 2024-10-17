@@ -26,6 +26,8 @@ void firstRuleDropCounter(::benchmark::State &state)
         if (prog.run(::bf::CGROUP_DROP, ::bf::pkt_local_ip6_tcp) < 0)
             state.SkipWithError("benchmark run failed");
     }
+
+    state.counters["nInsn"] = prog.nInsn();
 }
 
 BENCHMARK(firstRuleDropCounter);
@@ -42,6 +44,8 @@ void dropAfterXRules(::benchmark::State &state)
         if (prog.run(::bf::CGROUP_DROP, ::bf::pkt_local_ip6_tcp) < 0)
             state.SkipWithError("benchmark run failed");
     }
+
+    state.counters["nInsn"] = prog.nInsn();
 }
 
 BENCHMARK(dropAfterXRules)

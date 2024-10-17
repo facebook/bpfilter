@@ -175,6 +175,7 @@ public:
     Program &operator=(Program &other) = delete;
     Program &operator=(Program &&other) noexcept(false);
 
+    [[nodiscard]] ::std::size_t nInsn() const;
     [[nodiscard]] int run(int expect,
                           const std::span<const uint8_t> &pkt) const;
     int close();
