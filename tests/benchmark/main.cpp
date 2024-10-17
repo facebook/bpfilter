@@ -49,15 +49,10 @@ void dropAfterXRules(::benchmark::State &state)
 }
 
 BENCHMARK(dropAfterXRules)
-    ->Arg(0)
     ->Arg(8)
-    ->Arg(16)
     ->Arg(32)
-    ->Arg(64)
     ->Arg(128)
-    ->Arg(256)
     ->Arg(512)
-    ->Arg(1024)
     ->Arg(2048);
 } // namespace
 
