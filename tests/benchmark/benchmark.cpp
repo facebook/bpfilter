@@ -643,6 +643,19 @@ Program::~Program() noexcept(false)
         abort("failed to close ::bf::Program");
 }
 
+::std::size_t Program::nInsn() const
+{
+    struct bpf_prog_info prog_info = {};
+	uint32_t prog_info_len = sizeof(prog_info);
+	int r;
+
+	r = bpf_prog_get_info_by_fd(fd_, &prog_info, &prog_info_len);
+	if (r < 0)
+		return -EINVAL;
+
+    return prog_info.jited_prog_len;
+}
+
 int Program::run(int expect, const std::span<const uint8_t> &pkt) const
 {
     LIBBPF_OPTS(bpf_test_run_opts, opts, .data_in = (const void *)pkt.data(),
