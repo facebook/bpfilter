@@ -1089,7 +1089,7 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
         return r;
 
     if (bf_opts_is_verbose(BF_VERBOSE_BYTECODE))
-        bf_program_dump_bytecode(new_prog, false);
+        bf_program_dump_bytecode(new_prog);
 
     r = bf_bpf_prog_load(name, bf_hook_to_bpf_prog_type(new_prog->hook),
                          new_prog->img, new_prog->img_size,

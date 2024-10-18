@@ -31,6 +31,8 @@ add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfgroup.h      ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfgroup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfmsg.h        ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfmsg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nft.c
+
+    ${CMAKE_SOURCE_DIR}/src/external/disasm.h            ${CMAKE_SOURCE_DIR}/src/external/disasm.c
 )
 
 target_include_directories(bpfilter
