@@ -144,9 +144,33 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
+    _cleanup_bf_jmpctx_ struct bf_jmpctx _;
     int r;
 
     bf_assert(program);
+
+    /* Copy the L3 protocol header size in r4. The header size depends on the
+     * L3 protocol, so we switch through the supported protocols. If the L3
+     * protocol is not supported, we store 0 in r4.
+     * After the switch-case block, if r4 is 0, it means we don't support
+     * the L3 protocol and we can skip the subsequent logic. */
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    {
+        _cleanup_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BF_ARG_4);
+
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
+                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
+        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
+                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ipv6hdr)));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_ARG_4, 0));
+
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
+    }
+    _ = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_ARG_4, 0, 0));
 
     // BF_ARG_1: address of the dynptr in the context.
     EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
@@ -159,28 +183,6 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
     // BF_ARG_3: pointer to the buffer.
     EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l3_raw)));
-
-    // BF_ARG_4: size of the buffer
-    EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
-    {
-        _cleanup_bf_swich_ struct bf_swich swich =
-            bf_swich_get(program, BF_ARG_4);
-
-        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
-                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
-        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
-                          BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ipv6hdr)));
-        EMIT_SWICH_DEFAULT(
-            &swich,
-            BPF_MOV64_IMM(BF_REG_RET,
-                          program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT)),
-            BPF_EXIT_INSN());
-
-        r = bf_swich_generate(&swich);
-        if (r)
-            return r;
-    }
 
     // Create the slice, accept the packet if it fails.
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
@@ -199,6 +201,9 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
     EMIT(program, BPF_MOV64_REG(BF_REG_L3, BF_REG_RET));
 
+    /* Unsupported L3 protocols have been filtered at the beginning of this
+     * function and would jump over the block below, so there is no need to
+     * worry about them here. */
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
     {
@@ -240,25 +245,15 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
 int bf_stub_parse_l4_hdr(struct bf_program *program)
 {
+    _cleanup_bf_jmpctx_ struct bf_jmpctx _;
     int r;
 
     bf_assert(program);
 
-    // BF_ARG_1: address of the dynptr in the context.
-    EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_1, BF_PROG_CTX_OFF(dynptr)));
-
-    // BF_ARG_2: L4 header offset from the context.
+    /* Parse the L4 protocol and handle unuspported protocol, similarly to
+     * bf_stub_parse_l3_hdr() above. */
     EMIT(program,
-         BPF_LDX_MEM(BPF_W, BF_ARG_2, BF_REG_CTX, BF_PROG_CTX_OFF(l4_offset)));
-
-    // BF_ARG_3: pointer to the buffer.
-    EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l4_raw)));
-
-    // BF_ARG_4: size of the buffer.
-    EMIT(program,
-         BPF_LDX_MEM(BPF_B, BF_REG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_LDX_MEM(BPF_H, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     {
         _cleanup_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BF_ARG_4);
@@ -271,11 +266,26 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct icmp6hdr)));
+        EMIT_SWICH_DEFAULT(&swich, 
+                          BPF_MOV64_IMM(BF_REG_4, 0));
 
         r = bf_swich_generate(&swich);
         if (r)
             return r;
     }
+    _ = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_ARG_4, 0, 0));
+
+    // BF_ARG_1: address of the dynptr in the context.
+    EMIT(program, BPF_MOV64_REG(BF_ARG_1, BF_REG_CTX));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_1, BF_PROG_CTX_OFF(dynptr)));
+
+    // BF_ARG_2: L4 header offset from the context.
+    EMIT(program,
+         BPF_LDX_MEM(BPF_W, BF_ARG_2, BF_REG_CTX, BF_PROG_CTX_OFF(l4_offset)));
+
+    // BF_ARG_3: pointer to the buffer.
+    EMIT(program, BPF_MOV64_REG(BF_ARG_3, BF_REG_CTX));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_3, BF_PROG_CTX_OFF(l4_raw)));
 
     // Create the slice, accept hte packet if it fails
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
