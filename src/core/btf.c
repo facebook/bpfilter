@@ -46,6 +46,19 @@ int bf_btf_get_id(const char *name)
     return id;
 }
 
+const char *bf_btf_get_name(int id)
+{
+    const struct btf_type *type;
+
+    type = btf__type_by_id(_bf_btf, id);
+    if (!type) {
+        bf_warn("can't find BTF type ID %d", id);
+        return NULL;
+    }
+
+    return btf__name_by_offset(_bf_btf, type->name_off);
+}
+
 int bf_btf_get_field_off(const char *struct_name, const char *field_name)
 {
     int offset = -1;

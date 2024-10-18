@@ -32,6 +32,18 @@ void bf_btf_teardown(void);
 int bf_btf_get_id(const char *name);
 
 /**
+ * Get a type name from a BTF ID from the kernel BTF data.
+ *
+ * Linux BTF data must be loaded with @ref bf_btf_setup before calling this
+ * function. If @c id is invalid, or not part of the kernel's BTF data, @c NULL
+ * is returned.
+ *
+ * @param id Type ID to look for.
+ * @return Name of the type represented by @c id or @c NULL .
+ */
+const char *bf_btf_get_name(int id);
+
+/**
  * Get the offset of a field in a kernel structure.
  *
  * Use Linux' BTF data to find the offset of a specific field in a structure.

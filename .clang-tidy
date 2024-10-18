@@ -76,7 +76,7 @@ CheckOptions:
     value: '_|i|fd|r|j[0-9]|op'
   # Allowed short parameter names
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'ip|fd|op'
+    value: 'ip|fd|op|id'
   # Allow for magic constants that are power of 2.
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: true
