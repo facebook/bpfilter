@@ -100,35 +100,32 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
 
     /* BPF_PROG_TYPE_CGROUP_SKB doesn't provide access the the Ethernet header,
      * so we can't parse it. Fill the runtime context's l3_proto and l3_offset
-     * manually instead. */
+     * manually instead.
+     * The switch structure below stores the L3 protocol identifier in BF_REG_1,
+     * then we use a shared logic to copy the L3 protocol and offset to the
+     * runtime context. */
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
     {
         _cleanup_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BF_REG_1);
 
-        EMIT_SWICH_OPTION(
-            &swich, AF_INET, BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IP)),
-            BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)),
-            BPF_MOV64_IMM(BF_REG_1, 0),
-            BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
-                        BF_PROG_CTX_OFF(l3_offset)));
-        EMIT_SWICH_OPTION(
-            &swich, AF_INET6, BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IPV6)),
-            BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)),
-            BPF_MOV64_IMM(BF_REG_1, 0),
-            BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1,
-                        BF_PROG_CTX_OFF(l3_offset)));
-        EMIT_SWICH_DEFAULT(
-            &swich,
-            BPF_MOV64_IMM(BF_REG_RET,
-                          program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT)),
-            BPF_EXIT_INSN());
+        EMIT_SWICH_OPTION(&swich, AF_INET,
+                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IP)));
+        EMIT_SWICH_OPTION(&swich, AF_INET6,
+                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IPV6)));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_REG_1, 0));
 
         r = bf_swich_generate(&swich);
         if (r)
             return r;
     }
+
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)));
+    EMIT(program, BPF_MOV64_IMM(BF_REG_1, 0));
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_offset)));
 
     r = bf_stub_parse_l3_hdr(program);
     if (r)
