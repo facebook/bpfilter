@@ -40,6 +40,9 @@ file(GLOB_RECURSE bf_srcs
 	${CMAKE_SOURCE_DIR}/src/*.h
 )
 
+# Remove src/external/.* files from the list of sources
+list(FILTER bf_srcs EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/external/.*")
+
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst

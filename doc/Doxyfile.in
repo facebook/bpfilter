@@ -29,6 +29,7 @@ WARN_AS_ERROR           = FAIL_ON_WARNINGS_PRINT
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
 INPUT                   = "@CMAKE_SOURCE_DIR@/src"
+EXCLUDE                 = "@CMAKE_SOURCE_DIR@/src/external"
 FILE_PATTERNS           = *.c \
                           *.h
 RECURSIVE               = YES
