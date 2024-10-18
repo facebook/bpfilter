@@ -853,6 +853,17 @@ static int _bf_program_generate_runtime_init(struct bf_program *program)
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_ARG_1, BF_PROG_CTX_OFF(arg)));
 
+    // Initialize the context's headers metadata
+    EMIT(program, BPF_MOV64_IMM(BF_REG_2, 0));
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_offset)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l4_offset)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_proto)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l4_proto)));
+
     return 0;
 }
 
