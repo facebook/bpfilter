@@ -13,6 +13,7 @@ enum bf_verbose
 {
     BF_VERBOSE_DEBUG,
     BF_VERBOSE_BPF,
+    BF_VERBOSE_BYTECODE,
     _BF_VERBOSE_MAX,
 };
 

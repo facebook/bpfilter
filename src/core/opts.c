@@ -27,6 +27,7 @@ enum
 static const char *_bf_verbose_strs[] = {
     [BF_VERBOSE_DEBUG] = "debug",
     [BF_VERBOSE_BPF] = "bpf",
+    [BF_VERBOSE_BYTECODE] = "bytecode",
 };
 
 static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
