@@ -164,7 +164,9 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BF_ARG_4, sizeof(struct iphdr)));
         EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
                           BPF_MOV64_IMM(BF_ARG_4, sizeof(struct ipv6hdr)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_ARG_4, 0));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_ARG_4, 0),
+                           BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_ARG_4,
+                                       BF_PROG_CTX_OFF(l3_proto)));
 
         r = bf_swich_generate(&swich);
         if (r)
@@ -266,8 +268,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct udphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BF_REG_4, sizeof(struct icmp6hdr)));
-        EMIT_SWICH_DEFAULT(&swich, 
-                          BPF_MOV64_IMM(BF_REG_4, 0));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_REG_4, 0),
+                           BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_4,
+                                       BF_PROG_CTX_OFF(l4_proto)));
 
         r = bf_swich_generate(&swich);
         if (r)
