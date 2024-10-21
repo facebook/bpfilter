@@ -253,7 +253,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     /* Parse the L4 protocol and handle unuspported protocol, similarly to
      * bf_stub_parse_l3_hdr() above. */
     EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_LDX_MEM(BPF_B, BF_ARG_4, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     {
         _cleanup_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BF_ARG_4);
