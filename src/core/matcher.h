@@ -126,6 +126,8 @@ enum bf_matcher_op
     BF_MATCHER_ALL,
     /// Test if the value is in a set
     BF_MATCHER_IN,
+    /// Test if the value is in a range
+    BF_MATCHER_RANGE,
     _BF_MATCHER_OP_MAX,
 };
 

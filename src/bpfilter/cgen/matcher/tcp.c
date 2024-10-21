@@ -25,15 +25,32 @@
 static int _bf_matcher_generate_tcp_port(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
-    uint16_t port = *(uint16_t *)&matcher->payload;
+    uint16_t *port = (uint16_t *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_TCP_SPORT ?
                         offsetof(struct tcphdr, source) :
                         offsetof(struct tcphdr, dest);
 
     EMIT(program, BPF_LDX_MEM(BPF_H, BF_REG_4, BF_REG_L4, offset));
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BF_REG_4, htobe16(port), 0));
+
+    switch (matcher->op) {
+    case BF_MATCHER_EQ:
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JNE, BF_REG_4, htobe16(*port), 0));
+        break;
+    case BF_MATCHER_NE:
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, htobe16(*port), 0));
+        break;
+    case BF_MATCHER_RANGE:
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JLT, BF_REG_4, htobe16(port[0]), 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JGT, BF_REG_4, htobe16(port[1]), 0));
+        break;
+    default:
+        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
+                        bf_matcher_op_to_str(matcher->op), matcher->op);
+    }
 
     return 0;
 }

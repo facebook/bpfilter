@@ -52,6 +52,13 @@ chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
         udp.dport 22
         counter
         ACCEPT
+    rule
+        tcp.sport 0-9
+        tcp.dport 10-19
+        udp.sport 20-29
+        udp.dport 30-39
+        counter
+        ACCEPT
 
 # Create a TC chain
 chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
@@ -95,6 +102,13 @@ chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
         udp.dport 22
         counter
         ACCEPT
+    rule
+        tcp.sport 0-9
+        tcp.dport 10-19
+        udp.sport 20-29
+        udp.dport 30-39
+        counter
+        ACCEPT
 
 # Create a BPF_NETFILTER chain
 chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
@@ -136,6 +150,13 @@ chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
         ACCEPT
     rule
         udp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.sport 0-9
+        tcp.dport 10-19
+        udp.sport 20-29
+        udp.dport 30-39
         counter
         ACCEPT
 
@@ -191,5 +212,12 @@ chain BF_HOOK_CGROUP_INGRESS{cgroup=/sys/fs/cgroup/user.slice} policy ACCEPT
         ACCEPT
     rule
         udp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.sport 0-9
+        tcp.dport 10-19
+        udp.sport 20-29
+        udp.dport 30-39
         counter
         ACCEPT
