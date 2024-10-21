@@ -3,6 +3,10 @@ chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
     rule
         meta.ifindex 1
         counter
+        CONTINUE
+    rule
+        meta.ifindex 1
+        counter
         ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
@@ -65,6 +69,10 @@ chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
     rule
         meta.ifindex 1
         counter
+        CONTINUE
+    rule
+        meta.ifindex 1
+        counter
         ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
@@ -115,6 +123,10 @@ chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
     rule
         meta.ifindex 1
         counter
+        CONTINUE
+    rule
+        meta.ifindex 1
+        counter
         ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
@@ -162,6 +174,10 @@ chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
 
 # Create a cgroup chain
 chain BF_HOOK_CGROUP_INGRESS{cgroup=/sys/fs/cgroup/user.slice} policy ACCEPT
+    rule
+        meta.ifindex 1
+        counter
+        CONTINUE
     rule
         meta.ifindex 1
         counter

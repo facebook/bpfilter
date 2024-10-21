@@ -15,7 +15,7 @@ Test(cgen, create_delete_assert)
 
     expect_assert_failure(bf_cgen_new(NULL, BF_FRONT_CLI, NOT_NULL));
     expect_assert_failure(bf_cgen_new(NOT_NULL, BF_FRONT_CLI, NULL));
-    expect_assert_failure(bf_cgen_new(NOT_NULL, BF_FRONT_CLI, &no_chain));  
+    expect_assert_failure(bf_cgen_new(NOT_NULL, BF_FRONT_CLI, &no_chain));
     expect_assert_failure(bf_cgen_free(NULL));
 }
 
@@ -55,7 +55,7 @@ Test(cgen, create_delete)
 
 Test(cgen, create_delete_no_malloc)
 {
-    _cleanup_bf_mock_ bf_mock mock; 
+    _cleanup_bf_mock_ bf_mock mock;
     struct bf_cgen *cgen;
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
 
@@ -69,7 +69,7 @@ Test(cgen, marsh_unmarsh_assert)
     expect_assert_failure(bf_cgen_new_from_marsh(NOT_NULL, NULL));
     expect_assert_failure(bf_cgen_marsh(NULL, NOT_NULL));
     expect_assert_failure(bf_cgen_marsh(NOT_NULL, NULL));
-} 
+}
 
 Test(cgen, marsh_unmarsh)
 {
@@ -79,10 +79,15 @@ Test(cgen, marsh_unmarsh)
 
     /* Create a codegen without any program, other bf_program_unmarsh()
      * will try to open the pinned BPF objects.
-     */ 
+     */
     cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT);
 
     assert_success(bf_cgen_marsh(cgen0, &marsh));
     assert_success(bf_cgen_new_from_marsh(&cgen1, marsh));
     assert_non_null(cgen1);
+}
+
+Test(cgen, invalid_chain_policy)
+{
+    expect_assert_failure(bf_test_chain(BF_HOOK_XDP, BF_VERDICT_CONTINUE));
 }

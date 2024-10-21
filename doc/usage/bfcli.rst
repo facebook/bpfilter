@@ -56,7 +56,7 @@ With:
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
 
-  - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it.
+  - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
 
 ``$OPTIONS`` are hook-specific comma separated key value pairs:
 
@@ -101,9 +101,14 @@ Rules are defined such as:
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
   - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
-  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT`` or ``DROP``.
+  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP`` or ``CONTINUE``.
+    - ``ACCEPT``: forward the packet to the kernel
+    - ``DROP``: discard the packet.
+    - ``CONTINUE``: continue processing subsequent rules.
 
-In a chain, as soon as a rule matches a packet, its verdict is applied, and the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
+In a chain, as soon as a rule matches a packet, its verdict is applied. If the verdict is ``ACCEPT`` or ``DROP``, the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
+
+Note ``CONTINUE`` means a packet can be counted more than once if multiple rules specify ``CONTINUE`` and ``counter``.
 
 
 Matchers

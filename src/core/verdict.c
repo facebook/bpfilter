@@ -12,6 +12,7 @@
 static const char *_bf_verdict_strs[] = {
     [BF_VERDICT_ACCEPT] = "ACCEPT",
     [BF_VERDICT_DROP] = "DROP",
+    [BF_VERDICT_CONTINUE] = "CONTINUE",
 };
 
 static_assert(ARRAY_SIZE(_bf_verdict_strs) == _BF_VERDICT_MAX,

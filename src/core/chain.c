@@ -26,6 +26,7 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
     int r;
 
     bf_assert(chain);
+    bf_assert(0 <= policy && policy < _BF_TERMINAL_VERDICT_MAX);
 
     _chain = malloc(sizeof(*_chain));
     if (!_chain)
