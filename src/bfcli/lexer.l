@@ -49,7 +49,7 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
     }
 }
     /* Verdicts */
-(ACCEPT|DROP)   { yylval.sval = strdup(yytext); return VERDICT; }
+(ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
 meta\.ifindex  { BEGIN(STATE_MATCHER_META_IFINDEX); yylval.sval = strdup(yytext); return MATCHER_TYPE; }

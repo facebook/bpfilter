@@ -83,6 +83,14 @@ struct bf_flavor_ops
     int (*gen_inline_prologue)(struct bf_program *program);
 
     int (*gen_inline_epilogue)(struct bf_program *program);
+
+    /**
+     * Generates a flavor-specific return code corresponding to the verdict.
+     *
+     * Note this function only needs to handle terminal verdicts - verdicts that
+     * stop further packet processing. Non-terminal verdicts do not need return
+     * codes and therefore do not need to be handled by get_verdict().
+     */
     int (*get_verdict)(enum bf_verdict verdict);
 
     /**

@@ -510,10 +510,23 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
     if (!verdict_attrs[NFTA_VERDICT_CODE])
         return bf_err_r(-EINVAL, "missing NFTA_VERDICT_CODE attribute");
 
-    int32_t verdict =
+    int32_t nf_verdict =
         be32toh(bf_nfattr_get_s32(verdict_attrs[NFTA_VERDICT_CODE]));
-    if (verdict < 0) {
-        return bf_err_r(-EINVAL, "only ACCEPT and DROP verdicts are supported");
+
+    enum bf_verdict verdict;
+    switch (nf_verdict) {
+        case NF_ACCEPT:
+            verdict = BF_VERDICT_ACCEPT;
+            break;
+        case NF_DROP:
+            verdict = BF_VERDICT_DROP;
+            break;
+        case NFT_CONTINUE:
+            verdict = BF_VERDICT_CONTINUE;
+            break;
+        default:
+            return bf_err_r(-EINVAL, "only ACCEPT, DROP and CONTINUE verdicts are supported");
+
     }
 
     // Add the rule to the relevant codegen
@@ -558,7 +571,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     chain = cgen->chain;
 
-    rule->verdict = verdict == 0 ? BF_VERDICT_DROP : BF_VERDICT_ACCEPT;
+    rule->verdict = verdict;
     rule->index = bf_list_size(&cgen->chain->rules);
     r = bf_chain_add_rule(chain, rule);
     if (r < 0)

@@ -592,9 +592,22 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
     }
 
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                                rule->verdict)));
-    EMIT(program, BPF_EXIT_INSN());
+    switch (rule->verdict) {
+        case BF_VERDICT_ACCEPT:
+        case BF_VERDICT_DROP:
+            EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+                                                        rule->verdict)));
+            EMIT(program, BPF_EXIT_INSN());
+            break;
+        case BF_VERDICT_CONTINUE:
+            // Fall through to next rule or default chain policy.
+            break;
+        default:
+            bf_abort(
+                "unsupported verdict, this should not happen: %d",
+                rule->verdict);
+            break;
+    }
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE);
     if (r)

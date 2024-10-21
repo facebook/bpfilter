@@ -139,6 +139,9 @@ chain           : CHAIN hook raw_hook_opts POLICY verdict rules
                     _cleanup_bf_list_ bf_list *raw_hook_opts = $3;
                     _cleanup_bf_list_ bf_list *rules = $6;
 
+                    if ($5 >= _BF_TERMINAL_VERDICT_MAX)
+                        bf_parse_err("'%s' is not supported for chains\n", bf_verdict_to_str($5));
+
                     if (bf_chain_new(&chain, $2, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
 
@@ -173,11 +176,11 @@ hook            : HOOK
 
 raw_hook_opts   : %empty { $$ = NULL; }
                 | raw_hook_opts HOOK_OPT
-                { 
+                {
                     _cleanup_bf_list_ bf_list *list = $1;
 
                     if (bf_list_add_tail(list, $2) < 0)
-                        bf_parse_err("failed to insert raw hook options '%s' in list", $2);                     
+                        bf_parse_err("failed to insert raw hook options '%s' in list", $2);
 
                     $$ = TAKE_PTR(list);
                 }

@@ -7,14 +7,20 @@
 
 /**
  * Verdict to apply for a rule or chain.
+ * Chains can only use terminal verdicts, rules can use all verdicts.
  */
 enum bf_verdict
 {
+    /** Terminal verdicts that stop further packet processing. */
     /** Accept the packet. */
     BF_VERDICT_ACCEPT,
     /** Drop the packet. */
     BF_VERDICT_DROP,
+    /** Non-terminal verdicts that allow further packet processing. */
+    /** Continue processing the next rule. */
+    BF_VERDICT_CONTINUE,
     _BF_VERDICT_MAX,
+    _BF_TERMINAL_VERDICT_MAX = BF_VERDICT_CONTINUE,
 };
 
 /**

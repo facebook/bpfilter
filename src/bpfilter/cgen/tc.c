@@ -109,14 +109,14 @@ static int _bf_tc_gen_inline_epilogue(struct bf_program *program)
  */
 static int _bf_tc_get_verdict(enum bf_verdict verdict)
 {
-    bf_assert(0 <= verdict && verdict < _BF_VERDICT_MAX);
+    bf_assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
 
     static const int verdicts[] = {
         [BF_VERDICT_ACCEPT] = TC_ACT_OK,
         [BF_VERDICT_DROP] = TC_ACT_SHOT,
     };
 
-    static_assert(ARRAY_SIZE(verdicts) == _BF_VERDICT_MAX);
+    static_assert(ARRAY_SIZE(verdicts) == _BF_TERMINAL_VERDICT_MAX);
 
     return verdicts[verdict];
 }
