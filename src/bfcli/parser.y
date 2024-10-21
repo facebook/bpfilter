@@ -80,9 +80,10 @@
 %token COUNTER
 %token <sval> HOOK_OPT
 %token <sval> MATCHER_META_IFINDEX  MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO
-%token <sval> MATCHER_IP_PROTO MATCHER_IPADDR MATCHER_PORT
+%token <sval> MATCHER_IP_PROTO MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP6_ADDR
+%token <sval> MATCHER_PORT MATCHER_PORT_RANGE
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 
@@ -490,6 +491,34 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &port, sizeof(port)))
+                        bf_parse_err("failed to create new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_PORT_RANGE
+                {
+                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    long raw_val;
+                    char *end_port_str;
+                    uint16_t ports[2];
+
+                    end_port_str = strchr($3, '-');
+                    *end_port_str = '\0';
+                    ++end_port_str;
+
+                    raw_val = atol($3);
+                    if (raw_val < 0 || USHRT_MAX < raw_val)
+                        bf_parse_err("invalid port value: %s\n", $3);
+                    ports[0] = (uint16_t)raw_val;
+
+                    raw_val = atol(end_port_str);
+                    if (raw_val < 0 || USHRT_MAX < raw_val)
+                        bf_parse_err("invalid port value: %s\n", end_port_str);
+                    ports[1] = (uint16_t)raw_val;
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, ports, sizeof(ports)))
                         bf_parse_err("failed to create new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
