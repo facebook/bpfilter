@@ -78,5 +78,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    ::benchmark::Shutdown();
+
     return 0;
 }
