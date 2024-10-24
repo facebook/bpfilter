@@ -179,7 +179,7 @@ int setFdNonBlock(Fd &fd)
     ::std::string data;
 
     while ((len = read(fd.get(), buffer.data(), buffer.size())) >= 0)
-        data += ::std::string(::std::begin(buffer), ::std::end(buffer));
+        data += ::std::string(::std::begin(buffer), len);
 
     if (len < 0 && errno != EAGAIN)
         err("failed to read from file descriptor: {}", errStr(errno));
@@ -790,8 +790,8 @@ int Chain::apply()
     const ::std::vector<::std::string> args {"--str", chain};
 
     const auto [r, out, err] = run(bin_, args);
-    if (r < 0) {
-        err("failed to exec '{}': {}\nError logs: {}", bin_, errStr(r), err);
+    if (r != 0) {
+        abort("failed to exec '{}': {}\nError logs: {}", bin_, r, err);
         return r;
     }
 
