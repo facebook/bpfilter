@@ -80,6 +80,9 @@ public:
     ::std::string srcdir = ".";
     ::std::string outfile = "results.json";
     ::std::string gitrev = "<unknown>";
+    ::std::optional<::std::string> adhoc = "";
+    int adhocRepeat = 1;
+    const ::std::string adhocBenchName = "bf_adhoc";
     int64_t gitdate = 0;
 
     Config() noexcept = default;
