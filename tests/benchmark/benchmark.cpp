@@ -95,7 +95,18 @@ constexpr int waitForDaemonTimeoutS = 5;
 constexpr int waitForDaemonSleepMs = 10;
 constexpr int maxCommitHashLen = 7;
 
-constexpr std::array<struct argp_option, 5> options {{
+enum
+{
+    OPT_KEY_ADHOC,
+    OPT_KEY_ADHOC_REPEAT,
+};
+
+const ::std::string help = "\v\
+--adhoc option is used to run an adhoc benchmark. When used, pre-defined \
+benchmarks will be skipped, and only the adhoc benchmark will be run. --adhoc \
+benchmarks won't create any output file.";
+
+constexpr std::array<struct argp_option, 7> options {{
     {"cli", 'c', "CLI", 0,
      "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
@@ -106,6 +117,10 @@ constexpr std::array<struct argp_option, 5> options {{
     {"outfile", 'o', "OUTPUT_FILE", 0,
      "Path to the JSON file to write the results to. Defaults to 'results.json'.",
      0},
+    {"adhoc", OPT_KEY_ADHOC, "RULE", 0,
+     "Adhoc benchmark using RULE, skip all the predefined benchmarks.", 0},
+    {"adhoc-repeat", OPT_KEY_ADHOC_REPEAT, "COUNT", 0,
+     "Number of times to repeat the adhoc RULE in the chain. Defaults to 1.", 0},
     {nullptr},
 }};
 
@@ -120,6 +135,12 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
     int r;
 
     switch (key) {
+    case OPT_KEY_ADHOC:
+        config->adhoc = ::std::string(arg);
+        break;
+    case OPT_KEY_ADHOC_REPEAT:
+        config->adhocRepeat = ::std::stoi(arg);
+        break;
     case 'c':
         config->bfcli = ::std::string(arg);
         break;
@@ -260,7 +281,7 @@ run(::std::string bin, const ::std::vector<::std::string> &args)
 
 int setup(std::span<char *> args)
 {
-    const struct argp argp = {options.data(), optsParser};
+    const struct argp argp = {options.data(), optsParser, nullptr, help.c_str()};
 
     const int r = argp_parse(&argp, static_cast<int>(args.size()), args.data(),
                              0, nullptr, &::bf::config);
@@ -292,10 +313,16 @@ int setup(std::span<char *> args)
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
     ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
-    ::benchmark::AddCustomContext("outfile", config.outfile);
 
-    ::benchmark::FLAGS_benchmark_out = config.outfile;
-    ::benchmark::FLAGS_benchmark_out_format = "json";
+    if (config.adhoc) {
+        ::benchmark::AddCustomContext("adhoc", *config.adhoc);
+        ::benchmark::AddCustomContext("adhocRepeat", ::std::to_string(config.adhocRepeat));
+        ::benchmark::FLAGS_benchmark_filter = config.adhocBenchName;
+    } else {
+        ::benchmark::AddCustomContext("outfile", config.outfile);
+        ::benchmark::FLAGS_benchmark_out = config.outfile;
+        ::benchmark::FLAGS_benchmark_out_format = "json";
+    }
 
     return 0;
 }

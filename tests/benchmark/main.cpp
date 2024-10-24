@@ -56,6 +56,22 @@ BENCHMARK(dropAfterXRules)
     ->Arg(2048);
 } // namespace
 
+void adhocBenchmark(::benchmark::State &state, const ::std::string &ruleset)
+{
+    ::bf::Chain chain(::bf::config.bfcli);
+    chain.repeat(ruleset, ::bf::config.adhocRepeat);
+    chain.apply();
+    auto prog = chain.getProgram();
+
+    benchLoop(state)
+    {
+        if (prog.run(::bf::CGROUP_DROP, ::bf::pkt_local_ip6_tcp) < 0)
+            state.SkipWithError("benchmark run failed");
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+}
+
 int main(int argc, char *argv[])
 {
     if (geteuid() != 0) {
@@ -67,6 +83,11 @@ int main(int argc, char *argv[])
         return -1;
 
     ::benchmark::Initialize(&argc, argv, nullptr);
+
+    if (::bf::config.adhoc) {
+        ::benchmark::RegisterBenchmark("bf_adhoc", adhocBenchmark,
+                                       *::bf::config.adhoc);
+    } 
 
     try {
         auto daemon = bf::Daemon(
