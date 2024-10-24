@@ -128,6 +128,10 @@ int main(int argc, char *argv[])
         r = _bf_cli_parse_file(_bf_opts.input_file, &ruleset);
     else
         r = _bf_cli_parse_str(_bf_opts.input_string, &ruleset);
+    if (r) {
+        bf_err_r(r, "failed to parse ruleset");
+        goto end_clean;
+    }
 
     // Set rules indexes
     bf_list_foreach (&ruleset.chains, chain_node) {
@@ -148,14 +152,14 @@ int main(int argc, char *argv[])
 
         r = bf_chain_marsh(chain, &marsh);
         if (r) {
-            bf_err_r(r, "failed to marsh chain, skipping");
-            continue;
+            bf_err_r(r, "failed to marsh chain");
+            goto end_clean;
         }
 
         r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
         if (r) {
-            bf_err_r(r, "failed to create request for chain, skipping");
-            continue;
+            bf_err_r(r, "failed to create request for chain");
+            goto end_clean;
         }
 
         request->front = BF_FRONT_CLI;
@@ -163,13 +167,13 @@ int main(int argc, char *argv[])
 
         r = bf_send(request, &response);
         if (r) {
-            bf_err_r(r, "failed to send chain creation request, skipping");
-            continue;
+            bf_err_r(r, "failed to send chain creation request");
+            goto end_clean;
         }
 
         if (response->type == BF_RES_FAILURE) {
             bf_err_r(response->error, "chain creation request failed");
-            continue;
+            goto end_clean;
         }
     }
 
