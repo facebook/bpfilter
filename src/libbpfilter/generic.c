@@ -35,11 +35,11 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
 
     r = bf_send_request(fd, request);
     if (r < 0)
-        return bf_err(errno, "bpfilter: failed to send request to the daemon");
+        return bf_err(r, "bpfilter: failed to send request to the daemon");
 
     r = bf_recv_response(fd, response);
     if (r < 0) {
-        return bf_err(errno,
+        return bf_err(r,
                       "bpfilter: failed to receive response from the daemon");
     }
 
