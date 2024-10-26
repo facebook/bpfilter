@@ -112,6 +112,7 @@ void bf_program_dump_bytecode(const struct bf_program *program)
 
         if (double_insn) {
             double_insn = false;
+            ++bfdd.idx;
             continue;
         }
 
