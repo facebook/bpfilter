@@ -1,6 +1,30 @@
 # Create an XDP chain
 chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
     rule
+        meta.dport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.dport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.sport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.sport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
         meta.ifindex 1
         counter
         CONTINUE
@@ -67,6 +91,30 @@ chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
 # Create a TC chain
 chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
     rule
+        meta.dport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.dport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.sport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.sport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
         meta.ifindex 1
         counter
         CONTINUE
@@ -121,6 +169,30 @@ chain BF_HOOK_TC_INGRESS{attach=yes,ifindex=2} policy ACCEPT
 # Create a BPF_NETFILTER chain
 chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
     rule
+        meta.dport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.dport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.sport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.sport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
         meta.ifindex 1
         counter
         CONTINUE
@@ -174,6 +246,30 @@ chain BF_HOOK_NF_LOCAL_IN policy ACCEPT
 
 # Create a cgroup chain
 chain BF_HOOK_CGROUP_INGRESS{cgroup=/sys/fs/cgroup/user.slice} policy ACCEPT
+    rule
+        meta.dport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.dport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.sport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.sport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
     rule
         meta.ifindex 1
         counter

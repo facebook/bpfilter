@@ -48,6 +48,10 @@ enum bf_matcher_type
     BF_MATCHER_META_L3_PROTO,
     /// Matches the L4 protocol, idependently from the L3 protocol.
     BF_MATCHER_META_L4_PROTO,
+    /// Matches the source port for UDP and TCP packets.
+    BF_MATCHER_META_SPORT,
+    /// Matches the destination port for UDP and TCP packets.
+    BF_MATCHER_META_DPORT,
     /// Matches IPv4 source address.
     BF_MATCHER_IP4_SRC_ADDR,
     /// Matches IPv4 destination address.
