@@ -161,6 +161,24 @@ With:
       - ``eq``
       - ``$PROTOCOL``
       - ``icmp``, ``icmpv6``, ``tcp``, ``udp`` are supported.
+    * - :rspan:`2` Source port
+      - :rspan:`2` ``meta.sport``
+      - ``eq``
+      - :rspan:`1` ``$PORT``
+      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+    * - ``not``
+    * - ``range``
+      - ``$START-$END``
+      - ``$START`` and ``$END`` are valid port values, as decimal integers.
+    * - :rspan:`2` Destination port
+      - :rspan:`2` ``meta.dport``
+      - ``eq``
+      - :rspan:`1` ``$PORT``
+      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+    * - ``not``
+    * - ``range``
+      - ``$START-$END``
+      - ``$START`` and ``$END`` are valid port values, as decimal integers.
 
 **IPv4 matchers**
 
