@@ -13,6 +13,8 @@
 #   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
 # - cert-dcl51-cpp
 #   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
+# - cert-int09-c
+#   See readibility-enum-initial-value
 # - clang-analyzer-core.CallAndMessage
 #   Too many false positives with GCC statement expressions.
 # - clang-analyzer-deadcode.DeadStores
@@ -26,6 +28,9 @@
 #   No benefit.
 # - modernize-use-trailing-return-type
 #   No benefit.
+# - readability-enum-initial-value
+#   clang-tidy complains because the X_MAX value of the enums is not defined
+#   explicitly, while other are. We prefer to do it this way.
 # - readability-function-cognitive-complexity
 #   Functions generating BPF bytecode will trigger this rule anytime, but they're
 #   not that complex due to heavy use of macros.
@@ -42,6 +47,7 @@ Checks: >
   cert-*,
     -cert-dcl37-c,
     -cert-dcl51-cpp,
+    -cert-int09-c,
   clang-analyzer-*,
     -clang-analyzer-core.CallAndMessage,
     -clang-analyzer-deadcode.DeadStores,
@@ -54,6 +60,7 @@ Checks: >
   performance-*,
   portability-*,
   readability-*,
+    -readability-enum-initial-value,
     -readability-function-cognitive-complexity,
     -readability-isolate-declaration,
     -readability-suspicious-call-argument

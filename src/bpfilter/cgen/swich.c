@@ -65,7 +65,7 @@ static int _bf_swich_option_new(struct bf_swich_option **option, uint32_t imm,
     bf_assert(option);
     bf_assert(insns);
 
-    _option = malloc(sizeof(*_option) + sizeof(struct bpf_insn) * insns_len);
+    _option = malloc(sizeof(*_option) + (sizeof(struct bpf_insn) * insns_len));
     if (!_option)
         return -ENOMEM;
 

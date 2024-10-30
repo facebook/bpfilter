@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <sys/types.h>
+#include <stddef.h>
 
 #include "core/front.h"
 #include "core/helper.h"

@@ -34,7 +34,7 @@
  */
 #define bf_xt_counters_info_size(xt_counters_info_ptr)                         \
     (sizeof(struct xt_counters_info) +                                         \
-     (xt_counters_info_ptr)->num_counters * sizeof(struct xt_counters))
+     ((xt_counters_info_ptr)->num_counters * sizeof(struct xt_counters)))
 /**
  * Get size of an ipt_replace structure.
  *

@@ -7,6 +7,7 @@
 
 #include <linux/bpf.h>
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "bpfilter/cgen/reg.h"
