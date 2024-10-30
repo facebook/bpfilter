@@ -6,6 +6,7 @@
 #include "core/verdict.h"
 
 #include <errno.h>
+#include <stddef.h>
 
 #include "core/helper.h"
 

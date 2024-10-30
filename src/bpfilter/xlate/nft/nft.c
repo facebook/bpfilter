@@ -515,18 +515,18 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
 
     enum bf_verdict verdict;
     switch (nf_verdict) {
-        case NF_ACCEPT:
-            verdict = BF_VERDICT_ACCEPT;
-            break;
-        case NF_DROP:
-            verdict = BF_VERDICT_DROP;
-            break;
-        case NFT_CONTINUE:
-            verdict = BF_VERDICT_CONTINUE;
-            break;
-        default:
-            return bf_err_r(-EINVAL, "only ACCEPT, DROP and CONTINUE verdicts are supported");
-
+    case NF_ACCEPT:
+        verdict = BF_VERDICT_ACCEPT;
+        break;
+    case NF_DROP:
+        verdict = BF_VERDICT_DROP;
+        break;
+    case NFT_CONTINUE:
+        verdict = BF_VERDICT_CONTINUE;
+        break;
+    default:
+        return bf_err_r(
+            -EINVAL, "only ACCEPT, DROP and CONTINUE verdicts are supported");
     }
 
     // Add the rule to the relevant codegen
