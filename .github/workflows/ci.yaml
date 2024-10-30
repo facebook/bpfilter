@@ -20,7 +20,7 @@ jobs:
       matrix:
         arch: ["X64", "ARM64"]
         mode: ["release", "debug"]
-    container: "fedora:40"
+    container: "fedora:41"
     runs-on: [self-hosted, "${{ matrix.arch }}"]
     steps:
       - name: Check out repository code
@@ -28,26 +28,9 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison \
-            bpftool \
-            clang \
-            clang-tools-extra \
-            cmake \
-            flex \
-            libcmocka-devel \
-            doxygen \
-            git \
-            jq \
-            lcov \
-            libasan \
-            libbpf-devel \
-            libnl3-devel \
-            libubsan \
-            python3-breathe \
-            python3-furo \
-            python3-linuxdoc \
-            python3-sphinx \
-            pkgconf
+            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
+            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
+            python3-sphinx
       - name: Configure build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=${{ matrix.mode }}
       - name: Build
@@ -72,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["fedora:39", "ubuntu:24.04"]
+        image: ["fedora:39", "fedora:40", "ubuntu:24.04"]
         arch: ["X64", "ARM64"]
     container: ${{ matrix.image }}
     runs-on: [self-hosted, "${{ matrix.arch }}"]
@@ -80,29 +63,12 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install dependencies (Fedora)
-        if: matrix.image == 'fedora:39'
+        if: matrix.image == 'fedora:39' || matrix.image == 'fedora:40'
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison \
-            bpftool \
-            clang \
-            clang-tools-extra \
-            cmake \
-            doxygen \
-            flex \
-            git \
-            jq \
-            lcov \
-            libasan \
-            libbpf-devel \
-            libcmocka-devel \
-            libnl3-devel \
-            libubsan \
-            python3-breathe \
-            python3-furo \
-            python3-linuxdoc \
-            python3-sphinx \
-            pkgconf
+            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
+            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
+            python3-sphinx
       - name: Install dependencies (Ubuntu)
         if: matrix.image == 'ubuntu:24.04'
         run: |
