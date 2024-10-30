@@ -18,9 +18,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        system: ["fedora:41"]
         arch: ["X64", "ARM64"]
         mode: ["release", "debug"]
-    container: "fedora:41"
+    container: "${{ matrix.system }}"
     runs-on: [self-hosted, "${{ matrix.arch }}"]
     steps:
       - name: Check out repository code
