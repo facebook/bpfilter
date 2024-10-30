@@ -1,14 +1,14 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39 and 40, and Ubuntu 24.04 LTS.
+This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39+, and Ubuntu 24.04 LTS.
 
 Required dependencies on Fedora and Ubuntu:
 
 .. code-block:: shell
 
-    # Fedora
-    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex git jq lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan python3-breathe python3-furo python3-linuxdoc python3-sphinx pkgconf
+    # Fedora 39+
+    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex g++ gcc git jq lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
 
     # Ubuntu
     sudo apt-get install -y bison clang clang-format clang-tidy cmake doxygen flex furo git jq lcov libpf-dev libcmocka-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf pip3 install linuxdoc
@@ -45,11 +45,11 @@ Building ``nftables`` and ``iptables``
 
 .. code-block:: shell
 
-    # Fedora 40
-    autoconf automake bison flex gmp-devel libedit-devel libmnl-devel libnftnl-devel libtool
+    # Fedora 39+
+    sudo dnf install -y autoconf automake gmp-devel libtool libedit-devel libmnl-devel libnftnl-devel
 
     # Ubuntu 24.04
-    autoconf bison flex libedit-dev libgmp-dev libmnl-dev libnftnl-dev libtool
+    sudo apt-get install -y autoconf bison flex libedit-dev libgmp-dev libmnl-dev libnftnl-dev libtool
 
 Then, you can build both from ``bpfilter``'s build directory:
 

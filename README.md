@@ -18,44 +18,15 @@ A typical usage workflow would be to start the `bpfilter` daemon, then define th
 
 Detailed information can be found in the [documentation](https://bpfilter.io).
 
-## Quick start guide
+## Quick start guide (Fedora 41)
 
 1. **Install dependencies**
     ```shell
     # To build bpfilter
-    sudo dnf install -y \
-        bison \
-        bpftool \
-        clang \
-        clang-tools-extra \
-        cmake \
-        flex \
-        jq \
-        libcmocka-devel \
-        doxygen \
-        git \
-        lcov \
-        libasan \
-        libbpf-devel \
-        libnl3-devel \
-        libubsan \
-        python3-breathe \
-        python3-furo \
-        python3-linuxdoc \
-        python3-sphinx \
-        pkgconf
+    sudo dnf install -y bison bpftool clang clang-tools-extra cmake doxygen flex g++ gcc git jq lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
 
     # To build nftables and iptables
-    sudo dnf install \
-        autoconf \
-        automake \
-        bison \
-        flex \
-        gmp-devel \
-        libedit-devel \
-        libmnl-devel \
-        libnftnl-devel \
-        libtool
+    sudo dnf install -y autoconf automake git gmp-devel libtool libedit-devel libmnl-devel libnftnl-devel
     ```
 
 2. **Build `bpfilter`**
