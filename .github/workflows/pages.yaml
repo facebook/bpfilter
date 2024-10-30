@@ -20,7 +20,7 @@ concurrency:
 jobs:
   deploy:
     if: github.repository == 'facebook/bpfilter'
-    container: "fedora:40"
+    container: "fedora:41"
     runs-on: ubuntu-latest
     steps:
       - name: Setup Pages
@@ -30,26 +30,9 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison \
-            bpftool \
-            clang \
-            clang-tools-extra \
-            cmake \
-            doxygen \
-            flex \
-            git \
-            jq \
-            lcov \
-            libasan \
-            libbpf-devel \
-            libnl3-devel \
-            libcmocka-devel \
-            libubsan \
-            python3-breathe \
-            python3-furo \
-            python3-linuxdoc \
-            python3-sphinx \
-            pkgconf
+            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
+            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
+            python3-sphinx
       - name: Configure build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Generate documentation

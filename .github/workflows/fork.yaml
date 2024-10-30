@@ -15,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # This forces GitHub to print "fedora:40, x64" in the job name.
-        system: ["fedora:40"]
+        # This forces GitHub to print "fedora:41, x64" in the job name.
+        system: ["fedora:41"]
         arch: ["X64"]
         mode: ["release", "debug"]
     container: "${{ matrix.system }}"
@@ -27,26 +27,9 @@ jobs:
       - name: Install dependencies (Fedora)
         run: |
           sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison \
-            bpftool \
-            clang \
-            clang-tools-extra \
-            cmake \
-            doxygen \
-            flex \
-            git \
-            jq \
-            lcov \
-            libasan \
-            libbpf-devel \
-            libcmocka-devel \
-            libnl3-devel \
-            libubsan \
-            python3-breathe \
-            python3-furo \
-            python3-linuxdoc \
-            python3-sphinx \
-            pkgconf
+            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
+            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
+            python3-sphinx
       - name: Configure build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=${{ matrix.mode }}
       - name: Build
