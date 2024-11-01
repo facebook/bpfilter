@@ -185,15 +185,22 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-int bf_cgen_get_counter(const struct bf_cgen *cgen, uint32_t counter_idx,
+int bf_cgen_get_counter(const struct bf_cgen *cgen,
+                        enum bf_counter_type counter_idx,
                         struct bf_counter *counter)
 {
     bf_assert(cgen && counter);
 
-    /* There are 1 more counter than number of rules. The last counter is
-     * dedicated to the policy. */
-    if (counter_idx > bf_list_size(&cgen->chain->rules))
+    /* There are two more counter than rules. The special counters must
+     * be accessed via the specific values, to avoid confusion. */
+    enum bf_counter_type rule_count = bf_list_size(&cgen->chain->rules);
+    if (counter_idx == BF_COUNTER_POLICY) {
+        counter_idx = rule_count;
+    } else if (counter_idx == BF_COUNTER_ERRORS) {
+        counter_idx = rule_count + 1;
+    } else if (counter_idx < 0 || counter_idx >= rule_count) {
         return -EINVAL;
+    }
 
     return bf_program_get_counter(cgen->program, counter_idx, counter);
 }
