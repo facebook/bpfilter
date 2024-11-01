@@ -19,6 +19,7 @@
 #include <endian.h>
 #include <stddef.h>
 
+#include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/program.h"
@@ -66,6 +67,15 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program,
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 0));
+
+        // BF_ARG_1: index in counters map (last slot).
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, program->num_counters - 1));
+
+        // BF_ARG_2: packet size, from the context.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
+                                  BF_PROG_CTX_OFF(pkt_size)));
+
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create a new dynamic pointer");
@@ -116,6 +126,15 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
+
+        // BF_ARG_1: index in counters map (last slot).
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, program->num_counters - 1));
+
+        // BF_ARG_2: packet size, from the context.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
+                                  BF_PROG_CTX_OFF(pkt_size)));
+
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
@@ -191,6 +210,15 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
+
+        // BF_ARG_1: index in counters map (last slot).
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, program->num_counters - 1));
+
+        // BF_ARG_2: packet size, from the context.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
+                                  BF_PROG_CTX_OFF(pkt_size)));
+
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
@@ -295,6 +323,15 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     {
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_RET, 0, 0));
+
+        // BF_ARG_1: index in counters map (last slot).
+        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, program->num_counters - 1));
+
+        // BF_ARG_2: packet size, from the context.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
+                                  BF_PROG_CTX_OFF(pkt_size)));
+
+        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");

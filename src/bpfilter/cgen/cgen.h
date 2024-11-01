@@ -128,11 +128,21 @@ int bf_cgen_unload(struct bf_cgen *cgen);
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
 
 /**
+ * @enum bf_counter_type
+ *
+ * Special counter types for @ref bf_cgen_get_counter .
+ */
+enum bf_counter_type
+{
+    BF_COUNTER_POLICY = -1,
+    BF_COUNTER_ERRORS = -2,
+};
+
+/**
  * Get packets and bytes counter at a specific index.
  *
- * Counters are referenced by their index in the counters map. There are 1 more
- * counter in the map than the number of rules. This last counter (the last in
- * the map) is dedicated to the policy.
+ * Counters are referenced by their index in the counters map or the enum
+ * values defined by @ref bf_counter_type .
  *
  * The counter from all the program generated from @p cgen are summarised
  * together.
@@ -142,7 +152,8 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
  *        correspond to a valid index, -E2BIG is returned.
  * @param counter Counter structure to fill with the counter values. Can't be
  *        NULL.
- * @return 0 on success, or a negative errno  value on failure.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_cgen_get_counter(const struct bf_cgen *cgen, uint32_t counter_idx,
+int bf_cgen_get_counter(const struct bf_cgen *cgen,
+                        enum bf_counter_type counter_idx,
                         struct bf_counter *counter);

@@ -603,7 +603,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
         struct ipt_entry *first_rule;
         struct ipt_entry *last_rule;
         struct bf_cgen *cgen;
-        uint32_t counter_idx;
+        enum bf_counter_type counter_idx;
 
         if (!(_bf_cache->valid_hooks & (1 << i))) {
             bf_dbg("ipt hook %d is not enabled, skipping", i);
@@ -613,12 +613,17 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
         first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
         last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
         cgen = bf_ctx_get_cgen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
+        enum bf_counter_type rule_count = bf_list_size(&cgen->chain->rules);
 
         for (counter_idx = 0; first_rule <= last_rule;
              ++counter_idx, first_rule = ipt_get_next_rule(first_rule)) {
             struct bf_counter counter = {};
 
-            r = bf_cgen_get_counter(cgen, counter_idx, &counter);
+            /* Note that the policy is considered a rule, but we must access
+             * via the unambiguous counter enum rather than overflowing. */
+            bool is_policy = counter_idx == rule_count;
+            r = bf_cgen_get_counter(
+                cgen, is_policy ? BF_COUNTER_POLICY : counter_idx, &counter);
             if (r) {
                 return bf_err_r(r, "failed to get IPT counter for index %u",
                                 counter_idx);
@@ -628,7 +633,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
             first_rule->counters.pcnt = counter.packets;
         }
 
-        if (counter_idx != bf_list_size(&cgen->chain->rules) + 1) {
+        if (counter_idx != rule_count + 1) {
             /* We expect len(cgen->rules) + 1 as the policy is considered
              * a rule for iptables, but not for bpfilter. */
             return bf_err_r(-EINVAL, "invalid number of rules requested");

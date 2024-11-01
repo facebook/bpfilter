@@ -891,6 +891,11 @@ int bf_program_generate(struct bf_program *program)
             bf_flavor_to_str(bf_hook_to_flavor(program->hook)),
             bf_front_to_str(program->front), bf_hook_to_str(program->hook));
 
+    /* Add 1 to the number of counters for the policy counter, and 1
+     * for the first reserved error slot. This must be done ahead of
+     * generation, as we will index into the error counters. */
+    program->num_counters = bf_list_size(&chain->rules) + 2;
+
     r = _bf_program_generate_runtime_init(program);
     if (r)
         return r;
@@ -935,9 +940,6 @@ int bf_program_generate(struct bf_program *program)
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL);
     if (r)
         return bf_err_r(r, "failed to generate function call fixups");
-
-    // Add 1 to the number of counters for the policy counter.
-    program->num_counters = bf_list_size(&chain->rules) + 1;
 
     return 0;
 }
