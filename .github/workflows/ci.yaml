@@ -50,7 +50,7 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@v4
         with:
-          file: $GITHUB_WORKSPACE/tools/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
+          file: tools/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
           push: true
           tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
           labels: ${{ steps.meta.outputs.labels }}
