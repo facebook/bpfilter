@@ -18,7 +18,7 @@ RUN apt-get update && \
         libasan8 \
         libbpf-dev \
         libcmocka-dev \
-        libnl3-dev \
+        libnl-3-dev \
         libubsan1 \
         pkgconf \
         python3-breathe \
