@@ -20,4 +20,6 @@ RUN sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_d
     python3-furo \
     python3-linuxdoc \
     python3-sphinx \
-    pkgconf
+    pkgconf \
+    google-benchmark-devel \
+    libgit2-devel
