@@ -38,7 +38,7 @@ jobs:
         with:
           context: "{{defaultContext}}:tools"
           push: true
-          tags: ${{ env.IMAGE_NAME }}:fedora-41-arm64
+          tags: ghcr.io/facebook/bpfilter:fedora-41-arm64
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -46,7 +46,7 @@ jobs:
   build:
     needs: create-container
     runs-on: ["4-core-ubuntu-arm"]
-    container: ghcr.io/facebook/bpfilter/fedora:fedora-41-arm64
+    container: ghcr.io/facebook/bpfilter:fedora-41-arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -58,7 +58,7 @@ jobs:
   benchmark:
     needs: create-container
     runs-on: ["4-core-ubuntu-arm"]
-    container: ghcr.io/facebook/bpfilter/fedora:fedora-41-arm64
+    container: ghcr.io/facebook/bpfilter:fedora-41-arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
