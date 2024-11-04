@@ -34,7 +34,6 @@ target_link_libraries(benchmark_bin
 
 add_custom_target(benchmark
     COMMAND
-        sudo
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>
