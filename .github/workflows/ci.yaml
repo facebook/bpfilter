@@ -58,7 +58,9 @@ jobs:
   benchmark:
     needs: create-container
     runs-on: ["4-core-ubuntu-arm"]
-    container: ghcr.io/facebook/bpfilter:fedora-41-arm64
+    container:
+      image: ghcr.io/facebook/bpfilter:fedora-41-arm64
+      options: --privileged
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
