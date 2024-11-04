@@ -28,4 +28,4 @@ RUN apt-get update && \
         libbenchmark-dev \
         libgit2-dev
 
-RUN pip3 install --break-system-packages linuxdoc
+RUN pip install --break-system-packages linuxdoc
