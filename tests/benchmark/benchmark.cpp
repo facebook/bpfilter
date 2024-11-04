@@ -289,6 +289,7 @@ int setup(std::span<char *> args)
         err("failed to parse command line arguments: {}", errStr(r));
         return r;
     }
+    /*
 
     const ::bf::Sources srcs(::bf::config.srcdir);
 
@@ -307,9 +308,10 @@ int setup(std::span<char *> args)
     const auto pos = config.outfile.find(pattern);
     if (pos != ::std::string::npos)
         config.outfile.replace(pos, pattern.size(), config.gitrev);
+    */
 
-    ::benchmark::AddCustomContext("gitrev", config.gitrev);
-    ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
+    ::benchmark::AddCustomContext("gitrev", "<none>");
+    ::benchmark::AddCustomContext("gitdate", "<none>");
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
     ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
