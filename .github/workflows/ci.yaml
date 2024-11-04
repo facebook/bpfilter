@@ -24,15 +24,15 @@ jobs:
             arch: "arm64"
         distribution:
           - name: fedora
-            version: 41
+            version: "41"
           - name: fedora
-            version: 40
+            version: "40"
           - name: fedora
-            version: 39
+            version: "39"
           - name: ubuntu
-            version: 24.04
+            version: "24.04"
           - name: ubuntu
-            version: 24.10
+            version: "24.10"
     runs-on: ["${{ matrix.host.name }}"]
     steps:
       - name: Checkout repository
