@@ -29,10 +29,6 @@ jobs:
             version: 40
           - name: fedora
             version: 39
-          - name: ubuntu
-            version: 24.04
-          - name: ubuntu
-            version: 24.10
     runs-on: ["${{ matrix.host.name }}"]
     steps:
       - name: Checkout repository
