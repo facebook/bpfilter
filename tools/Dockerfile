@@ -1,6 +1,6 @@
 FROM fedora:41
 
-RUN sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
+RUN dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
     bison \
     bpftool \
     clang \
