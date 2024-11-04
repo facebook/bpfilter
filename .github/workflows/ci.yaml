@@ -63,6 +63,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
       - name: Configure build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=debug
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=debug -DENABLE_BENCHMARK:BOOL=on
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
