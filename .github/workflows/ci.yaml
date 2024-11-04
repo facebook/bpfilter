@@ -15,7 +15,14 @@ permissions:
 
 jobs:
   create-container:
-    runs-on: ["4-core-ubuntu-arm"]
+    strategy:
+      matrix:
+        host:
+          - name: "ubuntu-latest"
+            arch: "x64"
+          - name: "4-core-ubuntu-arm"
+            arch: "arm64"
+    runs-on: ["${{ matrix.host.name }}"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -38,7 +45,7 @@ jobs:
         with:
           context: "{{defaultContext}}:tools"
           push: true
-          tags: ghcr.io/facebook/bpfilter:fedora-41-arm64
+          tags: ghcr.io/facebook/bpfilter:fedora-41-${{ matrix.host.arch}}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
