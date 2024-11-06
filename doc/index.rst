@@ -16,6 +16,7 @@
 
    developers/build
    developers/style
+   developers/tests
    developers/packets_processing
    developers/generation
    developers/modules/index
