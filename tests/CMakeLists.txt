@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+add_subdirectory(harness)
 add_subdirectory(benchmark)
 add_subdirectory(unit)
 add_subdirectory(integration)
@@ -13,6 +14,7 @@ file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/bpfilter/*.h        ${CMAKE_SOURCE_DIR}/src/bpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.h     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/*.h           ${CMAKE_SOURCE_DIR}/src/bfcli/*.c
+    ${CMAKE_SOURCE_DIR}/tests/harness/*.h       ${CMAKE_SOURCE_DIR}/tests/harness/*.c
 )
 
 add_custom_command(
