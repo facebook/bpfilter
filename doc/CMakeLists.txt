@@ -36,8 +36,8 @@
 #]]
 
 file(GLOB_RECURSE bf_srcs
-	${CMAKE_SOURCE_DIR}/src/*.c
-	${CMAKE_SOURCE_DIR}/src/*.h
+	${CMAKE_SOURCE_DIR}/src/*.h 			${CMAKE_SOURCE_DIR}/src/*.c
+	${CMAKE_SOURCE_DIR}/tests/harness/*.h	${CMAKE_SOURCE_DIR}/tests/harness/*.c
 )
 
 # Remove src/external/.* files from the list of sources
@@ -54,6 +54,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/generation.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/packets_processing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/tests.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/index.rst

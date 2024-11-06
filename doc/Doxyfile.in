@@ -2,8 +2,8 @@
 PROJECT_NAME            = "@PROJECT_NAME@"
 PROJECT_BRIEF           = An eBPF-based packet filtering framework
 OUTPUT_DIRECTORY        = "@CMAKE_CURRENT_BINARY_DIR@"
-STRIP_FROM_PATH         = "@CMAKE_SOURCE_DIR@/src"
-STRIP_FROM_INC_PATH     = "@CMAKE_SOURCE_DIR@/src"
+STRIP_FROM_PATH         = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests"
+STRIP_FROM_INC_PATH     = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests"
 OPTIMIZE_OUTPUT_FOR_C   = YES
 AUTOLINK_SUPPORT        = YES
 IDL_PROPERTY_SUPPORT    = NO
@@ -28,7 +28,7 @@ WARN_AS_ERROR           = FAIL_ON_WARNINGS_PRINT
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                   = "@CMAKE_SOURCE_DIR@/src"
+INPUT                   = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests/harness"
 EXCLUDE                 = "@CMAKE_SOURCE_DIR@/src/external"
 FILE_PATTERNS           = *.c \
                           *.h
@@ -54,7 +54,7 @@ GENERATE_PERLMOD        = NO
 #---------------------------------------------------------------------------
 # Configuration options related to the preprocessor
 #---------------------------------------------------------------------------
-INCLUDE_PATH            = "@CMAKE_SOURCE_DIR@/src"
+INCLUDE_PATH            = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests"
 
 #---------------------------------------------------------------------------
 # Configuration options related to diagram generator tools
