@@ -72,6 +72,7 @@ add_custom_command(
 add_custom_command(
 	COMMAND Doxygen::doxygen ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 	DEPENDS
+		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.base
 		${bf_srcs}
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xml/index.xml
