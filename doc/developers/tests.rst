@@ -14,6 +14,10 @@ Daemon
 ~~~~~~~
 .. doxygenfile:: daemon.h
 
+Filters
+~~~~~~~
+.. doxygenfile:: filters.h
+
 
 Unit tests
 ----------
