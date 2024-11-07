@@ -12,6 +12,7 @@
 
 #include "core/helper.h"
 #include "core/io.h"
+#include "core/logger.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response)
 {
@@ -24,23 +25,23 @@ int bf_send(const struct bf_request *request, struct bf_response **response)
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
-        return bf_err(errno, "bpfilter: can't create socket");
+        return bf_err_r(errno, "bpfilter: can't create socket");
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
     r = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
     if (r < 0)
-        return bf_err(errno, "bpfilter: failed to connect to socket");
+        return bf_err_r(errno, "bpfilter: failed to connect to socket");
 
     r = bf_send_request(fd, request);
     if (r < 0)
-        return bf_err(r, "bpfilter: failed to send request to the daemon");
+        return bf_err_r(r, "bpfilter: failed to send request to the daemon");
 
     r = bf_recv_response(fd, response);
     if (r < 0) {
-        return bf_err(r,
-                      "bpfilter: failed to receive response from the daemon");
+        return bf_err_r(r,
+                        "bpfilter: failed to receive response from the daemon");
     }
 
     return 0;
