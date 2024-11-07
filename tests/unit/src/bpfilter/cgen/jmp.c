@@ -6,7 +6,7 @@
 #include "bpfilter/cgen/jmp.c"
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 #include "bpfilter/cgen/reg.h"

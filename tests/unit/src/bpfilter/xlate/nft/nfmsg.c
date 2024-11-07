@@ -8,7 +8,7 @@
 #include <linux/netfilter/nf_tables.h>
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(nfmsg, new_and_free)
