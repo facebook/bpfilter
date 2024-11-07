@@ -72,6 +72,7 @@ add_custom_command(
 add_custom_command(
 	COMMAND Doxygen::doxygen ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 	DEPENDS
+		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.base
 		${bf_srcs}
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xml/index.xml
@@ -91,6 +92,7 @@ add_custom_command(
 			${CMAKE_CURRENT_BINARY_DIR}/_templates
 	COMMAND
 		${SPHINX_BIN}
+			-E				# Ensure the Doxygen changes are accounted for
 			-W 				# Return non-zero if a warning is triggered...
 			--keep-going	# ... but don't stop as soon as there is a warning.
 			-q				# Quiet.
