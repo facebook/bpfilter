@@ -5,7 +5,7 @@
 
 #include "core/hook.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(hook, hook_to_str_to_hook)

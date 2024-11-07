@@ -4,8 +4,9 @@
 add_library(harness
     OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/daemon.h    ${CMAKE_CURRENT_SOURCE_DIR}/daemon.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/filters.h    ${CMAKE_CURRENT_SOURCE_DIR}/filters.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/filters.h   ${CMAKE_CURRENT_SOURCE_DIR}/filters.c
         ${CMAKE_CURRENT_SOURCE_DIR}/process.h   ${CMAKE_CURRENT_SOURCE_DIR}/process.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test.h      ${CMAKE_CURRENT_SOURCE_DIR}/test.c
 )
 
 target_include_directories(harness

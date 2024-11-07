@@ -5,7 +5,7 @@
 
 #include "core/verdict.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(verdict, verdict_to_str_to_verdict)

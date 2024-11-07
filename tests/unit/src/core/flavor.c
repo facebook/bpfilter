@@ -5,7 +5,7 @@
 
 #include "core/flavor.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(flavor, flavor_to_str_assert_failure)

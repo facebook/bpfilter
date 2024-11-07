@@ -5,7 +5,7 @@
 
 #include "bpfilter/cgen/prog/map.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/helper.h"
 #include "harness/mock.h"
 
@@ -130,7 +130,7 @@ Test(map, btf_create_delete)
 
     _bf_btf_free(&btf2);
     assert_null(btf2);
-    _bf_btf_free(&btf2);     
+    _bf_btf_free(&btf2);
 }
 
 Test(map, map_create_assert)

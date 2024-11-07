@@ -5,22 +5,22 @@
 
 #include "harness/test.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "core/dump.h"
 #include "core/helper.h"
-#include "harness/cmocka.h"
+#include "core/list.h"
+#include "core/logger.h"
+#include "harness/sym.h"
 
-int bf_test_new(bf_test **test, const char *name, bf_test_func func)
+int bf_test_new(bf_test **test, const char *name, bf_test_cb cb)
 {
-    _cleanup_bf_test_ bf_test *_test = NULL;
+    _free_bf_test_ bf_test *_test = NULL;
 
-    assert(test);
-    assert(name);
-    assert(func);
+    bf_assert(test && name && cb);
 
     _test = calloc(1, sizeof(*_test));
     if (!_test)
@@ -30,7 +30,7 @@ int bf_test_new(bf_test **test, const char *name, bf_test_func func)
     if (!_test->name)
         return -ENOMEM;
 
-    _test->fn = func;
+    _test->cb = cb;
 
     *test = TAKE_PTR(_test);
 
@@ -39,22 +39,31 @@ int bf_test_new(bf_test **test, const char *name, bf_test_func func)
 
 void bf_test_free(bf_test **test)
 {
-    assert(test);
+    bf_assert(test);
 
     if (!*test)
         return;
 
-    free((char *)(*test)->name);
-    free(*test);
-    *test = NULL;
+    freep((void *)&(*test)->name);
+    freep((void *)test);
+}
+
+void bf_test_dump(const bf_test *test, prefix_t *prefix)
+{
+    bf_assert(test && prefix);
+
+    DUMP(prefix, "bf_test at %p", test);
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "name: %s", test->name);
+    DUMP(bf_dump_prefix_last(prefix), "cb: %p", test->cb);
+    bf_dump_prefix_pop(prefix);
 }
 
 int bf_test_group_new(bf_test_group **group, const char *name)
 {
-    _cleanup_bf_test_group_ bf_test_group *_group = NULL;
+    _free_bf_test_group_ bf_test_group *_group = NULL;
 
-    assert(group);
-    assert(name);
+    bf_assert(group && name);
 
     _group = calloc(1, sizeof(*_group));
     if (!_group)
@@ -74,22 +83,45 @@ int bf_test_group_new(bf_test_group **group, const char *name)
 
 void bf_test_group_free(bf_test_group **group)
 {
-    assert(group);
+    bf_assert(group);
 
     if (!*group)
         return;
 
-    free((char *)(*group)->name);
-    free((*group)->cmtests);
+    freep((void *)&(*group)->name);
+    freep((void *)&(*group)->cmtests);
     bf_list_clean(&(*group)->tests);
-    free(*group);
-    *group = NULL;
+    freep((void *)group);
+}
+
+void bf_test_group_dump(const bf_test_group *group, prefix_t *prefix)
+{
+    bf_assert(group && prefix);
+
+    DUMP(prefix, "bf_test_group at %p", group);
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "name: %s", group->name);
+
+    DUMP(prefix, "tests: bf_list<bf_test>[%lu]", bf_list_size(&group->tests));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&group->tests, test_node) {
+        bf_test *test = bf_list_node_get_data(test_node);
+
+        if (bf_list_is_tail(&group->tests, test_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_test_dump(test, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(bf_dump_prefix_last(prefix), "cmtests: (struct CMUnitTest *)%p",
+         group->cmtests);
+    bf_dump_prefix_pop(prefix);
 }
 
 bf_test *bf_test_group_get_test(bf_test_group *group, const char *test_name)
 {
-    assert(group);
-    assert(test_name);
+    bf_assert(group && test_name);
 
     bf_list_foreach (&group->tests, test_node) {
         bf_test *test = bf_list_node_get_data(test_node);
@@ -101,19 +133,17 @@ bf_test *bf_test_group_get_test(bf_test_group *group, const char *test_name)
 }
 
 int bf_test_group_add_test(bf_test_group *group, const char *test_name,
-                           bf_test_func func)
+                           bf_test_cb cb)
 {
-    _cleanup_bf_test_ bf_test *test = NULL;
+    _free_bf_test_ bf_test *test = NULL;
     int r;
 
-    assert(group);
-    assert(test_name);
-    assert(func);
+    bf_assert(group && test_name && cb);
 
     if (bf_test_group_get_test(group, test_name))
         return -EEXIST;
 
-    r = bf_test_new(&test, test_name, func);
+    r = bf_test_new(&test, test_name, cb);
     if (r)
         return r;
 
@@ -130,7 +160,7 @@ int bf_test_group_make_cmtests(bf_test_group *group)
 {
     size_t index = 0;
 
-    assert(group);
+    bf_assert(group);
 
     group->cmtests =
         calloc(bf_list_size(&group->tests), sizeof(struct CMUnitTest));
@@ -142,7 +172,7 @@ int bf_test_group_make_cmtests(bf_test_group *group)
 
         group->cmtests[index++] = (struct CMUnitTest) {
             .name = test->name,
-            .test_func = test->fn,
+            .test_func = test->cb,
         };
     }
 
@@ -151,9 +181,9 @@ int bf_test_group_make_cmtests(bf_test_group *group)
 
 int bf_test_suite_new(bf_test_suite **suite)
 {
-    _cleanup_bf_test_suite_ bf_test_suite *_suite = NULL;
+    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
 
-    assert(suite);
+    bf_assert(suite);
 
     _suite = calloc(1, sizeof(*_suite));
     if (!_suite)
@@ -170,21 +200,40 @@ int bf_test_suite_new(bf_test_suite **suite)
 
 void bf_test_suite_free(bf_test_suite **suite)
 {
-    assert(suite);
+    bf_assert(suite);
 
     if (!*suite)
         return;
 
     bf_list_clean(&(*suite)->groups);
-    free(*suite);
-    *suite = NULL;
+    freep((void *)suite);
+}
+
+void bf_test_suite_dump(const bf_test_suite *suite, prefix_t *prefix)
+{
+    bf_assert(suite && prefix);
+
+    DUMP(prefix, "bf_test_suite at %p", suite);
+    bf_dump_prefix_push(prefix);
+    DUMP(bf_dump_prefix_last(prefix), "groups: bf_list<bf_group>[%lu]",
+         bf_list_size(&suite->groups));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&suite->groups, group_node) {
+        bf_test_group *group = bf_list_node_get_data(group_node);
+
+        if (bf_list_is_tail(&suite->groups, group_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_test_group_dump(group, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+    bf_dump_prefix_pop(prefix);
 }
 
 bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
                                        const char *group_name)
 {
-    assert(suite);
-    assert(group_name);
+    bf_assert(suite && group_name);
 
     bf_list_foreach (&suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
@@ -196,20 +245,17 @@ bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
 }
 
 int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
-                           const char *test_name, bf_test_func func)
+                           const char *test_name, bf_test_cb cb)
 
 {
     bf_test_group *group;
     int r;
 
-    assert(suite);
-    assert(group_name);
-    assert(test_name);
-    assert(func);
+    bf_assert(suite && group_name && test_name && cb);
 
     group = bf_test_suite_get_group(suite, group_name);
     if (!group) {
-        _cleanup_bf_test_group_ bf_test_group *new_group = NULL;
+        _free_bf_test_group_ bf_test_group *new_group = NULL;
 
         r = bf_test_group_new(&new_group, group_name);
         if (r)
@@ -222,29 +268,24 @@ int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
         group = TAKE_PTR(new_group);
     }
 
-    r = bf_test_group_add_test(group, test_name, func);
+    r = bf_test_group_add_test(group, test_name, cb);
     if (r)
         return r;
 
     return 0;
 }
 
-int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_elf_sym *sym)
+int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_test_sym *sym)
 {
-    /**
-     * Split symbol name into group and test name.
-     * Add group
-     * Add test to group, with function pointer
-     */
     _cleanup_free_ char *group_name = NULL;
     _cleanup_free_ char *test_name = NULL;
     const char *group_name_end;
     const char *test_name_start;
     int r;
 
-    assert(suite);
-    assert(sym);
+    bf_assert(suite && sym);
 
+    // Split symbol name into group name and test name
     group_name_end = strchr(sym->name, '_');
     if (!group_name_end || group_name_end - sym->name == 0)
         return -EINVAL;
@@ -262,7 +303,8 @@ int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_elf_sym *sym)
     if (!test_name)
         return -ENOMEM;
 
-    r = bf_test_suite_add_test(suite, group_name, test_name, sym->fn);
+    // Add test to suite
+    r = bf_test_suite_add_test(suite, group_name, test_name, sym->cb);
     if (r)
         return r;
 
@@ -273,37 +315,18 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite)
 {
     int r;
 
-    assert(suite);
+    bf_assert(suite);
 
     bf_list_foreach (&suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
 
         r = bf_test_group_make_cmtests(group);
         if (r) {
-            fprintf(stderr,
-                    "WARNING: failed to make cmocka unit test for group '%s': "
-                    "%s\n",
-                    group->name, strerror(-r));
+            bf_warn_r(r, "failed to make CMocka unit test for group '%s'",
+                      group->name);
             continue;
         }
     }
 
     return 0;
-}
-
-void bf_test_suite_dump(const bf_test_suite *suite)
-{
-    assert(suite);
-
-    printf("Test suite:\n");
-
-    bf_list_foreach (&suite->groups, group_node) {
-        bf_test_group *group = bf_list_node_get_data(group_node);
-        printf("  Group: %s\n", group->name);
-
-        bf_list_foreach (&group->tests, test_node) {
-            bf_test *test = bf_list_node_get_data(test_node);
-            printf("    Test: %s\n", test->name);
-        }
-    }
 }

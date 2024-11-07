@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 
 #define _cleanup_bf_mock_ __attribute__((cleanup(bf_mock_cleanup)))
 
