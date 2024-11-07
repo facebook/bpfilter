@@ -5,16 +5,7 @@
 
 #pragma once
 
-#include <stdio.h> // NOLINT: header is used in bf_err().
-
-#include "core/helper.h"
-#include "core/request.h"
-#include "core/response.h"
-
-#define bf_err(r, fmt, ...)                                                    \
-    ({                                                                         \
-        (void)fprintf(stderr, fmt ": %s\n", ##__VA_ARGS__, bf_strerror(r));    \
-        r < 0 ? r : -r;                                                        \
-    })
+struct bf_request;
+struct bf_response;
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
