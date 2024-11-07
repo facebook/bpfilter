@@ -6,7 +6,7 @@
 #include "core/rule.c"
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(rule, new_and_free)
@@ -45,7 +45,7 @@ Test(rule, marsh_unmarsh)
 
     // All good
     {
-        _cleanup_bf_rule_ struct bf_rule *rule0 = bf_test_get_rule();
+        _cleanup_bf_rule_ struct bf_rule *rule0 = bf_test_get_rule(10);
         _cleanup_bf_rule_ struct bf_rule *rule1 = NULL;
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
@@ -62,7 +62,7 @@ Test(rule, marsh_unmarsh)
 
     // Failed serialisation
     {
-        _cleanup_bf_rule_ struct bf_rule *rule = bf_test_get_rule();
+        _cleanup_bf_rule_ struct bf_rule *rule = bf_test_get_rule(10);
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_non_null(rule);

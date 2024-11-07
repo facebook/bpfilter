@@ -6,7 +6,7 @@
 #include "bpfilter/xlate/nft/nft.c"
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(nft, check_front_ops)

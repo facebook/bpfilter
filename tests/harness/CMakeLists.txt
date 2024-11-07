@@ -26,6 +26,7 @@ endfunction()
 add_library(harness
     OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/daemon.h    ${CMAKE_CURRENT_SOURCE_DIR}/daemon.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/fake.h      ${CMAKE_CURRENT_SOURCE_DIR}/fake.c
         ${CMAKE_CURRENT_SOURCE_DIR}/filters.h   ${CMAKE_CURRENT_SOURCE_DIR}/filters.c
         ${CMAKE_CURRENT_SOURCE_DIR}/mock.h      ${CMAKE_CURRENT_SOURCE_DIR}/mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/process.h   ${CMAKE_CURRENT_SOURCE_DIR}/process.c

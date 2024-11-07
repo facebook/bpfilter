@@ -6,7 +6,7 @@
 #include "core/helper.c"
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 static const char content[] =

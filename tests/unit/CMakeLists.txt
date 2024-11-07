@@ -90,7 +90,6 @@ add_executable(unit_tests
     assert_override.h
 
     harness/main.c
-    harness/helper.c harness/helper.h
     harness/opts.c harness/opts.h
 
     ${bf_test_srcs}

@@ -6,7 +6,7 @@
 #include "bpfilter/cgen/swich.c"
 
 #include "harness/test.h"
-#include "harness/helper.h"
+#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(swich, new_and_free_option)

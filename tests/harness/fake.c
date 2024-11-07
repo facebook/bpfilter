@@ -3,28 +3,38 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/helper.h"
+#include "harness/fake.h"
 
-#include <errno.h>
+// clang-format off
+#include <setjmp.h> // NOLINT: required by cmocka.h
+#include <cmocka.h>
+// clang-format on
+
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/xlate/nft/nfgroup.h"
 #include "core/chain.h"
+#include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/rule.h"
-#include "harness/test.h"
+#include "core/verdict.h"
 
 struct nlmsghdr;
 
-static const char *_readable_file_content = "Hello, world!";
+static const char *_bf_readable_file_content = "Hello, world!";
 
 char *bf_test_get_readable_tmp_filepath(void)
 {
     int fd;
-    size_t len = strlen(_readable_file_content);
+    size_t len = strlen(_bf_readable_file_content);
     char tmppath[] = "/tmp/bpfltr_XXXXXX";
     char *path = NULL;
 
@@ -32,7 +42,7 @@ char *bf_test_get_readable_tmp_filepath(void)
     if (fd < 0)
         fail_msg("HARNESS: failed to create a temporary file");
 
-    if ((ssize_t)len != write(fd, _readable_file_content, len))
+    if ((ssize_t)len != write(fd, _bf_readable_file_content, len))
         fail_msg("HARNESS: failed to write to temporary file");
 
     close(fd);
@@ -121,7 +131,7 @@ struct nlmsghdr *bf_test_get_nlmsghdr(size_t nmsg, size_t *len)
         return NULL;
 
     for (size_t i = 0; i < nmsg; ++i)
-        memcpy(msg + i * ARRAY_SIZE(raw), raw, ARRAY_SIZE(raw));
+        memcpy(msg + (i * ARRAY_SIZE(raw)), raw, ARRAY_SIZE(raw));
 
     *len = msg_size;
 
@@ -141,7 +151,7 @@ struct bf_nfgroup *bf_test_get_nfgroup(size_t nmsg, size_t *len)
     return TAKE_PTR(group);
 }
 
-struct bf_rule *bf_test_get_rule(void)
+struct bf_rule *bf_test_get_rule(size_t nmatchers)
 {
     _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 
@@ -149,7 +159,7 @@ struct bf_rule *bf_test_get_rule(void)
 
     rule->index = 1;
 
-    for (int i = 0; i < 10; ++i)
+    for (size_t i = 0; i < nmatchers; ++i)
         assert_int_equal(
             0, bf_rule_add_matcher(rule, 0, 0, (void *)&i, sizeof(i)));
 
