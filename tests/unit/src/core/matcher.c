@@ -5,7 +5,7 @@
 
 #include "core/matcher.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(matcher, new_and_free)

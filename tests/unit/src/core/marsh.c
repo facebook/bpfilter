@@ -5,7 +5,7 @@
 
 #include "core/marsh.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(marsh, new)

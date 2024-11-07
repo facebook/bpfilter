@@ -5,7 +5,7 @@
 
 #include "core/list.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 static void noop_free(void **data)
@@ -212,7 +212,7 @@ Test(list, serialize_deserialize)
     // Non-empty list: marsh contains childs, which contain integers
     new_and_fill(&l1, 10, &dummy_ops, dummy_filler_tail);
     assert_success(bf_list_marsh(l1, &m1));
-    
+
     for (int i = 1; i < 11; ++i) {
         child = bf_marsh_next_child(m1, child);
         assert_non_null(child);

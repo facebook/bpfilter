@@ -7,7 +7,7 @@
 
 #include <linux/netfilter/nf_tables.h>
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/helper.h"
 #include "harness/mock.h"
 

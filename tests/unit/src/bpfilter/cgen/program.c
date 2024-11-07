@@ -5,7 +5,7 @@
 
 #include "bpfilter/cgen/program.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/helper.h"
 #include "harness/mock.h"
 

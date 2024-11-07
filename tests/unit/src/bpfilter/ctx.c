@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(ctx, create_delete_assert)

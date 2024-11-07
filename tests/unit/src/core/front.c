@@ -5,7 +5,7 @@
 
 #include "core/front.c"
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/mock.h"
 
 Test(shared_front, front_to_str_assert_failure)

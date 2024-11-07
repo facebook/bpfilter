@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include "core/list.h"
-#include "harness/cmocka.h"
+#include "harness/test.h"
 #include "harness/elf.h"
 #include "harness/filter.h"
 #include "harness/opts.h"
@@ -16,7 +16,7 @@
 int main(int argc, char *argv[])
 {
     _cleanup_bf_list_ bf_list *symbols = NULL;
-    _cleanup_bf_test_suite_ bf_test_suite *suite = NULL;
+    _free_bf_test_suite_ bf_test_suite *suite = NULL;
     _cleanup_bf_test_opts_ struct bf_test_opts *opts = NULL;
     int r;
 

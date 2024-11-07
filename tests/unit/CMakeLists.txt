@@ -112,13 +112,11 @@ add_executable(unit_tests
     assert_override.h
 
     harness/main.c
-    harness/cmocka.h
     harness/elf.c harness/elf.h
     harness/filter.c harness/filter.h
     harness/helper.c harness/helper.h
     harness/mock.c harness/mock.h
     harness/opts.c harness/opts.h
-    harness/test.c harness/test.h
 
     ${bf_test_srcs}
 
@@ -158,6 +156,7 @@ target_include_directories(unit_tests
 target_link_libraries(unit_tests
     PRIVATE
         bf_global_flags
+        harness
         PkgConfig::bpf
         gcov
         PkgConfig::cmocka

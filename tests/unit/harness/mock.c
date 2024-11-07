@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "harness/cmocka.h"
+#include "harness/test.h"
 
 #define bf_mock_real(mock) __real_##mock
 #define bf_mock_define(ret, x, args)                                           \
@@ -158,10 +158,10 @@ bf_mock_define(int, snprintf, (char *str, size_t size, const char *fmt, ...))
         va_start(args, fmt);
         r = bf_mock_real(vsnprintf)(str, size, fmt, args);
         va_end(args);
-        
+
         return r;
     }
-    
+
     return mock_type(int);
 }
 
