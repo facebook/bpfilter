@@ -74,6 +74,7 @@ struct CMUnitTest;
 #define _free_bf_test_ __attribute__((cleanup(bf_test_free)))
 #define _free_bf_test_group_ __attribute__((cleanup(bf_test_group_free)))
 #define _free_bf_test_suite_ __attribute__((cleanup(bf_test_suite_free)))
+#define _free_bf_test_filter_ __attribute__((cleanup(bf_test_filter_free)))
 
 typedef void (*bf_test_cb)(void **state);
 
@@ -136,3 +137,16 @@ int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_test_sym *sym);
 bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
                                        const char *group_name);
 int bf_test_suite_make_cmtests(const bf_test_suite *suite);
+
+/**
+ * A filter to apply to the tests to run.
+ */
+typedef struct
+{
+    bf_list patterns;
+} bf_test_filter;
+
+int bf_test_filter_new(bf_test_filter **filter);
+void bf_test_filter_free(bf_test_filter **filter);
+int bf_test_filter_add_pattern(bf_test_filter *filter, const char *pattern);
+bool bf_test_filter_matches(bf_test_filter *filter, const char *str);
