@@ -112,7 +112,6 @@ add_executable(unit_tests
     assert_override.h
 
     harness/main.c
-    harness/elf.c harness/elf.h
     harness/filter.c harness/filter.h
     harness/helper.c harness/helper.h
     harness/mock.c harness/mock.h

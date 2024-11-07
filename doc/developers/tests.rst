@@ -10,6 +10,10 @@ Test
 ~~~~
 .. doxygenfile:: test.h
 
+Symbols
+~~~~~~~
+.. doxygenfile:: sym.h
+
 Process
 ~~~~~~~
 .. doxygenfile:: process.h
