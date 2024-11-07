@@ -55,11 +55,11 @@ Test(cgen, create_delete)
 
 Test(cgen, create_delete_no_malloc)
 {
-    _cleanup_bf_mock_ bf_mock mock;
+    _clean_bf_test_mock_ bf_test_mock mock;
     struct bf_cgen *cgen;
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
 
-    mock = bf_mock_get(malloc, NULL);
+    mock = bf_test_mock_get(malloc, NULL);
     assert_error(bf_cgen_new(&cgen, BF_FRONT_CLI, &chain));
 }
 

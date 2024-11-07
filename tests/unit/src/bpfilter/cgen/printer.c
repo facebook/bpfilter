@@ -36,7 +36,7 @@ Test(printer, msg_lifetime)
 
     {
         // Allocation failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         struct bf_printer_msg *msg = NULL;
 
         assert_error(_bf_printer_msg_new(&msg));
@@ -98,7 +98,7 @@ Test(printer, printer_lifetime)
 
     {
         // Allocation failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         struct bf_printer *printer = NULL;
 
         assert_error(bf_printer_new(&printer));

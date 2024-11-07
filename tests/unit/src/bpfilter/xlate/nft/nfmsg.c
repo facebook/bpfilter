@@ -44,7 +44,7 @@ Test(nfmsg, new_and_free)
 
     {
         // calloc failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
@@ -52,7 +52,7 @@ Test(nfmsg, new_and_free)
 
     {
         // nlmsg_put failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_alloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_alloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
@@ -60,7 +60,7 @@ Test(nfmsg, new_and_free)
 
     {
         // nlmsg_put failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_put, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_put, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
@@ -68,7 +68,7 @@ Test(nfmsg, new_and_free)
 
     {
         // nlmsg_append failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_append, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_append, -1);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new(&msg, NFT_MSG_GETRULE, 17));
@@ -88,7 +88,7 @@ Test(nfmsg, new_done)
 
     {
         // calloc failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new_done(&msg));
@@ -96,7 +96,7 @@ Test(nfmsg, new_done)
 
     {
         // nlmsg_put failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_alloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_alloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new_done(&msg));
@@ -104,7 +104,7 @@ Test(nfmsg, new_done)
 
     {
         // nlmsg_put failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_put, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_put, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new_done(&msg));
@@ -112,7 +112,7 @@ Test(nfmsg, new_done)
 
     {
         // nlmsg_append failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_append, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_append, -1);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         assert_error(bf_nfmsg_new_done(&msg));
@@ -153,7 +153,7 @@ Test(nfmsg, new_from_nlmsghdr)
 
         assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
 
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
         assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));
@@ -165,7 +165,7 @@ Test(nfmsg, new_from_nlmsghdr)
 
         assert_success(bf_nfmsg_new(&msg0, NFT_MSG_GETRULE, 17));
 
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(nlmsg_convert, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(nlmsg_convert, NULL);
         _cleanup_bf_nfmsg_ struct bf_nfmsg *msg1 = NULL;
 
         assert_error(bf_nfmsg_new_from_nlmsghdr(&msg1, bf_nfmsg_hdr(msg0)));

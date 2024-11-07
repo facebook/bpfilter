@@ -31,7 +31,7 @@ Test(matcher, new_and_free)
 
     // malloc failure
     {
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         struct bf_matcher *matcher;
 
         assert_error(bf_matcher_new(&matcher, 0, 0, NULL, 0));
@@ -39,7 +39,7 @@ Test(matcher, new_and_free)
 
     // malloc failure with payload
     {
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         struct bf_matcher *matcher;
 
         assert_int_not_equal(
@@ -76,7 +76,7 @@ Test(matcher, marsh_unmarsh)
         assert_int_equal(
             0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
 
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         assert_error(bf_matcher_marsh(matcher0, &marsh));
     }
 
@@ -91,7 +91,7 @@ Test(matcher, marsh_unmarsh)
             0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
         assert_success(bf_matcher_marsh(matcher0, &marsh));
 
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         assert_error(bf_matcher_new_from_marsh(&matcher1, marsh));
     }
 }

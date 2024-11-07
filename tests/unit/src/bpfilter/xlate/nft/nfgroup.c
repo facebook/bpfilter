@@ -34,7 +34,7 @@ Test(nfgroup, new_and_free)
 
     {
         // calloc failure
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), -ENOMEM);
