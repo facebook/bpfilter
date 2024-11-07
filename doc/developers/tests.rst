@@ -10,6 +10,10 @@ Process
 ~~~~~~~
 .. doxygenfile:: process.h
 
+Daemon
+~~~~~~~
+.. doxygenfile:: daemon.h
+
 
 Unit tests
 ----------

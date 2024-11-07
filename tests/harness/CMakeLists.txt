@@ -3,6 +3,7 @@
 
 add_library(harness
     OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/daemon.h    ${CMAKE_CURRENT_SOURCE_DIR}/daemon.c
         ${CMAKE_CURRENT_SOURCE_DIR}/process.h   ${CMAKE_CURRENT_SOURCE_DIR}/process.c
 )
 
