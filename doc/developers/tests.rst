@@ -14,6 +14,10 @@ Symbols
 ~~~~~~~
 .. doxygenfile:: sym.h
 
+Mocks
+~~~~~
+.. doxygenfile:: mock.h
+
 Process
 ~~~~~~~
 .. doxygenfile:: process.h

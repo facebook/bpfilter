@@ -54,28 +54,6 @@ function(bf_test_configure_non_build_srcs TARGET)
     endforeach()
 endfunction()
 
-# - Define a new mock
-#
-# bpfilter uses ld's --wrap option to mock functions. --wrap will rename the
-# given symbol ${SYM} as __real_${SYM}, and every call to ${SYM} will actually
-# call __wrap_${SYM}. This function will had the necessary option to the
-# target in order for ld to wrap the requested symbol.
-#
-# See https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html.
-#
-function(bf_test_mock TARGET)
-    cmake_parse_arguments(PARSE_ARGV 1 _LOCAL "" "" "FUNCTIONS")
-
-    message(STATUS "Mocking the following function(s):")
-    foreach(_function IN LISTS _LOCAL_FUNCTIONS)
-        target_link_options(${TARGET}
-            PRIVATE
-                -Wl,--wrap=${_function}
-        )
-        message(STATUS "  ${_function}()")
-    endforeach()
-endfunction()
-
 enable_testing()
 
 set(bf_test_srcs
@@ -114,7 +92,6 @@ add_executable(unit_tests
     harness/main.c
     harness/filter.c harness/filter.h
     harness/helper.c harness/helper.h
-    harness/mock.c harness/mock.h
     harness/opts.c harness/opts.h
 
     ${bf_test_srcs}
@@ -161,24 +138,6 @@ target_link_libraries(unit_tests
         PkgConfig::cmocka
         PkgConfig::elf
         PkgConfig::nl
-)
-
-bf_test_mock(unit_tests
-    FUNCTIONS
-        calloc
-        malloc
-        open
-        read
-        write
-        btf__load_vmlinux_btf
-        nlmsg_alloc
-        nlmsg_convert
-        nlmsg_put
-        nlmsg_append
-        bf_bpf_obj_get
-        snprintf
-        vsnprintf
-        bf_bpf
 )
 
 add_custom_target(test

@@ -35,7 +35,7 @@ Test(helper, read_failure)
     {
         // Can not open the file to read.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(open, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(open, -1);
 
         assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
     }
@@ -43,7 +43,7 @@ Test(helper, read_failure)
     {
         // Can not allocate memory to read the content of the file.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
 
         assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
     }
@@ -51,7 +51,7 @@ Test(helper, read_failure)
     {
         // Can not read the content of the file.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(read, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(read, -1);
 
         assert_true(bf_read_file(tmp, NOT_NULL, NOT_NULL) < 0);
     }
@@ -62,7 +62,7 @@ Test(helper, write_failure)
     {
         // Can not open the output file.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(open, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(open, -1);
 
         assert_true(bf_write_file(tmp, NOT_NULL, 1) < 0);
     }
@@ -70,7 +70,7 @@ Test(helper, write_failure)
     {
         // Can not write to the output file.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(write, -1);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(write, -1);
 
         assert_true(bf_write_file(tmp, NOT_NULL, 1) < 0);
     }
@@ -78,7 +78,7 @@ Test(helper, write_failure)
     {
         // Can not write the full buffer to the output file.
         _cleanup_tmp_file_ char *tmp = bf_test_get_readable_tmp_filepath();
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(write, 10);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(write, 10);
 
         assert_true(bf_write_file(tmp, NOT_NULL, 100) < 0);
     }

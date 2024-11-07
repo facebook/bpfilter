@@ -30,6 +30,7 @@ WARN_AS_ERROR           = FAIL_ON_WARNINGS_PRINT
 #---------------------------------------------------------------------------
 INPUT                   = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests/harness"
 EXCLUDE                 = "@CMAKE_SOURCE_DIR@/src/external"
+EXCLUDE_SYMBOLS         = bf_test_mock_declare
 FILE_PATTERNS           = *.c \
                           *.h
 RECURSIVE               = YES

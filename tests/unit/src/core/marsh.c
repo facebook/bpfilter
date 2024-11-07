@@ -54,7 +54,7 @@ Test(marsh, new_failure)
 
     {
         _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
 
         assert_true(bf_marsh_new(NOT_NULL, NULL, 0) < 0);
     }
@@ -242,6 +242,6 @@ Test(marsh, add_child_obj_failure)
     assert_success(bf_marsh_new(&marsh, NULL, 0));
     assert_success(bf_marsh_new(&child, NULL, 0));
 
-    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
     assert_true(bf_marsh_add_child_obj(&marsh, child) < 0);
 }

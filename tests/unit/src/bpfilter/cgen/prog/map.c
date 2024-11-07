@@ -60,7 +60,7 @@ Test(map, marsh_unmarsh)
     _cleanup_bf_map_ struct bf_map *map0 = NULL;
     _cleanup_bf_map_ struct bf_map *map1 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf_obj_get, 1);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf_obj_get, 1);
 
     assert_success(bf_map_new(&map0, BF_MAP_TYPE_SET, "012345", BF_MAP_BPF_TYPE_ARRAY, 1, 2, 3));
 
@@ -141,7 +141,7 @@ Test(map, map_create_assert)
 Test(map, map_create)
 {
     _cleanup_bf_map_ struct bf_map *map = NULL;
-    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, 16);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf, 16);
 
     assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, BF_MAP_N_ELEMS_UNKNOWN));
     assert_error(bf_map_create(map, 0));
@@ -156,7 +156,7 @@ Test(map, map_create)
 Test(map, map_create_failure)
 {
     _cleanup_bf_map_ struct bf_map *map = NULL;
-    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(bf_bpf, -1);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf, -1);
 
     assert_success(bf_map_new(&map, BF_MAP_TYPE_SET, "suffix", BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_error(bf_map_create(map, 0));

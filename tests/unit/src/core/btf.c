@@ -19,7 +19,7 @@ Test(btf, init)
 
 Test(btf, failed_init)
 {
-    _cleanup_bf_mock_ bf_mock _ = bf_mock_get(btf__load_vmlinux_btf, NULL);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(btf__load_vmlinux_btf, NULL);
 
     assert_null(_bf_btf);
     assert_error(bf_btf_setup());

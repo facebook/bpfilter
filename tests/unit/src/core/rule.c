@@ -29,7 +29,7 @@ Test(rule, new_and_free)
 
     // malloc failure
     {
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(calloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
         struct bf_rule *rule;
 
         assert_error(bf_rule_new(&rule));
@@ -67,7 +67,7 @@ Test(rule, marsh_unmarsh)
 
         assert_non_null(rule);
 
-        _cleanup_bf_mock_ bf_mock _ = bf_mock_get(malloc, NULL);
+        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
         assert_error(bf_rule_marsh(rule, &marsh));
     }
 }
