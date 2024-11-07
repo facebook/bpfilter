@@ -33,6 +33,8 @@
 #   No benefit.
 # - modernize-use-trailing-return-type
 #   No benefit.
+# - performance-no-int-to-ptr
+#   No benefit.
 # - readability-enum-initial-value
 #   clang-tidy complains because the X_MAX value of the enums is not defined
 #   explicitly, while other are. We prefer to do it this way.
@@ -64,6 +66,7 @@ Checks: >
     -modernize-macro-to-enum,
     -modernize-use-trailing-return-type,
   performance-*,
+    -performance-no-int-to-ptr,
   portability-*,
   readability-*,
     -readability-enum-initial-value,
@@ -93,7 +96,7 @@ CheckOptions:
     value: '_|i|fd|r|j[0-9]|op'
   # Allowed short parameter names
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'ip|fd|op|id'
+    value: 'ip|fd|op|id|cb'
   # Allow for magic constants that are power of 2.
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: true
