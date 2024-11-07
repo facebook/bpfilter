@@ -8,7 +8,7 @@
 #include <argp.h>
 
 #include "core/helper.h"
-#include "harness/filter.h"
+#include "harness/test.h"
 
 static struct argp_option _bf_test_options[] = {
     {"group", 'g', "REGEX", 0,

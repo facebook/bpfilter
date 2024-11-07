@@ -6,7 +6,7 @@
 #include "harness/test.h"
 
 #include <errno.h>
-#include <stdio.h>
+#include <regex.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -329,4 +329,99 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite)
     }
 
     return 0;
+}
+
+static void _bf_test_filter_regex_free(regex_t **regex)
+{
+    bf_assert(regex);
+
+    if (!*regex)
+        return;
+
+    regfree(*regex);
+    freep((void *)regex);
+}
+
+int bf_test_filter_new(bf_test_filter **filter)
+{
+    bf_assert(filter);
+
+    *filter = malloc(sizeof(bf_test_filter));
+    if (!*filter)
+        return -ENOMEM;
+
+    bf_list_init(&(*filter)->patterns,
+                 (bf_list_ops[]) {
+                     {.free = (bf_list_ops_free)_bf_test_filter_regex_free}});
+
+    return 0;
+}
+
+void bf_test_filter_free(bf_test_filter **filter)
+{
+    bf_assert(filter);
+
+    if (!*filter)
+        return;
+
+    bf_list_clean(&(*filter)->patterns);
+    freep((void *)filter);
+}
+
+int bf_test_filter_add_pattern(bf_test_filter *filter, const char *pattern)
+{
+    _cleanup_free_ regex_t *regex = NULL;
+    char errbuf[128];
+    int r;
+
+    regex = malloc(sizeof(*regex));
+    if (!regex)
+        return -ENOMEM;
+
+    r = regcomp(regex, pattern, 0);
+    if (r) {
+        regerror(r, regex, errbuf, sizeof(errbuf));
+        return bf_err_r(-EINVAL, "failed to compile regex '%s': %s", pattern,
+                        errbuf);
+    }
+
+    r = bf_list_add_tail(&filter->patterns, regex);
+    if (r)
+        return bf_err_r(r, "failed to add regex to the patterns list");
+
+    TAKE_PTR(regex);
+
+    return 0;
+}
+
+bool bf_test_filter_matches(bf_test_filter *filter, const char *str)
+{
+    char errbuf[128];
+    int r;
+
+    bf_assert(filter);
+
+    // If the patterns list is empty: everything is allowed
+    if (bf_list_is_empty(&filter->patterns))
+        return true;
+
+    bf_list_foreach (&filter->patterns, pattern_node) {
+        regex_t *regex = bf_list_node_get_data(pattern_node);
+
+        r = regexec(regex, str, 0, NULL, 0);
+        if (r != REG_NOMATCH) {
+            // If we match, return true.
+            // If an error is returned (which is not REG_NOMATCH), log it and
+            // assume the pattern matched.
+            if (r) {
+                regerror(r, regex, errbuf, sizeof(errbuf));
+                bf_warn(
+                    "failed to match '%s' against a regex, assuming pattern is allowed: %s",
+                    str, errbuf);
+            }
+            return true;
+        }
+    }
+
+    return false;
 }
