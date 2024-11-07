@@ -14,9 +14,9 @@
 
 int main(int argc, char *argv[])
 {
-    _cleanup_bf_list_ bf_list *symbols = NULL;
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
     _cleanup_bf_test_opts_ struct bf_test_opts *opts = NULL;
+    int failed = 0;
     int r;
 
     r = bf_test_opts_new(&opts, argc, argv);
@@ -25,36 +25,10 @@ int main(int argc, char *argv[])
         return r;
     }
 
-    r = bf_list_new(&symbols, (bf_list_ops[]) {
-                                  {.free = (bf_list_ops_free)bf_test_sym_free}});
-    if (r)
-        return r;
+    r = bf_test_discover_test_suite(&suite);
+    if (r < 0)
+        return bf_err_r(r, "test suite discovery failed");
 
-    r = bf_test_get_symbols(symbols);
-    if (r)
-        return r;
-
-    r = bf_test_suite_new(&suite);
-    if (r)
-        return r;
-
-    bf_list_foreach (symbols, sym_node) {
-        struct bf_test_sym *symbol = bf_list_node_get_data(sym_node);
-
-        r = bf_test_suite_add_symbol(suite, symbol);
-        if (r) {
-            fprintf(stderr,
-                    "WARNING: failed to add symbol '%s' to test suite: %s\n",
-                    symbol->name, strerror(-r));
-            continue;
-        }
-    }
-
-    r = bf_test_suite_make_cmtests(suite);
-    if (r)
-        return r;
-
-    int failed = 0;
     bf_list_foreach (&suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
 
