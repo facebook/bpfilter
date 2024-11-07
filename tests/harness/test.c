@@ -331,6 +331,48 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite)
     return 0;
 }
 
+int bf_test_discover_test_suite(bf_test_suite **suite)
+{
+    _cleanup_bf_list_ bf_list *symbols = NULL;
+    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
+    int r;
+
+    bf_assert(suite);
+
+    r = bf_list_new(
+        &symbols,
+        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_test_sym_free}});
+    if (r < 0)
+        return bf_err_r(r, "failed to create the symbols list");
+
+    r = bf_test_get_symbols(symbols);
+    if (r < 0)
+        return bf_err_r(r, "failed to get symbols from this ELF file");
+
+    r = bf_test_suite_new(&_suite);
+    if (r < 0)
+        return bf_err_r(r, "failed to create a bf_test_suite object");
+
+    bf_list_foreach (symbols, sym_node) {
+        struct bf_test_sym *symbol = bf_list_node_get_data(sym_node);
+
+        r = bf_test_suite_add_symbol(_suite, symbol);
+        if (r < 0) {
+            bf_warn_r(r,
+                      "failed to add symbol '%s' to the test suite, ignoring",
+                      symbol->name);
+        }
+    }
+
+    r = bf_test_suite_make_cmtests(_suite);
+    if (r < 0)
+        return bf_err_r(r, "failed to generate CMUnitTest for test suite");
+
+    *suite = TAKE_PTR(_suite);
+
+    return 0;
+}
+
 static void _bf_test_filter_regex_free(regex_t **regex)
 {
     bf_assert(regex);

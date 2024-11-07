@@ -139,6 +139,18 @@ bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
 int bf_test_suite_make_cmtests(const bf_test_suite *suite);
 
 /**
+ * Discover the test suite in the current ELF file.
+ *
+ * Parse the sections in the current ELF file to discover the symbols in the
+ * `.bf_test` section and create the associated test suite.
+ *
+ * @param suite Discovered test suite. Can't be `NULL`. On success, this
+ *        argument will be point to a valid test suite.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_test_discover_test_suite(bf_test_suite **suite);
+
+/**
  * A filter to apply to the tests to run.
  */
 typedef struct
