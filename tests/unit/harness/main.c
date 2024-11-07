@@ -7,7 +7,7 @@
 
 #include "core/list.h"
 #include "harness/test.h"
-#include "harness/elf.h"
+#include "harness/sym.h"
 #include "harness/filter.h"
 #include "harness/opts.h"
 #include "harness/test.h"
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     }
 
     r = bf_list_new(&symbols, (bf_list_ops[]) {
-                                  {.free = (bf_list_ops_free)bf_elf_sym_free}});
+                                  {.free = (bf_list_ops_free)bf_test_sym_free}});
     if (r)
         return r;
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         return r;
 
     bf_list_foreach (symbols, sym_node) {
-        struct bf_elf_sym *symbol = bf_list_node_get_data(sym_node);
+        struct bf_test_sym *symbol = bf_list_node_get_data(sym_node);
 
         r = bf_test_suite_add_symbol(suite, symbol);
         if (r) {
