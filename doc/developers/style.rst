@@ -43,10 +43,10 @@ Regarding Doxygen usage:
 
 - For the sake of clarity, a function's multi-lines documentation should have the first and last comment line empty. This is specific to Doxygen comments, for all other use cases, the rule above still stands.
 - The first line of a function's documentation should be a brief explanation of its purpose, but ``@brief`` should not be used: ``@brief`` doesn't affect the generated output, avoid using it anywhere to maintain consistency.
-- Parameters are tagged with ``@param``. If a parameter's documentation is too long to fit on a single line, indent the next line properly to fit under the parameter's name (see example below).
+- Parameters are tagged with ``@param``. If a parameter's documentation is too long to fit on a single line, indent the next line properly to fit under the parameter's name (see example below). You can refer to the function's parameters in its documentation using `@p`.
 - Return value (if any) is tagged with ``@return``. The same line break rule applies as to ``@param``.
 - Always use the ``@`` version of the Doxygen directives, not the ``\`` one.
-- Use ``@ref`` to refer to other symbols from ``bpfilter`` and ``@p`` to refer to external symbols or parameter names.
+- Refer to symbols from the codebase using `\`` (backticks). For functions, use `\`function_name()\`` so Doxygen will automatically create a link to the function definition.
 - Use ``@code{.c}`` and ``@endcode`` to integrate code example. Remember about this, as it's sometimes clearer to have a simple code example than 20 lines of text.
 
 .. code:: c
@@ -57,7 +57,7 @@ Regarding Doxygen usage:
      * The memory allocated by this function for @p ifaces must be freed by the
      * caller.
      *
-     * @param ifaces Array of @ref bf_if_iface structures. The array will be
+     * @param ifaces Array of `bf_if_iface` structures. The array will be
      *        allocated by the function and the caller is responsible for
      *        freeing it.
      * @return On success, return the number of interfaces contained in
