@@ -14,14 +14,14 @@
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
 #include "core/chain.h"
-#include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/request.h"
 #include "core/response.h"
 #include "core/set.h"
+#include "libbpfilter/bpfilter.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
 
@@ -144,35 +144,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Send the chains to the daemon
     bf_list_foreach (&ruleset.chains, chain_node) {
-        struct bf_chain *chain = bf_list_node_get_data(chain_node);
-        _cleanup_bf_request_ struct bf_request *request = NULL;
-        _cleanup_bf_response_ struct bf_response *response = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        const struct bf_chain *chain = bf_list_node_get_data(chain_node);
 
-        r = bf_chain_marsh(chain, &marsh);
-        if (r) {
-            bf_err_r(r, "failed to marsh chain");
-            goto end_clean;
-        }
-
-        r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
-        if (r) {
-            bf_err_r(r, "failed to create request for chain");
-            goto end_clean;
-        }
-
-        request->front = BF_FRONT_CLI;
-        request->cmd = BF_REQ_SET_RULES;
-
-        r = bf_send(request, &response);
-        if (r) {
-            bf_err_r(r, "failed to send chain creation request");
-            goto end_clean;
-        }
-
-        if (response->type == BF_RES_FAILURE) {
-            bf_err_r(response->error, "chain creation request failed");
+        r = bf_cli_set_chain(chain);
+        if (r < 0) {
+            bf_err("failed to set chain for '%s', skipping remaining chains",
+                   bf_hook_to_str(chain->hook));
             goto end_clean;
         }
     }

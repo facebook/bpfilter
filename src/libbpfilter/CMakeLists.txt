@@ -3,6 +3,7 @@
 
 set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/bpfilter.h
+                                                    ${CMAKE_CURRENT_SOURCE_DIR}/cli.c
     ${CMAKE_CURRENT_SOURCE_DIR}/generic.h           ${CMAKE_CURRENT_SOURCE_DIR}/generic.c
                                                     ${CMAKE_CURRENT_SOURCE_DIR}/ipt.c
                                                     ${CMAKE_CURRENT_SOURCE_DIR}/nft.c
