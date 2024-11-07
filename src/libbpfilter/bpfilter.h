@@ -7,11 +7,20 @@
 
 #include <stddef.h>
 
+struct bf_chain;
 struct ipt_getinfo;
 struct ipt_get_entries;
 struct ipt_replace;
 struct xt_counters_info;
 struct nlmsghdr;
+
+/**
+ * Send a chain to the daemon.
+ *
+ * @param chain Chain to send to the daemon. Can't be NULL.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_cli_set_chain(const struct bf_chain *chain);
 
 /**
  * Send iptable's ipt_replace data to bpfilter daemon.
