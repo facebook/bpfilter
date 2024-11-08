@@ -5,8 +5,8 @@
 
 #include "bpfilter/cgen/cgen.c"
 
+#include "fake.h"
 #include "harness/test.h"
-#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(cgen, create_delete_assert)
