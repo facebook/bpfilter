@@ -30,6 +30,10 @@ Filters
 ~~~~~~~
 .. doxygenfile:: filters.h
 
+Program
+~~~~~~~
+.. doxygenfile:: prog.h
+
 
 Unit tests
 ----------
