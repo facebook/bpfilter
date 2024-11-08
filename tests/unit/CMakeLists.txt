@@ -43,7 +43,7 @@ function(bf_test_configure_non_build_srcs TARGET)
         # Get absolute path to source file, and path relative to the project's
         # root directory.
         get_filename_component(_abs_bf_src ${_bf_src} ABSOLUTE)
-        file(RELATIVE_PATH _rel_bf_src ${CMAKE_SOURCE_DIR} ${_abs_bf_src})
+        file(RELATIVE_PATH _rel_bf_src ${CMAKE_SOURCE_DIR}/src ${_abs_bf_src})
 
         if (${_rel_bf_src} IN_LIST _test_srcs)
             set_source_files_properties(${_abs_bf_src}
@@ -57,27 +57,27 @@ endfunction()
 enable_testing()
 
 set(bf_test_srcs
-    src/core/opts.c
-    src/core/btf.c
-    src/core/flavor.c
-    src/core/front.c
-    src/core/helper.c
-    src/core/hook.c
-    src/core/list.c
-    src/core/marsh.c
-    src/core/matcher.c
-    src/core/rule.c
-    src/core/verdict.c
-    src/bpfilter/cgen/cgen.c
-    src/bpfilter/cgen/jmp.c
-    src/bpfilter/cgen/printer.c
-    src/bpfilter/cgen/program.c
-    src/bpfilter/cgen/prog/map.c
-    src/bpfilter/cgen/swich.c
-    src/bpfilter/ctx.c
-    src/bpfilter/xlate/nft/nft.c
-    src/bpfilter/xlate/nft/nfmsg.c
-    src/bpfilter/xlate/nft/nfgroup.c
+    core/opts.c
+    core/btf.c
+    core/flavor.c
+    core/front.c
+    core/helper.c
+    core/hook.c
+    core/list.c
+    core/marsh.c
+    core/matcher.c
+    core/rule.c
+    core/verdict.c
+    bpfilter/cgen/cgen.c
+    bpfilter/cgen/jmp.c
+    bpfilter/cgen/printer.c
+    bpfilter/cgen/program.c
+    bpfilter/cgen/prog/map.c
+    bpfilter/cgen/swich.c
+    bpfilter/ctx.c
+    bpfilter/xlate/nft/nft.c
+    bpfilter/xlate/nft/nfmsg.c
+    bpfilter/xlate/nft/nfgroup.c
 )
 
 get_target_property(core_srcs core SOURCES)
@@ -87,10 +87,8 @@ get_target_property(lib_srcs libbpfilter_a SOURCES)
 list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 
 add_executable(unit_tests
-    assert_override.h
-
-    harness/main.c
-    harness/opts.c harness/opts.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.c
 
     ${bf_test_srcs}
 
@@ -119,12 +117,6 @@ set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_
 target_compile_options(unit_tests
     PRIVATE
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
-)
-
-target_include_directories(unit_tests
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(unit_tests
