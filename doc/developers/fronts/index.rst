@@ -6,4 +6,4 @@ Front-ends
    :maxdepth: 2
    :caption: Front
 
-   nftables
+   nft

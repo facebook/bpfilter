@@ -1,5 +1,5 @@
-``nftables``
-============
+``nft``
+=======
 
 Netlink messages
 ----------------

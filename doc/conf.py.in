@@ -10,7 +10,7 @@ author = "Quentin Deslandes"
 templates_path = ["_templates"]
 exclude_patterns = []
 
-extensions = ["breathe", "linuxdoc.rstFlatTable"]
+extensions = ["breathe", "linuxdoc.rstFlatTable", "sphinx.ext.autosectionlabel"]
 breathe_projects = {
     "@PROJECT_NAME@": "@CMAKE_CURRENT_BINARY_DIR@/xml"
 }
