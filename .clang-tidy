@@ -20,6 +20,11 @@
 # - clang-analyzer-deadcode.DeadStores
 #   False positives when a bf_jmpctx with cleanup attribute is defined (but
 #   not initialized) and initialized later on.
+# - clang-analyzer-optin.core.EnumCastOutOfRange
+#   We need to use negative enum values to refer to specific counters (errors
+#   and policy), while the positive values refers to the counters. We can't
+#   create an enum value for every possible counter index, so clang-tidy will
+#   complain the value doesn't exist. Which is true. But it's expected.
 # - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 #   Avoid usage of Annex K functions for portability reasons.
 # - clang-analyzer-unix.Malloc
@@ -51,6 +56,7 @@ Checks: >
   clang-analyzer-*,
     -clang-analyzer-core.CallAndMessage,
     -clang-analyzer-deadcode.DeadStores,
+    -clang-analyzer-optin.core.EnumCastOutOfRange,
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
     -clang-analyzer-unix.Malloc,
   misc-*,
