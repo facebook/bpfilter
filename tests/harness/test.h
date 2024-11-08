@@ -56,6 +56,14 @@ struct CMUnitTest;
         bf_unused void **state)
 
 /**
+ * Fail a test with an error message.
+ *
+ * @param fmt Message format, similar to `printf()` format.
+ * @param ... Format arguments.
+ */
+#define bf_test_fail(fmt, ...) fail_msg(fmt, ##__VA_ARGS__)
+
+/**
  * Assert that @p x evaluates to a success.
  *
  * @param x Expression to evaluate. If the expression evaluates to `0`, it is
