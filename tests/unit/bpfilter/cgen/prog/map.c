@@ -5,8 +5,8 @@
 
 #include "bpfilter/cgen/prog/map.c"
 
+#include "fake.h"
 #include "harness/test.h"
-#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(map, create_delete_assert)

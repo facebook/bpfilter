@@ -5,8 +5,8 @@
 
 #include "bpfilter/cgen/program.c"
 
+#include "fake.h"
 #include "harness/test.h"
-#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(program, emit_fixup_call)

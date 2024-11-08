@@ -5,8 +5,8 @@
 
 #include "core/opts.c"
 
+#include "fake.h"
 #include "harness/test.h"
-#include "harness/fake.h"
 #include "harness/mock.h"
 
 Test(opts, no_nftables)

@@ -89,6 +89,7 @@ list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 add_executable(unit_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fake.h  ${CMAKE_CURRENT_SOURCE_DIR}/fake.c
 
     ${bf_test_srcs}
 
@@ -117,6 +118,12 @@ set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_
 target_compile_options(unit_tests
     PRIVATE
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
+)
+
+target_include_directories(unit_tests
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src         # First look for headers in src/
+        ${CMAKE_CURRENT_SOURCE_DIR}     # Then use overrides in tests/units
 )
 
 target_link_libraries(unit_tests

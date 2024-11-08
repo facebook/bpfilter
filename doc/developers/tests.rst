@@ -18,10 +18,6 @@ Mocks
 ~~~~~
 .. doxygenfile:: mock.h
 
-Fake
-~~~~
-.. doxygenfile:: fake.h
-
 Process
 ~~~~~~~
 .. doxygenfile:: process.h

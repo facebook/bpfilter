@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/fake.h"
+#include "fake.h"
 
 // clang-format off
 #include <setjmp.h> // NOLINT: required by cmocka.h
@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
@@ -28,43 +27,6 @@
 #include "core/verdict.h"
 
 struct nlmsghdr;
-
-static const char *_bf_readable_file_content = "Hello, world!";
-
-char *bf_test_get_readable_tmp_filepath(void)
-{
-    int fd;
-    size_t len = strlen(_bf_readable_file_content);
-    char tmppath[] = "/tmp/bpfltr_XXXXXX";
-    char *path = NULL;
-
-    fd = mkstemp(tmppath);
-    if (fd < 0)
-        fail_msg("HARNESS: failed to create a temporary file");
-
-    if ((ssize_t)len != write(fd, _bf_readable_file_content, len))
-        fail_msg("HARNESS: failed to write to temporary file");
-
-    close(fd);
-
-    path = strdup(tmppath);
-    if (!path)
-        fail_msg("HARNESS: failed to write to temporary file");
-
-    return path;
-}
-
-void bf_test_remove_tmp_file(char **path)
-{
-    if (!*path)
-        return;
-
-    if (unlink(*path) < 0)
-        fail_msg("HARNESS: failed to remove '%s'", *path);
-
-    free(*path);
-    *path = NULL;
-}
 
 struct bf_chain *bf_test_chain(enum bf_hook hook, enum bf_verdict policy)
 {
