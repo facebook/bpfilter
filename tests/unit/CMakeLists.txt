@@ -123,11 +123,7 @@ target_link_libraries(unit_tests
     PRIVATE
         bf_global_flags
         harness
-        PkgConfig::bpf
         gcov
-        PkgConfig::cmocka
-        PkgConfig::elf
-        PkgConfig::nl
 )
 
 add_custom_target(test

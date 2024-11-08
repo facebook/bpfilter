@@ -43,6 +43,10 @@ target_link_libraries(harness
     PUBLIC
         bf_global_flags
         core
+        PkgConfig::bpf
+        PkgConfig::cmocka
+        PkgConfig::elf
+        PkgConfig::nl
 )
 
 bf_test_mock(harness
