@@ -5,8 +5,11 @@
 
 #include "harness/filters.h"
 
+#include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "core/chain.h"
 #include "core/helper.h"
@@ -19,6 +22,52 @@
 #include "core/verdict.h"
 
 #define _clean_bf_list_ __attribute__((__cleanup__(bf_list_clean)))
+
+struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...)
+{
+    struct bf_hook_opts opts = {};
+    va_list args;
+
+    va_start(args, opt);
+    do {
+        switch (opt) {
+        case BF_HOOK_OPT_IFINDEX:
+            opts.ifindex = va_arg(args, uint32_t);
+            break;
+        case BF_HOOK_OPT_CGROUP:
+            opts.cgroup = strdup(va_arg(args, char *));
+            if (!opts.cgroup) {
+                bf_err("failed to copy 'cgroup' hook option, aborting");
+                goto err_clean;
+            }
+            break;
+        case BF_HOOK_OPT_NAME:
+            opts.name = strdup(va_arg(args, char *));
+            if (!opts.name) {
+                bf_err("failed to copy 'name' hook option, aborting");
+                goto err_clean;
+            }
+            break;
+        case BF_HOOK_OPT_ATTACH:
+            opts.attach = va_arg(args, int);
+            break;
+        default:
+            bf_err("unknown hook option %d, aborting", opt);
+            goto err_clean;
+        }
+
+        opts.used_opts |= 1 << opt;
+    } while ((int)(opt = va_arg(args, enum bf_hook_opt)) != -1);
+    va_end(args);
+
+    return opts;
+
+err_clean:
+    va_end(args);
+    bf_hook_opts_clean(&opts);
+
+    return (struct bf_hook_opts) {};
+}
 
 struct bf_matcher *bf_matcher_get(enum bf_matcher_type type,
                                   enum bf_matcher_op op, const void *payload,

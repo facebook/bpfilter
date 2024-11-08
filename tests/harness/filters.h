@@ -30,6 +30,28 @@
  */
 
 /**
+ * Create a new hook options object.
+ *
+ * `bf_hook_opts_get()` expects pairs of `bf_hook_opt` key and value, with the
+ * last variadic argument being `-1`:
+ *
+ * @code{.c}
+ *  bf_hook_opts_get(
+ *      BF_HOOK_OPT_IFINDEX, 2,
+ *      BF_HOOK_OPT_NAME, "my_bpf_program",
+ *      -1
+ *  );
+ * @endcode
+ *
+ * @param opt First hook option. This parameter is required as C requires at
+ *        least one explicit parameter.
+ * @return A `bf_hook_opts` structure filled with the arguments passed to the
+ *         function. If an error occurs, an error message is printed and the
+ *         `bf_hook_opts` structure is filled with `0`.
+ */
+struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...);
+
+/**
  * Create a new matcher.
  *
  * See `bf_matcher_new()` for details of the arguments.
