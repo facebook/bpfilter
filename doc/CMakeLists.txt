@@ -58,7 +58,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/nftables.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/nft.rst
 )
 
 configure_file(Doxyfile.in Doxyfile)
