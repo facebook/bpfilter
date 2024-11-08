@@ -29,7 +29,9 @@ Once CMake completes, you can build ``bpfilter``. The following Make targets are
 
 * ``bfcli``: build ``bfcli`` command line interface.
 
-* ``test``: build and run the test suite.
+* ``test``: build and run the unit tests.
+
+* ``e2e``: build and run the end-to-end tests.
 
 * ``doc``: generate ``bpfilter``'s documentation in ``$BUILD_DIRECTORY/doc/html``.
 
