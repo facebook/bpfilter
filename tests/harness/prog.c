@@ -93,13 +93,14 @@ int bf_test_prog_open(struct bf_test_prog *prog, const char *name)
 }
 
 int bf_test_prog_run(const struct bf_test_prog *prog, uint32_t expect,
-                     void *pkt, size_t pkt_len)
+                     const struct bf_test_packet *pkt)
 {
-    LIBBPF_OPTS(bpf_test_run_opts, opts, .data_in = pkt,
-                .data_size_in = (uint32_t)pkt_len, .repeat = 1);
     int r;
 
     bf_assert(prog && pkt);
+
+    LIBBPF_OPTS(bpf_test_run_opts, opts, .data_in = pkt->data,
+                .data_size_in = (uint32_t)pkt->len, .repeat = 1);
 
     r = bpf_prog_test_run_opts(prog->fd, &opts);
     if (r < 0)
