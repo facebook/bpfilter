@@ -232,8 +232,8 @@ With:
     * - :rspan:`1` Source address
       - :rspan:`1` ``ip6.saddr``
       - ``eq``
-      - :rspan:`3` ``$IP/$MASK``
-      - :rspan:`3` ``/$MASK`` is optional, `/128` is used by default.
+      - :rspan:`3` ``$IP/$PREFIX``
+      - :rspan:`3` ``/$PREFIX`` is optional, ``/128`` is used by default.
     * - ``not``
     * - :rspan:`1` Destination address
       - :rspan:`1` ``ip6.daddr``
