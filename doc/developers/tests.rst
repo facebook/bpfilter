@@ -92,14 +92,9 @@ The example below will create an empty chain with a default ``ACCEPT`` policy. W
             bf_test_fail("failed to send the chain to the daemon");
 
         assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
-
-        assert_success(bf_test_prog_run(
-            prog,
-            2,
-            pkt_local_ip6_tcp,
-            ARRAY_SIZE(pkt_local_ip6_tcp)
-        ));
+        assert_success(bf_test_prog_run(prog, 2, &pkt_local_ip6_tcp));
     }
+
 
 Benchmarking
 ------------

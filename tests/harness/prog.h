@@ -18,6 +18,12 @@
  * link it to a BPF program attach to the system using the program's name.
  */
 
+struct bf_test_packet
+{
+    size_t len;
+    const void *data;
+};
+
 #define _free_bf_test_prog_ __attribute__((__cleanup__(bf_test_prog_free)))
 
 struct bf_test_prog
@@ -37,8 +43,7 @@ int bf_test_prog_open(struct bf_test_prog *prog, const char *name);
  * @param prog Program to test run. Can't be NULL.
  * @param expect Expected return value of the program, depends on the program
  *        type.
- * @param pkt Raw packet data to send to the program. Can't be NULL.
- * @param pkt_len Length of @p pkt.
+ * @param pkt Test packet to send to the BPF program. Can't be NULL.
  * @return
  * - 0 if the call succeeded and the BPF program's return value is equal to
  *   @p expect.
@@ -47,4 +52,4 @@ int bf_test_prog_open(struct bf_test_prog *prog, const char *name);
  *   from @p expect.
  */
 int bf_test_prog_run(const struct bf_test_prog *prog, uint32_t expect,
-                     void *pkt, size_t pkt_len);
+                     const struct bf_test_packet *pkt);
