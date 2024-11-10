@@ -37,4 +37,5 @@ target_link_libraries(bfcli
         bf_global_flags
         core
         libbpfilter_a
+        ${ARGP_LIBRARY}
 )

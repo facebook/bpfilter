@@ -131,6 +131,7 @@ target_link_libraries(unit_tests
         bf_global_flags
         harness
         gcov
+        ${ARGP_LIBRARY}
 )
 
 add_custom_target(test

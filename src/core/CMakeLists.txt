@@ -40,6 +40,7 @@ target_link_libraries(core
     PUBLIC
         bf_global_flags
         PkgConfig::bpf
+        ${ARGP_LIBRARY}
 )
 
 add_library(core.pic

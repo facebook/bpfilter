@@ -11,15 +11,30 @@ project(bpfilter
 
 include(GNUInstallDirs)
 
-find_package(Doxygen REQUIRED)
+option(BUILD_TESTING "Enable testing" OFF)
+option(BUILD_DOCS "Enable building documentation" OFF)
+
+if(BUILD_DOCS)
+    find_package(Doxygen REQUIRED)
+endif()
 find_package(PkgConfig REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
-pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
+if(BUILD_TESTING)
+    pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
+endif()
 pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
+
+find_library(ARGP_LIBRARY 
+    NAMES argp
+    PATHS ${CMAKE_SYSROOT}/usr/lib 
+    REQUIRED)
+if(NOT ARGP_LIBRARY)
+    message(FATAL_ERROR "libargp not found")
+endif()
 
 # Required to get CMake to pass PIE flags to the compiler/linker
 include(CheckPIESupported)
@@ -30,13 +45,34 @@ if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
                   "If PIE is enabled by default, test auto discovery might fail.")
 endif()
 
-find_program(SPHINX_BIN sphinx-build REQUIRED)
-find_program(LCOV_BIN lcov REQUIRED)
-find_program(GENHTML_BIN genhtml REQUIRED)
-find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
-find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
+if(BUILD_DOCS)
+    find_program(SPHINX_BIN sphinx-build REQUIRED)
+    find_program(LCOV_BIN lcov REQUIRED)
+    find_program(GENHTML_BIN genhtml REQUIRED)
+    find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
+    find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
+endif()
+
+# Replace mandatory REQUIRED flag
+find_program(BPFTOOL_BIN bpftool)
+
+# Add fallback paths
+if(NOT BPFTOOL_BIN)
+    find_program(BPFTOOL_BIN bpftool
+        PATHS
+        ${CMAKE_SYSROOT}/usr/sbin
+        ${CMAKE_SYSROOT}/sbin
+        /usr/sbin
+        /sbin
+    )
+endif()
+
+# Make it optional with warning
+if(NOT BPFTOOL_BIN)
+    message(WARNING "bpftool not found - some features may be disabled")
+    set(BPFTOOL_BIN "bpftool") # Set default value
+endif()
 find_program(CLANG_BIN clang REQUIRED)
-find_program(BPFTOOL_BIN bpftool REQUIRED)
 find_program(JQ_BIN jq REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -84,8 +120,12 @@ target_link_options(bf_global_flags
 )
 
 add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(doc)
+if(BUILD_DOCS)
+    add_subdirectory(doc)
+endif()
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 install(TARGETS bpfilter libbpfilter_a libbpfilter_so bfcli)
 

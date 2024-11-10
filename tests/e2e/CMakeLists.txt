@@ -30,6 +30,7 @@ target_link_libraries(e2e_bin
     PRIVATE
         harness
         libbpfilter_a
+        ${ARGP_LIBRARY}
 )
 
 add_custom_target(e2e
