@@ -13,8 +13,6 @@
 #include <string.h>
 #include <unistd.h>
 
-extern const char *strerrordesc_np(int errnum);
-
 #define bf_packed __attribute__((packed))
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))
@@ -80,7 +78,7 @@ extern const char *strerrordesc_np(int errnum);
  *
  * @param v Error code, can be positive or negative.
  */
-#define bf_strerror(v) strerrordesc_np(abs(v))
+#define bf_strerror(v) strerror(abs(v))
 
 /**
  * Swap two values.
