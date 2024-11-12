@@ -92,9 +92,9 @@ struct bf_matcher_ip4_addr
 struct bf_matcher_ip6_addr
 {
     /// 128-bits IPv6 address.
-    uint64_t addr[2];
+    uint8_t addr[16];
     /// 128-bits IPv6 mask.
-    uint64_t mask[2];
+    uint8_t mask[16];
 };
 
 /**
