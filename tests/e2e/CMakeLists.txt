@@ -16,7 +16,7 @@ add_custom_command(
 	COMMENT "Generating the end-to-end test packets"
 )
 
-add_executable(e2e_bin
+add_executable(e2e_bin EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_BINARY_DIR}/include/packets.h
 )
