@@ -3,14 +3,17 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <linux/bpf.h>
+
 #include <argp.h>
 
 #include "core/logger.h"
-#include "harness/test.h"
 #include "harness/daemon.h"
 #include "harness/filters.h"
 #include "harness/prog.h"
+#include "harness/test.h"
 #include "libbpfilter/bpfilter.h"
+#include "packets.h"
 
 struct bf_e2e_opts
 {
@@ -19,8 +22,7 @@ struct bf_e2e_opts
 
 static struct argp_option _bf_e2e_options[] = {
     {"bpfilter", 'b', "BPFILTER", 0,
-     "Path to the bpfilter daemon binary. Defaults to 'bpfilter' in PATH",
-     0},
+     "Path to the bpfilter daemon binary. Defaults to 'bpfilter' in PATH", 0},
     {0},
 };
 
@@ -56,23 +58,6 @@ static void _bf_e2e_opts_clean(struct bf_e2e_opts *opts)
     freep((void *)&opts->bpfilter_path);
 }
 
-// Ether(src=0x01, dst=0x02)
-// IPv6(src='::1', dst='::2')
-// TCP(sport=31337, dport=31415, flags='S')
-static const uint8_t _pkt_local_ip6_tcp_data[] = {
-    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x86, 0xdd, 0x60, 0x00, 0x00, 0x00, 0x00, 0x14, 0x06, 0x40,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x7a,
-    0x69, 0x7a, 0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x50, 0x02, 0x20, 0x00, 0x9a, 0xbf, 0x00, 0x00,
-};
-static const struct bf_test_packet pkt_local_ip6_tcp = {
-    .len = ARRAY_SIZE(_pkt_local_ip6_tcp_data),
-    .data = &_pkt_local_ip6_tcp_data,
-};
-
 Test(xdp, default_policy)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
@@ -95,7 +80,7 @@ Test(xdp, default_policy)
         bf_test_fail("failed to send the chain to the daemon");
 
     assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
-    assert_success(bf_test_prog_run(prog, 2, &pkt_local_ip6_tcp));
+    assert_success(bf_test_prog_run(prog, 2, pkt_local_ip6_tcp));
 }
 
 int main(int argc, char *argv[])
@@ -118,7 +103,10 @@ int main(int argc, char *argv[])
         _cleanup_bf_test_daemon_ struct bf_test_daemon daemon;
         bf_test_group *group = bf_list_node_get_data(group_node);
 
-        r = bf_test_daemon_init(&daemon, opts.bpfilter_path ?:"bpfilter", BF_TEST_DAEMON_TRANSIENT | BF_TEST_DAEMON_NO_IPTABLES | BF_TEST_DAEMON_NO_NFTABLES);
+        r = bf_test_daemon_init(&daemon, opts.bpfilter_path ?: "bpfilter",
+                                BF_TEST_DAEMON_TRANSIENT |
+                                BF_TEST_DAEMON_NO_IPTABLES |
+                                BF_TEST_DAEMON_NO_NFTABLES);
         if (r < 0)
             return bf_err_r(r, "failed to create the bpfiler daemon");
 
