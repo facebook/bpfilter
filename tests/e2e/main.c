@@ -83,6 +83,520 @@ Test(xdp, default_policy)
     assert_success(bf_test_prog_run(prog, 2, pkt_local_ip6_tcp));
 }
 
+Test(xdp, ip6_saddr_eq_nomask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_eq_nomask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, /* Modified */ 0x11, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_nomask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_nomask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, /* Modified */ 0x11, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_eq_8mask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, /* Modified */ 0x2d, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_eq_8mask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            /* Modified */ 0x55, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_8mask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            /* Modified */ 0x55, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_8mask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            /* Modified */ 0x5b, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_eq_120mask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, /* Modified */ 0x7f,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_eq_120mask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            /* Modified */ 0x55, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_120mask_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, /* Modified */ 0x7f,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6_saddr_ne_120mask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+        BF_HOOK_XDP,
+        bf_hook_opts_get(
+            BF_HOOK_OPT_IFINDEX, 2,
+            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
+            BF_HOOK_OPT_ATTACH, false,
+            -1
+        ),
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, /* Modified */ 0x65, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                            // Prefix
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+                        },
+                        32
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+
+    if (bf_cli_set_chain(chain) < 0)
+        bf_test_fail("failed to send the chain to the daemon");
+
+    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
