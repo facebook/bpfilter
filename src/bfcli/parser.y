@@ -441,31 +441,25 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 | matcher_type matcher_op MATCHER_IP6_ADDR
                 {
                     _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    struct bf_matcher_ip6_addr addr;
-                    int shift, lsb_shift, msb_shift;
-                    char *mask;
+                    struct bf_matcher_ip6_addr addr = {};
+                    char *mask_str;
+                    int mask = 128;
                     int r;
 
                     // If '/' is found, parse the mask, otherwise use /128.
-                    mask = strchr($3, '/');
-                    if (mask) {
-                        *mask = '\0';
-                        ++mask;
+                    mask_str = strchr($3, '/');
+                    if (mask_str) {
+                        *mask_str = '\0';
+                        ++mask_str;
 
-                        int m = atoi(mask);
-                        if (m == 0)
-                            bf_parse_err("failed to parse IPv6 mask: %s\n", mask);
-
-                        shift = 128 - m;
-                        lsb_shift = min(64, shift);
-                        msb_shift = shift - lsb_shift;
-
-                        addr.mask[0] = msb_shift == 64 ? 0 : ~0ULL << msb_shift;
-                        addr.mask[1] = lsb_shift == 64 ? 0 : ~0ULL << lsb_shift;
-                    } else {
-                        addr.mask[0] = ~0ULL;
-                        addr.mask[1] = ~0ULL;
+                        mask = atoi(mask_str);
+                        if (mask == 0)
+                            bf_parse_err("failed to parse IPv6 mask: %s", mask_str);
                     }
+
+                    for (int i = 0; i < mask / 8; ++i)
+                        addr.mask[i] = (uint8_t)0xff;
+                    addr.mask[mask / 8] = (uint8_t)0xff << (8 - mask % 8);
 
                     // Convert the IPv6 from string to uint64_t[2].
                     r = inet_pton(AF_INET6, $3, addr.addr);
