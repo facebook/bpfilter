@@ -22,6 +22,7 @@
 #include "core/verdict.h"
 
 #define _clean_bf_list_ __attribute__((__cleanup__(bf_list_clean)))
+#define _BF_CHAIN_SUFFIX_LEN 6
 
 struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...)
 {
@@ -119,9 +120,31 @@ err_free_matchers:
     return NULL;
 }
 
-struct bf_chain *bf_chain_get(enum bf_hook hook, struct bf_hook_opts hook_opts,
-                              enum bf_verdict policy, struct bf_set **sets,
-                              struct bf_rule **rules)
+static const char *_bf_tmpnam(const char *prefix, size_t len)
+{
+    static const char sym[] =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    static const size_t sym_len = sizeof(sym);
+
+    _cleanup_free_ char *name = NULL;
+    size_t prefix_len = strlen(prefix);
+    size_t name_len = prefix_len + len + 1;
+
+    name = malloc(name_len);
+    if (!name)
+        return NULL;
+
+    strncpy(name, prefix, name_len);
+    for (; prefix_len < name_len - 1; ++prefix_len)
+        name[prefix_len] = sym[rand() % sym_len];
+
+    name[prefix_len] = '\0';
+
+    return TAKE_PTR(name);
+}
+
+struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
+                                   struct bf_set **sets, struct bf_rule **rules)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
     _clean_bf_list_ bf_list sets_list = bf_set_list();
@@ -154,7 +177,13 @@ struct bf_chain *bf_chain_get(enum bf_hook hook, struct bf_hook_opts hook_opts,
         return NULL;
     }
 
-    chain->hook_opts = hook_opts;
+    chain->hook_opts = (struct bf_hook_opts) {
+        .used_opts = ~0U,
+        .attach = false,
+        .cgroup = strdup("<no_cgroup>"),
+        .ifindex = 1,
+        .name = _bf_tmpnam("bf_e2e_", _BF_CHAIN_SUFFIX_LEN),
+    };
 
     return TAKE_PTR(chain);
 

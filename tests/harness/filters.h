@@ -26,7 +26,7 @@
  * ownership of the pointers and free them if an error occurs during the object
  * creation. Valid pointers in the array located after a `NULL` entry won't be
  * processed nor freed, and `asan` will raise an error. See `bf_rule_get()` and
- * `bf_chain_get()`.
+ * `bf_test_chain_get()`.
  */
 
 /**
@@ -75,10 +75,15 @@ struct bf_rule *bf_rule_get(bool counters, enum bf_verdict verdict,
 /**
  * Create a new chain.
  *
- * See `bf_chain_get()` for details of the arguments.
+ * See `bf_chain_new()` for details of the arguments. The hook options are
+ * automatically set to test-friendly values:
+ * - `attach`: false
+ * - `cgroup`: `<no_cgroup>`
+ * - `ifindex`: 1
+ * - `name`: `bf_e2e_xxxxxx` with `xxxxxx` replaced with 6 random chars.
  *
- * @return 0 on success, or a negative errno value on error.
+ * @return A valid chain pointer on success, or `NULL` on failure.
  */
-struct bf_chain *bf_chain_get(enum bf_hook hook, struct bf_hook_opts hook_opts,
-                              enum bf_verdict policy, struct bf_set **sets,
-                              struct bf_rule **rules);
+struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
+                                   struct bf_set **sets,
+                                   struct bf_rule **rules);
