@@ -18,6 +18,8 @@
  * link it to a BPF program attach to the system using the program's name.
  */
 
+struct bf_chain;
+
 struct bf_test_packet
 {
     size_t len;
@@ -31,7 +33,7 @@ struct bf_test_prog
     int fd;
 };
 
-struct bf_test_prog *bf_test_prog_get(const char *name);
+struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain);
 
 int bf_test_prog_new(struct bf_test_prog **prog);
 void bf_test_prog_free(struct bf_test_prog **prog);

@@ -14,10 +14,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "core/chain.h"
 #include "core/helper.h"
 #include "core/logger.h"
+#include "libbpfilter/bpfilter.h"
 
-struct bf_test_prog *bf_test_prog_get(const char *name)
+struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
 {
     _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
     int r;
@@ -28,7 +30,12 @@ struct bf_test_prog *bf_test_prog_get(const char *name)
         return NULL;
     }
 
-    r = bf_test_prog_open(prog, name);
+    if (bf_cli_set_chain(chain) < 0) {
+        bf_err_r(r, "failed to create a new chain");
+        return NULL;
+    }
+
+    r = bf_test_prog_open(prog, chain->hook_opts.name);
     if (r < 0) {
         bf_err_r(r, "failed to open the bf_test_prog's BPF program");
         return NULL;
