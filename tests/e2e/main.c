@@ -60,14 +60,8 @@ static void _bf_e2e_opts_clean(struct bf_e2e_opts *opts)
 
 Test(xdp, default_policy)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -79,20 +73,14 @@ Test(xdp, default_policy)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, 2, pkt_local_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_nomask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -122,20 +110,14 @@ Test(xdp, ip6_saddr_eq_nomask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_nomask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -165,20 +147,14 @@ Test(xdp, ip6_saddr_eq_nomask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_nomask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -208,20 +184,14 @@ Test(xdp, ip6_saddr_ne_nomask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_nomask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -251,20 +221,14 @@ Test(xdp, ip6_saddr_ne_nomask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_8mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -294,20 +258,14 @@ Test(xdp, ip6_saddr_eq_8mask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_8mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -337,20 +295,14 @@ Test(xdp, ip6_saddr_eq_8mask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_8mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -380,20 +332,14 @@ Test(xdp, ip6_saddr_ne_8mask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_8mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -423,20 +369,14 @@ Test(xdp, ip6_saddr_ne_8mask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_120mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -464,20 +404,14 @@ Test(xdp, ip6_saddr_eq_120mask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_eq_120mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -507,20 +441,14 @@ Test(xdp, ip6_saddr_eq_120mask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_120mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -550,20 +478,14 @@ Test(xdp, ip6_saddr_ne_120mask_nomatch)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
 Test(xdp, ip6_saddr_ne_120mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_chain_get(
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
-        bf_hook_opts_get(
-            BF_HOOK_OPT_IFINDEX, 2,
-            BF_HOOK_OPT_NAME, "bf_e2e_testprog",
-            BF_HOOK_OPT_ATTACH, false,
-            -1
-        ),
         BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
@@ -593,7 +515,7 @@ Test(xdp, ip6_saddr_ne_120mask_match)
     if (bf_cli_set_chain(chain) < 0)
         bf_test_fail("failed to send the chain to the daemon");
 
-    assert_non_null(prog = bf_test_prog_get("bf_e2e_testprog"));
+    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
