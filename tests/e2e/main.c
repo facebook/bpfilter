@@ -68,12 +68,10 @@ Test(xdp, default_policy)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, 2, pkt_local_ip6_tcp));
 }
 
@@ -105,12 +103,10 @@ Test(xdp, ip6_saddr_eq_nomask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
@@ -142,12 +138,10 @@ Test(xdp, ip6_saddr_eq_nomask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -179,12 +173,10 @@ Test(xdp, ip6_saddr_ne_nomask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -216,12 +208,10 @@ Test(xdp, ip6_saddr_ne_nomask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
@@ -253,12 +243,10 @@ Test(xdp, ip6_saddr_eq_8mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
@@ -290,12 +278,10 @@ Test(xdp, ip6_saddr_eq_8mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -327,12 +313,10 @@ Test(xdp, ip6_saddr_ne_8mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
@@ -364,12 +348,10 @@ Test(xdp, ip6_saddr_ne_8mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -399,12 +381,10 @@ Test(xdp, ip6_saddr_eq_120mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
@@ -436,12 +416,10 @@ Test(xdp, ip6_saddr_eq_120mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -473,12 +451,10 @@ Test(xdp, ip6_saddr_ne_120mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
 }
 
@@ -510,12 +486,10 @@ Test(xdp, ip6_saddr_ne_120mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    if (bf_cli_set_chain(chain) < 0)
-        bf_test_fail("failed to send the chain to the daemon");
+    assert_non_null(prog);
 
-    assert_non_null(prog = bf_test_prog_get(chain->hook_opts.name));
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
