@@ -459,7 +459,9 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
 
                     for (int i = 0; i < mask / 8; ++i)
                         addr.mask[i] = (uint8_t)0xff;
-                    addr.mask[mask / 8] = (uint8_t)0xff << (8 - mask % 8);
+                    
+                    if (mask % 8)
+                        addr.mask[mask / 8] = (uint8_t)0xff << (8 - mask % 8);
 
                     // Convert the IPv6 from string to uint64_t[2].
                     r = inet_pton(AF_INET6, $3, addr.addr);
