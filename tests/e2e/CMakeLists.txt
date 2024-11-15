@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+find_package(Python3 COMPONENTS Interpreter)
+
 add_custom_command(
     COMMAND
         ${CMAKE_COMMAND}
             -E make_directory
             ${CMAKE_CURRENT_BINARY_DIR}/include
-	COMMAND
-		${CMAKE_CURRENT_SOURCE_DIR}/genpkts.py
+    COMMAND
+        Python3::Interpreter
+            ${CMAKE_CURRENT_SOURCE_DIR}/genpkts.py
             --output ${CMAKE_CURRENT_BINARY_DIR}/include/packets.h
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/genpkts.py
