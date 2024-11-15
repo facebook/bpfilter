@@ -73,6 +73,8 @@ enum bf_matcher_type
     BF_MATCHER_UDP_SPORT,
     /// Matches against the UDP destination port
     BF_MATCHER_UDP_DPORT,
+    /// Matches the source (IPv6, port) tuple against a set
+    BF_MATCHER_SET_SRCIP6PORT,
     _BF_MATCHER_TYPE_MAX,
 };
 
