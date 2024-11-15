@@ -493,6 +493,103 @@ Test(xdp, ip6_saddr_ne_120mask_match)
     assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
 }
 
+struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
+{
+    _cleanup_bf_set_ struct bf_set *set = NULL;
+    int r;
+
+    r = bf_set_new(&set, BF_SET_SRCIP6PORT);
+    if (r < 0) {
+        bf_err_r(r, "failed to create a new set");
+        return NULL;
+    }
+
+    if (matching_elem) {
+        r = bf_set_add_elem(set, matching_elem);
+        if (r < 0) {
+            bf_err_r(r, "failed to add matching element to set");
+            return NULL;
+        }
+    }
+
+    for (size_t i = 0; i < nelems; i++) {
+        uint8_t elem[18] = {};
+
+        for (int j = 0; j < ARRAY_SIZE(elem); j++)
+            elem[j] = rand() % 256;
+
+        r = bf_set_add_elem(set, elem);
+        if (r < 0) {
+            bf_err_r(r, "failed to add key to set");
+            return NULL;
+        }
+    }
+
+    return TAKE_PTR(set);
+}
+
+Test(xdp, ip6port_200kset_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            make_ip6port_set(200000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x7a, 0x69}),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
+
+    assert_non_null(prog);
+
+    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+}
+
+Test(xdp, ip6port_200kset_nomatch)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            make_ip6port_set(200000, NULL),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
+
+    assert_non_null(prog);
+
+    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+}
+
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
