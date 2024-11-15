@@ -53,6 +53,8 @@ enum bf_set_type
 {
     /// Keys are IPv4 addresses (4 bytes).
     BF_SET_IP4,
+    /// Keys are (source IPv6 address, source port) (18 bytes).
+    BF_SET_SRCIP6PORT,
     _BF_SET_MAX,
 };
 
