@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/chain.h"
 #include "core/hook.h"
@@ -50,6 +51,29 @@
  *         `bf_hook_opts` structure is filled with `0`.
  */
 struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...);
+
+/**
+ * Create a new set.
+ *
+ * @code {.c}
+ *  bf_test_set_get(
+ *      BF_SET_IP4,
+ *      (uint8_t *[]) {
+ *          { 0x01, 0x02, 0x03, 0x04 },
+ *          NULL,
+ *      }
+ *  );
+ * @endcode
+ *
+ * The caller owns the set and is responsible for freeing it.
+ *
+ * @param type Set type. Defines the key size.
+ * @param data Array of elements to fill the set with. The elements are
+ *        expected to a size defined by their @p type. If `NULL`, the set
+ *        is empty
+ * @return A valid @ref bf_set on success, or NULL on failure.
+ */
+struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[]);
 
 /**
  * Create a new matcher.
