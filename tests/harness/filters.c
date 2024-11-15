@@ -70,6 +70,29 @@ err_clean:
     return (struct bf_hook_opts) {};
 }
 
+struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[])
+{
+    _cleanup_bf_set_ struct bf_set *set = NULL;
+    int r;
+
+    r = bf_set_new(&set, type);
+    if (r < 0) {
+        bf_err_r(r, "failed to create a new test set");
+        return NULL;
+    }
+
+    while (data && *data) {
+        r = bf_set_add_elem(set, *data);
+        if (r < 0) {
+            bf_err_r(r, "failed to add a new element to a test set");
+            return NULL;
+        }
+        ++data;
+    }
+
+    return TAKE_PTR(set);
+}
+
 struct bf_matcher *bf_matcher_get(enum bf_matcher_type type,
                                   enum bf_matcher_op op, const void *payload,
                                   size_t payload_len)
