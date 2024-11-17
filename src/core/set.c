@@ -6,8 +6,10 @@
 #include "core/set.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "core/dump.h"
 #include "core/helper.h"
@@ -61,15 +63,15 @@ int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh)
     if (r < 0)
         return r;
 
-    while ((child = bf_marsh_next_child(marsh, child))) {
-        _cleanup_free_ void *elem = NULL;
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
 
-        elem = malloc(_set->elem_size);
+    for (size_t i = 0; i < child->data_len / _set->elem_size; ++i) {
+        _cleanup_free_ void *elem = malloc(_set->elem_size);
         if (!elem)
             return -ENOMEM;
 
-        memcpy(elem, child->data, _set->elem_size);
-
+        memcpy(elem, child->data + (i * _set->elem_size), _set->elem_size);
         r = bf_list_add_tail(&_set->elems, elem);
         if (r < 0)
             return r;
@@ -96,6 +98,8 @@ void bf_set_free(struct bf_set **set)
 int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
 {
     _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _cleanup_free_ uint8_t *data = NULL;
+    size_t elem_idx = 0;
     int r;
 
     bf_assert(set);
@@ -109,12 +113,20 @@ int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
     if (r < 0)
         return r;
 
+    data = malloc(set->elem_size * bf_list_size(&set->elems));
+    if (!data)
+        return bf_err_r(r, "failed to allocate memory for the set's content");
+
     bf_list_foreach (&set->elems, elem_node) {
-        r = bf_marsh_add_child_raw(&_marsh, bf_list_node_get_data(elem_node),
-                                   set->elem_size);
-        if (r < 0)
-            return r;
+        memcpy(data + (elem_idx * set->elem_size), bf_list_node_get_data(elem_node),
+               set->elem_size);
+        ++elem_idx;
     }
+
+    r = bf_marsh_add_child_raw(&_marsh, data,
+                               set->elem_size * bf_list_size(&set->elems));
+    if (r < 0)
+        return r;
 
     *marsh = TAKE_PTR(_marsh);
 
