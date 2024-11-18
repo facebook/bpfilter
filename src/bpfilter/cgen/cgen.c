@@ -212,7 +212,8 @@ int bf_cgen_up(struct bf_cgen *cgen)
 
     bf_assert(cgen);
 
-    bf_cgen_dump(cgen, EMPTY_PREFIX);
+    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
+        bf_cgen_dump(cgen, EMPTY_PREFIX);
 
     r = bf_program_new(&prog, cgen->chain->hook, cgen->front, cgen->chain);
     if (r < 0)
@@ -239,6 +240,9 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
     int r;
 
     bf_assert(cgen && new_chain);
+
+    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
+        bf_cgen_dump(cgen, EMPTY_PREFIX);
 
     r = bf_program_new(&new_prog, (*new_chain)->hook, cgen->front, *new_chain);
     if (r < 0)
