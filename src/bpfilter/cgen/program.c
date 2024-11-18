@@ -1058,31 +1058,55 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 
     bf_assert(new_prog);
 
-    // Create the BPF maps
-    bf_list_foreach (&new_prog->sets, map_node) {
-        struct bf_map *map = bf_list_node_get_data(map_node);
-        r = bf_map_create(map, 0);
-        if (r < 0)
-            return r;
-    }
-
     set_node = bf_list_get_head(&new_prog->runtime.chain->sets);
     map_node = bf_list_get_head(&new_prog->sets);
 
     // Fill the bf_map with the sets content
     while (set_node && map_node) {
+        _cleanup_free_ uint8_t *values = NULL;
+        _cleanup_free_ uint8_t *keys = NULL;
         struct bf_set *set = bf_list_node_get_data(set_node);
         struct bf_map *map = bf_list_node_get_data(map_node);
+        size_t nelems = bf_list_size(&set->elems);
+        union bpf_attr attr = {};
+        size_t idx = 0;
+
+        r = bf_map_create(map, 0);
+        if (r < 0) {
+            r = bf_err_r(r, "failed to create BPF map for set");
+            goto err_destroy_maps;
+        }
+
+        values = malloc(nelems);
+        if (!values) {
+            r = bf_err_r(errno, "failed to allocate map values");
+            goto err_destroy_maps;
+        }
+
+        keys = malloc(set->elem_size * nelems);
+        if (!keys) {
+            r = bf_err_r(errno, "failed to allocate map keys");
+            goto err_destroy_maps;
+        }
 
         bf_list_foreach (&set->elems, elem_node) {
-            uint8_t fake_value = 1;
             void *elem = bf_list_node_get_data(elem_node);
 
-            r = bf_map_set_elem(map, elem, &fake_value);
-            if (r < 0) {
-                bf_err_r(r, "failed to add element to map");
-                goto err_destroy_maps;
-            }
+            memcpy(keys + (idx * set->elem_size), elem, set->elem_size);
+            values[idx] = 1;
+            ++idx;
+        }
+
+        attr.batch.map_fd = map->fd;
+        attr.batch.keys = (unsigned long long)keys;
+        attr.batch.values = (unsigned long long)values;
+        attr.batch.count = nelems;
+        attr.batch.flags = BPF_ANY;
+
+        r = bf_bpf(BPF_MAP_UPDATE_BATCH, &attr);
+        if (r < 0) {
+            bf_err_r(r, "failed to add set elements to the map");
+            goto err_destroy_maps;
         }
 
         set_node = bf_list_node_next(set_node);
