@@ -14,6 +14,7 @@
 #include "core/dump.h"
 #include "core/helper.h"
 #include "core/list.h"
+#include "core/logger.h"
 #include "core/marsh.h"
 
 size_t _bf_set_type_elem_size(enum bf_set_type type)
@@ -21,6 +22,7 @@ size_t _bf_set_type_elem_size(enum bf_set_type type)
     static const size_t sizes[_BF_SET_MAX] = {
         [BF_SET_IP4] = 4,
         [BF_SET_SRCIP6PORT] = 18,
+        [BF_SET_SRCIP6] = 16,
     };
 
     static_assert(ARRAY_SIZE(sizes) == _BF_SET_MAX,
@@ -118,8 +120,8 @@ int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
         return bf_err_r(r, "failed to allocate memory for the set's content");
 
     bf_list_foreach (&set->elems, elem_node) {
-        memcpy(data + (elem_idx * set->elem_size), bf_list_node_get_data(elem_node),
-               set->elem_size);
+        memcpy(data + (elem_idx * set->elem_size),
+               bf_list_node_get_data(elem_node), set->elem_size);
         ++elem_idx;
     }
 
@@ -186,6 +188,7 @@ int bf_set_add_elem(struct bf_set *set, void *elem)
 static const char *_bf_set_type_strs[] = {
     [BF_SET_IP4] = "BF_SET_IP4",
     [BF_SET_SRCIP6PORT] = "BF_SET_SRCIP6PORT",
+    [BF_SET_SRCIP6] = "BF_SET_SRCIP6",
 };
 
 static_assert(ARRAY_SIZE(_bf_set_type_strs) == _BF_SET_MAX, "");

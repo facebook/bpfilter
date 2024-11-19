@@ -21,6 +21,7 @@
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/opts.h"
 #include "core/rule.h"
 
 int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,

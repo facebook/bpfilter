@@ -84,6 +84,43 @@ int _bf_matcher_generate_set_ip6port(struct bf_program *program,
     return 0;
 }
 
+int _bf_matcher_generate_set_ip6(struct bf_program *program,
+                                 const struct bf_matcher *matcher)
+{
+    uint32_t set_id;
+
+    bf_assert(program && matcher);
+
+    set_id = *(uint32_t *)matcher->payload;
+
+    // Ensure IPv6
+    EMIT(program,
+         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IPV6), 0));
+
+    // Copy the source IPv6 address into r1 and r2
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_L3,
+                              offsetof(struct ipv6hdr, saddr)));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_L3,
+                              offsetof(struct ipv6hdr, saddr) + 8));
+
+    //  Prepare the key
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_1, -32));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_2, -24));
+
+    // Call bpf_map_lookup_elem(r1=map_fd, r2=key_addr)
+    EMIT_LOAD_SET_FD_FIXUP(program, BF_ARG_1, set_id);
+    EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_CTX));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, -32));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+
+    // Key not found? Jump to the next rule
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 0));
+
+    return 0;
+}
+
 int bf_matcher_generate_set(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -92,6 +129,9 @@ int bf_matcher_generate_set(struct bf_program *program,
     switch (matcher->type) {
     case BF_MATCHER_SET_SRCIP6PORT:
         r = _bf_matcher_generate_set_ip6port(program, matcher);
+        break;
+    case BF_MATCHER_SET_SRCIP6:
+        r = _bf_matcher_generate_set_ip6(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
