@@ -3,6 +3,8 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#define _GNU_SOURCE // NOLINT: required for F_SETPIPE_SZ
+
 #include "harness/process.h"
 
 #include <errno.h>
@@ -99,11 +101,25 @@ static int _bf_test_process_exec(struct bf_test_process *process)
 
         r = dup2(stdout_pipe[1], STDOUT_FILENO);
         if (r < 0)
-            return bf_err_r(errno, "failed to duplicae the child's stdout");
+            return bf_err_r(errno, "failed to duplicate the child's stdout");
+
+        // Bump the pipe buffer size to 1MB
+        r = fcntl(stdout_pipe[1], F_SETPIPE_SZ, 1048576);
+        if (r < 0) {
+            return bf_err_r(errno,
+                            "failed to set the child's stdout buffer size");
+        }
 
         r = dup2(stderr_pipe[1], STDERR_FILENO);
         if (r < 0)
-            return bf_err_r(errno, "failed to duplicae the child's stderr");
+            return bf_err_r(errno, "failed to duplicate the child's stderr");
+
+        // Bump the pipe buffer size to 1MB
+        r = fcntl(stderr_pipe[1], F_SETPIPE_SZ, 1048576);
+        if (r < 0) {
+            return bf_err_r(errno,
+                            "failed to set the child's stderr buffer size");
+        }
 
         close(stdout_pipe[0]);
         close(stderr_pipe[0]);
