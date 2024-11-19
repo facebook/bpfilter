@@ -75,6 +75,8 @@ enum bf_matcher_type
     BF_MATCHER_UDP_DPORT,
     /// Matches the source (IPv6, port) tuple against a set
     BF_MATCHER_SET_SRCIP6PORT,
+    /// Matches the source IPv6 address against a set
+    BF_MATCHER_SET_SRCIP6,
     _BF_MATCHER_TYPE_MAX,
 };
 

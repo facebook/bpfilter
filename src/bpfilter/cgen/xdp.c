@@ -12,7 +12,6 @@
 #include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "core/bpf.h"
-#include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/hook.h"
@@ -71,7 +70,8 @@ static int _bf_xdp_gen_inline_prologue(struct bf_program *program)
          BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
 
     // Copy the ingress ifindex into the runtime context
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, offsetof(struct xdp_md, ingress_ifindex)));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1,
+                              offsetof(struct xdp_md, ingress_ifindex)));
     EMIT(program,
          BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(ifindex)));
 
