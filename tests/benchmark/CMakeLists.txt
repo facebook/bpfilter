@@ -29,6 +29,7 @@ target_link_libraries(benchmark_bin
     PRIVATE
         PkgConfig::bpf
         PkgConfig::git2
+        ${ARGP_LIBRARY}
         benchmark::benchmark
 )
 
