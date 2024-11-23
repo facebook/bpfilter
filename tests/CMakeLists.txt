@@ -2,7 +2,11 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 add_subdirectory(harness)
-add_subdirectory(benchmark)
+
+if (WITH_BENCHMARK)
+    add_subdirectory(benchmark)
+endif ()
+
 add_subdirectory(e2e)
 add_subdirectory(unit)
 add_subdirectory(integration)

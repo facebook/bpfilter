@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-option(ENABLE_BENCHMARK "Enable benchmark" off)
-
-if (NOT ENABLE_BENCHMARK)
-    return()
-endif ()
-
 find_package(benchmark REQUIRED)
 pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 

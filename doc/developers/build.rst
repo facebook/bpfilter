@@ -1,7 +1,7 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While `bpfilter` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39+, and Ubuntu 24.04 LTS.
+This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39+, and Ubuntu 24.04 LTS.
 
 Required dependencies on Fedora and Ubuntu:
 
@@ -19,7 +19,7 @@ You can then use CMake to generate the build system:
 
     cmake -S $BPFILTER_SOURCE -B $BUILD_DIRECTORY
 
-There is no ``bpfilter``-specific CMake option, but you can use the CMake-provided ones (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...), including ``-G`` to override the default build system generator (``ninja`` and ``make`` are supported).
+Apart from the usual CMake options (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``, ...), subparts of the projects can be enabled or disabled during the configuration step using ``-DWITH_XXX``. More detail below.
 
 Once CMake completes, you can build ``bpfilter``. The following Make targets are available:
 
@@ -38,6 +38,21 @@ Once CMake completes, you can build ``bpfilter``. The following Make targets are
 * ``coverage``: generate an HTML coverage report in ``$BUILD_DIRECTORY/doc/coverage``. This target will fail if ``make test`` hasn't been called before.
 
 The build artefacts are located in ``$BUILD_DIRECTORY/output``.
+
+
+**Benchmark**
+
+The benchmarks require the following dependencies:
+
+.. code-block:: shell
+
+    # Fedora
+    sudo dnf install -y google-benchmark-devel libgit2-devel
+
+    # Ubuntu
+    sudo apt-get install -y libbenchmark-dev libgit2-dev
+
+Use ``-DWITH_BENCHMARK=on`` to enable the benchmark, build and run it using ``make benchmark``. See :ref:`tests-benchmark-label` for more information.
 
 
 Building ``nftables`` and ``iptables``
