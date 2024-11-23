@@ -11,6 +11,8 @@ project(bpfilter
 
 include(GNUInstallDirs)
 
+option(WITH_BENCHMARK "Build and run the benchmarks" off)
+
 find_package(Doxygen REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(FLEX REQUIRED)

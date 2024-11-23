@@ -93,6 +93,8 @@ The example below will create an empty chain with a default ``ACCEPT`` policy. W
     }
 
 
+.. _tests-benchmark-label:
+
 Benchmarking
 ------------
 
