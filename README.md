@@ -8,6 +8,10 @@
 
 <h3 align="center">An <a href="https://ebpf.io/">eBPF</a>-based packet filtering framework.</h3>
 
+> [!WARNING]
+> I, @qdeslandes, the maintainer of `bpfilter`, am currently on baby leave until January 20th. Until then, please expect delayed responses to issues, pull requests, and messages.
+> Thank you for your patience and understanding. I'll do my best to address urgent matters as soon as possible.
+
 **bpfilter** is an eBPF-based packet filtering framework designed to translate filtering rules into BPF programs. It comprises three main components:
 
 1. A daemon that runs on the host, translating filtering rules into BPF programs.
