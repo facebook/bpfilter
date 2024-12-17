@@ -38,8 +38,8 @@ Initialize ``bpfilter`` daemon
 
 .. code-block:: bash
 
-	> cd path/to/bpfilter/
-	> sudo ./build/output/bpfilter -t -v debug --no-iptables
+	> cd path/to/bpfilter/repo/
+	> sudo ./build/output/bpfilter --transient --verbose=debug --no-iptables
 
 
 Load ``bfcli`` filter(s)
@@ -47,12 +47,16 @@ Load ``bfcli`` filter(s)
 
 While the ``bpfilter`` daemon runs, now we will open up a separate window to use ``bfcli``
 
+.. note::
+
+	``bfcli`` is just one of the ways you can communicate with the ``bpfilter`` daemon along with ``iptables`` and ``nftables``
+
 .. code-block:: bash
 
 	> cd path/to/bpfilter/
-	> sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
+	> sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 ACCEPT"
 
-The above program is just to make sure that ``bfcli`` is able to communicate with ``bpfilter``, when you run the commands you should see output from ``bpfilter`` registering that a filter has been loaded.
+The above command is just to make sure that ``bfcli`` is able to communicate with ``bpfilter``, but it's still worth working through it. This command is telling ``bpfilter`` to check incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location and accept those connections. Then the command asks ``bpfilter`` to check to see if the incoming IP address is equal to ``192.168.1.1`` (yourself) and to accept the connection if that is true. When you run the commands you should see output from ``bpfilter`` registering that a filter has been loaded.
 
 You can check by running:
 
@@ -66,13 +70,13 @@ You can check by running:
 .. note::
 	If you run into errors here there may be problems with your system worth diagnosing before continuing
 
-Now let's try changing the filter from ``{192.168.1.1} ACCEPT`` to ``DENY``
+Now let's try changing the filter from ``192.168.1.1 ACCEPT`` to ``DROP``. If we work through it logically, now ``bpfilter`` should in general accept incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location, but now if it detects the IP address to be ``192.168.1.1`` then it should drop the connection.
 
 .. code-block:: bash
 
-	sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr in {192.168.1.1} DROP"
+	sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 DROP"
 
-You should now observe a change in the behavior of ``ping``
+You should now observe a change in the behavior of ``ping``.
 
 .. code-block:: bash
 
@@ -81,4 +85,4 @@ You should now observe a change in the behavior of ``ping``
 	--- 192.168.1.1 ping statistics ---
 	4 packets transmitted, 0 packets received, 100.0% packet loss
 
-Congratulations you have now officially used ``bpfilter`` to systematically filter out your own packets. For documentation for more complex filtering options please check under the ``DEVELOPERS`` links and good luck!
+Congratulations you have now officially used ``bpfilter`` to systematically filter out your own packets. For documentation for more complex filtering options please check under the ``DEVELOPERS`` section and good luck!
