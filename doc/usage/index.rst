@@ -31,15 +31,18 @@ Example Usage
 
 .. note::
 
-	This is only to be used as an example and a more interactive test to familiarize you with ``bpfilter``, more in-depth information can be found throughout the docs.
+	This is only to be used as an example and a more interactive test to familiarize you with ``bpfilter``, more in-depth information can be found throughout the documentation.
 
 Initialize ``bpfilter`` daemon
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+	From here on we assume all commands are being run from your local ``bpfilter`` source directory following ``cmake -B build``
+
 .. code-block:: bash
 
-	> cd path/to/bpfilter/repo/
-	> sudo ./build/output/bpfilter --transient --verbose=debug --no-iptables
+	> sudo ./build/output/bpfilter -t -v debug --no-iptables
 
 
 Load ``bfcli`` filter(s)
@@ -56,7 +59,7 @@ While the ``bpfilter`` daemon runs, now we will open up a separate window to use
 	> cd path/to/bpfilter/
 	> sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 ACCEPT"
 
-The above command is just to make sure that ``bfcli`` is able to communicate with ``bpfilter``, but it's still worth working through it. This command is telling ``bpfilter`` to check incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location and accept those connections. Then the command asks ``bpfilter`` to check to see if the incoming IP address is equal to ``192.168.1.1`` (yourself) and to accept the connection if that is true. When you run the commands you should see output from ``bpfilter`` registering that a filter has been loaded.
+The command above will send a request to the bpfilter daemon to create a chain and attach it to the BF_HOOK_NF_LOCAL_IN hook, located after the packet has been routed in the kernel network stack. A single rule is defined, which will accept the packet if its source IPv4 address is 192.168.1.1. If the rule doesn't match the packet, the chain's policy is applied and the packet is accepted. In its current shape, the chain will always accept incoming packets.
 
 You can check by running:
 
@@ -70,7 +73,7 @@ You can check by running:
 .. note::
 	If you run into errors here there may be problems with your system worth diagnosing before continuing
 
-Now let's try changing the filter from ``192.168.1.1 ACCEPT`` to ``DROP``. If we work through it logically, now ``bpfilter`` should in general accept incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location, but now if it detects the IP address to be ``192.168.1.1`` then it should drop the connection.
+Now let's try changing the filter from ``192.168.1.1 ACCEPT`` to ``DROP``. If we work through it logically, now ``bpfilter`` should in general accept incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location, but now if it detects the IP address to be ``192.168.1.1`` then it should drop the packets. So now when we ping ``192.168.1.1`` we should not recieve its subsequent response.
 
 .. code-block:: bash
 
@@ -85,4 +88,4 @@ You should now observe a change in the behavior of ``ping``.
 	--- 192.168.1.1 ping statistics ---
 	4 packets transmitted, 0 packets received, 100.0% packet loss
 
-Congratulations you have now officially used ``bpfilter`` to systematically filter out your own packets. For documentation for more complex filtering options please check under the ``DEVELOPERS`` section and good luck!
+Congratulations you have now officially used ``bpfilter`` to systematically filter out packets from ``192.168.1.1``. For documentation for more complex filtering options please check under the ``DEVELOPERS`` section and good luck!
