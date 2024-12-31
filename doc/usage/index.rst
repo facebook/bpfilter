@@ -44,7 +44,6 @@ Initialize ``bpfilter`` daemon
 
 	> sudo ./build/output/bpfilter --transient --verbose=debug --no-iptables
 
-
 Load ``bfcli`` filter(s)
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -56,7 +55,6 @@ While the ``bpfilter`` daemon runs, now we will open up a separate window to use
 
 .. code-block:: bash
 
-	> cd path/to/bpfilter/
 	> sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 ACCEPT"
 
 The command above will send a request to the ``bpfilter`` daemon to create a chain and attach it to the ``BF_HOOK_NF_LOCAL_IN`` hook, located after the packet has been routed in the kernel network stack. A single rule is defined, which will accept the packet if its source IPv4 address is ``192.168.1.1``. If the rule doesn't match the packet, the chain's policy is applied and the packet is accepted. In its current shape, the chain will always accept incoming packets.
