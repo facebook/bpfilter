@@ -12,6 +12,7 @@
 #include "bpfilter/cgen/cgen.h"
 #include "core/chain.h"
 #include "core/dump.h"
+#include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
 #include "core/list.h"
@@ -368,6 +369,41 @@ int bf_ctx_load(const struct bf_marsh *marsh)
     _bf_global_ctx = TAKE_PTR(ctx);
 
     return 0;
+}
+
+int bf_ctx_flush(void)
+{
+    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
+    int r;
+    int err = 0;
+
+    r = _bf_ctx_new(&_ctx);
+    if (r)
+        return bf_err_r(r, "failed to create new context");
+
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        bf_list_foreach (&_bf_global_ctx->cgens[i], cgen_node) {
+            struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+            r = bf_cgen_unload(cgen);
+            if (r) {
+                bf_err("failed to unload a %s program attached to %s",
+                       bf_front_to_str(cgen->front),
+                       bf_hook_to_str(cgen->chain->hook));
+                err = err ?: r;
+            }
+        }
+    }
+
+    _bf_ctx_free(&_bf_global_ctx);
+
+    _bf_global_ctx = TAKE_PTR(_ctx);
+
+    if (err)
+        bf_warn("the global context has been partially flushed");
+    else
+        bf_info("the global context has been flushed");
+
+    return err;
 }
 
 void bf_ctx_dump(prefix_t *prefix)
