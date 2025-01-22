@@ -75,6 +75,15 @@ int bf_ctx_save(struct bf_marsh **marsh);
 int bf_ctx_load(const struct bf_marsh *marsh);
 
 /**
+ * Unload and delete all the codegens, reset the context to a clean state.
+ *
+ * On failure, the context is left unchanged.
+ *
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_ctx_flush(void);
+
+/**
  * Get a codegen from the global context.
  *
  * @param hook Hook to get the codegen from.
