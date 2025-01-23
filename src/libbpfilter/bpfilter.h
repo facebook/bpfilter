@@ -15,6 +15,13 @@ struct xt_counters_info;
 struct nlmsghdr;
 
 /**
+ * Request the daemon to remove all the chains and rules.
+ *
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_cli_ruleset_flush(void);
+
+/**
  * Send a chain to the daemon.
  *
  * @param chain Chain to send to the daemon. Can't be NULL.

@@ -187,6 +187,8 @@ int main(int argc, char *argv[])
 
     if (streq(obj_str, "ruleset") && streq(action_str, "set")) {
         r = _bf_do_ruleset_set(argc, argv);
+    } else if (streq(obj_str, "ruleset") && streq(action_str, "flush")) {
+        r = bf_cli_ruleset_flush();
     } else {
         return bf_err_r(-EINVAL, "unrecognized object '%s' and action '%s'",
                         obj_str, action_str);

@@ -25,6 +25,9 @@
  */
 enum bf_request_cmd
 {
+    /* Flush the ruleset: remove all the filtering rules defined for a
+     * front-end. */
+    BF_REQ_RULESET_FLUSH,
     BF_REQ_RULES_SET,
     BF_REQ_RULES_GET,
     BF_REQ_COUNTERS_SET,
