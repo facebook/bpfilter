@@ -213,5 +213,5 @@ static int _bf_cgroup_detach_prog(struct bf_program *program)
 {
     bf_assert(program);
 
-    return bf_bpf_link_detach(program->runtime.prog_fd);
+    return bf_bpf_link_detach(program->runtime.link_fd);
 }
