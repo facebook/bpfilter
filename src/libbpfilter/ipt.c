@@ -58,7 +58,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
         return r;
 
     request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_SET_RULES;
+    request->cmd = BF_REQ_RULES_SET;
 
     r = bf_send(request, &response);
     if (r < 0)
@@ -90,7 +90,7 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
         return r;
 
     request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_SET_COUNTERS;
+    request->cmd = BF_REQ_COUNTERS_SET;
 
     r = bf_send(request, &response);
     if (r < 0)

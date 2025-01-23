@@ -689,7 +689,7 @@ static int _bf_ipt_request_handler(struct bf_request *request,
     int r;
 
     switch (request->cmd) {
-    case BF_REQ_SET_RULES:
+    case BF_REQ_RULES_SET:
         r = _bf_ipt_set_rules_handler((struct ipt_replace *)request->data,
                                       request->data_len);
         if (r < 0)
@@ -697,7 +697,7 @@ static int _bf_ipt_request_handler(struct bf_request *request,
 
         return bf_response_new_success(response, request->data,
                                        request->data_len);
-    case BF_REQ_SET_COUNTERS:
+    case BF_REQ_COUNTERS_SET:
         r = _bf_ipt_set_counters_handler(
             (struct xt_counters_info *)request->data, request->data_len);
         if (r < 0)
