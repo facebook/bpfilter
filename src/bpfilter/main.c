@@ -193,6 +193,13 @@ static int _bf_save(const char *path)
 
     bf_assert(path);
 
+    if (bf_ctx_is_empty()) {
+        /* If the context is empty, we don't need to save it and we can remove
+         * the existing save. */
+        unlink(path);
+        return 0;
+    }
+
     r = bf_marsh_new(&marsh, NULL, 0);
     if (r < 0)
         return r;

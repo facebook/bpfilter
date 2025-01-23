@@ -406,6 +406,16 @@ int bf_ctx_flush(void)
     return err;
 }
 
+bool bf_ctx_is_empty(void)
+{
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        if (!bf_list_is_empty(&_bf_global_ctx->cgens[i]))
+            return false;
+    }
+
+    return true;
+}
+
 void bf_ctx_dump(prefix_t *prefix)
 {
     _bf_ctx_dump(_bf_global_ctx, prefix);
