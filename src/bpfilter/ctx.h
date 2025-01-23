@@ -84,6 +84,13 @@ int bf_ctx_load(const struct bf_marsh *marsh);
 int bf_ctx_flush(void);
 
 /**
+ * Check if the context is empty (no codegen defined).
+ *
+ * @return true is the context is empty, false otherwise.
+ */
+bool bf_ctx_is_empty(void);
+
+/**
  * Get a codegen from the global context.
  *
  * @param hook Hook to get the codegen from.
