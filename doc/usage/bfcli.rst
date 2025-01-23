@@ -1,14 +1,37 @@
 ``bfcli``
 =========
 
-``bfcli`` is part of ``bpfilter`` sources, it has been created in order to speed up ``bpfilter`` development by providing a CLI using a trivial communication format with the daemon. For this reason, ``bfcli`` is the main CLI used to develop ``bpfilter``, and it uses the new features of ``bpfilter`` before any other front-end.
+``bfcli`` is part of the ``bpfilter`` project, it has been created to accelerate ``bpfilter`` development by providing a CLI using a trivial communication format with the daemon. For this reason, ``bfcli`` is the main CLI used to develop ``bpfilter``, and it uses the new features of ``bpfilter`` before any other front-end.
 
-``bfcli`` can read a ruleset from a source file (using ``--file``) or from its arguments (using ``--str``):
+Commands
+--------
+
+``bfcli`` commands are structured as ``bfcli OBJECT ACTION``. The commands and actions supported by ``bfcli`` are described below.
+
+``ruleset set``
+~~~~~~~~~~~~~~~
+
+Define a new ruleset: read the chains and rules defined on the command line or in a file and send them to the daemon to be applied to the system.
+
+.. warning::
+
+    Currently, if a similar chain already exists on the system (e.g., for XDP, a chain attached to the same interface), the new one replaces it. Otherwise, it is left unchanged. This behavior is subject to change.
+
+**Options**
+  - ``--str RULESET``: read and apply the ruleset defining from the command line.
+  - ``--file FILE``: read ``FILE`` and apply the ruleset contained in it.
+
+``--str`` and ``--file`` are mutually exclusive.
+
+**Example**
 
 .. code:: shell
 
-    bfcli --file myruleset.tx
-    bfcli --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
+    bfcli ruleset set --file myruleset.tx
+    bfcli ruleset set --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
+
+Filters definition
+------------------
 
 The following sections will use the dollar sign (``$``) to prefix values that should be replaced by the user, and brackets (``[]``) for optional values (whether it's a literal or a user-provided value).
 
@@ -32,9 +55,8 @@ A ruleset is composed of chain(s), rule(s), and matcher(s):
 
     Lines starting with ``#`` are comments and ``bfcli`` will ignore them.
 
-
 Chains
-------
+~~~~~~
 
 Chains are defined such as:
 
@@ -87,7 +109,7 @@ With:
 
 
 Rules
------
+~~~~~
 
 Rules are defined such as:
 
@@ -112,7 +134,7 @@ Note ``CONTINUE`` means a packet can be counted more than once if multiple rules
 
 
 Matchers
---------
+~~~~~~~~
 
 Matchers are defined such as:
 
