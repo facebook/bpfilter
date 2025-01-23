@@ -1178,9 +1178,11 @@ int bf_program_unload(struct bf_program *program)
 
     bf_assert(program);
 
-    r = program->runtime.ops->detach_prog(program);
-    if (r)
-        return r;
+    if (program->runtime.chain->hook_opts.attach) {
+        r = program->runtime.ops->detach_prog(program);
+        if (r)
+            return r;
+    }
 
     if (!bf_opts_transient())
         _bf_program_unpin(program);
