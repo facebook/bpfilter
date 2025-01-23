@@ -19,14 +19,16 @@ int bf_request_new(struct bf_request **request, const void *data,
     _cleanup_bf_request_ struct bf_request *_request = NULL;
 
     bf_assert(request);
-    bf_assert(data);
+    bf_assert(!(!!data ^ !!data_len));
 
     _request = calloc(1, sizeof(*_request) + data_len);
     if (!_request)
         return -ENOMEM;
 
-    memcpy(_request->data, data, data_len);
-    _request->data_len = data_len;
+    if (data) {
+        memcpy(_request->data, data, data_len);
+        _request->data_len = data_len;
+    }
 
     *request = TAKE_PTR(_request);
 
