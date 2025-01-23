@@ -25,26 +25,16 @@
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
 
-static struct bf_options
+struct bf_ruleset_set_opts
 {
     const char *input_file;
     const char *input_string;
-} _bf_opts = {
-    .input_file = NULL,
 };
 
-static struct argp_option options[] = {
-    {"file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
-    {"str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
-    {0},
-};
-
-static error_t _bf_opts_parser(int key, const char *arg,
-                               struct argp_state *state)
+static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
+                                           struct argp_state *state)
 {
-    UNUSED(arg);
-
-    struct bf_options *opts = state->input;
+    struct bf_ruleset_set_opts *opts = state->input;
 
     switch (key) {
     case 'f':
@@ -72,10 +62,8 @@ static int _bf_cli_parse_file(const char *file, struct bf_ruleset *ruleset)
     int r;
 
     rules = fopen(file, "r");
-    if (!rules) {
-        return bf_err_r(errno,
-                        "failed to read rules from %s:", _bf_opts.input_file);
-    }
+    if (!rules)
+        return bf_err_r(errno, "failed to read rules from %s:", file);
 
     yyin = rules;
 
@@ -106,28 +94,38 @@ static int _bf_cli_parse_str(const char *str, struct bf_ruleset *ruleset)
     return r;
 }
 
-int main(int argc, char *argv[])
+int _bf_do_ruleset_set(int argc, char *argv[])
 {
+    static struct bf_ruleset_set_opts opts = {
+        .input_file = NULL,
+    };
+    static struct argp_option options[] = {
+        {"file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
+        {"str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
+        {0},
+    };
     struct argp argp = {
-        options, (argp_parser_t)_bf_opts_parser, NULL, NULL, 0, NULL, NULL};
+        options, (argp_parser_t)_bf_ruleset_set_opts_parser,
+        NULL,    NULL,
+        0,       NULL,
+        NULL,
+    };
     struct bf_ruleset ruleset = {
         .chains = bf_chain_list(),
         .sets = bf_set_list(),
     };
     int r;
 
-    bf_logger_setup();
-
-    r = argp_parse(&argp, argc, argv, 0, 0, &_bf_opts);
+    r = argp_parse(&argp, argc, argv, 0, 0, &opts);
     if (r) {
         bf_err_r(r, "failed to parse arguments");
         goto end_clean;
     }
 
-    if (_bf_opts.input_file)
-        r = _bf_cli_parse_file(_bf_opts.input_file, &ruleset);
+    if (opts.input_file)
+        r = _bf_cli_parse_file(opts.input_file, &ruleset);
     else
-        r = _bf_cli_parse_str(_bf_opts.input_string, &ruleset);
+        r = _bf_cli_parse_str(opts.input_string, &ruleset);
     if (r) {
         bf_err_r(r, "failed to parse ruleset");
         goto end_clean;
@@ -159,6 +157,40 @@ int main(int argc, char *argv[])
 end_clean:
     bf_list_clean(&ruleset.chains);
     bf_list_clean(&ruleset.sets);
+
+    return 0;
+}
+
+#define streq(str, expected) (str) && bf_streq(str, expected)
+
+int main(int argc, char *argv[])
+{
+    const char *obj_str = NULL;
+    const char *action_str = NULL;
+    int argv_skip = 0;
+    int r;
+
+    if (argc > 1 && argv[1][0] != '-') {
+        obj_str = argv[1];
+        ++argv_skip;
+    }
+
+    if (obj_str && argc > 2 && argv[2][0] != '-') {
+        action_str = argv[2];
+        ++argv_skip;
+    }
+
+    argv += argv_skip;
+    argc -= argv_skip;
+
+    bf_logger_setup();
+
+    if (streq(obj_str, "ruleset") && streq(action_str, "set")) {
+        r = _bf_do_ruleset_set(argc, argv);
+    } else {
+        return bf_err_r(-EINVAL, "unrecognized object '%s' and action '%s'",
+                        obj_str, action_str);
+    }
 
     return r;
 }
