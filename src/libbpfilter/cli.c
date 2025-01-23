@@ -14,6 +14,26 @@
 #include "core/response.h"
 #include "libbpfilter/generic.h"
 
+int bf_cli_ruleset_flush(void)
+{
+    _cleanup_bf_request_ struct bf_request *request = NULL;
+    _cleanup_bf_response_ struct bf_response *response = NULL;
+    int r;
+
+    r = bf_request_new(&request, NULL, 0);
+    if (r)
+        return bf_err_r(r, "failed to create a ruleset flush request");
+
+    request->front = BF_FRONT_CLI;
+    request->cmd = BF_REQ_RULESET_FLUSH;
+
+    r = bf_send(request, &response);
+    if (r)
+        return bf_err_r(r, "failed to send a ruleset flush request");
+
+    return response->type == BF_RES_FAILURE ? response->error : 0;
+}
+
 int bf_cli_set_chain(const struct bf_chain *chain)
 {
     _cleanup_bf_request_ struct bf_request *request = NULL;

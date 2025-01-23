@@ -30,6 +30,17 @@ Define a new ruleset: read the chains and rules defined on the command line or i
     bfcli ruleset set --file myruleset.tx
     bfcli ruleset set --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
 
+``ruleset flush``
+~~~~~~~~~~~~~~~~~
+
+Remove all the chains and rules defined by the daemon. Once this command completes, the daemon doesn't contain any filtering rules, as if it was freshly started.
+
+**Examples**
+
+.. code:: shell
+
+    bfcli ruleset flush
+
 Filters definition
 ------------------
 

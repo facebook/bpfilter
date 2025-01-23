@@ -42,6 +42,20 @@ static int _bf_cli_teardown(void)
     return 0;
 }
 
+int _bf_cli_ruleset_flush(const struct bf_request *request,
+                          struct bf_response **response)
+{
+    int r;
+
+    UNUSED(request);
+
+    r = bf_ctx_flush();
+    if (r)
+        return bf_err_r(r, "failed to flush the context");
+
+    return bf_response_new_success(response, NULL, 0);
+}
+
 int _bf_cli_set_rules(const struct bf_request *request,
                       struct bf_response **response)
 {
@@ -51,6 +65,9 @@ int _bf_cli_set_rules(const struct bf_request *request,
 
     bf_assert(request);
     bf_assert(response);
+
+    if (request->data_len < sizeof(struct bf_marsh))
+        return bf_response_new_failure(response, -EINVAL);
 
     r = bf_chain_new_from_marsh(&chain, (void *)request->data);
     if (r)
@@ -90,10 +107,10 @@ static int _bf_cli_request_handler(struct bf_request *request,
     bf_assert(request);
     bf_assert(response);
 
-    if (request->data_len < sizeof(struct bf_marsh))
-        return bf_response_new_failure(response, -EINVAL);
-
     switch (request->cmd) {
+    case BF_REQ_RULESET_FLUSH:
+        r = _bf_cli_ruleset_flush(request, response);
+        break;
     case BF_REQ_RULES_SET:
         r = _bf_cli_set_rules(request, response);
         break;
