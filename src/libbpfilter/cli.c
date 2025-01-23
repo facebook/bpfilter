@@ -30,7 +30,7 @@ int bf_cli_set_chain(const struct bf_chain *chain)
         return bf_err_r(r, "failed to create request for chain");
 
     request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_SET_RULES;
+    request->cmd = BF_REQ_RULES_SET;
 
     r = bf_send(request, &response);
     if (r)

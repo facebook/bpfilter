@@ -94,7 +94,7 @@ static int _bf_cli_request_handler(struct bf_request *request,
         return bf_response_new_failure(response, -EINVAL);
 
     switch (request->cmd) {
-    case BF_REQ_SET_RULES:
+    case BF_REQ_RULES_SET:
         r = _bf_cli_set_rules(request, response);
         break;
     default:
