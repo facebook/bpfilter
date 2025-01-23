@@ -141,7 +141,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case 'v':
         r = bf_verbose_to_str(arg, &opt);
         if (r < 0)
-            return bf_err_r(EINVAL, "unknown --verbose option '%s', valid --verbose options: [debug, bpf, bytecode]", arg);
+            return bf_err_r(
+                EINVAL,
+                "unknown --verbose option '%s', valid --verbose options: [debug, bpf, bytecode]",
+                arg);
         bf_info("enabling verbose for '%s'", arg);
         args->verbose |= (1 << opt);
         break;
