@@ -30,7 +30,8 @@ struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
         return NULL;
     }
 
-    if (bf_cli_set_chain(chain) < 0) {
+    r = bf_cli_set_chain(chain);
+    if (r < 0) {
         bf_err_r(r, "failed to create a new chain");
         return NULL;
     }
