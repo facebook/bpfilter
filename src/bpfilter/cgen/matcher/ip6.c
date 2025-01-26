@@ -23,7 +23,7 @@
 
 #include "external/filter.h"
 
-#define _bf_make32(a, b, c, d) (((a) << 24) | ((b) << 16) | ((c) << 8) | (d))
+#define _bf_make32(a, b, c, d) (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) | (uint32_t)(d))
 #define _BF_MASK_LAST_BYTE 15
 
 static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
