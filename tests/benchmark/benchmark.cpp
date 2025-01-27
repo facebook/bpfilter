@@ -99,6 +99,7 @@ enum
 {
     OPT_KEY_ADHOC,
     OPT_KEY_ADHOC_REPEAT,
+    OPT_KEY_NO_DAEMON,
 };
 
 const ::std::string help = "\v\
@@ -106,7 +107,7 @@ const ::std::string help = "\v\
 benchmarks will be skipped, and only the adhoc benchmark will be run. --adhoc \
 benchmarks won't create any output file.";
 
-constexpr std::array<struct argp_option, 7> options {{
+constexpr std::array<struct argp_option, 8> options {{
     {"cli", 'c', "CLI", 0,
      "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
     {"daemon", 'd', "DAEMON", 0,
@@ -121,6 +122,9 @@ constexpr std::array<struct argp_option, 7> options {{
      "Adhoc benchmark using RULE, skip all the predefined benchmarks.", 0},
     {"adhoc-repeat", OPT_KEY_ADHOC_REPEAT, "COUNT", 0,
      "Number of times to repeat the adhoc RULE in the chain. Defaults to 1.", 0},
+    {"no-daemon", OPT_KEY_NO_DAEMON, NULL, OPTION_ARG_OPTIONAL,
+     "If set, the benchmark will assume a daemon is already running and won't start one.",
+     0},
     {nullptr},
 }};
 
@@ -140,6 +144,9 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
         break;
     case OPT_KEY_ADHOC_REPEAT:
         config->adhocRepeat = ::std::stoi(arg);
+        break;
+    case OPT_KEY_NO_DAEMON:
+        config->runDaemon = false;
         break;
     case 'c':
         config->bfcli = ::std::string(arg);
@@ -313,6 +320,7 @@ int setup(std::span<char *> args)
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
     ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
+    ::benchmark::AddCustomContext("runDaemon", ::std::to_string(config.runDaemon));
 
     if (config.adhoc) {
         ::benchmark::AddCustomContext("adhoc", *config.adhoc);

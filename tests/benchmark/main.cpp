@@ -95,10 +95,14 @@ int main(int argc, char *argv[])
     }
 
     try {
-        auto daemon = bf::Daemon(
-            ::bf::config.bpfilter,
-            bf::Daemon::Options().transient().noIptables().noNftables());
-        ::benchmark::RunSpecifiedBenchmarks();
+        if (::bf::config.runDaemon) {
+            auto daemon = bf::Daemon(
+                ::bf::config.bpfilter,
+                bf::Daemon::Options().transient().noIptables().noNftables());
+            ::benchmark::RunSpecifiedBenchmarks();
+        } else {
+            ::benchmark::RunSpecifiedBenchmarks();
+        }
     } catch (const ::std::exception &e) {
         err("failed to run benchmark: {}", e.what());
         return -1;

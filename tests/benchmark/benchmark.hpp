@@ -84,6 +84,7 @@ public:
     int adhocRepeat = 1;
     const ::std::string adhocBenchName = "bf_adhoc";
     int64_t gitdate = 0;
+    bool runDaemon = true;
 
     Config() noexcept = default;
 };
