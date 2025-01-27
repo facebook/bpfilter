@@ -67,14 +67,17 @@ int _bf_matcher_generate_set_ip6port(struct bf_program *program,
                               offsetof(struct ipv6hdr, saddr) + 8));
 
     //  Prepare the key
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, -32));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -24));
-    EMIT(program, BPF_STX_MEM(BPF_H, BPF_REG_10, BPF_REG_3, -16));
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, BF_PROG_SCR_OFF(0)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_H, BPF_REG_10, BPF_REG_3, BF_PROG_SCR_OFF(16)));
 
     // Call bpf_map_lookup_elem(r1=map_fd, r2=key_addr)
     EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -32));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // Key not found? Jump to the next rule
@@ -105,13 +108,15 @@ int _bf_matcher_generate_set_ip6(struct bf_program *program,
                               offsetof(struct ipv6hdr, saddr) + 8));
 
     //  Prepare the key
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, -32));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -24));
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, BF_PROG_SCR_OFF(0)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
 
     // Call bpf_map_lookup_elem(r1=map_fd, r2=key_addr)
     EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -32));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // Key not found? Jump to the next rule

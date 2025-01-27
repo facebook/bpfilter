@@ -67,7 +67,8 @@ static int _bf_matcher_generate_ip4_addr_set(struct bf_program *program,
                      offsetof(struct iphdr, saddr) :
                      offsetof(struct iphdr, daddr);
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_6, offset));
-        EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, -16));
+        EMIT(program,
+             BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(0)));
         break;
     default:
         return bf_err_r(-EINVAL, "unsupported set type: %s",
@@ -76,7 +77,7 @@ static int _bf_matcher_generate_ip4_addr_set(struct bf_program *program,
 
     EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -16));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
