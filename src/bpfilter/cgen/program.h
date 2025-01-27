@@ -33,9 +33,11 @@
 
 /**
  * Convenience macro to get the offset of a field in @ref
- * bf_program_context.
+ * bf_program_context based on the frame pointer in @c BPF_REG_10 .
  */
-#define BF_PROG_CTX_OFF(field) offsetof(struct bf_program_context, field)
+#define BF_PROG_CTX_OFF(field)                                                 \
+    (-(int)sizeof(struct bf_program_context) +                                 \
+     (int)offsetof(struct bf_program_context, field))
 
 #define EMIT(program, x)                                                       \
     ({                                                                         \
@@ -117,19 +119,27 @@ struct bf_counter;
 /**
  * BPF program runtime context.
  *
- * This structure is used to map data located in the first frame of the
- * generated BPF program. Address to this structure will be stored in
- * @ref BF_REG_CTX register, and fields can be accessed using the convenience
- * macro @ref BF_PROG_CTX_OFF.
+ * This structure is used to easily read and write data from the program's
+ * stack. At runtime, the first stack frame of each generated program will
+ * contain data according to @ref bf_program_context .
  *
- * Layer 2, 3, and 4 headers are stored in an anonymous union, accessed through
- * the field named `lX_raw`. The various header structures stored in anonymous
- * union are used to ensure `lX_raw` is big enough to store any supported
- * header.
+ * The generated programs uses BPF dynamic pointer slices to safely access the
+ * packet's data. @c bpf_dynptr_slice requires a user-provided buffer into which
+ * it might copy the requested data, depending on the BPF program type: that is
+ * the purpose of the anonynous unions, big enough to store the supported
+ * protocol headers. @c bpf_dynptr_slice returns the address of the requested
+ * data, which is either the address of the user-buffer, or the address of the
+ * data in the packet (if the data hasn't be copied). The program will store
+ * this address into the runtime context (i.e. @c l2_hdr , @c l3_hdr , and
+ * @c l4_hdr ), and it will be used to access the packet's data.
  *
- * @warning Be very careful when it comes to modifying this structure, as
- * misaligned could prevent the BPF verifier from accepting the program in
- * certain circumstances.
+ * While earlier versions of this structure contained the L3 and L4 protocol IDs,
+ * they have been move to registers instead, as old version of the verifier
+ * can't keep track of scalar values in the stack, leading to verification
+ * failures.
+ *
+ * @warning Not all the BPF verifier versions are born equal as older ones might
+ * require stack access to be 8-bytes aligned to work properly.
  */
 struct bf_program_context
 {
@@ -154,13 +164,14 @@ struct bf_program_context
      * output interface. */
     uint32_t ifindex;
 
-    /** Layer 3 protocol, set when processing layer 2 protocol header. Required
-     * to process the layer 3 header. */
-    uint16_t bf_aligned(8) l3_proto;
+    /** Pointer to the L2 protocol header. */
+    void *l2_hdr;
 
-    /** Layer 4 protocol, set when processing layer 3 protocol header. Required
-     * to process the layer 4 header. */
-    uint8_t bf_aligned(8) l4_proto;
+    /** Pointer to the L3 protocol header. */
+    void *l3_hdr;
+
+    /** Pointer to the L4 protocol header. */
+    void *l4_hdr;
 
     /** Layer 2 header. */
     union

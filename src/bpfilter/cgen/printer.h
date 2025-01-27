@@ -72,7 +72,7 @@ struct bf_printer_msg;
         const struct bf_printer_msg *__msg =                                   \
             bf_printer_add_msg((program)->printer, (msg));                     \
         struct bpf_insn __ld_insn[2] = {                                       \
-            BPF_LD_MAP_FD(BF_ARG_1, 0),                                        \
+            BPF_LD_MAP_FD(BPF_REG_1, 0),                                       \
         };                                                                     \
         __ld_insn[0].src_reg = BPF_PSEUDO_MAP_VALUE;                           \
         __ld_insn[1].imm = bf_printer_msg_offset(__msg);                       \
@@ -84,7 +84,7 @@ struct bf_printer_msg;
         if (__r < 0)                                                           \
             return __r;                                                        \
         __r = bf_program_emit(                                                 \
-            (program), BPF_MOV64_IMM(BF_ARG_2, bf_printer_msg_len(__msg)));    \
+            (program), BPF_MOV64_IMM(BPF_REG_2, bf_printer_msg_len(__msg)));   \
         if (__r < 0)                                                           \
             return __r;                                                        \
         __r =                                                                  \

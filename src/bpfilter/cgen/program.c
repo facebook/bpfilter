@@ -29,7 +29,6 @@
 #include "bpfilter/cgen/matcher/udp.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/prog/map.h"
-#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/ctx.h"
 #include "core/bpf.h"
@@ -591,13 +590,9 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->counters) {
-        // BF_ARG_1: index of the current rule in counters map.
-        EMIT(program, BPF_MOV32_IMM(BF_ARG_1, rule->index));
-
-        // BF_ARG_2: packet size, from the context.
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX,
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, rule->index));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
                                   BF_PROG_CTX_OFF(pkt_size)));
-
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
     }
 
@@ -605,7 +600,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
         EMIT(program,
-             BPF_MOV64_IMM(BF_REG_RET,
+             BPF_MOV64_IMM(BPF_REG_0,
                            program->runtime.ops->get_verdict(rule->verdict)));
         EMIT(program, BPF_EXIT_INSN());
         break;
@@ -628,9 +623,12 @@ static int _bf_program_generate_rule(struct bf_program *program,
 /**
  * Generate the BPF function to update a rule's counters.
  *
+ * This function defines a new function **in** the generated BPF program to
+ * be called during packet processing.
+ *
  * Parameters:
- * - @c BF_ARG_1 : index of the rule to update the counters for.
- * - @c BF_ARG_2 : size of the packet.
+ * - @c r1 : index of the rule to update the counters for.
+ * - @c r2 : size of the packet.
  * Returns:
  * 0 on success, non-zero on error.
  *
@@ -639,49 +637,45 @@ static int _bf_program_generate_rule(struct bf_program *program,
  */
 static int _bf_program_generate_update_counters(struct bf_program *program)
 {
-    // Move the rule's key at FP - 8
-    EMIT(program, BPF_STX_MEM(BPF_W, BF_REG_FP, BF_ARG_1, -8));
+    // Move the rule's key at FP - 8 and the packet size at FP - 16
+    EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1, -8));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -16));
 
-    // Move the packet size at FP - 16
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_FP, BF_ARG_2, -16));
-
-    // BF_ARG_1: counters map file descriptor
-    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BF_ARG_1);
-
-    // BF_ARG_2: address of the rule's counters map key.
-    EMIT(program, BPF_MOV64_REG(BF_ARG_2, BF_REG_FP));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_ARG_2, -8));
-
+    // Call bpf_map_lookup_elem()
+    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_1);
+    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -8));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+
+    // If the counters doesn't exist, return from the function
     {
-        // If the counters doesn't exist, return from the function
         _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BF_REG_0, 0, 0));
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to fetch the rule's counters");
 
-        EMIT(program, BPF_MOV32_IMM(BF_REG_0, 1));
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_0, 1));
         EMIT(program, BPF_EXIT_INSN());
     }
 
     // Increment the packets count by 1.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_0,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0,
                               offsetof(struct bf_counter, packets)));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_1, 1));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_0, BF_REG_1,
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, 1));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1,
                               offsetof(struct bf_counter, packets)));
 
     // Increase the total byte by the size of the packet.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_0,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0,
                               offsetof(struct bf_counter, bytes)));
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_FP, -16));
-    EMIT(program, BPF_ALU64_REG(BPF_ADD, BF_REG_1, BF_REG_2));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_0, BF_REG_1,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, -16));
+    EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1,
                               offsetof(struct bf_counter, bytes)));
 
-    // On success, BF_REG_0 is 0.
-    EMIT(program, BPF_MOV32_IMM(BF_REG_0, 0));
+    // On success, return 0
+    EMIT(program, BPF_MOV32_IMM(BPF_REG_0, 0));
     EMIT(program, BPF_EXIT_INSN());
 
     return 0;
@@ -864,31 +858,6 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     return 0;
 }
 
-static int _bf_program_generate_runtime_init(struct bf_program *program)
-{
-    // Store the context's address in BF_REG_CTX.
-    EMIT(program, BPF_MOV64_REG(BF_REG_CTX, BF_REG_FP));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_CTX,
-                                -(int)sizeof(struct bf_program_context)));
-
-    // Save the program's argument into the context.
-    EMIT(program,
-         BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_ARG_1, BF_PROG_CTX_OFF(arg)));
-
-    // Initialize the context's headers metadata
-    EMIT(program, BPF_MOV64_IMM(BF_REG_2, 0));
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_offset)));
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l4_offset)));
-    EMIT(program,
-         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT(program,
-         BPF_STX_MEM(BPF_B, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l4_proto)));
-
-    return 0;
-}
-
 int bf_program_generate(struct bf_program *program)
 {
     const struct bf_chain *chain = program->runtime.chain;
@@ -903,22 +872,21 @@ int bf_program_generate(struct bf_program *program)
      * generation, as we will index into the error counters. */
     program->num_counters = bf_list_size(&chain->rules) + 2;
 
-    r = _bf_program_generate_runtime_init(program);
-    if (r)
-        return r;
+    // Save the program's argument into the context.
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
 
-    // Set default return value to ACCEPT.
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                                BF_VERDICT_ACCEPT)));
+    // Reset the protocol ID registers
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_7, 0));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
 
     r = program->runtime.ops->gen_inline_prologue(program);
     if (r)
         return r;
 
     bf_list_foreach (&chain->rules, rule_node) {
-        struct bf_rule *rule = bf_list_node_get_data(rule_node);
-
-        r = _bf_program_generate_rule(program, rule);
+        r = _bf_program_generate_rule(program,
+                                      bf_list_node_get_data(rule_node));
         if (r)
             return r;
     }
@@ -927,17 +895,14 @@ int bf_program_generate(struct bf_program *program)
     if (r)
         return r;
 
-    // BF_ARG_1: index of the current rule in counters map.
-    EMIT(program, BPF_MOV32_IMM(BF_ARG_1, bf_list_size(&chain->rules)));
-
-    // BF_ARG_2: packet size, from the context.
+    // Call the update counters function
+    EMIT(program, BPF_MOV32_IMM(BPF_REG_1, bf_list_size(&chain->rules)));
     EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BF_ARG_2, BF_REG_CTX, BF_PROG_CTX_OFF(pkt_size)));
-
+         BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, BF_PROG_CTX_OFF(pkt_size)));
     EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
 
-    EMIT(program, BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
-                                                chain->policy)));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
+                                               chain->policy)));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_generate_functions(program);

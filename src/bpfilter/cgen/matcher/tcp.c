@@ -16,7 +16,6 @@
 #include <stdint.h>
 
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "core/logger.h"
 #include "core/matcher.h"
 
@@ -30,22 +29,22 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
                         offsetof(struct tcphdr, source) :
                         offsetof(struct tcphdr, dest);
 
-    EMIT(program, BPF_LDX_MEM(BPF_H, BF_REG_4, BF_REG_L4, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, offset));
 
     switch (matcher->op) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JNE, BF_REG_4, htobe16(*port), 0));
+            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, htobe16(*port), 0));
         break;
     case BF_MATCHER_NE:
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JEQ, BF_REG_4, htobe16(*port), 0));
+            program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, htobe16(*port), 0));
         break;
     case BF_MATCHER_RANGE:
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JLT, BF_REG_4, htobe16(port[0]), 0));
+            program, BPF_JMP_IMM(BPF_JLT, BPF_REG_1, htobe16(port[0]), 0));
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JGT, BF_REG_4, htobe16(port[1]), 0));
+            program, BPF_JMP_IMM(BPF_JGT, BPF_REG_1, htobe16(port[1]), 0));
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
@@ -60,16 +59,16 @@ static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
 {
     uint8_t flags = *(uint8_t *)matcher->payload;
 
-    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_L4, 13));
+    EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6, 13));
 
     switch (matcher->op) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BF_REG_1, flags, 0));
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, flags, 0));
         break;
     case BF_MATCHER_NE:
         EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BF_REG_1, flags, 0));
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, flags, 0));
         break;
     case BF_MATCHER_ANY:
         EMIT(program, BPF_ALU32_IMM(BPF_AND, BPF_REG_1, flags));
@@ -94,10 +93,10 @@ int bf_matcher_generate_tcp(struct bf_program *program,
 {
     int r;
 
-    EMIT(program,
-         BPF_LDX_MEM(BPF_B, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
     EMIT_FIXUP_JMP_NEXT_RULE(program,
-                             BPF_JMP_IMM(BPF_JNE, BF_REG_1, IPPROTO_TCP, 0));
+                             BPF_JMP_IMM(BPF_JNE, BPF_REG_8, IPPROTO_TCP, 0));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
 
     switch (matcher->type) {
     case BF_MATCHER_TCP_SPORT:

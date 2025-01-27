@@ -10,7 +10,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/reg.h"
 #include "core/helper.h"
 #include "core/list.h"
 
@@ -112,7 +111,7 @@ struct bf_swich
     /// Program to generate the switch-case in.
     struct bf_program *program;
     /// Register to compare to the various cases of the switch.
-    enum bf_reg reg;
+    int reg;
     /// List of options (cases) for the switch.
     bf_list options;
     /// Default option, if no case matches the switch's register.
@@ -128,8 +127,7 @@ struct bf_swich
  * @param reg Register to compare to the cases of the switch.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_swich_init(struct bf_swich *swich, struct bf_program *program,
-                  enum bf_reg reg);
+int bf_swich_init(struct bf_swich *swich, struct bf_program *program, int reg);
 
 /**
  * Cleanup a @ref bf_swich object.

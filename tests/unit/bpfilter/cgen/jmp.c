@@ -9,8 +9,6 @@
 #include "harness/test.h"
 #include "harness/mock.h"
 
-#include "bpfilter/cgen/reg.h"
-
 /**
  * Create a context and emit a given number of instructions.
  *
@@ -27,10 +25,10 @@
 static int emit_in_ctx(struct bf_program *program, struct bf_jmpctx *ctx,
                        size_t n_insn)
 {
-    *ctx = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 0));
+    *ctx = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 0));
 
     for (size_t i = 0; i < n_insn; i++)
-        EMIT(program, BPF_MOV64_IMM(BF_REG_RET, 0));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, 0));
 
     return 0;
 }

@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/swich.h"
 #include "core/helper.h"
 #include "core/logger.h"
@@ -39,47 +38,47 @@ int _bf_matcher_generate_set_ip6port(struct bf_program *program,
 
     set_id = *(uint32_t *)matcher->payload;
 
-    // Ensure IPv6
-    EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    // Ensure IPv6, then load the header address into r6
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IPV6), 0));
+        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IPV6), 0));
 
     // Get the source port into r2. If l4_proto is not UDP or TCP, jump to the next rule
-    swich = bf_swich_get(program, BF_REG_2);
     EMIT(program,
-         BPF_LDX_MEM(BPF_B, BF_REG_2, BF_REG_CTX, BF_PROG_CTX_OFF(l4_proto)));
+         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
+    swich = bf_swich_get(program, BPF_REG_8);
     EMIT_SWICH_OPTION(&swich, IPPROTO_TCP,
-                      BPF_LDX_MEM(BPF_H, BF_REG_3, BF_REG_L4,
+                      BPF_LDX_MEM(BPF_H, BPF_REG_3, BPF_REG_6,
                                   offsetof(struct tcphdr, source)));
     EMIT_SWICH_OPTION(&swich, IPPROTO_TCP,
-                      BPF_LDX_MEM(BPF_H, BF_REG_3, BF_REG_L4,
+                      BPF_LDX_MEM(BPF_H, BPF_REG_3, BPF_REG_6,
                                   offsetof(struct udphdr, source)));
-    EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_REG_3, 0));
+    EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_3, 0));
     r = bf_swich_generate(&swich);
     if (r)
         return bf_err_r(r, "failed to generate swich for meta.(s|d)port");
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_3, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_3, 0, 0));
 
     // Copy the source IPv6 address into r1 and r2
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_L3,
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_6,
                               offsetof(struct ipv6hdr, saddr)));
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_L3,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6,
                               offsetof(struct ipv6hdr, saddr) + 8));
 
     //  Prepare the key
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_1, -32));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_2, -24));
-    EMIT(program, BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_3, -16));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, -32));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -24));
+    EMIT(program, BPF_STX_MEM(BPF_H, BPF_REG_10, BPF_REG_3, -16));
 
     // Call bpf_map_lookup_elem(r1=map_fd, r2=key_addr)
-    EMIT_LOAD_SET_FD_FIXUP(program, BF_ARG_1, set_id);
-    EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, -32));
+    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
+    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -32));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // Key not found? Jump to the next rule
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
     return 0;
 }
@@ -93,30 +92,30 @@ int _bf_matcher_generate_set_ip6(struct bf_program *program,
 
     set_id = *(uint32_t *)matcher->payload;
 
-    // Ensure IPv6
-    EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+    // Ensure IPv6, then loader the header address into r6
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(BPF_JNE, BF_REG_1, htobe16(ETH_P_IPV6), 0));
+        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IPV6), 0));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
 
     // Copy the source IPv6 address into r1 and r2
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_L3,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_6,
                               offsetof(struct ipv6hdr, saddr)));
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_L3,
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6,
                               offsetof(struct ipv6hdr, saddr) + 8));
 
     //  Prepare the key
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_1, -32));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_2, -24));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, -32));
+    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -24));
 
     // Call bpf_map_lookup_elem(r1=map_fd, r2=key_addr)
-    EMIT_LOAD_SET_FD_FIXUP(program, BF_ARG_1, set_id);
-    EMIT(program, BPF_MOV64_REG(BF_REG_2, BF_REG_CTX));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, -32));
+    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
+    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -32));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // Key not found? Jump to the next rule
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_0, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
     return 0;
 }

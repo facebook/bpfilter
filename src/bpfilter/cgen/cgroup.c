@@ -17,7 +17,6 @@
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/swich.h"
 #include "core/bpf.h"
@@ -55,30 +54,15 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    // Copy __sk_buff.family to l3_proto
-    if ((offset = bf_btf_get_field_off("__sk_buff", "family")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, offset));
-    EMIT(program,
-         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(l3_proto)));
-
-    // Copy __sk_buff.data into BF_REG_2
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1,
+    // Calculate the packet size (+ETH_HLEN) and store it into the runtime context
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1,
                               offsetof(struct __sk_buff, data)));
-
-    // Copy __sk_buff.data_end into BF_REG_3
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_1,
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_3, BPF_REG_1,
                               offsetof(struct __sk_buff, data_end)));
-
-    // Calculate packet size
-    EMIT(program, BPF_ALU64_REG(BPF_SUB, BF_REG_3, BF_REG_2));
-
-    // Add size of Ethernet header to BF_REG_3.
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_3, ETH_HLEN));
-
-    // Copy packet size into context
+    EMIT(program, BPF_ALU64_REG(BPF_SUB, BPF_REG_3, BPF_REG_2));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, ETH_HLEN));
     EMIT(program,
-         BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
 
     /** The @c __sk_buff structure contains two fields related to the interface
      * index: @c ingress_ifindex and @c ifindex . @c ingress_ifindex is the
@@ -90,42 +74,38 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
      */
     if ((r = bf_btf_get_field_off("__sk_buff", "ifindex")) < 0)
         return r;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, r));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, r));
     EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(ifindex)));
-
-    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
-    if (r)
-        return r;
+         BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, BF_PROG_CTX_OFF(ifindex)));
 
     /* BPF_PROG_TYPE_CGROUP_SKB doesn't provide access the the Ethernet header,
-     * so we can't parse it. Fill the runtime context's l3_proto and l3_offset
-     * manually instead.
-     * The switch structure below stores the L3 protocol identifier in BF_REG_1,
-     * then we use a shared logic to copy the L3 protocol and offset to the
-     * runtime context. */
-    EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+     * so we can't parse it and discover the L3 protocol ID.
+     * Instead, we use the __sk_buff.family value and convert it to the
+     * corresponding ethertype. */
+    if ((offset = bf_btf_get_field_off("__sk_buff", "family")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
+
     {
         _cleanup_bf_swich_ struct bf_swich swich =
-            bf_swich_get(program, BF_REG_1);
+            bf_swich_get(program, BPF_REG_2);
 
         EMIT_SWICH_OPTION(&swich, AF_INET,
-                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IP)));
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IP)));
         EMIT_SWICH_OPTION(&swich, AF_INET6,
-                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IPV6)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_REG_1, 0));
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IPV6)));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_7, 0));
 
         r = bf_swich_generate(&swich);
         if (r)
             return r;
     }
 
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_1, 0));
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_offset)));
+    EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset), 0));
+
+    r = bf_stub_make_ctx_skb_dynptr(program, BPF_REG_1);
+    if (r)
+        return r;
 
     r = bf_stub_parse_l3_hdr(program);
     if (r)

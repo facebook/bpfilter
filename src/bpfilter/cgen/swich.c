@@ -16,7 +16,6 @@
 
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
@@ -97,8 +96,7 @@ static void _bf_swich_option_free(struct bf_swich_option **option)
     *option = NULL;
 }
 
-int bf_swich_init(struct bf_swich *swich, struct bf_program *program,
-                  enum bf_reg reg)
+int bf_swich_init(struct bf_swich *swich, struct bf_program *program, int reg)
 {
     bf_assert(swich);
     bf_assert(program);
