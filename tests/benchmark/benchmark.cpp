@@ -688,7 +688,7 @@ Program::~Program() noexcept(false)
 	if (r < 0)
 		return -EINVAL;
 
-    return prog_info.jited_prog_len;
+    return prog_info.xlated_prog_len / sizeof(struct bpf_insn);
 }
 
 int Program::run(int expect, const std::span<const uint8_t> &pkt) const
