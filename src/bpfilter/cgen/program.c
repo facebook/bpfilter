@@ -637,14 +637,16 @@ static int _bf_program_generate_rule(struct bf_program *program,
  */
 static int _bf_program_generate_update_counters(struct bf_program *program)
 {
-    // Move the rule's key at FP - 8 and the packet size at FP - 16
-    EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1, -8));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, -16));
+    // Move the counters key in scratch[0..4] and the packet size in scratch[8..15]
+    EMIT(program,
+         BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1, BF_PROG_SCR_OFF(0)));
+    EMIT(program,
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
 
     // Call bpf_map_lookup_elem()
     EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_1);
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, -8));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
     // If the counters doesn't exist, return from the function
@@ -669,7 +671,8 @@ static int _bf_program_generate_update_counters(struct bf_program *program)
     // Increase the total byte by the size of the packet.
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0,
                               offsetof(struct bf_counter, bytes)));
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, -16));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, BF_PROG_SCR_OFF(8)));
     EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2));
     EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1,
                               offsetof(struct bf_counter, bytes)));

@@ -39,6 +39,12 @@
     (-(int)sizeof(struct bf_program_context) +                                 \
      (int)offsetof(struct bf_program_context, field))
 
+/** Convenience macro to get an address in the scratch area of
+ * @ref bf_program_context . */
+#define BF_PROG_SCR_OFF(offset)                                                \
+    (-(int)sizeof(struct bf_program_context) +                                 \
+     (int)offsetof(struct bf_program_context, scratch) + (offset))
+
 #define EMIT(program, x)                                                       \
     ({                                                                         \
         int __r = bf_program_emit((program), (x));                             \
@@ -197,6 +203,8 @@ struct bf_program_context
         struct icmp6hdr _icmp6hdr;
         char l4_raw[0];
     } bf_aligned(8);
+
+    uint8_t bf_aligned(8) scratch[64];
 } bf_aligned(8);
 
 static_assert(sizeof(struct bf_program_context) % 8 == 0,
