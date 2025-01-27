@@ -158,7 +158,7 @@ end_clean:
     bf_list_clean(&ruleset.chains);
     bf_list_clean(&ruleset.sets);
 
-    return 0;
+    return r;
 }
 
 #define streq(str, expected) (str) && bf_streq(str, expected)
