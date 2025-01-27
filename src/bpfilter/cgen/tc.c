@@ -13,7 +13,6 @@
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "core/bpf.h"
 #include "core/btf.h"
@@ -46,20 +45,14 @@ static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    // Copy __sk_buff.data into BF_REG_2
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1,
+    // Calculate the packet size and store it into the runtime context
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1,
                               offsetof(struct __sk_buff, data)));
-
-    // Copy __sk_buff.data_end into BF_REG_3
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_1,
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_3, BPF_REG_1,
                               offsetof(struct __sk_buff, data_end)));
-
-    // Calculate packet size
-    EMIT(program, BPF_ALU64_REG(BPF_SUB, BF_REG_3, BF_REG_2));
-
-    // Copy packet size into context
+    EMIT(program, BPF_ALU64_REG(BPF_SUB, BPF_REG_3, BPF_REG_2));
     EMIT(program,
-         BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
 
     /** The @c __sk_buff structure contains two fields related to the interface
      * index: @c ingress_ifindex and @c ifindex . @c ingress_ifindex is the
@@ -71,11 +64,11 @@ static int _bf_tc_gen_inline_prologue(struct bf_program *program)
      */
     if ((r = bf_btf_get_field_off("__sk_buff", "ifindex")) < 0)
         return r;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, r));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, r));
     EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_2, BF_PROG_CTX_OFF(ifindex)));
+         BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, BF_PROG_CTX_OFF(ifindex)));
 
-    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
+    r = bf_stub_make_ctx_skb_dynptr(program, BPF_REG_1);
     if (r)
         return r;
 

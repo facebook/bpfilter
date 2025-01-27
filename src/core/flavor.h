@@ -69,16 +69,14 @@ struct bf_flavor_ops
     /**
      * Generate the flavor-specific prologue of the BPF program.
      *
-     * This function can assume BF_ARG_1 contains the first argument passed
-     * to the program, and BF_REG_CTX is properly set, pointing to an
-     * initialised context.
-     *
-     * The purpose of this callback is to:
-     * - Ensure ctx.dynptr is a valid BPF dynptr to the packet data.
-     * - ctx.pkt_size contains the packet size.
-     * - BPF dynptr slices to layer 2, 3, and 4 (if relevant) are stored within
-     *   the context, and BF_REG_L{2, 3, 4} are updated to contain the address
-     *   of the relevant header.
+     * When this callback is called during the program generation, @c BPF_REG_1
+     * contains the program's argument. It must then:
+     * - Calculate and store the packet's size into the runtime context
+     * - Store the input interface index into the runtime context
+     * - If L2 is not available, set the L3 protocol ID into @c BPF_REG_7 and
+     *   set @c l3_offset in the runtime context to 0.
+     * - Call @ref bf_stub_parse_l2_ethhdr, @ref bf_stub_parse_l3_hdr, and
+     *   @ref bf_stub_parse_l4_hdr depending on which headers are available.
      */
     int (*gen_inline_prologue)(struct bf_program *program);
 

@@ -17,7 +17,6 @@
 
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/reg.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/swich.h"
 #include "core/bpf.h"
@@ -61,89 +60,65 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    // Copy bpf_nf_ctx.state in BF_REG_2.
+    // Copy the ifindex from to bpf_nf_ctx.state.{in,out}.ifindex the runtime context
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_2, BF_REG_1, offset));
-
-    // Copy bpf_nf_ctx.state.pf to the runtime context
-    if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_B, BF_REG_3, BF_REG_2, offset));
-    EMIT(program,
-         BPF_STX_MEM(BPF_H, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(l3_proto)));
-
-    // Copy the packet's ingress/egress ifindex to the runtime context.
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
     if (_bf_nf_hook_is_ingress(program->hook)) {
         if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
             return offset;
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, offset));
     } else {
         if ((offset = bf_btf_get_field_off("nf_hook_state", "out")) < 0)
             return offset;
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, offset));
     }
 
     if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_3, BF_REG_3, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_4, BPF_REG_3, offset));
     EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_3, BF_PROG_CTX_OFF(ifindex)));
-
-    // Copy nf_hook_state.in in BF_REG_3.
-    if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_3, BF_REG_2, offset));
-
-    // Copy address of sk_buff into BF_REG_1.
-    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BF_REG_1, BF_REG_1, offset));
-
-    // Copy packet length into BF_REG_2.
-    if ((offset = bf_btf_get_field_off("sk_buff", "len")) < 0)
-        return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BF_REG_2, BF_REG_1, offset));
-
-    // Add size of Ethernet header to BF_REG_2.
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BF_REG_2, ETH_HLEN));
-
-    // Store packet length in context.
-    EMIT(program, BPF_STX_MEM(BPF_DW, BF_REG_CTX, BF_REG_2,
-                              offsetof(struct bf_program_context, pkt_size)));
-
-    r = bf_stub_make_ctx_skb_dynptr(program, BF_REG_1);
-    if (r)
-        return r;
+         BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_4, BF_PROG_CTX_OFF(ifindex)));
 
     /* BPF_PROG_TYPE_CGROUP_SKB doesn't provide access the the Ethernet header,
-     * so we can't parse it. Fill the runtime context's l3_proto and l3_offset
-     * manually instead.
-     * The switch structure below stores the L3 protocol identifier in BF_REG_1,
-     * then we use a shared logic to copy the L3 protocol and offset to the
-     * runtime context. */
-    EMIT(program,
-         BPF_LDX_MEM(BPF_H, BF_REG_1, BF_REG_CTX, BF_PROG_CTX_OFF(l3_proto)));
+     * so we can't parse it and discover the L3 protocol ID.
+     * Instead, we use the __sk_buff.family value and convert it to the
+     * corresponding ethertype. */
+    if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_3, BPF_REG_2, offset));
+
     {
         _cleanup_bf_swich_ struct bf_swich swich =
-            bf_swich_get(program, BF_REG_1);
+            bf_swich_get(program, BPF_REG_3);
 
         EMIT_SWICH_OPTION(&swich, AF_INET,
-                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IP)));
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IP)));
         EMIT_SWICH_OPTION(&swich, AF_INET6,
-                          BPF_MOV64_IMM(BF_REG_1, htons(ETH_P_IPV6)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BF_REG_1, 0));
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IPV6)));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_7, 0));
 
         r = bf_swich_generate(&swich);
         if (r)
             return r;
     }
 
+    EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset), 0));
+
+    // Calculate the packet size (+ETH_HLEN) and store it into the runtime context
+    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_1, offset));
+    if ((offset = bf_btf_get_field_off("sk_buff", "len")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, ETH_HLEN));
     EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_proto)));
-    EMIT(program, BPF_MOV64_IMM(BF_REG_1, 0));
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BF_REG_CTX, BF_REG_1, BF_PROG_CTX_OFF(l3_offset)));
+         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_CTX_OFF(pkt_size)));
+
+    r = bf_stub_make_ctx_skb_dynptr(program, BPF_REG_1);
+    if (r)
+        return r;
 
     r = bf_stub_parse_l3_hdr(program);
     if (r)

@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "bpfilter/cgen/reg.h"
-
 struct bf_program;
 
 /**
@@ -21,7 +19,7 @@ struct bf_program;
  * @param md_reg Scratch register containing the pointer to the xdp_md.
  * @return 0 on success, or negative errno value on error.
  */
-int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg);
+int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, int md_reg);
 
 /**
  * Emit instructions to get a dynptr for an XDP program.
@@ -35,29 +33,20 @@ int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, enum bf_reg md_reg);
  * @param skb_reg Scratch register containing the pointer to the skb.
  * @return 0 on success, or negative errno value on error.
  */
-int bf_stub_make_ctx_skb_dynptr(struct bf_program *program,
-                                enum bf_reg skb_reg);
+int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, int skb_reg);
 
 /**
  * Emit instructions to get a dynptr slice for the packet's L2 Ethernet
  * header.
  *
- * Store bpf_dynptr_slice arguments into:
- * - BF_ARG_1: pointer to the dynptr located in the context.
- * - BF_ARG_2: offset of the slice, in the dynptr. Always 0, as L2 Ethernet is
- *   the first header.
- * - BF_ARG_3: pointer to the buffer to store the slice into. Each header buffer
- *   is located in the context.
- * - BF_ARG_4: size of the buffer. Always ETH_HLEN, as L2 Ethernet is the first
- *   header.
- * Then, call bpf_dynptr_slice(). If the return value is different from 0, jump
- * to the end of the program.
- * Finally:
- * - Copy the address of the header into BF_REG_L2.
- * - Load the header's h_proto field to determine the L3 protocol. If L3
- *   protocol is not IPv4 (the only supported protocol for now), jump to the
- *   end of the program.
- * - Store the offset of the L3 header in the context.
+ * The Ethernet header is processed the following way:
+ * - Create a BPF dynamic pointer slice for the header.
+ * - If the slice creation fails, the error counter is updated and the
+ *   program accepts the packet
+ * - The header address returned by @c bpf_dynptr_slice is stored in
+ *   @c bf_program_context.l2_hdr
+ * - The L3 protocol ID (extracted from the ethertype field) is stored in @c r7
+ * - The offset of the L3 header is stored in  @c bf_program_context.l2_offset
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
@@ -68,22 +57,14 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program);
  * Emit instructions to get a dynptr slice for the packet's L3 IPv4
  * header.
  *
- * Store bpf_dynptr_slice arguments into:
- * - BF_ARG_1: pointer to the dynptr located in the context.
- * - BF_ARG_2: offset of the slice, in the dynptr. Get it from l3_offset field
- *   in the context. This field is either 0, or set when processing layer 2
- *   header.
- * - BF_ARG_3: pointer to the buffer to store the slice into.
- * - BF_ARG_4: size of the buffer, expected to be an IPv4 header.
- * Then, call bpf_dynptr_slice(). If the return value is different from 0, jump
- * to the end of the program.
- * Finally:
- * - Store the address of the header into BF_REG_L3.
- * - Compute the offset of the L4 header:
- *   - Load ip.ihl into BF_REG_1
- *   - Add ctx.l3_offset to it.
- *   - Copy it back to the context.
- * - Store L4 protocol into the context.
+ * This function behaves similarly to @ref bf_stub_parse_l2_ethhdr but for the
+ * L3 header, with the following differences:
+ * - The size of the slice to request depends on the L3 protocol ID stored in @c r7
+ * - Once the slice has been requested, the L3 header is processed to extract
+ *   the offset of the L4 header and the L4 protocol ID
+ *
+ * If the L3 protocol is not supported, this function returns before requesting
+ * a dynamic pointer slice, and the L3 protocol ID register is set to 0.
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
@@ -93,16 +74,13 @@ int bf_stub_parse_l3_hdr(struct bf_program *program);
 /**
  * Emit instructions to get a dynptr slice for the packet's L4 header.
  *
- * Store bpf_dynptr_slice arguments into:
- * - BF_ARG_1: pointer to the dynptr located in the context.
- * - BF_ARG_2: offset of the slice, in the dynptr. Get it from l4_offset field
- *   in the context. This field is set when processing layer 2 header.
- * - BF_ARG_3: pointer to the buffer to store the slice into.
- * - BF_ARG_4: size of the buffer, need to be computed depending ctx.l4_proto.
- *   If ctx.l4_proto is not supported, jump to the end of the program.
- * Then, call bpf_dynptr_slice(). If the return value is different from 0, jump
- * to the end of the program.
- * Finally, copy the address of the header into BF_REG_L4.
+ * This function behaves similarly to @ref bf_stub_parse_l2_ethhdr but for the
+ * L4 header, with the following differences:
+ * - The size of the slice to request depends on the L4 protocol ID stored in @c r8
+ * - There is no logic to process the L4 header and determine the L5 protocol
+ *
+ * If the L4 protocol is not supported, this function returns before requesting
+ * a dynamic pointer slice, and the L4 protocol ID register is set to 0.
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.

@@ -11,18 +11,18 @@
  * @file jmp.h
  *
  * @ref bf_jmpctx is a helper structure to manage jump instructions in the
- * program. It is used to emit a jump instruction and automatically clean it up
- * when the scope is exited, thanks to GCC's @c cleanup attribute.
+ * program. A @ref bf_jmpctx will insert a new jump instruction in the BPF
+ * program and update its jump offset when the @ref bf_jmpctx is deleted.
  *
  * Example:
  * @code{.c}
  *  // Within a function body
  *  {
  *      _cleanup_bf_jmpctx_ struct bf_jmpctx ctx =
- *          bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BF_REG_2, 0, 0));
+ *          bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 0));
  *
  *      EMIT(program,
- *          BPF_MOV64_IMM(BF_REG_RET, program->runtime.ops->get_verdict(
+ *          BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
  *              BF_VERDICT_ACCEPT)));
  *      EMIT(program, BPF_EXIT_INSN());
  *  }
@@ -31,12 +31,11 @@
  * @c ctx is a variable local to the scope, marked with @c _cleanup_bf_jmpctx_ .
  * The second argument to @c bf_jmpctx_get is the jump instruction to emit, with
  * the correct condition. When the scope is exited, the jump instruction is
- * automatically updated to point to the current instruction, which is after the
- * scope.
+ * automatically updated to point to the first instruction outside of the scope.
  *
  * Hence, all the instructions emitted within the scope will be executed if the
  * condition is not met. If the condition is met, then the program execution
- * will continue with the first instruction after the scope.
+ * will skip the instructions defined in the scope and continue.
  */
 
 struct bf_program;
