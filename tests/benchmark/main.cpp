@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cstring>
 #include <exception>
+#include <format>
 #include <span>
 #include <unistd.h>
 
@@ -14,6 +15,7 @@
 
 namespace
 {
+
 void firstRuleDropCounter(::benchmark::State &state)
 {
     ::bf::Chain chain(::bf::config.bfcli);
@@ -35,7 +37,10 @@ BENCHMARK(firstRuleDropCounter);
 void dropAfterXRules(::benchmark::State &state)
 {
     ::bf::Chain chain(::bf::config.bfcli);
-    chain.repeat("rule meta.l3_proto ipv4 counter ACCEPT", state.range(0));
+
+    for (int i = 0; i < state.range(0); ++i)
+        chain << std::format("rule meta.dport {} counter ACCEPT", i + 1);
+
     chain.apply();
     auto prog = chain.getProgram();
 
@@ -87,7 +92,7 @@ int main(int argc, char *argv[])
     if (::bf::config.adhoc) {
         ::benchmark::RegisterBenchmark("bf_adhoc", adhocBenchmark,
                                        *::bf::config.adhoc);
-    } 
+    }
 
     try {
         auto daemon = bf::Daemon(
