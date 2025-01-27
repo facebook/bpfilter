@@ -32,7 +32,83 @@
 #define PIN_PATH_LEN 64
 
 /**
- * Convenience macro to get the offset of a field in @ref
+ * @file program.h
+ *
+ * @ref bf_program is used to represent a BPF program. It contains the BPF
+ * bytecode, as well as the required maps and metadata.
+ *
+ * **Workflow**
+ *
+ * The program is composed of different steps:
+ * 1. Initialize the generic context
+ * 2. Preprocess the packet's headers: gather information about the packet's
+ *    size, the protocols available, the input interface...
+ * 3. Execute the filtering rules: execute all the rules defined in the program
+ *    sequentially. If a rule matches the packet, apply its verdict and return.
+ * 4. Apply the policy if no rule matched: if no rule matched the packet, return
+ *    the chain's policy (default action).
+ *
+ * **Memory layout**
+ *
+ * The program will use the BPF registers to following way:
+ * - @c r0 : return value
+ * - @c r1 to @c r5 (included): general purpose registers
+ * - @c r6 : address of the header currently filtered on
+ * - @c r7 : L3 protocol ID
+ * - @c r8 : L4 protocol ID
+ * - @c r9 : unused
+ * - @c r10 : frame pointer
+ *
+ * This convention is followed throughout the project and must be followed all
+ * the time to prevent incompatibilities. Debugging this kind of issues is not
+ * fun, so stick to it.
+ *
+ * @warning L3 and L4 protocol IDs **must** be stored in registers, no on the
+ * stack, as older verifier aren't able to keep track of scalar values located
+ * on the stack. This means the verification will fail because the verifier
+ * can't verify branches properly.
+ *
+ * @ref bf_program_context is used to represent the layout of the first stack
+ * frame in the program. It is filled during preprocessing and contains data
+ * required for packet filtering.
+ *
+ * **About preprocessing**
+ *
+ * The packets are preprocessed according to the program type (i.e. BPF flavor).
+ * Each flavor needs to perform the following steps during preprocessing:
+ * - Store the packet size and the input interface index into the runtime context
+ * - Create a BPF dynamic pointer for the packet
+ * - Preprocess the L2, L3, and L4 headers
+ *
+ * The header's preprocessing is required to discover the protocols used in the
+ * packet: processing L2 will rovide us with information about L3, and so on. The
+ * logic used to process layer X is responsible for discovering layer X+1: the L2
+ * header preprocessing logic will discover the L3 protocol ID. When processing
+ * layer X, if the protocol is not supported, the protocol ID is reset to 0 (so
+ * we won't execute the rules for this layer) and subsequent layers are not
+ * processed (because we can't discover their protocol).
+ *
+ * For example, assuming IPv6 and TCP are the only supported protocols:
+ * - L2 processing: discover the packet's ethertype (IPv6), and store it into
+ *   @c r7 .
+ * - L3 processing: the protocol ID in @c r7 is supported (IPv6), so a slice is
+ *   created, and the L4 protocol ID is read from the IPV6 header into @c r8 .
+ * - L4 processing: the protocol ID in @c r8 is supported (TCP), so a slice
+ *   is created.
+ * - The program can now start executing the rules.
+ *
+ * However, assuming only IPv6 and UDP are supported:
+ * - L2 processing: discover the packet's ethertype (IPv6), and store it into
+ *   @c r7 .
+ * - L3 processing: the protocol ID in @c r7 is supported (IPv6), so a slice is
+ *   created, and the L4 protocol ID is read from the IPV6 header into @c r8 .
+ * - L4 processing: the protocol ID in @c r8 is no supported (TCP), @c r8 is
+ *   set to 0 and we stop processing this layer.
+ * - The program can now start executing the rules. No layer 4 rule will be
+ *   executed as @c r8 won't match any protocol ID.
+ */
+
+/** Convenience macro to get the offset of a field in @ref
  * bf_program_context based on the frame pointer in @c BPF_REG_10 .
  */
 #define BF_PROG_CTX_OFF(field)                                                 \
@@ -136,8 +212,8 @@ struct bf_counter;
  * protocol headers. @c bpf_dynptr_slice returns the address of the requested
  * data, which is either the address of the user-buffer, or the address of the
  * data in the packet (if the data hasn't be copied). The program will store
- * this address into the runtime context (i.e. @c l2_hdr , @c l3_hdr , and
- * @c l4_hdr ), and it will be used to access the packet's data.
+ * this address into the runtime context (i.e. @c l2 , @c l3 , and
+ * @c l4 ), and it will be used to access the packet's data.
  *
  * While earlier versions of this structure contained the L3 and L4 protocol IDs,
  * they have been move to registers instead, as old version of the verifier
@@ -180,29 +256,26 @@ struct bf_program_context
     void *l4_hdr;
 
     /** Layer 2 header. */
-    union
+    union _bf_l2
     {
-        struct ethhdr _ethhdr;
-        char l2_raw[0];
-    } bf_aligned(8);
+        struct ethhdr eth;
+    } bf_aligned(8) l2;
 
     /** Layer 3 header. */
-    union
+    union _bf_l3
     {
-        struct iphdr _ip4hdr;
-        struct ipv6hdr _ip6hdr;
-        char l3_raw[0];
-    } bf_aligned(8);
+        struct iphdr ip4;
+        struct ipv6hdr ip6;
+    } bf_aligned(8) l3;
 
     /** Layer 3 header. */
-    union
+    union _bf_l4
     {
-        struct icmphdr _icmphdr;
-        struct udphdr _udphdr;
-        struct tcphdr _tcphdr;
-        struct icmp6hdr _icmp6hdr;
-        char l4_raw[0];
-    } bf_aligned(8);
+        struct icmphdr icmp;
+        struct udphdr udp;
+        struct tcphdr tcp;
+        struct icmp6hdr icmp6;
+    } bf_aligned(8) l4;
 
     uint8_t bf_aligned(8) scratch[64];
 } bf_aligned(8);

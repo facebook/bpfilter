@@ -1,6 +1,11 @@
 Programs generation
 ===================
 
+Bytecode generation
+-------------------
+
+.. doxygenfile:: program.h
+
 Switch-cases
 ------------
 

@@ -99,7 +99,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(dynptr)));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 0));
     EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l2_raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l2)));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_4, sizeof(struct ethhdr)));
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
@@ -170,7 +170,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
     EMIT(program,
          BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset)));
     EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l3_raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l2)));
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
     // If the function call failed, quit the program
@@ -268,7 +268,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     EMIT(program,
          BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10, BF_PROG_CTX_OFF(l4_offset)));
     EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l4_raw)));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l4)));
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
     // If the function call failed, quit the program
