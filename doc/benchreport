@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import dateutil.parser
+import pathlib
+import json
+import git
+import sys
+import os
+import argparse
+
+def log(msg: str, verbose: bool = True) -> None:
+    if verbose:
+        print(msg)
+
+def warning(msg: str) -> None:
+    print('\033[1;93m' + msg + '\033[0m')
+
+def error(msg: str) -> None:
+    print('\033[1;31m' + msg + '\033[0m')
+
+def main() -> None:
+    benchmarks = {"commits": [], "results": {}}
+    commits = []
+    benchNames = []
+    parser = argparse.ArgumentParser(
+                    prog='benreport',
+                    description='Generate an HTML report for bpfilter benchmarks')
+    parser.add_argument('-r', '--results', help="Directory containing the benchmark results")
+    parser.add_argument('-t', '--template', help="HTML report template file")
+    parser.add_argument('-o', '--output', help="Output HTML file")
+    args = parser.parse_args()
+
+    verbose = False
+    if int(os.environ.get('VERBOSE', '0')):
+        verbose = True
+
+    files = list(pathlib.Path(args.results).glob("*.json"))
+    if not files:
+        warning(f"No benchmark results found in '{args.results}', ignoring")
+        sys.exit(0)
+
+    for file in files:
+        with open(file, "r", encoding="utf-8") as f:
+            log(f"Reading results from {file}", verbose)
+            d = json.load(f)
+
+            gitrev = d["context"]["gitrev"]
+            gitdate = d["context"]["gitdate"]
+            benchdate = dateutil.parser.isoparse(d["context"]["date"])
+            commits.append((gitrev, gitdate, benchdate))
+
+            for bench in d["benchmarks"]:
+                benchNames.append(bench["name"])
+                if bench["name"] not in benchmarks["results"]:
+                    benchmarks["results"][bench["name"]] = {}
+
+                benchmarks["results"][bench["name"]][gitrev] = {
+                    "iters": bench["iterations"],
+                    "time": bench["real_time"],
+                    "nInsn": bench.get("nInsn", 0),
+                }
+
+                if bench["time_unit"] != "ns":
+                    error("Only ns time unit is supported")
+                    sys.exit(-1)
+
+    repo = git.Repo.init("~/Projects/bpfilter")
+
+    for commit, date, _ in sorted(commits, key=lambda tup: tup[2]):
+        try:
+            message = repo.commit(commit).message
+        except:
+            message = "<Not committed yet>"
+
+        benchmarks["commits"].append(
+            {
+                "sha": commit,
+                "date": date,
+                "message": message,
+            }
+        )
+
+    benchmarks["benchNames"] = list(dict.fromkeys(benchNames))
+
+    with open(args.output, "w", encoding="utf-8") as f:
+        with open(args.template, "r", encoding="utf-8") as template_file:
+            template = template_file.read()
+        f.write(template.replace("{{ DATA }}", json.dumps(benchmarks)))
+    log(f"Benchmark report generated at '{args.output}'", verbose)
+
+
+if __name__ == '__main__':
+    main()

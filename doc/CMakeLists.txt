@@ -59,6 +59,8 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/nft.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/external/benchmarks/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/external/coverage/index.rst
 )
 
 configure_file(Doxyfile.in Doxyfile)
@@ -102,30 +104,51 @@ add_custom_command(
 			${CMAKE_CURRENT_SOURCE_DIR}
 			${CMAKE_CURRENT_BINARY_DIR}/html
 			${doc_srcs}
+	# Update the modification time of the documentation's index, so the
+	# benchmark report will be generated (as external/benchmarks/index.html is
+	# now out-of-date).
+	COMMAND
+		${CMAKE_COMMAND}
+			-E touch
+			${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
 	DEPENDS
 		${CMAKE_CURRENT_BINARY_DIR}/conf.py
 		${CMAKE_CURRENT_BINARY_DIR}/xml/index.xml
 		${doc_srcs}
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+	OUTPUT
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
 	COMMENT "Generating the documentation"
 )
 
-add_custom_target(doc DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html)
+add_custom_command(
+	COMMAND
+		${CMAKE_CURRENT_SOURCE_DIR}/benchreport
+			--results ${CMAKE_BINARY_DIR}/output/benchmarks
+			--template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
+			--output ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
+	DEPENDS
+		${CMAKE_CURRENT_SOURCE_DIR}/benchreport
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+		${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
+	COMMENT "Generate the benchmarks summary"
+)
 
+add_custom_command(
+	COMMAND
+		${CMAKE_CURRENT_SOURCE_DIR}/covreport
+			--genhtml ${GENHTML_BIN}
+			--tracefile ${CMAKE_BINARY_DIR}/output/tests/lcov.out
+			--output ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage
+	DEPENDS
+		${CMAKE_CURRENT_SOURCE_DIR}/covreport
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
+	COMMENT "Generate the coverage report"
+)
 
-#[[
-	Compute unit tests code coverage and generate the HTML summary.
-#]]
-
-add_custom_target(coverage
-	COMMAND ${LCOV_BIN} --capture --directory ${CMAKE_BINARY_DIR} --output-file lcov.out
-	# Only keep the coverage for bpfilter's source files, not the tests.
-	COMMAND ${LCOV_BIN}
-		--output-file lcov.out
-		--extract lcov.out
-		--ignore-errors unused
-		"${CMAKE_SOURCE_DIR}/src/\\*"
-	COMMAND ${GENHTML_BIN} -o html_coverage lcov.out
-	BYPRODUCTS html_coverage
-	COMMENT "Generate coverage report"
+add_custom_target(doc
+	DEPENDS
+		${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
+		${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
 )
