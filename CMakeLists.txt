@@ -37,7 +37,6 @@ find_program(LCOV_BIN lcov REQUIRED)
 find_program(GENHTML_BIN genhtml REQUIRED)
 find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
-find_program(CLANG_BIN clang REQUIRED)
 find_program(BPFTOOL_BIN bpftool REQUIRED)
 find_program(JQ_BIN jq REQUIRED)
 
