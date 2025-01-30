@@ -335,6 +335,21 @@ int setup(std::span<char *> args)
     return 0;
 }
 
+void restorePermissions(::std::string outfile)
+{
+    const char *uid = getenv("SUDO_UID");
+    const char *gid = getenv("SUDO_GID");
+
+    if (uid && gid) {
+        int r = chown(outfile.c_str(), atoi(uid), atoi(gid));
+        if (r) {
+            ::std::cerr << "failed to restore output file permissiosn to SUDO_USER\n";
+            return;
+        }
+        ::std::cout << "sudo is used, output file permissions restored to " << uid << ":" << gid << "\n";
+    }
+}
+
 Sources::Sources(::std::string path):
     path_ {::std::move(path)}
 {
