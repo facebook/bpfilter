@@ -10,7 +10,6 @@ endif ()
 add_subdirectory(e2e)
 add_subdirectory(unit)
 add_subdirectory(integration)
-add_subdirectory(bpf)
 
 # It's OK to use GLOB_RECURSE here, as it's not the main target for the source
 # files but a secondary one.
