@@ -28,11 +28,15 @@ target_link_libraries(benchmark_bin
 
 add_custom_target(benchmark
     COMMAND
+        ${CMAKE_COMMAND}
+            -E make_directory
+            ${CMAKE_BINARY_DIR}/output/benchmarks
+    COMMAND
         $<TARGET_FILE:benchmark_bin>
             --cli $<TARGET_FILE:bfcli>
             --daemon $<TARGET_FILE:bpfilter>
             --srcdir ${CMAKE_SOURCE_DIR}
-            --outfile ${CMAKE_BINARY_DIR}/output/{gitrev}.json
+            --outfile ${CMAKE_BINARY_DIR}/output/benchmarks/{gitrev}.json
     DEPENDS benchmark_bin bfcli bpfilter
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
