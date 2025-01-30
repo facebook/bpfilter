@@ -36,7 +36,7 @@ jobs:
           - { name: ubuntu, version: "24.10" }
           - { name: ubuntu, version: "24.04" }
     runs-on: [ "${{ matrix.host.name }}" ]
-    name: "Build container: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
+    name: "Image: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
