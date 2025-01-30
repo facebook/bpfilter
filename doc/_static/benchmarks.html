@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>bpfilter benchmarks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script>
+        window.addEventListener('load', function () {
+            render();
+        })
+
+        const data = {"commits": [], "results": {}, "benchNames": []}
+
+        function render() {
+            for (const benchName of data.benchNames) {
+                makeTable(benchName, data.commits, data.results[benchName])
+                makeChart(benchName, data.commits, data.results[benchName])
+            }
+
+        }
+
+        function makeTable(name, commits, results) {
+
+            const newCommit = commits[commits.length - 1];
+            const newResults = results[newCommit.sha];
+            const newTime = newResults.time;
+            const newInsns = newResults.nInsn;
+
+            let newHtml = `<td class="text-end font-monospace">${parseFloat(newResults.time).toFixed(2)}</td>`;
+            newHtml += `<td class="text-end font-monospace">${newResults.nInsn}</td>`;
+
+            let diffHtml = '';
+            let oldHtml = '';
+
+            if (commits.length > 1) {
+                // There is a second to last commit
+                const oldCommit = commits.length > 1 ? commits[commits.length - 2] : null;
+                const oldResults = results[oldCommit.sha];
+
+                const oldTime = oldResults.time;
+                const oldInsns = oldResults.nInsn;
+                const absTime = newTime - oldTime;
+                const absInsns = newInsns - oldInsns;
+                const diffTime = (absTime / oldTime) * 100;
+                const diffInsns = (absInsns / oldInsns) * 100;
+
+                const timeDiffClass = diffTime > 0 ? "text-danger" : "text-success";
+                const nInsnsDiffClass = diffInsns > 0 ? "text-danger" : "text-success";
+                diffHtml += `<td class="text-end font-monospace ${timeDiffClass}">${(diffTime < 0 ? "" : "+") + parseFloat(diffTime).toFixed(2)}% (${(absTime < 0 ? "" : "+") + parseFloat(absTime).toFixed(2)})</td>`;
+                diffHtml += `<td class="text-end font-monospace ${nInsnsDiffClass}">${(diffInsns < 0 ? "" : "+") + parseFloat(diffInsns).toFixed(2)}% (${(absInsns < 0 ? "" : "+") + parseFloat(absInsns)})</td>`;
+
+                oldHtml += `<td class="text-end font-monospace">${parseFloat(oldResults.time).toFixed(2)}</td>`;
+                oldHtml += `<td class="text-end font-monospace">${oldResults.nInsn}</td>`;
+            } else {
+                diffHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
+                oldHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
+            }
+
+
+            let data = '<tr>';
+            data += `<td>${name}</td>`;
+            data += diffHtml;
+            data += newHtml;
+            data += oldHtml;
+            data += '</tr>';
+
+            const table = document.getElementById('table-body');
+            table.insertAdjacentHTML("beforeend", data);
+        }
+
+        function makeChart(name, commits, results) {
+            const ctx = document.getElementById('charts');
+            ctx.insertAdjacentHTML("beforeend",
+                `<div class="col container-fluid my-3" id="${name}"><h5>${name}</h5></div>`
+            );
+
+            const chartCtx = document.getElementById(name);
+            chartCtx.insertAdjacentHTML("beforeend",
+                `<canvas id="${name}Chart"></canvas>`
+            );
+
+            var durations = []
+            var nInsns = []
+            var labels = []
+            for (commit of commits) {
+                const result = results[commit.sha]
+                if (result == undefined) {
+                    durations.push(null);
+                    nInsns.push(null);
+                } else {
+                    durations.push(result.time);
+                    nInsns.push(result.nInsn);
+                }
+
+                labels.push(commit.sha);
+            }
+
+            const afterTitle = (tooltipItems) => {
+                const commit = commits.find((e) => e.sha == tooltipItems[0].label);
+                return commit.message;
+            };
+
+            new Chart(document.getElementById(name + "Chart"), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Duration',
+                            data: durations,
+                            yAxisID: 'duration',
+                            tension: 0.1,
+                            fill: true,
+                            order: 2,
+                        },
+                        {
+                            label: '# of instructions',
+                            data: nInsns,
+                            yAxisID: 'instructions',
+                            tension: 0.1,
+                            order: 1,
+                        }
+                    ]
+                },
+                options: {
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: {
+
+                        tooltip: {
+                            callbacks: {
+                                afterTitle: afterTitle,
+                                label: function (context) {
+                                    let label = '';
+
+                                    if (context.dataset.yAxisID == "duration")
+                                        label = parseFloat(context.parsed.y).toFixed(2) + " ns"
+                                    else if (context.dataset.yAxisID == "instructions")
+                                        label = parseInt(context.parsed.y) + " instructions"
+                                    else
+                                        label = context.parsed.y;
+
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        duration: {
+                            id: 't (ns)',
+                            type: 'linear',
+                            position: 'left',
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'ns'
+                            },
+                        },
+                        instructions: {
+                            id: '# insn',
+                            type: 'linear',
+                            position: 'right',
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: '# insn'
+                            },
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Commit'
+                            },
+                        }
+                    },
+                    onClick: function (e) {
+                        const sha = e.chart.tooltip.dataPoints[0].label
+                        if (sha.endsWith("+"))
+                            return;
+                        window.open("https://github.com/facebook/bpfilter/commit/" + sha, "_blank");
+                    }
+                }
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <nav class="navbar bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <picture>
+                    <source srcset="./logo-dark-mode.png" media="(prefers-color-scheme: dark)">
+                    <img src="./logo-light-mode.png"  height="30" class="d-inline-block align-top" alt="">
+                </picture>
+                bpfilter benchmark
+            </a>
+        </div>
+    </nav>
+    <div class="jumbotron m-5 p-5 bg-light">
+        <div class="container">
+            <h2>Last results</h2>
+            <p class="lead">Performance of the last commit, compared to the second to last.</p>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col" rowspan="2">Benchmark</th>
+                    <th scope="col" colspan="2" class="text-end">Diff</th>
+                    <th scope="col" colspan="2" class="text-end">New</th>
+                    <th scope="col" colspan="2" class="text-end">Old</th>
+                </tr>
+                <tr>
+                    <th scope="col" class="text-end">Runtime</th>
+                    <th scope="col" class="text-end">Instructions</th>
+                    <th scope="col" class="text-end">Runtime</th>
+                    <th scope="col" class="text-end">Instructions</th>
+                    <th scope="col" class="text-end">Runtime</th>
+                    <th scope="col" class="text-end">Instructions</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="jumbotron m-5 p-5 bg-light">
+        <div class="container">
+            <h2>Results over time</h2>
+            <p class="lead">Evolution of the benchmark results over time.</p>
+        </div>
+        <div class="container-fluid">
+            <div class="row row-cols-2" id="charts">
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

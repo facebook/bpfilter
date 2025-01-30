@@ -22,6 +22,13 @@
    developers/modules/index
    developers/fronts/index
 
+.. toctree::
+   :hidden:
+   :caption: External
+
+   external/benchmarks/index
+   external/coverage/index
+
 ``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).
 
 The ``bpfilter`` daemon running on the system receives a request from a client (``iptables``, ``nftables``, or any other client that could be created) and converts the client-provided ruleset into one or more BPF program(s).
