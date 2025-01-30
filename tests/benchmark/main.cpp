@@ -89,6 +89,9 @@ int main(int argc, char *argv[])
 
     ::benchmark::Initialize(&argc, argv, nullptr);
 
+    if (!::bf::config.adhoc)
+        ::bf::restorePermissions(::bf::config.outfile);
+
     if (::bf::config.adhoc) {
         ::benchmark::RegisterBenchmark("bf_adhoc", adhocBenchmark,
                                        *::bf::config.adhoc);

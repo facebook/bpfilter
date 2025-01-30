@@ -92,6 +92,7 @@ public:
 extern Config config;
 
 int setup(std::span<char *> args);
+void restorePermissions(::std::string outfile);
 
 class Sources
 {

@@ -40,8 +40,7 @@ set_property(TARGET e2e_bin PROPERTY POSITION_INDEPENDENT_CODE FALSE)
 
 add_custom_target(e2e
     COMMAND
-        sudo
-            $<TARGET_FILE:e2e_bin>
+        $<TARGET_FILE:e2e_bin>
             --bpfilter $<TARGET_FILE:bpfilter>
     DEPENDS
         e2e_bin
