@@ -1,5 +1,7 @@
 name: CI
 
+# Run CI when a commit lands on the main branch and when a PR for main is
+# opened.
 on:
   push:
     branches:
@@ -8,96 +10,185 @@ on:
     branches:
       - main
 
+env:
+  REGISTRY: ghcr.io
+
 permissions:
   checks: write
+  contents: read
+  id-token: write
+  packages: write
+  pages: write
   pull-requests: write
 
 jobs:
-  full:
-    if: github.repository == 'facebook/bpfilter'
+  create-images:
+    timeout-minutes: 15
     strategy:
-      fail-fast: false
       matrix:
-        system: ["fedora:41"]
-        arch: ["X64", "ARM64"]
-        mode: ["release", "debug"]
-    container: "${{ matrix.system }}"
-    runs-on: [self-hosted, "${{ matrix.arch }}"]
+        host:
+          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 4-core-ubuntu-arm, arch: arm64 }
+        distribution:
+          - { name: fedora, version: "41" }
+          - { name: fedora, version: "40" }
+          - { name: fedora, version: "39" }
+          - { name: ubuntu, version: "24.10" }
+          - { name: ubuntu, version: "24.04" }
+    runs-on: [ "${{ matrix.host.name }}" ]
+    name: "Build container: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: Install dependencies (Fedora)
-        run: |
-          sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
-            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
-            python3-sphinx
-      - name: Configure build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=${{ matrix.mode }}
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build
-      - name: Run unit tests
-        run: make -C $GITHUB_WORKSPACE/build test
-      - name: Coverage
-        run: make -C $GITHUB_WORKSPACE/build coverage
-      - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log to GHCR
+        uses: docker/login-action@v2
         with:
-          files: build/doc/lcov.out
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Check style
-        run: make -C $GITHUB_WORKSPACE/build check
-      - name: Generate documentation
-        run: make -C $GITHUB_WORKSPACE/build doc
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Build the container images and use the existing images as cache
+      - name: Build and push container image
+        uses: docker/build-push-action@v4
+        with:
+          file: .github/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
+          push: true
+          tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+          cache-from: type=gha,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+          cache-to: type=gha,mode=max,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
 
   build:
-    if: github.repository == 'facebook/bpfilter'
+    needs: create-images
+    timeout-minutes: 5
     strategy:
-      fail-fast: false
       matrix:
-        image: ["fedora:39", "fedora:40", "ubuntu:24.04"]
-        arch: ["X64", "ARM64"]
-    container: ${{ matrix.image }}
-    runs-on: [self-hosted, "${{ matrix.arch }}"]
+        host:
+          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 4-core-ubuntu-arm, arch: arm64 }
+        distribution:
+          - { name: fedora, version: "41" }
+          - { name: fedora, version: "40" }
+          - { name: fedora, version: "39" }
+          - { name: ubuntu, version: "24.10" }
+          - { name: ubuntu, version: "24.04" }
+    runs-on: [ "${{ matrix.host.name }}" ]
+    container: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+    name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: Install dependencies (Fedora)
-        if: matrix.image == 'fedora:39' || matrix.image == 'fedora:40'
-        run: |
-          sudo dnf --disablerepo=* --enablerepo=fedora,updates --setopt=install_weak_deps=False -y install \
-            bison bpftool clang clang-tools-extra cmake doxygen flex g++ git gcc jq lcov libasan libbpf-devel \
-            libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc \
-            python3-sphinx
-      - name: Install dependencies (Ubuntu)
-        if: matrix.image == 'ubuntu:24.04'
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install \
-            bison \
-            clang \
-            clang-format \
-            clang-tidy \
-            cmake \
-            doxygen \
-            flex \
-            furo \
-            git \
-            jq \
-            lcov \
-            libbpf-dev \
-            libcmocka-dev \
-            libnl-3-dev \
-            linux-tools-common \
-            python3-breathe \
-            python3-pip \
-            python3-sphinx \
-            pkgconf && \
-          pip3 install --break-system-packages linuxdoc
-      - name: Configure build
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Configure the build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+      - name: Build all
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc`
+
+  check:
+    needs: create-images
+    timeout-minutes: 5
+    runs-on: [ "ubuntu-24.04" ]
+    container: ghcr.io/facebook/bpfilter:fedora-41-x64
+    name: "Check"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Build
-        run: make -C $GITHUB_WORKSPACE/build
-      - name: Run unit tests
-        run: make -C $GITHUB_WORKSPACE/build test
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` check
+
+  test:
+    needs: create-images
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        host:
+          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 4-core-ubuntu-arm, arch: arm64 }
+    runs-on: [ "${{ matrix.host.name }}" ]
+    container:
+      image: ghcr.io/facebook/bpfilter:fedora-41-${{ matrix.host.arch }}
+      options: --privileged
+    name: "Test: ${{ matrix.host.arch }}"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Setup the cache mechanism
+        uses: actions/cache@v4
+        if: ${{ matrix.host.arch }} == "x64"
+        with:
+          path: build/output/tests
+          key: tests-results
+      - name: Configure the build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
+
+  benchmark:
+    needs: create-images
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        host:
+          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 4-core-ubuntu-arm, arch: arm64 }
+    runs-on: [ "${{ matrix.host.name }}" ]
+    container:
+      image: ghcr.io/facebook/bpfilter:fedora-41-${{ matrix.host.arch }}
+      options: --privileged
+    name: "Benchmark: ${{ matrix.host.arch }}"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Ensure we can read the Git repository
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Configure the build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_BENCHMARK=on
+      - name: Setup the cache mechanism
+        uses: actions/cache@v4
+        if: ${{ matrix.host.arch }} == "x64"
+        with:
+          path: build/output/benchmarks
+          key: benchmarks-results
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
+
+  doc:
+    needs: [ test, benchmark ]
+    timeout-minutes: 5
+    runs-on: [ "ubuntu-24.04" ]
+    container: ghcr.io/facebook/bpfilter:fedora-41-x64
+    name: "Documentation"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v2
+      - name: Configure the build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+      - name: Restore the cached tests results
+        uses: actions/cache@v4
+        with:
+          path: build/output/tests
+          key: tests-results
+      - name: Restore the cached benchmarks results
+        uses: actions/cache@v4
+        with:
+          path: build/output/benchmarks
+          key: benchmarks-results
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
+      - name: Fix permissions
+        if: github.ref == 'refs/heads/main'
+        run: |
+          chmod -c -R +rX "$GITHUB_WORKSPACE/build/doc/html" | while read line; do
+            echo "::warning title=Invalid file permissions automatically fixed::$line"
+          done
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: build/doc/html
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        if: github.ref == 'refs/heads/main'
