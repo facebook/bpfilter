@@ -53,7 +53,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           file: .github/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
-          push: true
+          push: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
           tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
           cache-from: type=gha,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
           cache-to: type=gha,mode=max,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
