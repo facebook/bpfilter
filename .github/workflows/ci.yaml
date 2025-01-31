@@ -149,7 +149,7 @@ jobs:
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_BENCHMARK=on
       - name: Setup the cache mechanism
         uses: actions/cache@v4
-        if: ${{ matrix.host.arch }} == "x64"
+        if: matrix.host.arch == "x64"
         with:
           path: build/output/benchmarks
           key: benchmarks-results
