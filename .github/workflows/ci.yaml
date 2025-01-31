@@ -113,18 +113,23 @@ jobs:
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
-      - name: Setup the cache mechanism
-        uses: actions/cache@v4
-        if: ${{ matrix.host.arch }} == "x64"
+      - name: Restore the cached test results
+        uses: actions/cache/restore@v4
         with:
           path: build/output/tests
           key: tests-results
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build
+      - name: Run unit tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
-      - name: Build
+      - name: Run end-to-end tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
+      - name: Cache the test results
+        uses: actions/cache/save@v4
+        if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
+        with:
+          path: build/output/tests
+          key: tests-results
 
   benchmark:
     needs: create-images
@@ -146,14 +151,19 @@ jobs:
         run: git config --global --add safe.directory $GITHUB_WORKSPACE
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_BENCHMARK=on
-      - name: Setup the cache mechanism
-        uses: actions/cache@v4
-        if: ${{ matrix.host.arch }} == "x64"
+      - name: Restore the cached benchmark results
+        uses: actions/cache/restore@v4
         with:
           path: build/output/benchmarks
           key: benchmarks-results
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
+      - name: Cache the benchmark results
+        uses: actions/cache/save@v4
+        if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
+        with:
+          path: build/output/benchmarks
+          key: benchmarks-results
 
   doc:
     needs: [ test, benchmark ]
