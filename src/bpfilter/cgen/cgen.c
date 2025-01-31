@@ -242,9 +242,6 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 
     bf_assert(cgen && new_chain);
 
-    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
-        bf_cgen_dump(cgen, EMPTY_PREFIX);
-
     r = bf_program_new(&new_prog, (*new_chain)->hook, cgen->front, *new_chain);
     if (r < 0)
         return bf_err_r(r, "failed to create a new bf_program");
@@ -263,6 +260,9 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 
     bf_swap(cgen->program, new_prog);
     bf_swap(cgen->chain, *new_chain);
+
+    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
+        bf_cgen_dump(cgen, EMPTY_PREFIX);
 
     return 0;
 }
