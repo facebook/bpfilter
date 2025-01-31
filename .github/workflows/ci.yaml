@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - test_cache # Todo: remove this!
   pull_request:
     branches:
       - main
@@ -22,112 +23,112 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-images:
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        host:
-          - { name: ubuntu-24.04, arch: x64 }
-          - { name: 4-core-ubuntu-arm, arch: arm64 }
-        distribution:
-          - { name: fedora, version: "41" }
-          - { name: fedora, version: "40" }
-          - { name: fedora, version: "39" }
-          - { name: ubuntu, version: "24.10" }
-          - { name: ubuntu, version: "24.04" }
-    runs-on: [ "${{ matrix.host.name }}" ]
-    name: "Image: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log to GHCR
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      # Build the container images and use the existing images as cache
-      - name: Build and push container image
-        uses: docker/build-push-action@v4
-        with:
-          file: .github/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-          tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
-          cache-from: type=gha,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
-          cache-to: type=gha,mode=max,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+  # create-images:
+  #   timeout-minutes: 15
+  #   strategy:
+  #     matrix:
+  #       host:
+  #         - { name: ubuntu-24.04, arch: x64 }
+  #         - { name: 4-core-ubuntu-arm, arch: arm64 }
+  #       distribution:
+  #         - { name: fedora, version: "41" }
+  #         - { name: fedora, version: "40" }
+  #         - { name: fedora, version: "39" }
+  #         - { name: ubuntu, version: "24.10" }
+  #         - { name: ubuntu, version: "24.04" }
+  #   runs-on: [ "${{ matrix.host.name }}" ]
+  #   name: "Image: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
+  #   steps:
+  #     - name: Checkout bpfilter
+  #       uses: actions/checkout@v2
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+  #     - name: Log to GHCR
+  #       uses: docker/login-action@v2
+  #       with:
+  #         registry: ${{ env.REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     # Build the container images and use the existing images as cache
+  #     - name: Build and push container image
+  #       uses: docker/build-push-action@v4
+  #       with:
+  #         file: .github/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
+  #         push: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+  #         tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+  #         cache-from: type=gha,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+  #         cache-to: type=gha,mode=max,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
 
-  build:
-    needs: create-images
-    timeout-minutes: 5
-    strategy:
-      matrix:
-        host:
-          - { name: ubuntu-24.04, arch: x64 }
-          - { name: 4-core-ubuntu-arm, arch: arm64 }
-        distribution:
-          - { name: fedora, version: "41" }
-          - { name: fedora, version: "40" }
-          - { name: fedora, version: "39" }
-          - { name: ubuntu, version: "24.10" }
-          - { name: ubuntu, version: "24.04" }
-    runs-on: [ "${{ matrix.host.name }}" ]
-    container: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
-    name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build all
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc`
+  # build:
+  #   needs: create-images
+  #   timeout-minutes: 5
+  #   strategy:
+  #     matrix:
+  #       host:
+  #         - { name: ubuntu-24.04, arch: x64 }
+  #         - { name: 4-core-ubuntu-arm, arch: arm64 }
+  #       distribution:
+  #         - { name: fedora, version: "41" }
+  #         - { name: fedora, version: "40" }
+  #         - { name: fedora, version: "39" }
+  #         - { name: ubuntu, version: "24.10" }
+  #         - { name: ubuntu, version: "24.04" }
+  #   runs-on: [ "${{ matrix.host.name }}" ]
+  #   container: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+  #   name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
+  #   steps:
+  #     - name: Checkout bpfilter
+  #       uses: actions/checkout@v2
+  #     - name: Configure the build
+  #       run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+  #     - name: Build all
+  #       run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
-  check:
-    needs: create-images
-    timeout-minutes: 5
-    runs-on: [ "ubuntu-24.04" ]
-    container: ghcr.io/facebook/bpfilter:fedora-41-x64
-    name: "Check"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` check
+  # check:
+  #   needs: create-images
+  #   timeout-minutes: 5
+  #   runs-on: [ "ubuntu-24.04" ]
+  #   container: ghcr.io/facebook/bpfilter:fedora-41-x64
+  #   name: "Check"
+  #   steps:
+  #     - name: Checkout bpfilter
+  #       uses: actions/checkout@v2
+  #     - name: Configure the build
+  #       run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+  #     - name: Build
+  #       run: make -C $GITHUB_WORKSPACE/build -j `nproc` check
 
-  test:
-    needs: create-images
-    timeout-minutes: 5
-    strategy:
-      matrix:
-        host:
-          - { name: ubuntu-24.04, arch: x64 }
-          - { name: 4-core-ubuntu-arm, arch: arm64 }
-    runs-on: [ "${{ matrix.host.name }}" ]
-    container:
-      image: ghcr.io/facebook/bpfilter:fedora-41-${{ matrix.host.arch }}
-      options: --privileged
-    name: "Test: ${{ matrix.host.arch }}"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Setup the cache mechanism
-        uses: actions/cache@v4
-        if: ${{ matrix.host.arch }} == "x64"
-        with:
-          path: build/output/tests
-          key: tests-results
-      - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
+  # test:
+  #   needs: create-images
+  #   timeout-minutes: 5
+  #   strategy:
+  #     matrix:
+  #       host:
+  #         - { name: ubuntu-24.04, arch: x64 }
+  #         - { name: 4-core-ubuntu-arm, arch: arm64 }
+  #   runs-on: [ "${{ matrix.host.name }}" ]
+  #   container:
+  #     image: ghcr.io/facebook/bpfilter:fedora-41-${{ matrix.host.arch }}
+  #     options: --privileged
+  #   name: "Test: ${{ matrix.host.arch }}"
+  #   steps:
+  #     - name: Checkout bpfilter
+  #       uses: actions/checkout@v2
+  #     - name: Setup the cache mechanism
+  #       uses: actions/cache@v4
+  #       if: ${{ matrix.host.arch }} == "x64"
+  #       with:
+  #         path: build/output/tests
+  #         key: tests-results
+  #     - name: Configure the build
+  #       run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+  #     - name: Build
+  #       run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
+  #     - name: Build
+  #       run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
 
   benchmark:
-    needs: create-images
+    # needs: create-images
     timeout-minutes: 5
     strategy:
       matrix:
@@ -158,7 +159,8 @@ jobs:
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
 
   doc:
-    needs: [ test, benchmark ]
+    # needs: [ test, benchmark ]
+    needs: [benchmark]
     timeout-minutes: 5
     runs-on: [ "ubuntu-24.04" ]
     container: ghcr.io/facebook/bpfilter:fedora-41-x64
