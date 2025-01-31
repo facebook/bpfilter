@@ -177,43 +177,26 @@ hook            : HOOK
 raw_hook_opts   : %empty { $$ = NULL; }
                 | raw_hook_opts HOOK_OPT
                 {
-                    _cleanup_bf_list_ bf_list *list = $1;
+                    if (!$1) {
+                        if (bf_list_new(&$1, (bf_list_ops[]){{.free = (bf_list_ops_free)freep}}) < 0)
+                            bf_parse_err("failed to allocate a new bf_list for raw hook options");
+                    }
 
-                    if (bf_list_add_tail(list, $2) < 0)
+                    if (bf_list_add_tail($1, $2) < 0)
                         bf_parse_err("failed to insert raw hook options '%s' in list", $2);
 
-                    $$ = TAKE_PTR(list);
-                }
-                | HOOK_OPT
-                {
-                    _cleanup_bf_list_ bf_list *hook_opts = NULL;
-
-                    if (bf_list_new(&hook_opts, (bf_list_ops[]){{.free = (bf_list_ops_free)freep}}) < 0)
-                        bf_parse_err("failed to allocate a new bf_list for raw hook options");
-
-                    if (bf_list_add_tail(hook_opts, $1) < 0)
-                        bf_parse_err("failed to insert raw hook option '%s' in list", $1);
-
-                    $$ = TAKE_PTR(hook_opts);
+                    $$ = TAKE_PTR($1);
                 }
                 ;
 
 rules           : %empty { $$ = NULL; }
-                | rule
-                {
-                    _cleanup_bf_list_ bf_list *list = NULL;
-
-                    if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_rule_free, .marsh = (bf_list_ops_marsh)bf_rule_marsh}}) < 0)
-                        bf_parse_err("failed to allocate a new bf_list for bf_rule\n");
-
-                    if (bf_list_add_tail(list, $1) < 0)
-                        bf_parse_err("failed to add rule into bf_list\n");
-
-                    TAKE_PTR($1);
-                    $$ = TAKE_PTR(list);
-                }
                 | rules rule
                 {
+                    if (!$1) {
+                        if (bf_list_new(&$1, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_rule_free, .marsh = (bf_list_ops_marsh)bf_rule_marsh}}) < 0)
+                            bf_parse_err("failed to allocate a new bf_list for bf_rule\n");
+                    }
+
                     if (bf_list_add_tail($1, $2) < 0)
                         bf_parse_err("failed to insert rule into bf_list\n");
 
@@ -459,7 +442,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
 
                     for (int i = 0; i < mask / 8; ++i)
                         addr.mask[i] = (uint8_t)0xff;
-                    
+
                     if (mask % 8)
                         addr.mask[mask / 8] = (uint8_t)0xff << (8 - mask % 8);
 
