@@ -152,6 +152,8 @@ jobs:
         with:
           path: build/output/benchmarks
           key: benchmarks-results
+      - name: cache content
+        run: ls build/output/benchmarks
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
 
@@ -176,6 +178,8 @@ jobs:
         with:
           path: build/output/benchmarks
           key: benchmarks-results
+      - name: cache content
+        run: ls build/output/benchmarks
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - name: Fix permissions
