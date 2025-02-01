@@ -11,17 +11,23 @@
 # See https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html.
 #
 function(bf_test_mock TARGET)
-cmake_parse_arguments(PARSE_ARGV 1 _LOCAL "" "" "FUNCTIONS")
+    cmake_parse_arguments(PARSE_ARGV 1 _LOCAL "" "" "FUNCTIONS")
 
-message(STATUS "Mocking the following function(s):")
-foreach(_function IN LISTS _LOCAL_FUNCTIONS)
-    target_link_options(${TARGET}
-        PUBLIC
-            -Wl,--wrap=${_function}
-    )
-    message(STATUS "  ${_function}()")
-endforeach()
+    message(STATUS "Mocking the following function(s):")
+    foreach(_function IN LISTS _LOCAL_FUNCTIONS)
+        target_link_options(${TARGET}
+            PUBLIC
+                -Wl,--wrap=${_function}
+        )
+        message(STATUS "  ${_function}()")
+    endforeach()
 endfunction()
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
+pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
+pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
+pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
 add_library(harness
     STATIC

@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
+
 set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/bpf.h              ${CMAKE_CURRENT_SOURCE_DIR}/bpf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/btf.h              ${CMAKE_CURRENT_SOURCE_DIR}/btf.c
