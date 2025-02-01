@@ -60,3 +60,5 @@ ExternalProject_Add(iptables
                     --disable-libipq
                     --prefix=${BF_TOOLS_IPT_INSTALL_DIR}
 )
+
+add_custom_target(integration DEPENDS iptables nftables)
