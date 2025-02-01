@@ -35,6 +35,10 @@
 	suppressed to catch actual issues more easily.
 #]]
 
+find_package(Doxygen REQUIRED)
+find_program(GENHTML_BIN genhtml REQUIRED)
+find_program(SPHINX_BIN sphinx-build REQUIRED)
+
 file(GLOB_RECURSE bf_srcs
 	${CMAKE_SOURCE_DIR}/src/*.h 			${CMAKE_SOURCE_DIR}/src/*.c
 	${CMAKE_SOURCE_DIR}/tests/harness/*.h	${CMAKE_SOURCE_DIR}/tests/harness/*.c

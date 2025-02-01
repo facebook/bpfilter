@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli)
 

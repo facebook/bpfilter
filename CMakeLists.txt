@@ -11,17 +11,10 @@ project(bpfilter
 
 include(GNUInstallDirs)
 
-option(WITH_BENCHMARK "Build and run the benchmarks" off)
-
-find_package(Doxygen REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(FLEX REQUIRED)
-find_package(BISON REQUIRED)
-
-pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
-pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
-pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
-pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
+option(NO_DOCS "Disable documentation generation" 0)
+option(NO_TESTS "Disable unit, end-to-end, and integration tests" 0)
+option(NO_CHECKS "Disable the check target (clang-tidy and clang-format" 0)
+option(NO_BENCHMARKS "Disable the benchmark" 0)
 
 # Required to get CMake to pass PIE flags to the compiler/linker
 include(CheckPIESupported)
@@ -31,14 +24,6 @@ if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
                   "PIE link options will not be passed to linker.\n"
                   "If PIE is enabled by default, test auto discovery might fail.")
 endif()
-
-find_program(SPHINX_BIN sphinx-build REQUIRED)
-find_program(LCOV_BIN lcov REQUIRED)
-find_program(GENHTML_BIN genhtml REQUIRED)
-find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
-find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
-find_program(BPFTOOL_BIN bpftool REQUIRED)
-find_program(JQ_BIN jq REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -84,9 +69,29 @@ target_link_options(bf_global_flags
         $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
 )
 
-add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(doc)
+add_subdirectory(src/core)
+add_subdirectory(src/bpfilter)
+add_subdirectory(src/libbpfilter)
+add_subdirectory(src/bfcli)
+
+if (NOT ${NO_DOCS})
+    add_subdirectory(doc)
+endif ()
+
+if (NOT ${NO_TESTS})
+    add_subdirectory(tests/harness)
+    add_subdirectory(tests/e2e)
+    add_subdirectory(tests/unit)
+    add_subdirectory(tests/integration)
+endif ()
+
+if (NOT ${NO_CHECKS})
+    add_subdirectory(tools/checks)
+endif ()
+
+if (NOT ${NO_BENCHMARKS})
+    add_subdirectory(tools/benchmarks)
+endif ()
 
 install(TARGETS bpfilter libbpfilter_a libbpfilter_so bfcli)
 

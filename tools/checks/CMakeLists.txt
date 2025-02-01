@@ -1,15 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-add_subdirectory(harness)
-
-if (WITH_BENCHMARK)
-    add_subdirectory(benchmark)
-endif ()
-
-add_subdirectory(e2e)
-add_subdirectory(unit)
-add_subdirectory(integration)
+find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
+find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
+find_program(JQ_BIN jq REQUIRED)
 
 # It's OK to use GLOB_RECURSE here, as it's not the main target for the source
 # files but a secondary one.
@@ -29,7 +23,7 @@ add_custom_command(
         # as they use specific build flags to file include mock_assert(), which
         # creates false positive with clang-tidy.
         ${JQ_BIN}
-            "del(.[] | select((.directory == \"${CMAKE_CURRENT_BINARY_DIR}/unit\")))"
+            "del(.[] | select((.directory == \"${CMAKE_BINARY_DIR}/tests/unit\")))"
             ${CMAKE_BINARY_DIR}/compile_commands.json > ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
     OUTPUT
         ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json

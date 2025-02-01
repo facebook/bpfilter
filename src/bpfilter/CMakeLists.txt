@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
+
 add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c

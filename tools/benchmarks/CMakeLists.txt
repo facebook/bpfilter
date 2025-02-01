@@ -2,6 +2,8 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 find_package(benchmark REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 
 add_executable(benchmark_bin
