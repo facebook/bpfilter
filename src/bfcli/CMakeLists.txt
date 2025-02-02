@@ -1,31 +1,59 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-find_package(FLEX REQUIRED)
-find_package(BISON REQUIRED)
+find_program(BISON_BIN bison REQUIRED)
+find_program(FLEX_BIN flex REQUIRED)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli)
 
-BISON_TARGET(bfcli_parser
-    ${CMAKE_CURRENT_SOURCE_DIR}/parser.y
-    ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
-    COMPILE_FLAGS --debug
-    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+add_custom_command(
+    COMMAND
+        ${BISON_BIN}
+            --debug
+            --defines=${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+            -o ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/parser.y
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/parser.y
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
+    COMMENT "Generate the Bison parser"
 )
 
-FLEX_TARGET(bfcli_lexer
-    ${CMAKE_CURRENT_SOURCE_DIR}/lexer.l
-    ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
-    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
+add_custom_target(bfcli_parser
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
 )
 
-ADD_FLEX_BISON_DEPENDENCY(bfcli_lexer bfcli_parser)
+add_custom_command(
+    COMMAND
+        ${FLEX_BIN}
+            --header-file=${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
+            -o ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/lexer.l
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/parser.y
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
+    COMMENT "Generate the Flex lexer"
+)
+
+add_custom_target(bfcli_lexer
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
+)
 
 add_executable(bfcli
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
-    ${BISON_bfcli_parser_OUTPUTS}
-    ${FLEX_bfcli_lexer_OUTPUTS}
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
 )
 
 target_include_directories(bfcli
