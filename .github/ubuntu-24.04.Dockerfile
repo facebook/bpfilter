@@ -12,7 +12,6 @@ RUN apt-get update && \
         g++ \
         gcc \
         git \
-        jq \
         lcov \
         libasan8 \
         libbpf-dev \

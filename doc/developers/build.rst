@@ -8,10 +8,10 @@ If you want to perform a full build of ``bpfilter``, the following dependencies 
 .. code-block:: shell
 
     # Fedora 39+
-    sudo dnf install -y bison bpftool clang-tools-extra cmake doxygen flex g++ gcc git google-benchmark-devel jq lcov libasan libbpf-devel libcmocka-devel libgit2-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
+    sudo dnf install -y bison bpftool clang-tools-extra cmake doxygen flex g++ gcc git google-benchmark-devel lcov libasan libbpf-devel libcmocka-devel libgit2-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
 
     # Ubuntu 24.04+
-    sudo apt-get install -y bison clang-format clang-tidy cmake doxygen flex furo git jq lcov libpf-dev libcmocka-dev libbenchmark-dev libgit2-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf pip3 install linuxdoc
+    sudo apt-get install -y bison clang-format clang-tidy cmake doxygen flex furo git lcov libpf-dev libcmocka-dev libbenchmark-dev libgit2-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf pip3 install linuxdoc
 
 You can then use CMake to generate the build system:
 
