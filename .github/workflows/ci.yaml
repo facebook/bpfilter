@@ -79,7 +79,7 @@ jobs:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
       - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DNO_BENCHMARKS=1
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
