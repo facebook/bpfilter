@@ -69,3 +69,5 @@ target_link_libraries(bfcli
         core
         libbpfilter_a
 )
+
+install(TARGETS bfcli)
