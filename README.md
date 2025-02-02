@@ -23,7 +23,7 @@ Detailed information can be found in the [documentation](https://bpfilter.io).
 1. **Install dependencies**
     ```shell
     # To build bpfilter
-    sudo dnf install -y bison bpftool clang-tools-extra cmake doxygen flex g++ gcc git lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
+    sudo dnf install -y bison clang-tools-extra cmake doxygen flex g++ gcc git lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
 
     # To build nftables and iptables
     sudo dnf install -y autoconf automake git gmp-devel libtool libedit-devel libmnl-devel libnftnl-devel
