@@ -70,4 +70,6 @@ target_link_libraries(bfcli
         libbpfilter_a
 )
 
-install(TARGETS bfcli)
+install(TARGETS bfcli
+    DESTINATION ${CMAKE_INSTALL_SBINDIR}
+)
