@@ -2,7 +2,6 @@ FROM fedora:41
 
 RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt install_weak_deps=False -y install \
     bison \
-    bpftool \
     clang-tools-extra \
     cmake \
     flex \
