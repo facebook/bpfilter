@@ -73,7 +73,8 @@ endforeach ()
 # Generated files (especially from Bison and Flex) are required.
 add_custom_target(check
     DEPENDS
-        bfcli
+        bfcli_parser
+        bfcli_lexer
         ${check_stamps}
 )
 
