@@ -10,7 +10,6 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates  --nodocs --setopt install_w
     doxygen \
     gcc-c++ \
     git \
-    jq \
     lcov \
     libasan \
     libbpf-devel \
