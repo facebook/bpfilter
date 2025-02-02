@@ -49,3 +49,5 @@ target_link_libraries(bpfilter
         core
         PkgConfig::nl
 )
+
+install(TARGETS bpfilter)

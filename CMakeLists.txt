@@ -92,15 +92,3 @@ endif ()
 if (NOT ${NO_BENCHMARKS})
     add_subdirectory(tools/benchmarks)
 endif ()
-
-install(TARGETS bpfilter libbpfilter_a libbpfilter_so bfcli)
-
-install(
-    FILES ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bpfilter
-)
-
-install(
-    FILES ${CMAKE_BINARY_DIR}/output/lib/pkgconfig/bpfilter.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-)
