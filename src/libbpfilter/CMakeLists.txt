@@ -9,6 +9,17 @@ set(libbpfilter_srcs
                                                     ${CMAKE_CURRENT_SOURCE_DIR}/nft.c
 )
 
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
+    ${CMAKE_BINARY_DIR}/output/include/bpfilter/bpfilter.h
+)
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.pc.in
+    ${CMAKE_BINARY_DIR}/output/lib/pkgconfig/bpfilter.pc
+    @ONLY
+)
+
 add_library(libbpfilter_a STATIC
     ${libbpfilter_srcs}
 )
@@ -54,7 +65,7 @@ add_custom_target(libbpfilter
     COMMENT "Compound target to build libbpfilter.a and libbpfilter.so"
 )
 
-install(TARGETS libbpfilter_a libbpfilter_so)
+install(TARGETS libbpfilter_so)
 
 install(
     FILES ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
