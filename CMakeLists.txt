@@ -48,14 +48,6 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib/pkgconfig)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/bin)
-configure_file(
-    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.h
-    ${CMAKE_BINARY_DIR}/output/include/bpfilter/bpfilter.h
-)
-configure_file(
-    ${CMAKE_SOURCE_DIR}/src/libbpfilter/bpfilter.pc.in
-    ${CMAKE_BINARY_DIR}/output/lib/pkgconfig/bpfilter.pc
-)
 
 add_library(bf_global_flags INTERFACE)
 target_compile_options(bf_global_flags
