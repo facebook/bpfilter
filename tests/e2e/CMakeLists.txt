@@ -35,9 +35,6 @@ target_link_libraries(e2e_bin
         libbpfilter
 )
 
-# The unit tests executable needs PIC disabled for test auto-discovery to work.
-set_property(TARGET e2e_bin PROPERTY POSITION_INDEPENDENT_CODE FALSE)
-
 add_custom_target(e2e
     COMMAND
         $<TARGET_FILE:e2e_bin>

@@ -16,15 +16,6 @@ option(NO_TESTS "Disable unit, end-to-end, and integration tests" 0)
 option(NO_CHECKS "Disable the check target (clang-tidy and clang-format" 0)
 option(NO_BENCHMARKS "Disable the benchmark" 0)
 
-# Required to get CMake to pass PIE flags to the compiler/linker
-include(CheckPIESupported)
-check_pie_supported()
-if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
-  message(WARNING "PIE is not supported at link time: ${output}.\n"
-                  "PIE link options will not be passed to linker.\n"
-                  "If PIE is enabled by default, test auto discovery might fail.")
-endif()
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
@@ -52,7 +43,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/sbin)
 add_library(bf_global_flags INTERFACE)
 target_compile_options(bf_global_flags
     INTERFACE
-        -std=gnu17 -Wall -Wextra
+        -std=gnu17 -Wall -Wextra -fPIC
         $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
         $<$<CONFIG:release>:-O2>
 )
