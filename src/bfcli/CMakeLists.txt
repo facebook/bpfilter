@@ -67,7 +67,7 @@ target_link_libraries(bfcli
     PRIVATE
         bf_global_flags
         core
-        libbpfilter_a
+        libbpfilter
 )
 
 install(TARGETS bfcli

@@ -32,7 +32,7 @@ target_include_directories(e2e_bin
 target_link_libraries(e2e_bin
     PRIVATE
         harness
-        libbpfilter_a
+        libbpfilter
 )
 
 # The unit tests executable needs PIC disabled for test auto-discovery to work.
