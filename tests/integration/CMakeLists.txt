@@ -11,7 +11,7 @@ ExternalProject_Add(nftables
     GIT_REPOSITORY https://git.netfilter.org/nftables
     GIT_TAG        ${BF_TOOLS_NFT_GIT_TAG}
 
-    DEPENDS libbpfilter_so
+    DEPENDS libbpfilter
     BUILD_IN_SOURCE true
     EXCLUDE_FROM_ALL true
     SOURCE_DIR  ${BF_TOOLS_NFT_SOURCE_DIR}
@@ -40,7 +40,7 @@ ExternalProject_Add(iptables
     GIT_REPOSITORY https://git.netfilter.org/iptables
     GIT_TAG        ${BF_TOOLS_NFT_GIT_TAG}
 
-    DEPENDS libbpfilter_so
+    DEPENDS libbpfilter
     BUILD_IN_SOURCE true
     EXCLUDE_FROM_ALL true
     SOURCE_DIR  ${BF_TOOLS_IPT_SOURCE_DIR}

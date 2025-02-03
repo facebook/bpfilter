@@ -84,7 +84,7 @@ set(bf_test_srcs
 
 get_target_property(core_srcs core SOURCES)
 get_target_property(bpfilter_srcs bpfilter SOURCES)
-get_target_property(lib_srcs libbpfilter_a SOURCES)
+get_target_property(lib_srcs libbpfilter SOURCES)
 
 list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 
