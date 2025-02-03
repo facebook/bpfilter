@@ -8,7 +8,6 @@
 
 #include "core/list.h"
 #include "harness/test.h"
-#include "harness/sym.h"
 #include "harness/test.h"
 #include "core/helper.h"
 #include "core/helper.h"

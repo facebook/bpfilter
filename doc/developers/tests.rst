@@ -10,10 +10,6 @@ Test
 ~~~~
 .. doxygenfile:: test.h
 
-Symbols
-~~~~~~~
-.. doxygenfile:: sym.h
-
 Mocks
 ~~~~~
 .. doxygenfile:: mock.h

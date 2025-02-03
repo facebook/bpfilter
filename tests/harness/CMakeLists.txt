@@ -25,7 +25,6 @@ endfunction()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
-pkg_check_modules(elf REQUIRED IMPORTED_TARGET libelf)
 pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
 pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
@@ -36,7 +35,6 @@ add_library(harness
         ${CMAKE_CURRENT_SOURCE_DIR}/mock.h      ${CMAKE_CURRENT_SOURCE_DIR}/mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/process.h   ${CMAKE_CURRENT_SOURCE_DIR}/process.c
         ${CMAKE_CURRENT_SOURCE_DIR}/prog.h      ${CMAKE_CURRENT_SOURCE_DIR}/prog.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/sym.h       ${CMAKE_CURRENT_SOURCE_DIR}/sym.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test.h      ${CMAKE_CURRENT_SOURCE_DIR}/test.c
 )
 
@@ -51,7 +49,6 @@ target_link_libraries(harness
         core
         PkgConfig::bpf
         PkgConfig::cmocka
-        PkgConfig::elf
         PkgConfig::nl
 )
 

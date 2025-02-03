@@ -14,39 +14,6 @@
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "harness/sym.h"
-
-int bf_test_new(bf_test **test, const char *name, bf_test_cb cb)
-{
-    _free_bf_test_ bf_test *_test = NULL;
-
-    bf_assert(test && name && cb);
-
-    _test = calloc(1, sizeof(*_test));
-    if (!_test)
-        return -ENOMEM;
-
-    _test->name = strdup(name);
-    if (!_test->name)
-        return -ENOMEM;
-
-    _test->cb = cb;
-
-    *test = TAKE_PTR(_test);
-
-    return 0;
-}
-
-void bf_test_free(bf_test **test)
-{
-    bf_assert(test);
-
-    if (!*test)
-        return;
-
-    freep((void *)&(*test)->name);
-    freep((void *)test);
-}
 
 void bf_test_dump(const bf_test *test, prefix_t *prefix)
 {
@@ -54,9 +21,15 @@ void bf_test_dump(const bf_test *test, prefix_t *prefix)
 
     DUMP(prefix, "bf_test at %p", test);
     bf_dump_prefix_push(prefix);
-    DUMP(prefix, "name: %s", test->name);
+    DUMP(prefix, "group_name: %s", test->group_name);
+    DUMP(prefix, "test_name: %s", test->test_name);
     DUMP(bf_dump_prefix_last(prefix), "cb: %p", test->cb);
     bf_dump_prefix_pop(prefix);
+}
+
+static void bf_noop_free(void **data)
+{
+    UNUSED(data);
 }
 
 int bf_test_group_new(bf_test_group **group, const char *name)
@@ -74,7 +47,7 @@ int bf_test_group_new(bf_test_group **group, const char *name)
         return -ENOMEM;
 
     bf_list_init(&_group->tests,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_test_free}});
+                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_noop_free}});
 
     *group = TAKE_PTR(_group);
 
@@ -119,43 +92,6 @@ void bf_test_group_dump(const bf_test_group *group, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-bf_test *bf_test_group_get_test(bf_test_group *group, const char *test_name)
-{
-    bf_assert(group && test_name);
-
-    bf_list_foreach (&group->tests, test_node) {
-        bf_test *test = bf_list_node_get_data(test_node);
-        if (bf_streq(test->name, test_name))
-            return test;
-    }
-
-    return NULL;
-}
-
-int bf_test_group_add_test(bf_test_group *group, const char *test_name,
-                           bf_test_cb cb)
-{
-    _free_bf_test_ bf_test *test = NULL;
-    int r;
-
-    bf_assert(group && test_name && cb);
-
-    if (bf_test_group_get_test(group, test_name))
-        return -EEXIST;
-
-    r = bf_test_new(&test, test_name, cb);
-    if (r)
-        return r;
-
-    r = bf_list_add_tail(&group->tests, test);
-    if (r)
-        return r;
-
-    TAKE_PTR(test);
-
-    return 0;
-}
-
 int bf_test_group_make_cmtests(bf_test_group *group)
 {
     size_t index = 0;
@@ -171,7 +107,7 @@ int bf_test_group_make_cmtests(bf_test_group *group)
         bf_test *test = bf_list_node_get_data(test_node);
 
         group->cmtests[index++] = (struct CMUnitTest) {
-            .name = test->name,
+            .name = test->test_name,
             .test_func = test->cb,
         };
     }
@@ -245,13 +181,13 @@ bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
 }
 
 int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
-                           const char *test_name, bf_test_cb cb)
+                           bf_test *test)
 
 {
     bf_test_group *group;
     int r;
 
-    bf_assert(suite && group_name && test_name && cb);
+    bf_assert(suite && group_name && test);
 
     group = bf_test_suite_get_group(suite, group_name);
     if (!group) {
@@ -268,56 +204,36 @@ int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
         group = TAKE_PTR(new_group);
     }
 
-    r = bf_test_group_add_test(group, test_name, cb);
+    r = bf_list_add_tail(&group->tests, test);
     if (r)
         return r;
 
     return 0;
 }
 
-int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_test_sym *sym)
+extern bf_test __start_bf_test;
+extern bf_test __stop_bf_test;
+
+int bf_test_discover_test_suite(bf_test_suite **suite)
 {
-    _cleanup_free_ char *group_name = NULL;
-    _cleanup_free_ char *test_name = NULL;
-    const char *group_name_end;
-    const char *test_name_start;
-    int r;
-
-    bf_assert(suite && sym);
-
-    // Split symbol name into group name and test name
-    group_name_end = strchr(sym->name, '_');
-    if (!group_name_end || group_name_end - sym->name == 0)
-        return -EINVAL;
-
-    group_name = strndup(sym->name, group_name_end - sym->name);
-    if (!group_name)
-        return -ENOMEM;
-
-    test_name_start = group_name_end + 2;
-    if (!(sym->name <= test_name_start &&
-          test_name_start < (sym->name + strlen(sym->name))))
-        return -EINVAL;
-
-    test_name = strdup(test_name_start);
-    if (!test_name)
-        return -ENOMEM;
-
-    // Add test to suite
-    r = bf_test_suite_add_test(suite, group_name, test_name, sym->cb);
-    if (r)
-        return r;
-
-    return 0;
-}
-
-int bf_test_suite_make_cmtests(const bf_test_suite *suite)
-{
+    _cleanup_bf_list_ bf_list *symbols = NULL;
+    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
+    bf_test *test;
     int r;
 
     bf_assert(suite);
 
-    bf_list_foreach (&suite->groups, group_node) {
+    r = bf_test_suite_new(&_suite);
+    if (r < 0)
+        return bf_err_r(r, "failed to create a bf_test_suite object");
+
+    for (test = &__start_bf_test; test < &__stop_bf_test; ++test) {
+        r = bf_test_suite_add_test(_suite, test->group_name, test);
+        if (r)
+            return r;
+    }
+
+    bf_list_foreach (&_suite->groups, group_node) {
         bf_test_group *group = bf_list_node_get_data(group_node);
 
         r = bf_test_group_make_cmtests(group);
@@ -327,46 +243,6 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite)
             continue;
         }
     }
-
-    return 0;
-}
-
-int bf_test_discover_test_suite(bf_test_suite **suite)
-{
-    _cleanup_bf_list_ bf_list *symbols = NULL;
-    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
-    int r;
-
-    bf_assert(suite);
-
-    r = bf_list_new(
-        &symbols,
-        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_test_sym_free}});
-    if (r < 0)
-        return bf_err_r(r, "failed to create the symbols list");
-
-    r = bf_test_get_symbols(symbols);
-    if (r < 0)
-        return bf_err_r(r, "failed to get symbols from this ELF file");
-
-    r = bf_test_suite_new(&_suite);
-    if (r < 0)
-        return bf_err_r(r, "failed to create a bf_test_suite object");
-
-    bf_list_foreach (symbols, sym_node) {
-        struct bf_test_sym *symbol = bf_list_node_get_data(sym_node);
-
-        r = bf_test_suite_add_symbol(_suite, symbol);
-        if (r < 0) {
-            bf_warn_r(r,
-                      "failed to add symbol '%s' to the test suite, ignoring",
-                      symbol->name);
-        }
-    }
-
-    r = bf_test_suite_make_cmtests(_suite);
-    if (r < 0)
-        return bf_err_r(r, "failed to generate CMUnitTest for test suite");
 
     *suite = TAKE_PTR(_suite);
 
