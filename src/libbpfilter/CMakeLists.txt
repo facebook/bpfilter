@@ -37,6 +37,8 @@ target_link_libraries(libbpfilter
         core
 )
 
+set_target_properties(libbpfilter PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+
 install(TARGETS libbpfilter)
 
 install(
