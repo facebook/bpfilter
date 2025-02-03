@@ -25,7 +25,6 @@
 #include "core/dump.h"
 #include "core/helper.h"
 #include "core/list.h"
-#include "harness/sym.h"
 
 struct CMUnitTest;
 
@@ -52,8 +51,12 @@ struct CMUnitTest;
  * @param name Name of the test.
  */
 #define Test(group, name)                                                      \
-    __attribute__((section(".bf_test"),used)) void group##__##name(                 \
-        bf_unused void **state)
+    void group##__##name(bf_unused void **state);                              \
+    bf_test __attribute__((section("bf_test"),used)) __##group##__##name##_test = { \
+        .group_name = BF_STR(group),                                           \
+        .test_name = BF_STR(name),                                             \
+        .cb = &group##__##name};                                               \
+    void __attribute__((used)) group##__##name(bf_unused void **state)
 
 /**
  * Fail a test with an error message.
@@ -79,7 +82,6 @@ struct CMUnitTest;
  */
 #define assert_error(x) assert_int_not_equal(0, (x))
 
-#define _free_bf_test_ __attribute__((cleanup(bf_test_free)))
 #define _free_bf_test_group_ __attribute__((cleanup(bf_test_group_free)))
 #define _free_bf_test_suite_ __attribute__((cleanup(bf_test_suite_free)))
 #define _free_bf_test_filter_ __attribute__((cleanup(bf_test_filter_free)))
@@ -91,14 +93,12 @@ typedef void (*bf_test_cb)(void **state);
  */
 typedef struct
 {
-    /// Name of the test.
-    const char *name;
-    /// Test function.
-    bf_test_cb cb;
+    const char *group_name;
+    const char *test_name;
+    void *cb;
+    void *_res;
 } bf_test;
 
-int bf_test_new(bf_test **test, const char *name, bf_test_cb cb);
-void bf_test_free(bf_test **test);
 void bf_test_dump(const bf_test *test, prefix_t *prefix);
 
 /**
@@ -119,8 +119,6 @@ typedef struct
 int bf_test_group_new(bf_test_group **group, const char *name);
 void bf_test_group_free(bf_test_group **group);
 void bf_test_group_dump(const bf_test_group *group, prefix_t *prefix);
-int bf_test_group_add_test(bf_test_group *group, const char *test_name,
-                           bf_test_cb cb);
 bf_test *bf_test_group_get_test(bf_test_group *group, const char *test_name);
 int bf_test_group_make_cmtests(bf_test_group *group);
 
@@ -140,8 +138,7 @@ void bf_test_suite_free(bf_test_suite **suite);
 void bf_test_suite_dump(const bf_test_suite *suite, prefix_t *prefix);
 void bf_test_suite_print(const bf_test_suite *suite);
 int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
-                           const char *test_name, bf_test_cb cb);
-int bf_test_suite_add_symbol(bf_test_suite *suite, struct bf_test_sym *sym);
+                           bf_test *test);
 bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
                                        const char *group_name);
 int bf_test_suite_make_cmtests(const bf_test_suite *suite);
