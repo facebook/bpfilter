@@ -30,7 +30,7 @@ set(core_srcs
 )
 
 add_library(core
-    STATIC
+    OBJECT
         ${core_srcs}
 )
 
@@ -44,21 +44,3 @@ target_link_libraries(core
         bf_global_flags
         PkgConfig::bpf
 )
-
-add_library(core.pic
-    STATIC
-        ${core_srcs}
-)
-
-target_include_directories(core.pic
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-)
-
-target_link_libraries(core.pic
-    PUBLIC
-        bf_global_flags
-        PkgConfig::bpf
-)
-
-set_target_properties(core.pic PROPERTIES POSITION_INDEPENDENT_CODE ON)

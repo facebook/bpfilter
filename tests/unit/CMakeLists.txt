@@ -109,9 +109,6 @@ bf_test_configure_non_build_srcs(unit_bin
         ${lib_srcs}
 )
 
-# The unit tests executable needs PIC disabled for test auto-discovery to work.
-set_property(TARGET unit_bin PROPERTY POSITION_INDEPENDENT_CODE FALSE)
-
 set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_srcs}
     PROPERTIES
         COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
