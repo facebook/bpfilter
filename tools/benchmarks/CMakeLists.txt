@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
+enable_language(CXX)
+
 find_package(benchmark REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
@@ -11,14 +13,14 @@ add_executable(benchmark_bin
     benchmark.cpp benchmark.hpp
 )
 
-target_include_directories(benchmark_bin
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
 target_compile_options(benchmark_bin
     PRIVATE
         -std=c++20
+)
+
+target_include_directories(benchmark_bin
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(benchmark_bin
