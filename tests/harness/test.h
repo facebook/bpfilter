@@ -52,7 +52,7 @@ struct CMUnitTest;
  * @param name Name of the test.
  */
 #define Test(group, name)                                                      \
-    __attribute__((section(".bf_test"))) void group##__##name(                 \
+    __attribute__((section(".bf_test"),used)) void group##__##name(                 \
         bf_unused void **state)
 
 /**
