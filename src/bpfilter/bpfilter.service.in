@@ -1,0 +1,9 @@
+[Unit]
+Description=BPF-based packet filtering framework
+
+[Service]
+ExecStart=/usr/sbin/bpfilter --no-nftables --no-iptables
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

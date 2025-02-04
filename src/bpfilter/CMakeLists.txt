@@ -4,6 +4,12 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/bpfilter.service.in
+    ${CMAKE_BINARY_DIR}/output/usr/lib/systemd/system/bpfilter.service
+    @ONLY
+)
+
 add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
@@ -52,4 +58,10 @@ target_link_libraries(bpfilter
 
 install(TARGETS bpfilter
     DESTINATION ${CMAKE_INSTALL_SBINDIR}
+)
+
+message("${CMAKE_INSTALL_PREFIX}")
+install(
+    FILES ${CMAKE_BINARY_DIR}/output/usr/lib/systemd/system/bpfilter.service
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
 )
