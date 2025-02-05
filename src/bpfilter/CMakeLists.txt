@@ -12,6 +12,7 @@ configure_file(
 
 add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_BINARY_DIR}/include/version.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.c
@@ -47,6 +48,7 @@ add_executable(bpfilter
 target_include_directories(bpfilter
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/include
 )
 
 target_link_libraries(bpfilter

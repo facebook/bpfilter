@@ -123,6 +123,7 @@ target_include_directories(unit_bin
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src         # First look for headers in src/
         ${CMAKE_CURRENT_SOURCE_DIR}     # Then use overrides in tests/units
+        ${CMAKE_BINARY_DIR}/include
 )
 
 target_link_libraries(unit_bin

@@ -15,6 +15,13 @@ struct xt_counters_info;
 struct nlmsghdr;
 
 /**
+ * Return the version of the library.
+ *
+ * @return Version of the library, as a string.
+ */
+const char *bf_version(void);
+
+/**
  * Request the daemon to remove all the chains and rules.
  *
  * @return 0 on success, or a negative errno value on error.

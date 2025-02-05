@@ -50,6 +50,7 @@ add_custom_target(bfcli_lexer
 
 add_executable(bfcli
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_BINARY_DIR}/include/version.h
     ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
     ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
     ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
@@ -59,6 +60,7 @@ add_executable(bfcli
 target_include_directories(bfcli
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/generated/include
         ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli
 )
