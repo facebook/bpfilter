@@ -60,7 +60,6 @@ install(TARGETS bpfilter
     DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
 
-message("${CMAKE_INSTALL_PREFIX}")
 install(
     FILES ${CMAKE_BINARY_DIR}/output/usr/lib/systemd/system/bpfilter.service
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
