@@ -4,12 +4,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(bpfilter
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "BPF-based packet filtering framework"
     LANGUAGES C
 )
 
-set(PROJECT_VERSION_TWEAK "")
+set(PROJECT_VERSION_TWEAK "-devel")
 
 message(NOTICE "bpfilter version ${CMAKE_PROJECT_VERSION}${PROJECT_VERSION_TWEAK}")
 
