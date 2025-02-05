@@ -52,7 +52,8 @@ struct CMUnitTest;
  */
 #define Test(group, name)                                                      \
     void group##__##name(bf_unused void **state);                              \
-    bf_test __attribute__((section("bf_test"),used)) __##group##__##name##_test = { \
+    bf_test __attribute__((section("bf_test"),                                 \
+                           used)) __##group##__##name##_test = {               \
         .group_name = BF_STR(group),                                           \
         .test_name = BF_STR(name),                                             \
         .cb = &group##__##name};                                               \
