@@ -273,13 +273,13 @@ static int _bf_init(int argc, char *argv[])
     if (sigaction(SIGTERM, &sighandler, NULL) < 0)
         return bf_err_r(errno, "can't override handler for SIGTERM");
 
-    r = _bf_ensure_runtime_dir();
-    if (r < 0)
-        return bf_err_r(r, "failed to ensure runtime directory exists");
-
     r = bf_opts_init(argc, argv);
     if (r < 0)
         return bf_err_r(r, "failed to parse command line arguments");
+
+    r = _bf_ensure_runtime_dir();
+    if (r < 0)
+        return bf_err_r(r, "failed to ensure runtime directory exists");
 
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {

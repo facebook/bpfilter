@@ -7,6 +7,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/generic.h           ${CMAKE_CURRENT_SOURCE_DIR}/generic.c
                                                     ${CMAKE_CURRENT_SOURCE_DIR}/ipt.c
                                                     ${CMAKE_CURRENT_SOURCE_DIR}/nft.c
+    ${CMAKE_BINARY_DIR}/include/version.h           ${CMAKE_CURRENT_SOURCE_DIR}/version.c
 )
 
 configure_file(
@@ -29,6 +30,7 @@ set_target_properties(libbpfilter PROPERTIES OUTPUT_NAME bpfilter)
 target_include_directories(libbpfilter
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/include
 )
 
 target_link_libraries(libbpfilter

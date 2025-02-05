@@ -16,12 +16,14 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/logger.h"
+#include "version.h"
 
 enum
 {
     BF_OPT_NO_IPTABLES_KEY,
     BF_OPT_NO_NFTABLES_KEY,
     BF_OPT_NO_CLI_KEY,
+    BF_OPT_VERSION,
 };
 
 static const char *_bf_verbose_strs[] = {
@@ -89,6 +91,7 @@ static struct argp_option options[] = {
     {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
     {"verbose", 'v', "VERBOSE_FLAG", 0,
      "Verbose flags to enable. Can be used more than once.", 0},
+    {"version", BF_OPT_VERSION, 0, 0, "Print the version and return.", 0},
     {0},
 };
 
@@ -148,6 +151,9 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         bf_info("enabling verbose for '%s'", arg);
         args->verbose |= (1 << opt);
         break;
+    case BF_OPT_VERSION:
+        bf_info("bpfilter version %s", BF_VERSION);
+        exit(0);
     default:
         return ARGP_ERR_UNKNOWN;
     }
