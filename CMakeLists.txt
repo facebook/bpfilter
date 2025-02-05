@@ -9,7 +9,7 @@ project(bpfilter
     LANGUAGES C
 )
 
-set(PROJECT_VERSION_TWEAK "-devel")
+set(PROJECT_VERSION_TWEAK "")
 
 message(NOTICE "bpfilter version ${CMAKE_PROJECT_VERSION}${PROJECT_VERSION_TWEAK}")
 
