@@ -4,10 +4,14 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(bpfilter
-    VERSION 0.0.1
+    VERSION 0.1.0
     DESCRIPTION "BPF-based packet filtering framework"
     LANGUAGES C
 )
+
+set(PROJECT_VERSION_TWEAK "-devel")
+
+message(NOTICE "bpfilter version ${CMAKE_PROJECT_VERSION}${PROJECT_VERSION_TWEAK}")
 
 include(GNUInstallDirs)
 
@@ -50,6 +54,12 @@ target_compile_options(bf_global_flags
 target_link_options(bf_global_flags
     INTERFACE
         $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
+)
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/version.h.in
+    ${CMAKE_BINARY_DIR}/include/version.h
+    @ONLY
 )
 
 add_subdirectory(src/core)
