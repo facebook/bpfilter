@@ -185,7 +185,7 @@ int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
 
     attr.link_create.prog_fd = prog_fd;
     attr.link_create.attach_type = BPF_NETFILTER;
-    attr.link_create.netfilter.pf = NFPROTO_IPV4;
+    attr.link_create.netfilter.pf = NFPROTO_INET;
     attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
     attr.link_create.netfilter.priority = priority;
 
