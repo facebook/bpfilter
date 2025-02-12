@@ -303,7 +303,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                         proto = IPPROTO_TCP;
                     else if (bf_streq($3, "udp"))
                         proto = IPPROTO_UDP;
-                    else if (bf_streq($3, "icmp6"))
+                    else if (bf_streq($3, "icmpv6"))
                         proto = IPPROTO_ICMPV6;
                     else
                         bf_parse_err("unsupported L4 protocol to match '%s'\n", $3);
