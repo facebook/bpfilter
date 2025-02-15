@@ -503,7 +503,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
                 return r;
             }
 
-            TAKE_PTR(cur_cgen);
+            TAKE_PTR(new_cgen);
         }
     }
 
