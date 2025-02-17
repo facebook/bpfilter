@@ -56,47 +56,38 @@ void _bf_sig_handler(int sig)
 }
 
 /**
- * Ensure the daemon can use the runtime directory.
+ * Ensure the daemon can use a directory.
  *
- * Check if the current process can access @ref BF_RUNTIME_DIR. If it doesn't
- * exists, create it with the appropriate permissions. If it exists, check
- * that it is a directory.
+ * Check if the current process can access @p dir. If it doesn't exists,
+ * create it with the appropriate permissions. If it exists, check that it is
+ * a writable directory.
  *
- * @return 0 on success, negative errno value on failure.
+ * @return 0 on success, or a negative errno value on failure.
  */
-static int _bf_ensure_runtime_dir(void)
+static int _bf_ensure_dir(const char *dir)
 {
     struct stat stats;
     int r;
 
-    r = access(BF_RUNTIME_DIR, R_OK | W_OK);
-    if (r < 0 && errno == ENOENT) {
-        if (mkdir(BF_RUNTIME_DIR, BF_PERM_755) == 0)
+    r = access(dir, R_OK | W_OK);
+    if (r && errno == ENOENT) {
+        if (mkdir(dir, BF_PERM_755) == 0)
             return 0;
 
-        return bf_err_r(errno, "failed to create runtime directory '%s'",
-                        BF_RUNTIME_DIR);
+        return bf_err_r(errno, "failed to create directory '%s'", dir);
     }
 
-    if (r < 0 && errno == EACCES) {
-        return bf_err_r(errno, "can't access runtime directory '%s'",
-                        BF_RUNTIME_DIR);
-    }
+    if (r && errno == EACCES)
+        return bf_err_r(errno, "can't access directory '%s'", dir);
 
-    if (r < 0) {
-        return bf_err_r(errno, "failed to access runtime directory '%s'",
-                        BF_RUNTIME_DIR);
-    }
+    if (r)
+        return bf_err_r(errno, "failed to access directory '%s'", dir);
 
-    if (stat(BF_RUNTIME_DIR, &stats)) {
-        return bf_err_r(errno, "failed to stat runtime directory '%s'",
-                        BF_RUNTIME_DIR);
-    }
+    if (stat(dir, &stats))
+        return bf_err_r(errno, "failed to stat directory '%s'", dir);
 
-    if (!S_ISDIR(stats.st_mode)) {
-        return bf_err_r(ENOTDIR, "runtime directory '%s' is not a directory",
-                        BF_RUNTIME_DIR);
-    }
+    if (!S_ISDIR(stats.st_mode))
+        return bf_err_r(ENOTDIR, "directory '%s' is not a directory", dir);
 
     return 0;
 }
@@ -277,9 +268,13 @@ static int _bf_init(int argc, char *argv[])
     if (r < 0)
         return bf_err_r(r, "failed to parse command line arguments");
 
-    r = _bf_ensure_runtime_dir();
-    if (r < 0)
+    r = _bf_ensure_dir(BF_RUNTIME_DIR);
+    if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
+
+    r = _bf_ensure_dir(BF_PIN_DIR);
+    if (r)
+        return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
 
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {
