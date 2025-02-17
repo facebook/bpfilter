@@ -18,6 +18,7 @@
 #include "core/bpf.h"
 #include "core/dump.h"
 #include "core/helper.h"
+#include "core/io.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 
@@ -58,7 +59,7 @@ int bf_map_new(struct bf_map **map, enum bf_map_type type,
             name_suffix);
     }
 
-    r = snprintf(_map->path, BF_PIN_PATH_LEN, "/sys/fs/bpf/%s", _map->name);
+    r = snprintf(_map->path, BF_PIN_PATH_LEN, "%s/%s", BF_PIN_DIR, _map->name);
     if (r < 0) {
         return bf_err_r(
             errno,

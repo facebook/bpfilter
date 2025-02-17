@@ -40,6 +40,7 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -101,11 +102,11 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
     (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%.6s",
                    suffix);
     (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_prog_%.6s", suffix);
+                   "%s/bf_prog_%.6s", BF_PIN_DIR, suffix);
     (void)snprintf(_program->link_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_link_%.6s", suffix);
+                   "%s/bf_link_%.6s", BF_PIN_DIR, suffix);
     (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
-                   "/sys/fs/bpf/bf_pmap_%.6s", suffix);
+                   "%s/bf_pmap_%.6s", BF_PIN_DIR, suffix);
 
     r = bf_map_new(&_program->counters, BF_MAP_TYPE_COUNTERS, suffix,
                    BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),

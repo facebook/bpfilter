@@ -7,6 +7,7 @@
 
 #define BF_RUNTIME_DIR "/run/bpfilter"
 #define BF_SOCKET_PATH BF_RUNTIME_DIR "/daemon.sock"
+#define BF_PIN_DIR "/sys/fs/bpf/bpfilter"
 
 struct bf_request;
 struct bf_response;

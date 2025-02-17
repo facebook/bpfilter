@@ -18,3 +18,15 @@ It is possible to customize the daemon's behavior using the following command-li
 
 - ``--usage``: print a short usage message.
 - ``-?``, ``--help``: print the help message.
+
+
+Runtime data
+------------
+
+``bpfilter`` runtime data is located in two different directories:
+
+- ``/run/bpfilter``: runtime context. Contains the socket used to communicate with the daemon, and the serialized data (except in ``--transient`` mode).
+- ``/sys/fs/bpf/bpfilter``: directory used to pin the BPF objects (except in ``--transient`` mode) so they persist across restarts of the daemon.
+
+.. warning::
+    If ``bpfilter`` fails to restore its state after restarting, its data can be cleanup up by removing both those directories. Doing so will remove all your filtering rules.
