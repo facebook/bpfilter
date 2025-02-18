@@ -48,23 +48,6 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
                      size_t img_len, enum bpf_attach_type attach_type, int *fd);
 
 /**
- * Create a BPF map.
- *
- * @param name Name of the map. Can't be NULL.
- * @param type Map type.
- * @param key_size Size of a key.
- * @param value_size Size of a value.
- * @param max_entries Number of entries in the map.
- * @param flags Map creation flags.
- * @param fd If the call succeed, this parameter will contain the map's
- *        file descriptor.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_bpf__map_create(const char *name, unsigned int type, size_t key_size,
-                       size_t value_size, size_t max_entries, uint32_t flags,
-                       int *fd);
-
-/**
  * Get an element from a map.
  *
  * @param fd File descriptor of the map to search in.
