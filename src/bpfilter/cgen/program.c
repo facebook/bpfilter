@@ -354,6 +354,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 {
     enum bf_hook hook;
     enum bf_front front;
+    char dir[PATH_MAX];
     _cleanup_close_ int pindir_fd = -1;
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     struct bf_marsh *child = NULL;
@@ -361,12 +362,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     bf_assert(marsh);
     bf_assert(program);
-
-    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
-    if (pindir_fd < 0) {
-        return bf_err_r(errno, "failed to open bf_program pin directory %s",
-                        BF_PIN_DIR);
-    }
 
     if (!(child = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
@@ -379,6 +374,13 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     r = bf_program_new(&_program, hook, front, chain);
     if (r < 0)
         return r;
+
+    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, _program->id);
+    pindir_fd = open(dir, O_DIRECTORY, 0);
+    if (pindir_fd < 0) {
+        return bf_err_r(errno, "failed to open bf_program pin directory %s",
+                        dir);
+    }
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -1012,15 +1014,22 @@ static void _bf_program_unpin(const struct bf_program *program);
  */
 static int _bf_program_pin(const struct bf_program *program)
 {
-    int pindir_fd;
+    _cleanup_close_ int pindir_fd = -1;
+    char dir[PATH_MAX];
     int r;
 
     bf_assert(program);
 
-    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
+    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, program->id);
+
+    r = bf_ensure_dir(dir);
+    if (r)
+        return bf_err_r(r, "failed to validate pin directory %s", dir);
+
+    pindir_fd = open(dir, O_DIRECTORY, 0);
     if (pindir_fd < 0) {
         return bf_err_r(errno, "failed to open bf_program pin directory %s",
-                        BF_PIN_DIR);
+                        dir);
     }
 
     r = bf_bpf_obj_pin(program->prog_name, program->runtime.prog_fd, pindir_fd);
@@ -1082,16 +1091,19 @@ err_prog_pin:
  */
 static void _bf_program_unpin(const struct bf_program *program)
 {
-    _cleanup_close_ int pindir_fd = -1;
+    char dir[PATH_MAX];
+    int pindir_fd;
+    int r;
 
     bf_assert(program);
 
-    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
+    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, program->id);
+    pindir_fd = open(dir, O_DIRECTORY, 0);
     if (pindir_fd < 0) {
-        bf_err_r(
+        bf_warn_r(
             errno,
             "failed to open bf_program pin directory %s, assuming BPF objects are unpinned",
-            BF_PIN_DIR);
+            dir);
         return;
     }
 
@@ -1101,6 +1113,13 @@ static void _bf_program_unpin(const struct bf_program *program)
     bf_map_unpin(program->cmap, pindir_fd);
     bf_list_foreach (&program->sets, set_node)
         bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
+
+    closep(&pindir_fd);
+    r = rmdir(dir);
+    if (r) {
+        bf_warn_r(r, "failed to remove bf_program pin directory %s, ignoring",
+                  dir);
+    }
 }
 
 static int _bf_program_load_printer_map(struct bf_program *program)

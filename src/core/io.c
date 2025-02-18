@@ -7,11 +7,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "core/helper.h"
+#include "core/logger.h"
 #include "core/request.h"
 #include "core/response.h"
+
+#define BF_PERM_755 (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
 
 static ssize_t _bf_recv_in_buff(int fd, void *buf, size_t buf_len)
 {
@@ -186,6 +190,29 @@ int bf_recv_response(int fd, struct bf_response **response)
     }
 
     *response = TAKE_PTR(_response);
+
+    return 0;
+}
+
+int bf_ensure_dir(const char *dir)
+{
+    struct stat stats;
+    int r;
+
+    bf_assert(dir);
+
+    r = access(dir, R_OK | W_OK);
+    if (r && errno == ENOENT) {
+        if (mkdir(dir, BF_PERM_755) == 0)
+            return 0;
+
+        return bf_err_r(errno, "failed to create directory '%s'", dir);
+    }
+    if (r)
+        return bf_err_r(errno, "no R/W permissions on '%s'", dir);
+
+    if (stat(dir, &stats) != 0 || !S_ISDIR(stats.st_mode))
+        return bf_err_r(-EINVAL, "'%s' is not a valid directory", dir);
 
     return 0;
 }

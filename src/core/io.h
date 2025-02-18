@@ -53,3 +53,15 @@ int bf_send_response(int fd, struct bf_response *response);
  * @return 0 on success, negative error code on failure.
  */
 int bf_recv_response(int fd, struct bf_response **response);
+
+/**
+ * Ensure @p dir exists and can be read/writen by the current process.
+ *
+ * Check if the current process can access @p dir. If it doesn't exists,
+ * create it with the appropriate permissions. If it exists, check that it is
+ * a writable directory.
+ *
+ * @param dir Directory to validate. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_ensure_dir(const char *dir);
