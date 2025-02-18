@@ -43,6 +43,7 @@ add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nft.c
 
     ${CMAKE_SOURCE_DIR}/src/external/disasm.h            ${CMAKE_SOURCE_DIR}/src/external/disasm.c
+    ${CMAKE_SOURCE_DIR}/src/external/murmur3.h           ${CMAKE_SOURCE_DIR}/src/external/murmur3.c
 )
 
 target_include_directories(bpfilter

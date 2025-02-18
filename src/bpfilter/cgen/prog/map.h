@@ -38,7 +38,6 @@ struct bf_map
     enum bf_map_type type;
     int fd;
     char name[BPF_OBJ_NAME_LEN];
-    char path[BF_PIN_PATH_LEN];
     enum bf_map_bpf_type bpf_type;
     size_t key_size;
     size_t value_size;
@@ -68,10 +67,10 @@ struct bf_marsh;
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
  *            success, @c *map points to a valid @ref bf_map . On failure,
  *            @c *map remain unchanged.
+ * @param name Name of the map. Will be used as the name of the BPF object, but
+ *        also as filename when pinning the map to the system. Can't be NULL or
+ *        empty.
  * @param type Map type, defines the set of available operations.
- * @param name_suffix Suffix to use for the map name. Usually specify the
- *                    hook, front-end, or program type the map is used for.
- *                    Can't be NULL.
  * @param bpf_type Map type. Not all BPF maps are supported, see
  *        @ref bf_map_bpf_type for the full list of supported types.
  * @param key_size Size (in bytes) of a key in the map. Can't be 0.
@@ -82,9 +81,9 @@ struct bf_marsh;
  *        until you set an actual size with @ref bf_map_set_n_elems .
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_map_new(struct bf_map **map, enum bf_map_type type,
-               const char *name_suffix, enum bf_map_bpf_type bpf_type,
-               size_t key_size, size_t value_size, size_t n_elems);
+int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
+               enum bf_map_bpf_type bpf_type, size_t key_size,
+               size_t value_size, size_t n_elems);
 
 /**
  * Create a new BPF map object from serialized data.
@@ -96,10 +95,13 @@ int bf_map_new(struct bf_map **map, enum bf_map_type type,
  *            data. The caller will own the object. On success, @c *map points
  *            to a valid BPF object map. On failure, @c *map is unchanged.
  *            Can't be NULL.
+ * @param dir_fd File descriptor of the directory containing the map's pin.
+ *        Must be a valid file descriptor, or 0 is the map should not be opened.
  * @param marsh Serialized BPF map object data. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh);
+int bf_map_new_from_marsh(struct bf_map **map, int dir_fd,
+                          const struct bf_marsh *marsh);
 
 /**
  * Free a BPF map object.
@@ -156,16 +158,23 @@ int bf_map_create(struct bf_map *map, uint32_t flags);
 void bf_map_destroy(struct bf_map *map);
 
 /**
- * Pin the map to the filesystem.
+ * Pin the map to the system.
  *
+ * @param map Map to pin. Can't be NULL.
+ * @param dir_fd File descriptor of the directory to pin the map into. Must be
+ *        a valid file descriptor.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_map_pin(const struct bf_map *map);
+int bf_map_pin(const struct bf_map *map, int dir_fd);
 
 /**
- * Unpin the map from the filesystem.
+ * Unpin the map from the system.
+ *
+ * @param map Map to unpin. Can't be NULL.
+ * @param dir_fd File descriptor of the directory to unpin the map from. Must be
+ *        a valid file descriptor.
  */
-void bf_map_unpin(const struct bf_map *map);
+void bf_map_unpin(const struct bf_map *map, int dir_fd);
 
 /**
  * Set the size of the map's keys.

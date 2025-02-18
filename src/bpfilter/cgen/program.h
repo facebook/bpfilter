@@ -30,6 +30,7 @@
 #include "external/filter.h"
 
 #define PIN_PATH_LEN 64
+#define BF_PROG_ID_LEN (BPF_OBJ_NAME_LEN - 4)
 
 /**
  * @file program.h
@@ -285,12 +286,12 @@ static_assert(sizeof(struct bf_program_context) % 8 == 0,
 
 struct bf_program
 {
+    char id[BF_PROG_ID_LEN];
+
     enum bf_hook hook;
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
     char link_name[BPF_OBJ_NAME_LEN];
-    char prog_pin_path[PIN_PATH_LEN];
-    char link_pin_path[PIN_PATH_LEN];
 
     /// Log messages printer
     struct bf_printer *printer;
