@@ -296,7 +296,7 @@ struct bf_program
     struct bf_printer *printer;
 
     /// Counters map
-    struct bf_map *counters;
+    struct bf_map *cmap;
     /// Printer map
     struct bf_map *pmap;
     /// List of set maps

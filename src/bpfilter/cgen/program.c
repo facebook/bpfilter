@@ -109,7 +109,7 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
     (void)snprintf(_program->link_pin_path, PIN_PATH_LEN, "%s/bf_link_%.6s",
                    BF_PIN_DIR, suffix);
 
-    r = bf_map_new(&_program->counters, BF_MAP_TYPE_COUNTERS, suffix,
+    r = bf_map_new(&_program->cmap, BF_MAP_TYPE_COUNTERS, suffix,
                    BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
                    sizeof(struct bf_counter), 1);
     if (r < 0)
@@ -168,7 +168,7 @@ void bf_program_free(struct bf_program **program)
     closep(&(*program)->runtime.prog_fd);
     closep(&(*program)->runtime.link_fd);
 
-    bf_map_free(&(*program)->counters);
+    bf_map_free(&(*program)->cmap);
     bf_map_free(&(*program)->pmap);
     bf_list_clean(&(*program)->sets);
     bf_printer_free(&(*program)->printer);
@@ -199,7 +199,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
         // Serialize bf_program.counters
         _cleanup_bf_marsh_ struct bf_marsh *counters_elem = NULL;
 
-        r = bf_map_marsh(program->counters, &counters_elem);
+        r = bf_map_marsh(program->cmap, &counters_elem);
         if (r < 0)
             return r;
 
@@ -269,7 +269,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     enum bf_hook hook;
     enum bf_front front;
     _cleanup_bf_program_ struct bf_program *_program = NULL;
-    _cleanup_bf_map_ struct bf_map *counters = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -290,8 +289,8 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    bf_map_free(&_program->counters);
-    r = bf_map_new_from_marsh(&_program->counters, child);
+    bf_map_free(&_program->cmap);
+    r = bf_map_new_from_marsh(&_program->cmap, child);
     if (r < 0)
         return r;
 
@@ -388,9 +387,9 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "link_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->link_pin_path);
 
-    DUMP(prefix, "counters: struct bf_map *");
+    DUMP(prefix, "cmap: struct bf_map *");
     bf_dump_prefix_push(prefix);
-    bf_map_dump(program->counters, bf_dump_prefix_last(prefix));
+    bf_map_dump(program->cmap, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "pmap: struct bf_map *");
@@ -520,7 +519,7 @@ static int _bf_program_fixup(struct bf_program *program,
             break;
         case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
-            value = program->counters->fd;
+            value = program->cmap->fd;
             break;
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
@@ -939,7 +938,7 @@ static int _bf_program_pin(const struct bf_program *program)
         }
     }
 
-    r = bf_map_pin(program->counters);
+    r = bf_map_pin(program->cmap);
     if (r < 0)
         goto err;
 
@@ -974,7 +973,7 @@ static void _bf_program_unpin(const struct bf_program *program)
 
     unlink(program->prog_pin_path);
     unlink(program->link_pin_path);
-    bf_map_unpin(program->counters);
+    bf_map_unpin(program->cmap);
     bf_map_unpin(program->pmap);
 
     bf_list_foreach (&program->sets, set_node)
@@ -1022,17 +1021,17 @@ static int _bf_program_load_counters_map(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_map_set_n_elems(program->counters, program->num_counters);
+    r = bf_map_set_n_elems(program->cmap, program->num_counters);
     if (r < 0)
         return r;
 
-    r = bf_map_create(program->counters, 0);
+    r = bf_map_create(program->cmap, 0);
     if (r < 0)
         return r;
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
     if (r < 0) {
-        bf_map_destroy(program->counters);
+        bf_map_destroy(program->cmap);
         return bf_err_r(r, "failed to fixup counters map FD");
     }
 
@@ -1178,7 +1177,7 @@ int bf_program_unload(struct bf_program *program)
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.link_fd);
 
-    bf_map_destroy(program->counters);
+    bf_map_destroy(program->cmap);
     bf_map_destroy(program->pmap);
 
     bf_list_foreach (&program->sets, map_node)
@@ -1198,7 +1197,7 @@ int bf_program_get_counter(const struct bf_program *program,
 
     int r;
 
-    r = bf_bpf_map_lookup_elem(program->counters->fd, &counter_idx, counter);
+    r = bf_bpf_map_lookup_elem(program->cmap->fd, &counter_idx, counter);
     if (r < 0)
         return bf_err_r(errno, "failed to lookup counters map");
 
