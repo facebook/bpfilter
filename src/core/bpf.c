@@ -79,30 +79,6 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     return 0;
 }
 
-int bf_bpf__map_create(const char *name, unsigned int type, size_t key_size,
-                       size_t value_size, size_t max_entries, uint32_t flags,
-                       int *fd)
-{
-    union bpf_attr attr = {
-        .map_type = type,
-        .key_size = key_size,
-        .value_size = value_size,
-        .max_entries = max_entries,
-        .map_flags = flags,
-    };
-    int r;
-
-    (void)snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", name);
-
-    r = bf_bpf(BPF_MAP_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    *fd = r;
-
-    return 0;
-}
-
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
 {
     union bpf_attr attr = {
