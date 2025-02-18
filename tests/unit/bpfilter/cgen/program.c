@@ -32,3 +32,15 @@ Test(program, emit_fixup_call)
         assert_int_not_equal(program->img_cap, start_cap);
     }
 }
+
+Test(program, flavor_ops_get_failure)
+{
+    expect_assert_failure(bf_flavor_ops_get(-1));
+    expect_assert_failure(bf_flavor_ops_get(_BF_HOOK_MAX));
+}
+
+Test(program, can_get_flavor_from_hook)
+{
+    for (int i = 0; i < _BF_HOOK_MAX; ++i)
+        assert_non_null(bf_flavor_ops_get(i));
+}
