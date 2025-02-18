@@ -7,8 +7,10 @@
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
+#include <linux/limits.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -54,6 +56,7 @@
 #include "core/verdict.h"
 
 #include "external/filter.h"
+#include "external/murmur3.h"
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
@@ -79,11 +82,83 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_hook hook)
     return flavor_ops[hook];
 }
 
+/**
+ * Generate the program's identifier.
+ *
+ * A program's ID is a way to idenfity it: there shouldn't be two programs
+ * with the same ID. This ID will be used when we need to avoid name clashes,
+ * such as when the BPF objects are pinned to the system.
+ *
+ * The ID is composed of 3 parts:
+ * - The @c bf prefix, as the ID will be used as a prefix for the BPF objects
+ *   name.
+ * - A hook idenfitier
+ * - A hash of the unique property of the hook: multiple programs can be
+ *   generated for a given hook, so we hash the data that make this specific
+ *   program unique amongst other programs attached to the same hook.
+ *
+ * @param program Program to generate the ID for. Can't be NULL.
+ * @return 0 on success, or a negative errno value on error.
+ */
+static int _bf_program_genid(struct bf_program *program)
+{
+    static const char *flavor_keys[] = {
+        [BF_HOOK_XDP] = "xdp",
+        [BF_HOOK_TC_INGRESS] = "tci",
+        [BF_HOOK_NF_PRE_ROUTING] = "nfp",
+        [BF_HOOK_NF_LOCAL_IN] = "nfi",
+        [BF_HOOK_CGROUP_INGRESS] = "cgi",
+        [BF_HOOK_CGROUP_EGRESS] = "cge",
+        [BF_HOOK_NF_FORWARD] = "nff",
+        [BF_HOOK_NF_LOCAL_OUT] = "nfo",
+        [BF_HOOK_NF_POST_ROUTING] = "nfr",
+        [BF_HOOK_TC_EGRESS] = "tce",
+    };
+    static_assert(ARRAY_SIZE(flavor_keys) == _BF_HOOK_MAX,
+                  "missing entries in flavor_keys array");
+
+    char buf[PATH_MAX];
+    uint32_t hash;
+
+    bf_assert(program);
+
+    switch (program->hook) {
+    case BF_HOOK_XDP:
+    case BF_HOOK_TC_INGRESS:
+    case BF_HOOK_TC_EGRESS:
+        (void)snprintf(buf, PATH_MAX, "%s_%08x", flavor_keys[program->hook],
+                       program->runtime.chain->hook_opts.ifindex);
+        break;
+    case BF_HOOK_NF_PRE_ROUTING:
+    case BF_HOOK_NF_LOCAL_IN:
+    case BF_HOOK_NF_FORWARD:
+    case BF_HOOK_NF_LOCAL_OUT:
+    case BF_HOOK_NF_POST_ROUTING:
+        (void)snprintf(buf, PATH_MAX, "%s", flavor_keys[program->hook]);
+        break;
+    case BF_HOOK_CGROUP_INGRESS:
+    case BF_HOOK_CGROUP_EGRESS:
+        (void)snprintf(buf, PATH_MAX, "%s_%s", flavor_keys[program->hook],
+                       program->runtime.chain->hook_opts.cgroup);
+        break;
+    default:
+        return bf_err_r(-ENOTSUP, "hook %d is not supported", program->hook);
+    }
+
+    murmur3_x86_32(buf, (int)strlen(buf), 0, &hash);
+
+    (void)snprintf(program->id, BF_PROG_ID_LEN, "bf_%3s_%04x",
+                   flavor_keys[program->hook], (uint16_t)(hash & 0xff));
+
+    return 0;
+}
+
 int bf_program_new(struct bf_program **program, enum bf_hook hook,
                    enum bf_front front, const struct bf_chain *chain)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
-    char suffix[BPF_OBJ_NAME_LEN] = {};
+    char name[BPF_OBJ_NAME_LEN];
+    uint32_t set_idx = 0;
     int r;
 
     bf_assert(chain);
@@ -97,25 +172,27 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
     _program->runtime.ops = bf_flavor_ops_get(hook);
     _program->runtime.chain = chain;
 
-    // Subpar, but at least there won't be any name clash.
-    (void)snprintf(suffix, BPF_OBJ_NAME_LEN, "%02hx%02hx%02hx", hook, front,
-                   chain->hook_opts.ifindex);
-    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "bf_prog_%.6s",
-                   suffix);
-    (void)snprintf(_program->link_name, BPF_OBJ_NAME_LEN, "bf_link_%.6s",
-                   suffix);
-    (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN, "%s/bf_prog_%.6s",
-                   BF_PIN_DIR, suffix);
-    (void)snprintf(_program->link_pin_path, PIN_PATH_LEN, "%s/bf_link_%.6s",
-                   BF_PIN_DIR, suffix);
+    r = _bf_program_genid(_program);
+    if (r) {
+        return bf_err_r(r,
+                        "failed to generate ID for bf_program attached to %s",
+                        bf_hook_to_str(hook));
+    }
 
-    r = bf_map_new(&_program->cmap, BF_MAP_TYPE_COUNTERS, suffix,
+    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s_prg",
+                   _program->id);
+    (void)snprintf(_program->link_name, BPF_OBJ_NAME_LEN, "%s_lnk",
+                   _program->id);
+
+    (void)snprintf(name, BPF_OBJ_NAME_LEN, "%s_cmp", _program->id);
+    r = bf_map_new(&_program->cmap, name, BF_MAP_TYPE_COUNTERS,
                    BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
                    sizeof(struct bf_counter), 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the counters bf_map object");
 
-    r = bf_map_new(&_program->pmap, BF_MAP_TYPE_PRINTER, suffix,
+    (void)snprintf(name, BPF_OBJ_NAME_LEN, "%s_pmp", _program->id);
+    r = bf_map_new(&_program->pmap, name, BF_MAP_TYPE_PRINTER,
                    BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
                    BF_MAP_VALUE_SIZE_UNKNOWN, 1);
     if (r < 0)
@@ -126,7 +203,9 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
         struct bf_set *set = bf_list_node_get_data(set_node);
         _cleanup_bf_map_ struct bf_map *map = NULL;
 
-        r = bf_map_new(&map, BF_MAP_TYPE_SET, suffix, BF_MAP_BPF_TYPE_HASH,
+        (void)snprintf(name, BPF_OBJ_NAME_LEN, "%s_s%02x", _program->id,
+                       (uint8_t)set_idx++);
+        r = bf_map_new(&map, name, BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_HASH,
                        set->elem_size, 1, bf_list_size(&set->elems));
         if (r < 0)
             return r;
@@ -268,12 +347,19 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 {
     enum bf_hook hook;
     enum bf_front front;
+    _cleanup_close_ int pindir_fd = -1;
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
     bf_assert(marsh);
     bf_assert(program);
+
+    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
+    if (pindir_fd < 0) {
+        return bf_err_r(errno, "failed to open bf_program pin directory %s",
+                        BF_PIN_DIR);
+    }
 
     if (!(child = bf_marsh_next_child(marsh, NULL)))
         return -EINVAL;
@@ -290,14 +376,14 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     bf_map_free(&_program->cmap);
-    r = bf_map_new_from_marsh(&_program->cmap, child);
+    r = bf_map_new_from_marsh(&_program->cmap, pindir_fd, child);
     if (r < 0)
         return r;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     bf_map_free(&_program->pmap);
-    r = bf_map_new_from_marsh(&_program->pmap, child);
+    r = bf_map_new_from_marsh(&_program->pmap, pindir_fd, child);
     if (r < 0)
         return r;
 
@@ -317,7 +403,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         while ((set_elem = bf_marsh_next_child(child, set_elem))) {
             _cleanup_bf_map_ struct bf_map *map = NULL;
 
-            r = bf_map_new_from_marsh(&map, set_elem);
+            r = bf_map_new_from_marsh(&map, pindir_fd, set_elem);
             if (r < 0)
                 return r;
 
@@ -353,12 +439,14 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
 
-    r = bf_bpf_obj_get(_program->prog_pin_path, &_program->runtime.prog_fd);
+    r = bf_bpf_obj_get(_program->prog_name, pindir_fd,
+                       &_program->runtime.prog_fd);
     if (r < 0)
         return bf_err_r(r, "failed to get prog fd");
 
     if (_program->runtime.chain->hook_opts.attach) {
-        r = bf_bpf_obj_get(_program->link_pin_path, &_program->runtime.link_fd);
+        r = bf_bpf_obj_get(_program->link_name, pindir_fd,
+                           &_program->runtime.link_fd);
         if (r < 0)
             return bf_err_r(r, "failed to get link fd");
     }
@@ -377,15 +465,12 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
+    DUMP(prefix, "id: %s", program->id);
     DUMP(prefix, "hook: %s", bf_hook_to_str(program->hook));
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
     DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
     DUMP(prefix, "link_name: %s", program->link_name);
-    DUMP(prefix, "prog_pin_path: %s",
-         bf_opts_transient() ? "<transient>" : program->prog_pin_path);
-    DUMP(prefix, "link_pin_path: %s",
-         bf_opts_transient() ? "<transient>" : program->link_pin_path);
 
     DUMP(prefix, "cmap: struct bf_map *");
     bf_dump_prefix_push(prefix);
@@ -920,42 +1005,63 @@ static void _bf_program_unpin(const struct bf_program *program);
  */
 static int _bf_program_pin(const struct bf_program *program)
 {
+    int pindir_fd;
     int r;
 
     bf_assert(program);
 
-    r = bf_bpf_obj_pin(program->prog_pin_path, program->runtime.prog_fd);
+    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
+    if (pindir_fd < 0) {
+        return bf_err_r(errno, "failed to open bf_program pin directory %s",
+                        BF_PIN_DIR);
+    }
+
+    r = bf_bpf_obj_pin(program->prog_name, program->runtime.prog_fd, pindir_fd);
     if (r < 0) {
-        bf_err_r(r, "failed to pin program fd to %s", program->prog_pin_path);
-        goto err;
+        bf_err_r(r, "failed to pin program '%s' in %s", program->prog_name,
+                 BF_PIN_DIR);
+        goto err_prog_pin;
     }
 
     if (program->runtime.chain->hook_opts.attach) {
-        r = bf_bpf_obj_pin(program->link_pin_path, program->runtime.link_fd);
+        r = bf_bpf_obj_pin(program->link_name, program->runtime.link_fd,
+                           pindir_fd);
         if (r < 0) {
-            bf_err_r(r, "failed to pin link fd to %s", program->link_pin_path);
-            goto err;
+            bf_err_r(r, "failed to pin link '%s' in %s", program->link_name,
+                     BF_PIN_DIR);
+            goto err_link_pin;
         }
     }
 
-    r = bf_map_pin(program->cmap);
+    r = bf_map_pin(program->cmap, pindir_fd);
     if (r < 0)
-        goto err;
+        goto err_cmap_pin;
 
-    r = bf_map_pin(program->pmap);
+    r = bf_map_pin(program->pmap, pindir_fd);
     if (r < 0)
-        goto err;
+        goto err_pmap_pin;
 
     bf_list_foreach (&program->sets, set_node) {
-        r = bf_map_pin(bf_list_node_get_data(set_node));
+        r = bf_map_pin(bf_list_node_get_data(set_node), pindir_fd);
         if (r < 0)
-            goto err;
+            goto err_set_pin;
     }
 
     return 0;
 
-err:
-    _bf_program_unpin(program);
+err_set_pin:
+    bf_list_foreach (&program->sets, set_node)
+        bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
+    bf_map_unpin(program->pmap, pindir_fd);
+err_pmap_pin:
+    bf_map_unpin(program->cmap, pindir_fd);
+err_cmap_pin:
+    // Unconditionally unpin the link, ignore if it doesn't exist
+    unlinkat(pindir_fd, program->link_name, 0);
+err_link_pin:
+    unlinkat(pindir_fd, program->prog_name, 0);
+err_prog_pin:
+    closep(&pindir_fd);
     return r;
 }
 
@@ -969,15 +1075,25 @@ err:
  */
 static void _bf_program_unpin(const struct bf_program *program)
 {
+    _cleanup_close_ int pindir_fd = -1;
+
     bf_assert(program);
 
-    unlink(program->prog_pin_path);
-    unlink(program->link_pin_path);
-    bf_map_unpin(program->cmap);
-    bf_map_unpin(program->pmap);
+    pindir_fd = open(BF_PIN_DIR, O_DIRECTORY, 0);
+    if (pindir_fd < 0) {
+        bf_err_r(
+            errno,
+            "failed to open bf_program pin directory %s, assuming BPF objects are unpinned",
+            BF_PIN_DIR);
+        return;
+    }
 
+    unlinkat(pindir_fd, program->prog_name, 0);
+    unlinkat(pindir_fd, program->link_name, 0);
+    bf_map_unpin(program->pmap, pindir_fd);
+    bf_map_unpin(program->cmap, pindir_fd);
     bf_list_foreach (&program->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node));
+        bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
 }
 
 static int _bf_program_load_printer_map(struct bf_program *program)

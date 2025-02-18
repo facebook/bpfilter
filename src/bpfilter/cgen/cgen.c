@@ -59,7 +59,6 @@ int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
     if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
         return -EINVAL;
 
-    bf_info("Adding marsh of size %lu", marsh_elem->data_len);
     r = bf_chain_new_from_marsh(&chain, marsh_elem);
     if (r < 0)
         return r;

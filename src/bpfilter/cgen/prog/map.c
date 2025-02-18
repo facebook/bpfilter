@@ -18,25 +18,17 @@
 #include "core/bpf.h"
 #include "core/dump.h"
 #include "core/helper.h"
-#include "core/io.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 
-static const char _bf_map_type_key[] = {
-    [BF_MAP_TYPE_COUNTERS] = 'c',
-    [BF_MAP_TYPE_PRINTER] = 'p',
-    [BF_MAP_TYPE_SET] = 's',
-};
-
-int bf_map_new(struct bf_map **map, enum bf_map_type type,
-               const char *name_suffix, enum bf_map_bpf_type bpf_type,
-               size_t key_size, size_t value_size, size_t n_elems)
+int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
+               enum bf_map_bpf_type bpf_type, size_t key_size,
+               size_t value_size, size_t n_elems)
 {
     _cleanup_bf_map_ struct bf_map *_map = NULL;
-    int r;
 
-    bf_assert(map);
-    bf_assert(name_suffix);
+    bf_assert(map && name);
+    bf_assert(name[0] != '\0');
     bf_assert(key_size > 0 && value_size > 0 && n_elems > 0);
 
     _map = malloc(sizeof(*_map));
@@ -50,35 +42,15 @@ int bf_map_new(struct bf_map **map, enum bf_map_type type,
     _map->value_size = value_size;
     _map->n_elems = n_elems;
 
-    r = snprintf(_map->name, BPF_OBJ_NAME_LEN, "bf_%cmap_%.6s",
-                 _bf_map_type_key[type], name_suffix);
-    if (r < 0) {
-        return bf_err_r(
-            errno,
-            "failed to write map name to bf_map object using suffix '%s'",
-            name_suffix);
-    }
-
-    r = snprintf(_map->path, BF_PIN_PATH_LEN, "%s/%s", BF_PIN_DIR, _map->name);
-    if (r < 0) {
-        return bf_err_r(
-            errno,
-            "failed to write map pin path to bf_map object using map name '%s'",
-            _map->name);
-    }
-    if (BF_PIN_PATH_LEN <= (unsigned int)r) {
-        bf_err(
-            "failed to write map pin path to bf_map object: map name '%s' is too long",
-            _map->name);
-        return -E2BIG;
-    }
+    strncpy(_map->name, name, BPF_OBJ_NAME_LEN);
 
     *map = TAKE_PTR(_map);
 
     return 0;
 }
 
-int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh)
+int bf_map_new_from_marsh(struct bf_map **map, int dir_fd,
+                          const struct bf_marsh *marsh)
 {
     _cleanup_bf_map_ struct bf_map *_map = NULL;
     struct bf_marsh *elem = NULL;
@@ -103,10 +75,6 @@ int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh)
 
     if (!(elem = bf_marsh_next_child(marsh, elem)))
         return -EINVAL;
-    memcpy(_map->path, elem->data, BF_PIN_PATH_LEN);
-
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
     memcpy(&_map->bpf_type, elem->data, sizeof(_map->bpf_type));
 
     if (!(elem = bf_marsh_next_child(marsh, elem)))
@@ -124,9 +92,9 @@ int bf_map_new_from_marsh(struct bf_map **map, const struct bf_marsh *marsh)
     if (bf_marsh_next_child(marsh, elem))
         return bf_err_r(-E2BIG, "too many elements in bf_map marsh");
 
-    r = bf_bpf_obj_get(_map->path, &_map->fd);
+    r = bf_bpf_obj_get(_map->name, dir_fd, &_map->fd);
     if (r < 0)
-        return bf_err_r(r, "failed to open pinned BPF map '%s'", _map->path);
+        return bf_err_r(r, "failed to open pinned BPF map '%s'", _map->name);
 
     *map = TAKE_PTR(_map);
 
@@ -161,10 +129,6 @@ int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh)
         return r;
 
     r = bf_marsh_add_child_raw(&_marsh, map->name, BPF_OBJ_NAME_LEN);
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, map->path, BF_PIN_PATH_LEN);
     if (r < 0)
         return r;
 
@@ -216,7 +180,6 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
     DUMP(prefix, "type: %s", _bf_map_type_to_str(map->type));
     DUMP(prefix, "fd: %d", map->fd);
     DUMP(prefix, "name: %s", map->name);
-    DUMP(prefix, "path: %s", map->path);
     DUMP(prefix, "bpf_type: %s", bf_map_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "key_size: %lu", map->key_size);
     DUMP(prefix, "value_size: %lu", map->value_size);
@@ -399,28 +362,32 @@ void bf_map_destroy(struct bf_map *map)
     closep(&map->fd);
 }
 
-int bf_map_pin(const struct bf_map *map)
+int bf_map_pin(const struct bf_map *map, int dir_fd)
 {
     int r;
 
     bf_assert(map);
 
-    r = bf_bpf_obj_pin(map->path, map->fd);
+    r = bf_bpf_obj_pin(map->name, map->fd, dir_fd);
     if (r < 0)
-        return bf_err_r(r, "failed to pin BPF map to '%s'", map->path);
+        return bf_err_r(r, "failed to pin BPF map '%s'", map->name);
 
     return 0;
 }
 
-void bf_map_unpin(const struct bf_map *map)
+void bf_map_unpin(const struct bf_map *map, int dir_fd)
 {
+    int r;
+
     bf_assert(map);
 
-    if (unlink(map->path) < 0) {
+    r = unlinkat(dir_fd, map->name, 0);
+    if (r < 0 && errno != ENOENT) {
+        // Do not warn on ENOENT, we want the file to be gone!
         bf_warn_r(
             errno,
-            "failed to unlink BPF map '%s', assuming the map is destroyed",
-            map->path);
+            "failed to unlink BPF map '%s', assuming the map is not pinned",
+            map->name);
     }
 }
 
