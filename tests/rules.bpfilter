@@ -1,5 +1,5 @@
 # Create an XDP chain
-chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_program} policy ACCEPT
+chain BF_HOOK_XDP{attach=no,ifindex=2,name=my_xdp_prog} policy ACCEPT
     rule
         meta.dport eq 22
         counter

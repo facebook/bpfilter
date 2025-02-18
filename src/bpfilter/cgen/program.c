@@ -122,6 +122,13 @@ static int _bf_program_genid(struct bf_program *program)
 
     bf_assert(program);
 
+    // If the chain has a name, use it as ID
+    if (program->runtime.chain->hook_opts.used_opts & (1 << BF_HOOK_OPT_NAME)) {
+        memcpy(program->id, program->runtime.chain->hook_opts.name,
+               BF_PROG_ID_LEN);
+        return 0;
+    }
+
     switch (program->hook) {
     case BF_HOOK_XDP:
     case BF_HOOK_TC_INGRESS:

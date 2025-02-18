@@ -195,7 +195,7 @@ private:
 class Chain
 {
 public:
-    Chain(::std::string bin = "bfcli", ::std::string name = "bf_benchmark");
+    Chain(::std::string bin = "bfcli", ::std::string name = "bf_bench");
     Chain(::std::initializer_list<::std::string> rules);
 
     Chain &operator<<(const ::std::string &rule);
