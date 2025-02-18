@@ -7,7 +7,6 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -23,8 +22,6 @@
 #include "core/opts.h"
 #include "core/request.h"
 #include "core/response.h"
-
-#define BF_PERM_755 (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
 
 /**
  * Global flag to indicate whether the daemon should stop.
@@ -53,43 +50,6 @@ void _bf_sig_handler(int sig)
     UNUSED(sig);
 
     _bf_stop_received = 1;
-}
-
-/**
- * Ensure the daemon can use a directory.
- *
- * Check if the current process can access @p dir. If it doesn't exists,
- * create it with the appropriate permissions. If it exists, check that it is
- * a writable directory.
- *
- * @return 0 on success, or a negative errno value on failure.
- */
-static int _bf_ensure_dir(const char *dir)
-{
-    struct stat stats;
-    int r;
-
-    r = access(dir, R_OK | W_OK);
-    if (r && errno == ENOENT) {
-        if (mkdir(dir, BF_PERM_755) == 0)
-            return 0;
-
-        return bf_err_r(errno, "failed to create directory '%s'", dir);
-    }
-
-    if (r && errno == EACCES)
-        return bf_err_r(errno, "can't access directory '%s'", dir);
-
-    if (r)
-        return bf_err_r(errno, "failed to access directory '%s'", dir);
-
-    if (stat(dir, &stats))
-        return bf_err_r(errno, "failed to stat directory '%s'", dir);
-
-    if (!S_ISDIR(stats.st_mode))
-        return bf_err_r(ENOTDIR, "directory '%s' is not a directory", dir);
-
-    return 0;
 }
 
 /**
@@ -268,11 +228,11 @@ static int _bf_init(int argc, char *argv[])
     if (r < 0)
         return bf_err_r(r, "failed to parse command line arguments");
 
-    r = _bf_ensure_dir(BF_RUNTIME_DIR);
+    r = bf_ensure_dir(BF_RUNTIME_DIR);
     if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
 
-    r = _bf_ensure_dir(BF_PIN_DIR);
+    r = bf_ensure_dir(BF_PIN_DIR);
     if (r)
         return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
 
