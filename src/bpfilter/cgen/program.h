@@ -289,21 +289,18 @@ struct bf_program
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
     char link_name[BPF_OBJ_NAME_LEN];
-    /// Printer map name.
-    char pmap_name[BPF_OBJ_NAME_LEN];
     char prog_pin_path[PIN_PATH_LEN];
     char link_pin_path[PIN_PATH_LEN];
-    /// Pinter map pinning path.
-    char pmap_pin_path[PIN_PATH_LEN];
+
+    /// Log messages printer
+    struct bf_printer *printer;
 
     /// Counters map
     struct bf_map *counters;
-
-    /// List of @ref bf_map used to store the sets.
+    /// Printer map
+    struct bf_map *pmap;
+    /// List of set maps
     bf_list sets;
-
-    /// Log messages printer.
-    struct bf_printer *printer;
 
     /** Number of counters in the counters map. Not all of them are used by
      * the program, but this value is common for all the programs of a given
@@ -325,8 +322,6 @@ struct bf_program
         int prog_fd;
         /** File descriptor of the program's link. */
         int link_fd;
-        /** File descriptor of the printer map. */
-        int pmap_fd;
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
 
