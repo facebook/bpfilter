@@ -109,7 +109,7 @@ With:
      - Path to the cgroup to attach to.
    * - ``name=$CHAIN_NAME``
      - Allowed patern: ``[a-zA-Z0-9_]+``
-     - Name of the chain, will be reused as the name of the BPF program. A same name can be reused for multiple chains. Must be at most ``BPF_OBJ_NAME_LEN - 1`` characters.
+     - Name of the chain (i.e. the name of the BPF program). Must be at most 11 characters. If more than one chain have the same name, ``bpfilter`` will only be able to pin the first one to the system.
    * - ``attach=$BOOL``
      - ``yes`` or ``no``
      - If ``no``, the chain will be generated and loaded to the kernel, but not attached. Useful if you want to attach it manually, or validate the generation process. Default to ``yes``.

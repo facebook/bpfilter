@@ -19,6 +19,10 @@
 #include "core/list.h"
 #include "core/logger.h"
 
+/// Maximum length of the chain name: @c BPF_OBJ_NAME_LEN minus the length
+/// of the BPF object suffix.
+#define BF_CHAIN_NAME_LEN 11
+
 static const char *_bf_hook_strs[] = {
     [BF_HOOK_XDP] = "BF_HOOK_XDP",
     [BF_HOOK_TC_INGRESS] = "BF_HOOK_TC_INGRESS",
@@ -146,9 +150,9 @@ static void _bf_hook_opt_cgroup_dump(const struct bf_hook_opts *opts,
 static int _bf_hook_opt_name_parse(struct bf_hook_opts *opts,
                                    const char *raw_opt)
 {
-    if (strlen(raw_opt) >= BPF_OBJ_NAME_LEN) {
+    if (strlen(raw_opt) > BF_CHAIN_NAME_LEN) {
         return bf_err_r(E2BIG, "a chain name should be at most %d characters",
-                        BPF_OBJ_NAME_LEN - 1);
+                        BF_CHAIN_NAME_LEN);
     }
 
     opts->name = strdup(raw_opt);
