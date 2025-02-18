@@ -41,22 +41,6 @@ Test(hook, can_get_prog_type_from_hook)
         assert_true(bf_hook_to_bpf_prog_type(i) <= BPF_PROG_TYPE_NETFILTER);
 }
 
-Test(hook, hook_to_flavor_assert_failure)
-{
-    expect_assert_failure(bf_hook_to_flavor(-1));
-    expect_assert_failure(bf_hook_to_flavor(_BF_HOOK_MAX));
-}
-
-Test(hook, can_get_flavor_from_hook)
-{
-    enum bf_flavor flavor;
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        flavor = bf_hook_to_flavor(i);
-        assert_true(0 <= flavor);
-        assert_true(flavor < _BF_FLAVOR_MAX);
-    }
-}
 
 Test(hook, hook_to_attach_type_assert_failure)
 {

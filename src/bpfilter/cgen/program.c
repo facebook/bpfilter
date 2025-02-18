@@ -27,9 +27,12 @@
 #include "bpfilter/cgen/matcher/set.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
+#include "bpfilter/cgen/nf.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/prog/map.h"
 #include "bpfilter/cgen/stub.h"
+#include "bpfilter/cgen/tc.h"
+#include "bpfilter/cgen/xdp.h"
 #include "bpfilter/ctx.h"
 #include "core/bpf.h"
 #include "core/btf.h"
@@ -54,24 +57,26 @@
 
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
-extern const struct bf_flavor_ops bf_flavor_ops_tc;
-extern const struct bf_flavor_ops bf_flavor_ops_nf;
-extern const struct bf_flavor_ops bf_flavor_ops_xdp;
-
-static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
+static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_hook hook)
 {
     static const struct bf_flavor_ops *flavor_ops[] = {
-        [BF_FLAVOR_TC] = &bf_flavor_ops_tc,
-        [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
-        [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
-        [BF_FLAVOR_CGROUP] = &bf_flavor_ops_cgroup,
+        [BF_HOOK_XDP] = &bf_flavor_ops_xdp,
+        [BF_HOOK_TC_INGRESS] = &bf_flavor_ops_tc,
+        [BF_HOOK_NF_PRE_ROUTING] = &bf_flavor_ops_nf,
+        [BF_HOOK_NF_LOCAL_IN] = &bf_flavor_ops_nf,
+        [BF_HOOK_NF_FORWARD] = &bf_flavor_ops_nf,
+        [BF_HOOK_CGROUP_INGRESS] = &bf_flavor_ops_cgroup,
+        [BF_HOOK_CGROUP_EGRESS] = &bf_flavor_ops_cgroup,
+        [BF_HOOK_NF_LOCAL_OUT] = &bf_flavor_ops_nf,
+        [BF_HOOK_NF_POST_ROUTING] = &bf_flavor_ops_nf,
+        [BF_HOOK_TC_EGRESS] = &bf_flavor_ops_tc,
     };
 
-    bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
-    static_assert(ARRAY_SIZE(flavor_ops) == _BF_FLAVOR_MAX,
-                  "missing entries in fronts array");
+    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
+    static_assert(ARRAY_SIZE(flavor_ops) == _BF_HOOK_MAX,
+                  "missing entries in flavors array");
 
-    return flavor_ops[flavor];
+    return flavor_ops[hook];
 }
 
 int bf_program_new(struct bf_program **program, enum bf_hook hook,
@@ -89,7 +94,7 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
 
     _program->hook = hook;
     _program->front = front;
-    _program->runtime.ops = bf_flavor_ops_get(bf_hook_to_flavor(hook));
+    _program->runtime.ops = bf_flavor_ops_get(hook);
     _program->runtime.chain = chain;
 
     // Subpar, but at least there won't be any name clash.
@@ -867,8 +872,7 @@ int bf_program_generate(struct bf_program *program)
     const struct bf_chain *chain = program->runtime.chain;
     int r;
 
-    bf_info("generating %s program for %s::%s",
-            bf_flavor_to_str(bf_hook_to_flavor(program->hook)),
+    bf_info("generating program for %s::%s",
             bf_front_to_str(program->front), bf_hook_to_str(program->hook));
 
     /* Add 1 to the number of counters for the policy counter, and 1

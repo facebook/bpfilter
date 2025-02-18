@@ -11,7 +11,6 @@
 #include <stdint.h>
 
 #include "core/dump.h"
-#include "core/flavor.h"
 #include "core/list.h"
 
 /**
@@ -80,14 +79,6 @@ int bf_hook_from_str(const char *str, enum bf_hook *hook);
  * @return The BPF program type corresponding to @p hook.
  */
 unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook);
-
-/**
- * Get the expected flavor for a given hook.
- *
- * @param hook BPF hook. Must be valid.
- * @return bpfilter flavor corresponding to @p hook.
- */
-enum bf_flavor bf_hook_to_flavor(enum bf_hook hook);
 
 /**
  * Convert a bpfilter hook to a BPF attach type.

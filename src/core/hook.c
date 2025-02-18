@@ -15,7 +15,6 @@
 #include <string.h>
 
 #include "core/dump.h"
-#include "core/flavor.h"
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
@@ -78,28 +77,6 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
                   "missing entries in prog_type array");
 
     return prog_type[hook];
-}
-
-enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
-{
-    static const enum bf_flavor flavors[] = {
-        [BF_HOOK_XDP] = BF_FLAVOR_XDP,
-        [BF_HOOK_TC_INGRESS] = BF_FLAVOR_TC,
-        [BF_HOOK_NF_PRE_ROUTING] = BF_FLAVOR_NF,
-        [BF_HOOK_NF_LOCAL_IN] = BF_FLAVOR_NF,
-        [BF_HOOK_CGROUP_INGRESS] = BF_FLAVOR_CGROUP,
-        [BF_HOOK_CGROUP_EGRESS] = BF_FLAVOR_CGROUP,
-        [BF_HOOK_NF_FORWARD] = BF_FLAVOR_NF,
-        [BF_HOOK_NF_LOCAL_OUT] = BF_FLAVOR_NF,
-        [BF_HOOK_NF_POST_ROUTING] = BF_FLAVOR_NF,
-        [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
-    };
-
-    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
-    static_assert(ARRAY_SIZE(flavors) == _BF_HOOK_MAX,
-                  "missing entries in flavors array");
-
-    return flavors[hook];
 }
 
 enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
