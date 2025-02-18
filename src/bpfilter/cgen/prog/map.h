@@ -29,6 +29,8 @@ enum bf_map_type
 
 #define BF_PIN_PATH_LEN 64
 
+#define BF_MAP_KEY_SIZE_UNKNOWN SIZE_MAX
+#define BF_MAP_VALUE_SIZE_UNKNOWN SIZE_MAX
 #define BF_MAP_N_ELEMS_UNKNOWN SIZE_MAX
 
 struct bf_map
@@ -164,6 +166,32 @@ int bf_map_pin(const struct bf_map *map);
  * Unpin the map from the filesystem.
  */
 void bf_map_unpin(const struct bf_map *map);
+
+/**
+ * Set the size of the map's keys.
+ *
+ * This function can be used to change the size of the map's keys, up
+ * until @ref bf_map_create is called. Once the map has been created, the size
+ * of the keys can't be changed.
+ *
+ * @param map The map to modify Can't be NULL.
+ * @param key_size Size of the keys. Can't be 0.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_map_set_key_size(struct bf_map *map, size_t key_size);
+
+/**
+ * Set the size of the map's values.
+ *
+ * This function can be used to change the size of the map's values, up
+ * until @ref bf_map_create is called. Once the map has been created, the size
+ * of the values can't be changed.
+ *
+ * @param map The map to modify Can't be NULL.
+ * @param value_size Size of the values. Can't be 0.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_map_set_value_size(struct bf_map *map, size_t value_size);
 
 /**
  * Set the number of elements in the map.

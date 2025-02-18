@@ -342,6 +342,18 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
 
     bf_assert(map);
 
+    if (map->key_size == BF_MAP_KEY_SIZE_UNKNOWN) {
+        return bf_err_r(
+            -EINVAL,
+            "can't create a map with BF_MAP_KEY_SIZE_UNKNOWN key size");
+    }
+
+    if (map->value_size == BF_MAP_VALUE_SIZE_UNKNOWN) {
+        return bf_err_r(
+            -EINVAL,
+            "can't create a map with BF_MAP_VALUE_SIZE_UNKNOWN value size");
+    }
+
     if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
         return bf_err_r(
             -EINVAL,
@@ -410,6 +422,36 @@ void bf_map_unpin(const struct bf_map *map)
             "failed to unlink BPF map '%s', assuming the map is destroyed",
             map->path);
     }
+}
+
+int bf_map_set_key_size(struct bf_map *map, size_t key_size)
+{
+    bf_assert(key_size != 0);
+
+    if (map->fd != -1) {
+        return bf_err_r(
+            -EPERM,
+            "can't change the size of the map key once it has been created");
+    }
+
+    map->key_size = key_size;
+
+    return 0;
+}
+
+int bf_map_set_value_size(struct bf_map *map, size_t value_size)
+{
+    bf_assert(value_size != 0);
+
+    if (map->fd != -1) {
+        return bf_err_r(
+            -EPERM,
+            "can't change the size of the map value once it has been created");
+    }
+
+    map->value_size = value_size;
+
+    return 0;
 }
 
 int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
