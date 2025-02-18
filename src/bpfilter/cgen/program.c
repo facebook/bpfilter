@@ -104,20 +104,22 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
                    suffix);
     (void)snprintf(_program->link_name, BPF_OBJ_NAME_LEN, "bf_link_%.6s",
                    suffix);
-    (void)snprintf(_program->pmap_name, BPF_OBJ_NAME_LEN, "bf_pmap_%.6s",
-                   suffix);
-    (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN,
-                   "%s/bf_prog_%.6s", BF_PIN_DIR, suffix);
-    (void)snprintf(_program->link_pin_path, PIN_PATH_LEN,
-                   "%s/bf_link_%.6s", BF_PIN_DIR, suffix);
-    (void)snprintf(_program->pmap_pin_path, PIN_PATH_LEN,
-                   "%s/bf_pmap_%.6s", BF_PIN_DIR, suffix);
+    (void)snprintf(_program->prog_pin_path, PIN_PATH_LEN, "%s/bf_prog_%.6s",
+                   BF_PIN_DIR, suffix);
+    (void)snprintf(_program->link_pin_path, PIN_PATH_LEN, "%s/bf_link_%.6s",
+                   BF_PIN_DIR, suffix);
 
     r = bf_map_new(&_program->counters, BF_MAP_TYPE_COUNTERS, suffix,
                    BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
                    sizeof(struct bf_counter), 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the counters bf_map object");
+
+    r = bf_map_new(&_program->pmap, BF_MAP_TYPE_PRINTER, suffix,
+                   BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
+                   BF_MAP_VALUE_SIZE_UNKNOWN, 1);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the printer bf_map object");
 
     _program->sets = bf_map_list();
     bf_list_foreach (&chain->sets, set_node) {
@@ -144,7 +146,6 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
 
     _program->runtime.prog_fd = -1;
     _program->runtime.link_fd = -1;
-    _program->runtime.pmap_fd = -1;
 
     *program = TAKE_PTR(_program);
 
@@ -166,9 +167,9 @@ void bf_program_free(struct bf_program **program)
      * safely. */
     closep(&(*program)->runtime.prog_fd);
     closep(&(*program)->runtime.link_fd);
-    closep(&(*program)->runtime.pmap_fd);
 
     bf_map_free(&(*program)->counters);
+    bf_map_free(&(*program)->pmap);
     bf_list_clean(&(*program)->sets);
     bf_printer_free(&(*program)->printer);
 
@@ -203,6 +204,19 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
             return r;
 
         r = bf_marsh_add_child_obj(&_marsh, counters_elem);
+        if (r < 0)
+            return r;
+    }
+
+    {
+        // Serialize bf_program.pmap
+        _cleanup_bf_marsh_ struct bf_marsh *pmap_elem = NULL;
+
+        r = bf_map_marsh(program->pmap, &pmap_elem);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, pmap_elem);
         if (r < 0)
             return r;
     }
@@ -281,6 +295,13 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (r < 0)
         return r;
 
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    bf_map_free(&_program->pmap);
+    r = bf_map_new_from_marsh(&_program->pmap, child);
+    if (r < 0)
+        return r;
+
     /** @todo Avoid creating and filling the list in @ref bf_program_new before
      * trashing it all here. Eventually, this function will be replaced with
      * @c bf_program_new_from_marsh and this issue could be solved by **not**
@@ -343,10 +364,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
             return bf_err_r(r, "failed to get link fd");
     }
 
-    r = bf_bpf_obj_get(_program->pmap_pin_path, &_program->runtime.pmap_fd);
-    if (r < 0)
-        return bf_err_r(r, "failed to get printer map fd");
-
     *program = TAKE_PTR(_program);
 
     return 0;
@@ -366,17 +383,19 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
     DUMP(prefix, "link_name: %s", program->link_name);
-    DUMP(prefix, "pmap_name: %s", program->pmap_name);
     DUMP(prefix, "prog_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->prog_pin_path);
     DUMP(prefix, "link_pin_path: %s",
          bf_opts_transient() ? "<transient>" : program->link_pin_path);
-    DUMP(prefix, "pmap_pin_path: %s",
-         bf_opts_transient() ? "<transient>" : program->pmap_pin_path);
 
     DUMP(prefix, "counters: struct bf_map *");
     bf_dump_prefix_push(prefix);
     bf_map_dump(program->counters, bf_dump_prefix_last(prefix));
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "pmap: struct bf_map *");
+    bf_dump_prefix_push(prefix);
+    bf_map_dump(program->pmap, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "sets: bf_list<bf_map>[%lu]", bf_list_size(&program->sets));
@@ -417,7 +436,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
     DUMP(prefix, "link_fd: %d", program->runtime.link_fd);
-    DUMP(prefix, "pmap_fd: %d", program->runtime.pmap_fd);
     DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
     bf_dump_prefix_pop(prefix);
 
@@ -506,7 +524,7 @@ static int _bf_program_fixup(struct bf_program *program,
             break;
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
-            value = program->runtime.pmap_fd;
+            value = program->pmap->fd;
             break;
         case BF_FIXUP_TYPE_SET_MAP_FD:
             map = bf_list_get_at(&program->sets, insn->imm);
@@ -728,40 +746,6 @@ static int _bf_program_generate_functions(struct bf_program *program)
     return 0;
 }
 
-static int _bf_program_load_printer_map(struct bf_program *program)
-{
-    _cleanup_free_ void *pstr = NULL;
-    _cleanup_close_ int fd = -1;
-    size_t pstr_len;
-    int r;
-
-    bf_assert(program);
-
-    r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
-    if (r)
-        return bf_err_r(r, "failed to assemble printer map string");
-
-    r = bf_bpf__map_create(program->pmap_name, BPF_MAP_TYPE_ARRAY,
-                           sizeof(uint32_t), pstr_len, 1, BPF_F_RDONLY_PROG,
-                           &fd);
-    if (r)
-        return bf_err_r(r, "failed to create printer map");
-
-    r = bf_bpf_map_update_elem(fd, (void *)(uint32_t[]) {0}, pstr);
-    if (r)
-        return bf_err_r(r, "failed to insert messages in printer map");
-
-    program->runtime.pmap_fd = TAKE_FD(fd);
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
-    if (r) {
-        // Not ideal, but will be resolved with bf_map
-        closep(&program->runtime.pmap_fd);
-        return bf_err_r(r, "can't update instruction with printer map fd");
-    }
-
-    return 0;
-}
-
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
 {
     int r;
@@ -872,8 +856,8 @@ int bf_program_generate(struct bf_program *program)
     const struct bf_chain *chain = program->runtime.chain;
     int r;
 
-    bf_info("generating program for %s::%s",
-            bf_front_to_str(program->front), bf_hook_to_str(program->hook));
+    bf_info("generating program for %s::%s", bf_front_to_str(program->front),
+            bf_hook_to_str(program->hook));
 
     /* Add 1 to the number of counters for the policy counter, and 1
      * for the first reserved error slot. This must be done ahead of
@@ -955,14 +939,11 @@ static int _bf_program_pin(const struct bf_program *program)
         }
     }
 
-    r = bf_bpf_obj_pin(program->pmap_pin_path, program->runtime.pmap_fd);
-    if (r < 0) {
-        bf_err_r(r, "failed to pin printer map fd to %s",
-                 program->pmap_pin_path);
-        goto err;
-    }
-
     r = bf_map_pin(program->counters);
+    if (r < 0)
+        goto err;
+
+    r = bf_map_pin(program->pmap);
     if (r < 0)
         goto err;
 
@@ -993,11 +974,45 @@ static void _bf_program_unpin(const struct bf_program *program)
 
     unlink(program->prog_pin_path);
     unlink(program->link_pin_path);
-    unlink(program->pmap_pin_path);
     bf_map_unpin(program->counters);
+    bf_map_unpin(program->pmap);
 
     bf_list_foreach (&program->sets, set_node)
         bf_map_unpin(bf_list_node_get_data(set_node));
+}
+
+static int _bf_program_load_printer_map(struct bf_program *program)
+{
+    _cleanup_free_ void *pstr = NULL;
+    size_t pstr_len;
+    uint32_t key = 0;
+    int r;
+
+    bf_assert(program);
+
+    r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
+    if (r)
+        return bf_err_r(r, "failed to assemble printer map string");
+
+    r = bf_map_set_value_size(program->pmap, pstr_len);
+    if (r < 0)
+        return r;
+
+    r = bf_map_create(program->pmap, 0);
+    if (r < 0)
+        return r;
+
+    r = bf_map_set_elem(program->pmap, &key, pstr);
+    if (r)
+        return r;
+
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
+    if (r) {
+        bf_map_destroy(program->pmap);
+        return bf_err_r(r, "failed to fixup printer map FD");
+    }
+
+    return 0;
 }
 
 static int _bf_program_load_counters_map(struct bf_program *program)
@@ -1162,7 +1177,9 @@ int bf_program_unload(struct bf_program *program)
 
     closep(&program->runtime.prog_fd);
     closep(&program->runtime.link_fd);
-    closep(&program->runtime.pmap_fd);
+
+    bf_map_destroy(program->counters);
+    bf_map_destroy(program->pmap);
 
     bf_list_foreach (&program->sets, map_node)
         bf_map_destroy(bf_list_node_get_data(map_node));
