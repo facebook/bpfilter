@@ -129,25 +129,35 @@ int bf_bpf_map_update_elem(int fd, const void *key, void *value)
     return bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
 }
 
-int bf_bpf_obj_pin(const char *path, int fd)
+int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 {
     union bpf_attr attr = {
         .pathname = _bf_ptr_to_u64(path),
         .bpf_fd = fd,
+        .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
+        .path_fd = dir_fd,
     };
 
-    return bf_bpf(BPF_OBJ_PIN, &attr);
+    bf_assert(path);
+    bf_assert(dir_fd >= 0);
+    bf_assert(path[0] == '/' ? !dir_fd : 1);
+
+    int r = bf_bpf(BPF_OBJ_PIN, &attr);
+    return r;
 }
 
-int bf_bpf_obj_get(const char *path, int *fd)
+int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
 {
     union bpf_attr attr = {
         .pathname = _bf_ptr_to_u64(path),
+        .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
+        .path_fd = dir_fd,
     };
     int r;
 
-    bf_assert(path);
-    bf_assert(fd);
+    bf_assert(path && fd);
+    bf_assert(dir_fd >= 0);
+    bf_assert(path[0] == '/' ? !dir_fd : 1);
 
     r = bf_bpf(BPF_OBJ_GET, &attr);
     if (r < 0)
