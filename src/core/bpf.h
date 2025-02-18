@@ -85,22 +85,35 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value);
 int bf_bpf_map_update_elem(int fd, const void *key, void *value);
 
 /**
- * Pin a BPF object to a given path.
+ * Pin a BPF object to the system.
+ *
+ * If @p path is relative, then it is interpreted relative to the directory
+ * referred to by the file descriptor @p dir_fd . If @p path is absolute, then
+ * @p dir_fd must be 0.
  *
  * @param path Path to pin the object to. Can't be NULL.
- * @param fd File descriptor of the map.
- * @return 0 on success, or negative errno value on failure.
+ * @param fd File descriptor of the BPF object. Must be valid.
+ * @param dir_fd File descriptor of the parent directory. Must be a valid file
+ *        file descriptor or 0.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_obj_pin(const char *path, int fd);
+int bf_bpf_obj_pin(const char *path, int fd, int dir_fd);
 
 /**
- * Get a BPF object, from a path.
+ * Get a file descriptor to a BPF object from a path.
  *
- * @param path Path of the BPF object to get. Can't be NULL.
- * @param fd On success, contains a file descriptor to the BPF object.
- * @return 0 on success, or negative errno value on failure.
+ * If @p path is relative, then it is interpreted relative to the directory
+ * referred to by the file descriptor @p dir_fd . If @p path is absolute, then
+ * @p dir_fd must be 0.
+ *
+ * @param path Path to the pinned BPF object. Can't be NULL.
+ * @param dir_fd File descriptor of the parent directory. Must be a valid file
+ *        descriptor or 0.
+ * @param fd On success, contains a valid file descriptor to the BPF object
+ *        pinned at @p path . Unchanged on failure. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_bpf_obj_get(const char *path, int *fd);
+int bf_bpf_obj_get(const char *path, int dir_fd, int *fd);
 
 /**
  * Create a TC BPF link.
