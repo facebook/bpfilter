@@ -36,7 +36,7 @@ add_custom_target(benchmark
             -E make_directory
             ${CMAKE_BINARY_DIR}/output/benchmarks
     COMMAND
-        ${CMAKE_CURRENT_SOURCE_DIR}/asroot
+        ${CMAKE_SOURCE_DIR}/tools/asroot
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>

@@ -37,8 +37,9 @@ target_link_libraries(e2e_bin
 
 add_custom_target(e2e
     COMMAND
-        $<TARGET_FILE:e2e_bin>
-            --bpfilter $<TARGET_FILE:bpfilter>
+        ${CMAKE_SOURCE_DIR}/tools/asroot
+            $<TARGET_FILE:e2e_bin>
+                --bpfilter $<TARGET_FILE:bpfilter>
     DEPENDS
         e2e_bin
         bpfilter
