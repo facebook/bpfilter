@@ -232,10 +232,6 @@ static int _bf_init(int argc, char *argv[])
     if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
 
-    r = bf_ensure_dir(BF_PIN_DIR);
-    if (r)
-        return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
-
     // Either load context, or initialize it from scratch.
     if (!bf_opts_transient()) {
         r = _bf_load(ctx_path);
@@ -295,6 +291,9 @@ static int _bf_clean(void)
     }
 
     bf_ctx_teardown(bf_opts_transient());
+
+    // BF_PIN_DIR will be removed only if it's empty (see rmdir(3))
+    rmdir(BF_PIN_DIR);
 
     return 0;
 }
