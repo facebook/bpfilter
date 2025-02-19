@@ -1020,6 +1020,10 @@ static int _bf_program_pin(const struct bf_program *program)
 
     bf_assert(program);
 
+    r = bf_ensure_dir(BF_PIN_DIR);
+    if (r)
+        return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
+
     (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, program->id);
 
     r = bf_ensure_dir(dir);
