@@ -114,22 +114,17 @@ jobs:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
       - name: Restore the cached test results
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
+        if: matrix.host.arch == 'x64'
         with:
           path: build/output/tests
-          key: tests-results
+          key: tests-results-${{ github.run_id }}
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Run unit tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
       - name: Run end-to-end tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
-      - name: Cache the test results
-        uses: actions/cache/save@v4
-        if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
-        with:
-          path: build/output/tests
-          key: tests-results-${{ github.run_id }}
 
   benchmark:
     needs: create-images
@@ -152,18 +147,13 @@ jobs:
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_BENCHMARK=on
       - name: Restore the cached benchmark results
-        uses: actions/cache/restore@v4
-        with:
-          path: build/output/benchmarks
-          key: benchmarks-results
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
-      - name: Cache the benchmark results
-        uses: actions/cache/save@v4
-        if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
+        if: matrix.host.arch == 'x64'
+        uses: actions/cache@v4
         with:
           path: build/output/benchmarks
           key: benchmarks-results-${{ github.run_id }}
+      - name: Build
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
 
   doc:
     needs: [ test, benchmark ]
@@ -173,7 +163,22 @@ jobs:
     name: "Documentation"
     steps:
       - name: Checkout bpfilter
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      # Clone with the token if building from main, so we can push to the repo
+      - name: Checkout bpfilter-benchmark-results
+        uses: actions/checkout@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          repository: qdeslandes/bpfilter-benchmark-results
+          token: ${{ secrets.PUSH_TO_BPFILTER_BENCHMARK_RESULTS }}
+          path: ./bpfilter-benchmark-results
+      # Clone without the token from other branches: we don't push and secrets are not available in PR
+      - name: Checkout bpfilter-benchmark-results
+        uses: actions/checkout@v4
+        if: github.ref != 'refs/heads/main'
+        with:
+          repository: qdeslandes/bpfilter-benchmark-results
+          path: ./bpfilter-benchmark-results
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Restore the cached tests results
@@ -186,6 +191,18 @@ jobs:
         with:
           path: build/output/benchmarks
           key: benchmarks-results-${{ github.run_id }}
+      - name: Push benchmarks
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git -C bpfilter-benchmark-results config --local user.email "qde@naccy.de"
+          git -C bpfilter-benchmark-results config --local user.name "Quentin Deslandes"
+          cp $GITHUB_WORKSPACE/build/output/benchmarks/* bpfilter-benchmark-results
+          git -C bpfilter-benchmark-results add -A
+          git -C bpfilter-benchmark-results commit -m"Adding results for ${{ github.sha }}"
+          git -C bpfilter-benchmark-results push
+      - name: Restore previous benchmark results
+        run: |
+          cp bpfilter-benchmark-results/*.json $GITHUB_WORKSPACE/build/output/benchmarks/
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - name: Fix permissions
