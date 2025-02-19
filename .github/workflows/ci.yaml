@@ -129,7 +129,7 @@ jobs:
         if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
         with:
           path: build/output/tests
-          key: tests-results
+          key: tests-results-${{ github.run_id }}
 
   benchmark:
     needs: create-images
@@ -163,7 +163,7 @@ jobs:
         if: matrix.host.arch == 'x64' && github.ref == 'refs/heads/main'
         with:
           path: build/output/benchmarks
-          key: benchmarks-results
+          key: benchmarks-results-${{ github.run_id }}
 
   doc:
     needs: [ test, benchmark ]
@@ -180,12 +180,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/output/tests
-          key: tests-results
+          key: tests-results-${{ github.run_id }}
       - name: Restore the cached benchmarks results
         uses: actions/cache@v4
         with:
           path: build/output/benchmarks
-          key: benchmarks-results
+          key: benchmarks-results-${{ github.run_id }}
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - name: Fix permissions
