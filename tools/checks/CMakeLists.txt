@@ -24,7 +24,7 @@ add_custom_command(
         ${CMAKE_CURRENT_SOURCE_DIR}/filtersrcs
             --input ${CMAKE_BINARY_DIR}/compile_commands.json
             --output ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-            --filter ".*\/build\/tests\/unit$"
+            --filter ".*\/tests\/unit$"
     OUTPUT
         ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
     COMMENT
