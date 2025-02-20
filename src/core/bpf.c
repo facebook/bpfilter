@@ -20,8 +20,6 @@
 #include "core/nf.h"
 #include "core/opts.h"
 
-#define _bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
-
 #if defined(__i386__)
 #define _BF_NR_bpf 357
 #elif defined(__x86_64__)
@@ -47,9 +45,9 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     _cleanup_free_ char *log_buf = NULL;
     union bpf_attr attr = {
         .prog_type = prog_type,
-        .insns = _bf_ptr_to_u64(img),
+        .insns = bf_ptr_to_u64(img),
         .insn_cnt = (unsigned int)img_len,
-        .license = _bf_ptr_to_u64("GPL"),
+        .license = bf_ptr_to_u64("GPL"),
         .expected_attach_type = attach_type,
     };
     int r;
@@ -61,7 +59,7 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
         if (!log_buf)
             return -ENOMEM;
 
-        attr.log_buf = _bf_ptr_to_u64(log_buf);
+        attr.log_buf = bf_ptr_to_u64(log_buf);
         attr.log_size = (uint32_t)(1 << bf_opts_bpf_log_buf_len_pow());
         attr.log_level = 1;
     }
@@ -97,8 +95,8 @@ int bf_bpf_map_update_elem(int fd, const void *key, void *value)
 {
     union bpf_attr attr = {
         .map_fd = fd,
-        .key = _bf_ptr_to_u64(key),
-        .value = _bf_ptr_to_u64(value),
+        .key = bf_ptr_to_u64(key),
+        .value = bf_ptr_to_u64(value),
         .flags = BPF_ANY,
     };
 
@@ -108,7 +106,7 @@ int bf_bpf_map_update_elem(int fd, const void *key, void *value)
 int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 {
     union bpf_attr attr = {
-        .pathname = _bf_ptr_to_u64(path),
+        .pathname = bf_ptr_to_u64(path),
         .bpf_fd = fd,
         .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
         .path_fd = dir_fd,
@@ -125,7 +123,7 @@ int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
 {
     union bpf_attr attr = {
-        .pathname = _bf_ptr_to_u64(path),
+        .pathname = bf_ptr_to_u64(path),
         .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
         .path_fd = dir_fd,
     };
