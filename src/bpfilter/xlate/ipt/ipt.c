@@ -27,11 +27,11 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
-#include "core/if.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/matcher.h"
+#include "core/opts.h"
 #include "core/request.h"
 #include "core/response.h"
 #include "core/rule.h"
@@ -176,7 +176,7 @@ const struct bf_front_ops ipt_front = {
  * @param ipt_hook iptables hook. Must be valid.
  * @return bpfilter hook.
  */
-static enum bf_hook _bf_ipt_hook_to_bf_hook(enum nf_inet_hooks ipt_hook)
+static enum bf_hook _bf_ipt_hook_to_hook(enum nf_inet_hooks ipt_hook)
 {
     bf_assert(0 <= ipt_hook && ipt_hook <= NF_INET_NUMHOOKS);
 
@@ -225,24 +225,29 @@ static void _bf_ipt_cache_free(struct bf_ipt_cache **cache)
 /**
  * Convert an iptables target to a bpfilter verdict.
  *
- * @param ipt_target iptables target to convert.
- * @param verdict Verdict to store the conversion in.
- * @return 0 on success, negative error code on failure.
+ * Only the NF_ACCEPT and NF_DROP standard target are supported, other targets
+ * and user-defined chains jumps will be rejected.
+ *
+ * @param ipt_tgt @c iptables target to convert.
+ * @param verdict @c bpfilter verdict, corresponding to @p ipt_tgt .
+ * @return 0 on success, or na egative errno value on error.
  */
-static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
+static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_tgt,
                                      enum bf_verdict *verdict)
 {
-    if (bf_streq("", ipt_target->u.user.name)) {
-        struct ipt_standard_target *ipt_std_target =
-            (struct xt_standard_target *)ipt_target;
+    bf_assert(ipt_tgt && verdict);
 
-        if (ipt_std_target->verdict >= 0) {
+    if (bf_streq("", ipt_tgt->u.user.name)) {
+        struct ipt_standard_target *std_tgt =
+            (struct xt_standard_target *)ipt_tgt;
+
+        if (std_tgt->verdict >= 0) {
             return bf_err_r(
                 -ENOTSUP,
-                "target expects jump to a user-defined chain, this is not supported");
+                "iptables user-defined chains are not supported, rejecting target");
         }
 
-        switch (-ipt_std_target->verdict - 1) {
+        switch (-std_tgt->verdict - 1) {
         case NF_ACCEPT:
             *verdict = BF_VERDICT_ACCEPT;
             break;
@@ -250,101 +255,100 @@ static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_target,
             *verdict = BF_VERDICT_DROP;
             break;
         default:
-            return bf_err_r(-ENOTSUP, "unsupported verdict: %d",
-                            ipt_std_target->verdict);
+            return bf_err_r(-ENOTSUP, "unsupported iptables verdict: %d",
+                            std_tgt->verdict);
         }
     } else {
-        return bf_err_r(-ENOTSUP, "unsupported target: %s",
-                        ipt_target->u.user.name);
+        return bf_err_r(-ENOTSUP, "unsupported iptables target '%s', rejecting",
+                        ipt_tgt->u.user.name);
     }
 
     return 0;
 }
 
 /**
- * Translate an iptables rule into a bpfilter rule.
+ * Translate an @c iptables rule into a @c bpfilter rule.
  *
- * @todo Bound check the target.
- *
- * @param ipt_rule iptables rule to translate.
- * @param rule Rule to store the translation in.
- * @return 0 on success, negative error code on failure.
+ * @param entry @c iptables rule. Can't be NULL.
+ * @param rule @c bpfilter rule. Can't be NULL. On success, points to a
+ *        valid rule.
+ * @return 0 on success, or a negative errno value on error.
  */
-static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
-                           struct bf_rule **rule)
+static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
+                                 struct bf_rule **rule)
 {
     _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
-    size_t offset = sizeof(*ipt_rule);
     int r;
 
+    bf_assert(entry && rule);
+
+    if (sizeof(*entry) < entry->target_offset)
+        return bf_err_r(-ENOTSUP, "iptables modules are not supported");
+
     r = bf_rule_new(&_rule);
-    if (r < 0)
+    if (r)
         return r;
 
-    if (strlen(ipt_rule->ip.iniface)) {
-        r = bf_if_index_from_name(ipt_rule->ip.iniface);
-        if (r < 0) {
-            return bf_err_r(errno, "can't find index for interface %s",
-                            ipt_rule->ip.iniface);
-        }
-
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_META_IFINDEX, BF_MATCHER_EQ,
-                                &r, sizeof(r));
-        if (r < 0)
-            return r;
+    if (entry->ip.iniface[0] != '\0' || entry->ip.outiface[0] != '\0') {
+        return bf_err_r(
+            -ENOTSUP,
+            "filtering on input/output interface with iptables is not supported");
     }
 
+    // iptables always has counters enabled
     _rule->counters = true;
 
-    if (ipt_rule->ip.src.s_addr || ipt_rule->ip.smsk.s_addr) {
+    // Match on source IPv4 address
+    if (entry->ip.src.s_addr || entry->ip.smsk.s_addr) {
         struct bf_matcher_ip4_addr addr = {
-            .addr = ipt_rule->ip.src.s_addr,
-            .mask = ipt_rule->ip.smsk.s_addr,
+            .addr = entry->ip.src.s_addr,
+            .mask = entry->ip.smsk.s_addr,
         };
 
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_SRC_ADDR,
-                                ipt_rule->ip.invflags & IPT_INV_SRCIP ?
-                                    BF_MATCHER_EQ :
-                                    BF_MATCHER_NE,
-                                &addr, sizeof(addr));
+        r = bf_rule_add_matcher(
+            _rule, BF_MATCHER_IP4_SRC_ADDR,
+            entry->ip.invflags & IPT_INV_SRCIP ? BF_MATCHER_NE : BF_MATCHER_EQ,
+            &addr, sizeof(addr));
         if (r)
             return r;
     }
 
-    if (ipt_rule->ip.dst.s_addr || ipt_rule->ip.dmsk.s_addr) {
+    // Match on destination IPv4 address
+    if (entry->ip.dst.s_addr || entry->ip.dmsk.s_addr) {
         struct bf_matcher_ip4_addr addr = {
-            .addr = ipt_rule->ip.dst.s_addr,
-            .mask = ipt_rule->ip.dmsk.s_addr,
+            .addr = entry->ip.dst.s_addr,
+            .mask = entry->ip.dmsk.s_addr,
         };
 
-        r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_DST_ADDR,
-                                ipt_rule->ip.invflags & IPT_INV_DSTIP ?
-                                    BF_MATCHER_EQ :
-                                    BF_MATCHER_NE,
-                                &addr, sizeof(addr));
+        r = bf_rule_add_matcher(
+            _rule, BF_MATCHER_IP4_DST_ADDR,
+            entry->ip.invflags & IPT_INV_DSTIP ? BF_MATCHER_NE : BF_MATCHER_EQ,
+            &addr, sizeof(addr));
         if (r)
             return r;
     }
 
-    if (ipt_rule->ip.proto) {
-        uint8_t ip_proto = (uint8_t)ipt_rule->ip.proto;
+    /* Match on the protocol field of the IPv4 packet (and not the L4 protocol,
+     * as this implies L3 is IPv4). */
+    if (entry->ip.proto) {
+        uint8_t proto = entry->ip.proto;
 
-        if (ip_proto != ipt_rule->ip.proto) {
-            return bf_err_r(-EINVAL, "invalid ip.proto %d", ipt_rule->ip.proto);
+        // Ensure we didn't cast away data, as we should not
+        if (proto != entry->ip.proto) {
+            return bf_err_r(
+                -EINVAL,
+                "protocol '%d' is an invalid protocol for IPv4's protocol field",
+                entry->ip.proto);
         }
+
         r = bf_rule_add_matcher(_rule, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                                &ip_proto, sizeof(uint8_t));
-        if (r < 0)
+                                &proto, sizeof(proto));
+        if (r)
             return r;
     }
 
-    if (offset < ipt_rule->target_offset) {
-        return bf_err_r(-EINVAL,
-                        "iptables custom matchers are not (yet) supported!");
-    }
-
-    r = _bf_ipt_target_to_verdict(ipt_get_target(ipt_rule), &_rule->verdict);
-    if (r < 0)
+    r = _bf_ipt_target_to_verdict(ipt_get_target(entry), &_rule->verdict);
+    if (r)
         return r;
 
     *rule = TAKE_PTR(_rule);
@@ -352,86 +356,81 @@ static int _bf_ipt_to_rule(const struct ipt_entry *ipt_rule,
     return 0;
 }
 
-static bool _bf_ipt_entry_is_empty(const struct ipt_entry *entry)
+static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
+                                    struct ipt_entry *first,
+                                    struct ipt_entry *last)
 {
-    return entry->ip.dmsk.s_addr == 0 && entry->ip.dst.s_addr == 0 &&
-           entry->ip.flags == 0 && entry->ip.iniface[0] == 0 &&
-           entry->ip.iniface_mask[0] == 0 && entry->ip.invflags == 0 &&
-           entry->ip.outiface[0] == 0 && entry->ip.outiface_mask[0] == 0 &&
-           entry->ip.proto == 0 && entry->ip.smsk.s_addr == 0 &&
-           entry->ip.src.s_addr == 0;
+    _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
+    enum bf_verdict policy;
+    int r;
+
+    bf_assert(chain && first && last);
+
+    // The last rule of the chain is the policy.
+    r = _bf_ipt_target_to_verdict(ipt_get_target(last), &policy);
+    if (r)
+        return r;
+
+    r = bf_chain_new(&_chain, _bf_ipt_hook_to_hook(ipt_hook), policy, NULL,
+                     NULL);
+    if (r)
+        return r;
+
+    _chain->hook_opts.used_opts = 1 << BF_HOOK_OPT_ATTACH;
+    _chain->hook_opts.attach = true;
+
+    while (first < last) {
+        _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+
+        r = _bf_ipt_entry_to_rule(first, &rule);
+        if (r)
+            return bf_err_r(r, "failed to create rule from ipt_entry");
+
+        r = bf_chain_add_rule(_chain, rule);
+        if (r)
+            return r;
+
+        TAKE_PTR(rule);
+        first = ipt_get_next_rule(first);
+    }
+
+    *chain = TAKE_PTR(_chain);
+
+    return 0;
 }
 
 /**
  * Translate iptables rules into bpfilter format.
  *
  * @param ipt iptables rules.
- * @param cgens Array of codegens, indexed by hook. At most one codegen per
- *        hook will be generated.
+ * @param chains Array of chains. The array is big enough to fit one chain per
+ *        hook. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
-                                   struct bf_cgen *(*cgens)[_BF_HOOK_MAX])
+static int
+_bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
+                          struct bf_chain *(*chains)[NF_INET_NUMHOOKS])
 {
-    struct ipt_entry *first_rule;
-    struct ipt_entry *last_rule;
     int r;
 
-    bf_assert(ipt);
-    bf_assert(cgens);
+    bf_assert(ipt && chains);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
-        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
         _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-        enum bf_hook hook = _bf_ipt_hook_to_bf_hook(i);
-        enum bf_verdict policy;
 
         if (!ipt_is_hook_enabled(ipt, i)) {
-            bf_dbg("ipt hook %d is not enabled, skipping", i);
+            bf_dbg("iptables hook %d is not enabled, skipping", i);
             continue;
         }
 
-        first_rule = ipt_get_first_rule(ipt, i);
-        last_rule = ipt_get_last_rule(ipt, i);
-
-        if (!_bf_ipt_entry_is_empty(last_rule))
-            return bf_err_r(-EINVAL, "last IPT rule isn't a valid policy");
-
-        /* We assume the last rule is a policy (ipt_entry.ip field is filled
-         * with 0), and use it as the verdict if true. */
-        r = _bf_ipt_target_to_verdict(ipt_get_target(last_rule), &policy);
-        if (r < 0)
-            return bf_err_r(r, "invalid IPT policy verdict");
-
-        r = bf_chain_new(&chain, hook, policy, NULL, NULL);
-        if (r < 0)
-            return bf_err_r(r, "failed to create a new chain for IPT front");
-
-        /* Loop from the first rule, to the last rule (excluded). As we assume
-         * the last rule is the policy, we don't need to generate a bf_rule
-         * structure for it. */
-        for (size_t rule_idx = 0; first_rule < last_rule;
-             ++rule_idx, first_rule = ipt_get_next_rule(first_rule)) {
-            _cleanup_bf_rule_ struct bf_rule *rule = NULL;
-            r = _bf_ipt_to_rule(first_rule, &rule);
-            if (r < 0)
-                return r;
-
-            rule->index = rule_idx++;
-            r = bf_chain_add_rule(chain, rule);
-            if (r < 0)
-                return r;
-
-            /* Rule has been added to the chain, so if anything goes wrong from
-             * here, it wil be freed by the chain directly. */
-            TAKE_PTR(rule);
+        r = _bf_ipt_entries_to_chain(&chain, i, ipt_get_first_rule(ipt, i),
+                                     ipt_get_last_rule(ipt, i));
+        if (r) {
+            return bf_err_r(r, "failed to create chain for iptables hook %d",
+                            i);
         }
 
-        r = bf_cgen_new(&cgen, BF_FRONT_IPT, &chain);
-        if (r < 0)
-            return r;
-
-        (*cgens)[hook] = TAKE_PTR(cgen);
+        (*chains)[i] = TAKE_PTR(chain);
     }
 
     return 0;
@@ -447,63 +446,69 @@ static int _bf_ipt_xlate_set_rules(struct ipt_replace *ipt,
  * @param len Length of the new rules.
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
+static int _bf_ipt_ruleset_set(struct ipt_replace *replace, size_t len)
 {
     _cleanup_free_ struct ipt_entry *entries = NULL;
-    struct bf_cgen *cgens[_BF_HOOK_MAX] = {};
+    struct bf_chain *chains[NF_INET_NUMHOOKS] = {};
     int r;
 
     bf_assert(replace);
     bf_assert(bf_ipt_replace_size(replace) == len);
 
-    bf_ipt_dump_replace(replace, NULL);
+    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
+        bf_ipt_dump_replace(replace, NULL);
 
-    r = _bf_ipt_xlate_set_rules(replace, &cgens);
-    if (r < 0)
-        return bf_err_r(r, "failed to translate iptables rules");
+    r = _bf_ipt_xlate_ruleset_set(replace, &chains);
+    if (r)
+        return bf_err_r(r, "failed to translate iptables ruleset");
 
-    /* Copy entries now, so we don't have to unload the codegens if the copy
-     * fails. */
+    /* Copy entries now, so we don't have to unload the programs if the copy
+     * fails later. */
     entries = bf_memdup(replace->entries, replace->size);
-    if (!entries) {
-        r = bf_err_r(-ENOMEM, "failed to duplicate iptables rules");
-        goto end_free_cgens;
-    }
+    if (!entries)
+        return bf_err_r(-ENOMEM, "failed to duplicate iptables ruleset");
 
-    for (int i = 0; i < _BF_HOOK_MAX; i++) {
-        _cleanup_bf_cgen_ struct bf_cgen *new_cgen = TAKE_PTR(cgens[i]);
-        struct bf_cgen *cur_cgen;
+    for (int i = 0; i < NF_INET_NUMHOOKS; i++) {
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _cleanup_bf_chain_ struct bf_chain *chain = TAKE_PTR(chains[i]);
 
-        if (!new_cgen)
+        if (!chain)
             continue;
 
-        cur_cgen =
-            bf_ctx_get_cgen(new_cgen->chain->hook, &new_cgen->chain->hook_opts);
-        if (cur_cgen) {
-            r = bf_cgen_update(cur_cgen, &new_cgen->chain);
-            if (r) {
-                bf_err_r(r, "failed to update existing codegen for hook %s",
-                         bf_hook_to_str(cur_cgen->chain->hook));
-                goto end_free_cgens;
-            }
-        } else {
-            r = bf_cgen_up(new_cgen);
-            if (r) {
-                bf_err_r(r, "failed to generate bytecode for hook %s",
-                         bf_hook_to_str(new_cgen->chain->hook));
-                goto end_free_cgens;
-            }
-
-            /** @todo This shouldn't be faillable: the complex part is to
-             * load and attach the codegen, we shouldn't be able to fail
-             * solely because we can't store the codegen! */
-            r = bf_ctx_set_cgen(new_cgen);
-            if (r < 0) {
-                bf_cgen_unload(new_cgen);
+        cgen = bf_ctx_get_cgen(chain->hook, &chain->hook_opts);
+        if (!cgen) {
+            r = bf_cgen_new(&cgen, BF_FRONT_IPT, &chain);
+            if (r)
                 return r;
+
+            r = bf_cgen_up(cgen);
+            if (r) {
+                bf_err(
+                    "failed to generate and load program for iptables hook %d, skipping",
+                    i);
+                continue;
             }
 
-            TAKE_PTR(new_cgen);
+            r = bf_ctx_set_cgen(cgen);
+            if (r) {
+                bf_err_r(
+                    r, "failed to store codegen for iptables hook %d, skipping",
+                    i);
+                continue;
+            }
+
+            TAKE_PTR(cgen);
+        } else {
+            r = bf_cgen_update(cgen, &chain);
+            if (r) {
+                TAKE_PTR(cgen);
+                bf_err_r(
+                    r,
+                    "failed to update codegen for iptables hook %d, skipping",
+                    i);
+                continue;
+            }
+            TAKE_PTR(cgen);
         }
     }
 
@@ -515,12 +520,7 @@ static int _bf_ipt_set_rules_handler(struct ipt_replace *replace, size_t len)
     _bf_cache->size = replace->size;
     _bf_cache->num_entries = replace->num_entries;
 
-    free(_bf_cache->entries);
-    _bf_cache->entries = TAKE_PTR(entries);
-
-end_free_cgens:
-    for (int i = 0; i < _BF_HOOK_MAX; i++)
-        bf_cgen_free(&cgens[i]);
+    bf_swap(_bf_cache->entries, entries);
 
     return r;
 }
@@ -612,7 +612,7 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
 
         first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
         last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
-        cgen = bf_ctx_get_cgen(_bf_ipt_hook_to_bf_hook(i), BF_FRONT_IPT);
+        cgen = bf_ctx_get_cgen(_bf_ipt_hook_to_hook(i), BF_FRONT_IPT);
         enum bf_counter_type rule_count = bf_list_size(&cgen->chain->rules);
 
         for (counter_idx = 0; first_rule <= last_rule;
@@ -657,9 +657,8 @@ static int _bf_ipt_setup(void)
     if (r < 0)
         return r;
 
-    return _bf_ipt_set_rules_handler(
-        (struct ipt_replace *)_bf_default_ipt_filter,
-        sizeof(_bf_default_ipt_filter));
+    return _bf_ipt_ruleset_set((struct ipt_replace *)_bf_default_ipt_filter,
+                               sizeof(_bf_default_ipt_filter));
 }
 
 static int _bf_ipt_teardown(void)
@@ -690,8 +689,8 @@ static int _bf_ipt_request_handler(struct bf_request *request,
 
     switch (request->cmd) {
     case BF_REQ_RULES_SET:
-        r = _bf_ipt_set_rules_handler((struct ipt_replace *)request->data,
-                                      request->data_len);
+        r = _bf_ipt_ruleset_set((struct ipt_replace *)request->data,
+                                request->data_len);
         if (r < 0)
             return r;
 
