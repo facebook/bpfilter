@@ -88,13 +88,13 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
     static const enum bpf_attach_type hooks[] = {
         [BF_HOOK_XDP] = 0,
         [BF_HOOK_TC_INGRESS] = BPF_TCX_INGRESS,
-        [BF_HOOK_NF_PRE_ROUTING] = 0,
+        [BF_HOOK_NF_PRE_ROUTING] = BPF_NETFILTER,
         [BF_HOOK_NF_LOCAL_IN] = BPF_NETFILTER,
         [BF_HOOK_CGROUP_INGRESS] = BPF_CGROUP_INET_INGRESS,
         [BF_HOOK_CGROUP_EGRESS] = BPF_CGROUP_INET_EGRESS,
         [BF_HOOK_NF_FORWARD] = BPF_NETFILTER,
         [BF_HOOK_NF_LOCAL_OUT] = BPF_NETFILTER,
-        [BF_HOOK_NF_POST_ROUTING] = 0,
+        [BF_HOOK_NF_POST_ROUTING] = BPF_NETFILTER,
         [BF_HOOK_TC_EGRESS] = BPF_TCX_EGRESS,
     };
 
