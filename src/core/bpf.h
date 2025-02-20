@@ -20,6 +20,8 @@ enum bf_xdp_attach_mode
     BF_XDP_MODE_HW = XDP_FLAGS_HW_MODE,
 };
 
+#define bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
+
 /**
  * BPF system call.
  *
