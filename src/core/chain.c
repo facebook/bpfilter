@@ -43,8 +43,7 @@ int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
     _chain->rules = bf_rule_list();
     if (rules) {
         bf_list_foreach (rules, rule_node) {
-            r = bf_list_add_tail(&_chain->rules,
-                                 bf_list_node_get_data(rule_node));
+            r = bf_chain_add_rule(_chain, bf_list_node_get_data(rule_node));
             if (r)
                 return r;
 
@@ -319,6 +318,8 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
     bf_assert(chain);
     bf_assert(rule);
+
+    rule->index = bf_list_size(&chain->rules);
 
     return bf_list_add_tail(&chain->rules, rule);
 }
