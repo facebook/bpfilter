@@ -82,4 +82,14 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh);
 
 void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
 
+/**
+ * Insert a rule into the chain.
+ *
+ * The chain will own the rule and is responsible for freeing it. The rule's
+ * index will automatically be updated.
+ *
+ * @param chain Chain to insert the rule into. Can't be NULL.
+ * @param rule Rule to insert into the chain. Can't be NULL.
+ * @return 0 on success, or a negative errno value on error.
+ */
 int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule);
