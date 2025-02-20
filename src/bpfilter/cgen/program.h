@@ -291,7 +291,6 @@ struct bf_program
     enum bf_hook hook;
     enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
-    char link_name[BPF_OBJ_NAME_LEN];
 
     /// Log messages printer
     struct bf_printer *printer;
@@ -302,6 +301,9 @@ struct bf_program
     struct bf_map *pmap;
     /// List of set maps
     bf_list sets;
+
+    /// Link objects attaching the program to a hook.
+    bf_list links;
 
     /** Number of counters in the counters map. Not all of them are used by
      * the program, but this value is common for all the programs of a given
@@ -321,8 +323,6 @@ struct bf_program
     {
         /** File descriptor of the program. */
         int prog_fd;
-        /** File descriptor of the program's link. */
-        int link_fd;
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
 

@@ -5,35 +5,36 @@
 
 #include "bpfilter/cgen/cgroup.h"
 
-#include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 
-#include <errno.h>
-#include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
 #include "bpfilter/cgen/cgen.h"
+#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/swich.h"
-#include "core/bpf.h"
 #include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/verdict.h"
+#include "linux/bpf.h"
 
 #include "external/filter.h"
 
 static int _bf_cgroup_gen_inline_prologue(struct bf_program *program);
 static int _bf_cgroup_gen_inline_epilogue(struct bf_program *program);
 static int _bf_cgroup_get_verdict(enum bf_verdict verdict);
-static int _bf_cgroup_attach_prog(struct bf_program *new_prog,
-                                  struct bf_program *old_prog);
+static int _bf_cgroup_attach_prog(
+    struct bf_program *new_prog, struct bf_program *old_prog,
+    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
+                           struct bf_link **new_link));
 static int _bf_cgroup_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_cgroup = {
@@ -145,53 +146,51 @@ static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _bf_cgroup_attach_prog(struct bf_program *new_prog,
-                                  struct bf_program *old_prog)
+static int _bf_cgroup_attach_prog(
+    struct bf_program *new_prog, struct bf_program *old_prog,
+    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
+                           struct bf_link **new_link))
 {
-    _cleanup_close_ int cgroup_fd = -1;
+    struct bf_link *new_link;
+    struct bf_link *old_link;
+    int new_fd;
     const char *cgroup_path;
     int r;
 
-    bf_assert(new_prog);
+    bf_assert(new_prog && get_new_link_cb);
 
+    old_link = old_prog ? bf_list_get_at(&old_prog->links, 0) : NULL;
+    new_fd = new_prog->runtime.prog_fd;
     cgroup_path = new_prog->runtime.chain->hook_opts.cgroup;
 
-    if (old_prog && old_prog->runtime.link_fd != -1) {
-        r = bf_bpf_link_update(old_prog->runtime.link_fd,
-                               new_prog->runtime.prog_fd);
+    r = get_new_link_cb(new_prog, old_link, &new_link);
+    if (r)
+        return bf_err_r(r, "failed to create new cgroup link");
+
+    if (old_link) {
+        r = bf_link_update(new_link, new_fd);
         if (r) {
             return bf_err_r(
-                r, "failed to updated existing link for cgroup bf_program");
+                r, "failed to update existing link for cgroup bf_program");
         }
-
-        // Copy the existing link FD to the new program
-        new_prog->runtime.link_fd = TAKE_FD(old_prog->runtime.link_fd);
     } else {
-        cgroup_fd = open(cgroup_path, O_DIRECTORY | O_RDONLY);
-        if (cgroup_fd < 0)
-            return bf_err_r(errno, "failed to open cgroup '%s'", cgroup_path);
-
-        r = bf_bpf_cgroup_link_create(new_prog->runtime.prog_fd, cgroup_fd,
-                                      bf_hook_to_attach_type(new_prog->hook),
-                                      &new_prog->runtime.link_fd);
-        if (r) {
-            return bf_err_r(r,
-                            "failed to create new link for cgroup bf_program");
-        }
+        r = bf_link_attach_cgroup(new_link, new_fd, cgroup_path);
+        if (r)
+            return bf_err_r(r, "failed to attach cgroup program");
     }
 
     return 0;
 }
 
 /**
- * Detach the TC BPF program.
+ * Detach the cgroup BPF program.
  *
- * @param program Attached TC BPF program. Can't be NULL.
+ * @param program Attached cgroup BPF program. Can't be NULL.
  * @return 0 on success, negative errno value on failure.
  */
 static int _bf_cgroup_detach_prog(struct bf_program *program)
 {
     bf_assert(program);
 
-    return bf_bpf_link_detach(program->runtime.link_fd);
+    return bf_link_detach(bf_list_get_at(&program->links, 0));
 }
