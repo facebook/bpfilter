@@ -6,7 +6,6 @@
 #include "core/bpf.h"
 
 #include <linux/bpf.h>
-#include <linux/netfilter.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -15,9 +14,7 @@
 #include <unistd.h>
 
 #include "core/helper.h"
-#include "core/hook.h"
 #include "core/logger.h"
-#include "core/nf.h"
 #include "core/opts.h"
 
 #if defined(__i386__)
@@ -140,114 +137,4 @@ int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
     *fd = r;
 
     return 0;
-}
-
-int bf_bpf_tc_link_create(int prog_fd, unsigned int ifindex,
-                          enum bpf_attach_type hook, int *link_fd)
-{
-    union bpf_attr attr = {};
-    int r;
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.target_fd = ifindex;
-    attr.link_create.attach_type = hook;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    *link_fd = r;
-
-    return 0;
-}
-
-int bf_bpf_nf_link_create(int prog_fd, enum bf_hook hook, int priority,
-                          int *link_fd)
-{
-    union bpf_attr attr = {};
-    int r;
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.attach_type = BPF_NETFILTER;
-    attr.link_create.netfilter.pf = NFPROTO_INET;
-    attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
-    attr.link_create.netfilter.priority = priority;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    *link_fd = r;
-
-    return 0;
-}
-
-int bf_bpf_xdp_link_create(int prog_fd, unsigned int ifindex, int *link_fd,
-                           enum bf_xdp_attach_mode mode)
-{
-    union bpf_attr attr = {};
-    int r;
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.target_fd = ifindex;
-    attr.link_create.attach_type = BPF_XDP;
-    attr.link_create.flags = mode;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    *link_fd = r;
-
-    return 0;
-}
-
-int bf_bpf_cgroup_link_create(int prog_fd, int cgroup_fd,
-                              enum bpf_attach_type type, int *link_fd)
-{
-    union bpf_attr attr = {};
-    int r;
-
-    bf_assert(link_fd);
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.target_fd = cgroup_fd;
-    attr.link_create.attach_type = type;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    *link_fd = r;
-
-    return 0;
-}
-
-int bf_bpf_xdp_link_update(int link_fd, int prog_fd)
-{
-    union bpf_attr attr = {};
-
-    attr.link_update.link_fd = link_fd;
-    attr.link_update.new_prog_fd = prog_fd;
-
-    return bf_bpf(BPF_LINK_UPDATE, &attr);
-}
-
-int bf_bpf_link_update(int link_fd, int prog_fd)
-{
-    union bpf_attr attr = {};
-
-    attr.link_update.link_fd = link_fd;
-    attr.link_update.new_prog_fd = prog_fd;
-
-    return bf_bpf(BPF_LINK_UPDATE, &attr);
-}
-
-int bf_bpf_link_detach(int link_fd)
-{
-    union bpf_attr attr = {
-        .link_detach.link_fd = link_fd,
-    };
-
-    return bf_bpf(BPF_LINK_DETACH, &attr);
 }
