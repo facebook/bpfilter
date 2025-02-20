@@ -8,12 +8,14 @@
 
 #include <stddef.h>
 
+#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/stub.h"
 #include "core/bpf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/list.h"
 #include "core/logger.h"
 #include "core/verdict.h"
 
@@ -22,8 +24,10 @@
 static int _bf_xdp_gen_inline_prologue(struct bf_program *program);
 static int _bf_xdp_gen_inline_epilogue(struct bf_program *program);
 static int _bf_xdp_get_verdict(enum bf_verdict verdict);
-static int _bf_xdp_attach_prog(struct bf_program *new_prog,
-                               struct bf_program *old_prog);
+static int _bf_xdp_attach_prog(
+    struct bf_program *new_prog, struct bf_program *old_prog,
+    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
+                           struct bf_link **new_link));
 static int _bf_xdp_detach_prog(struct bf_program *program);
 
 const struct bf_flavor_ops bf_flavor_ops_xdp = {
@@ -104,28 +108,37 @@ static int _bf_xdp_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _bf_xdp_attach_prog(struct bf_program *new_prog,
-                               struct bf_program *old_prog)
+static int _bf_xdp_attach_prog(
+    struct bf_program *new_prog, struct bf_program *old_prog,
+    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
+                           struct bf_link **new_link))
 {
+    struct bf_link *new_link;
+    struct bf_link *old_link;
+    int new_fd;
+    unsigned int ifindex;
     int r;
 
-    bf_assert(new_prog);
+    bf_assert(new_prog && get_new_link_cb);
 
-    if (old_prog && old_prog->runtime.link_fd != -1) {
-        r = bf_bpf_xdp_link_update(old_prog->runtime.link_fd,
-                                   new_prog->runtime.prog_fd);
+    old_link = old_prog ? bf_list_get_at(&old_prog->links, 0) : NULL;
+    new_fd = new_prog->runtime.prog_fd;
+    ifindex = new_prog->runtime.chain->hook_opts.ifindex;
+
+    r = get_new_link_cb(new_prog, old_link, &new_link);
+    if (r)
+        return bf_err_r(r, "failed to create new XDP link");
+
+    if (old_link) {
+        r = bf_link_update(new_link, new_fd);
         if (r) {
             return bf_err_r(
                 r, "failed to update existing link for XDP bf_program");
         }
-
-        new_prog->runtime.link_fd = TAKE_FD(old_prog->runtime.link_fd);
     } else {
-        r = bf_bpf_xdp_link_create(new_prog->runtime.prog_fd,
-                                   new_prog->runtime.chain->hook_opts.ifindex,
-                                   &new_prog->runtime.link_fd, BF_XDP_MODE_SKB);
+        r = bf_link_attach_xdp(new_link, new_fd, ifindex, BF_XDP_MODE_SKB);
         if (r)
-            return bf_err_r(r, "failed to create new link for XDP bf_program");
+            return bf_err_r(r, "failed to attach XDP program");
     }
 
     return 0;
@@ -135,5 +148,5 @@ static int _bf_xdp_detach_prog(struct bf_program *program)
 {
     bf_assert(program);
 
-    return bf_bpf_link_detach(program->runtime.link_fd);
+    return bf_link_detach(bf_list_get_at(&program->links, 0));
 }

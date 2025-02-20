@@ -31,6 +31,7 @@
 #include "bpfilter/cgen/matcher/udp.h"
 #include "bpfilter/cgen/nf.h"
 #include "bpfilter/cgen/printer.h"
+#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/prog/map.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/tc.h"
@@ -124,8 +125,8 @@ static int _bf_program_genid(struct bf_program *program)
 
     // If the chain has a name, use it as ID
     if (program->runtime.chain->hook_opts.used_opts & (1 << BF_HOOK_OPT_NAME)) {
-        memcpy(program->id, program->runtime.chain->hook_opts.name,
-               BF_PROG_ID_LEN);
+        (void)snprintf(program->id, BF_PROG_ID_LEN,
+                       program->runtime.chain->hook_opts.name);
         return 0;
     }
 
@@ -188,8 +189,6 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
 
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s_prg",
                    _program->id);
-    (void)snprintf(_program->link_name, BPF_OBJ_NAME_LEN, "%s_lnk",
-                   _program->id);
 
     (void)snprintf(name, BPF_OBJ_NAME_LEN, "%s_cmp", _program->id);
     r = bf_map_new(&_program->cmap, name, BF_MAP_TYPE_COUNTERS,
@@ -223,6 +222,8 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
         TAKE_PTR(map);
     };
 
+    _program->links = bf_link_list();
+
     r = bf_printer_new(&_program->printer);
     if (r)
         return r;
@@ -231,7 +232,6 @@ int bf_program_new(struct bf_program **program, enum bf_hook hook,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
 
     _program->runtime.prog_fd = -1;
-    _program->runtime.link_fd = -1;
 
     *program = TAKE_PTR(_program);
 
@@ -252,11 +252,11 @@ void bf_program_free(struct bf_program **program)
      * won't be called, but the programs are pinned, so they can be closed
      * safely. */
     closep(&(*program)->runtime.prog_fd);
-    closep(&(*program)->runtime.link_fd);
 
     bf_map_free(&(*program)->cmap);
     bf_map_free(&(*program)->pmap);
     bf_list_clean(&(*program)->sets);
+    bf_list_clean(&(*program)->links);
     bf_printer_free(&(*program)->printer);
 
     free(*program);
@@ -320,6 +320,22 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
             return bf_err_r(
                 r,
                 "failed to insert serialized sets into bf_program serialized data");
+        }
+    }
+
+    {
+        // Serialize bf_program.links
+        _cleanup_bf_marsh_ struct bf_marsh *links_elem = NULL;
+
+        r = bf_list_marsh(&program->links, &links_elem);
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, links_elem);
+        if (r) {
+            return bf_err_r(
+                r,
+                "failed to insert serialized links into bf_program serialized data");
         }
     }
 
@@ -424,6 +440,27 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         }
     }
 
+    // Unmarsh bf_program.links
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    {
+        struct bf_marsh *link_elem = NULL;
+
+        while ((link_elem = bf_marsh_next_child(child, link_elem))) {
+            _cleanup_bf_link_ struct bf_link *link = NULL;
+
+            r = bf_link_new_from_marsh(&link, pindir_fd, link_elem);
+            if (r)
+                return r;
+
+            r = bf_list_add_tail(&_program->links, link);
+            if (r)
+                return r;
+
+            TAKE_PTR(link);
+        }
+    }
+
     // Unmarsh bf_program.printer
     child = bf_marsh_next_child(marsh, child);
     if (!child)
@@ -453,13 +490,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (r < 0)
         return bf_err_r(r, "failed to get prog fd");
 
-    if (_program->runtime.chain->hook_opts.attach) {
-        r = bf_bpf_obj_get(_program->link_name, pindir_fd,
-                           &_program->runtime.link_fd);
-        if (r < 0)
-            return bf_err_r(r, "failed to get link fd");
-    }
-
     *program = TAKE_PTR(_program);
 
     return 0;
@@ -479,7 +509,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "front: %s", bf_front_to_str(program->front));
     DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
-    DUMP(prefix, "link_name: %s", program->link_name);
 
     DUMP(prefix, "cmap: struct bf_map *");
     bf_dump_prefix_push(prefix);
@@ -500,6 +529,18 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
             bf_dump_prefix_last(prefix);
 
         bf_map_dump(map, prefix);
+    }
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "links: bf_list<bf_link>[%lu]", bf_list_size(&program->links));
+    bf_dump_prefix_push(prefix);
+    bf_list_foreach (&program->links, link_node) {
+        struct bf_link *link = bf_list_node_get_data(link_node);
+
+        if (bf_list_is_tail(&program->links, link_node))
+            bf_dump_prefix_last(prefix);
+
+        bf_link_dump(link, prefix);
     }
     bf_dump_prefix_pop(prefix);
 
@@ -528,7 +569,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(bf_dump_prefix_last(prefix), "runtime: <anonymous>");
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
-    DUMP(prefix, "link_fd: %d", program->runtime.link_fd);
     DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
     bf_dump_prefix_pop(prefix);
 
@@ -1001,7 +1041,8 @@ int bf_program_generate(struct bf_program *program)
     return 0;
 }
 
-static void _bf_program_unpin(const struct bf_program *program);
+static void _bf_program_unpin(const struct bf_program *program,
+                              const char *dir);
 
 /**
  * Pin the BPF objects that should survive the daemon's lifetime.
@@ -1043,16 +1084,6 @@ static int _bf_program_pin(const struct bf_program *program)
         goto err_prog_pin;
     }
 
-    if (program->runtime.chain->hook_opts.attach) {
-        r = bf_bpf_obj_pin(program->link_name, program->runtime.link_fd,
-                           pindir_fd);
-        if (r < 0) {
-            bf_err_r(r, "failed to pin link '%s' in %s", program->link_name,
-                     BF_PIN_DIR);
-            goto err_link_pin;
-        }
-    }
-
     r = bf_map_pin(program->cmap, pindir_fd);
     if (r < 0)
         goto err_cmap_pin;
@@ -1067,8 +1098,17 @@ static int _bf_program_pin(const struct bf_program *program)
             goto err_set_pin;
     }
 
+    bf_list_foreach (&program->links, link_node) {
+        r = bf_link_pin(bf_list_node_get_data(link_node), pindir_fd);
+        if (r < 0)
+            goto err_link_pin;
+    }
+
     return 0;
 
+err_link_pin:
+    bf_list_foreach (&program->links, link_node)
+        bf_link_unpin(bf_list_node_get_data(link_node), pindir_fd);
 err_set_pin:
     bf_list_foreach (&program->sets, set_node)
         bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
@@ -1076,9 +1116,6 @@ err_set_pin:
 err_pmap_pin:
     bf_map_unpin(program->cmap, pindir_fd);
 err_cmap_pin:
-    // Unconditionally unpin the link, ignore if it doesn't exist
-    unlinkat(pindir_fd, program->link_name, 0);
-err_link_pin:
     unlinkat(pindir_fd, program->prog_name, 0);
 err_prog_pin:
     closep(&pindir_fd);
@@ -1092,17 +1129,23 @@ err_prog_pin:
  * the system.
  *
  * @param program Program containing the objects to unpin. Can't be NULL.
+ * @param dir If non NULL, override the directory to unpin the BPF objects
+ *        from.
  */
-static void _bf_program_unpin(const struct bf_program *program)
+static void _bf_program_unpin(const struct bf_program *program, const char *dir)
 {
-    char dir[PATH_MAX];
+    char _dir[PATH_MAX];
     int pindir_fd;
     int r;
 
     bf_assert(program);
 
-    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, program->id);
-    pindir_fd = open(dir, O_DIRECTORY, 0);
+    if (dir)
+        (void)snprintf(_dir, PATH_MAX, "%s", dir);
+    else
+        (void)snprintf(_dir, PATH_MAX, "%s/%s", BF_PIN_DIR, program->id);
+
+    pindir_fd = open(_dir, O_DIRECTORY, 0);
     if (pindir_fd < 0) {
         bf_warn_r(
             errno,
@@ -1112,17 +1155,18 @@ static void _bf_program_unpin(const struct bf_program *program)
     }
 
     unlinkat(pindir_fd, program->prog_name, 0);
-    unlinkat(pindir_fd, program->link_name, 0);
     bf_map_unpin(program->pmap, pindir_fd);
     bf_map_unpin(program->cmap, pindir_fd);
     bf_list_foreach (&program->sets, set_node)
         bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
+    bf_list_foreach (&program->links, link_node)
+        bf_link_unpin(bf_list_node_get_data(link_node), pindir_fd);
 
     closep(&pindir_fd);
-    r = rmdir(dir);
+    r = rmdir(_dir);
     if (r) {
         bf_warn_r(r, "failed to remove bf_program pin directory %s, ignoring",
-                  dir);
+                  _dir);
     }
 }
 
@@ -1259,8 +1303,61 @@ err_destroy_maps:
     return r;
 }
 
+/**
+ * Callback to create a new @ref bf_link when attaching the program to the hook.
+ *
+ * See @ref bf_flavor_ops for more details.
+ *
+ * @param prog Program to create the @ref bf_link for. Can't be NULL.
+ * @param old_link Existing BPF link from the old program (program to replace).
+ *        If not NULL, the new link's FD is a duplicate of the old link's FD.
+ *        This is useful for flavors using @c BPF_LINK_UPDATE : the link remain
+ *        the same but the program changes, the old link can then be unpinned
+ *        and closed safely.
+ * @param new_link New link to create. Can't be NULL. On success, @c *link
+ *        points to a valid @ref bf_link . On failure, @c *link remain unchanged.
+ * @return 0 on success, or a negative errno value on success.
+ */
+static int _bf_program_get_new_link(struct bf_program *prog,
+                                    struct bf_link *old_link,
+                                    struct bf_link **new_link)
+{
+    _cleanup_bf_link_ struct bf_link *_link = NULL;
+    char name[BPF_OBJ_NAME_LEN];
+    int r;
+
+    bf_assert(prog && new_link);
+
+    (void)snprintf(name, BPF_OBJ_NAME_LEN, "%s_lk%1ld", prog->id,
+                   bf_list_size(&prog->links));
+
+    r = bf_link_new(&_link, name, prog->hook);
+    if (r)
+        return bf_err_r(r, "failed to create bf_link from callback");
+
+    if (old_link) {
+        r = dup(old_link->fd);
+        if (r < 0)
+            return bf_err_r(r, "failed to duplicate old link FD");
+
+        _link->fd = r;
+    }
+
+    r = bf_list_add_tail(&prog->links, _link);
+    if (r) {
+        return bf_err_r(
+            r, "failed to append new bf_link to program from callback");
+    }
+
+    *new_link = TAKE_PTR(_link);
+
+    return 0;
+}
+
 int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
 {
+    char dir[PATH_MAX];
+    char tmpdir[PATH_MAX];
     int r;
 
     bf_assert(new_prog);
@@ -1287,19 +1384,43 @@ int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog)
     if (r)
         return bf_err_r(r, "failed to load new bf_program");
 
+    if (old_prog) {
+        (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR, new_prog->id);
+        (void)snprintf(tmpdir, PATH_MAX, "%s/%s_tmp", BF_PIN_DIR, new_prog->id);
+    }
+
+    if (old_prog && !bf_opts_transient() && (r = rename(dir, tmpdir)))
+        return bf_err_r(r, "failed to rename old bf_program pin directory");
+
     if (new_prog->runtime.chain->hook_opts.attach) {
-        r = new_prog->runtime.ops->attach_prog(new_prog, old_prog);
-        if (r)
-            return r;
+        r = new_prog->runtime.ops->attach_prog(new_prog, old_prog,
+                                               _bf_program_get_new_link);
+        if (r) {
+            bf_err_r(r, "failed to attach new program");
+            goto err_restore_old;
+        }
     }
 
     if (!bf_opts_transient()) {
-        if (old_prog)
-            _bf_program_unpin(old_prog);
         r = _bf_program_pin(new_prog);
+        if (r)
+            return bf_err_r(r, "failed to pin new program!");
+
+        if (old_prog)
+            _bf_program_unpin(old_prog, tmpdir);
     }
 
     return r;
+
+err_restore_old:
+    int _r = r;
+    if ((r = rename(tmpdir, dir))) {
+        bf_err_r(r,
+                 "failed to restore old program, the daemon is in bad state!");
+    } else {
+        bf_info("previous program restored");
+    }
+    return _r;
 }
 
 int bf_program_unload(struct bf_program *program)
@@ -1315,16 +1436,18 @@ int bf_program_unload(struct bf_program *program)
     }
 
     if (!bf_opts_transient())
-        _bf_program_unpin(program);
+        _bf_program_unpin(program, NULL);
 
     closep(&program->runtime.prog_fd);
-    closep(&program->runtime.link_fd);
 
     bf_map_destroy(program->cmap);
     bf_map_destroy(program->pmap);
 
     bf_list_foreach (&program->sets, map_node)
         bf_map_destroy(bf_list_node_get_data(map_node));
+
+    bf_list_foreach (&program->links, link_node)
+        bf_link_detach(bf_list_node_get_data(link_node));
 
     bf_dbg("unloaded %s program from %s", bf_front_to_str(program->front),
            bf_hook_to_str(program->hook));
