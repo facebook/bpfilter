@@ -17,6 +17,7 @@
 #include "core/chain.h"
 #include "core/helper.h"
 #include "core/logger.h"
+#include "harness/filters.h"
 #include "libbpfilter/bpfilter.h"
 
 struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
@@ -36,7 +37,7 @@ struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
         return NULL;
     }
 
-    r = bf_test_prog_open(prog, chain->hook_opts.name);
+    r = bf_test_prog_open(prog, BF_E2E_NAME "_prg");
     if (r < 0) {
         bf_err_r(r, "failed to open the bf_test_prog's BPF program");
         return NULL;
