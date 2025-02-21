@@ -767,7 +767,7 @@ int Program::open()
             return r;
         }
 
-        if (::std::string(info.name) == name_) {
+        if (::std::string(info.name) == (name_ + "_prg")) {
             fd_ = prog_fd;
             return 0;
         }
