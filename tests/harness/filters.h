@@ -30,6 +30,8 @@
  * `bf_test_chain_get()`.
  */
 
+#define BF_E2E_NAME "bf_e2e"
+
 /**
  * Create a new hook options object.
  *
