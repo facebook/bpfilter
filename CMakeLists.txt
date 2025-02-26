@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(bpfilter
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "BPF-based packet filtering framework"
     LANGUAGES C
 )
