@@ -3,8 +3,12 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+if (NOT DEFINED DEFAULT_PROJECT_VERSION)
+    set(DEFAULT_PROJECT_VERSION 0.0.0)
+endif ()
+
 project(bpfilter
-    VERSION 0.0.0   # Leave as is, version number is updated based on Git
+    VERSION ${DEFAULT_PROJECT_VERSION}
     DESCRIPTION "BPF-based packet filtering framework"
     LANGUAGES C
 )
@@ -12,7 +16,6 @@ project(bpfilter
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake")
 
 include(GitVersion)
-
 get_version_from_git()
 message(NOTICE "bpfilter version ${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
