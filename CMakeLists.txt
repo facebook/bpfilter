@@ -4,14 +4,17 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(bpfilter
-    VERSION 0.3.0
+    VERSION 0.0.0   # Leave as is, version number is updated based on Git
     DESCRIPTION "BPF-based packet filtering framework"
     LANGUAGES C
 )
 
-set(PROJECT_VERSION_TWEAK "-devel")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake")
 
-message(NOTICE "bpfilter version ${CMAKE_PROJECT_VERSION}${PROJECT_VERSION_TWEAK}")
+include(GitVersion)
+
+get_version_from_git()
+message(NOTICE "bpfilter version ${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 include(GNUInstallDirs)
 
