@@ -33,8 +33,7 @@ int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook)
     if (!_link)
         return -ENOMEM;
 
-    // snprintf() will write the \0 as part of the BPF_OBJ_NAME_LEN bytes
-    (void)snprintf(_link->name, BPF_OBJ_NAME_LEN, name);
+    strncpy(_link->name, name, BPF_OBJ_NAME_LEN);
 
     _link->fd = -1;
     _link->hook = hook;

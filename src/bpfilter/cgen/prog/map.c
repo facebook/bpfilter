@@ -42,7 +42,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
     _map->value_size = value_size;
     _map->n_elems = n_elems;
 
-    (void)snprintf(_map->name, BPF_OBJ_NAME_LEN, name);
+    strncpy(_map->name, name, BPF_OBJ_NAME_LEN);
 
     *map = TAKE_PTR(_map);
 
