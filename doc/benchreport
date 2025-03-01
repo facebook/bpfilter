@@ -34,6 +34,8 @@ def main() -> None:
         prog="benchreport",
         description="Generate an HTML report for bpfilter benchmarks",
     )
+    parser.add_argument(
+        "-s", "--sources", default=".", help="Sources directory containing .git"
     )
     parser.add_argument(
         "-r", "--results", help="Directory containing the benchmark results"
@@ -77,7 +79,7 @@ def main() -> None:
                     error("Only ns time unit is supported")
                     sys.exit(-1)
 
-    repo = git.Repo.init("~/Projects/bpfilter")
+    repo = git.Repo.init(args.sources)
 
     for commit, date, _ in sorted(commits, key=lambda tup: tup[2]):
         try:

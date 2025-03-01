@@ -127,6 +127,7 @@ add_custom_command(
 add_custom_command(
 	COMMAND
 		${CMAKE_CURRENT_SOURCE_DIR}/benchreport
+			--sources ${CMAKE_SOURCE_DIR}
 			--results ${CMAKE_BINARY_DIR}/output/benchmarks
 			--template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
 			--output ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
