@@ -31,7 +31,9 @@ def main() -> None:
     commits = []
     benchNames = []
     parser = argparse.ArgumentParser(
-        prog="benreport", description="Generate an HTML report for bpfilter benchmarks"
+        prog="benchreport",
+        description="Generate an HTML report for bpfilter benchmarks",
+    )
     )
     parser.add_argument(
         "-r", "--results", help="Directory containing the benchmark results"
