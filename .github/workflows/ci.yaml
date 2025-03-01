@@ -164,6 +164,8 @@ jobs:
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       # Clone with the token if building from main, so we can push to the repo
       - name: Checkout bpfilter-benchmark-results
         uses: actions/checkout@v4
@@ -179,6 +181,8 @@ jobs:
         with:
           repository: qdeslandes/bpfilter-benchmark-results
           path: ./bpfilter-benchmark-results
+      - name: Mark the repository as safe for Git
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Restore the cached tests results
