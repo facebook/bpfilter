@@ -8,30 +8,36 @@ import sys
 import os
 import argparse
 
+
 def log(msg: str, verbose: bool = True) -> None:
     if verbose:
         print(msg)
 
+
 def warning(msg: str) -> None:
-    print('\033[1;93m' + msg + '\033[0m')
+    print("\033[1;93m" + msg + "\033[0m")
+
 
 def error(msg: str) -> None:
-    print('\033[1;31m' + msg + '\033[0m')
+    print("\033[1;31m" + msg + "\033[0m")
+
 
 def main() -> None:
     benchmarks = {"commits": [], "results": {}}
     commits = []
     benchNames = []
     parser = argparse.ArgumentParser(
-                    prog='benreport',
-                    description='Generate an HTML report for bpfilter benchmarks')
-    parser.add_argument('-r', '--results', help="Directory containing the benchmark results")
-    parser.add_argument('-t', '--template', help="HTML report template file")
-    parser.add_argument('-o', '--output', help="Output HTML file")
+        prog="benreport", description="Generate an HTML report for bpfilter benchmarks"
+    )
+    parser.add_argument(
+        "-r", "--results", help="Directory containing the benchmark results"
+    )
+    parser.add_argument("-t", "--template", help="HTML report template file")
+    parser.add_argument("-o", "--output", help="Output HTML file")
     args = parser.parse_args()
 
     verbose = False
-    if int(os.environ.get('VERBOSE', '0')):
+    if int(os.environ.get("VERBOSE", "0")):
         verbose = True
 
     files = list(pathlib.Path(args.results).glob("*.json"))
@@ -89,5 +95,5 @@ def main() -> None:
     log(f"Benchmark report generated at '{args.output}'", verbose)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
