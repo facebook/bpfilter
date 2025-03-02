@@ -30,6 +30,21 @@ Define a new ruleset: read the chains and rules defined on the command line or i
     bfcli ruleset set --file myruleset.tx
     bfcli ruleset set --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
 
+``ruleset get``
+~~~~~~~~~~~~~~~
+
+Get all rules: requests the daemon to return all chains and all rules of each chain to the CLI. Optionally include rule counter values.
+
+**Options**
+  - ``--with-counters``: Include if you would like to see counter values for each rule.
+
+**Example**
+
+.. code:: shell
+
+    bfcli ruleset get
+    bfcli ruleset get --with-counters
+
 ``ruleset flush``
 ~~~~~~~~~~~~~~~~~
 
