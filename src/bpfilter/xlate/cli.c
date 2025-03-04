@@ -178,9 +178,6 @@ static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
     num_counters =
         (2 * bf_list_size(chain_list)) + _bf_cli_num_rules(chain_list);
 
-    // We must have at least have the two chain counters
-    bf_assert(num_counters >= 2);
-
     counters = calloc(num_counters, sizeof(struct bf_counter));
     if (!counters)
         bf_err_r(-ENOMEM, "failed to allocate memory for counters\n");
