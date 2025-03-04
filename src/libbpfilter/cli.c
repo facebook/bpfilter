@@ -116,7 +116,7 @@ static int bf_cli_request_ruleset(struct bf_response **response,
 
     request->front = BF_FRONT_CLI;
     request->cmd = BF_REQ_RULES_GET;
-    request->with_counters = with_counters;
+    request->cli_with_counters = with_counters;
 
     r = bf_send(request, response);
     if (r < 0)

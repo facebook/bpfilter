@@ -221,7 +221,7 @@ static int _bf_cli_get_rules(const struct bf_request *request,
 
         // Marsh the counters
         r = _bf_cli_get_counters_marsh(&counter_marsh, chains,
-                                       request->with_counters);
+                                       request->cli_with_counters);
         if (r < 0)
             return bf_err_r(r, "failed to get counters marsh\n");
     }
