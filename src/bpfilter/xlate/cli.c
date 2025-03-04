@@ -165,7 +165,7 @@ static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
     size_t num_counters = 0;
     struct bf_counter *counters = NULL;
 
-    bf_assert(bf_list_size(chain_list) > 0);
+    bf_assert(counter_marsh && chain_list);
 
     // If we don't want counters, return an empty marsh
     if (!with_counters) {
