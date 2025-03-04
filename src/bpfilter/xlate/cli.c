@@ -214,9 +214,6 @@ static int _bf_cli_get_rules(const struct bf_request *request,
         if (r < 0)
             return bf_err_r(r, "failed to create the chain list");
 
-        // Because the context is not empty, we must have at least one chain
-        bf_assert(bf_list_size(chains) > 0);
-
         // Marsh the chain list
         r = bf_list_marsh(chains, &chains_marsh);
         if (r < 0)
