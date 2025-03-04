@@ -201,14 +201,14 @@ int main(int argc, char *argv[])
         if (argc == 1) {
             r = bf_cli_ruleset_get(false);
             if (r < 0)
-                bf_err_r(r, "Failed to get ruleset");
+                bf_err_r(r, "failed to get ruleset");
         } else {
             if (argc == 2 && streq(argv[1], "--with-counters")) {
                 r = bf_cli_ruleset_get(true);
                 if (r < 0)
-                    bf_err_r(r, "Failed to get ruleset");
+                    bf_err_r(r, "failed to get ruleset");
             } else {
-                bf_err_r(-EINVAL, "Unrecognized argument '%s'", argv[1]);
+                bf_err_r(-EINVAL, "unrecognized argument '%s'", argv[1]);
             }
         }
     } else if (streq(obj_str, "ruleset") && streq(action_str, "flush")) {
