@@ -128,11 +128,11 @@ static int bf_cli_request_ruleset(struct bf_response **response,
     return 0;
 }
 
-static int bf_cli_dump_ruleset(struct bf_marsh *chain_list_marsh,
+static int bf_cli_dump_ruleset(struct bf_marsh *chains_marsh,
                                struct bf_marsh *counters_marsh,
                                bool with_counters)
 {
-    bf_assert(chain_list_marsh);
+    bf_assert(chains_marsh);
     bf_assert(counters_marsh);
 
     struct bf_counter *counters = (struct bf_counter *)counters_marsh->data;
@@ -142,7 +142,7 @@ static int bf_cli_dump_ruleset(struct bf_marsh *chain_list_marsh,
     // Loop over the chains
     while (true) {
         // Get the next child
-        chain_marsh = bf_marsh_next_child(chain_list_marsh, chain_marsh);
+        chain_marsh = bf_marsh_next_child(chains_marsh, chain_marsh);
         if (!chain_marsh) {
             break;
         }
@@ -180,20 +180,20 @@ int bf_cli_ruleset_get(bool with_counters)
         (struct bf_marsh *)response->data;
 
     // Get the chain list
-    struct bf_marsh *chain_list_marsh =
+    struct bf_marsh *chains_marsh =
         bf_marsh_next_child(chains_and_counters_marsh, NULL);
-    if (!chain_list_marsh) {
+    if (!chains_marsh) {
         bf_err("failed to locate chain list from daemon response\n");
     }
 
     // Get the array of counters
     struct bf_marsh *counters_marsh =
-        bf_marsh_next_child(chains_and_counters_marsh, chain_list_marsh);
+        bf_marsh_next_child(chains_and_counters_marsh, chains_marsh);
     if (!counters_marsh) {
         bf_err("failed to locate counter array from daemon response\n");
     }
 
-    return bf_cli_dump_ruleset(chain_list_marsh, counters_marsh, with_counters);
+    return bf_cli_dump_ruleset(chains_marsh, counters_marsh, with_counters);
 }
 
 int bf_cli_ruleset_flush(void)
