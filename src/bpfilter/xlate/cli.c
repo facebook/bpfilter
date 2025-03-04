@@ -205,9 +205,8 @@ static int _bf_cli_get_rules(const struct bf_request *request,
     int r;
 
     // Empty context, nothing to return
-    if (bf_ctx_is_empty()) {
+    if (bf_ctx_is_empty())
         return bf_response_new_success(response, NULL, 0);
-    }
 
     {
         _cleanup_bf_list_ bf_list *chain_list = NULL;
