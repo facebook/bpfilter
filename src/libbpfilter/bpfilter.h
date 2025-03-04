@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 struct bf_chain;
@@ -27,6 +28,15 @@ const char *bf_version(void);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_cli_ruleset_flush(void);
+
+/**
+ * Request the daemon to return all the chains and all of
+ * the associated rules.
+ *
+ * @param with_counters If true, the daemon will return the counters.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_cli_ruleset_get(bool with_counters);
 
 /**
  * Send a chain to the daemon.
