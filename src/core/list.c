@@ -81,6 +81,11 @@ void bf_list_free(bf_list **list)
     *list = NULL;
 }
 
+void bf_list_nop_free(bf_list **list)
+{
+    bf_assert(list);
+}
+
 void bf_list_init(bf_list *list, const bf_list_ops *ops)
 {
     bf_assert(list);
