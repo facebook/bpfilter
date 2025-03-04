@@ -163,7 +163,7 @@ static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
 {
     int r;
     size_t num_counters = 0;
-    struct bf_counter *counters = NULL;
+    _cleanup_free_ struct bf_counter *counters = NULL;
 
     bf_assert(counter_marsh && chain_list);
 
@@ -192,8 +192,6 @@ static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
     if (r < 0)
         if (r < 0)
             return bf_err_r(r, "failed to make new marsh\n");
-
-    free(counters);
 
     return 0;
 }
