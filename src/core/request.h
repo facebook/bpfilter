@@ -66,7 +66,7 @@ struct bf_request
 
         struct
         {
-            bool with_counters;
+            bool cli_with_counters;
         };
     };
 
