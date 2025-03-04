@@ -79,8 +79,7 @@ static int _bf_get_ctr_vals(bf_list *chain_list, struct bf_counter *counters)
     int counter_index = 0;
     int r;
 
-    bf_assert(chain_list);
-    bf_assert(counters);
+    bf_assert(chain_list && counters);
 
     bf_list_foreach (chain_list, chain_node) {
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
