@@ -130,11 +130,12 @@ static int _bf_get_ctr_vals(bf_list *chain_list, struct bf_counter *counters)
 
 static int _bf_cli_get_chain_list(bf_list **chain_list)
 {
+    _cleanup_bf_list_ bf_list *_chains = NULL;
     bf_list_ops ops = {// chain_list will only contain the chains, not own them.
                        .free = (bf_list_ops_free)bf_list_nop_free,
                        .marsh = (bf_list_ops_marsh)bf_chain_marsh};
 
-    int r = bf_list_new(chain_list, &ops);
+    int r = bf_list_new(&_chains, &ops);
     if (r < 0)
         return bf_err_r(r, "failed to create the chain list");
 
@@ -147,10 +148,12 @@ static int _bf_cli_get_chain_list(bf_list **chain_list)
         if (!cgen || !cgen->chain)
             continue;
 
-        r = bf_list_add_tail(*chain_list, cgen->chain);
+        r = bf_list_add_tail(_chains, cgen->chain);
         if (r)
             return bf_err_r(r, "failed to add chain to list");
     }
+
+    *chain_list = TAKE_PTR(_chains);
 
     return 0;
 }
