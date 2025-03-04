@@ -60,11 +60,6 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
     return bf_response_new_success(response, NULL, 0);
 }
 
-static void bf_nop_free(struct bf_chain **chain)
-{
-    UNUSED(chain);
-}
-
 static size_t _bf_cli_num_rules(bf_list *chain_list)
 {
     bf_assert(chain_list);
@@ -141,7 +136,7 @@ static int _bf_get_ctr_vals(bf_list *chain_list, struct bf_counter *counters)
 static int _bf_cli_get_chain_list(bf_list **chain_list)
 {
     bf_list_ops ops = {// chain_list will only contain the chains, not own them.
-                       .free = (bf_list_ops_free)bf_nop_free,
+                       .free = (bf_list_ops_free)bf_list_nop_free,
                        .marsh = (bf_list_ops_marsh)bf_chain_marsh};
 
     int r = bf_list_new(chain_list, &ops);
