@@ -83,10 +83,6 @@ static int _bf_get_ctr_vals(bf_list *chain_list, struct bf_counter *counters)
 
     bf_list_foreach (chain_list, chain_node) {
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
-        if (!chain)
-            bf_err("chain list element pointed to null data\n");
-
-        bf_assert(chain);
 
         struct bf_cgen *cgen = bf_ctx_get_cgen(chain->hook, NULL);
         if (!cgen)
