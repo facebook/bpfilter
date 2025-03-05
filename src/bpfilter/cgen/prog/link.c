@@ -20,7 +20,6 @@
 #include "core/hook.h"
 #include "core/logger.h"
 #include "core/marsh.h"
-#include "core/nf.h"
 
 int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook)
 {

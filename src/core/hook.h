@@ -6,6 +6,7 @@
 #pragma once
 
 #include <linux/bpf.h>
+#include <linux/netfilter.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -87,6 +88,22 @@ unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook);
  * @return The BPF attach type corresponding to @p hook.
  */
 enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook);
+
+/**
+ * Convert a @ref bf_hook value to a @c nf_inet_hooks value.
+ *
+ * @param hook The hook to convert. Must be a valid bpfilter Netfilter hook.
+ * @return The corresponding @c nf_inet_hooks value.
+ */
+enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook);
+
+/**
+ * Convert a @c nf_inet_hooks value to a @ref bf_hook value.
+ *
+ * @param hook The hook to convert. Must be a valid @c nf_inet_hooks hook.
+ * @return The corresponding @c bf_hook value.
+ */
+enum bf_hook bf_nf_hook_to_hook(enum nf_inet_hooks hook);
 
 /**
  * Initializes a hook options structure.

@@ -32,7 +32,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/matcher.h"
-#include "core/nf.h"
 #include "core/opts.h"
 #include "core/request.h"
 #include "core/response.h"
@@ -99,32 +98,6 @@
  */
 #define bf_ipt_replace_size(ipt_replace_ptr)                                   \
     (sizeof(struct ipt_replace) + (ipt_replace_ptr)->size)
-
-/**
- * Convert an iptables hook to a bpfilter hook.
- *
- * @param ipt_hook iptables hook. Must be valid.
- * @return bpfilter hook.
- */
-static enum bf_hook _bf_ipt_hook_to_hook(enum nf_inet_hooks ipt_hook)
-{
-    bf_assert(0 <= ipt_hook && ipt_hook <= NF_INET_NUMHOOKS);
-
-    switch (ipt_hook) {
-    case NF_INET_PRE_ROUTING:
-        return BF_HOOK_NF_PRE_ROUTING;
-    case NF_INET_LOCAL_IN:
-        return BF_HOOK_NF_LOCAL_IN;
-    case NF_INET_FORWARD:
-        return BF_HOOK_NF_FORWARD;
-    case NF_INET_LOCAL_OUT:
-        return BF_HOOK_NF_LOCAL_OUT;
-    case NF_INET_POST_ROUTING:
-        return BF_HOOK_NF_POST_ROUTING;
-    default:
-        bf_abort("invalid ipt_hook: %d", ipt_hook);
-    }
-}
 
 /**
  * Convert an iptables target to a bpfilter verdict.
@@ -343,7 +316,7 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
     if (r)
         return r;
 
-    r = bf_chain_new(&_chain, _bf_ipt_hook_to_hook(ipt_hook), policy, NULL,
+    r = bf_chain_new(&_chain, bf_nf_hook_to_hook(ipt_hook), policy, NULL,
                      NULL);
     if (r)
         return r;
@@ -429,7 +402,7 @@ static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
         if (ruleset[hook].cgen)
             continue;
 
-        r = bf_chain_new(&chain, _bf_ipt_hook_to_hook(hook), BF_VERDICT_ACCEPT,
+        r = bf_chain_new(&chain, bf_nf_hook_to_hook(hook), BF_VERDICT_ACCEPT,
                          NULL, NULL);
         if (r)
             return bf_err_r(r,
