@@ -32,7 +32,7 @@ int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook)
     if (!_link)
         return -ENOMEM;
 
-    strncpy(_link->name, name, BPF_OBJ_NAME_LEN);
+    bf_strncpy(_link->name, BPF_OBJ_NAME_LEN, name);
 
     _link->fd = -1;
     _link->hook = hook;

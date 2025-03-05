@@ -316,8 +316,7 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
     if (r)
         return r;
 
-    r = bf_chain_new(&_chain, bf_nf_hook_to_hook(ipt_hook), policy, NULL,
-                     NULL);
+    r = bf_chain_new(&_chain, bf_nf_hook_to_hook(ipt_hook), policy, NULL, NULL);
     if (r)
         return r;
 
