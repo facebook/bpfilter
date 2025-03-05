@@ -21,8 +21,6 @@
 #include "core/set.h"
 #include "core/verdict.h"
 
-#define _clean_bf_list_ __attribute__((__cleanup__(bf_list_clean)))
-
 struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...)
 {
     struct bf_hook_opts opts = {};
