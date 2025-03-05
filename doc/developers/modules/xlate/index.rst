@@ -9,3 +9,4 @@ See the documentation for the following front-ends:
    :maxdepth: 1
 
    ipt
+   nft

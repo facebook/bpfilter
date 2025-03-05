@@ -63,8 +63,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/xlate/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/xlate/ipt.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/fronts/nft.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/xlate/nft.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/benchmarks/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coverage/index.rst
 )
