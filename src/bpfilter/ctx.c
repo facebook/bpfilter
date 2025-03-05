@@ -299,6 +299,35 @@ static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
 }
 
 /**
+ * See @ref bf_ctx_get_cgens_for_front for details.
+ */
+static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
+                                       enum bf_front front)
+{
+    _clean_bf_list_ bf_list _cgens = bf_list_default(NULL, bf_cgen_marsh);
+    int r;
+
+    bf_assert(ctx && cgens);
+
+    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+        bf_list_foreach (&ctx->cgens[i], cgen_node) {
+            struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+
+            if (cgen->front != front)
+                continue;
+
+            r = bf_list_add_tail(&_cgens, cgen);
+            if (r)
+                return bf_err_r(r, "failed to insert codegen into list");
+        }
+    }
+
+    bf_swap(*cgens, _cgens);
+
+    return 0;
+}
+
+/**
  * See @ref bf_ctx_set_cgen for details.
  */
 static int _bf_ctx_set_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen)
@@ -425,6 +454,11 @@ struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook,
                                 const struct bf_hook_opts *opts)
 {
     return _bf_ctx_get_cgen(_bf_global_ctx, hook, opts);
+}
+
+int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front)
+{
+    return _bf_ctx_get_cgens_for_front(_bf_global_ctx, cgens, front);
 }
 
 int bf_ctx_set_cgen(struct bf_cgen *cgen)
