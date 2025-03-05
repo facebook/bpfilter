@@ -8,14 +8,16 @@
 #include <stdbool.h>
 
 #include "core/dump.h"
+#include "core/front.h"
 #include "core/hook.h"
+#include "core/list.h"
 
 /**
  * @file ctx.h
  *
  * Global runtime context for @c bpfilter daemon.
  *
- * This file contains the definition of the @ref bf_ctx structure, which is 
+ * This file contains the definition of the @ref bf_ctx structure, which is
  * the main structure used to store the daemon's runtime context.
  *
  * All the public @c bf_ctx_* functions manipulate a private global context.
@@ -100,6 +102,19 @@ bool bf_ctx_is_empty(void);
  */
 struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook,
                                 const struct bf_hook_opts *opts);
+
+/**
+ * Get the list of @ref bf_cgen defined for a given @p front .
+ *
+ * The @p cgens list returned to the caller does not own the codegens, it can
+ * safely be cleaned up using @ref bf_list_clean or @ref bf_list_free .
+ *
+ * @param cgens List of @ref bf_cgen to fill. The list will be initialised by
+ *        this function. Can't be NULL. On failure, @p cgens is left unchanged.
+ * @param front Front the get the list of @ref bf_cgen for.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front);
 
 /**
  * Add a codegen to the global context.
