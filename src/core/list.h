@@ -28,9 +28,11 @@ typedef int (*bf_list_ops_marsh)(const void *data, struct bf_marsh **marsh);
  */
 typedef struct
 {
+    /** Callback to free a node's data. If NULL, the data won't be freed. */
     bf_list_ops_free free;
 
-    /// Callback to serialize the data from a node.
+    /** Callback to serialize the data from a node. If NULL, the data won't be
+     * serialized. */
     bf_list_ops_marsh marsh;
 } bf_list_ops;
 
@@ -115,19 +117,37 @@ typedef struct
          (node); (node) = __next, __next = __next ? __next->prev : NULL)
 
 /**
- * Returns an initialised @ref bf_list.
+ * Returns an initialised @ref bf_list_ops structure.
  *
- * @param list_ops Operations to use to manipulate the list's data. Must be
- *        non-NULL.
- * @return An initialised @ref bf_list.
+ * @param free_cb Callback to free the data contained in a node. If NULL, a
+ *        node's data won't be freed when the list is destroyed.
+ * @param marsh_cb Callback to marsh the data contained in a node. If NULL, a
+ *        node's data won't be marshed when the list is marshed.
+ * @return An initialised @ref bf_list_ops .
  */
-#define bf_list_default(list_ops) ((bf_list) {.ops = list_ops /* NOLINT */})
+#define bf_list_ops_default(free_cb, marsh_cb)                                 \
+    ((bf_list_ops) {.free = (bf_list_ops_free)(free_cb),                       \
+                    .marsh = (bf_list_ops_marsh)(marsh_cb)})
+
+/**
+ * Returns an initialised @ref bf_list .
+ *
+ * @param free_cb Callback to free the data contained in a node. If NULL, a
+ *        node's data won't be freed when the list is destroyed.
+ * @param marsh_cb Callback to marsh the data contained in a node. If NULL, a
+ *        node's data won't be marshed when the list is marshed.
+ * @return An initialised @ref bf_list .
+ */
+#define bf_list_default(free_cb, marsh_cb)                                     \
+    ((bf_list) {.ops = bf_list_ops_default(free_cb, marsh_cb)})
 
 /**
  * Allocate and initialise a new list.
  *
  * @param list Pointer to the list to initialise. Must be non-NULL.
- * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
+ * @param ops Operations to use to manipulate the list's data. If NULL, the
+ *        list's ops are initialised to NULL: the node's data won't be free nor
+ *        marshed.
  * @return 0 on success or negative errno code on failure.
  */
 int bf_list_new(bf_list **list, const bf_list_ops *ops);
@@ -143,8 +163,9 @@ void bf_list_free(bf_list **list);
  * Initialize an allocated list.
  *
  * @param list List to initialise. Must be non-NULL.
- * @param ops Operations to use to manipulate the list's data. Must be non-NULL.
- *        @p ops shouldn't contain any NULL field.
+ * @param ops Operations to use to manipulate the list's data. If NULL, the
+ *        list's ops are initialised to NULL: the node's data won't be free nor
+ *        marshed.
  */
 void bf_list_init(bf_list *list, const bf_list_ops *ops);
 

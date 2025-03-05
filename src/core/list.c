@@ -36,22 +36,20 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 }
 
 /**
- * Free a list node. Must be non-NULL.
+ * Free a list node.
  *
- * The data contained in the node will also be freed using the function provided
- * in the list's ops.
- *
- * @param node Node to free.
- * @param free_data Pointer to a function use to free the node's data.
+ * @param node Node to free. Can't be NULL.
+ * @param free_data Callback to use to free the data. If NULL, the data is not
+ *        freed.
  */
 static void bf_list_node_free(bf_list_node **node,
                               void (*free_data)(void **data))
 {
     bf_assert(node);
 
-    free_data(&(*node)->data);
-    free(*node);
-    *node = NULL;
+    if (free_data)
+        free_data(&(*node)->data);
+    freep((void *)node);
 }
 
 int bf_list_new(bf_list **list, const bf_list_ops *ops)
@@ -59,8 +57,6 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops)
     _cleanup_bf_list_ bf_list *_list = NULL;
 
     bf_assert(list);
-    bf_assert(ops);
-    bf_assert(ops->free);
 
     _list = calloc(1, sizeof(*_list));
     if (!_list)
@@ -88,13 +84,15 @@ void bf_list_free(bf_list **list)
 void bf_list_init(bf_list *list, const bf_list_ops *ops)
 {
     bf_assert(list);
-    bf_assert(ops);
-    bf_assert(ops->free);
 
     list->len = 0;
     list->head = NULL;
     list->tail = NULL;
-    list->ops = *ops;
+
+    if (ops)
+        list->ops = *ops;
+    else
+        list->ops = bf_list_ops_default(NULL, NULL);
 }
 
 void bf_list_clean(bf_list *list)
@@ -115,22 +113,23 @@ int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh)
     int r;
 
     bf_assert(list && marsh);
-    bf_assert(list->ops.marsh);
 
     r = bf_marsh_new(&_marsh, NULL, 0);
     if (r < 0)
         return r;
 
-    bf_list_foreach (list, node) {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+    if (list->ops.marsh) {
+        bf_list_foreach (list, node) {
+            _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-        r = list->ops.marsh(bf_list_node_get_data(node), &child);
-        if (r < 0)
-            return r;
+            r = list->ops.marsh(bf_list_node_get_data(node), &child);
+            if (r < 0)
+                return r;
 
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r < 0)
-            return r;
+            r = bf_marsh_add_child_obj(&_marsh, child);
+            if (r < 0)
+                return r;
+        }
     }
 
     *marsh = TAKE_PTR(_marsh);
