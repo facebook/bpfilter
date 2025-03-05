@@ -6,6 +6,7 @@ Modules
    :caption: Modules
 
    bpfilter
+   xlate/index
 
 ``bpfilter`` is composed of multiple modules depending on each other. Splitting the project in different modules allows for the source code to be efficiently reused, be it for ``bfcli``, ``bpfilter``'s daemon, or ``libbpfilter``:
 
