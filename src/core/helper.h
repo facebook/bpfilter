@@ -95,6 +95,13 @@ extern const char *strerrordesc_np(int errnum);
         (b) = __a;                                                             \
     } while (0)
 
+#define bf_min(a, b)                                                           \
+    ({                                                                         \
+        __typeof__(a) _a = (a);                                                \
+        __typeof__(b) _b = (b);                                                \
+        _a < _b ? _a : _b;                                                     \
+    })
+
 /**
  * Free a pointer and set it to NULL.
  *
@@ -212,6 +219,21 @@ static inline bool bf_streq(const char *lhs, const char *rhs) // NOLINT
 {
     return strcmp(lhs, rhs) == 0;
 }
+
+/**
+ * Copy a string to a buffer.
+ *
+ * @p src is copied to @p dst . If @p src is too long, at most @p len bytes are
+ * copied (including the termination character).
+ *
+ * @param dst Destination buffer. Can't be NULL.
+ * @param len Length of the destination buffer. The function will not copy more
+ *        than @p len bytes to @p dst , including @c \0 . Can't be 0.
+ * @param src Soucre buffer to copy from. Will only be copied up to the
+ *        termination character if it fits. Can't be NULL.
+ * @return 0 on success, or @c -E2BIG if @p src can't fit in @p dst .
+ */
+int bf_strncpy(char *dst, size_t len, const char *src);
 
 /**
  * Read the contents of a file into a buffer.

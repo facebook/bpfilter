@@ -9,12 +9,30 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "core/logger.h"
 
 #define OPEN_MODE_644 (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+
+int bf_strncpy(char *dst, size_t len, const char *src)
+{
+    size_t src_len;
+    size_t copy_len;
+
+    bf_assert(dst && src);
+    bf_assert(len);
+
+    src_len = strlen(src);
+    copy_len = bf_min(src_len, len - 1);
+
+    memcpy(dst, src, copy_len);
+    dst[copy_len] = '\0';
+
+    return copy_len != src_len ? -E2BIG : 0;
+}
 
 int bf_read_file(const char *path, void **buf, size_t *len)
 {
