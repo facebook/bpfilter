@@ -869,7 +869,9 @@ static int _bf_ipt_set_counters_handler(struct xt_counters_info *counters,
 int _bf_ipt_get_info_handler(struct bf_request *request,
                              struct bf_response **response)
 {
+    _cleanup_free_ struct ipt_replace *replace = NULL;
     struct ipt_getinfo *info = (struct ipt_getinfo *)request->data;
+    int r;
 
     bf_assert(request);
     bf_assert(sizeof(*info) == request->data_len);
@@ -879,12 +881,15 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
                         info->name);
     }
 
-    info->valid_hooks = _bf_cache->valid_hooks;
-    memcpy(info->hook_entry, _bf_cache->hook_entry,
-           sizeof(_bf_cache->hook_entry));
-    memcpy(info->underflow, _bf_cache->underflow, sizeof(_bf_cache->underflow));
-    info->num_entries = _bf_cache->num_entries;
-    info->size = _bf_cache->size;
+    r = _bf_ipt_gen_ipt_replace(&replace, false);
+    if (r)
+        return r;
+
+    info->valid_hooks = replace->valid_hooks;
+    memcpy(info->hook_entry, replace->hook_entry, sizeof(replace->hook_entry));
+    memcpy(info->underflow, replace->underflow, sizeof(replace->underflow));
+    info->num_entries = replace->num_entries;
+    info->size = replace->size;
 
     return bf_response_new_success(response, (const char *)info,
                                    sizeof(struct ipt_getinfo));
@@ -900,6 +905,7 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
 int _bf_ipt_get_entries_handler(struct bf_request *request,
                                 struct bf_response **response)
 {
+    _cleanup_free_ struct ipt_replace *replace = NULL;
     struct ipt_get_entries *entries;
     int r;
 
@@ -913,55 +919,18 @@ int _bf_ipt_get_entries_handler(struct bf_request *request,
                         entries->name);
     }
 
-    if (entries->size != _bf_cache->size) {
+    r = _bf_ipt_gen_ipt_replace(&replace, true);
+    if (r)
+        return r;
+
+    if (entries->size != replace->size) {
         return bf_err_r(
             -EINVAL,
             "not enough space to store entries: %u available, %u required",
-            entries->size, _bf_cache->size);
+            entries->size, replace->size);
     }
 
-    memcpy(entries->entrytable, _bf_cache->entries, _bf_cache->size);
-
-    for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
-        struct ipt_entry *first_rule;
-        struct ipt_entry *last_rule;
-        struct bf_cgen *cgen;
-        enum bf_counter_type counter_idx;
-
-        if (!(_bf_cache->valid_hooks & (1 << i))) {
-            bf_dbg("ipt hook %d is not enabled, skipping", i);
-            continue;
-        }
-
-        first_rule = bf_ipt_entries_get_rule(entries, _bf_cache->hook_entry[i]);
-        last_rule = bf_ipt_entries_get_rule(entries, _bf_cache->underflow[i]);
-        cgen = bf_ctx_get_cgen(_bf_ipt_hook_to_hook(i), BF_FRONT_IPT);
-        enum bf_counter_type rule_count = bf_list_size(&cgen->chain->rules);
-
-        for (counter_idx = 0; first_rule <= last_rule;
-             ++counter_idx, first_rule = ipt_get_next_rule(first_rule)) {
-            struct bf_counter counter = {};
-
-            /* Note that the policy is considered a rule, but we must access
-             * via the unambiguous counter enum rather than overflowing. */
-            bool is_policy = counter_idx == rule_count;
-            r = bf_cgen_get_counter(
-                cgen, is_policy ? BF_COUNTER_POLICY : counter_idx, &counter);
-            if (r) {
-                return bf_err_r(r, "failed to get IPT counter for index %u",
-                                counter_idx);
-            }
-
-            first_rule->counters.bcnt = counter.bytes;
-            first_rule->counters.pcnt = counter.packets;
-        }
-
-        if (counter_idx != rule_count + 1) {
-            /* We expect len(cgen->rules) + 1 as the policy is considered
-             * a rule for iptables, but not for bpfilter. */
-            return bf_err_r(-EINVAL, "invalid number of rules requested");
-        }
-    }
+    memcpy(entries->entrytable, replace->entries, replace->size);
 
     return bf_response_new_success(response, (const char *)entries,
                                    sizeof(*entries) + entries->size);
