@@ -80,6 +80,7 @@ typedef struct
 } bf_list;
 
 #define _cleanup_bf_list_ __attribute__((cleanup(bf_list_free)))
+#define _clean_bf_list_ __attribute__((cleanup(bf_list_clean)))
 
 /**
  * Iterate over a @ref bf_list.

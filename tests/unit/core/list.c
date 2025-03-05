@@ -138,6 +138,12 @@ Test(list, init_and_clean)
     expect_assert_failure(bf_list_clean(NULL));
 
     {
+        // Automatically cleanup
+        _clean_bf_list_ bf_list list;
+        init_and_fill(&list, 3, &dummy_ops, dummy_filler_head);
+    }
+
+    {
         // With noop operators
         bf_list_init(&l, &noop_ops);
         assert_int_equal(0, l.len);
