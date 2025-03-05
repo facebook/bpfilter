@@ -779,7 +779,7 @@ static int _bf_ipt_ruleset_set(struct ipt_replace *replace, size_t len)
     bf_assert(bf_ipt_replace_size(replace) == len);
 
     if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
-        bf_ipt_dump_replace(replace, NULL);
+        bf_ipt_dump_replace(replace, EMPTY_PREFIX);
 
     r = _bf_ipt_xlate_ruleset_set(replace, &chains);
     if (r)
