@@ -7,18 +7,6 @@
 
 #include "harness/test.h"
 #include "harness/mock.h"
-
-static void noop_free(void **data)
-{
-    UNUSED(data);
-}
-
-static void dummy_free(void **data)
-{
-    free(*data);
-    *data = NULL;
-}
-
 static int dummy_marsh(const void *data, struct bf_marsh **marsh)
 {
     assert_success(bf_marsh_new(marsh, data, sizeof(int)));
@@ -78,21 +66,18 @@ static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
     assert_int_equal(count, bf_list_size(l));
 }
 
-static bf_list_ops noop_ops = {.free = noop_free};
-static bf_list_ops dummy_ops = {.free = dummy_free, .marsh = dummy_marsh};
-
 Test(list, new_and_free)
 {
     bf_list *l = NULL;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     expect_assert_failure(bf_list_new(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_new(NOT_NULL, NULL));
     expect_assert_failure(bf_list_free(NULL));
     expect_assert_failure(bf_list_add_head(NULL, NOT_NULL));
 
     {
         // With noop operators
-        assert_success(bf_list_new(&l, &noop_ops));
+        assert_success(bf_list_new(&l, NULL));
         assert_int_equal(0, l->len);
         assert_null(l->head);
         assert_null(l->tail);
@@ -100,7 +85,7 @@ Test(list, new_and_free)
         bf_list_free(&l);
         assert_null(l);
 
-        new_and_fill(&l, 3, &noop_ops, bf_list_add_head);
+        new_and_fill(&l, 3, NULL, bf_list_add_head);
         assert_int_equal(3, l->len);
         assert_non_null(l->head);
         assert_non_null(l->tail);
@@ -111,7 +96,7 @@ Test(list, new_and_free)
 
     {
         // With dummy operators which allocate memory
-        bf_list_new(&l, &dummy_ops);
+        bf_list_new(&l, &free_ops);
         assert_int_equal(0, l->len);
         assert_null(l->head);
         assert_null(l->tail);
@@ -119,7 +104,7 @@ Test(list, new_and_free)
         bf_list_free(&l);
         assert_null(l);
 
-        new_and_fill(&l, 3, &dummy_ops, dummy_filler_head);
+        new_and_fill(&l, 3, &free_ops, dummy_filler_head);
         assert_int_equal(3, l->len);
         assert_non_null(l->head);
         assert_non_null(l->tail);
@@ -132,20 +117,20 @@ Test(list, new_and_free)
 Test(list, init_and_clean)
 {
     bf_list l;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     expect_assert_failure(bf_list_init(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_init(NOT_NULL, NULL));
     expect_assert_failure(bf_list_clean(NULL));
 
     {
         // Automatically cleanup
         _clean_bf_list_ bf_list list;
-        init_and_fill(&list, 3, &dummy_ops, dummy_filler_head);
+        init_and_fill(&list, 3, &free_ops, dummy_filler_head);
     }
 
     {
         // With noop operators
-        bf_list_init(&l, &noop_ops);
+        bf_list_init(&l, NULL);
         assert_int_equal(0, l.len);
         assert_null(l.head);
         assert_null(l.tail);
@@ -155,7 +140,7 @@ Test(list, init_and_clean)
         assert_null(l.head);
         assert_null(l.tail);
 
-        init_and_fill(&l, 3, &noop_ops, bf_list_add_head);
+        init_and_fill(&l, 3, NULL, bf_list_add_head);
         assert_int_equal(3, l.len);
         assert_non_null(l.head);
         assert_non_null(l.tail);
@@ -168,7 +153,7 @@ Test(list, init_and_clean)
 
     {
         // With dummy operators which allocate memory
-        bf_list_init(&l, &dummy_ops);
+        bf_list_init(&l, &free_ops);
         assert_int_equal(0, l.len);
         assert_null(l.head);
         assert_null(l.tail);
@@ -178,7 +163,7 @@ Test(list, init_and_clean)
         assert_null(l.head);
         assert_null(l.tail);
 
-        init_and_fill(&l, 3, &dummy_ops, dummy_filler_head);
+        init_and_fill(&l, 3, &free_ops, dummy_filler_head);
         assert_int_equal(3, l.len);
         assert_non_null(l.head);
         assert_non_null(l.tail);
@@ -192,9 +177,6 @@ Test(list, init_and_clean)
 
 Test(list, serialize_deserialize_assert)
 {
-    bf_list list = {};
-
-    expect_assert_failure(bf_list_marsh(&list, NOT_NULL));
     expect_assert_failure(bf_list_marsh(NULL, NOT_NULL));
     expect_assert_failure(bf_list_marsh(NOT_NULL, NULL));
 }
@@ -206,17 +188,21 @@ Test(list, serialize_deserialize)
 
     _cleanup_bf_list_ bf_list *l0 = NULL;
     _cleanup_bf_list_ bf_list *l1 = NULL;
+    _cleanup_bf_list_ bf_list *l2 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *m0 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *m1 = NULL;
+    _cleanup_bf_marsh_ struct bf_marsh *m2 = NULL;
     struct bf_marsh *child = NULL;
+    bf_list_ops free_ops = bf_list_ops_default(freep, dummy_marsh);
+    bf_list_ops free_nomarsh_ops = bf_list_ops_default(freep, NULL);
 
     // Empty list: marsh allocated but no child
-    new_and_fill(&l0, 0, &dummy_ops, dummy_filler_head);
+    new_and_fill(&l0, 0, &free_ops, dummy_filler_head);
     assert_success(bf_list_marsh(l0, &m0));
     assert_null(bf_marsh_next_child(m0, NULL));
 
     // Non-empty list: marsh contains childs, which contain integers
-    new_and_fill(&l1, 10, &dummy_ops, dummy_filler_tail);
+    new_and_fill(&l1, 10, &free_ops, dummy_filler_tail);
     assert_success(bf_list_marsh(l1, &m1));
 
     for (int i = 1; i < 11; ++i) {
@@ -228,10 +214,16 @@ Test(list, serialize_deserialize)
     }
 
     assert_null(bf_marsh_next_child(m1, child));
+
+    // Non-empty list: no marsh callback
+    new_and_fill(&l2, 10, &free_nomarsh_ops, dummy_filler_tail);
+    assert_success(bf_list_marsh(l2, &m2));
+    assert_null(bf_marsh_next_child(m2, NULL));
 }
 
 Test(list, fill_from_head_and_check)
 {
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
     bf_list list;
     size_t i;
 
@@ -239,13 +231,13 @@ Test(list, fill_from_head_and_check)
     expect_assert_failure(bf_list_get_head(NULL));
     expect_assert_failure(bf_list_node_get_data(NULL));
 
-    bf_list_init(&list, &dummy_ops);
+    bf_list_init(&list, &free_ops);
 
     assert_null(bf_list_get_head(&list));
 
     // Fill list at head with values from 1 to 10, expecting:
     // 10 -> 9 -> ... -> 2 -> 1
-    init_and_fill(&list, 10, &dummy_ops, dummy_filler_head);
+    init_and_fill(&list, 10, &free_ops, dummy_filler_head);
 
     // Validate content of the list
     i = bf_list_size(&list);
@@ -270,8 +262,9 @@ Test(list, fill_from_head_and_check)
 Test(list, iterate_and_remove)
 {
     bf_list l;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
-    init_and_fill(&l, 10, &dummy_ops, dummy_filler_head);
+    init_and_fill(&l, 10, &free_ops, dummy_filler_head);
 
     bf_list_foreach (&l, node)
         bf_list_delete(&l, node);
@@ -295,11 +288,12 @@ Test(list, iterate_and_remove)
 Test(list, get_at)
 {
     bf_list l;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     expect_assert_failure(bf_list_get_at(NULL, 1));
 
     // Fill the list with values from 1 to 10
-    init_and_fill(&l, 10, &dummy_ops, dummy_filler_tail);
+    init_and_fill(&l, 10, &free_ops, dummy_filler_tail);
 
     // Index 0 contains value 1 and so on
     assert_int_equal(1, *(int *)bf_list_get_at(&l, 0));
@@ -316,17 +310,18 @@ Test(list, fill_from_tail_and_check)
 {
     bf_list list;
     size_t i;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     expect_assert_failure(bf_list_add_tail(NULL, NOT_NULL));
     expect_assert_failure(bf_list_get_tail(NULL));
 
-    bf_list_init(&list, &dummy_ops);
+    bf_list_init(&list, &free_ops);
 
     assert_null(bf_list_get_head(&list));
 
     // Fill list at tail with values from 1 to 10, expecting:
     // 1 -> 2 -> ... -> 9 -> 10
-    init_and_fill(&list, 10, &dummy_ops, dummy_filler_tail);
+    init_and_fill(&list, 10, &free_ops, dummy_filler_tail);
 
     // Validate content of the list
     i = 1;
@@ -351,11 +346,12 @@ Test(list, fill_from_tail_and_check)
 Test(list, is_tail)
 {
     bf_list l;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     expect_assert_failure(bf_list_is_tail(NULL, NOT_NULL));
     expect_assert_failure(bf_list_is_tail(NOT_NULL, NULL));
 
-    init_and_fill(&l, 10, &dummy_ops, dummy_filler_head);
+    init_and_fill(&l, 10, &free_ops, dummy_filler_head);
 
     assert_true(bf_list_is_tail(&l, bf_list_get_tail(&l)));
     assert_false(bf_list_is_tail(&l, bf_list_get_head(&l)));
@@ -371,7 +367,7 @@ Test(list, prev_next_node_access)
     {
         _cleanup_bf_list_ bf_list *l = NULL;
 
-        new_and_fill(&l, 0, &noop_ops, bf_list_add_head);
+        new_and_fill(&l, 0, NULL, bf_list_add_head);
 
         assert_null(bf_list_get_head(l));
         assert_null(bf_list_get_tail(l));
@@ -380,7 +376,7 @@ Test(list, prev_next_node_access)
     {
         _cleanup_bf_list_ bf_list *l = NULL;
 
-        new_and_fill(&l, 1, &noop_ops, bf_list_add_head);
+        new_and_fill(&l, 1, NULL, bf_list_add_head);
 
         assert_ptr_equal(bf_list_get_head(l), bf_list_get_tail(l));
         assert_null(bf_list_node_next(bf_list_get_tail(l)));
@@ -390,7 +386,7 @@ Test(list, prev_next_node_access)
     {
         _cleanup_bf_list_ bf_list *l = NULL;
 
-        new_and_fill(&l, 2, &noop_ops, bf_list_add_head);
+        new_and_fill(&l, 2, NULL, bf_list_add_head);
 
         assert_ptr_not_equal(bf_list_get_head(l), bf_list_get_tail(l));
         assert_ptr_equal(bf_list_node_next(bf_list_get_head(l)),
@@ -402,10 +398,12 @@ Test(list, prev_next_node_access)
 
 Test(list, node_take_data)
 {
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+
     {
         _cleanup_bf_list_ bf_list *l = NULL;
 
-        new_and_fill(&l, 5, &dummy_ops, dummy_filler_tail);
+        new_and_fill(&l, 5, &free_ops, dummy_filler_tail);
 
         bf_list_foreach (l, node) {
             assert_non_null(node);
