@@ -20,7 +20,6 @@
    developers/packets_processing
    developers/generation
    developers/modules/index
-   developers/fronts/index
 
 .. toctree::
    :hidden:
