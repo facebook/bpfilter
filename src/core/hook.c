@@ -6,6 +6,7 @@
 #include "core/hook.h"
 
 #include <linux/bpf.h>
+#include <linux/netfilter.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -103,6 +104,48 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
                   "missing entries in hooks array");
 
     return hooks[hook];
+}
+
+enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
+{
+    switch (hook) {
+    case BF_HOOK_NF_PRE_ROUTING:
+        return NF_INET_PRE_ROUTING;
+    case BF_HOOK_NF_LOCAL_IN:
+        return NF_INET_LOCAL_IN;
+    case BF_HOOK_NF_FORWARD:
+        return NF_INET_FORWARD;
+    case BF_HOOK_NF_LOCAL_OUT:
+        return NF_INET_LOCAL_OUT;
+    case BF_HOOK_NF_POST_ROUTING:
+        return NF_INET_POST_ROUTING;
+    default:
+        bf_assert(0);
+    }
+
+    // This is required to silence a compiler warning, but will never be reached.
+    return 0;
+}
+
+enum bf_hook bf_nf_hook_to_hook(enum nf_inet_hooks hook)
+{
+    switch (hook) {
+    case NF_INET_PRE_ROUTING:
+        return BF_HOOK_NF_PRE_ROUTING;
+    case NF_INET_LOCAL_IN:
+        return BF_HOOK_NF_LOCAL_IN;
+    case NF_INET_FORWARD:
+        return BF_HOOK_NF_FORWARD;
+    case NF_INET_LOCAL_OUT:
+        return BF_HOOK_NF_LOCAL_OUT;
+    case NF_INET_POST_ROUTING:
+        return BF_HOOK_NF_POST_ROUTING;
+    default:
+        bf_assert(0);
+    }
+
+    // This is required to silence a compiler warning, but will never be reached.
+    return 0;
 }
 
 static int _bf_hook_opt_ifindex_parse(struct bf_hook_opts *opts,

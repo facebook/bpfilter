@@ -21,7 +21,6 @@ set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.h           ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/marsh.h            ${CMAKE_CURRENT_SOURCE_DIR}/marsh.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.h          ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/nf.h               ${CMAKE_CURRENT_SOURCE_DIR}/nf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/opts.h             ${CMAKE_CURRENT_SOURCE_DIR}/opts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/request.h          ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.h         ${CMAKE_CURRENT_SOURCE_DIR}/response.c
