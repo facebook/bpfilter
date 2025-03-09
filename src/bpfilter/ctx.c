@@ -322,7 +322,7 @@ static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
         }
     }
 
-    bf_swap(*cgens, _cgens);
+    *cgens = bf_list_move(_cgens);
 
     return 0;
 }

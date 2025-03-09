@@ -142,6 +142,25 @@ typedef struct
     ((bf_list) {.ops = bf_list_ops_default(free_cb, marsh_cb)})
 
 /**
+ * Move a list.
+ *
+ * Move a list from @p list and return it. Once moved, the original list will
+ * be empty, and @ref bf_list_clean can be called on it safely. The list it
+ * has been moved to will be overriden and @ref bf_list_clean should be
+ * called on it.
+ *
+ * @param list List to move.
+ * @return The moved list.
+ */
+#define bf_list_move(list)                                                     \
+    ({                                                                         \
+        bf_list *__list = &(list);                                             \
+        bf_list _list = *__list;                                               \
+        *__list = bf_list_default(NULL, NULL);                                 \
+        _list;                                                                 \
+    })
+
+/**
  * Allocate and initialise a new list.
  *
  * @param list Pointer to the list to initialise. Must be non-NULL.
