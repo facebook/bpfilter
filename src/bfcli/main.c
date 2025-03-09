@@ -32,6 +32,16 @@ struct bf_ruleset_set_opts
     const char *input_string;
 };
 
+struct bf_ruleset_get_opts
+{
+    bool with_counters;
+};
+
+enum
+{
+    BF_OPT_COUNTERS = 1,
+};
+
 static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
                                            struct argp_state *state)
 {
@@ -54,6 +64,22 @@ static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
         return ARGP_ERR_UNKNOWN;
     }
 
+    return 0;
+}
+
+static error_t _bf_ruleset_get_opts_parser(int key, const char *arg,
+                                           struct argp_state *state)
+{
+    struct bf_ruleset_get_opts *opts = state->input;
+    UNUSED(arg);
+
+    switch (key) {
+    case BF_OPT_COUNTERS:
+        opts->with_counters = true;
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
     return 0;
 }
 
@@ -164,6 +190,39 @@ end_clean:
 
 #define streq(str, expected) (str) && bf_streq(str, expected)
 
+int _bf_do_ruleset_get(int argc, char *argv[])
+{
+    static struct bf_ruleset_get_opts opts = {
+        .with_counters = false,
+    };
+
+    static struct argp_option options[] = {
+        // use enum
+        {"with-counters", BF_OPT_COUNTERS, 0, 0,
+         "Print rule and chain counters", 0},
+        {0},
+    };
+
+    struct argp argp = {
+        options, (argp_parser_t)_bf_ruleset_get_opts_parser,
+        NULL,    NULL,
+        0,       NULL,
+        NULL,
+    };
+
+    int r;
+
+    r = argp_parse(&argp, argc, argv, 0, 0, &opts);
+    if (r)
+        bf_err_r(r, "failed to parse arguments");
+
+    r = bf_cli_ruleset_get(opts.with_counters);
+    if (r < 0)
+        bf_err_r(r, "failed to get ruleset");
+
+    return r;
+}
+
 int main(int argc, char *argv[])
 {
     const char *obj_str = NULL;
@@ -197,6 +256,8 @@ int main(int argc, char *argv[])
 
     if (streq(obj_str, "ruleset") && streq(action_str, "set")) {
         r = _bf_do_ruleset_set(argc, argv);
+    } else if (streq(obj_str, "ruleset") && streq(action_str, "get")) {
+        r = _bf_do_ruleset_get(argc, argv);
     } else if (streq(obj_str, "ruleset") && streq(action_str, "flush")) {
         r = bf_cli_ruleset_flush();
     } else {
