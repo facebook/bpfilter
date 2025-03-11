@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bfcli/dump.h"
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
 #include "core/chain.h"
@@ -18,6 +19,7 @@
 #include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
+#include "core/marsh.h"
 #include "core/request.h"
 #include "core/response.h"
 #include "core/set.h"
@@ -210,17 +212,47 @@ int _bf_do_ruleset_get(int argc, char *argv[])
         NULL,
     };
 
+    _cleanup_bf_response_ struct bf_response *response = NULL;
+
     int r;
 
     r = argp_parse(&argp, argc, argv, 0, 0, &opts);
     if (r)
         bf_err_r(r, "failed to parse arguments");
 
-    r = bf_cli_ruleset_get(opts.with_counters);
+    // Ask libbpfilter to make a request to the daemon
+    r = bf_cli_request_ruleset(&response, opts.with_counters);
     if (r < 0)
-        bf_err_r(r, "failed to get ruleset");
+        return bf_err_r(r, "failed to request ruleset\n");
 
-    return r;
+    if (response->type == BF_RES_FAILURE)
+        return bf_err_r(response->error, "failed to get ruleset\n");
+
+    if (response->data_len == 0) {
+        // NOLINTNEXTLINE
+        fprintf(stderr, "no ruleset returned\n");
+        return 0;
+    }
+
+    struct bf_marsh *chains_and_counters_marsh =
+        (struct bf_marsh *)response->data;
+
+    // Get the chain list
+    struct bf_marsh *chains_marsh =
+        bf_marsh_next_child(chains_and_counters_marsh, NULL);
+    if (!chains_marsh) {
+        bf_err("failed to locate chain list from daemon response\n");
+    }
+
+    // Get the array of counters
+    struct bf_marsh *counters_marsh =
+        bf_marsh_next_child(chains_and_counters_marsh, chains_marsh);
+    if (!counters_marsh) {
+        bf_err("failed to locate counter array from daemon response\n");
+    }
+
+    return bf_cli_dump_ruleset(chains_marsh, counters_marsh,
+                               opts.with_counters);
 }
 
 int main(int argc, char *argv[])
