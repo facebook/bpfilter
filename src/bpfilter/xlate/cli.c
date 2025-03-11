@@ -158,20 +158,13 @@ static int _bf_cli_get_chain_list(bf_list **chains)
     return 0;
 }
 
-static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
-                                      bf_list *chains, bool with_counters)
+static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh, bf_list *chains)
 {
     int r;
     size_t num_counters = 0;
     _cleanup_free_ struct bf_counter *counters = NULL;
 
     bf_assert(counter_marsh && chains);
-
-    // If we don't want counters, return an empty marsh
-    if (!with_counters) {
-        r = bf_marsh_new(counter_marsh, NULL, 0);
-        return r;
-    }
 
     /* Each chain has a policy counter and an error counter.
      * Each rule has a counter, though it may be unused. */
@@ -220,8 +213,11 @@ static int _bf_cli_get_rules(const struct bf_request *request,
             return bf_err_r(r, "failed to marshal list\n");
 
         // Marsh the counters
-        r = _bf_cli_get_counters_marsh(&counter_marsh, chains,
-                                       request->cli_with_counters);
+        if (request->cli_with_counters){
+            r = _bf_cli_get_counters_marsh(&counter_marsh, chains);
+        } else {
+                r = bf_marsh_new(&counter_marsh, NULL, 0);
+        }
         if (r < 0)
             return bf_err_r(r, "failed to get counters marsh\n");
     }
