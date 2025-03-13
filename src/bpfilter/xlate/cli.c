@@ -59,13 +59,14 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
     return bf_response_new_success(response, NULL, 0);
 }
 
-static size_t _bf_cli_num_rules(bf_list *chains)
+static size_t _bf_cli_num_rules(bf_list *cgens)
 {
-    bf_assert(chains);
+    bf_assert(cgens);
 
     size_t count = 0;
-    bf_list_foreach (chains, chain_node) {
-        struct bf_chain *chain = bf_list_node_get_data(chain_node);
+    bf_list_foreach (cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+        struct bf_chain *chain = cgen->chain;
 
         count += bf_list_size(&chain->rules);
     }
@@ -73,22 +74,12 @@ static size_t _bf_cli_num_rules(bf_list *chains)
     return count;
 }
 
-static int _bf_get_ctr_vals(bf_list *chains, struct bf_counter *counters)
+static int _bf_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
 {
     int counter_index = 0;
     int r;
 
-    bf_assert(chains && counters);
-
-    // Get bf_list of all cgens
-    _cleanup_bf_list_ bf_list *cgens = NULL;
-    r = bf_list_new(&cgens, NULL);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the cgen list");
-
-    r = bf_ctx_get_cgens_for_front(cgens, BF_FRONT_CLI);
-    if (r < 0)
-        return bf_err_r(r, "failed to get cgen list\n");
+    bf_assert(cgens && counters);
 
     bf_list_foreach (cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
@@ -131,22 +122,13 @@ static int _bf_get_ctr_vals(bf_list *chains, struct bf_counter *counters)
     return 0;
 }
 
-static int _bf_cli_get_chain_list(bf_list **chains)
+static int _bf_cli_get_chain_list(bf_list *cgens, bf_list **chains)
 {
-    _cleanup_bf_list_ bf_list *cgens = NULL;
     _cleanup_bf_list_ bf_list *_chains = NULL;
     bf_list_ops ops = {// chains will only contain the chains, not own them.
                        .free = (bf_list_ops_free)bf_list_nop_free,
                        .marsh = (bf_list_ops_marsh)bf_chain_marsh};
     int r;
-
-    r = bf_list_new(&cgens, NULL);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the cgen list");
-
-    r = bf_ctx_get_cgens_for_front(cgens, BF_FRONT_CLI);
-    if (r < 0)
-        return bf_err_r(r, "failed to get cgen list\n");
 
     r = bf_list_new(&_chains, &ops);
     if (r < 0)
@@ -155,8 +137,6 @@ static int _bf_cli_get_chain_list(bf_list **chains)
     // iterate over the codegens to get the chains
     bf_list_foreach (cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-        // if (!cgen)
-        //     bf_err("cgen list element pointed to null data\n");
         r = bf_list_add_tail(_chains, cgen->chain);
         if (r)
             return bf_err_r(r, "failed to add chain to list");
@@ -167,24 +147,24 @@ static int _bf_cli_get_chain_list(bf_list **chains)
     return 0;
 }
 
-static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
-                                      bf_list *chains)
+static int _bf_cli_get_counters_marsh(bf_list *cgens,
+                                      struct bf_marsh **counter_marsh)
 {
     int r;
     size_t num_counters = 0;
     _cleanup_free_ struct bf_counter *counters = NULL;
 
-    bf_assert(counter_marsh && chains);
+    bf_assert(counter_marsh && cgens);
 
     /* Each chain has a policy counter and an error counter.
      * Each rule has a counter, though it may be unused. */
-    num_counters = (2 * bf_list_size(chains)) + _bf_cli_num_rules(chains);
+    num_counters = (2 * bf_list_size(cgens)) + _bf_cli_num_rules(cgens);
 
     counters = calloc(num_counters, sizeof(struct bf_counter));
     if (!counters)
         bf_err_r(-ENOMEM, "failed to allocate memory for counters\n");
 
-    r = _bf_get_ctr_vals(chains, counters);
+    r = _bf_get_ctr_vals(cgens, counters);
     if (r < 0)
         return bf_err_r(r, "could not get ctr vals\n");
 
@@ -211,9 +191,14 @@ static int _bf_cli_get_rules(const struct bf_request *request,
         return bf_response_new_success(response, NULL, 0);
 
     {
+        _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
         _cleanup_bf_list_ bf_list *chains = NULL;
 
-        r = _bf_cli_get_chain_list(&chains);
+        r = bf_ctx_get_cgens_for_front(&cgens, BF_FRONT_CLI);
+        if (r < 0)
+            return bf_err_r(r, "failed to get cgen list\n");
+
+        r = _bf_cli_get_chain_list(&cgens, &chains);
         if (r < 0)
             return bf_err_r(r, "failed to create the chain list");
 
@@ -224,7 +209,7 @@ static int _bf_cli_get_rules(const struct bf_request *request,
 
         // Marsh the counters
         if (request->cli_with_counters) {
-            r = _bf_cli_get_counters_marsh(&counter_marsh, chains);
+            r = _bf_cli_get_counters_marsh(&cgens, &counter_marsh);
         } else {
             r = bf_marsh_new(&counter_marsh, NULL, 0);
         }
