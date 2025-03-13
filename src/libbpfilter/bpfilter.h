@@ -39,8 +39,7 @@ int bf_cli_ruleset_flush(void);
  * @param with_counters If true, the daemon will return the counters.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_request_ruleset(struct bf_response **response,
-                                  bool with_counters);
+int bf_cli_request_ruleset(struct bf_response **response, bool with_counters);
 
 /**
  * Send a chain to the daemon.
