@@ -13,7 +13,6 @@
 #include "core/chain.h"
 #include "core/front.h"
 #include "core/helper.h"
-#include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -81,19 +80,23 @@ static int _bf_get_ctr_vals(bf_list *chains, struct bf_counter *counters)
 
     bf_assert(chains && counters);
 
-    bf_list_foreach (chains, chain_node) {
-        struct bf_chain *chain = bf_list_node_get_data(chain_node);
+    // Get bf_list of all cgens
+    _cleanup_bf_list_ bf_list *cgens = NULL;
+    r = bf_list_new(&cgens, NULL);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the cgen list");
 
-        struct bf_cgen *cgen = bf_ctx_get_cgen(chain->hook, NULL);
-        if (!cgen)
-            bf_err("got a null cgen for chain element\n");
+    r = bf_ctx_get_cgens_for_front(cgens, BF_FRONT_CLI);
+    if (r < 0)
+        return bf_err_r(r, "failed to get cgen list\n");
 
-        // Iterate over each rule in the current chain
+    bf_list_foreach (cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+
+        // Iterate over each rule in the current cgen's chain
         int map_idx = 0;
-        bf_list_foreach (&chain->rules, rule_node) {
+        bf_list_foreach (&cgen->chain->rules, rule_node) {
             struct bf_rule *rule = bf_list_node_get_data(rule_node);
-            if (!chain)
-                bf_err("rule list element pointed to null data\n");
 
             if (rule->counters) {
                 // Query the BPF map for the counter values
@@ -130,24 +133,30 @@ static int _bf_get_ctr_vals(bf_list *chains, struct bf_counter *counters)
 
 static int _bf_cli_get_chain_list(bf_list **chains)
 {
+    _cleanup_bf_list_ bf_list *cgens = NULL;
     _cleanup_bf_list_ bf_list *_chains = NULL;
     bf_list_ops ops = {// chains will only contain the chains, not own them.
                        .free = (bf_list_ops_free)bf_list_nop_free,
                        .marsh = (bf_list_ops_marsh)bf_chain_marsh};
+    int r;
 
-    int r = bf_list_new(&_chains, &ops);
+    r = bf_list_new(&cgens, NULL);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the cgen list");
+
+    r = bf_ctx_get_cgens_for_front(cgens, BF_FRONT_CLI);
+    if (r < 0)
+        return bf_err_r(r, "failed to get cgen list\n");
+
+    r = bf_list_new(&_chains, &ops);
     if (r < 0)
         return bf_err_r(r, "failed to create the chain list");
 
-    // Loop over codegens which correspond to hooks
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        struct bf_cgen *cgen;
-
-        cgen = bf_ctx_get_cgen(i, NULL);
-
-        if (!cgen || !cgen->chain)
-            continue;
-
+    // iterate over the codegens to get the chains
+    bf_list_foreach (cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+        // if (!cgen)
+        //     bf_err("cgen list element pointed to null data\n");
         r = bf_list_add_tail(_chains, cgen->chain);
         if (r)
             return bf_err_r(r, "failed to add chain to list");
@@ -158,7 +167,8 @@ static int _bf_cli_get_chain_list(bf_list **chains)
     return 0;
 }
 
-static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh, bf_list *chains)
+static int _bf_cli_get_counters_marsh(struct bf_marsh **counter_marsh,
+                                      bf_list *chains)
 {
     int r;
     size_t num_counters = 0;
@@ -213,10 +223,10 @@ static int _bf_cli_get_rules(const struct bf_request *request,
             return bf_err_r(r, "failed to marshal list\n");
 
         // Marsh the counters
-        if (request->cli_with_counters){
+        if (request->cli_with_counters) {
             r = _bf_cli_get_counters_marsh(&counter_marsh, chains);
         } else {
-                r = bf_marsh_new(&counter_marsh, NULL, 0);
+            r = bf_marsh_new(&counter_marsh, NULL, 0);
         }
         if (r < 0)
             return bf_err_r(r, "failed to get counters marsh\n");
