@@ -122,27 +122,20 @@ static int _bf_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
     return 0;
 }
 
-static int _bf_cli_get_chain_list(bf_list *cgens, bf_list **chains)
+static int _bf_cli_get_chain_list(bf_list *cgens, bf_list *chains)
 {
-    _cleanup_bf_list_ bf_list *_chains = NULL;
-    bf_list_ops ops = {// chains will only contain the chains, not own them.
-                       .free = (bf_list_ops_free)bf_list_nop_free,
-                       .marsh = (bf_list_ops_marsh)bf_chain_marsh};
+    _clean_bf_list_ bf_list _chains = bf_list_default(NULL, bf_chain_marsh);
     int r;
-
-    r = bf_list_new(&_chains, &ops);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the chain list");
 
     // iterate over the codegens to get the chains
     bf_list_foreach (cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-        r = bf_list_add_tail(_chains, cgen->chain);
+        r = bf_list_add_tail(&_chains, cgen->chain);
         if (r)
             return bf_err_r(r, "failed to add chain to list");
     }
 
-    *chains = TAKE_PTR(_chains);
+    *chains = bf_list_move(_chains);
 
     return 0;
 }
@@ -192,7 +185,7 @@ static int _bf_cli_get_rules(const struct bf_request *request,
 
     {
         _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
-        _cleanup_bf_list_ bf_list *chains = NULL;
+        _clean_bf_list_ bf_list chains = bf_list_default(NULL, bf_chain_marsh);
 
         r = bf_ctx_get_cgens_for_front(&cgens, BF_FRONT_CLI);
         if (r < 0)
@@ -203,7 +196,7 @@ static int _bf_cli_get_rules(const struct bf_request *request,
             return bf_err_r(r, "failed to create the chain list");
 
         // Marsh the chain list
-        r = bf_list_marsh(chains, &chains_marsh);
+        r = bf_list_marsh(&chains, &chains_marsh);
         if (r < 0)
             return bf_err_r(r, "failed to marshal list\n");
 
