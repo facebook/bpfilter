@@ -5,8 +5,10 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
+struct bf_response;
 struct bf_chain;
 struct ipt_getinfo;
 struct ipt_get_entries;
@@ -27,6 +29,17 @@ const char *bf_version(void);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_cli_ruleset_flush(void);
+
+/**
+ * Request the daemon to return all the chains and all of
+ * the associated rules.
+ *
+ * @param response Pointer to response structure (to be allocated).
+ * can't be NULL.
+ * @param with_counters If true, the daemon will return the counters.
+ * @return 0 on success, or a negative errno value on error.
+ */
+int bf_cli_request_ruleset(struct bf_response **response, bool with_counters);
 
 /**
  * Send a chain to the daemon.
