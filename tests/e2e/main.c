@@ -15,10 +15,10 @@
 #include "libbpfilter/bpfilter.h"
 #include "packets.h"
 
-struct bf_e2e_opts
+static struct
 {
-    const char *bpfilter_path;
-};
+    char bpfilter_path[PATH_MAX];
+} _bf_opts;
 
 static struct argp_option _bf_e2e_options[] = {
     {"bpfilter", 'b', "BPFILTER", 0,
@@ -28,34 +28,15 @@ static struct argp_option _bf_e2e_options[] = {
 
 static error_t _bf_e2e_argp_cb(int key, char *arg, struct argp_state *state)
 {
-    struct bf_e2e_opts *opts = state->input;
-
     switch (key) {
     case 'b':
-        if (opts->bpfilter_path) {
-            bf_warn("--bpfilter is already set, replacing existing value");
-            freep(&opts->bpfilter_path);
-        }
-
-        opts->bpfilter_path = strdup(arg);
-        if (!opts->bpfilter_path)
-            return bf_err_r(errno, "failed to copy --bpfilter argument");
+        bf_strncpy(_bf_opts.bpfilter_path, PATH_MAX, arg);
         break;
     default:
         return ARGP_ERR_UNKNOWN;
     }
 
     return 0;
-}
-
-#define _clean_bf_e2e_opts_ __attribute__((__cleanup__(_bf_e2e_opts_clean)))
-
-static void _bf_e2e_opts_clean(struct bf_e2e_opts *opts)
-{
-    if (!opts)
-        return;
-
-    freep((void *)&opts->bpfilter_path);
 }
 
 Test(xdp, default_policy)
@@ -690,12 +671,11 @@ Test(xdp, ip6_200kset_nomatch)
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
-    _clean_bf_e2e_opts_ struct bf_e2e_opts opts = {};
     struct argp argp = { _bf_e2e_options, _bf_e2e_argp_cb, NULL, NULL, 0, NULL, NULL};
     int failed = 0;
     int r;
 
-    r = argp_parse(&argp, argc, argv, 0, 0, &opts);
+    r = argp_parse(&argp, argc, argv, 0, 0, NULL);
     if (r)
         return r;
 
@@ -707,7 +687,7 @@ int main(int argc, char *argv[])
         _cleanup_bf_test_daemon_ struct bf_test_daemon daemon;
         bf_test_group *group = bf_list_node_get_data(group_node);
 
-        r = bf_test_daemon_init(&daemon, opts.bpfilter_path ?: "bpfilter",
+        r = bf_test_daemon_init(&daemon, _bf_opts.bpfilter_path ?: "bpfilter",
                                 BF_TEST_DAEMON_TRANSIENT |
                                 BF_TEST_DAEMON_NO_IPTABLES |
                                 BF_TEST_DAEMON_NO_NFTABLES);
