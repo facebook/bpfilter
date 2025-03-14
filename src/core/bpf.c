@@ -138,3 +138,30 @@ int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
 
     return 0;
 }
+
+int bf_prog_run(int prog_fd, const void *pkt, size_t pkt_len, const void *ctx,
+                size_t ctx_len)
+{
+    union bpf_attr attr = {};
+    int r;
+
+    bf_assert(pkt);
+    bf_assert(pkt_len > 0);
+    bf_assert(!(!!ctx ^ !!ctx_len));
+
+    attr.test.prog_fd = prog_fd;
+    attr.test.data_size_in = pkt_len;
+    attr.test.data_in = ((unsigned long long)(pkt));
+    attr.test.repeat = 1;
+
+    if (ctx_len) {
+        attr.test.ctx_size_in = ctx_len;
+        attr.test.ctx_in = ((unsigned long long)(ctx));
+    }
+
+    r = bf_bpf(BPF_PROG_TEST_RUN, &attr);
+    if (r)
+        return bf_err_r(r, "failed to run the test program");
+
+    return (int)attr.test.retval;
+}
