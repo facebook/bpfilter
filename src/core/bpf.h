@@ -97,3 +97,17 @@ int bf_bpf_obj_pin(const char *path, int fd, int dir_fd);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_bpf_obj_get(const char *path, int dir_fd, int *fd);
+
+/**
+ * Call `BPF_PROG_TEST_RUN` on @p prog_fd .
+ *
+ * @param prog_fd File descriptor of the program to test. Must be valid.
+ * @param pkt Test packet to send to the BPF program. Can't be NULL.
+ * @param pkt_len Size (in bytes) of the test packet. Can't be 0.
+ * @param ctx Context to run the program from. If NULL, @p ctx_len must be 0.
+ * @param ctx_len Size of the progra's context. If 0, @p ctx must be NULL.
+ * @return The return value of the BPF program, or a negative errno value on
+ *         failure.
+ */
+int bf_prog_run(int prog_fd, const void *pkt, size_t pkt_len, const void *ctx,
+                size_t ctx_len);
