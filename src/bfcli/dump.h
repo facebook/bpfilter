@@ -17,13 +17,11 @@
  */
 
 /**
- * Get a codegen from the global context.
+ * Print ruleset information and counters to the console.
  *
- * @param hook Hook to get the codegen from.
- * @param opts Hook options. For hooks allowing multiple codegens, the hook
- *        options are used to find the right codegen.
- * @return The requested codegen, or NULL if not found.
+ * @param chains_and_counters_marsh Pointer to the marshalled chains and counters returned by the daemon.
+ * @param with_counters Whether to print counters or not.
+ * @return 0 on success, negative errno code on failure.
  */
-
 int bf_cli_dump_ruleset(struct bf_marsh *chains_and_counters_marsh,
                         bool with_counters);

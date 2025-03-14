@@ -3,13 +3,12 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-// #include "bfcli/dump.h"
-
 #include "dump.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "core/chain.h"
 #include "core/counter.h"
@@ -23,8 +22,15 @@
 #define BF_DUMP_HEXDUMP_LEN 8
 #define BF_DUMP_TOKEN_LEN 5
 
+/**
+ * Dump a block of memory in hexadecimal format.
+ *
+ * @param data Pointer to the data to be dumped. Must be non-NULL.
+ * @param len Length of the data in bytes.
+ */
 static void bf_dump_hex_local(const void *data, size_t len)
 {
+    bf_assert(data);
     // 5 characters per byte (0x%02x) + 1 for the null terminator.
     char buf[(BF_DUMP_HEXDUMP_LEN * BF_DUMP_TOKEN_LEN) + 1];
     const void *end = data + len;
@@ -34,23 +40,30 @@ static void bf_dump_hex_local(const void *data, size_t len)
         for (size_t i = 0; i < BF_DUMP_HEXDUMP_LEN && data < end; ++i, ++data)
             line += sprintf(line, "0x%02x ", *(unsigned char *)data);
 
-        // NOLINTNEXTLINE
-        fprintf(stderr, "%s", buf);
+        (void)fprintf(stderr, "%s", buf);
     }
 }
 
+/**
+ * Dump the details of a chain, including its rules and counters.
+ *
+ * @param chain Pointer to the chain to be dumped. Must be non-NULL.
+ * @param with_counters Boolean flag indicating whether to include counters in the dump.
+ * @param counter Pointer to the array of counters associated with the chain. Must be non-NULL if with_counters is true.
+ */
 // TODO: Sort out our use of fprintf vs DUMP
 // NOLINTBEGIN
 static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
                               struct bf_counter **counter)
 {
+    bf_assert(chain);
+    bf_assert(!with_counters || counter);
+
     struct bf_hook_opts *opts = &chain->hook_opts;
 
-    // Dump chain info
     fprintf(stderr, "chain %s", bf_hook_to_str(chain->hook));
     fprintf(stderr, "{");
 
-    // Ignore unused
     fprintf(stderr, "attach=%s,", opts->attach ? "yes" : "no");
     fprintf(stderr, "ifindex=%d", opts->ifindex);
     if (opts->name)
@@ -71,6 +84,9 @@ static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
                 chain_counter->packets);
     }
 
+    // So we can use bf_dump_hex_local
+    bf_opts_set_verbose(BF_VERBOSE_DEBUG);
+
     // Loop over rules
     bf_list_foreach (&chain->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
@@ -83,12 +99,11 @@ static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
             fprintf(stderr, "\t\t\t\%s", bf_matcher_type_to_str(matcher->type));
             fprintf(stderr, " %s ", bf_matcher_op_to_str(matcher->op));
 
-            bf_opts_set_verbose(BF_VERBOSE_DEBUG);
             bf_dump_hex_local(matcher->payload,
                               matcher->len - sizeof(struct bf_matcher));
             fprintf(stderr, "\n");
         }
-        // remove yes no print, make this conditional
+
         if (with_counters && rule->counters) {
             fprintf(stderr, "\t\tcounters: %lu bytes %lu packets\n",
                     (*counter)->bytes, (*counter)->packets);
@@ -119,6 +134,7 @@ int bf_cli_dump_ruleset(struct bf_marsh *chains_and_counters_marsh,
     chains_marsh = bf_marsh_next_child(chains_and_counters_marsh, NULL);
     if (!chains_marsh) {
         bf_err("failed to locate chain list from daemon response\n");
+        return -EINVAL;
     }
 
     // Get the array of counters
@@ -126,6 +142,7 @@ int bf_cli_dump_ruleset(struct bf_marsh *chains_and_counters_marsh,
         bf_marsh_next_child(chains_and_counters_marsh, chains_marsh);
     if (!counters_marsh) {
         bf_err("failed to locate counter array from daemon response\n");
+        return -EINVAL;
     }
 
     counters = (struct bf_counter *)counters_marsh->data;
