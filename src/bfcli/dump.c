@@ -44,11 +44,11 @@ static void bf_dump_hex_local(const void *data, size_t len)
 static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
                               struct bf_counter **counter)
 {
+    struct bf_hook_opts *opts = &chain->hook_opts;
+
     // Dump chain info
     fprintf(stderr, "chain %s", bf_hook_to_str(chain->hook));
     fprintf(stderr, "{");
-
-    struct bf_hook_opts *opts = &chain->hook_opts;
 
     // Ignore unused
     fprintf(stderr, "attach=%s,", opts->attach ? "yes" : "no");
@@ -106,25 +106,40 @@ static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
 
 // NOLINTEND
 
-int bf_cli_dump_ruleset(struct bf_marsh *chains_marsh,
-                        struct bf_marsh *counters_marsh, bool with_counters)
+int bf_cli_dump_ruleset(struct bf_marsh *chains_and_counters_marsh,
+                        bool with_counters)
 {
-    bf_assert(chains_marsh);
-    bf_assert(counters_marsh);
-
-    struct bf_counter *counters = (struct bf_counter *)counters_marsh->data;
-    struct bf_marsh *chain_marsh = NULL;
+    struct bf_marsh *chains_marsh, *chain_marsh = NULL, *counters_marsh;
+    struct bf_counter *counters;
     int r;
+
+    bf_assert(chains_and_counters_marsh);
+
+    // Get the chain list
+    chains_marsh = bf_marsh_next_child(chains_and_counters_marsh, NULL);
+    if (!chains_marsh) {
+        bf_err("failed to locate chain list from daemon response\n");
+    }
+
+    // Get the array of counters
+    counters_marsh =
+        bf_marsh_next_child(chains_and_counters_marsh, chains_marsh);
+    if (!counters_marsh) {
+        bf_err("failed to locate counter array from daemon response\n");
+    }
+
+    counters = (struct bf_counter *)counters_marsh->data;
 
     // Loop over the chains
     while (true) {
+        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+
         // Get the next child
         chain_marsh = bf_marsh_next_child(chains_marsh, chain_marsh);
         if (!chain_marsh) {
             break;
         }
 
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
         r = bf_chain_new_from_marsh(&chain, chain_marsh);
         if (r < 0)
             return bf_err_r(r, "failed to unmarsh chain");

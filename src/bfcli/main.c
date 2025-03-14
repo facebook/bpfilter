@@ -82,6 +82,7 @@ static error_t _bf_ruleset_get_opts_parser(int key, const char *arg,
     default:
         return ARGP_ERR_UNKNOWN;
     }
+
     return 0;
 }
 
@@ -197,23 +198,19 @@ int _bf_do_ruleset_get(int argc, char *argv[])
     static struct bf_ruleset_get_opts opts = {
         .with_counters = false,
     };
-
     static struct argp_option options[] = {
         // use enum
         {"with-counters", BF_OPT_COUNTERS, 0, 0,
          "Print rule and chain counters", 0},
         {0},
     };
-
     struct argp argp = {
         options, (argp_parser_t)_bf_ruleset_get_opts_parser,
         NULL,    NULL,
         0,       NULL,
         NULL,
     };
-
     _cleanup_bf_response_ struct bf_response *response = NULL;
-
     int r;
 
     r = argp_parse(&argp, argc, argv, 0, 0, &opts);
@@ -234,25 +231,12 @@ int _bf_do_ruleset_get(int argc, char *argv[])
         return 0;
     }
 
-    struct bf_marsh *chains_and_counters_marsh =
-        (struct bf_marsh *)response->data;
+    r = bf_cli_dump_ruleset((struct bf_marsh *)response->data,
+                            opts.with_counters);
+    if (r)
+        bf_err_r(r, "failed to dump ruleset\n");
 
-    // Get the chain list
-    struct bf_marsh *chains_marsh =
-        bf_marsh_next_child(chains_and_counters_marsh, NULL);
-    if (!chains_marsh) {
-        bf_err("failed to locate chain list from daemon response\n");
-    }
-
-    // Get the array of counters
-    struct bf_marsh *counters_marsh =
-        bf_marsh_next_child(chains_and_counters_marsh, chains_marsh);
-    if (!counters_marsh) {
-        bf_err("failed to locate counter array from daemon response\n");
-    }
-
-    return bf_cli_dump_ruleset(chains_marsh, counters_marsh,
-                               opts.with_counters);
+    return 0;
 }
 
 int main(int argc, char *argv[])

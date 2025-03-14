@@ -25,5 +25,5 @@
  * @return The requested codegen, or NULL if not found.
  */
 
-int bf_cli_dump_ruleset(struct bf_marsh *chains_marsh,
-                        struct bf_marsh *counters_marsh, bool with_counters);
+int bf_cli_dump_ruleset(struct bf_marsh *chains_and_counters_marsh,
+                        bool with_counters);
