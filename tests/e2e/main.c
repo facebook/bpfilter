@@ -25,6 +25,36 @@ Test(policy, accept_no_rule)
     bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
 }
 
+Test(ip4, daddr_eq_mask_match)
+{
+    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0b,
+                            // Mask
+                            0xff, 0xff, 0x00, 0x00,
+                        },
+                        8
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_local_ip4);
+}
+
 Test(ip6, saddr_eq_nomask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
