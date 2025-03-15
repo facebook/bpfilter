@@ -3,43 +3,15 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <linux/bpf.h>
-
-#include <argp.h>
-
+#include "core/chain.h"
 #include "core/logger.h"
-#include "harness/daemon.h"
 #include "harness/filters.h"
-#include "harness/prog.h"
 #include "harness/test.h"
-#include "libbpfilter/bpfilter.h"
+#include "e2e.h"
+#include "opts.h"
 #include "packets.h"
 
-static struct
-{
-    char bpfilter_path[PATH_MAX];
-} _bf_opts;
-
-static struct argp_option _bf_e2e_options[] = {
-    {"bpfilter", 'b', "BPFILTER", 0,
-     "Path to the bpfilter daemon binary. Defaults to 'bpfilter' in PATH", 0},
-    {0},
-};
-
-static error_t _bf_e2e_argp_cb(int key, char *arg, struct argp_state *state)
-{
-    switch (key) {
-    case 'b':
-        bf_strncpy(_bf_opts.bpfilter_path, PATH_MAX, arg);
-        break;
-    default:
-        return ARGP_ERR_UNKNOWN;
-    }
-
-    return 0;
-}
-
-Test(xdp, default_policy)
+Test(policy, accept_no_rule)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -49,14 +21,11 @@ Test(xdp, default_policy)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, 2, pkt_local_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_nomask_match)
+Test(ip6, saddr_eq_nomask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -84,14 +53,11 @@ Test(xdp, ip6_saddr_eq_nomask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_nomask_nomatch)
+Test(ip6, saddr_eq_nomask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -119,14 +85,11 @@ Test(xdp, ip6_saddr_eq_nomask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_nomask_match)
+Test(ip6, saddr_ne_nomask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -154,14 +117,11 @@ Test(xdp, ip6_saddr_ne_nomask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_nomask_nomatch)
+Test(ip6, saddr_ne_nomask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -189,14 +149,11 @@ Test(xdp, ip6_saddr_ne_nomask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_8mask_match)
+Test(ip6, saddr_eq_8mask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -224,14 +181,11 @@ Test(xdp, ip6_saddr_eq_8mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_8mask_nomatch)
+Test(ip6, saddr_eq_8mask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -259,14 +213,11 @@ Test(xdp, ip6_saddr_eq_8mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_8mask_match)
+Test(ip6, saddr_ne_8mask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -294,14 +245,11 @@ Test(xdp, ip6_saddr_ne_8mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_8mask_nomatch)
+Test(ip6, saddr_ne_8mask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -329,14 +277,11 @@ Test(xdp, ip6_saddr_ne_8mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_120mask_match)
+Test(ip6, saddr_eq_120mask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -362,14 +307,11 @@ Test(xdp, ip6_saddr_eq_120mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_eq_120mask_nomatch)
+Test(ip6, saddr_eq_120mask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -397,14 +339,11 @@ Test(xdp, ip6_saddr_eq_120mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_120mask_nomatch)
+Test(ip6, saddr_ne_120mask_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -432,14 +371,11 @@ Test(xdp, ip6_saddr_ne_120mask_nomatch)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_saddr_ne_120mask_match)
+Test(ip6, saddr_ne_120mask_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -467,11 +403,8 @@ Test(xdp, ip6_saddr_ne_120mask_match)
             NULL,
         }
     );
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
 
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
 struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
@@ -496,7 +429,7 @@ struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
     for (size_t i = 0; i < nelems; i++) {
         uint8_t elem[18] = {};
 
-        for (int j = 0; j < ARRAY_SIZE(elem); j++)
+        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
             elem[j] = rand() % 256;
 
         r = bf_set_add_elem(set, elem);
@@ -509,7 +442,7 @@ struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
     return TAKE_PTR(set);
 }
 
-Test(xdp, ip6port_200kset_match)
+Test(ip6, port_200kset_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -533,14 +466,10 @@ Test(xdp, ip6port_200kset_match)
         }
     );
 
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
-
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6port_200kset_nomatch)
+Test(ip6, port_200kset_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -564,11 +493,7 @@ Test(xdp, ip6port_200kset_nomatch)
         }
     );
 
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
-
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
 struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
@@ -593,7 +518,7 @@ struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
     for (size_t i = 0; i < nelems; i++) {
         uint8_t elem[16] = {};
 
-        for (int j = 0; j < ARRAY_SIZE(elem); j++)
+        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
             elem[j] = rand() % 256;
 
         r = bf_set_add_elem(set, elem);
@@ -606,7 +531,7 @@ struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
     return TAKE_PTR(set);
 }
 
-Test(xdp, ip6_200kset_match)
+Test(ip6, addrport_200kset_match)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -630,14 +555,10 @@ Test(xdp, ip6_200kset_match)
         }
     );
 
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
-
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_DROP, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
-Test(xdp, ip6_200kset_nomatch)
+Test(ip6, addrport_200kset_nomatch)
 {
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
@@ -661,21 +582,16 @@ Test(xdp, ip6_200kset_nomatch)
         }
     );
 
-    _free_bf_test_prog_ struct bf_test_prog *prog = bf_test_prog_get(chain);
-
-    assert_non_null(prog);
-
-    assert_success(bf_test_prog_run(prog, XDP_PASS, pkt_remote_ip6_tcp));
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
-    struct argp argp = { _bf_e2e_options, _bf_e2e_argp_cb, NULL, NULL, 0, NULL, NULL};
     int failed = 0;
     int r;
 
-    r = argp_parse(&argp, argc, argv, 0, 0, NULL);
+    r = bft_e2e_parse_args(argc, argv);
     if (r)
         return r;
 
@@ -684,28 +600,14 @@ int main(int argc, char *argv[])
         return bf_err_r(r, "test suite discovery failed");
 
     bf_list_foreach (&suite->groups, group_node) {
-        _cleanup_bf_test_daemon_ struct bf_test_daemon daemon;
         bf_test_group *group = bf_list_node_get_data(group_node);
-
-        r = bf_test_daemon_init(&daemon, _bf_opts.bpfilter_path ?: "bpfilter",
-                                BF_TEST_DAEMON_TRANSIENT |
-                                BF_TEST_DAEMON_NO_IPTABLES |
-                                BF_TEST_DAEMON_NO_NFTABLES);
-        if (r < 0)
-            return bf_err_r(r, "failed to create the bpfiler daemon");
-
-        r = bf_test_daemon_start(&daemon);
-        if (r < 0)
-            return bf_err_r(r, "failed to start the bpfilter daemon");
 
         r = _cmocka_run_group_tests(group->name, group->cmtests,
                                     bf_list_size(&group->tests), NULL, NULL);
-        if (r)
+        if (r) {
             failed = 1;
-
-        r = bf_test_daemon_stop(&daemon);
-        if (r < 0)
-            return bf_err_r(r, "failed to stop the bpfilter daemon");
+            break;
+        }
     }
 
     if (failed)
