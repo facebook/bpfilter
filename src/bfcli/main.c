@@ -226,15 +226,14 @@ int _bf_do_ruleset_get(int argc, char *argv[])
         return bf_err_r(response->error, "failed to get ruleset\n");
 
     if (response->data_len == 0) {
-        // NOLINTNEXTLINE
-        fprintf(stderr, "no ruleset returned\n");
+        bf_info("no ruleset returned\n");
         return 0;
     }
 
     r = bf_cli_dump_ruleset((struct bf_marsh *)response->data,
                             opts.with_counters);
     if (r)
-        bf_err_r(r, "failed to dump ruleset\n");
+        return bf_err_r(r, "failed to dump ruleset\n");
 
     return 0;
 }
