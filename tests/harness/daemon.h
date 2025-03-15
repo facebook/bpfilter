@@ -39,6 +39,11 @@ enum bf_test_daemon_option
 #define _cleanup_bf_test_daemon_                                               \
     __attribute__((__cleanup__(bf_test_daemon_clean)))
 
+#define bft_daemon_default()                                                   \
+    {                                                                          \
+        .process = bft_process_default(),                                      \
+    }
+
 /**
  * Initialize a new daemon object.
  *

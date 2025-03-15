@@ -52,6 +52,12 @@ struct bf_test_process
 #define _cleanup_bf_test_process_                                              \
     __attribute__((__cleanup__(bf_test_process_clean)))
 
+#define bft_process_default()                                                  \
+    {                                                                          \
+        .out_fd = -1,                                                          \
+        .err_fd = -1,                                                          \
+    }
+
 int bf_test_process_init(struct bf_test_process *process, const char *cmd,
                          char **args, size_t nargs);
 void bf_test_process_clean(struct bf_test_process *process);

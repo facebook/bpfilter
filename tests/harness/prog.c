@@ -8,7 +8,6 @@
 #include <linux/bpf.h>
 
 #include <bpf/bpf.h>
-#include <bpf/libbpf_common.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -99,27 +98,4 @@ int bf_test_prog_open(struct bf_test_prog *prog, const char *name)
     }
 
     return -ENOENT;
-}
-
-int bf_test_prog_run(const struct bf_test_prog *prog, uint32_t expect,
-                     const struct bf_test_packet *pkt)
-{
-    int r;
-
-    bf_assert(prog && pkt);
-
-    LIBBPF_OPTS(bpf_test_run_opts, opts, .data_in = pkt->data,
-                .data_size_in = (uint32_t)pkt->len, .repeat = 1);
-
-    r = bpf_prog_test_run_opts(prog->fd, &opts);
-    if (r < 0)
-        return bf_err_r(r, "failed to run the test program");
-
-    if (opts.retval != expect) {
-        bf_err("BPF_PROG_RUN returned %u, but %u expected", opts.retval,
-               expect);
-        return 1;
-    }
-
-    return 0;
 }

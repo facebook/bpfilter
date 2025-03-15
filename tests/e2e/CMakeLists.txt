@@ -21,6 +21,8 @@ add_custom_command(
 
 add_executable(e2e_bin EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e.c               ${CMAKE_CURRENT_SOURCE_DIR}/e2e.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/opts.c              ${CMAKE_CURRENT_SOURCE_DIR}/opts.h
     ${CMAKE_CURRENT_BINARY_DIR}/include/packets.h
 )
 

@@ -38,20 +38,3 @@ struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain);
 int bf_test_prog_new(struct bf_test_prog **prog);
 void bf_test_prog_free(struct bf_test_prog **prog);
 int bf_test_prog_open(struct bf_test_prog *prog, const char *name);
-
-/**
- * Call `BPF_PROG_TEST_RUN` on the program.
- *
- * @param prog Program to test run. Can't be NULL.
- * @param expect Expected return value of the program, depends on the program
- *        type.
- * @param pkt Test packet to send to the BPF program. Can't be NULL.
- * @return
- * - 0 if the call succeeded and the BPF program's return value is equal to
- *   @p expect.
- * - < 0 if the call failed.
- * - > 0 if the call succeeded but the BPF program's return value is different
- *   from @p expect.
- */
-int bf_test_prog_run(const struct bf_test_prog *prog, uint32_t expect,
-                     const struct bf_test_packet *pkt);
