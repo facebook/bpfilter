@@ -59,6 +59,12 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
     return bf_response_new_success(response, NULL, 0);
 }
 
+/**
+ * Count rules across all code generators.
+ *
+ * @param cgens A list of code generators. Must be non-NULL.
+ * @return The total number of rules.
+ */
 static size_t _bf_cli_num_rules(bf_list *cgens)
 {
     bf_assert(cgens);
@@ -74,6 +80,13 @@ static size_t _bf_cli_num_rules(bf_list *cgens)
     return count;
 }
 
+/**
+ * Retrieve counter values for each rule and chain.
+ *
+ * @param cgens A list of code generators. Must be non-NULL.
+ * @param counters An array to store the retrieved counter values. Must be non-NULL.
+ * @return 0 on success or negative error code on failure.
+ */
 static int _bf_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
 {
     int counter_index = 0;
@@ -122,10 +135,19 @@ static int _bf_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
     return 0;
 }
 
+/**
+ * Populate a list of chains from list of code generators.
+ *
+ * @param cgens Pointer to list of generators. Must be non-NULL.
+ * @param chains Pointer to list for storing the chains. Must be non-NULL.
+ * @return 0 on success or negative error code on failure.
+ */
 static int _bf_cli_get_chain_list(bf_list *cgens, bf_list *chains)
 {
     _clean_bf_list_ bf_list _chains = bf_list_default(NULL, bf_chain_marsh);
     int r;
+
+    bf_assert(cgens && chains);
 
     // iterate over the codegens to get the chains
     bf_list_foreach (cgens, cgen_node) {
@@ -140,6 +162,13 @@ static int _bf_cli_get_chain_list(bf_list *cgens, bf_list *chains)
     return 0;
 }
 
+/**
+ * Create a marshalled structure of counters.
+ *
+ * @param cgens A list of code generators. Must be non-NULL.
+ * @param counter_marsh A pointer to a bf_marsh pointer where the counters will be marshalled. Must be non-NULL.
+ * @return 0 on success or negative error code on failure.
+ */
 static int _bf_cli_get_counters_marsh(bf_list *cgens,
                                       struct bf_marsh **counter_marsh)
 {
@@ -155,7 +184,7 @@ static int _bf_cli_get_counters_marsh(bf_list *cgens,
 
     counters = calloc(num_counters, sizeof(struct bf_counter));
     if (!counters)
-        bf_err_r(-ENOMEM, "failed to allocate memory for counters\n");
+        return bf_err_r(-ENOMEM, "failed to allocate memory for counters\n");
 
     r = _bf_get_ctr_vals(cgens, counters);
     if (r < 0)
