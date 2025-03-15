@@ -24,6 +24,15 @@ packets = [
             dst="5232:185a:52f9:0ab4:8025:7974:2299:eb04",
         )
         / TCP(sport=31337, dport=31415),
+    },
+    {
+        "name": "pkt_local_ip4",
+        "family": "NFPROTO_IPV4",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv4(
+            src="127.2.10.10",
+            dst="127.2.10.11"
+        )
     }
 ]
 
