@@ -26,6 +26,13 @@ static int _bf_cli_request_handler(struct bf_request *request,
                                    struct bf_response **response);
 static int _bf_cli_marsh(struct bf_marsh **marsh);
 static int _bf_cli_unmarsh(struct bf_marsh *marsh);
+static size_t _bf_cli_num_rules(bf_list *cgens);
+static int _bf_cli_get_ctr_vals(bf_list *cgens, struct bf_counter *counters);
+static int _bf_cli_get_chain_list(bf_list *cgens, bf_list *chains);
+static int _bf_cli_get_counters_marsh(bf_list *cgens,
+                                      struct bf_marsh **counter_marsh);
+static int _bf_cli_get_rules(const struct bf_request *request,
+                             struct bf_response **response);
 
 const struct bf_front_ops cli_front = {
     .setup = _bf_cli_setup,
@@ -87,7 +94,7 @@ static size_t _bf_cli_num_rules(bf_list *cgens)
  * @param counters An array to store the retrieved counter values. Must be non-NULL.
  * @return 0 on success or negative error code on failure.
  */
-static int _bf_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
+static int _bf_cli_get_ctr_vals(bf_list *cgens, struct bf_counter *counters)
 {
     int counter_index = 0;
     int r;
@@ -186,7 +193,7 @@ static int _bf_cli_get_counters_marsh(bf_list *cgens,
     if (!counters)
         return bf_err_r(-ENOMEM, "failed to allocate memory for counters\n");
 
-    r = _bf_get_ctr_vals(cgens, counters);
+    r = _bf_cli_get_ctr_vals(cgens, counters);
     if (r < 0)
         return bf_err_r(r, "could not get ctr vals\n");
 

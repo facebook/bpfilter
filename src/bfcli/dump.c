@@ -5,10 +5,10 @@
 
 #include "dump.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <errno.h>
 
 #include "core/chain.h"
 #include "core/counter.h"
@@ -17,6 +17,11 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/rule.h"
+
+// Declare all static functions here
+static void bf_dump_hex_local(const void *data, size_t len);
+static void bf_cli_chain_dump(struct bf_chain *chain, bool with_counters,
+                              struct bf_counter **counter);
 
 // TODO: Obviously resolve this duplication of bf_dump_hex
 #define BF_DUMP_HEXDUMP_LEN 8
