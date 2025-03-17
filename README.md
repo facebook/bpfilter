@@ -31,7 +31,7 @@ Detailed information can be found in the [documentation](https://bpfilter.io).
 
 2. **Build `bpfilter`**
     ```shell
-    cmake -S $SOURCES_DIR -B $BUILD_DIR
+    cmake -S $SOURCES_DIR -B $BUILD_DIR -DNO_BENCHMARKS=ON
     make -C $BUILD_DIR
     make -C $BUILD_DIR test
     ```
@@ -43,13 +43,13 @@ Detailed information can be found in the [documentation](https://bpfilter.io).
 
 4. **Start the `bpfilter` daemon**
     ```shell
-    sudo $BUILD_DIR/src/bpfilter
+    sudo $BUILD_DIR/output/sbin/bpfilter
     ```
 
 5. **Configure the filtering rules**
     - For `bfcli`:
         ```shell
-        $BUILD_DIR/output/bin/bfcli --file $RULESET
+        $BUILD_DIR/output/sbin/bfcli --file $RULESET
         ```
     - For `nftables`:
         ```shell
