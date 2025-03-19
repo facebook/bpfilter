@@ -12,11 +12,7 @@ Usage
    iptables
 
 
-.. note::
-
-    ``bpfilter`` is not (yet) packaged for any distribution. If you want to try it, you will have to build it from sources. See :doc:`../developers/build`.
-
-``bpfilter`` is composed of two main parts that work together: the **front-ends** are used by the users to define the filtering rules and send them to the **daemon** that performs the heavy lifting of generating the BPF bytecode.
+``bpfilter`` is composed of two main parts that work together: the **clients** are used by the users to define the filtering rules and send them to the **daemon** that performs the heavy lifting of generating the BPF bytecode.
 
 Before anything, you will have to run the daemon on your system, see :doc:`daemon` for more details.
 
@@ -26,64 +22,81 @@ Once the daemon is running, you need to choose which front-end's CLI to use:
 - :doc:`nftables`: requires a custom version of the ``nft`` binary with ``bpfilter`` support (see below), and support for new ``bpfilter`` features is usually a bit delayed.
 - :doc:`iptables`: similar to ``nftables``, however ``iptables`` has been deprecated globally in favor of ``nftables``.
 
-Example Usage
+Install
+-------
+
+**bpfilter** is packaged and available for Fedora 40 to 42 and EPEL 9:
+
+.. code-block:: bash
+
+	> sudo dnf install -y bpfilter
+
+If you use a different distribution, you can still build and use **bpfilter** if you satisfy the requirements, see the :doc:`developer documentation <../developers/build>`.
+
+
+Example usage
 -------------
 
-.. note::
+From here on, we assume **bpfilter** has been installed on your system. If you build it locally, you will need to substitute the ``bpfilter`` command with ``$BUILD_DIR/output/sbin/bpfilter``, same for ``bfcli``. The example below is meant to familiarize you with **bpfilter**, more in-depth information can be found throughout the documentation.
 
-	This is only to be used as an example and a more interactive test to familiarize you with ``bpfilter``, more in-depth information can be found throughout the documentation.
+This example will block ``ping`` requests sent going out of the local host to a remote server.
 
-Initialize ``bpfilter`` daemon
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Can we ping now?**
 
-.. note::
-
-	From here on we assume all commands are being run from your local ``bpfilter`` source directory following ``cmake -B build``
+Let's check if we can ping ``facebook.com`` before we do anything:
 
 .. code-block:: bash
 
-	> sudo ./build/output/bpfilter --transient --verbose=debug --no-iptables
+	$ ping -n -c 4 facebook.com
+	PING facebook.com (157.240.253.35) 56(84) bytes of data.
+	64 bytes from 157.240.253.35: icmp_seq=1 ttl=128 time=24.9 ms
+	64 bytes from 157.240.253.35: icmp_seq=2 ttl=128 time=23.6 ms
+	64 bytes from 157.240.253.35: icmp_seq=3 ttl=128 time=28.6 ms
+	64 bytes from 157.240.253.35: icmp_seq=4 ttl=128 time=24.8 ms
 
-Load ``bfcli`` filter(s)
-~~~~~~~~~~~~~~~~~~~~~~~~
+	--- facebook.com ping statistics ---
+	4 packets transmitted, 4 received, 0% packet loss, time 3001ms
+	rtt min/avg/max/mdev = 23.596/25.493/28.622/1.880 ms
 
-While the ``bpfilter`` daemon runs, now we will open up a separate window to use ``bfcli``
 
-.. note::
+**Start the daemon**
 
-	``bfcli`` is just one of the ways you can communicate with the ``bpfilter`` daemon along with ``iptables`` and ``nftables``
-
-.. code-block:: bash
-
-	> sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 ACCEPT"
-
-The command above will send a request to the ``bpfilter`` daemon to create a chain and attach it to the ``BF_HOOK_NF_LOCAL_IN`` hook, located after the packet has been routed in the kernel network stack. A single rule is defined, which will accept the packet if its source IPv4 address is ``192.168.1.1``. If the rule doesn't match the packet, the chain's policy is applied and the packet is accepted. In its current shape, the chain will always accept incoming packets.
-
-You can check by running:
+The daemon is responsible for receiving the user-defined filtering rules, and translating them into BPF programs. We will start it in ``--transient`` mode, so all the filtering programs defined will be discarded when we stop it, preventing any mistake on our side!
 
 .. code-block:: bash
 
-	> ping 192.168.1.1
-	... [pinging] ...
-	--- 192.168.1.1 ping statistics ---
-	4 packets transmitted, 4 packets received, 0.0% packet loss
+	$ sudo bpfilter --transient
+	info   : waiting for requests...
 
-.. note::
-	If you run into errors here there may be problems with your system worth diagnosing before continuing
 
-Now let's try changing the filter from ``192.168.1.1 ACCEPT`` to ``DROP``. If we work through it logically, now ``bpfilter`` should in general accept incoming traffic from the ``BF_HOOK_NF_LOCAL_IN`` hook location, but now if it detects the IP address to be ``192.168.1.1`` then it should drop the packets. So now when we ping ``192.168.1.1`` we should not recieve its subsequent response.
+**Create a new filtering rule**
+
+Now that the daemon is up and running, we will use ``bfcli`` to send a filtering chain. A chain is a set of rules to filter packets on:
 
 .. code-block:: bash
 
-	sudo ./build/output/bfcli --str "chain BF_HOOK_NF_LOCAL_IN policy ACCEPT rule ip4.saddr eq 192.168.1.1 DROP"
+	$ sudo bfcli ruleset set --str "
+	chain BF_HOOK_NF_LOCAL_OUT policy ACCEPT
+	    rule
+	        ip4.proto icmp
+	        DROP
+	"
 
-You should now observe a change in the behavior of ``ping``.
+We split the chain over multiple lines, to it's easier to read. Alternatively, you can write the chain in a file and call ``bfcli ruleset set --file $MYFILE``. We choose to create a chain attached to ``BF_HOOK_NF_LOCAL_OUT`` which is called for every packet leaving this host with ``ACCEPT`` as the default policy: if a packet doesn't match any of the rules defined, it will be accepted by default.
+
+Our chain contains a single rule matching against the IPv4's ``protocol`` field. Packets matching this rule will be ``DROP`` ed.
+
+**Can we still ping?**
+
+Now that our filtering rule is in place, pings to ``facebook.com`` should be blocked, let's check this out:
 
 .. code-block:: bash
 
-	> ping 192.168.1.1
-	... [attempting to ping] ...
-	--- 192.168.1.1 ping statistics ---
-	4 packets transmitted, 0 packets received, 100.0% packet loss
+	$ ping -n -c 4 facebook.com
+	PING facebook.com (157.240.253.35) 56(84) bytes of data.
 
-Congratulations you have now officially used ``bpfilter`` to systematically filter out packets from ``192.168.1.1``. For documentation for more complex filtering options please check under the ``DEVELOPERS`` section and good luck!
+	--- facebook.com ping statistics ---
+	4 packets transmitted, 0 received, 100% packet loss, time 3010ms
+
+
+100% packet loss? That's great news! If you are eager to learn more ways to filter traffic using **bfcli**, check its :doc:`documentation <bfcli>`.

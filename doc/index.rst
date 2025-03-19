@@ -1,5 +1,3 @@
-``bpfilter``
-============
 
 .. toctree::
    :hidden:
@@ -28,16 +26,40 @@
    external/benchmarks/index
    external/coverage/index
 
-``bpfilter`` is a BPF-based packet filtering framework. It is composed of a shared library (``libbpfilter``) and a daemon (``bpfilter``).
+|
+|
 
-The ``bpfilter`` daemon running on the system receives a request from a client (``iptables``, ``nftables``, or any other client that could be created) and converts the client-provided ruleset into one or more BPF program(s).
+.. raw:: html
 
-If you want to try ``bpfilter`` with ``nftables`` or ``iptables``, have a look at :doc:`usage/index` and :doc:`developers/build`.
+   <h5 align="center">An <a href="https://ebpf.io/">eBPF</a>-based packet filtering framework.</h5>
 
-If you want to know more about ``bpfilter``'s internals, take a look at the following talks about the project:
+|
 
-* `BPF and firewall: kernel support to ease more complex packets filtering (LSFMMBPF 2023) <https://www.youtube.com/watch?v=UDZhCubE-Kk&list=PLbzoR-pLrL6rlmdpJ3-oMgU_zxc1wAhjS&index=47>`_
-* `bpfilter: a BPF-based packet filtering framework (All Systems Go 2023) <https://media.ccc.de/v/all-systems-go-2023-196-bpfilter-a-bpf-based-packet-filtering-framework>`_
-* `bpfilter: a BPF-based packet filtering framework (Linux Plumbers Conference 2023) <https://www.youtube.com/watch?v=J5Hm6PrJWI4&t=27649s>`_
-* `Netfilter or eBPF? Use both with bpfilter! (FOSDEM 2024) <https://mirror.as35701.net/video.fosdem.org/2024/ub5230/fosdem-2024-2143-netfilter-or-ebpf-use-both-with-bpfilter-.mp4>`_
-* `bpfilter: packet filtering with BPF and nftables (Scale21x) <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_
+**bpfilter** transforms how you control network traffic by leveraging the power of eBPF technology. This framework elegantly translates filtering rules into optimized BPF programs, bringing unparalleled performance and flexibility to your packet filtering needs.
+
+|
+
+.. image:: _static/demo_light.gif
+   :class: only-light
+   :align: center
+   :width: 600
+
+.. image:: _static/demo_dark.gif
+   :class: only-dark
+   :align: center
+   :width: 600
+
+|
+
+.. raw:: html
+
+   <h5>Key features</h5>
+
+- **High performance**: utilizes eBPF's near-native performance capabilities
+- **Flexible integration**: use the custom ``iptables`` integration or **bpfilter**'s ``bfcli`` command line for extended functionalities
+- **Low overhead**: minimal resource consumption with maximized efficiency
+- **Developer-friendly**: clean architecture with clear separation of components
+
+**bpfilter** combines three components: a CLI that allows users to define filtering rules in human-readable text, a daemon that converts these rules into efficient BPF programs, and a library that facilitates seamless communication between applications and the filtering subsystem.
+
+Want to know more about **bpfilter**? Check the :doc:`user's guide <usage/index>`, the :doc:`developer documentation <developers/build>`, or watch our talk at `Scale <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_!
