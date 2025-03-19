@@ -3,6 +3,8 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#define _GNU_SOURCE
+
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -19,6 +21,7 @@
 #include "core/io.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/ns.h"
 #include "core/opts.h"
 #include "core/request.h"
 #include "core/response.h"
@@ -364,6 +367,8 @@ static int _bf_run(void)
 {
     _cleanup_close_ int fd = -1;
     struct sockaddr_un addr = {};
+    struct ucred peer_cred;
+    socklen_t peer_cred_len = sizeof(peer_cred);
     int r;
 
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -388,6 +393,7 @@ static int _bf_run(void)
         _cleanup_close_ int client_fd = -1;
         _cleanup_bf_request_ struct bf_request *request = NULL;
         _cleanup_bf_response_ struct bf_response *response = NULL;
+        _clean_bf_ns_ struct bf_ns ns;
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {
@@ -399,9 +405,28 @@ static int _bf_run(void)
             return bf_err_r(errno, "failed to accept connection");
         }
 
+        // NOLINTNEXTLINE: SOL_SOCKET and SO_PEERCRED can't be directly included
+        r = getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &peer_cred,
+                       &peer_cred_len);
+        if (r) {
+            bf_warn_r(
+                errno,
+                "failed to read the client's credentials, ignoring request");
+            continue;
+        }
+
+        r = bf_ns_init(&ns, peer_cred.pid);
+        if (r) {
+            bf_warn_r(
+                r, "failed to open the client's namespaces, ignoring request");
+            continue;
+        }
+
         r = bf_recv_request(client_fd, &request);
         if (r < 0)
             return bf_err_r(r, "failed to receive request");
+
+        request->ns = &ns;
 
         r = _bf_process_request(request, &response);
         if (r) {

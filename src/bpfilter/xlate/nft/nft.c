@@ -267,7 +267,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
 
     cgen = bf_ctx_get_cgen(BF_HOOK_NF_LOCAL_IN, NULL);
     if (cgen && verdict != cgen->chain->policy) {
-        r = bf_cgen_update(cgen, &chain);
+        r = bf_cgen_update(cgen, &chain, NULL);
         if (r < 0)
             return bf_err_r(r, "failed to update codegen");
 
@@ -277,7 +277,7 @@ static int _bf_nft_newchain_cb(const struct bf_nfmsg *req)
         if (r < 0)
             return bf_err_r(r, "failed to create bf_cgen");
 
-        r = bf_cgen_up(cgen);
+        r = bf_cgen_up(cgen, NULL);
         if (r < 0)
             return bf_err_r(r, "failed to generate codegen");
 
@@ -578,7 +578,7 @@ static int _bf_nft_newrule_cb(const struct bf_nfmsg *req)
         return bf_err_r(r, "failed to add rule to chain");
     TAKE_PTR(rule);
 
-    r = bf_cgen_update(cgen, &cgen->chain);
+    r = bf_cgen_update(cgen, &cgen->chain, NULL);
     if (r < 0)
         return bf_err_r(r, "failed to update codegen");
 

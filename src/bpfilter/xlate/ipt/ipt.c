@@ -595,18 +595,21 @@ _bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
  * @todo If processing for any codegen fails, all codegens should be unloaded
  * and/or discarded.
  *
- * @param replace New rules, in iptables format.
- * @param len Length of the new rules.
+ * @param req The request sent to bpfilter. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_ipt_ruleset_set(struct ipt_replace *replace, size_t len)
+static int _bf_ipt_ruleset_set(const struct bf_request *req)
 {
     _cleanup_free_ struct ipt_entry *entries = NULL;
+    struct ipt_replace *replace;
     struct bf_chain *chains[NF_INET_NUMHOOKS] = {};
     int r;
 
-    bf_assert(replace);
-    bf_assert(bf_ipt_replace_size(replace) == len);
+    bf_assert(req);
+
+    replace = (struct ipt_replace *)req->data;
+    if (bf_ipt_replace_size(replace) != req->data_len)
+        return -EINVAL;
 
     if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
         bf_ipt_dump_replace(replace, EMPTY_PREFIX);
@@ -634,7 +637,7 @@ static int _bf_ipt_ruleset_set(struct ipt_replace *replace, size_t len)
             if (r)
                 return r;
 
-            r = bf_cgen_up(cgen);
+            r = bf_cgen_up(cgen, req->ns);
             if (r) {
                 bf_err(
                     "failed to generate and load program for iptables hook %d, skipping",
@@ -652,7 +655,7 @@ static int _bf_ipt_ruleset_set(struct ipt_replace *replace, size_t len)
 
             TAKE_PTR(cgen);
         } else {
-            r = bf_cgen_update(cgen, &chain);
+            r = bf_cgen_update(cgen, &chain, req->ns);
             if (r) {
                 TAKE_PTR(cgen);
                 bf_err_r(
@@ -788,8 +791,7 @@ static int _bf_ipt_request_handler(struct bf_request *request,
 
     switch (request->cmd) {
     case BF_REQ_RULES_SET:
-        r = _bf_ipt_ruleset_set((struct ipt_replace *)request->data,
-                                request->data_len);
+        r = _bf_ipt_ruleset_set(request);
         if (r < 0)
             return r;
 

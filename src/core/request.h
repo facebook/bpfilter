@@ -10,6 +10,8 @@
 #include "core/front.h"
 #include "core/helper.h"
 
+struct bf_ns;
+
 #define _cleanup_bf_request_ __attribute__((cleanup(bf_request_free)))
 
 /**
@@ -56,6 +58,10 @@ struct bf_request
 {
     enum bf_front front;
     enum bf_request_cmd cmd;
+
+    /** Namespaces the request is coming from. This field will be automatically
+     * populated by the daemon when receiving the request. */
+    struct bf_ns *ns;
 
     union
     {
