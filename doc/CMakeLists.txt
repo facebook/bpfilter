@@ -60,6 +60,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/tests.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/core.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/xlate/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/xlate/ipt.rst

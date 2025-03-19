@@ -30,3 +30,12 @@ Runtime data
 
 .. warning::
     If ``bpfilter`` fails to restore its state after restarting, its data can be cleanup up by removing both those directories. Doing so will remove all your filtering rules.
+
+Namespaces
+----------
+
+``bpfilter`` supports the network and mount Linux namespaces. The daemon will automatically switch to the client's namespace before attaching a BPF program, so it is guaranteed to have the same view of the system as the client.
+
+The network namespace will define the available interface indexes to attach the XDP and TC chains, as well as the interface indexes to filter packets on.
+
+The mount namespace is required to ensure the daemon will attach a CGroup chain to the proper CGroup.

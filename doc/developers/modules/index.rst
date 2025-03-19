@@ -5,6 +5,7 @@ Modules
    :maxdepth: 2
    :caption: Modules
 
+   core
    bpfilter
    xlate/index
 
