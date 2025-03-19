@@ -95,7 +95,7 @@ CheckOptions:
   # and will behave differently for macros. Hence clang-tidy v18+ won't
   # warn about _cleanup_ identifiers.
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: '^_(_start|_stop|bf|BF|cleanup)_[a-zA-Z0-9_]+$'
+    value: '^_(_start|_stop|bf|BF|cleanup|GNU)_[a-zA-Z0-9_]+$'
   - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value: true
   # Unless a *statement* takes 1 line, it should be in braces
@@ -103,10 +103,10 @@ CheckOptions:
     value: 6
   # Allowed short variable names
   - key: readability-identifier-length.IgnoredVariableNames
-    value: '_|i|fd|r|j[0-9]|op'
+    value: '_|i|fd|r|j[0-9]|op|ns'
   # Allowed short parameter names
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'ip|fd|op|id|cb'
+    value: 'ip|fd|op|id|cb|ns'
   # Allow for magic constants that are power of 2.
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: true
