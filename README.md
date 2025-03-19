@@ -6,66 +6,74 @@
     </picture>
 </p>
 
+---
+
 <h3 align="center">An <a href="https://ebpf.io/">eBPF</a>-based packet filtering framework.</h3>
 
-**bpfilter** is an eBPF-based packet filtering framework designed to translate filtering rules into BPF programs. It comprises three main components:
+**bpfilter** transforms how you control network traffic by leveraging the power of eBPF technology. This framework elegantly translates filtering rules into optimized BPF programs, bringing unparalleled performance and flexibility to your packet filtering needs.
 
-1. A daemon that runs on the host, translating filtering rules into BPF programs.
-2. A lightweight library to facilitate communication with the daemon.
-3. A dedicated command line interface to define the filtering rules.
+<p align="center">
+    <a href="README.md#key-features">Key features</a> •
+    <a href="README.md#quick-start">Quick start</a> •
+  <a href="https://bpfilter.io/">Documentation</a>
+</p>
 
-A typical usage workflow would be to start the `bpfilter` daemon, then define the filtering rules using `bfcli` (part of the `bpfilter` project), `nftables` or `iptables`. The `bpfilter` daemon will be responsible for translating the filtering rules into custom BPF programs, and loading them on the system.
+<p align="center">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="doc/_static/demo_dark.gif">
+        <source media="(prefers-color-scheme: light)" srcset="doc/_static/demo_light.gif">
+        <img src="doc/_static/logo-light-mode.png"  height="500" alt="bpfilter">
+    </picture>
+</p>
 
-Detailed information can be found in the [documentation](https://bpfilter.io).
+## Key features
 
-## Quick start guide (Fedora 41)
+- **High performance**: utilizes eBPF's near-native performance capabilities
+- **Flexible integration**: use the custom `iptables` integration or **bpfilter**'s `bfcli` command line for extended functionalities
+- **Low overhead**: minimal resource consumption with maximized efficiency
+- **Developer-friendly**: clean architecture with clear separation of components
 
-1. **Install dependencies**
-    ```shell
-    # To build bpfilter
-    sudo dnf install -y bison clang-tools-extra cmake doxygen flex g++ gcc git lcov libasan libbpf-devel libcmocka-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
+**bpfilter** combines three components: a CLI that allows users to define filtering rules in human-readable text, a daemon that converts these rules into efficient BPF programs, and a library that facilitates seamless communication between applications and the filtering subsystem.
 
-    # To build nftables and iptables
-    sudo dnf install -y autoconf automake git gmp-devel libtool libedit-devel libmnl-devel libnftnl-devel
-    ```
+Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.io/usage/index.html), the [developer documentation](https://bpfilter.io/developers/build.html), or watch our latest [public talk](https://www.youtube.com/watch?v=fzaPEm4PXn0)!
 
-2. **Build `bpfilter`**
-    ```shell
-    cmake -S $SOURCES_DIR -B $BUILD_DIR -DNO_BENCHMARKS=ON
-    make -C $BUILD_DIR
-    make -C $BUILD_DIR test
-    ```
+## Quick start
 
-3. **Build custom versions of `nftables` and `iptables` (optional)**
-    ```shell
-    make -C $BUILD_DIR nftables iptables
-    ```
+### Install
 
-4. **Start the `bpfilter` daemon**
-    ```shell
-    sudo $BUILD_DIR/output/sbin/bpfilter
-    ```
+**bpfilter** is packaged for Fedora (40 to 42) and EPEL9:
 
-5. **Configure the filtering rules**
-    - For `bfcli`:
-        ```shell
-        $BUILD_DIR/output/sbin/bfcli --file $RULESET
-        ```
-    - For `nftables`:
-        ```shell
-        sudo $BUILD_DIR/tools/install/sbin/nft --bpf ...
-        ```
-    - For `iptables`:
-        ```shell
-        sudo $BUILD_DIR/tools/install/sbin/iptables --bpf ...
-        ```
+```shell
+sudo dnf install -y bpfilter bpfilter-devel
+```
+
+### Build from sources
+
+```shell
+# Essential build requirements
+sudo dnf install -y cmake gcc libbpf-devel libnl3-devel bison fle
+
+# Configure the project and build bpfilter
+cmake -S $SOURCES_DIR -B $BUILD_DIR -DNO_DOCS=ON -DNO_TESTS=ON -DNO_CHECKS=ON -DNO_BENCHMARKS=ON
+make -C $BUILD_DIR install
+```
+
+### Usage
+
+```shell
+# Start the daemon
+sudo $BUILD_DIR/output/sbin/bpfilter
+
+# Count the number of ping coming to interface #2
+sudo $BUILD_DIR/output/sbin/bfcli ruleset set --str "chain BF_HOOK_XDP{ifindex=2} policy ACCEPT rule ip4.proto icmp counter ACCEPT"
+```
+
+The complete documentation is available on [bpfilter.io](https://bpfilter.io/).
 
 ## License
 
-`bpfilter` is licensed under GPLv2. You can find the licensing details in the COPYING file.
+**bpfilter** is licensed under GPLv2. You can find the licensing details in the COPYING file.
 
 ## Acknowledgements
 
-`bpfilter` was initially developed by Dmitrii Banshchikov as a [Linux kernel usermode helper](https://lore.kernel.org/bpf/20210829183608.2297877-1-me@ubique.spb.ru/).
-
-For further information and updates, visit the [bpfilter documentation](https://bpfilter.io).
+**bpfilter** was initially designed by [Alexei Starovoitov with help from David S. Miller and Daniel Borkmann](https://lore.kernel.org/lkml/20180503043604.1604587-1-ast@kernel.org/) as a Linux kernel usermode helper, and later improved by [Dmitrii Banshchikov](https://lore.kernel.org/bpf/20210829183608.2297877-1-me@ubique.spb.ru/).
