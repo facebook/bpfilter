@@ -14,6 +14,7 @@
 struct bf_chain;
 struct bf_marsh;
 struct bf_program;
+struct bf_ns;
 
 #define _cleanup_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
@@ -101,9 +102,11 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
  *        will take ownership of the new chain and the caller will be
  *        responsible for freeing the old one. Can't be NULL, @c *chain must
  *        point to a valid @ref bf_chain .
+ * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **chain);
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **chain,
+                   const struct bf_ns *ns);
 
 /**
  * Create a @ref bf_program for each interface, generate the program, load it,
@@ -113,9 +116,10 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **chain);
  * programs to the systems, starting from a new @ref bf_cgen.
  *
  * @param cgen Codegen to generate the programs for, and load to the system.
+ * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_up(struct bf_cgen *cgen);
+int bf_cgen_up(struct bf_cgen *cgen, const struct bf_ns *ns);
 
 /**
  * Unload a codegen's BPF programs.

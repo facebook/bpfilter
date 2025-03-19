@@ -79,7 +79,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
         if (r)
             return r;
 
-        r = bf_cgen_up(cgen);
+        r = bf_cgen_up(cgen, request->ns);
         if (r < 0) {
             bf_cgen_free(&cgen);
             return bf_err_r(r, "failed to generate and load new program");
@@ -91,7 +91,7 @@ int _bf_cli_set_rules(const struct bf_request *request,
             return bf_err_r(r, "failed to store codegen in runtime context");
         }
     } else {
-        r = bf_cgen_update(cgen, &chain);
+        r = bf_cgen_update(cgen, &chain, request->ns);
         if (r < 0)
             return bf_warn_r(r, "failed to update existing codegen");
     }

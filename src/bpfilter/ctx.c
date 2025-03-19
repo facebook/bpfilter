@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
 #include "core/chain.h"
@@ -18,6 +19,7 @@
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/ns.h"
 
 #define _cleanup_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
@@ -29,6 +31,9 @@
  */
 struct bf_ctx
 {
+    /// Namespaces the daemon was started in.
+    struct bf_ns ns;
+
     /// Codegens defined in bpfilter. Defined as an array of lists as some
     /// hooks can have multiple codegens (e.g. XDP).
     bf_list cgens[_BF_HOOK_MAX];
@@ -124,14 +129,23 @@ static_assert(ARRAY_SIZE(_bf_cgen_getters) == _BF_HOOK_MAX,
  */
 static int _bf_ctx_new(struct bf_ctx **ctx)
 {
+    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
+    int r;
+
     bf_assert(ctx);
 
-    *ctx = malloc(sizeof(struct bf_ctx));
-    if (!*ctx)
+    _ctx = malloc(sizeof(*_ctx));
+    if (!_ctx)
         return -ENOMEM;
 
+    r = bf_ns_init(&_ctx->ns, getpid());
+    if (r)
+        return bf_err_r(r, "failed to initialise current bf_ns");
+
     for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        (*ctx)->cgens[i] = bf_cgen_list();
+        _ctx->cgens[i] = bf_cgen_list();
+
+    *ctx = TAKE_PTR(_ctx);
 
     return 0;
 }
@@ -199,6 +213,8 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
     if (!*ctx)
         return;
 
+    bf_ns_clean(&(*ctx)->ns);
+
     for (int i = 0; i < _BF_HOOK_MAX; ++i)
         bf_list_clean(&(*ctx)->cgens[i]);
 
@@ -213,6 +229,24 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     DUMP(prefix, "struct bf_ctx at %p", ctx);
 
     bf_dump_prefix_push(prefix);
+
+    // Namespaces
+    DUMP(prefix, "ns: struct bf_ns")
+    bf_dump_prefix_push(prefix);
+
+    DUMP(prefix, "net: struct bf_ns_info");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "fd: %d", ctx->ns.net.fd);
+    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.net.inode);
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(bf_dump_prefix_last(prefix), "mnt: struct bf_ns_info");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "fd: %d", ctx->ns.mnt.fd);
+    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.mnt.inode);
+    bf_dump_prefix_pop(prefix);
+
+    bf_dump_prefix_pop(prefix);
 
     // Codegens
     DUMP(bf_dump_prefix_last(prefix), "cgens: bf_list[%d]", _BF_HOOK_MAX);
@@ -464,4 +498,9 @@ int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front)
 int bf_ctx_set_cgen(struct bf_cgen *cgen)
 {
     return _bf_ctx_set_cgen(_bf_global_ctx, cgen);
+}
+
+struct bf_ns *bf_ctx_get_ns(void)
+{
+    return &_bf_global_ctx->ns;
 }

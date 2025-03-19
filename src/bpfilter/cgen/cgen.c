@@ -13,6 +13,7 @@
 
 #include "bpfilter/cgen/dump.h"
 #include "bpfilter/cgen/program.h"
+#include "bpfilter/ctx.h"
 #include "core/chain.h"
 #include "core/dump.h"
 #include "core/front.h"
@@ -21,6 +22,7 @@
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/ns.h"
 #include "core/opts.h"
 #include "core/rule.h"
 
@@ -205,7 +207,7 @@ int bf_cgen_get_counter(const struct bf_cgen *cgen,
     return bf_program_get_counter(cgen->program, counter_idx, counter);
 }
 
-int bf_cgen_up(struct bf_cgen *cgen)
+int bf_cgen_up(struct bf_cgen *cgen, const struct bf_ns *ns)
 {
     _cleanup_bf_program_ struct bf_program *prog = NULL;
     int r;
@@ -225,16 +227,27 @@ int bf_cgen_up(struct bf_cgen *cgen)
                         bf_hook_to_str(cgen->chain->hook));
     }
 
+    r = bf_ns_set(ns, bf_ctx_get_ns());
+    if (r)
+        return bf_err_r(r, "failed to switch to the client's namespaces");
+
     r = bf_program_load(prog, NULL);
-    if (r < 0)
-        return r;
+    if (r < 0) {
+        if (bf_ns_set(bf_ctx_get_ns(), ns))
+            bf_abort("failed to restore previous namespaces, aborting");
+        return bf_err_r(r, "failed to load and attach the chain");
+    }
+
+    if (bf_ns_set(bf_ctx_get_ns(), ns))
+        bf_abort("failed to restore previous namespaces, aborting");
 
     cgen->program = TAKE_PTR(prog);
 
     return r;
 }
 
-int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
+                   const struct bf_ns *ns)
 {
     _cleanup_bf_program_ struct bf_program *new_prog = NULL;
     int r;
@@ -251,11 +264,19 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
                         "failed to generate the bytecode for a new bf_program");
     }
 
+    r = bf_ns_set(ns, bf_ctx_get_ns());
+    if (r)
+        return bf_err_r(r, "failed to switch to the client's namespaces");
+
     r = bf_program_load(new_prog, cgen->program);
     if (r < 0) {
-        return bf_err_r(
-            r, "failed to attach the new bf_program, keeping the old one");
+        if (bf_ns_set(bf_ctx_get_ns(), ns))
+            bf_abort("failed to restore previous namespaces, aborting");
+        return bf_err_r(r, "failed to load and attach the new chain");
     }
+
+    if (bf_ns_set(bf_ctx_get_ns(), ns))
+        bf_abort("failed to restore previous namespaces, aborting");
 
     bf_swap(cgen->program, new_prog);
     bf_swap(cgen->chain, *new_chain);

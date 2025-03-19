@@ -32,6 +32,7 @@
 
 struct bf_cgen;
 struct bf_marsh;
+struct bf_ns;
 
 /**
  * Initialise the global context.
@@ -125,3 +126,15 @@ int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front);
  *         depend on the hook), @c -EEXIT is returned.
  */
 int bf_ctx_set_cgen(struct bf_cgen *cgen);
+
+/**
+ * Get the daemon's original namespaces.
+ *
+ * During the creation of the global context, the daemon will open a reference
+ * to its namespaces. This is required to jump a a client's namespace on request
+ * and come back to the original namespace afterward. This function returns a
+ * pointer to the `bf_ns` object referencing the original namespaces.
+ *
+ * @return A `bf_ns` object pointer.
+ */
+struct bf_ns *bf_ctx_get_ns(void);
