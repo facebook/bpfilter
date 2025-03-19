@@ -54,8 +54,6 @@ function(bf_test_configure_non_build_srcs TARGET)
     endforeach()
 endfunction()
 
-find_program(LCOV_BIN lcov REQUIRED)
-
 enable_testing()
 
 set(bf_test_srcs
@@ -133,31 +131,35 @@ target_link_libraries(unit_bin
         gcov
 )
 
-add_custom_command(
-    COMMAND
-        ${CMAKE_COMMAND}
-            -E make_directory
-            ${CMAKE_BINARY_DIR}/output/tests
+add_custom_target(test
     COMMAND
         $<TARGET_FILE:unit_bin>
-    COMMAND
-        ${LCOV_BIN}
-            --capture
-            --directory ${CMAKE_BINARY_DIR}
-            --output-file ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
-	# Only keep the coverage for bpfilter's source files, not the tests.
-	COMMAND
-        ${LCOV_BIN}
-            --output-file ${CMAKE_BINARY_DIR}/output/tests/lcov.out
-            --extract ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
-            --ignore-errors unused
-            "${CMAKE_SOURCE_DIR}/src/\\*"
     DEPENDS
         unit_bin
-    OUTPUT
-        ${CMAKE_BINARY_DIR}/output/tests/lcov.out
     COMMENT "Running tests"
 )
 
+if (NOT ${NO_DOCS})
+    find_program(LCOV_BIN lcov REQUIRED)
 
-add_custom_target(test DEPENDS ${CMAKE_BINARY_DIR}/output/tests/lcov.out)
+    add_custom_command(TARGET test
+        POST_BUILD
+        COMMAND
+            ${CMAKE_COMMAND}
+                -E make_directory
+                ${CMAKE_BINARY_DIR}/output/tests
+        COMMAND
+            ${LCOV_BIN}
+                --capture
+                --directory ${CMAKE_BINARY_DIR}
+                --output-file ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
+        # Only keep the coverage for bpfilter's source files, not the tests.
+        COMMAND
+            ${LCOV_BIN}
+                --output-file ${CMAKE_BINARY_DIR}/output/tests/lcov.out
+                --extract ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
+                --ignore-errors unused
+                "${CMAKE_SOURCE_DIR}/src/\\*"
+        COMMENT "Generate the lcov.out summary file"
+    )
+endif ()
