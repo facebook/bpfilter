@@ -4,6 +4,7 @@
  */
 
 %{
+    #include <endian.h>
     #include <stdio.h>
     #include <stdlib.h>
     #include <stdbool.h>
@@ -350,6 +351,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                             bf_parse_err("failed to parse IPv4 mask: %s\n", mask);
 
                         addr.mask = ((uint32_t)~0) << (32 - m);
+                        addr.mask = htobe32(addr.mask);
                     } else {
                         addr.mask = (uint32_t)~0;
                     }
