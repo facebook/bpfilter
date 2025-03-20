@@ -660,10 +660,10 @@ static int _bf_program_fixup(struct bf_program *program,
             value = program->pmap->fd;
             break;
         case BF_FIXUP_TYPE_SET_MAP_FD:
-            map = bf_list_get_at(&program->sets, insn->imm);
+            map = bf_list_get_at(&program->sets, fixup->attr.set_index);
             if (!map) {
-                return bf_err_r(-ENOENT, "can't find set map at index %d",
-                                insn->imm);
+                return bf_err_r(-ENOENT, "can't find set map at index %lu",
+                                fixup->attr.set_index);
             }
             insn_type = BF_FIXUP_INSN_IMM;
             value = map->fd;
