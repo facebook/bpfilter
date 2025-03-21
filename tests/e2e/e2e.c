@@ -10,50 +10,42 @@
 #include "bpfilter.h"
 #include "opts.h"
 #include "core/bpf.h"
+#include "core/flavor.h"
 #include "core/logger.h"
 #include "harness/daemon.h"
 #include "harness/test.h"
 
-static int _bf_progtype_verdict[_BF_HOOK_MAX][2] = {
-    [BF_HOOK_XDP] = {
-        [BF_VERDICT_ACCEPT] = XDP_PASS,
-        [BF_VERDICT_DROP] = XDP_DROP,
+static struct {
+    enum bf_hook hook;
+    int verdicts[2];
+} _bf_tests_meta[_BF_FLAVOR_MAX] = {
+    [BF_FLAVOR_TC] = {
+        .hook = BF_HOOK_TC_EGRESS,
+        .verdicts = {
+            [BF_VERDICT_ACCEPT] = TC_ACT_OK,
+            [BF_VERDICT_DROP] = TC_ACT_SHOT,
+        },
     },
-    [BF_HOOK_TC_INGRESS] = {
-        [BF_VERDICT_ACCEPT] = TC_ACT_OK,
-        [BF_VERDICT_DROP] = TC_ACT_SHOT,
+    [BF_FLAVOR_NF] = {
+        .hook = BF_HOOK_NF_POST_ROUTING,
+        .verdicts = {
+            [BF_VERDICT_ACCEPT] = NF_ACCEPT,
+            [BF_VERDICT_DROP] = NF_DROP,
+        },
     },
-    [BF_HOOK_NF_PRE_ROUTING] = {
-        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
-        [BF_VERDICT_DROP] = NF_DROP,
+    [BF_FLAVOR_XDP] = {
+        .hook = BF_HOOK_XDP,
+        .verdicts = {
+            [BF_VERDICT_ACCEPT] = XDP_PASS,
+            [BF_VERDICT_DROP] = XDP_DROP,
+        },
     },
-    [BF_HOOK_NF_LOCAL_IN] = {
-        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
-        [BF_VERDICT_DROP] = NF_DROP,
-    },
-    [BF_HOOK_NF_FORWARD] = {
-        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
-        [BF_VERDICT_DROP] = NF_DROP,
-    },
-    [BF_HOOK_CGROUP_INGRESS] = {
-        [BF_VERDICT_ACCEPT] = SK_PASS,
-        [BF_VERDICT_DROP] = SK_DROP,
-    },
-    [BF_HOOK_CGROUP_EGRESS] = {
-        [BF_VERDICT_ACCEPT] = SK_PASS,
-        [BF_VERDICT_DROP] = SK_DROP,
-    },
-    [BF_HOOK_NF_LOCAL_OUT] = {
-        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
-        [BF_VERDICT_DROP] = NF_DROP,
-    },
-    [BF_HOOK_NF_POST_ROUTING] = {
-        [BF_VERDICT_ACCEPT] = NF_ACCEPT,
-        [BF_VERDICT_DROP] = NF_DROP,
-    },
-    [BF_HOOK_TC_EGRESS] = {
-        [BF_VERDICT_ACCEPT] = TC_ACT_OK,
-        [BF_VERDICT_DROP] = TC_ACT_SHOT,
+    [BF_FLAVOR_CGROUP] = {
+        .hook = BF_HOOK_CGROUP_INGRESS,
+        .verdicts = {
+            [BF_VERDICT_ACCEPT] = SK_PASS,
+            [BF_VERDICT_DROP] = SK_DROP,
+        },
     },
 };
 
@@ -62,7 +54,7 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
 {
     _cleanup_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
     bool success = true, daemon_failure = false;
-    int retval[_BF_HOOK_MAX] = {};
+    int retval[_BF_FLAVOR_MAX] = {};
     int r;
 
     bf_assert(chain && args);
@@ -78,12 +70,12 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
     if (r < 0)
         return bf_err_r(r, "failed to start the bpfilter daemon");
 
-    for (enum bf_hook hook = BF_HOOK_XDP; hook < _BF_HOOK_MAX; ++hook) {
+    for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor) {
         _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
-        const struct bft_prog_run_args *arg = &args[hook];
+        const struct bft_prog_run_args *arg = &args[flavor];
         int test_ret;
 
-        chain->hook = hook;
+        chain->hook = _bf_tests_meta[flavor].hook;
         prog = bf_test_prog_get(chain);
         if (!prog) {
             bf_err("failed to get the test program");
@@ -101,7 +93,7 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
 
         bf_cli_ruleset_flush();
 
-        retval[hook] = test_ret;
+        retval[flavor] = test_ret;
     }
 
     r = bf_test_daemon_stop(&daemon);
@@ -114,14 +106,14 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
         fail();
     }
 
-    for (enum bf_hook hook = BF_HOOK_XDP; hook < _BF_HOOK_MAX; ++hook) {
-        if (_bf_progtype_verdict[hook][expect] == retval[hook])
+    for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor) {
+        if (_bf_tests_meta[flavor].verdicts[expect] == retval[flavor])
             continue;
 
         // Not ideal, but at least it's properly formatted
         print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",
-                    "             ", bf_hook_to_str(hook), retval[hook],
-                    _bf_progtype_verdict[chain->hook][expect]);
+                    "             ", bf_flavor_to_str(flavor), retval[flavor],
+                    _bf_tests_meta[flavor].verdicts[expect]);
         success = false;
     }
 
