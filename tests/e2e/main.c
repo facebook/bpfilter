@@ -615,6 +615,234 @@ Test(ip6, addrport_200kset_nomatch)
     bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
+Test(tcp, dport_range)
+{
+    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 31000 to 32000
+                            0x18, 0x79, 0x00, 0xd7,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_tcp);
+
+    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 1 to 31000
+                            0x01, 0x00, 0x18, 0x79,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
+
+    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 32000 to 65535
+                            0x00, 0xd7, 0xff, 0xff,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(over_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
+}
+
+Test(udp, dport_range)
+{
+    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 31000 to 32000
+                            0x18, 0x79, 0x00, 0xd7,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_udp);
+
+    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 1 to 31000
+                            0x01, 0x00, 0x18, 0x79,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
+
+    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 32000 to 65535
+                            0x00, 0xd7, 0xff, 0xff,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(over_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
+}
+
+Test(meta, dport_range)
+{
+    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 31000 to 32000
+                            0x18, 0x79, 0x00, 0xd7,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_tcp);
+    bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_udp);
+
+    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 1 to 31000
+                            0x01, 0x00, 0x18, 0x79,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
+    bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
+
+    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
+                        (uint8_t[]) {
+                            // 32000 to 65535
+                            0x00, 0xd7, 0xff, 0xff,
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(over_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
+    bft_e2e_test(over_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
+}
+
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
