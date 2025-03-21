@@ -179,6 +179,13 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops);
 void bf_list_free(bf_list **list);
 
 /**
+ * No-Operation list free. Does nothing when called.
+ *
+ * @param list Pointer to the list to free. Must be non-NULL.
+ */
+void bf_list_nop_free(bf_list **list);
+
+/**
  * Initialize an allocated list.
  *
  * @param list List to initialise. Must be non-NULL.

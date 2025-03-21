@@ -12,7 +12,31 @@
 #include "core/marsh.h"
 #include "core/request.h"
 #include "core/response.h"
+#include "core/rule.h"
 #include "libbpfilter/generic.h"
+
+int bf_cli_request_ruleset(struct bf_response **response, bool with_counters)
+{
+    _cleanup_bf_request_ struct bf_request *request = NULL;
+    int r;
+
+    r = bf_request_new(&request, NULL, 0);
+    if (r < 0)
+        return bf_err_r(r, "failed to init request");
+
+    request->front = BF_FRONT_CLI;
+    request->cmd = BF_REQ_RULES_GET;
+    request->cli_with_counters = with_counters;
+
+    r = bf_send(request, response);
+    if (r < 0)
+        return bf_err_r(r, "failed to send a ruleset get request");
+
+    if ((*response)->type == BF_RES_FAILURE)
+        return (*response)->error;
+
+    return 0;
+}
 
 int bf_cli_ruleset_flush(void)
 {
