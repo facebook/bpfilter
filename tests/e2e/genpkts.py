@@ -46,6 +46,7 @@ packets = [
 
 template = """#pragma once
 
+#include "core/flavor.h"
 #include "harness/prog.h"
 
 struct sk_buff;
@@ -74,38 +75,12 @@ struct bft_prog_run_args {{
 """
 
 packet_template = """__attribute__((unused)) static const uint8_t _{pkt_name}_raw[] = {{ {pkt_raw} }};
-__attribute__((unused)) static const struct bft_prog_run_args {pkt_name}[_BF_HOOK_MAX] = {{
-    [BF_HOOK_XDP] = {{
+__attribute__((unused)) static const struct bft_prog_run_args {pkt_name}[_BF_FLAVOR_MAX] = {{
+    [BF_FLAVOR_TC] = {{
         .pkt_len = {len},
         .pkt = &_{pkt_name}_raw,
     }},
-    [BF_HOOK_TC_INGRESS] = {{
-        .pkt_len = {len},
-        .pkt = &_{pkt_name}_raw,
-    }},
-    [BF_HOOK_NF_PRE_ROUTING] = {{
-        .pkt_len = {len},
-        .pkt = &_{pkt_name}_raw,
-        .ctx_len = sizeof(struct nf_hook_state),
-        .ctx = {{
-            .nf_ctx = {{
-                .hook = NF_INET_PRE_ROUTING,
-                .pf = {pkt_family},
-            }},
-        }}
-    }},
-    [BF_HOOK_NF_LOCAL_IN] = {{
-        .pkt_len = {len},
-        .pkt = &_{pkt_name}_raw,
-        .ctx_len = sizeof(struct nf_hook_state),
-        .ctx = {{
-            .nf_ctx = {{
-                .hook = NF_INET_LOCAL_IN,
-                .pf = {pkt_family},
-            }},
-        }}
-    }},
-    [BF_HOOK_NF_FORWARD] = {{
+    [BF_FLAVOR_NF] = {{
         .pkt_len = {len},
         .pkt = &_{pkt_name}_raw,
         .ctx_len = sizeof(struct nf_hook_state),
@@ -116,42 +91,11 @@ __attribute__((unused)) static const struct bft_prog_run_args {pkt_name}[_BF_HOO
             }},
         }}
     }},
-    [BF_HOOK_CGROUP_INGRESS] = {{
+    [BF_FLAVOR_XDP] = {{
         .pkt_len = {len},
         .pkt = &_{pkt_name}_raw,
     }},
-    [BF_HOOK_CGROUP_EGRESS] = {{
-        .pkt_len = {len},
-        .pkt = &_{pkt_name}_raw,
-    }},
-    [BF_HOOK_NF_LOCAL_OUT] = {{
-        /* Skip the Ethernet header for this specific hook, as
-         * bpf_prog_test_run_nf() won't reset to the network header: hence,
-         * the data passed to the test function expects a network header.
-         * See https://elixir.bootlin.com/linux/v6.13.6/source/net/bpf/test_run.c#L1708-L1710
-         */
-        .pkt_len = {len} - 14,
-        .pkt = (void *)(&_{pkt_name}_raw) + 14,
-        .ctx_len = sizeof(struct nf_hook_state),
-        .ctx = {{
-            .nf_ctx = {{
-                .hook = NF_INET_LOCAL_OUT,
-                .pf = {pkt_family},
-            }},
-        }}
-    }},
-    [BF_HOOK_NF_POST_ROUTING] = {{
-        .pkt_len = {len},
-        .pkt = &_{pkt_name}_raw,
-        .ctx_len = sizeof(struct nf_hook_state),
-        .ctx = {{
-            .nf_ctx = {{
-                .hook = NF_INET_FORWARD,
-                .pf = {pkt_family},
-            }},
-        }}
-    }},
-    [BF_HOOK_TC_EGRESS] = {{
+    [BF_FLAVOR_CGROUP] = {{
         .pkt_len = {len},
         .pkt = &_{pkt_name}_raw,
     }},
