@@ -7,6 +7,7 @@
 
 #include <linux/pkt_cls.h>
 
+#include "bpfilter.h"
 #include "opts.h"
 #include "core/bpf.h"
 #include "core/logger.h"
@@ -59,68 +60,73 @@ static int _bf_progtype_verdict[_BF_HOOK_MAX][2] = {
 int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
                  const struct bft_prog_run_args *args)
 {
-    bool success = true;
+    _cleanup_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
+    bool success = true, daemon_failure = false;
     int retval[_BF_HOOK_MAX] = {};
+    int r;
 
     bf_assert(chain && args);
 
+    r = bf_test_daemon_init(&daemon, bft_e2e_bpfilter_path(),
+                            BF_TEST_DAEMON_TRANSIENT |
+                            BF_TEST_DAEMON_NO_IPTABLES |
+                            BF_TEST_DAEMON_NO_NFTABLES);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the bpfilter daemon");
+
+    r = bf_test_daemon_start(&daemon);
+    if (r < 0)
+        return bf_err_r(r, "failed to start the bpfilter daemon");
+
     for (enum bf_hook hook = BF_HOOK_XDP; hook < _BF_HOOK_MAX; ++hook) {
-        _cleanup_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
         _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
         const struct bft_prog_run_args *arg = &args[hook];
-        int r, test_ret;
-
-        r = bf_test_daemon_init(&daemon, bft_e2e_bpfilter_path(),
-                                BF_TEST_DAEMON_TRANSIENT |
-                                BF_TEST_DAEMON_NO_IPTABLES |
-                                BF_TEST_DAEMON_NO_NFTABLES);
-        if (r < 0)
-            return bf_err_r(r, "failed to create the bpfilter daemon");
-
-        r = bf_test_daemon_start(&daemon);
-        if (r < 0)
-            return bf_err_r(r, "failed to start the bpfilter daemon");
+        int test_ret;
 
         chain->hook = hook;
         prog = bf_test_prog_get(chain);
         if (!prog) {
-            _cleanup_free_ const char *err = bf_test_process_stderr(&daemon.process);
-            bf_info("stderr:\n%s", err);
-            bf_test_daemon_stop(&daemon);
-            return bf_err_r(-EINVAL, "failed to get BPF program");
+            bf_err("failed to get the test program");
+            daemon_failure = true;
+            break;
         }
 
         test_ret = bf_prog_run(prog->fd, arg->pkt, arg->pkt_len,
                                arg->ctx_len ? &arg->ctx : NULL, arg->ctx_len);
         if (test_ret < 0) {
-            _cleanup_free_ const char *err = bf_test_process_stderr(&daemon.process);
-            bf_info("stderr:\n%s", err);
-            bf_test_daemon_stop(&daemon);
-            assert_success(test_ret);
+            bf_err_r(test_ret, "failed to run the program");
+            daemon_failure = true;
+            break;
         }
 
-        r = bf_test_daemon_stop(&daemon);
-        if (r < 0)
-            return bf_err_r(r, "failed to stop the bpfilter daemon");
+        bf_cli_ruleset_flush();
 
         retval[hook] = test_ret;
-        if (test_ret != _bf_progtype_verdict[chain->hook][expect])
-            success = false;
     }
 
-    if (!success) {
-        for (enum bf_hook hook = BF_HOOK_XDP; hook < _BF_HOOK_MAX; ++hook) {
-            if (_bf_progtype_verdict[chain->hook][expect] == retval[hook])
-                continue;
+    r = bf_test_daemon_stop(&daemon);
+    if (r < 0)
+        return bf_err_r(r, "failed to stop the bpfilter daemon");
 
-            // Not ideal, but at least it's properly formatted
-            print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",
-                        "             ", bf_hook_to_str(hook), retval[hook],
-                        _bf_progtype_verdict[chain->hook][expect]);
-        }
-
+    if (daemon_failure) {
+        _cleanup_free_ const char *err = bf_test_process_stderr(&daemon.process);
+        bf_info("stderr:\n%s", err);
         fail();
     }
+
+    for (enum bf_hook hook = BF_HOOK_XDP; hook < _BF_HOOK_MAX; ++hook) {
+        if (_bf_progtype_verdict[hook][expect] == retval[hook])
+            continue;
+
+        // Not ideal, but at least it's properly formatted
+        print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",
+                    "             ", bf_hook_to_str(hook), retval[hook],
+                    _bf_progtype_verdict[chain->hook][expect]);
+        success = false;
+    }
+
+    if (!success)
+        fail();
 
     return 0;
 }
