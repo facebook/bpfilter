@@ -100,6 +100,16 @@
                         .off = 0,                                              \
                         .imm = LEN})
 
+/* Byte Swap, bswap16/32/64 */
+
+#define BPF_BSWAP(DST, LEN)                                                    \
+((struct bpf_insn) {                                                           \
+    .code  = BPF_ALU64 | BPF_END | BPF_SRC(BPF_TO_LE),                         \
+    .dst_reg = DST,                                                            \
+    .src_reg = 0,                                                              \
+    .off   = 0,                                                                \
+    .imm   = LEN })
+
 /* Short form of mov, dst_reg = src_reg */
 
 #define BPF_MOV64_REG(DST, SRC)                                                \
