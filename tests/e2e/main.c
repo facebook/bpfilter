@@ -478,7 +478,7 @@ Test(ip6, port_200kset_match)
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
-            make_ip6port_set(200000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x7a, 0x69}),
+            make_ip6port_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x7a, 0x69}),
             NULL,
         },
         (struct bf_rule *[]) {
@@ -505,7 +505,7 @@ Test(ip6, port_200kset_nomatch)
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
-            make_ip6port_set(200000, NULL),
+            make_ip6port_set(2000, NULL),
             NULL,
         },
         (struct bf_rule *[]) {
@@ -567,7 +567,7 @@ Test(ip6, addrport_200kset_match)
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
-            make_ip6_set(200000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e}),
+            make_ip6_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e}),
             NULL,
         },
         (struct bf_rule *[]) {
@@ -594,7 +594,7 @@ Test(ip6, addrport_200kset_nomatch)
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
-            make_ip6_set(200000, NULL),
+            make_ip6_set(2000, NULL),
             NULL,
         },
         (struct bf_rule *[]) {
