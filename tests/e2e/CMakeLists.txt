@@ -29,6 +29,7 @@ add_executable(e2e_bin EXCLUDE_FROM_ALL
 target_include_directories(e2e_bin
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src/libbpfilter
 )
 
 target_link_libraries(e2e_bin
