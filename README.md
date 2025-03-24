@@ -41,9 +41,10 @@ Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.
 
 ### Install
 
-**bpfilter** is packaged for Fedora (40 to 42) and EPEL9:
+**bpfilter** is packaged for Fedora 40+, EPEL 9+ and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. The examples below uses Fedora 41.
 
 ```shell
+# Fedora 40+ or CentOS Stream 9+ (with EPEL)
 sudo dnf install -y bpfilter bpfilter-devel
 ```
 
@@ -51,7 +52,7 @@ sudo dnf install -y bpfilter bpfilter-devel
 
 ```shell
 # Essential build requirements
-sudo dnf install -y cmake gcc libbpf-devel libnl3-devel bison fle
+sudo dnf install -y cmake gcc libbpf-devel libnl3-devel bison flex
 
 # Configure the project and build bpfilter
 cmake -S $SOURCES_DIR -B $BUILD_DIR -DNO_DOCS=ON -DNO_TESTS=ON -DNO_CHECKS=ON -DNO_BENCHMARKS=ON

@@ -25,7 +25,7 @@ Once the daemon is running, you need to choose which front-end's CLI to use:
 Install
 -------
 
-**bpfilter** is packaged and available for Fedora 40 to 42 and EPEL 9:
+**bpfilter** is packaged for Fedora 40+, EPEL 9+ and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+.
 
 .. code-block:: bash
 
