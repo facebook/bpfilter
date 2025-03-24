@@ -91,7 +91,7 @@ Integration tests
 
 .. code-block:: shell
 
-    # Fedora 39+
+    # Fedora 40+
     sudo dnf install -y autoconf automake gmp-devel libtool libedit-devel libmnl-devel libnftnl-devel
 
     # Ubuntu 24.04

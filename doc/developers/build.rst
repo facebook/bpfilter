@@ -1,13 +1,13 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.4+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 39+, and Ubuntu 24.04+.
+This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+.
 
 If you want to perform a full build of ``bpfilter``, the following dependencies are required:
 
 .. code-block:: shell
 
-    # Fedora 39+
+    # Fedora 40+
     sudo dnf install -y bison clang-tools-extra cmake doxygen flex g++ gcc git google-benchmark-devel lcov libasan libbpf-devel libcmocka-devel libgit2-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
 
     # Ubuntu 24.04+
