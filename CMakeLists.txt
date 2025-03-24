@@ -57,6 +57,10 @@ target_compile_options(bf_global_flags
         $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
         $<$<CONFIG:release>:-O2>
 )
+target_include_directories(bf_global_flags
+    INTERFACE
+        ${CMAKE_SOURCE_DIR}/src/external
+)
 target_link_options(bf_global_flags
     INTERFACE
         $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
