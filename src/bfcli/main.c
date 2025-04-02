@@ -13,7 +13,9 @@
 
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
+#include "bfcli/print.h"
 #include "core/chain.h"
+#include "core/counter.h"
 #include "core/helper.h"
 #include "core/hook.h"
 #include "core/list.h"
@@ -30,6 +32,16 @@ struct bf_ruleset_set_opts
 {
     const char *input_file;
     const char *input_string;
+};
+
+struct bf_ruleset_get_opts
+{
+    bool with_counters;
+};
+
+enum
+{
+    BF_OPT_COUNTERS = 1,
 };
 
 static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
@@ -49,6 +61,23 @@ static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
             return bf_err_r(-EINVAL, "--file or --str argument is required");
         if (opts->input_file && opts->input_string)
             return bf_err_r(-EINVAL, "--file is incompatible with --str");
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+
+    return 0;
+}
+
+static error_t _bf_ruleset_get_opts_parser(int key, const char *arg,
+                                           struct argp_state *state)
+{
+    struct bf_ruleset_get_opts *opts = state->input;
+    UNUSED(arg);
+
+    switch (key) {
+    case BF_OPT_COUNTERS:
+        opts->with_counters = true;
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -164,6 +193,44 @@ end_clean:
 
 #define streq(str, expected) (str) && bf_streq(str, expected)
 
+int _bf_do_ruleset_get(int argc, char *argv[])
+{
+    static struct bf_ruleset_get_opts opts = {
+        .with_counters = false,
+    };
+    static struct argp_option options[] = {
+        {"with-counters", BF_OPT_COUNTERS, 0, 0,
+         "Print packets and bytes counters", 0},
+        {0},
+    };
+    struct argp argp = {
+        options, (argp_parser_t)_bf_ruleset_get_opts_parser,
+        NULL,    NULL,
+        0,       NULL,
+        NULL,
+    };
+    _clean_bf_list_ bf_list chains =
+        bf_list_default(bf_chain_free, bf_chain_marsh);
+    _clean_bf_list_ bf_list counters =
+        bf_list_default(bf_counter_free, bf_counter_marsh);
+    int r;
+
+    r = argp_parse(&argp, argc, argv, 0, 0, &opts);
+    if (r)
+        return bf_err_r(r, "failed to parse arguments");
+
+    // Ask libbpfilter to make a request to the daemon
+    r = bf_cli_ruleset_get(&chains, &counters, opts.with_counters);
+    if (r < 0)
+        return bf_err_r(r, "failed to request ruleset");
+
+    r = bf_cli_dump_ruleset(&chains, &counters, opts.with_counters);
+    if (r)
+        return bf_err_r(r, "failed to dump ruleset");
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     const char *obj_str = NULL;
@@ -197,6 +264,8 @@ int main(int argc, char *argv[])
 
     if (streq(obj_str, "ruleset") && streq(action_str, "set")) {
         r = _bf_do_ruleset_set(argc, argv);
+    } else if (streq(obj_str, "ruleset") && streq(action_str, "get")) {
+        r = _bf_do_ruleset_get(argc, argv);
     } else if (streq(obj_str, "ruleset") && streq(action_str, "flush")) {
         r = bf_cli_ruleset_flush();
     } else {

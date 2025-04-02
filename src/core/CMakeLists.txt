@@ -9,7 +9,7 @@ set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/bpf.h              ${CMAKE_CURRENT_SOURCE_DIR}/bpf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/btf.h              ${CMAKE_CURRENT_SOURCE_DIR}/btf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.h            ${CMAKE_CURRENT_SOURCE_DIR}/chain.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/counter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/counter.h          ${CMAKE_CURRENT_SOURCE_DIR}/counter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.h             ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.h           ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/front.h            ${CMAKE_CURRENT_SOURCE_DIR}/front.c
