@@ -599,9 +599,10 @@ _bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
  */
 static int _bf_ipt_ruleset_set(const struct bf_request *req)
 {
-    _cleanup_free_ struct ipt_entry *entries = NULL;
     struct ipt_replace *replace;
     struct bf_chain *chains[NF_INET_NUMHOOKS] = {};
+    bf_list _cur_cgens = bf_list_default(NULL, NULL);
+    struct bf_cgen *cur_cgens[NF_INET_NUMHOOKS] = {};
     int r;
 
     bf_assert(req);
@@ -617,29 +618,50 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
     if (r)
         return bf_err_r(r, "failed to translate iptables ruleset");
 
-    /* Copy entries now, so we don't have to unload the programs if the copy
-     * fails later. */
-    entries = bf_memdup(replace->entries, replace->size);
-    if (!entries)
-        return bf_err_r(-ENOMEM, "failed to duplicate iptables ruleset");
+    r = bf_ctx_get_cgens_for_front(&_cur_cgens, BF_FRONT_IPT);
+    if (r)
+        return bf_err_r(r, "failed to get existing bf_cgen for BF_FRONT_IPT");
+
+    bf_list_foreach (&_cur_cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+        enum nf_inet_hooks hook = bf_hook_to_nf_hook(cgen->chain->hook);
+
+        if (cur_cgens[hook])
+            return bf_err_r(-EEXIST,
+                            "found 2 bf_cgen for the same BF_FRONT_IPT hook!");
+        cur_cgens[hook] = cgen;
+    }
 
     for (int i = 0; i < NF_INET_NUMHOOKS; i++) {
-        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = cur_cgens[i];
         _cleanup_bf_chain_ struct bf_chain *chain = TAKE_PTR(chains[i]);
+
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
 
         if (!chain)
             continue;
 
-        cgen = bf_ctx_get_cgen(chain->hook, &chain->hook_opts);
         if (!cgen) {
             r = bf_cgen_new(&cgen, BF_FRONT_IPT, &chain);
             if (r)
                 return r;
 
-            r = bf_cgen_up(cgen, req->ns);
+            r = bf_cgen_load(cgen);
             if (r) {
                 bf_err(
-                    "failed to generate and load program for iptables hook %d, skipping",
+                    "failed to generate a program for iptables hook %d, skipping",
+                    i);
+                continue;
+            }
+
+            r = bf_hookopts_new(&hookopts);
+            if (r)
+                return r;
+
+            r = bf_cgen_attach(cgen, req->ns, hookopts);
+            if (r) {
+                bf_err(
+                    "failed to load a program for iptables hook %d, skipping",
                     i);
                 continue;
             }
@@ -654,7 +676,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 
             TAKE_PTR(cgen);
         } else {
-            r = bf_cgen_update(cgen, &chain, req->ns);
+            r = bf_cgen_update(cgen, &chain);
             if (r) {
                 TAKE_PTR(cgen);
                 bf_err_r(

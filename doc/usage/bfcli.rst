@@ -11,11 +11,7 @@ Commands
 ``ruleset set``
 ~~~~~~~~~~~~~~~
 
-Define a new ruleset: read the chains and rules defined on the command line or in a file and send them to the daemon to be applied to the system.
-
-.. warning::
-
-    Currently, if a similar chain already exists on the system (e.g., for XDP, a chain attached to the same interface), the new one replaces it. Otherwise, it is left unchanged. This behavior is subject to change.
+Define a new ruleset: replace all the existing chains with the ruleset provided. Replacement is not atomic.
 
 **Options**
   - ``--str RULESET``: read and apply the ruleset defining from the command line.

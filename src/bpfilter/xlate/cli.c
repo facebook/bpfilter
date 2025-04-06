@@ -15,6 +15,7 @@
 #include "core/counter.h"
 #include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -156,47 +157,83 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
                                    bf_marsh_size(marsh));
 }
 
-int _bf_cli_set_rules(const struct bf_request *request,
-                      struct bf_response **response)
+int _bf_cli_ruleset_set(const struct bf_request *request,
+                        struct bf_response **response)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-    struct bf_cgen *cgen;
-    int r;
+    _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
+    struct bf_marsh *marsh, *child = NULL;
+    int r = 0;
 
-    bf_assert(request);
-    bf_assert(response);
+    bf_assert(request && response);
 
-    if (request->data_len < sizeof(struct bf_marsh))
-        return bf_response_new_failure(response, -EINVAL);
+    // Unmarsh the list of chains
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
 
-    r = bf_chain_new_from_marsh(&chain, (void *)request->data);
-    if (r)
-        return bf_err_r(r, "failed to create chain from marsh");
+    bf_ctx_flush(BF_FRONT_CLI);
 
-    cgen = bf_ctx_get_cgen(chain->hook, &chain->hook_opts);
-    if (!cgen) {
+    while ((child = bf_marsh_next_child(marsh, child))) {
+        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        struct bf_marsh *cchild = NULL;
+
+        cchild = bf_marsh_next_child(child, cchild);
+        if (!cchild)
+            return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
+
+        r = bf_chain_new_from_marsh(&chain, cchild);
+        if (r)
+            goto err_load;
+
+        cchild = bf_marsh_next_child(child, cchild);
+        if (!cchild)
+            return bf_err_r(-ENOENT, "expecting marsh for hook, none found");
+
+        if (cchild->data_len) {
+            r = bf_hookopts_new_from_marsh(&hookopts, cchild);
+            if (r)
+                goto err_load;
+        }
+
         r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
         if (r)
-            return r;
+            goto err_load;
 
-        r = bf_cgen_up(cgen, request->ns);
-        if (r < 0) {
-            bf_cgen_free(&cgen);
-            return bf_err_r(r, "failed to generate and load new program");
+        r = bf_cgen_load(cgen);
+        if (r)
+            goto err_load;
+
+        if (hookopts) {
+            r = bf_cgen_attach(cgen, request->ns, hookopts);
+            if (r)
+                goto err_load;
         }
 
         r = bf_ctx_set_cgen(cgen);
-        if (r < 0) {
-            bf_cgen_free(&cgen);
-            return bf_err_r(r, "failed to store codegen in runtime context");
+        if (r) {
+            bf_err("failed to add cgen to the runtime context");
+            goto err_load;
         }
-    } else {
-        r = bf_cgen_update(cgen, &chain, request->ns);
-        if (r < 0)
-            return bf_warn_r(r, "failed to update existing codegen");
+
+        r = bf_list_add_tail(&cgens, cgen);
+        if (r)
+            goto err_load;
+
+        TAKE_PTR(cgen);
     }
 
-    return bf_response_new_success(response, NULL, 0);
+    return r;
+
+err_load:
+    bf_list_foreach (&cgens, cgen_node)
+        bf_ctx_delete_cgen(bf_list_node_get_data(cgen_node), true);
+
+    return r;
 }
 
 static int _bf_cli_request_handler(struct bf_request *request,
@@ -221,6 +258,17 @@ static int _bf_cli_request_handler(struct bf_request *request,
         r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
                      request->cmd);
         break;
+    }
+
+    /* If the callback don't need to send data back to the client, it can skip
+     * the response creation and return a status code instead (0 on success,
+     * negative errno value on error). The response is created based on the
+     * status code. */
+    if (!*response) {
+        if (!r)
+            r = bf_response_new_success(response, NULL, 0);
+        else
+            r = bf_response_new_failure(response, r);
     }
 
     return r;
