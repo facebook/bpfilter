@@ -36,7 +36,6 @@ chain           { return CHAIN; }
 rule            { return RULE; }
 
     /* Keywords */
-policy          { return POLICY; }
 counter         { return COUNTER; }
 
     /* Hooks */
@@ -45,7 +44,7 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
     (\{|\}|,) /* Ignore */
     [a-zA-Z0-9_]+=[a-zA-Z0-9_\-\.\/]+ {
         yylval.sval = strdup(yytext);
-        return HOOK_OPT;
+        return RAW_HOOKOPT;
     }
 }
     /* Verdicts */

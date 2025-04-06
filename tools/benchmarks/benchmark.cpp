@@ -804,8 +804,7 @@ Chain &Chain::repeat(const ::std::string &rule, ::std::size_t count)
 
 int Chain::apply()
 {
-    ::std::string chain = "chain BF_HOOK_CGROUP_INGRESS{cgroup=" + name_ +
-                          ",name=" + name_ + ",attach=no} policy DROP ";
+    ::std::string chain = "chain bf_benchmark BF_HOOK_CGROUP_INGRESS DROP ";
 
     for (const auto &rule: rules_)
         chain += rule + " ";
