@@ -271,3 +271,97 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         udp.dport 30-39
         counter
         ACCEPT
+
+# Create a Netfilter chain
+chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
+    rule
+        meta.dport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.dport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.sport eq 22
+        counter
+        CONTINUE
+    rule
+        meta.sport not 22
+        counter
+        CONTINUE
+    rule
+        meta.dport range 10-30
+        counter
+        CONTINUE
+    rule
+        meta.ifindex 1
+        counter
+        CONTINUE
+    rule
+        meta.ifindex 1
+        counter
+        ACCEPT
+    rule
+        ip4.saddr in {192.168.1.131,192.168.1.132}
+        counter
+        ACCEPT
+    rule
+        ip6.saddr fc00::fbaf:7b6b:ba41:abce
+        counter
+        ACCEPT
+    rule
+        ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
+        counter
+        ACCEPT
+    rule
+        meta.l3_proto ipv6
+        counter
+        ACCEPT
+    rule
+        meta.l4_proto tcp
+        counter
+        ACCEPT
+    rule
+        ip4.saddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.daddr 192.168.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.proto icmp
+        counter
+        ACCEPT
+    rule
+        tcp.sport 22
+        counter
+        ACCEPT
+    rule
+        tcp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.flags any SYN,ACK
+        counter
+        ACCEPT
+    rule
+        udp.sport 22
+        counter
+        ACCEPT
+    rule
+        udp.dport 22
+        counter
+        ACCEPT
+    rule
+        tcp.sport 0-9
+        tcp.dport 10-19
+        udp.sport 20-29
+        udp.dport 30-39
+        counter
+        ACCEPT
