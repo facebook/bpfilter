@@ -321,9 +321,6 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
     if (r)
         return r;
 
-    _chain->hook_opts.used_opts = 1 << BF_HOOK_OPT_ATTACH;
-    _chain->hook_opts.attach = true;
-
     while (first < last) {
         _cleanup_bf_rule_ struct bf_rule *rule = NULL;
 

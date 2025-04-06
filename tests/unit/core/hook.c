@@ -8,55 +8,95 @@
 #include "harness/test.h"
 #include "harness/mock.h"
 
-Test(hook, hook_to_str_to_hook)
+Test(hook, hook_to_str_and_back)
 {
-    enum bf_hook hook;
-
-    expect_assert_failure(bf_hook_to_str(-1));
-    expect_assert_failure(bf_hook_to_str(_BF_HOOK_MAX));
-    expect_assert_failure(bf_hook_from_str(NULL, NOT_NULL));
-    expect_assert_failure(bf_hook_from_str(NOT_NULL, NULL));
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        const char *str = bf_hook_to_str(i);
-
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
+        const char *str = bf_hook_to_str(hook);
         assert_non_null(str);
-        assert_int_not_equal(-1, bf_hook_from_str(str, &hook));
-        assert_int_equal(hook, i);
     }
 
-    assert_int_not_equal(0, bf_hook_from_str("", &hook));
-    assert_int_not_equal(0, bf_hook_from_str("invalid", &hook));
+    expect_assert_failure(bf_hook_from_str(NULL));
+    assert_error(bf_hook_from_str(""));
+    assert_error(bf_hook_from_str("BF_HOOK_XD"));
+    assert_error(bf_hook_from_str("no"));
 }
 
-Test(hook, hook_to_bpf_prog_type_assert_failure)
+Test(hook, hook_to_flavor)
 {
-    expect_assert_failure(bf_hook_to_bpf_prog_type(-1));
-    expect_assert_failure(bf_hook_to_bpf_prog_type(_BF_HOOK_MAX));
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook)
+        bf_hook_to_flavor(hook);
 }
 
-Test(hook, can_get_prog_type_from_hook)
+Test(hook, hook_to_bpf_attach_type)
 {
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        assert_true(bf_hook_to_bpf_prog_type(i) <= BPF_PROG_TYPE_NETFILTER);
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook)
+        bf_hook_to_bpf_attach_type(hook);
 }
 
-
-Test(hook, hook_to_attach_type_assert_failure)
+Test(hook, hook_to_bpf_prog_type)
 {
-    expect_assert_failure(bf_hook_to_attach_type(-1));
-    expect_assert_failure(bf_hook_to_attach_type(_BF_HOOK_MAX));
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook)
+    bf_hook_to_bpf_prog_type(hook);
 }
 
-Test(hook, can_get_attach_type_from_hook)
+Test(hook, hook_to_nfhook_and_back)
 {
-    enum bpf_attach_type attach_type;
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        attach_type = bf_hook_to_attach_type(i);
-        assert_true(0 <= attach_type);
-        // Don't check if the attach_type is a valid bpf_attach_type for the
-        // current kernel, as we might define it in compat.h to allow bpfilter
-        // to build.
+    for (enum nf_inet_hooks nfhook = 0; nfhook < NF_INET_NUMHOOKS; ++nfhook) {
+        enum bf_hook bfhook = bf_hook_from_nf_hook(nfhook);
+        assert_int_equal(bf_hook_to_nf_hook(bfhook), nfhook);
+        assert_non_null(bf_nf_hook_to_str(nfhook));
     }
+
+    assert_error(bf_hook_to_nf_hook(BF_HOOK_XDP));
+    assert_error(bf_hook_to_nf_hook(BF_HOOK_TC_INGRESS));
+    assert_error(bf_hook_from_nf_hook(-1));
+}
+
+Test(hook, parse_family)
+{
+    struct bf_hookopts opts = {};
+    struct bf_hookopts_ops *ops = &_bf_hookopts_ops[BF_HOOKOPTS_FAMILY];
+
+    expect_assert_failure(ops->parse(NULL, NOT_NULL));
+    expect_assert_failure(ops->parse(NOT_NULL, NULL));
+    expect_assert_failure(ops->parse(NULL, NULL));
+
+    assert_error(ops->parse(&opts, "inet"));
+    assert_error(ops->parse(&opts, "ine6"));
+    assert_int_equal(opts.family, 0);
+    assert_success(ops->parse(&opts, "inet4"));
+    assert_int_equal(opts.family, PF_INET);
+    assert_success(ops->parse(&opts, "inet6"));
+    assert_int_equal(opts.family, PF_INET6);
+}
+
+Test(hook, parse_priorities)
+{
+    struct bf_hookopts opts = {};
+    struct bf_hookopts_ops *ops = &_bf_hookopts_ops[BF_HOOKOPTS_PRIORITIES];
+
+    expect_assert_failure(ops->parse(NULL, NOT_NULL));
+    expect_assert_failure(ops->parse(NOT_NULL, NULL));
+    expect_assert_failure(ops->parse(NULL, NULL));
+
+    assert_error(ops->parse(&opts, "1"));
+    assert_error(ops->parse(&opts, "1-"));
+    assert_error(ops->parse(&opts, "1-a"));
+    assert_error(ops->parse(&opts, "a-1"));
+    assert_error(ops->parse(&opts, "-1"));
+    assert_error(ops->parse(&opts, "1-1"));
+    assert_error(ops->parse(&opts, "1-0"));
+    assert_error(ops->parse(&opts, "0-1"));
+    assert_int_equal(opts.priorities[0], 0);
+    assert_int_equal(opts.priorities[1], 0);
+
+    assert_success(ops->parse(&opts, "100-101"));
+    assert_int_equal(opts.priorities[0], 100);
+    assert_int_equal(opts.priorities[1], 101);
+    assert_success(ops->parse(&opts, "101-100"));
+    assert_int_equal(opts.priorities[0], 101);
+    assert_int_equal(opts.priorities[1], 100);
+    assert_success(ops->parse(&opts, "1-2"));
+    assert_int_equal(opts.priorities[0], 1);
+    assert_int_equal(opts.priorities[1], 2);
 }

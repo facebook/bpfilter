@@ -123,28 +123,29 @@ With:
 
 .. flat-table::
    :header-rows: 1
-   :widths: 2 2 12
+   :widths: 2 2 2 12
    :fill-cells:
 
    * - Option
-     - Supported values
+     - Required by
+     - Supported by
      - Notes
    * - ``ifindex=$IFINDEX``
-     - ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``
+     - ``BF_HOOK_XDP``, ``BF_HOOK_TC``
+     - N/A
      - Interface index to attach the program to.
-   * - ``cgroup=$CGROUP_PATH``
+   * - ``cgpath=$CGROUP_PATH``
      - ``BF_HOOK_CGROUP_INGRESS``, ``BF_HOOK_CGROUP_EGRESS``
+     - N/A
      - Path to the cgroup to attach to.
-   * - ``name=$CHAIN_NAME``
-     - Allowed patern: ``[a-zA-Z0-9_]+``
-     - Name of the chain (i.e. the name of the BPF program). Must be at most 11 characters. If more than one chain have the same name, ``bpfilter`` will only be able to pin the first one to the system.
-   * - ``attach=$BOOL``
-     - ``yes`` or ``no``
-     - If ``no``, the chain will be generated and loaded to the kernel, but not attached. Useful if you want to attach it manually, or validate the generation process. Default to ``yes``.
-
-.. note::
-
-    ``name=$CHAIN_NAME`` will only change the name of the BPF program loaded into the kernel. It won't affect the map names, not the pin path. Defining multiple programs with the same name is possible, but a name clash could prevent the program from being pinned.
+   * - ``family=$FAMILY``
+     - ``BF_HOOK_NF_*``
+     - N/A
+     - Netfilter hook version to attach the chain to: ``inet4`` for IPv4 or ``inet6`` for IPv6. Rules that are incompatible with the hook version will be ignored.
+   * - ``priorities=$INT1-$INT2``
+     - ``BF_HOOK_NF_*``
+     - N/A
+     - ``INT1`` and ``INT2`` are different non-zero integers. Priority values to use when attaching the chain. Two values are required to ensure atomic update of the chain.
 
 
 Rules

@@ -21,50 +21,31 @@
 #include "core/set.h"
 #include "core/verdict.h"
 
-struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...)
+struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
 {
-    struct bf_hook_opts opts = {};
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     va_list args;
+    int r;
 
-    va_start(args, opt);
+    r = bf_hookopts_new(&hookopts);
+    if (r) {
+        bf_err("failed to create a new bf_hookopts object");
+        return NULL;
+    }
+
+    va_start(args, raw_opt);
     do {
-        switch (opt) {
-        case BF_HOOK_OPT_IFINDEX:
-            opts.ifindex = va_arg(args, uint32_t);
-            break;
-        case BF_HOOK_OPT_CGROUP:
-            opts.cgroup = strdup(va_arg(args, char *));
-            if (!opts.cgroup) {
-                bf_err("failed to copy 'cgroup' hook option, aborting");
-                goto err_clean;
-            }
-            break;
-        case BF_HOOK_OPT_NAME:
-            opts.name = strdup(va_arg(args, char *));
-            if (!opts.name) {
-                bf_err("failed to copy 'name' hook option, aborting");
-                goto err_clean;
-            }
-            break;
-        case BF_HOOK_OPT_ATTACH:
-            opts.attach = va_arg(args, int);
-            break;
-        default:
-            bf_err("unknown hook option %d, aborting", opt);
-            goto err_clean;
+        r = bf_hookopts_parse_opt(hookopts, raw_opt);
+        if (r) {
+            bf_err_r(r, "failed to parse hookopts option");
+            va_end(args);
+            return NULL;
         }
+    } while ((raw_opt = va_arg(args, const char *)));
 
-        opts.used_opts |= 1 << opt;
-    } while ((int)(opt = va_arg(args, enum bf_hook_opt)) != -1);
     va_end(args);
 
-    return opts;
-
-err_clean:
-    va_end(args);
-    bf_hook_opts_clean(&opts);
-
-    return (struct bf_hook_opts) {};
+    return TAKE_PTR(hookopts);
 }
 
 struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[])
@@ -173,14 +154,6 @@ struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
         bf_err_r(r, "failed to create a new chain");
         return NULL;
     }
-
-    chain->hook_opts = (struct bf_hook_opts) {
-        .used_opts = ~0U,
-        .attach = false,
-        .cgroup = strdup("<no_cgroup>"),
-        .ifindex = 1,
-        .name = strdup(BF_E2E_NAME),
-    };
 
     return TAKE_PTR(chain);
 

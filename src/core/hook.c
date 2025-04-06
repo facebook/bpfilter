@@ -12,17 +12,17 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 
 #include "core/dump.h"
+#include "core/flavor.h"
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-
-/// Maximum length of the chain name: @c BPF_OBJ_NAME_LEN minus the length
-/// of the BPF object suffix.
-#define BF_CHAIN_NAME_LEN 11
+#include "core/marsh.h"
 
 static const char *_bf_hook_strs[] = {
     [BF_HOOK_XDP] = "BF_HOOK_XDP",
@@ -36,57 +36,50 @@ static const char *_bf_hook_strs[] = {
     [BF_HOOK_NF_POST_ROUTING] = "BF_HOOK_NF_POST_ROUTING",
     [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
 };
-
 static_assert(ARRAY_SIZE(_bf_hook_strs) == _BF_HOOK_MAX,
-              "missing entries in hooks_str array");
+              "missing entries in bf_hook strings array");
 
 const char *bf_hook_to_str(enum bf_hook hook)
 {
-    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
-
     return _bf_hook_strs[hook];
 }
 
-int bf_hook_from_str(const char *str, enum bf_hook *hook)
+enum bf_hook bf_hook_from_str(const char *str)
 {
     bf_assert(str);
-    bf_assert(hook);
 
-    for (size_t i = 0; i < _BF_HOOK_MAX; ++i) {
-        if (bf_streq(_bf_hook_strs[i], str)) {
-            *hook = i;
-            return 0;
-        }
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
+        if (bf_streq(_bf_hook_strs[hook], str))
+            return hook;
     }
 
     return -EINVAL;
 }
 
-unsigned int bf_hook_to_bpf_prog_type(enum bf_hook hook)
+enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
 {
-    static const unsigned int prog_type[] = {
-        [BF_HOOK_XDP] = BPF_PROG_TYPE_XDP,
-        [BF_HOOK_TC_INGRESS] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_NF_PRE_ROUTING] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_LOCAL_IN] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_CGROUP_INGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
-        [BF_HOOK_CGROUP_EGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
-        [BF_HOOK_NF_FORWARD] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_LOCAL_OUT] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_POST_ROUTING] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_TC_EGRESS] = BPF_PROG_TYPE_SCHED_CLS,
+    static const enum bf_flavor flavors[] = {
+        [BF_HOOK_XDP] = BF_FLAVOR_XDP,
+        [BF_HOOK_TC_INGRESS] = BF_FLAVOR_TC,
+        [BF_HOOK_NF_PRE_ROUTING] = BF_FLAVOR_NF,
+        [BF_HOOK_NF_LOCAL_IN] = BF_FLAVOR_NF,
+        [BF_HOOK_CGROUP_INGRESS] = BF_FLAVOR_CGROUP,
+        [BF_HOOK_CGROUP_EGRESS] = BF_FLAVOR_CGROUP,
+        [BF_HOOK_NF_FORWARD] = BF_FLAVOR_NF,
+        [BF_HOOK_NF_LOCAL_OUT] = BF_FLAVOR_NF,
+        [BF_HOOK_NF_POST_ROUTING] = BF_FLAVOR_NF,
+        [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
     };
 
-    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
-    static_assert(ARRAY_SIZE(prog_type) == _BF_HOOK_MAX,
-                  "missing entries in prog_type array");
+    static_assert(ARRAY_SIZE(flavors) == _BF_HOOK_MAX,
+                  "missing entries in bf_flavor array");
 
-    return prog_type[hook];
+    return flavors[hook];
 }
 
-enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
+enum bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
 {
-    static const enum bpf_attach_type hooks[] = {
+    static const enum bpf_attach_type attach_types[] = {
         [BF_HOOK_XDP] = 0,
         [BF_HOOK_TC_INGRESS] = BPF_TCX_INGRESS,
         [BF_HOOK_NF_PRE_ROUTING] = BPF_NETFILTER,
@@ -99,11 +92,31 @@ enum bpf_attach_type bf_hook_to_attach_type(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BPF_TCX_EGRESS,
     };
 
-    bf_assert(0 <= hook && hook < _BF_HOOK_MAX);
-    static_assert(ARRAY_SIZE(hooks) == _BF_HOOK_MAX,
-                  "missing entries in hooks array");
+    static_assert(ARRAY_SIZE(attach_types) == _BF_HOOK_MAX,
+                  "missing entries in bpf_attach_type array");
 
-    return hooks[hook];
+    return attach_types[hook];
+}
+
+enum bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
+{
+    static const enum bpf_prog_type prog_types[] = {
+        [BF_HOOK_XDP] = BPF_PROG_TYPE_XDP,
+        [BF_HOOK_TC_INGRESS] = BPF_PROG_TYPE_SCHED_CLS,
+        [BF_HOOK_NF_PRE_ROUTING] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_LOCAL_IN] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_CGROUP_INGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
+        [BF_HOOK_CGROUP_EGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
+        [BF_HOOK_NF_FORWARD] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_LOCAL_OUT] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_POST_ROUTING] = BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_TC_EGRESS] = BPF_PROG_TYPE_SCHED_CLS,
+    };
+
+    static_assert(ARRAY_SIZE(prog_types) == _BF_HOOK_MAX,
+                  "missing entries in bpf_prog_type array");
+
+    return prog_types[hook];
 }
 
 enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
@@ -120,14 +133,13 @@ enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
     case BF_HOOK_NF_POST_ROUTING:
         return NF_INET_POST_ROUTING;
     default:
-        bf_assert(0);
+        bf_warn("bf_hook %s (%d) is not an nf_inet_hooks value",
+                bf_hook_to_str(hook), hook);
+        return -EINVAL;
     }
-
-    // This is required to silence a compiler warning, but will never be reached.
-    return 0;
 }
 
-enum bf_hook bf_nf_hook_to_hook(enum nf_inet_hooks hook)
+enum bf_hook bf_hook_from_nf_hook(enum nf_inet_hooks hook)
 {
     switch (hook) {
     case NF_INET_PRE_ROUTING:
@@ -141,301 +153,437 @@ enum bf_hook bf_nf_hook_to_hook(enum nf_inet_hooks hook)
     case NF_INET_POST_ROUTING:
         return BF_HOOK_NF_POST_ROUTING;
     default:
-        bf_assert(0);
+        bf_warn("nf_inet_hooks %s (%d) is not a bf_hook value",
+                bf_nf_hook_to_str(hook), hook);
+        return -EINVAL;
     }
-
-    // This is required to silence a compiler warning, but will never be reached.
-    return 0;
 }
 
-static int _bf_hook_opt_ifindex_parse(struct bf_hook_opts *opts,
+const char *bf_nf_hook_to_str(enum nf_inet_hooks hook)
+{
+    switch (hook) {
+    case NF_INET_PRE_ROUTING:
+        return "nf_prerouting";
+    case NF_INET_LOCAL_IN:
+        return "nf_input";
+    case NF_INET_FORWARD:
+        return "nf_forward";
+    case NF_INET_LOCAL_OUT:
+        return "nf_output";
+    case NF_INET_POST_ROUTING:
+        return "nf_postrouting";
+    default:
+        bf_warn("unknown nf_inet_hooks value %d", hook);
+        return NULL;
+    }
+}
+
+static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
                                       const char *raw_opt)
 {
     unsigned long ifindex;
 
+    bf_assert(hookopts && raw_opt);
+
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
     if (errno != 0) {
-        return bf_err_r(-errno, "failed to parse hook options ifindex=%s",
+        return bf_err_r(-errno, "failed to parse bf_hookopts type ifindex=%s",
                         raw_opt);
     }
 
-    if (ifindex > UINT_MAX)
+    if (ifindex > INT_MAX)
         return bf_err_r(-E2BIG, "ifindex is too big: %lu", ifindex);
 
-    opts->ifindex = (uint32_t)ifindex;
+    hookopts->ifindex = (int)ifindex;
+    hookopts->used_opts |= 1 << BF_HOOKOPTS_IFINDEX;
 
     return 0;
 }
 
-static void _bf_hook_opt_ifindex_dump(const struct bf_hook_opts *opts,
+static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
                                       prefix_t *prefix)
 {
-    DUMP(prefix, "ifindex: %d", opts->ifindex);
+    bf_assert(hookopts && prefix);
+
+    DUMP(prefix, "ifindex: %d", hookopts->ifindex);
 }
 
-static int _bf_hook_opt_cgroup_parse(struct bf_hook_opts *opts,
+static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
                                      const char *raw_opt)
 {
-    opts->cgroup = strdup(raw_opt);
-    if (!opts->cgroup)
-        return bf_err_r(-ENOMEM, "failed to copy cgroup path '%s'", raw_opt);
+    bf_assert(hookopts && raw_opt);
 
-    return 0;
-}
-
-static void _bf_hook_opt_cgroup_dump(const struct bf_hook_opts *opts,
-                                     prefix_t *prefix)
-{
-    DUMP(prefix, "cgroup: %s", opts->cgroup);
-}
-
-static int _bf_hook_opt_name_parse(struct bf_hook_opts *opts,
-                                   const char *raw_opt)
-{
-    if (strlen(raw_opt) > BF_CHAIN_NAME_LEN) {
-        return bf_err_r(E2BIG, "a chain name should be at most %d characters",
-                        BF_CHAIN_NAME_LEN);
+    hookopts->cgpath = strdup(raw_opt);
+    if (!hookopts->cgpath) {
+        return bf_err_r(-ENOMEM, "failed to copy hook option cgpath=%s",
+                        raw_opt);
     }
 
-    opts->name = strdup(raw_opt);
-    if (!opts->name)
-        return bf_err_r(-ENOMEM, "failed to copy chain name '%s'", raw_opt);
+    hookopts->used_opts |= 1 << BF_HOOKOPTS_CGPATH;
 
     return 0;
 }
 
-static void _bf_hook_opt_name_dump(const struct bf_hook_opts *opts,
-                                   prefix_t *prefix)
-{
-    DUMP(prefix, "name: %s", opts->name);
-}
-
-static int _bf_hook_opt_attach_parse(struct bf_hook_opts *opts,
-                                     const char *raw_opt)
-{
-    if (bf_streq(raw_opt, "yes"))
-        opts->attach = true;
-    else if (bf_streq(raw_opt, "no"))
-        opts->attach = false;
-    else
-        return bf_err_r(-EINVAL, "unknown attach value '%s'", raw_opt);
-
-    return 0;
-}
-
-static void _bf_hook_opt_attach_dump(const struct bf_hook_opts *opts,
+static void _bf_hookopts_cgpath_dump(const struct bf_hookopts *hookopts,
                                      prefix_t *prefix)
 {
-    DUMP(prefix, "attach: %s", opts->attach ? "yes" : "no");
+    bf_assert(hookopts && prefix);
+
+    DUMP(prefix, "cgpath: %s", hookopts->cgpath);
 }
 
-static struct bf_hook_opt_support
+static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
+                                     const char *raw_opt)
 {
-    uint32_t required;
-    uint32_t supported;
-} _bf_hook_opts_support[] = {
-    [BF_HOOK_XDP] =
-        {
-            .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME |
-                         1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_TC_INGRESS] =
-        {
-            .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME |
-                         1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_NF_PRE_ROUTING] =
-        {
-            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_NF_LOCAL_IN] =
-        {
-            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_CGROUP_INGRESS] =
-        {
-            .required = 1 << BF_HOOK_OPT_CGROUP,
-            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME |
-                         1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_CGROUP_EGRESS] =
-        {
-            .required = 1 << BF_HOOK_OPT_CGROUP,
-            .supported = 1 << BF_HOOK_OPT_CGROUP | 1 << BF_HOOK_OPT_NAME |
-                         1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_NF_FORWARD] =
-        {
-            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_NF_LOCAL_OUT] =
-        {
-            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_NF_POST_ROUTING] =
-        {
-            .supported = 1 << BF_HOOK_OPT_NAME | 1 << BF_HOOK_OPT_ATTACH,
-        },
-    [BF_HOOK_TC_EGRESS] =
-        {
-            .required = 1 << BF_HOOK_OPT_IFINDEX,
-            .supported = 1 << BF_HOOK_OPT_IFINDEX | 1 << BF_HOOK_OPT_NAME |
-                         1 << BF_HOOK_OPT_ATTACH,
-        },
-};
+    bf_assert(hookopts && raw_opt);
 
-static_assert(ARRAY_SIZE(_bf_hook_opts_support) == _BF_HOOK_MAX,
-              "missing entries in hook options support array");
+    if (bf_streq("inet4", raw_opt))
+        hookopts->family = PF_INET;
+    else if (bf_streq("inet6", raw_opt))
+        hookopts->family = PF_INET6;
+    else
+        return bf_err_r(-ENOTSUP, "unknown netfilter family '%s'", raw_opt);
 
-static struct bf_hook_opt_ops
+    hookopts->used_opts |= 1 << BF_HOOKOPTS_FAMILY;
+
+    return 0;
+}
+
+static void _bf_hookopts_family_dump(const struct bf_hookopts *hookopts,
+                                     prefix_t *prefix)
+{
+    bf_assert(hookopts && prefix);
+
+    DUMP(prefix, "family: %s", hookopts->family == PF_INET ? "inet4" : "inet6");
+}
+
+static int _bf_hookopts_priorities_parse(struct bf_hookopts *hookopts,
+                                         const char *raw_opt)
+{
+    unsigned long priorities[2];
+    _cleanup_free_ char *copy = NULL;
+    char *right, *end;
+
+    bf_assert(hookopts && raw_opt);
+
+    copy = strdup(raw_opt);
+    if (!copy)
+        return -ENOMEM;
+
+    end = copy + strlen(copy);
+
+    right = strchr(copy, '-');
+    if (!right)
+        goto err_parsing;
+
+    *right = '\0';
+    ++right;
+    if (end <= right)
+        goto err_parsing;
+
+    errno = 0;
+    priorities[0] = strtoul(copy, NULL, 0);
+    if (errno != 0)
+        goto err_parsing;
+
+    priorities[1] = strtoul(right, NULL, 0);
+    if (errno != 0)
+        goto err_parsing;
+
+    if (priorities[0] > INT_MAX || priorities[1] > INT_MAX)
+        return bf_err_r(-EINVAL, "priorities can't be bigger than %d", INT_MAX);
+
+    if (priorities[0] == priorities[1])
+        return bf_err_r(-EINVAL, "priorities must be different");
+
+    if (!priorities[0] || !priorities[1])
+        return bf_err_r(-EINVAL, "priorities can't be 0");
+
+    hookopts->priorities[0] = (int)priorities[0];
+    hookopts->priorities[1] = (int)priorities[1];
+    hookopts->used_opts |= 1 << BF_HOOKOPTS_PRIORITIES;
+
+    return 0;
+
+err_parsing:
+    return bf_err_r(-EINVAL, "failed to parse '%s', expecting '$INT-$INT'",
+                    raw_opt);
+}
+
+static void _bf_hookopts_priorities_dump(const struct bf_hookopts *hookopts,
+                                         prefix_t *prefix)
+{
+    bf_assert(hookopts && prefix);
+
+    DUMP(prefix, "priorities: %d, %d", hookopts->priorities[0],
+         hookopts->priorities[1]);
+}
+
+static struct bf_hookopts_ops
 {
     const char *name;
-    enum bf_hook_opt opt;
-    int (*parse)(struct bf_hook_opts *opts, const char *raw_opt);
-    void (*dump)(const struct bf_hook_opts *opts, prefix_t *prefix);
-} _bf_hook_opt_ops[] = {
-    {
-        .name = "ifindex",
-        .opt = BF_HOOK_OPT_IFINDEX,
-        .parse = _bf_hook_opt_ifindex_parse,
-        .dump = _bf_hook_opt_ifindex_dump,
-    },
-    {
-        .name = "cgroup",
-        .opt = BF_HOOK_OPT_CGROUP,
-        .parse = _bf_hook_opt_cgroup_parse,
-        .dump = _bf_hook_opt_cgroup_dump,
-    },
-    {
-        .name = "name",
-        .opt = BF_HOOK_OPT_NAME,
-        .parse = _bf_hook_opt_name_parse,
-        .dump = _bf_hook_opt_name_dump,
-    },
-    {
-        .name = "attach",
-        .opt = BF_HOOK_OPT_ATTACH,
-        .parse = _bf_hook_opt_attach_parse,
-        .dump = _bf_hook_opt_attach_dump,
-    },
+    enum bf_hookopts_type type;
+    uint32_t supported_by;
+    uint32_t required_by;
+    int (*parse)(struct bf_hookopts *, const char *);
+    void (*dump)(const struct bf_hookopts *, prefix_t *);
+} _bf_hookopts_ops[] = {
+    [BF_HOOKOPTS_IFINDEX] = {.name = "ifindex",
+                             .type = BF_HOOKOPTS_IFINDEX,
+                             .required_by =
+                                 1 << BF_FLAVOR_XDP | 1 << BF_FLAVOR_TC,
+                             .supported_by = 0,
+                             .parse = _bf_hookopts_ifindex_parse,
+                             .dump = _bf_hookopts_ifindex_dump},
+    [BF_HOOKOPTS_CGPATH] = {.name = "cgpath",
+                            .type = BF_HOOKOPTS_CGPATH,
+                            .required_by = 1 << BF_FLAVOR_CGROUP,
+                            .supported_by = 0,
+                            .parse = _bf_hookopts_cgpath_parse,
+                            .dump = _bf_hookopts_cgpath_dump},
+    [BF_HOOKOPTS_FAMILY] = {.name = "family",
+                            .type = BF_HOOKOPTS_FAMILY,
+                            .required_by = 1 << BF_FLAVOR_NF,
+                            .supported_by = 0,
+                            .parse = _bf_hookopts_family_parse,
+                            .dump = _bf_hookopts_family_dump},
+    [BF_HOOKOPTS_PRIORITIES] = {.name = "priorities",
+                                .type = BF_HOOKOPTS_PRIORITIES,
+                                .required_by = 1 << BF_FLAVOR_NF,
+                                .supported_by = 0,
+                                .parse = _bf_hookopts_priorities_parse,
+                                .dump = _bf_hookopts_priorities_dump},
 };
 
-static_assert(ARRAY_SIZE(_bf_hook_opt_ops) == _BF_HOOK_OPT_MAX,
-              "missing entries in hook option ops array");
+static_assert(ARRAY_SIZE(_bf_hookopts_ops) == _BF_HOOKOPTS_MAX,
+              "missing entries in bf_hookopts_ops array");
 
-#define _bf_hook_opt_is_supported(hook, opt)                                   \
-    (_bf_hook_opts_support[hook].supported & (1 << (opt)))
-#define _bf_hook_opt_is_required(hook, opt)                                    \
-    (_bf_hook_opts_support[hook].required & (1 << (opt)))
-#define _bf_hook_opt_is_used(opts, opt) ((opts)->used_opts & (1 << (opt)))
+#define _bf_hookopts_is_required(type, flavor)                                 \
+    (_bf_hookopts_ops[type].required_by & (1 << (flavor)))
 
-static struct bf_hook_opt_ops *_bf_hook_opts_get_ops(const char *key,
-                                                     size_t len)
+#define _bf_hookopts_is_supported(type, flavor)                                \
+    ((_bf_hookopts_ops[type].supported_by & (1 << (flavor))) ||                \
+     _bf_hookopts_is_required((type), (flavor)))
+
+#define _bf_hookopts_is_used(hookopts, type)                                   \
+    ((hookopts)->used_opts & (1 << (type)))
+
+static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
 {
-    int r;
+    bf_assert(key);
 
-    bf_assert(key && len > 0);
-
-    for (int i = 0; i < _BF_HOOK_OPT_MAX; ++i) {
-        r = strncmp(_bf_hook_opt_ops[i].name, key, len);
-        if (r == 0)
-            return &_bf_hook_opt_ops[i];
+    for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
+        if (bf_streq(_bf_hookopts_ops[type].name, key))
+            return &_bf_hookopts_ops[type];
     }
 
     return NULL;
 }
 
-static int _bf_hook_opts_process_opts(struct bf_hook_opts *opts,
-                                      enum bf_hook hook, bf_list *raw_opts)
+int bf_hookopts_new(struct bf_hookopts **hookopts)
 {
-    const char *value;
-    const struct bf_hook_opt_ops *ops;
+    bf_assert(hookopts);
+
+    *hookopts = calloc(1, sizeof(struct bf_hookopts));
+    if (!*hookopts)
+        return bf_err_r(-ENOMEM, "failed to allocate a new bf_hookopts object");
+
+    return 0;
+}
+
+int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
+                               const struct bf_marsh *marsh)
+{
+    _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
+    struct bf_marsh *child = NULL;
     int r;
 
-    bf_assert(opts);
+    bf_assert(hookopts && marsh);
+
+    r = bf_hookopts_new(&_hookopts);
+    if (r)
+        return r;
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    memcpy(&_hookopts->used_opts, child->data, sizeof(_hookopts->used_opts));
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    memcpy(&_hookopts->ifindex, child->data, sizeof(_hookopts->ifindex));
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    if (child->data_len) {
+        _hookopts->cgpath = strdup(child->data);
+        if (!_hookopts->cgpath)
+            return -ENOMEM;
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    memcpy(&_hookopts->family, child->data, sizeof(_hookopts->family));
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return bf_err_r(-EINVAL, "bf_hookopts: missing priorities field");
+    memcpy(&_hookopts->priorities, child->data, sizeof(_hookopts->priorities));
+
+    if (bf_marsh_next_child(marsh, child))
+        return bf_err_r(-E2BIG, "too many serialized fields for bf_hookopts");
+
+    *hookopts = TAKE_PTR(_hookopts);
+
+    return 0;
+}
+
+void bf_hookopts_free(struct bf_hookopts **hookopts)
+{
+    bf_assert(hookopts);
+
+    if (!*hookopts)
+        return;
+
+    freep((void *)&(*hookopts)->cgpath);
+    freep((void *)hookopts);
+}
+
+int bf_hookopts_marsh(const struct bf_hookopts *hookopts,
+                      struct bf_marsh **marsh)
+{
+    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    int r = 0;
+
+    bf_assert(hookopts && marsh);
+
+    r = bf_marsh_new(&_marsh, NULL, 0);
+    if (r)
+        return bf_err_r(r, "failed to create a new marsh for bf_hookopts");
+
+    r = bf_marsh_add_child_raw(&_marsh, &hookopts->used_opts,
+                               sizeof(hookopts->used_opts));
+    if (r)
+        return bf_err_r(r, "failed to marsh bf_hookopts.used_opts");
+
+    r = bf_marsh_add_child_raw(&_marsh, &hookopts->ifindex,
+                               sizeof(hookopts->ifindex));
+    if (r)
+        return bf_err_r(r, "failed to marsh bf_hookopts.ifindex");
+
+    r = bf_marsh_add_child_raw(&_marsh, hookopts->cgpath,
+                               hookopts->cgpath ? strlen(hookopts->cgpath) + 1 :
+                                                  0);
+    if (r)
+        return bf_err_r(r, "failed to marsh bf_hookopts.cgpath");
+
+    r = bf_marsh_add_child_raw(&_marsh, &hookopts->family,
+                               sizeof(hookopts->family));
+    if (r)
+        return bf_err_r(r, "failed to marsh bf_hookopts.family");
+
+    r = bf_marsh_add_child_raw(&_marsh, hookopts->priorities,
+                               sizeof(hookopts->priorities));
+    if (r)
+        return bf_err_r(r, "failed to marsh bf_hookopts.priorities");
+
+    *marsh = TAKE_PTR(_marsh);
+
+    return 0;
+}
+
+void bf_hookopts_dump(const struct bf_hookopts *hookopts, prefix_t *prefix)
+{
+    bf_assert(hookopts && prefix);
+
+    DUMP(prefix, "struct bf_hookopts at %p", hookopts);
+
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "used_opts: 0x%08x", hookopts->used_opts);
+
+    for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
+        if (type == _BF_HOOKOPTS_MAX - 1)
+            bf_dump_prefix_last(prefix);
+
+        if (bf_hookopts_is_used(hookopts, type))
+            _bf_hookopts_ops[type].dump(hookopts, prefix);
+        else
+            DUMP(prefix, "%s: <unset>", _bf_hookopts_ops[type].name);
+    }
+
+    bf_dump_prefix_pop(prefix);
+}
+
+int bf_hookopts_parse_opt(struct bf_hookopts *hookopts, const char *raw_opt)
+{
+    char *value;
+    struct bf_hookopts_ops *ops;
+    int r;
+
+    bf_assert(hookopts && raw_opt);
+
+    value = strchr(raw_opt, '=');
+    if (!value)
+        return -ENOENT;
+
+    *value = '\0';
+    ++value;
+
+    ops = _bf_hookopts_get_ops(raw_opt);
+    if (!ops) {
+        return bf_err_r(-ENOTSUP, "unknown hook option '%s', ignoring",
+                        raw_opt);
+    }
+
+    r = ops->parse(hookopts, value);
+    if (r < 0)
+        return r;
+
+    return 0;
+}
+
+int bf_hookopts_parse_opts(struct bf_hookopts *hookopts, bf_list *raw_opts)
+{
+    int r;
+
+    bf_assert(hookopts && raw_opts);
 
     if (!raw_opts)
         return 0;
 
     bf_list_foreach (raw_opts, raw_opt_node) {
-        const char *raw_opt = bf_list_node_get_data(raw_opt_node);
-
-        value = strchr(raw_opt, '=');
-
-        ops = _bf_hook_opts_get_ops(raw_opt, value - raw_opt);
-        if (!ops)
-            return bf_err_r(-ENOTSUP, "unknown option '%s', ignoring", raw_opt);
-
-        if (!_bf_hook_opt_is_supported(hook, ops->opt)) {
-            return bf_err_r(-ENOTSUP, "hook '%s' doesn't support option '%s'",
-                            bf_hook_to_str(hook), ops->name);
-        }
-
-        r = ops->parse(opts, value + 1);
-        if (r < 0)
+        r = bf_hookopts_parse_opt(hookopts,
+                                  bf_list_node_get_data(raw_opt_node));
+        if (r)
             return r;
-
-        opts->used_opts |= (1 << ops->opt);
     }
 
     return 0;
 }
 
-int bf_hook_opts_init(struct bf_hook_opts *opts, enum bf_hook hook,
-                      bf_list *raw_opts)
+int bf_hookopts_validate(const struct bf_hookopts *hookopts, enum bf_hook hook)
 {
-    int r;
+    enum bf_flavor flavor = bf_hook_to_flavor(hook);
 
-    bf_assert(opts);
+    bf_assert(hookopts);
 
-    *opts = (struct bf_hook_opts) {
-        .used_opts = 1 << BF_HOOK_OPT_ATTACH,
-        .attach = true,
-    };
+    for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
+        struct bf_hookopts_ops *ops = &_bf_hookopts_ops[type];
+        bool is_used = _bf_hookopts_is_used(hookopts, type);
+        bool is_required = _bf_hookopts_is_required(type, flavor);
+        bool is_supported = _bf_hookopts_is_supported(type, flavor);
 
-    r = _bf_hook_opts_process_opts(opts, hook, raw_opts);
-    if (r < 0)
-        return r;
+        if (is_required && !is_used) {
+            return bf_err_r(-EINVAL,
+                            "hook option '%s' is required for '%s' chains",
+                            ops->name, bf_hook_to_str(hook));
+        }
 
-    for (int i = 0; i < _BF_HOOK_OPT_MAX; ++i) {
-        if (_bf_hook_opt_is_required(hook, i) &&
-            !_bf_hook_opt_is_used(opts, i)) {
-            return bf_err_r(-EINVAL, "hook '%s' requires option '%s'",
-                            bf_hook_to_str(hook), _bf_hook_opt_ops[i].name);
+        if (is_used && !(is_supported | is_required)) {
+            return bf_err_r(-ENOTSUP,
+                            "hook option '%s' is not supported for '%s' chains",
+                            ops->name, bf_hook_to_str(hook));
         }
     }
 
     return 0;
-}
-
-void bf_hook_opts_clean(struct bf_hook_opts *opts)
-{
-    freep((void *)&opts->cgroup);
-    freep((void *)&opts->name);
-}
-
-void bf_hook_opts_dump(const struct bf_hook_opts *opts, prefix_t *prefix,
-                       enum bf_hook hook)
-{
-    DUMP(prefix, "struct bf_hook_opts at %p", opts);
-    bf_dump_prefix_push(prefix);
-
-    for (int i = 0; i < _BF_HOOK_OPT_MAX; ++i) {
-        struct bf_hook_opt_ops *ops = &_bf_hook_opt_ops[i];
-        if (i == _BF_HOOK_OPT_MAX - 1)
-            bf_dump_prefix_last(prefix);
-
-        if (!_bf_hook_opt_is_supported(hook, i)) {
-            DUMP(prefix, "%s: <unsupported>", ops->name);
-        } else if (!_bf_hook_opt_is_used(opts, i)) {
-            DUMP(prefix, "%s: <unset>", ops->name);
-        } else {
-            ops->dump(opts, prefix);
-        }
-    }
-
-    bf_dump_prefix_pop(prefix);
 }

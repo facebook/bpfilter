@@ -35,24 +35,23 @@
 /**
  * Create a new hook options object.
  *
- * `bf_hook_opts_get()` expects pairs of `bf_hook_opt` key and value, with the
- * last variadic argument being `-1`:
+ * `bft_hookopts_get()` expects pairs of `bf_hookopts_type` key and value, with the
+ * last variadic argument being `NULL`:
  *
  * @code{.c}
- *  bf_hook_opts_get(
- *      BF_HOOK_OPT_IFINDEX, 2,
- *      BF_HOOK_OPT_NAME, "my_bpf_program",
- *      -1
+ *  bft_hookopts_get(
+ *      "ifindex=2",
+ *      "cgpath=/sys/fs/cgroup/user.slice",
+ *      NULL
  *  );
  * @endcode
  *
- * @param opt First hook option. This parameter is required as C requires at
- *        least one explicit parameter.
+ * @param raw_opt First option to parse, formatted as `$KEY=$VALUE`.
  * @return A `bf_hook_opts` structure filled with the arguments passed to the
  *         function. If an error occurs, an error message is printed and the
  *         `bf_hook_opts` structure is filled with `0`.
  */
-struct bf_hook_opts bf_hook_opts_get(enum bf_hook_opt opt, ...);
+struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...);
 
 /**
  * Create a new set.
