@@ -11,7 +11,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 extern const char *strerrordesc_np(int errnum);
 
@@ -116,18 +115,19 @@ static inline void freep(void *ptr)
 /**
  * Close a file descriptor and set it to -1.
  *
- * File descriptors are expected to be uninitialized to -1, so this function
- * can be used to close a file descriptor and set it to -1 in a single
- * operation. If the file descriptor is already -1, it is not closed.
+ * `bpfilter` uses `-1` as neutral value for file descriptor, meaning it
+ * doesn't represent an open file yet. Once closed, a file descriptor should
+ * be reset to `-1`.
  *
- * @param fd File descriptor to close.
+ * `closep` is used to close a file descriptor. If the file descriptor is
+ * `-1`, then nothing it done. Otherwise, it is closed and reset to `-1`.
+ *
+ * If the call to `close` fails, a warning is printed, and the file descriptor
+ * is assumed to be already closed.
+ *
+ * @param fd File descriptor to close. Can't be NULL.
  */
-static inline void closep(int *fd)
-{
-    if (*fd >= 0)
-        close(*fd);
-    *fd = -1;
-}
+void closep(int *fd);
 
 /**
  * Duplicate a memory region.

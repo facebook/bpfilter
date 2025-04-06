@@ -17,6 +17,17 @@
 
 #define OPEN_MODE_644 (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
+void closep(int *fd)
+{
+    if (*fd == -1)
+        return;
+
+    if (close(*fd))
+        bf_warn_r(errno, "failed to close fd %d, assuming file is closed", *fd);
+
+    *fd = -1;
+}
+
 int bf_strncpy(char *dst, size_t len, const char *src)
 {
     size_t src_len;
