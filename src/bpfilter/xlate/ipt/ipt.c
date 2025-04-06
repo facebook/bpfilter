@@ -316,7 +316,8 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
     if (r)
         return r;
 
-    r = bf_chain_new(&_chain, bf_nf_hook_to_hook(ipt_hook), policy, NULL, NULL);
+    r = bf_chain_new(&_chain, bf_nf_hook_to_str(ipt_hook),
+                     bf_hook_from_nf_hook(ipt_hook), policy, NULL, NULL);
     if (r)
         return r;
 
@@ -401,8 +402,9 @@ static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
         if (ruleset[hook].cgen)
             continue;
 
-        r = bf_chain_new(&chain, bf_nf_hook_to_hook(hook), BF_VERDICT_ACCEPT,
-                         NULL, NULL);
+        r = bf_chain_new(&chain, bf_nf_hook_to_str(hook),
+                         bf_hook_from_nf_hook(hook), BF_VERDICT_ACCEPT, NULL,
+                         NULL);
         if (r)
             return bf_err_r(r,
                             "failed to create a dummy chain for BF_FRONT_IPT");

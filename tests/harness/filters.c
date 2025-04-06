@@ -168,7 +168,7 @@ struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
         ++rules;
     }
 
-    r = bf_chain_new(&chain, hook, policy, &sets_list, &rules_list);
+    r = bf_chain_new(&chain, "bf_test", hook, policy, &sets_list, &rules_list);
     if (r < 0) {
         bf_err_r(r, "failed to create a new chain");
         return NULL;

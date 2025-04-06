@@ -33,7 +33,7 @@ struct bf_test_prog
     int fd;
 };
 
-struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain);
+struct bf_test_prog *bf_test_prog_get(struct bf_chain *chain);
 
 int bf_test_prog_new(struct bf_test_prog **prog);
 void bf_test_prog_free(struct bf_test_prog **prog);

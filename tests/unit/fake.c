@@ -32,7 +32,7 @@ struct bf_chain *bf_test_chain(enum bf_hook hook, enum bf_verdict policy)
 {
     struct bf_chain *chain;
 
-    assert_int_equal(0, bf_chain_new(&chain, hook, policy, NULL, NULL));
+    assert_int_equal(0, bf_chain_new(&chain, "bf_chain", hook, policy, NULL, NULL));
 
     return chain;
 }
