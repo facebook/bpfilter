@@ -44,12 +44,23 @@ int bf_cli_ruleset_flush(void);
 int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters);
 
 /**
- * Send a chain to the daemon.
+ * Load a complete ruleset.
  *
- * @param chain Chain to send to the daemon. Can't be NULL.
+ * The daemon will flush the whole ruleset for BF_FRONT_CLI and install the
+ * chains defined in the provided lists instead.
+ *
+ * `hookopts` should contain as many elements as `chains`, so they can be
+ * mapped 1 to 1. If a chain shouldn't be attached, they the corresponding
+ * entry in `hookopts` should be NULL.
+ *
+ * @param chains List of chains to define. Can't be NULL.
+ * @param hookopts List of hook options to attach the chains in `chain`. Can't be
+ *        NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_set_chain(const struct bf_chain *chain);
+int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts);
+
+#undef bf_list
 
 /**
  * Send iptable's ipt_replace data to bpfilter daemon.

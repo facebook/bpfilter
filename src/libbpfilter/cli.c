@@ -119,16 +119,62 @@ int bf_cli_ruleset_flush(void)
     return response->type == BF_RES_FAILURE ? response->error : 0;
 }
 
-int bf_cli_set_chain(const struct bf_chain *chain)
+int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
     _cleanup_bf_request_ struct bf_request *request = NULL;
     _cleanup_bf_response_ struct bf_response *response = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    struct bf_list_node *chain_node = bf_list_get_head(chains);
+    struct bf_list_node *hookopts_node = bf_list_get_head(hookopts);
     int r;
 
-    r = bf_chain_marsh(chain, &marsh);
+    if (bf_list_size(chains) != bf_list_size(hookopts))
+        return -EINVAL;
+
+    r = bf_marsh_new(&marsh, NULL, 0);
     if (r)
-        return bf_err_r(r, "failed to marsh chain");
+        return r;
+
+    while (chain_node && hookopts_node) {
+        _cleanup_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *hook_marsh = NULL;
+        _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+        struct bf_chain *chain = bf_list_node_get_data(chain_node);
+        struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
+
+        r = bf_marsh_new(&_marsh, NULL, 0);
+        if (r)
+            return r;
+
+        r = bf_chain_marsh(chain, &chain_marsh);
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, chain_marsh);
+        if (r)
+            return r;
+
+        if (hookopts) {
+            r = bf_hookopts_marsh(hookopts, &hook_marsh);
+            if (r)
+                return r;
+
+            r = bf_marsh_add_child_obj(&_marsh, hook_marsh);
+            if (r)
+                return r;
+        } else {
+            r = bf_marsh_add_child_raw(&_marsh, NULL, 0);
+            if (r)
+                return r;
+        }
+
+        r = bf_marsh_add_child_obj(&marsh, _marsh);
+        if (r)
+            return r;
+
+        chain_node = bf_list_node_next(chain_node);
+        hookopts_node = bf_list_node_next(hookopts_node);
+    }
 
     r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
     if (r)
