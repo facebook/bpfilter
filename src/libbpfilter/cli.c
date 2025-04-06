@@ -11,6 +11,7 @@
 #include "core/counter.h"
 #include "core/front.h"
 #include "core/helper.h"
+#include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
