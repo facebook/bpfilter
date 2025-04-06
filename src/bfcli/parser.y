@@ -91,6 +91,7 @@
 
 // Grammar types
 %type <bval> counter
+%destructor { freep(&$$); } <sval>
 
 %type <hook> hook
 %type <hookopts> hookopts
