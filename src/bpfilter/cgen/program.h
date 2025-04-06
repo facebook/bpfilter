@@ -22,15 +22,10 @@
 #include "core/chain.h"
 #include "core/dump.h"
 #include "core/flavor.h"
-#include "core/front.h"
 #include "core/helper.h"
-#include "core/hook.h"
 #include "core/list.h"
 
 #include "external/filter.h"
-
-#define PIN_PATH_LEN 64
-#define BF_PROG_ID_LEN (BPF_OBJ_NAME_LEN - 4)
 
 /**
  * @file program.h
@@ -198,6 +193,8 @@ struct bf_chain;
 struct bf_map;
 struct bf_marsh;
 struct bf_counter;
+struct bf_link;
+struct bf_hookopts;
 
 /**
  * BPF program runtime context.
@@ -286,11 +283,8 @@ static_assert(sizeof(struct bf_program_context) % 8 == 0,
 
 struct bf_program
 {
-    char id[BF_PROG_ID_LEN];
-
-    enum bf_hook hook;
-    enum bf_front front;
     char prog_name[BPF_OBJ_NAME_LEN];
+    enum bf_flavor flavor;
 
     /// Log messages printer
     struct bf_printer *printer;
@@ -303,7 +297,7 @@ struct bf_program
     bf_list sets;
 
     /// Link objects attaching the program to a hook.
-    bf_list links;
+    struct bf_link *link;
 
     /** Number of counters in the counters map. Not all of them are used by
      * the program, but this value is common for all the programs of a given
@@ -323,6 +317,11 @@ struct bf_program
     {
         /** File descriptor of the program. */
         int prog_fd;
+
+        /** File descriptor of the directory to pin the program into. Unused
+         * in transient mode. */
+        int pindir_fd;
+
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
 
@@ -334,8 +333,7 @@ struct bf_program
 
 #define _cleanup_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
-int bf_program_new(struct bf_program **program, enum bf_hook hook,
-                   enum bf_front front, const struct bf_chain *chain);
+int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
 void bf_program_free(struct bf_program **program);
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
 int bf_program_unmarsh(const struct bf_marsh *marsh,
@@ -354,19 +352,56 @@ int bf_program_emit_fixup_call(struct bf_program *program,
 int bf_program_generate(struct bf_program *program);
 
 /**
- * Load and attach the program to the kernel.
+ * Load the BPF program into the kernel.
  *
- * Perform the loading and attaching of the program to the kernel in one
- * step. If a similar program already exists, @p old_prog should be a pointer
- * to it, and will be replaced.
+ * Prior to loading the BPF program, multiple BPF maps are created to store
+ * the counters, the debug strings, and the sets. If the program can't be
+ * loaded, all the maps are destroyed.
  *
- * @param new_prog New program to load and attach to the kernel. Can't be NULL.
- * @param old_prog Existing program to replace.
+ * Once the loading succeeds, the program and the maps are pinned to the
+ * filesystem, unless the daemon is in transient mode. If the BPF objects can't
+ * be pinned, the program is unloaded and the maps destroyed.
+ *
+ * @param prog Program to load into the kernel. Can't be NULL and must contain
+ *        instructions.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_program_load(struct bf_program *new_prog, struct bf_program *old_prog);
+int bf_program_load(struct bf_program *prog);
 
-int bf_program_unload(struct bf_program *program);
+/**
+ * Attach a loaded program to a hook.
+ *
+ * @warning If the program hasn't been loaded (using `bf_program_load`),
+ * `bf_program_attach` will fail.
+ *
+ * The program is attached to a hook using a `bf_link` object. In persistent
+ * mode, the link will be pinned to the filesystem. If the link can't be pinned,
+ * the program will be detached from the hook.
+ *
+ * @param prog Program to attach. Can't be NULL.
+ * @param hookopts Hook-specific options to attach the program to the hook.
+ *        Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_program_attach(struct bf_program *prog,
+                      const struct bf_hookopts *hookopts);
+
+/**
+ * Detach the program from the kernel.
+ *
+ * The program is detached but not unloaded.
+ *
+ * @param prog Program to detach. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+void bf_program_detach(struct bf_program *prog);
+
+/**
+ * Unload the program.
+ *
+ * @param prog Program to unload. Must not be attached. Can't be NULL.
+ */
+void bf_program_unload(struct bf_program *prog);
 
 int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter);

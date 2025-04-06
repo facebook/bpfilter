@@ -15,6 +15,7 @@ struct bf_chain;
 struct bf_marsh;
 struct bf_program;
 struct bf_ns;
+struct bf_hookopts;
 
 #define _cleanup_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
@@ -94,40 +95,68 @@ void bf_cgen_free(struct bf_cgen **cgen);
 int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
 
 /**
- * Update the BPF programs for a codegen.
+ * Create and load a `bf_program` into the kernel.
  *
- * @param cgen Codegen to update. Can't be NULL.
- * @param chain Chain containing the new rules, sets, and policy. On success,
- *        @c *chain will be replaced by the previous (old) chain: the codegen
- *        will take ownership of the new chain and the caller will be
- *        responsible for freeing the old one. Can't be NULL, @c *chain must
- *        point to a valid @ref bf_chain .
- * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
+ * Create a new `bf_program` for `cgen`, and generate it based on the chain
+ * stored in the codegen. Once the generation is complete, the program is
+ * loaded into the kernel.
+ *
+ * @param cgen Codegen to load into the kernel. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **chain,
-                   const struct bf_ns *ns);
+int bf_cgen_load(struct bf_cgen *cgen);
 
 /**
- * Create a @ref bf_program for each interface, generate the program, load it,
- * and attach it to the kernel.
+ * Attach a loaded program to a hook.
  *
- * Simplify @ref bf_program management by providing a single call to add the
- * programs to the systems, starting from a new @ref bf_cgen.
+ * `ns` is the namespace the codegen should switch to before attaching the
+ * program. This is required to ensure the interface index the program is
+ * attached to (for XDP and TC programs) is correct, and the interface index
+ * the program filters on (e.g. `meta.ifindex`, for all hooks) is correct too.
  *
- * @param cgen Codegen to generate the programs for, and load to the system.
+ * @param cgen Codegen to attach to the kernel. Can't be NULL.
  * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
+ * @param hookopts Hook options. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_up(struct bf_cgen *cgen, const struct bf_ns *ns);
+int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
+                   struct bf_hookopts *hookopts);
 
 /**
- * Unload a codegen's BPF programs.
+ * Update the program attached to the hook.
  *
- * @param cgen Codegen containing the BPF program to unload. Can't be NULL.
+ * A new program will be generated based on `new_chain`, before it is loaded
+ * into the kernel. The link used by the codegen is updated to point to the
+ * new program.
+ *
+ * On success, the new program is stored in the codegen, and the previous
+ * program is unloaded and freed.
+ *
+ * @param cgen Codegen to update. It should already contain a program attached
+ *        to a hook. Can't be NULL.
+ * @param new_chain Chain containing the new rules, sets, and policy.
+ *        Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain);
+
+/**
+ * Detach a program from the kernel.
+ *
+ * The program is not unloaded or unpinned from the filesystem.
+ *
+ * @param cgen Codegen to detach. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
-int bf_cgen_unload(struct bf_cgen *cgen);
+void bf_cgen_detach(struct bf_cgen *cgen);
+
+/**
+ * Unload a program from the kernel.
+ *
+ * @param cgen Codege to unload. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
+ */
+void bf_cgen_unload(struct bf_cgen *cgen);
 
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
 
