@@ -34,90 +34,13 @@ struct bf_ctx
     /// Namespaces the daemon was started in.
     struct bf_ns ns;
 
-    /// Codegens defined in bpfilter. Defined as an array of lists as some
-    /// hooks can have multiple codegens (e.g. XDP).
-    bf_list cgens[_BF_HOOK_MAX];
+    bf_list cgens;
 };
 
 static void _bf_ctx_free(struct bf_ctx **ctx);
 
 /// Global daemon context. Hidden in this translation unit.
 static struct bf_ctx *_bf_global_ctx = NULL;
-
-/**
- * Get the requested BF_HOOK_XDP codegen from the list.
- *
- * Use @c opts->ifindex to find the expected codegen and return it.
- *
- * @param list List containing all the BF_HOOK_XDP codegens. Can't be NULL.
- * @param opts Hook options, @c opts->ifindex is used to find the correct
- *        codegen. Can't be NULL.
- * @return The request codegen, or NULL if not found.
- */
-static struct bf_cgen *_bf_ctx_get_xdp_cgen(const bf_list *list,
-                                            const struct bf_hook_opts *opts)
-{
-    bf_list_foreach (list, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        if (cgen->chain->hook_opts.ifindex == opts->ifindex)
-            return cgen;
-    }
-
-    return NULL;
-}
-
-/**
- * Get the requested BF_HOOK_NF_* codegen from the list.
- *
- * There can be only one codegen defined for each BF_HOOK_NF_* hook, so we
- * return the first of the list, if defined.
- *
- * @param list List containing all the BF_HOOK_NF_* codegens. Can't be NULL.
- * @param opts Unused.
- * @return The requested codegen, or NULL if not found.
- */
-static struct bf_cgen *_bf_ctx_get_nf_cgen(const bf_list *list,
-                                           const struct bf_hook_opts *opts)
-{
-    UNUSED(opts);
-    struct bf_list_node *node;
-
-    bf_assert(list);
-
-    node = bf_list_get_head(list);
-    return node ? bf_list_node_get_data(node) : NULL;
-}
-
-static struct bf_cgen *_bf_ctx_get_cgroup_cgen(const bf_list *list,
-                                               const struct bf_hook_opts *opts)
-{
-    bf_list_foreach (list, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        if (bf_streq(cgen->chain->hook_opts.cgroup, opts->cgroup))
-            return cgen;
-    }
-
-    return NULL;
-}
-
-static struct bf_cgen *(*_bf_cgen_getters[])(
-    const bf_list *list, const struct bf_hook_opts *opts) = {
-    [BF_HOOK_XDP] = _bf_ctx_get_xdp_cgen,
-    [BF_HOOK_TC_INGRESS] = _bf_ctx_get_xdp_cgen,
-    [BF_HOOK_NF_PRE_ROUTING] = _bf_ctx_get_nf_cgen,
-    [BF_HOOK_NF_LOCAL_IN] = _bf_ctx_get_nf_cgen,
-    [BF_HOOK_CGROUP_INGRESS] = _bf_ctx_get_cgroup_cgen,
-    [BF_HOOK_CGROUP_EGRESS] = _bf_ctx_get_cgroup_cgen,
-    [BF_HOOK_NF_FORWARD] = _bf_ctx_get_nf_cgen,
-    [BF_HOOK_NF_LOCAL_OUT] = _bf_ctx_get_nf_cgen,
-    [BF_HOOK_NF_POST_ROUTING] = _bf_ctx_get_nf_cgen,
-    [BF_HOOK_TC_EGRESS] = _bf_ctx_get_xdp_cgen,
-};
-
-static_assert(ARRAY_SIZE(_bf_cgen_getters) == _BF_HOOK_MAX,
-              "missing entries in _bf_cgen_getters array");
 
 /**
  * Create and initialize a new context.
@@ -142,8 +65,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
     if (r)
         return bf_err_r(r, "failed to initialise current bf_ns");
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        _ctx->cgens[i] = bf_cgen_list();
+    _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_marsh);
 
     *ctx = TAKE_PTR(_ctx);
 
@@ -162,8 +84,8 @@ static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
                                   const struct bf_marsh *marsh)
 {
     _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
-    struct bf_marsh *list_elem = NULL;
-    int i = 0;
+    struct bf_marsh *child = NULL;
+    struct bf_marsh *elem = NULL;
     int r;
 
     bf_assert(ctx && marsh);
@@ -173,24 +95,20 @@ static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
         return r;
 
     // Unmarsh bf_ctx.cgens
-    while ((list_elem = bf_marsh_next_child(marsh, list_elem))) {
-        struct bf_marsh *cgen_elem = NULL;
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    while ((elem = bf_marsh_next_child(child, elem))) {
+        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
 
-        while ((cgen_elem = bf_marsh_next_child(list_elem, cgen_elem))) {
-            _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        r = bf_cgen_new_from_marsh(&cgen, elem);
+        if (r < 0)
+            return r;
 
-            r = bf_cgen_new_from_marsh(&cgen, cgen_elem);
-            if (r < 0)
-                return r;
+        r = bf_list_add_tail(&_ctx->cgens, cgen);
+        if (r < 0)
+            return r;
 
-            r = bf_list_add_tail(&_ctx->cgens[i], cgen);
-            if (r < 0)
-                return r;
-
-            TAKE_PTR(cgen);
-        }
-
-        ++i;
+        TAKE_PTR(cgen);
     }
 
     *ctx = TAKE_PTR(_ctx);
@@ -214,10 +132,7 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     bf_ns_clean(&(*ctx)->ns);
-
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        bf_list_clean(&(*ctx)->cgens[i]);
-
+    bf_list_clean(&(*ctx)->cgens);
     freep((void *)ctx);
 }
 
@@ -249,27 +164,18 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     // Codegens
-    DUMP(bf_dump_prefix_last(prefix), "cgens: bf_list[%d]", _BF_HOOK_MAX);
+    DUMP(bf_dump_prefix_last(prefix), "cgens: bf_list<struct bf_cgen>[%lu]",
+         bf_list_size(&ctx->cgens));
     bf_dump_prefix_push(prefix);
+    bf_list_foreach (&ctx->cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        if (i == _BF_HOOK_MAX - 1)
+        if (bf_list_is_tail(&ctx->cgens, cgen_node))
             bf_dump_prefix_last(prefix);
 
-        DUMP(prefix, "bf_list<bf_cgen>[%lu]", bf_list_size(&ctx->cgens[i]));
-        bf_dump_prefix_push(prefix);
-
-        bf_list_foreach (&ctx->cgens[i], cgen_node) {
-            struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-            if (bf_list_is_tail(&ctx->cgens[i], cgen_node))
-                bf_dump_prefix_last(prefix);
-
-            bf_cgen_dump(cgen, prefix);
-        }
-
-        bf_dump_prefix_pop(prefix);
+        bf_cgen_dump(cgen, prefix);
     }
+    bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
 }
@@ -303,10 +209,10 @@ static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
     if (r)
         return bf_err_r(r, "failed to create marsh for context");
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
+    {
         _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
 
-        r = bf_list_marsh(&ctx->cgens[i], &child);
+        r = bf_list_marsh(&ctx->cgens, &child);
         if (r < 0)
             return r;
 
@@ -324,12 +230,18 @@ static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
  * See @ref bf_ctx_get_cgen for details.
  */
 static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
-                                        enum bf_hook hook,
-                                        const struct bf_hook_opts *opts)
+                                        const char *name)
 {
-    bf_assert(ctx);
+    bf_assert(ctx && name);
 
-    return _bf_cgen_getters[hook](&ctx->cgens[hook], opts);
+    bf_list_foreach (&ctx->cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+
+        if (bf_streq(cgen->chain->name, name))
+            return cgen;
+    }
+
+    return NULL;
 }
 
 /**
@@ -338,22 +250,21 @@ static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
 static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
                                        enum bf_front front)
 {
-    _clean_bf_list_ bf_list _cgens = bf_list_default(NULL, bf_cgen_marsh);
+    _clean_bf_list_ bf_list _cgens =
+        bf_list_default(cgens->ops.free, cgens->ops.marsh);
     int r;
 
     bf_assert(ctx && cgens);
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        bf_list_foreach (&ctx->cgens[i], cgen_node) {
-            struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+    bf_list_foreach (&ctx->cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
 
-            if (cgen->front != front)
-                continue;
+        if (cgen->front != front)
+            continue;
 
-            r = bf_list_add_tail(&_cgens, cgen);
-            if (r)
-                return bf_err_r(r, "failed to insert codegen into list");
-        }
+        r = bf_list_add_tail(&_cgens, cgen);
+        if (r)
+            return bf_err_r(r, "failed to insert codegen into list");
     }
 
     *cgens = bf_list_move(_cgens);
@@ -368,10 +279,30 @@ static int _bf_ctx_set_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen)
 {
     bf_assert(ctx && cgen);
 
-    if (_bf_ctx_get_cgen(ctx, cgen->chain->hook, &cgen->chain->hook_opts))
+    if (_bf_ctx_get_cgen(ctx, cgen->chain->name))
         return bf_err_r(-EEXIST, "codegen already exists in context");
 
-    return bf_list_add_tail(&ctx->cgens[cgen->chain->hook], cgen);
+    return bf_list_add_tail(&ctx->cgens, cgen);
+}
+
+static int _bf_ctx_delete_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen,
+                               bool unload)
+{
+    bf_list_foreach (&ctx->cgens, cgen_node) {
+        struct bf_cgen *_cgen = bf_list_node_get_data(cgen_node);
+
+        if (_cgen != cgen)
+            continue;
+
+        if (unload)
+            bf_cgen_unload(_cgen);
+
+        bf_list_delete(&ctx->cgens, cgen_node);
+
+        return 0;
+    }
+
+    return -ENOENT;
 }
 
 int bf_ctx_setup(void)
@@ -393,10 +324,8 @@ int bf_ctx_setup(void)
 void bf_ctx_teardown(bool clear)
 {
     if (clear) {
-        for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-            bf_list_foreach (&_bf_global_ctx->cgens[i], cgen_node)
-                bf_cgen_unload(bf_list_node_get_data(cgen_node));
-        }
+        bf_list_foreach (&_bf_global_ctx->cgens, cgen_node)
+            bf_cgen_unload(bf_list_node_get_data(cgen_node));
     }
 
     _bf_ctx_free(&_bf_global_ctx);
@@ -434,49 +363,29 @@ int bf_ctx_load(const struct bf_marsh *marsh)
     return 0;
 }
 
-int bf_ctx_flush(void)
+static void _bf_ctx_flush(struct bf_ctx *ctx, enum bf_front front)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
-    int r;
-    int err = 0;
+    bf_assert(ctx);
 
-    r = _bf_ctx_new(&_ctx);
-    if (r)
-        return bf_err_r(r, "failed to create new context");
+    bf_list_foreach (&ctx->cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
 
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        bf_list_foreach (&_bf_global_ctx->cgens[i], cgen_node) {
-            struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-            r = bf_cgen_unload(cgen);
-            if (r) {
-                bf_err("failed to unload a %s program attached to %s",
-                       bf_front_to_str(cgen->front),
-                       bf_hook_to_str(cgen->chain->hook));
-                err = err ?: r;
-            }
-        }
+        if (cgen->front != front)
+            continue;
+
+        bf_cgen_unload(cgen);
+        bf_list_delete(&ctx->cgens, cgen_node);
     }
+}
 
-    _bf_ctx_free(&_bf_global_ctx);
-
-    _bf_global_ctx = TAKE_PTR(_ctx);
-
-    if (err)
-        bf_warn("the global context has been partially flushed");
-    else
-        bf_info("the global context has been flushed");
-
-    return err;
+void bf_ctx_flush(enum bf_front front)
+{
+    _bf_ctx_flush(_bf_global_ctx, front);
 }
 
 bool bf_ctx_is_empty(void)
 {
-    for (int i = 0; i < _BF_HOOK_MAX; ++i) {
-        if (!bf_list_is_empty(&_bf_global_ctx->cgens[i]))
-            return false;
-    }
-
-    return true;
+    return bf_list_is_empty(&_bf_global_ctx->cgens);
 }
 
 void bf_ctx_dump(prefix_t *prefix)
@@ -484,10 +393,9 @@ void bf_ctx_dump(prefix_t *prefix)
     _bf_ctx_dump(_bf_global_ctx, prefix);
 }
 
-struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook,
-                                const struct bf_hook_opts *opts)
+struct bf_cgen *bf_ctx_get_cgen(const char *name)
 {
-    return _bf_ctx_get_cgen(_bf_global_ctx, hook, opts);
+    return _bf_ctx_get_cgen(_bf_global_ctx, name);
 }
 
 int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front)
@@ -498,6 +406,11 @@ int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front)
 int bf_ctx_set_cgen(struct bf_cgen *cgen)
 {
     return _bf_ctx_set_cgen(_bf_global_ctx, cgen);
+}
+
+int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload)
+{
+    return _bf_ctx_delete_cgen(_bf_global_ctx, cgen, unload);
 }
 
 struct bf_ns *bf_ctx_get_ns(void)

@@ -50,15 +50,12 @@ static int _bf_cli_teardown(void)
 int _bf_cli_ruleset_flush(const struct bf_request *request,
                           struct bf_response **response)
 {
-    int r;
-
     UNUSED(request);
+    UNUSED(response);
 
-    r = bf_ctx_flush();
-    if (r)
-        return bf_err_r(r, "failed to flush the context");
+    bf_ctx_flush(BF_FRONT_CLI);
 
-    return bf_response_new_success(response, NULL, 0);
+    return 0;
 }
 
 /**
