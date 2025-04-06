@@ -34,7 +34,7 @@ add_custom_command(
             -o ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
             ${CMAKE_CURRENT_SOURCE_DIR}/lexer.l
     DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/parser.y
+        ${CMAKE_CURRENT_SOURCE_DIR}/lexer.l
         ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
     OUTPUT
         ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/lexer.h
