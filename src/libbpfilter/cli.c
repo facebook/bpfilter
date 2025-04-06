@@ -34,7 +34,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters)
         return bf_err_r(r, "failed to init request");
 
     request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_RULES_GET;
+    request->cmd = BF_REQ_RULESET_GET;
     request->cli_with_counters = with_counters;
 
     r = bf_send(request, &response);
@@ -135,7 +135,7 @@ int bf_cli_set_chain(const struct bf_chain *chain)
         return bf_err_r(r, "failed to create request for chain");
 
     request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_RULES_SET;
+    request->cmd = BF_REQ_RULESET_SET;
 
     r = bf_send(request, &response);
     if (r)

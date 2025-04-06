@@ -58,7 +58,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
         return r;
 
     request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_RULES_SET;
+    request->cmd = BF_REQ_RULESET_SET;
 
     r = bf_send(request, &response);
     if (r < 0)

@@ -214,10 +214,10 @@ static int _bf_cli_request_handler(struct bf_request *request,
     case BF_REQ_RULESET_FLUSH:
         r = _bf_cli_ruleset_flush(request, response);
         break;
-    case BF_REQ_RULES_SET:
-        r = _bf_cli_set_rules(request, response);
+    case BF_REQ_RULESET_SET:
+        r = _bf_cli_ruleset_set(request, response);
         break;
-    case BF_REQ_RULES_GET:
+    case BF_REQ_RULESET_GET:
         r = _bf_cli_ruleset_get(request, response);
         break;
     default:
