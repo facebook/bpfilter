@@ -173,6 +173,11 @@ bool bf_opts_transient(void)
     return _bf_opts.transient;
 }
 
+bool bf_opts_persist(void)
+{
+    return !_bf_opts.transient;
+}
+
 unsigned int bf_opts_bpf_log_buf_len_pow(void)
 {
     return _bf_opts.bpf_log_buf_len_pow;
