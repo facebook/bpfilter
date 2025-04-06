@@ -144,9 +144,9 @@ typedef struct
 /**
  * Move a list.
  *
- * Move a list from @p list and return it. Once moved, the original list will
- * be empty, and @ref bf_list_clean can be called on it safely. The list it
- * has been moved to will be overriden and @ref bf_list_clean should be
+ * Move a list from `list` and return it. Once moved, the original list can
+ * either be reused, discarded, or `bf_list_clean` can be called on it safely.
+ * The list it has been moved to will be overriden and `bf_list_clean` should be
  * called on it.
  *
  * @param list List to move.
@@ -156,7 +156,7 @@ typedef struct
     ({                                                                         \
         bf_list *__list = &(list);                                             \
         bf_list _list = *__list;                                               \
-        *__list = bf_list_default(NULL, NULL);                                 \
+        *__list = bf_list_default(__list->ops.free, __list->ops.marsh);        \
         _list;                                                                 \
     })
 
