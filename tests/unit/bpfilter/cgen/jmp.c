@@ -38,7 +38,7 @@ Test(jmp, create_and_close)
     _cleanup_bf_program_ struct bf_program *program = NULL;
     _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain(BF_HOOK_XDP, BF_VERDICT_ACCEPT);
 
-    assert_success(bf_program_new(&program, 0, 0, chain));
+    assert_success(bf_program_new(&program, chain));
 
     {
         // Managing context manually

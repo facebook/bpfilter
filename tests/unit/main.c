@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "core/list.h"
+#include "core/opts.h"
 #include "harness/test.h"
 #include "harness/test.h"
 #include "core/helper.h"
@@ -91,6 +92,10 @@ int main(int argc, char *argv[])
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
     _free_bf_test_opts_ bf_test_opts *opts = NULL;
     int failed = 0;
+    char *bf_opts[] = {
+        argv[0],
+        "--transient"
+    };
     int r;
 
     r = _bf_test_opts_new(&opts, argc, argv);
@@ -98,6 +103,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "failed to create a bf_test_opts object\n");
         return r;
     }
+
+    // Ensure we run in transient mode, so unit tests won't pin BPF objects
+    r = bf_opts_init(ARRAY_SIZE(bf_opts), bf_opts);
+    if (r)
+        return bf_err_r(r, "failed to enable transient mode for unit tests");
 
     r = bf_test_discover_test_suite(&suite);
     if (r < 0)

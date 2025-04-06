@@ -21,7 +21,7 @@ Test(program, emit_fixup_call)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         size_t start_cap;
 
-        assert_success(bf_program_new(&program, BF_HOOK_NF_FORWARD, BF_FRONT_IPT, chain));
+        assert_success(bf_program_new(&program, chain));
 
         start_cap = program->img_cap;
 
@@ -33,14 +33,8 @@ Test(program, emit_fixup_call)
     }
 }
 
-Test(program, flavor_ops_get_failure)
-{
-    expect_assert_failure(bf_flavor_ops_get(-1));
-    expect_assert_failure(bf_flavor_ops_get(_BF_HOOK_MAX));
-}
-
 Test(program, can_get_flavor_from_hook)
 {
-    for (int i = 0; i < _BF_HOOK_MAX; ++i)
-        assert_non_null(bf_flavor_ops_get(i));
+    for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor)
+        assert_non_null(bf_flavor_ops_get(flavor));
 }

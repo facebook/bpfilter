@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "bpfilter/cgen/dump.h"
+#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/ctx.h"
 #include "core/chain.h"
@@ -151,13 +152,6 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
     return 0;
 }
 
-int bf_cgen_unload(struct bf_cgen *cgen)
-{
-    bf_assert(cgen);
-
-    return bf_program_unload(cgen->program);
-}
-
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
 {
     bf_assert(cgen);
@@ -207,54 +201,67 @@ int bf_cgen_get_counter(const struct bf_cgen *cgen,
     return bf_program_get_counter(cgen->program, counter_idx, counter);
 }
 
-int bf_cgen_up(struct bf_cgen *cgen, const struct bf_ns *ns)
+int bf_cgen_load(struct bf_cgen *cgen)
 {
     _cleanup_bf_program_ struct bf_program *prog = NULL;
     int r;
 
     bf_assert(cgen);
 
-    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
-        bf_cgen_dump(cgen, EMPTY_PREFIX);
+    bf_info("load %s", cgen->chain->name);
+    bf_cgen_dump(cgen, EMPTY_PREFIX);
 
-    r = bf_program_new(&prog, cgen->chain->hook, cgen->front, cgen->chain);
+    r = bf_program_new(&prog, cgen->chain);
     if (r < 0)
         return r;
 
     r = bf_program_generate(prog);
-    if (r < 0) {
-        return bf_err_r(r, "failed to generate bf_program for %s",
-                        bf_hook_to_str(cgen->chain->hook));
-    }
+    if (r < 0)
+        return bf_err_r(r, "failed to generate bf_program");
 
-    r = bf_ns_set(ns, bf_ctx_get_ns());
-    if (r)
-        return bf_err_r(r, "failed to switch to the client's namespaces");
-
-    r = bf_program_load(prog, NULL);
-    if (r < 0) {
-        if (bf_ns_set(bf_ctx_get_ns(), ns))
-            bf_abort("failed to restore previous namespaces, aborting");
-        return bf_err_r(r, "failed to load and attach the chain");
-    }
-
-    if (bf_ns_set(bf_ctx_get_ns(), ns))
-        bf_abort("failed to restore previous namespaces, aborting");
+    r = bf_program_load(prog);
+    if (r < 0)
+        return bf_err_r(r, "failed to load the chain");
 
     cgen->program = TAKE_PTR(prog);
 
     return r;
 }
 
-int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
-                   const struct bf_ns *ns)
+int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
+                   struct bf_hookopts *hookopts)
+{
+    int r;
+
+    bf_assert(cgen && ns && hookopts);
+
+    bf_info("attaching %s to %s", cgen->chain->name,
+            bf_hook_to_str(cgen->chain->hook));
+    bf_hookopts_dump(*hookopts, EMPTY_PREFIX);
+
+    r = bf_ns_set(ns, bf_ctx_get_ns());
+    if (r)
+        return bf_err_r(r, "failed to switch to the client's namespaces");
+
+    r = bf_program_attach(cgen->program, hookopts);
+    if (r < 0)
+        bf_err_r(r, "failed to load and attach the chain");
+
+    if (bf_ns_set(bf_ctx_get_ns(), ns))
+        bf_abort("failed to restore previous namespaces, aborting");
+
+    return r;
+}
+
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 {
     _cleanup_bf_program_ struct bf_program *new_prog = NULL;
+    struct bf_link *link = cgen->program->link;
     int r;
 
     bf_assert(cgen && new_chain);
 
-    r = bf_program_new(&new_prog, (*new_chain)->hook, cgen->front, *new_chain);
+    r = bf_program_new(&new_prog, *new_chain);
     if (r < 0)
         return bf_err_r(r, "failed to create a new bf_program");
 
@@ -264,25 +271,40 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
                         "failed to generate the bytecode for a new bf_program");
     }
 
-    r = bf_ns_set(ns, bf_ctx_get_ns());
+    r = bf_program_load(new_prog);
     if (r)
-        return bf_err_r(r, "failed to switch to the client's namespaces");
+        return bf_err_r(r, "failed to load new program");
 
-    r = bf_program_load(new_prog, cgen->program);
-    if (r < 0) {
-        if (bf_ns_set(bf_ctx_get_ns(), ns))
-            bf_abort("failed to restore previous namespaces, aborting");
-        return bf_err_r(r, "failed to load and attach the new chain");
+    if (cgen->program->link->hookopts) {
+        r = bf_link_update(link, cgen->chain->hook, new_prog->runtime.prog_fd);
+        if (r)
+            return bf_err_r(r,
+                            "failed to update bf_link object with new program");
     }
 
-    if (bf_ns_set(bf_ctx_get_ns(), ns))
-        bf_abort("failed to restore previous namespaces, aborting");
-
     bf_swap(cgen->program, new_prog);
-    bf_swap(cgen->chain, *new_chain);
+    bf_swap(cgen->program->link, new_prog->link);
 
-    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
-        bf_cgen_dump(cgen, EMPTY_PREFIX);
+    // new_prog is now the previous program with an empty link
+    if (bf_opts_persist())
+        bf_program_unload(cgen->program);
+
+    bf_chain_free(&cgen->chain);
+    cgen->chain = TAKE_PTR(*new_chain);
 
     return 0;
+}
+
+void bf_cgen_detach(struct bf_cgen *cgen)
+{
+    bf_assert(cgen);
+
+    bf_program_detach(cgen->program);
+}
+
+void bf_cgen_unload(struct bf_cgen *cgen)
+{
+    bf_assert(cgen);
+
+    bf_program_unload(cgen->program);
 }

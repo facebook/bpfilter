@@ -69,7 +69,7 @@ Test(swich, generate_swich)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         _cleanup_bf_swich_ struct bf_swich swich;
 
-        assert_success(bf_program_new(&program, 0, 0, chain));
+        assert_success(bf_program_new(&program, chain));
         assert_success(bf_swich_init(&swich, program, 0));
 
         for (int i = 0; i < 3; ++i)
@@ -85,7 +85,7 @@ Test(swich, generate_swich)
         _cleanup_bf_program_ struct bf_program *program = NULL;
         _cleanup_bf_swich_ struct bf_swich swich;
 
-        assert_success(bf_program_new(&program, 0, 0, chain));
+        assert_success(bf_program_new(&program, chain));
         assert_success(bf_swich_init(&swich, program, 0));
 
         for (int i = 0; i < 3; ++i)

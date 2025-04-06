@@ -15,8 +15,8 @@
 
 #include "core/chain.h"
 #include "core/helper.h"
+#include "core/list.h"
 #include "core/logger.h"
-#include "harness/filters.h"
 #include "libbpfilter/bpfilter.h"
 
 struct bf_test_prog *bf_test_prog_get(struct bf_chain *chain)
