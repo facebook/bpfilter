@@ -13,37 +13,16 @@
 #include <sys/socket.h>
 
 #include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/swich.h"
 #include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
 #include "core/verdict.h"
 #include "linux/bpf.h"
 
 #include "external/filter.h"
-
-static int _bf_cgroup_gen_inline_prologue(struct bf_program *program);
-static int _bf_cgroup_gen_inline_epilogue(struct bf_program *program);
-static int _bf_cgroup_get_verdict(enum bf_verdict verdict);
-static int _bf_cgroup_attach_prog(
-    struct bf_program *new_prog, struct bf_program *old_prog,
-    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
-                           struct bf_link **new_link));
-static int _bf_cgroup_detach_prog(struct bf_program *program);
-
-const struct bf_flavor_ops bf_flavor_ops_cgroup = {
-    .gen_inline_prologue = _bf_cgroup_gen_inline_prologue,
-    .gen_inline_epilogue = _bf_cgroup_gen_inline_epilogue,
-    .get_verdict = _bf_cgroup_get_verdict,
-    .attach_prog = _bf_cgroup_attach_prog,
-    .detach_prog = _bf_cgroup_detach_prog,
-};
 
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);
@@ -146,51 +125,8 @@ static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _bf_cgroup_attach_prog(
-    struct bf_program *new_prog, struct bf_program *old_prog,
-    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
-                           struct bf_link **new_link))
-{
-    struct bf_link *new_link;
-    struct bf_link *old_link;
-    int new_fd;
-    const char *cgroup_path;
-    int r;
-
-    bf_assert(new_prog && get_new_link_cb);
-
-    old_link = old_prog ? bf_list_get_at(&old_prog->links, 0) : NULL;
-    new_fd = new_prog->runtime.prog_fd;
-    cgroup_path = new_prog->runtime.chain->hook_opts.cgroup;
-
-    r = get_new_link_cb(new_prog, old_link, &new_link);
-    if (r)
-        return bf_err_r(r, "failed to create new cgroup link");
-
-    if (old_link) {
-        r = bf_link_update(new_link, new_fd);
-        if (r) {
-            return bf_err_r(
-                r, "failed to update existing link for cgroup bf_program");
-        }
-    } else {
-        r = bf_link_attach_cgroup(new_link, new_fd, cgroup_path);
-        if (r)
-            return bf_err_r(r, "failed to attach cgroup program");
-    }
-
-    return 0;
-}
-
-/**
- * Detach the cgroup BPF program.
- *
- * @param program Attached cgroup BPF program. Can't be NULL.
- * @return 0 on success, negative errno value on failure.
- */
-static int _bf_cgroup_detach_prog(struct bf_program *program)
-{
-    bf_assert(program);
-
-    return bf_link_detach(bf_list_get_at(&program->links, 0));
-}
+const struct bf_flavor_ops bf_flavor_ops_cgroup = {
+    .gen_inline_prologue = _bf_cgroup_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_cgroup_gen_inline_epilogue,
+    .get_verdict = _bf_cgroup_get_verdict,
+};

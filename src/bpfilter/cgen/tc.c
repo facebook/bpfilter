@@ -10,37 +10,17 @@
 #include <linux/pkt_cls.h>
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/stub.h"
 #include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
-
-static int _bf_tc_gen_inline_prologue(struct bf_program *program);
-static int _bf_tc_gen_inline_epilogue(struct bf_program *program);
-static int _bf_tc_get_verdict(enum bf_verdict verdict);
-static int _bf_tc_attach_prog(
-    struct bf_program *new_prog, struct bf_program *old_prog,
-    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
-                           struct bf_link **new_link));
-static int _bf_tc_detach_prog(struct bf_program *program);
-
-const struct bf_flavor_ops bf_flavor_ops_tc = {
-    .gen_inline_prologue = _bf_tc_gen_inline_prologue,
-    .gen_inline_epilogue = _bf_tc_gen_inline_epilogue,
-    .get_verdict = _bf_tc_get_verdict,
-    .attach_prog = _bf_tc_attach_prog,
-    .detach_prog = _bf_tc_detach_prog,
-};
 
 static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 {
@@ -117,52 +97,8 @@ static int _bf_tc_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _bf_tc_attach_prog(struct bf_program *new_prog,
-                              struct bf_program *old_prog,
-                              int (*get_new_link_cb)(struct bf_program *prog,
-                                                     struct bf_link *old_link,
-                                                     struct bf_link **new_link))
-{
-    struct bf_link *new_link;
-    struct bf_link *old_link;
-    int new_fd;
-    unsigned int ifindex;
-    int r;
-
-    bf_assert(new_prog && get_new_link_cb);
-
-    old_link = old_prog ? bf_list_get_at(&old_prog->links, 0) : NULL;
-    new_fd = new_prog->runtime.prog_fd;
-    ifindex = new_prog->runtime.chain->hook_opts.ifindex;
-
-    r = get_new_link_cb(new_prog, old_link, &new_link);
-    if (r)
-        return bf_err_r(r, "failed to create new TC link");
-
-    if (old_link) {
-        r = bf_link_update(new_link, new_fd);
-        if (r) {
-            return bf_err_r(r,
-                            "failed to update existing link for TC bf_program");
-        }
-    } else {
-        r = bf_link_attach_tc(new_link, new_fd, ifindex);
-        if (r)
-            return bf_err_r(r, "failed to attach TC program");
-    }
-
-    return 0;
-}
-
-/**
- * Detach the TC BPF program.
- *
- * @param program Attached TC BPF program. Can't be NULL.
- * @return 0 on success, negative errno value on failure.
- */
-static int _bf_tc_detach_prog(struct bf_program *program)
-{
-    bf_assert(program);
-
-    return bf_link_detach(bf_list_get_at(&program->links, 0));
-}
+const struct bf_flavor_ops bf_flavor_ops_tc = {
+    .gen_inline_prologue = _bf_tc_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_tc_gen_inline_epilogue,
+    .get_verdict = _bf_tc_get_verdict,
+};
