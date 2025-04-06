@@ -792,7 +792,7 @@ static int _bf_ipt_request_handler(struct bf_request *request,
     int r;
 
     switch (request->cmd) {
-    case BF_REQ_RULES_SET:
+    case BF_REQ_RULESET_SET:
         r = _bf_ipt_ruleset_set(request);
         if (r < 0)
             return r;

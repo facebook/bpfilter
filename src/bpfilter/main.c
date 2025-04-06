@@ -346,7 +346,7 @@ static int _bf_process_request(struct bf_request *request,
     }
 
     if (!bf_opts_transient() && (request->cmd == BF_REQ_RULESET_FLUSH ||
-                                 request->cmd == BF_REQ_RULES_SET))
+                                 request->cmd == BF_REQ_RULESET_SET))
         r = _bf_save(ctx_path);
 
     return r;
