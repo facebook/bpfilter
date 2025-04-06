@@ -19,8 +19,10 @@
 #include "harness/filters.h"
 #include "libbpfilter/bpfilter.h"
 
-struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
+struct bf_test_prog *bf_test_prog_get(struct bf_chain *chain)
 {
+    _clean_bf_list_ bf_list chains = bf_list_default(NULL, NULL);
+    _clean_bf_list_ bf_list hooks = bf_list_default(NULL, NULL);
     _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
     int r;
 
@@ -30,13 +32,25 @@ struct bf_test_prog *bf_test_prog_get(const struct bf_chain *chain)
         return NULL;
     }
 
-    r = bf_cli_set_chain(chain);
+    r = bf_list_add_tail(&chains, chain);
+    if (r) {
+        bf_err_r(r, "failed to add bf_chain to list");
+        return NULL;
+    }
+
+    r = bf_list_add_tail(&hooks, NULL);
+    if (r) {
+        bf_err_r(r, "failed to add empty bf_hookopts to list");
+        return NULL;
+    }
+
+    r = bf_cli_ruleset_set(&chains, &hooks);
     if (r < 0) {
         bf_err_r(r, "failed to create a new chain");
         return NULL;
     }
 
-    r = bf_test_prog_open(prog, BF_E2E_NAME "_prg");
+    r = bf_test_prog_open(prog, "bf_prog");
     if (r < 0) {
         bf_err_r(r, "failed to open the bf_test_prog's BPF program");
         return NULL;

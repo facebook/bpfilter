@@ -15,71 +15,69 @@ struct bf_rule;
 
 #define _cleanup_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 
-/**
- * Convenience macro to initialize a list of @ref bf_chain .
- *
- * @return An initialized @ref bf_list that can contain @ref bf_chain objects.
- */
-#define bf_chain_list()                                                        \
-    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_chain_free,               \
-                        .marsh = (bf_list_ops_marsh)bf_chain_marsh}})
-
 struct bf_chain
 {
+    const char *name;
     enum bf_hook hook;
-    struct bf_hook_opts hook_opts;
-
     enum bf_verdict policy;
     bf_list sets;
     bf_list rules;
 };
 
 /**
- * Allocate and initialize a new bf_chain object.
+ * Allocate and initialize a `bf_chain` object.
  *
- * The rules defined in @p rules are stolen by the constructor. Hence, @p rules
- * will still exist after the function succeeds, but it will be empty. If the
- * function fails during the copy of the rules, then only the rules that haven't
- * be copied yet are still in @p rules .
+ * The content of `sets` and `rules` is stolen by the constructor if the
+ * function succeeds, in which case the source lists are empty and the chain
+ * is responsible for the data. Otherwise, both list are unchanged.
  *
- * @param chain Chain to allocate an intialize. Can't be NULL.
- * @param hook Kernel attach point.
+ * @param chain `bf_chain` object to allocate and initialize. On failure,
+ *        this parameter is unchanged. Can't be NULL.
+ * @param name Name of the chain. Can't be NULL.
+ * @param hook Expected hook to attach the chain to.
  * @param policy Default action of the chain if no rule matched.
- * @param sets List of sets used by @p rules . The content of the list will be
- *        stolen. On success, @p sets will be in a usable state, but empty.
+ * @param sets List of sets used by `rules`.
  * @param rules List of rules.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_chain_new(struct bf_chain **chain, enum bf_hook hook,
+int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules);
 
 /**
- * Allocate a new chain object and intialize it from serialized data.
+ * Allocate and initialize a new `bf_chain` object from serialized data.
  *
- * @param chain On success, points to the newly allocated and initialized chain
- *        object. Can't be NULL.
- * @param marsh Serialized data to use to initialize the chain object. Can't be
- *        NULL.
- * @return 0 on success, or negative errno value on failure.
+ * @param chain `bf_chain` object to allocate and initialize from `marsh`.
+ *        On failure, this parameter is unchanged. Can't be NULL.
+ * @param marsh Serialized data to read a `bf_chain` from. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
 int bf_chain_new_from_marsh(struct bf_chain **chain,
                             const struct bf_marsh *marsh);
 
 /**
- * Deinitialise and deallocate a chain object.
+ * Deallocate a `bf_chain` object.
  *
- * @param chain Chain object. Can't be NULL.
+ * @param chain `bf_chain` object to cleanup and deallocate. If `*chain`
+ *        is NULL, this function has no effect. Can't be NULL.
  */
 void bf_chain_free(struct bf_chain **chain);
 
 /**
- * Serialize a chain object.
+ * Serialize a `bf_chain` object.
  *
- * @param chain Chain object to serialize. Can't be NULL.
- * @param marsh On success, contains the serialized chain object. Can't be NULL.
+ * @param chain `bf_chain` object to serialize. Can't be NULL.
+ * @param marsh On success, represents the serialized `bf_chain` object. On
+ *        failure, this parameter is unchanged. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
 int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh);
 
+/**
+ * Dump the content of a `bf_chain` object.
+ *
+ * @param chain `bf_chain` object to print. Can't be NULL.
+ * @param prefix Prefix to use for the dump. Can't be NULL.
+ */
 void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
 
 /**
