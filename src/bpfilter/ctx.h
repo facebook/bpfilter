@@ -82,9 +82,9 @@ int bf_ctx_load(const struct bf_marsh *marsh);
  *
  * On failure, the context is left unchanged.
  *
- * @return 0 on success, or a negative errno value on failure.
+ * @param front Front to flush the codegens for.
  */
-int bf_ctx_flush(void);
+void bf_ctx_flush(enum bf_front front);
 
 /**
  * Check if the context is empty (no codegen defined).
@@ -96,13 +96,10 @@ bool bf_ctx_is_empty(void);
 /**
  * Get a codegen from the global context.
  *
- * @param hook Hook to get the codegen from.
- * @param opts Hook options. For hooks allowing multiple codegens, the hook
- *        options are used to find the right codegen.
+ * @param name Name of the codegen to get. Can't be NULL.
  * @return The requested codegen, or NULL if not found.
  */
-struct bf_cgen *bf_ctx_get_cgen(enum bf_hook hook,
-                                const struct bf_hook_opts *opts);
+struct bf_cgen *bf_ctx_get_cgen(const char *name);
 
 /**
  * Get the list of @ref bf_cgen defined for a given @p front .
@@ -121,11 +118,21 @@ int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front);
  * Add a codegen to the global context.
  *
  * @param cgen Codegen to add to the context. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure. If a similar
- *         codegen already exists (criteria defining what "similar" means
- *         depend on the hook), @c -EEXIT is returned.
+ * @return 0 on success, or a negative errno value on failure. If a chain
+ *         already exist in the context with the same name, the codegen is not
+ *         added to the context and `-EEXIST` is returned.
  */
 int bf_ctx_set_cgen(struct bf_cgen *cgen);
+
+/**
+ * Delete a codegen from the context.
+ *
+ * @param cgen Codegen to delete from the context. The codegen will be freed.
+ *        Can't be NULL.
+ * @param unload Unload the codegen from the system before deleting it.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload);
 
 /**
  * Get the daemon's original namespaces.
