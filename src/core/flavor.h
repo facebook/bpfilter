@@ -8,7 +8,6 @@
 #include "core/verdict.h"
 
 struct bf_program;
-struct bf_link;
 
 /**
  * @file flavor.h
@@ -81,32 +80,6 @@ struct bf_flavor_ops
      * codes and therefore do not need to be handled by get_verdict().
      */
     int (*get_verdict)(enum bf_verdict verdict);
-
-    /**
-     * Attach a program to a hook on the system.
-     *
-     * @p new_prog is the new program to be attached to the hook, and
-     * @p old_prog is the existing one. @p old_prog can be NULL, if no program
-     * has been attached yet. If @p old_prog is not NULL, the replacement
-     * of @p old_prog by @p new_prog must performed with no downtime.
-     *
-     * @param new_prog New BPF program to attach to the kernel. Can't be NULL.
-     * @param old_prog Previous program to replace.
-     * @param get_new_link_cb Callback to request a new @ref bf_link to the
-     *        program. The program doesn't know how many links are required to
-     *        the BPF program to the hook, but the flavor doesn't have access
-     *        to high-level information such as the link name. This callback
-     *        provides more flexibility by allowing the flavor to request a
-     *        new link configured by the program. If @c old_link is not NULL,
-     *        the new link with contain a valid FD to old link's BPF object.
-     * @return 0 on success, or negative errno value on failure.
-     */
-    int (*attach_prog)(struct bf_program *new_prog, struct bf_program *old_prog,
-                       int (*get_new_link_cb)(struct bf_program *prog,
-                                              struct bf_link *old_link,
-                                              struct bf_link **new_link));
-
-    int (*detach_prog)(struct bf_program *program);
 };
 
 /**

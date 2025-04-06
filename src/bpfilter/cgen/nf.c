@@ -16,39 +16,18 @@
 #include <sys/socket.h>
 
 #include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/stub.h"
 #include "bpfilter/cgen/swich.h"
 #include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
 
 #define BF_NF_PRIO_EVEN 2
 #define BF_NF_PRIO_ODD 1
-
-static int _bf_nf_gen_inline_prologue(struct bf_program *program);
-static int _bf_nf_gen_inline_epilogue(struct bf_program *program);
-static int _bf_nf_get_verdict(enum bf_verdict verdict);
-static int _bf_nf_attach_prog(
-    struct bf_program *new_prog, struct bf_program *old_prog,
-    int (*get_new_link_cb)(struct bf_program *prog, struct bf_link *old_link,
-                           struct bf_link **new_link));
-static int _bf_nf_detach_prog(struct bf_program *program);
-
-const struct bf_flavor_ops bf_flavor_ops_nf = {
-    .gen_inline_prologue = _bf_nf_gen_inline_prologue,
-    .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
-    .get_verdict = _bf_nf_get_verdict,
-    .attach_prog = _bf_nf_attach_prog,
-    .detach_prog = _bf_nf_detach_prog,
-};
 
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);
@@ -164,79 +143,8 @@ static int _bf_nf_get_verdict(enum bf_verdict verdict)
     return verdicts[verdict];
 }
 
-static int _bf_nf_attach_prog(struct bf_program *new_prog,
-                              struct bf_program *old_prog,
-                              int (*get_new_link_cb)(struct bf_program *prog,
-                                                     struct bf_link *old_link,
-                                                     struct bf_link **new_link))
-{
-    int r;
-
-    bf_assert(new_prog && get_new_link_cb);
-
-    if (old_prog && !bf_list_is_empty(&old_prog->links)) {
-        /* BPF Netfilter programs can't be attached to NFPROTO_INET to filter
-         * on both IPv4 and IPv6 at the same time. As a workaround, we attach
-         * them to **both** NFPROTO_IPV4 and NFPROTO_IPV6. */
-        bf_list_foreach (&old_prog->links, old_link_node) {
-            struct bf_link *link;
-            struct bpf_link_info info = {};
-            struct bf_link *old_link = bf_list_node_get_data(old_link_node);
-
-            r = bf_link_get_info(old_link, &info);
-            if (r)
-                return bf_err_r(r, "failed to get old Netfilter link info");
-
-            r = get_new_link_cb(new_prog, NULL, &link);
-            if (r)
-                return r;
-
-            /* BPF Netfilter programs can't be updated, so we need to create a
-             * new link every time we want to attach a new program at the same
-             * location. However, we can't create a new link with the same
-             * priority. Hence, we use 100 and 101 successively. */
-            r = bf_link_attach_nf(
-                link, new_prog->runtime.prog_fd, info.netfilter.pf,
-                info.netfilter.priority == BF_NF_PRIO_EVEN ? BF_NF_PRIO_ODD :
-                                                             BF_NF_PRIO_EVEN);
-            if (r)
-                return bf_err_r(r, "failed to attach Netfilter program");
-        }
-    } else {
-        struct bf_link *link;
-
-        r = get_new_link_cb(new_prog, NULL, &link);
-        if (r)
-            return r;
-
-        r = bf_link_attach_nf(link, new_prog->runtime.prog_fd, NFPROTO_IPV4,
-                              BF_NF_PRIO_EVEN);
-        if (r)
-            return bf_err_r(r, "failed to attach Netfilter IPv4 program");
-
-        r = get_new_link_cb(new_prog, NULL, &link);
-        if (r)
-            return r;
-
-        r = bf_link_attach_nf(link, new_prog->runtime.prog_fd, NFPROTO_IPV6,
-                              BF_NF_PRIO_EVEN);
-        if (r)
-            return bf_err_r(r, "failed to attach Netfilter IPv6 program");
-    }
-
-    return 0;
-}
-
-/**
- * Unload the Netfilter BPF bytecode image.
- *
- * @param program Codegen containing the image to unload. Can't be NULL.
- * @return 0 on success, negative error code on failure.
- */
-static int _bf_nf_detach_prog(struct bf_program *program)
-{
-    bf_assert(program);
-
-    return bf_link_detach(
-        bf_list_node_get_data(bf_list_get_head(&program->links)));
-}
+const struct bf_flavor_ops bf_flavor_ops_nf = {
+    .gen_inline_prologue = _bf_nf_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
+    .get_verdict = _bf_nf_get_verdict,
+};
