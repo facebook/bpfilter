@@ -141,8 +141,9 @@ int _bf_do_ruleset_set(int argc, char *argv[])
         NULL,
     };
     struct bf_ruleset ruleset = {
-        .chains = bf_chain_list(),
+        .chains = bf_list_default(bf_chain_free, bf_chain_marsh),
         .sets = bf_set_list(),
+        .hookopts = bf_list_default(bf_hookopts_free, bf_hookopts_marsh),
     };
     int r;
 
@@ -161,32 +162,15 @@ int _bf_do_ruleset_set(int argc, char *argv[])
         goto end_clean;
     }
 
-    // Set rules indexes
-    bf_list_foreach (&ruleset.chains, chain_node) {
-        struct bf_chain *chain = bf_list_node_get_data(chain_node);
-        uint32_t index = 0;
-
-        bf_list_foreach (&chain->rules, rule_node) {
-            struct bf_rule *rule = bf_list_node_get_data(rule_node);
-            rule->index = index++;
-        }
-    }
-
     // Send the chains to the daemon
-    bf_list_foreach (&ruleset.chains, chain_node) {
-        const struct bf_chain *chain = bf_list_node_get_data(chain_node);
-
-        r = bf_cli_set_chain(chain);
-        if (r < 0) {
-            bf_err("failed to set chain for '%s', skipping remaining chains",
-                   bf_hook_to_str(chain->hook));
-            goto end_clean;
-        }
-    }
+    r = bf_cli_ruleset_set(&ruleset.chains, &ruleset.hookopts);
+    if (r)
+        bf_err_r(r, "failed to set ruleset");
 
 end_clean:
     bf_list_clean(&ruleset.chains);
     bf_list_clean(&ruleset.sets);
+    bf_list_clean(&ruleset.hookopts);
 
     return r;
 }

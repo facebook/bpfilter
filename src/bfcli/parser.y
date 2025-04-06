@@ -55,6 +55,7 @@
     {
         bf_list chains;
         bf_list sets;
+        bf_list hookopts;
     };
 }
 
@@ -72,14 +73,13 @@
     struct bf_rule *rule;
     struct bf_chain *chain;
     enum bf_matcher_op matcher_op;
+    struct bf_hookopts *hookopts;
 }
 
 // Tokens
 %token CHAIN
-%token POLICY
 %token RULE
 %token COUNTER
-%token <sval> HOOK_OPT
 %token <sval> MATCHER_META_IFINDEX  MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO
 %token <sval> MATCHER_IP_PROTO MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
@@ -87,14 +87,14 @@
 %token <sval> MATCHER_PORT MATCHER_PORT_RANGE
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
+%token <sval> RAW_HOOKOPT
 
 // Grammar types
 %type <bval> counter
 
 %type <hook> hook
-
-%type <list> raw_hook_opts
-%destructor { bf_list_free(&$$); } raw_hook_opts
+%type <hookopts> hookopts
+%destructor { bf_hookopts_free(&$$); } hookopts
 
 %type <verdict> verdict
 
@@ -118,39 +118,37 @@
 %destructor { bf_chain_free(&$$); } chain
 
 %%
-chains          : chain
-                {
-                    if (bf_list_add_tail(&ruleset->chains, $1) < 0)
-                        bf_parse_err("failed to add chain into bf_list\n");
-
-                    TAKE_PTR($1);
-                }
-                | chains chain
-                {
-                    if (bf_list_add_tail(&ruleset->chains, $2) < 0)
-                        bf_parse_err("failed to insert chain into bf_list\n");
-
-                    TAKE_PTR($2);
-                }
+chains          : chain { UNUSED($1); }
+                | chains chain { UNUSED($2); }
                 ;
 
-chain           : CHAIN hook raw_hook_opts POLICY verdict rules
+chain           : CHAIN STRING hook hookopts verdict rules
                 {
                     _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-                    _cleanup_bf_list_ bf_list *raw_hook_opts = $3;
+                    _cleanup_free_ const char *name = $2;
+                    _free_bf_hookopts_ struct bf_hookopts *hookopts = $4;
                     _cleanup_bf_list_ bf_list *rules = $6;
+                    int r;
 
                     if ($5 >= _BF_TERMINAL_VERDICT_MAX)
                         bf_parse_err("'%s' is not supported for chains\n", bf_verdict_to_str($5));
 
-                    if (bf_chain_new(&chain, $2, $5, &ruleset->sets, rules) < 0)
+                    if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
 
-                    if (bf_hook_opts_init(&chain->hook_opts, chain->hook, raw_hook_opts) < 0)
-                        bf_parse_err("failed to parse hook options");
+                    if (hookopts) {
+                        r = bf_hookopts_validate(hookopts, chain->hook);
+                        if (r)
+                            bf_parse_err("invalid hook options used");
+                    }
 
-
+                    if (bf_list_add_tail(&ruleset->chains, chain) < 0)
+                        bf_parse_err("failed to add chain into bf_list\n");
                     $$ = TAKE_PTR(chain);
+
+                    if (bf_list_add_tail(&ruleset->hookopts, hookopts))
+                        bf_parse_err("failed to insert hookopts to list of hookopts");
+                    TAKE_PTR(hookopts);
                 }
 
 verdict         : VERDICT
@@ -166,27 +164,32 @@ verdict         : VERDICT
 
 hook            : HOOK
                 {
-                    enum bf_hook hook;
-
-                    if (bf_hook_from_str($1, &hook) < 0)
+                    enum bf_hook hook = bf_hook_from_str($1);
+                    if (hook < 0)
                         bf_parse_err("unknown hook '%s'\n", $1);
 
                     free($1);
                     $$ = hook;
                 }
 
-raw_hook_opts   : %empty { $$ = NULL; }
-                | raw_hook_opts HOOK_OPT
+hookopts        : %empty { $$ = NULL; }
+                | hookopts RAW_HOOKOPT
                 {
-                    if (!$1) {
-                        if (bf_list_new(&$1, (bf_list_ops[]){{.free = (bf_list_ops_free)freep}}) < 0)
-                            bf_parse_err("failed to allocate a new bf_list for raw hook options");
+                    _free_bf_hookopts_ struct bf_hookopts *hookopts = $1;
+                    _cleanup_free_ const char *raw_opt = $2;
+                    int r;
+
+                    if (!hookopts) {
+                        r = bf_hookopts_new(&hookopts);
+                        if (r)
+                            bf_parse_err("failed to allocate a new bf_hookopts object");
                     }
 
-                    if (bf_list_add_tail($1, $2) < 0)
-                        bf_parse_err("failed to insert raw hook options '%s' in list", $2);
+                    r = bf_hookopts_parse_opt(hookopts, raw_opt);
+                    if (r)
+                        bf_parse_err("failed to parse hook option");
 
-                    $$ = TAKE_PTR($1);
+                    $$ = TAKE_PTR(hookopts);
                 }
                 ;
 
