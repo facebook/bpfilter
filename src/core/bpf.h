@@ -38,7 +38,7 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
  * @param img BPF program itself. Can't be NULL.
  * @param img_len Size of the BPF program, as a number of instructions.
  * @param attach_type Expected attach type of the BPF program. Use
- *        @ref bf_hook_to_attach_type to get the proper attach type. 0 is a
+ *        `bf_hook_to_bpf_attach_type` to get the proper attach type. 0 is a
  *        valid value.
  * @param fd If the call succeed, this parameter will contain the loaded
  *        program's file descriptor.
