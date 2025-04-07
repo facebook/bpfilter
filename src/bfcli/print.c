@@ -9,13 +9,13 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #include "core/chain.h"
 #include "core/counter.h"
 #include "core/helper.h"
 #include "core/hook.h"
 #include "core/list.h"
-#include "core/logger.h"
 #include "core/matcher.h"
 #include "core/rule.h"
 #include "core/verdict.h"
@@ -50,77 +50,65 @@ static void bf_dump_hex_local(const void *data, size_t len)
  * Dump the details of a chain, including its rules and counters.
  *
  * @param chain Chain to be dumped. Can't be NULL.
- * @param ctr_node A node in the counter list. Can be NULL if no
- *                 chains are loaded, or not printing counters.
- * @param with_counters Boolean flag indicating whether to include
- *        counters in the dump.
+ * @param hookopts Hook options used to attach the chain to its hook. NULL if
+ *        the chain is not attached.
+ * @param counters List of `bf_counter` object representing the counter
+ *        values for each rule.
  */
-static int bf_cli_chain_dump(struct bf_chain *chain,
-                             struct bf_list_node **ctr_node, bool with_counters)
+static void _bf_cli_chain_dump(struct bf_chain *chain,
+                               struct bf_hookopts *hookopts, bf_list *counters)
 {
-    struct bf_hook_opts *opts = &chain->hook_opts;
-    struct bf_counter *counter = NULL;
-    uint32_t used_opts = chain->hook_opts.used_opts;
+    struct bf_counter *counter;
+    bf_list_node *counter_node;
     bool need_comma = false;
 
-    bf_assert(chain);
-    bf_assert(!with_counters || *ctr_node);
+    bf_assert(chain && counters);
 
-    (void)fprintf(stdout, "chain %s", bf_hook_to_str(chain->hook));
-    (void)fprintf(stdout, "{");
+    counter_node = bf_list_get_head(counters);
 
-    if (used_opts & (1 << BF_HOOK_OPT_ATTACH)) {
-        (void)fprintf(stdout, "attach=%s", opts->attach ? "yes" : "no");
-        need_comma = true;
+    (void)fprintf(stdout, "chain %s %s", chain->name,
+                  bf_hook_to_str(chain->hook));
+    if (hookopts) {
+        (void)fprintf(stdout, "{");
+
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX)) {
+            (void)fprintf(stdout, "%sifindex=%d", need_comma ? "," : "",
+                          hookopts->ifindex);
+            need_comma = true;
+        }
+
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_CGPATH)) {
+            (void)fprintf(stdout, "%scgpath=%s", need_comma ? "," : "",
+                          hookopts->cgpath);
+            need_comma = true;
+        }
+
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY)) {
+            (void)fprintf(stdout, "%sfamily=%s", need_comma ? "," : "",
+                          hookopts->family == PF_INET ? "inet4" : "inet6");
+            need_comma = true;
+        }
+
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY)) {
+            (void)fprintf(stdout, "%spriorities=%d-%d", need_comma ? "," : "",
+                          hookopts->priorities[0], hookopts->priorities[1]);
+            need_comma = true;
+        }
+
+        (void)fprintf(stdout, "}");
     }
 
-    if (used_opts & (1 << BF_HOOK_OPT_IFINDEX)) {
-        (void)fprintf(stdout, "%sifindex=%d", need_comma ? "," : "",
-                      opts->ifindex);
-        need_comma = true;
-    }
+    (void)fprintf(stdout, " %s\n", bf_verdict_to_str(chain->policy));
 
-    if (used_opts & (1 << BF_HOOK_OPT_NAME)) {
-        (void)fprintf(stdout, "%sname=%s", need_comma ? "," : "", opts->name);
-        need_comma = true;
-    }
+    counter = bf_list_node_get_data(counter_node);
+    (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
+                  counter->packets, counter->bytes);
+    counter_node = bf_list_node_next(counter_node);
 
-    (void)fprintf(stdout, "}");
-    (void)fprintf(stdout, " policy %s\n", bf_verdict_to_str(chain->policy));
-
-    if (with_counters) {
-        /*
-         * Counter list order (from daemon) is Error, Policy, Rules.
-         * Desired print order is Policy, Error, and then Rules.
-        */
-        struct bf_list_node *error_node = *ctr_node;
-
-        *ctr_node = bf_list_node_next(*ctr_node);
-        if (!*ctr_node)
-            return bf_err_r(-ENOENT,
-                            "expected policy counter, not end of list");
-
-        // Print the policy counter
-        counter = bf_list_node_get_data(*ctr_node);
-        if (!counter)
-            return bf_err_r(-ENOENT, "got NULL pointer for policy counter");
-
-        (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
-                      counter->packets, counter->bytes);
-
-        // Print the error counter
-        counter = (struct bf_counter *)bf_list_node_get_data(error_node);
-        if (!counter)
-            return bf_err_r(-ENOENT, "got NULL pointer for error counter");
-        (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->packets,
-                      counter->bytes);
-
-        /*
-         * Next is a rule counter, or a policy counter of the next chain,
-         * or NULL for the end of the list.
-        */
-        *ctr_node = bf_list_node_next(*ctr_node);
-    }
+    counter = bf_list_node_get_data(counter_node);
+    (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->packets,
+                  counter->bytes);
+    counter_node = bf_list_node_next(counter_node);
 
     // Loop over rules
     bf_list_foreach (&chain->rules, rule_node) {
@@ -138,52 +126,42 @@ static int bf_cli_chain_dump(struct bf_chain *chain,
             (void)fprintf(stdout, "\n");
         }
 
-        // Print the counters and remove the head
-        if (with_counters) {
-            // ctr_node should be pointing to the rule counter
-            if (!*ctr_node)
-                return bf_err_r(-ENOENT,
-                                "expected rule counter, not end of list");
-
-            counter = (struct bf_counter *)bf_list_node_get_data(*ctr_node);
-            if (!counter)
-                return bf_err_r(-ENOENT, "got NULL pointer for rule counter");
-
-            (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",
-                          counter->packets, counter->bytes);
-            /*
-             * Next is a rule counter, or a policy counter of the next chain,
-             * or NULL for the end of the list.
-            */
-            *ctr_node = bf_list_node_next(*ctr_node);
-        }
+        counter = bf_list_node_get_data(counter_node);
+        (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",
+                      counter->packets, counter->bytes);
+        counter_node = bf_list_node_next(counter_node);
 
         (void)fprintf(stdout, "        %s\n", bf_verdict_to_str(rule->verdict));
     }
 
     (void)fprintf(stdout, "\n");
-
-    return 0;
 }
 
-int bf_cli_dump_ruleset(bf_list *chains, bf_list *counters, bool with_counters)
+int bf_cli_dump_ruleset(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
-    struct bf_list_node *ctr_node = NULL;
-    int r;
+    struct bf_list_node *chain_node;
+    struct bf_list_node *hookopts_node;
+    struct bf_list_node *counter_node;
 
-    bf_assert(chains);
-    bf_assert(!with_counters || counters);
+    bf_assert(chains && hookopts && counters);
 
-    // ctr_node may be NULL if no chains are loaded
-    if (with_counters)
-        ctr_node = bf_list_get_head(counters);
+    if (bf_list_size(chains) != bf_list_size(hookopts))
+        return -EINVAL;
+    if (bf_list_size(counters) != bf_list_size(chains))
+        return -EINVAL;
 
-    // Print all chains
-    bf_list_foreach (chains, chain_node) {
-        struct bf_chain *chain = bf_list_node_get_data(chain_node);
-        r = bf_cli_chain_dump(chain, &ctr_node, with_counters);
-        if (r < 0)
-            return bf_err_r(r, "failed to dump chain");
+    chain_node = bf_list_get_head(chains);
+    hookopts_node = bf_list_get_head(hookopts);
+    counter_node = bf_list_get_head(counters);
+
+    while (chain_node) {
+        _bf_cli_chain_dump(bf_list_node_get_data(chain_node),
+                           bf_list_node_get_data(hookopts_node),
+                           bf_list_node_get_data(counter_node));
+
+        chain_node = bf_list_node_next(chain_node);
+        hookopts_node = bf_list_node_next(hookopts_node);
+        counter_node = bf_list_node_next(counter_node);
     }
 
     return 0;

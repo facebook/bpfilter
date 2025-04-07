@@ -142,6 +142,17 @@ typedef struct
     ((bf_list) {.ops = bf_list_ops_default(free_cb, marsh_cb)})
 
 /**
+ * Returns an initialized `bf_list` from an existing list.
+ *
+ * The returned list will be initialized with the callbacks defined in `list`.
+ *
+ * @param list Source list to initialize from.
+ * @return An initialised `bf_list`.
+ */
+#define bf_list_default_from(list)                                             \
+    ((bf_list) {.ops = bf_list_ops_default((list).ops.free, (list).ops.marsh)})
+
+/**
  * Move a list.
  *
  * Move a list from `list` and return it. Once moved, the original list can

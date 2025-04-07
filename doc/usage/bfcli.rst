@@ -29,24 +29,13 @@ Define a new ruleset: replace all the existing chains with the ruleset provided.
 ``ruleset get``
 ~~~~~~~~~~~~~~~
 
-Print the ruleset: request all the chains and rules from the daemon. Optionally include rule counter values.
-
-**Options**
-  - ``--with-counters``: print the counter values for each rule
+Print the ruleset: request all the chains and rules from the daemon with counters values.
 
 **Example**
 
 .. code:: shell
 
     $ sudo bfcli ruleset get
-    chain BF_HOOK_NF_LOCAL_IN{attach=yes} policy ACCEPT
-        rule
-            ip4.saddr eq 0x0a 0x00 0x00 0x01 0xff 0xff 0xff 0xff
-            ACCEPT
-
-.. code:: shell
-
-    $ sudo bfcli ruleset get --with-counters
     chain BF_HOOK_NF_LOCAL_IN{attach=yes} policy ACCEPT
         counters policy 3818 packets 2473532 bytes; error 0 packets 0 bytes
         rule

@@ -36,12 +36,12 @@ int bf_cli_ruleset_flush(void);
  * Request the daemon to return all the chains and all of
  * the associated rules.
  *
- * @param chains list of bf_chain type to be filled.
- * @param counters list of bf_counter type to be filled.
- * @param with_counters If true, the daemon will return the counters.
+ * @param chains List of bf_chain type to be filled.
+ * @param hookopts List of hook options objects.
+ * @param counters List of bf_counter type to be filled.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters);
+int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
 
 /**
  * Load a complete ruleset.

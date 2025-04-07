@@ -5,9 +5,9 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/types.h>
 
 #include "bpfilter/cgen/cgen.h"
+#include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
@@ -59,61 +59,21 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
     return 0;
 }
 
-/**
- * Get a list of counters (chain and rule) for all cgens
- * in the input list.
- *
- * @param cgens A list of code generators. Can't be NULL.
- * @param counters A list of counters. Can't be NULL.
- * @return 0 on success or negative error code on failure.
- */
-static int _bf_cli_get_counters(const bf_list *cgens, bf_list *counters)
-{
-    _clean_bf_list_ bf_list _counters =
-        bf_list_default(counters->ops.free, counters->ops.marsh);
-    int r;
-
-    bf_assert(cgens && counters);
-
-    bf_list_foreach (cgens, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        for (ssize_t i = -2; i < (ssize_t)bf_list_size(&cgen->chain->rules);
-             ++i) {
-            _cleanup_bf_counter_ struct bf_counter *counter = NULL;
-
-            r = bf_counter_new(&counter, 0, 0);
-            if (r)
-                return r;
-
-            r = bf_cgen_get_counter(cgen, i, counter);
-            if (r)
-                return r;
-
-            r = bf_list_add_tail(&_counters, counter);
-            if (r)
-                return r;
-
-            TAKE_PTR(counter);
-        }
-    }
-
-    *counters = bf_list_move(_counters);
-
-    return 0;
-}
-
 static int _bf_cli_ruleset_get(const struct bf_request *request,
                                struct bf_response **response)
 {
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
+    _cleanup_bf_marsh_ struct bf_marsh *hookopts_marsh = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *counters_marsh = NULL;
     _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
     _clean_bf_list_ bf_list chains = bf_list_default(NULL, bf_chain_marsh);
+    _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, bf_hookopts_marsh);
     _clean_bf_list_ bf_list counters =
-        bf_list_default(bf_counter_free, bf_counter_marsh);
+        bf_list_default(bf_list_free, bf_list_marsh);
     int r;
+
+    UNUSED(request);
 
     r = bf_marsh_new(&marsh, NULL, 0);
     if (r < 0)
@@ -125,33 +85,74 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
 
     bf_list_foreach (&cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+        _cleanup_bf_list_ bf_list *cgen_counters = NULL;
+
         r = bf_list_add_tail(&chains, cgen->chain);
         if (r)
             return bf_err_r(r, "failed to add chain to list");
-    }
 
-    if (request->cli_with_counters) {
-        r = _bf_cli_get_counters(&cgens, &counters);
+        r = bf_list_add_tail(&hookopts, cgen->program->link->hookopts);
         if (r)
-            return bf_err_r(r, "failed to get counters list");
+            return bf_err_r(r, "failed to add hookopts to list");
+
+        r = bf_list_new(&cgen_counters, &bf_list_ops_default(bf_counter_free,
+                                                             bf_counter_marsh));
+        if (r)
+            return r;
+
+        r = bf_cgen_get_counters(cgen, cgen_counters);
+        if (r)
+            return r;
+
+        r = bf_list_add_tail(&counters, cgen_counters);
+        if (r)
+            return r;
+
+        TAKE_PTR(cgen_counters);
     }
 
     // Marsh the chain list
     r = bf_list_marsh(&chains, &chain_marsh);
     if (r < 0)
-        return bf_err_r(r, "failed to marshal list");
+        return bf_err_r(r, "failed to marshal chains list");
 
     r = bf_marsh_add_child_obj(&marsh, chain_marsh);
     if (r < 0)
         return bf_err_r(r, "failed to add chain list to marsh");
 
+    // Marsh the hookopts list
+    r = bf_marsh_new(&hookopts_marsh, NULL, 0);
+    bf_list_foreach (&hookopts, hookopts_node) {
+        struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        if (hookopts) {
+            r = bf_hookopts_marsh(bf_list_node_get_data(hookopts_node), &child);
+            if (r < 0)
+                return r;
+
+            r = bf_marsh_add_child_obj(&hookopts_marsh, child);
+            if (r < 0)
+                return r;
+        } else {
+            r = bf_marsh_add_child_raw(&hookopts_marsh, NULL, 0);
+            if (r)
+                return r;
+        }
+    }
+
+    r = bf_marsh_add_child_obj(&marsh, hookopts_marsh);
+    if (r < 0)
+        return bf_err_r(r, "failed to add chain list to marsh");
+
+    // Marsh the counters list
     r = bf_list_marsh(&counters, &counters_marsh);
     if (r < 0)
-        return bf_err_r(r, "failed to marshal list");
+        return bf_err_r(r, "failed to marshal counters list");
 
     r = bf_marsh_add_child_obj(&marsh, counters_marsh);
     if (r < 0)
-        return bf_err_r(r, "failed to add chain list to marsh");
+        return bf_err_r(r, "failed to add counters list to marsh");
 
     return bf_response_new_success(response, (void *)marsh,
                                    bf_marsh_size(marsh));
