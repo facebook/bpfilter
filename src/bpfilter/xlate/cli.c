@@ -209,7 +209,7 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
             goto err_load;
 
         if (hookopts) {
-            r = bf_cgen_attach(cgen, request->ns, hookopts);
+            r = bf_cgen_attach(cgen, request->ns, &hookopts);
             if (r)
                 goto err_load;
         }

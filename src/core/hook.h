@@ -219,3 +219,13 @@ int bf_hookopts_parse_opts(struct bf_hookopts *hookopts, bf_list *raw_opts);
  * @return 0 if the hook options are valid, or a negative errno value otherwise.
  */
 int bf_hookopts_validate(const struct bf_hookopts *hookopts, enum bf_hook hook);
+
+/**
+ * Check if a specific hook option is used.
+ *
+ * @param hookopts Pointer to the `bf_hookopts` structure. Can't be NULL.
+ * @param type Hook option type to test for.
+ * @return True if the option is used, false otherwise.
+ */
+#define bf_hookopts_is_used(hookopts, type)                                    \
+    ((hookopts)->used_opts & (1 << (type)))

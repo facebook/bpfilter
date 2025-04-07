@@ -231,7 +231,7 @@ int bf_cgen_load(struct bf_cgen *cgen)
 }
 
 int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
-                   struct bf_hookopts *hookopts)
+                   struct bf_hookopts **hookopts)
 {
     int r;
 

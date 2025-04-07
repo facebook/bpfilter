@@ -383,8 +383,7 @@ int bf_program_load(struct bf_program *prog);
  *        Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_program_attach(struct bf_program *prog,
-                      const struct bf_hookopts *hookopts);
+int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts);
 
 /**
  * Detach the program from the kernel.

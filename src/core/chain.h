@@ -10,6 +10,7 @@
 #include "core/list.h"
 #include "core/verdict.h"
 
+struct bf_hookopts;
 struct bf_marsh;
 struct bf_rule;
 

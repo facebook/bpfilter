@@ -35,7 +35,7 @@ int bf_link_new(struct bf_link **link, const char *name)
 
     bf_strncpy(_link->name, BPF_OBJ_NAME_LEN, name);
 
-    _link->hookopts.used_opts = 0;
+    _link->hookopts = NULL;
     _link->fd = -1;
 
     *link = TAKE_PTR(_link);
@@ -47,6 +47,7 @@ int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
                            const struct bf_marsh *marsh)
 {
     _free_bf_link_ struct bf_link *_link = NULL;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -56,6 +57,7 @@ int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
     if (!_link)
         return -ENOMEM;
 
+    _link->hookopts = NULL;
     _link->fd = -1;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
@@ -64,10 +66,11 @@ int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&_link->hookopts, child->data, sizeof(_link->hookopts));
-
-    if (bf_marsh_next_child(marsh, child))
-        return bf_err_r(-E2BIG, "too many elements in bf_link marsh");
+    if (!bf_marsh_is_empty(child)) {
+        r = bf_hookopts_new_from_marsh(&_link->hookopts, child);
+        if (r)
+            return r;
+    }
 
     if (dir_fd != -1) {
         r = bf_bpf_obj_get(_link->name, dir_fd, &_link->fd);
@@ -89,6 +92,7 @@ void bf_link_free(struct bf_link **link)
     if (!*link)
         return;
 
+    bf_hookopts_free(&(*link)->hookopts);
     closep(&(*link)->fd);
     freep((void *)link);
 }
@@ -108,10 +112,22 @@ int bf_link_marsh(const struct bf_link *link, struct bf_marsh **marsh)
     if (r)
         return r;
 
-    r = bf_marsh_add_child_raw(&_marsh, &link->hookopts,
-                               sizeof(link->hookopts));
-    if (r)
-        return r;
+    // Serialize link.hookopts
+    if (link->hookopts) {
+        _cleanup_bf_marsh_ struct bf_marsh *hookopts_elem = NULL;
+
+        r = bf_hookopts_marsh(link->hookopts, &hookopts_elem);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, hookopts_elem);
+        if (r < 0)
+            return r;
+    } else {
+        r = bf_marsh_add_child_raw(&_marsh, NULL, 0);
+        if (r)
+            return r;
+    }
 
     *marsh = TAKE_PTR(_marsh);
 
@@ -127,10 +143,14 @@ void bf_link_dump(const struct bf_link *link, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "name: %s", link->name);
 
-    DUMP(prefix, "hookopts: struct bf_hookopts");
-    bf_dump_prefix_push(prefix);
-    bf_hookopts_dump(&link->hookopts, prefix);
-    bf_dump_prefix_pop(prefix);
+    if (link->hookopts) {
+        DUMP(prefix, "hookopts: struct bf_hookopts *");
+        bf_dump_prefix_push(prefix);
+        bf_hookopts_dump(link->hookopts, prefix);
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "hookopts: struct bf_hookopts * (NULL)");
+    }
 
     DUMP(bf_dump_prefix_last(prefix), "fd: %d", link->fd);
     bf_dump_prefix_pop(prefix);
@@ -201,8 +221,6 @@ static int _bf_link_attach_nf(struct bf_link *link, enum bf_hook hook,
     };
     int r;
 
-    UNUSED(hookopts);
-
     r = bf_bpf(BPF_LINK_CREATE, &attr);
     if (r < 0)
         return r;
@@ -242,7 +260,7 @@ static int _bf_link_attach_cgroup(struct bf_link *link, enum bf_hook hook,
 }
 
 int bf_link_attach(struct bf_link *link, enum bf_hook hook,
-                   const struct bf_hookopts *hookopts, int prog_fd)
+                   struct bf_hookopts **hookopts, int prog_fd)
 {
     int r;
 
@@ -250,16 +268,16 @@ int bf_link_attach(struct bf_link *link, enum bf_hook hook,
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
-        r = _bf_link_attach_xdp(link, hook, hookopts, prog_fd);
+        r = _bf_link_attach_xdp(link, hook, *hookopts, prog_fd);
         break;
     case BF_FLAVOR_TC:
-        r = _bf_link_attach_tc(link, hook, hookopts, prog_fd);
+        r = _bf_link_attach_tc(link, hook, *hookopts, prog_fd);
         break;
     case BF_FLAVOR_CGROUP:
-        r = _bf_link_attach_cgroup(link, hook, hookopts, prog_fd);
+        r = _bf_link_attach_cgroup(link, hook, *hookopts, prog_fd);
         break;
     case BF_FLAVOR_NF:
-        r = _bf_link_attach_nf(link, hook, hookopts, prog_fd);
+        r = _bf_link_attach_nf(link, hook, *hookopts, prog_fd);
         break;
     default:
         return -ENOTSUP;
@@ -268,7 +286,7 @@ int bf_link_attach(struct bf_link *link, enum bf_hook hook,
     if (r)
         return r;
 
-    memcpy(&link->hookopts, hookopts, sizeof(link->hookopts));
+    link->hookopts = TAKE_PTR(*hookopts);
 
     return 0;
 }
@@ -302,9 +320,9 @@ static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
 
     bf_assert(link);
 
-    memcpy(priorities, link->hookopts.priorities, sizeof(priorities));
+    memcpy(priorities, link->hookopts->priorities, sizeof(priorities));
 
-    attr.link_create.netfilter.pf = link->hookopts.family;
+    attr.link_create.netfilter.pf = link->hookopts->family;
     attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
     attr.link_create.netfilter.priority = priorities[1];
 
@@ -313,8 +331,8 @@ static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
         return new_link_fd;
 
     // Swap priorities, so priorities[0] is the one currently used
-    link->hookopts.priorities[0] = priorities[1];
-    link->hookopts.priorities[1] = priorities[0];
+    link->hookopts->priorities[0] = priorities[1];
+    link->hookopts->priorities[1] = priorities[0];
 
     return 0;
 }
@@ -357,6 +375,7 @@ void bf_link_detach(struct bf_link *link)
             "call to BPF_LINK_DETACH failed, closing the file descriptor and assuming the link is destroyed");
     }
 
+    bf_hookopts_free(&link->hookopts);
     closep(&link->fd);
 }
 
