@@ -20,12 +20,13 @@
 #include "core/rule.h"
 #include "libbpfilter/generic.h"
 
-int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters)
+int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
     _cleanup_bf_request_ struct bf_request *request = NULL;
     _cleanup_bf_response_ struct bf_response *response = NULL;
-    _clean_bf_list_ bf_list _chains = bf_list_default(bf_chain_free, NULL);
-    _clean_bf_list_ bf_list _counters = bf_list_default(bf_counter_free, NULL);
+    _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
+    _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
+    _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
     struct bf_marsh *marsh = NULL;
     struct bf_marsh *child = NULL;
     int r;
@@ -36,7 +37,6 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters)
 
     request->front = BF_FRONT_CLI;
     request->cmd = BF_REQ_RULESET_GET;
-    request->cli_with_counters = with_counters;
 
     r = bf_send(request, &response);
     if (r < 0)
@@ -45,57 +45,85 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *counters, bool with_counters)
     if (response->type == BF_RES_FAILURE)
         return response->error;
 
-    if (response->data_len == 0) {
-        bf_info("no ruleset returned");
+    if (response->data_len == 0)
         return 0;
-    }
 
     marsh = (struct bf_marsh *)response->data;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    {
-        // Unmarsh chains
-        struct bf_marsh *elem = NULL;
+    for (struct bf_marsh *schild = bf_marsh_next_child(child, NULL); schild;
+         schild = bf_marsh_next_child(child, schild)) {
+        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
 
-        while ((elem = bf_marsh_next_child(child, elem))) {
-            _cleanup_bf_chain_ struct bf_chain *chain = NULL;
-            r = bf_chain_new_from_marsh(&chain, elem);
-            if (r < 0)
-                return r;
+        r = bf_chain_new_from_marsh(&chain, schild);
+        if (r)
+            return r;
 
-            r = bf_list_add_tail(&_chains, chain);
-            if (r < 0)
-                return r;
+        r = bf_list_add_tail(&_chains, chain);
+        if (r)
+            return r;
 
-            TAKE_PTR(chain);
-        }
+        TAKE_PTR(chain);
     }
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    {
-        // Unmarsh counters
-        struct bf_marsh *elem = NULL;
+    for (struct bf_marsh *schild = bf_marsh_next_child(child, NULL); schild;
+         schild = bf_marsh_next_child(child, schild)) {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
 
-        while ((elem = bf_marsh_next_child(child, elem))) {
+        if (!bf_marsh_is_empty(schild)) {
+            r = bf_hookopts_new_from_marsh(&hookopts, schild);
+            if (r)
+                return r;
+        }
+
+        r = bf_list_add_tail(&_hookopts, hookopts);
+        if (r)
+            return r;
+
+        TAKE_PTR(hookopts);
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    for (struct bf_marsh *schild = bf_marsh_next_child(child, NULL); schild;
+         schild = bf_marsh_next_child(child, schild)) {
+        _cleanup_bf_list_ bf_list *nested = NULL;
+
+        r = bf_list_new(
+            &nested, &bf_list_ops_default(bf_counter_free, bf_counter_marsh));
+        if (r)
+            return r;
+
+        for (struct bf_marsh *counter_marsh =
+                 bf_marsh_next_child(schild, NULL);
+             counter_marsh;
+             counter_marsh = bf_marsh_next_child(schild, counter_marsh)) {
             _cleanup_bf_counter_ struct bf_counter *counter = NULL;
 
-            r = bf_counter_new_from_marsh(&counter, elem);
-            if (r < 0)
+            r = bf_counter_new_from_marsh(&counter, counter_marsh);
+            if (r)
                 return r;
 
-            r = bf_list_add_tail(&_counters, counter);
-            if (r < 0)
+            r = bf_list_add_tail(nested, counter);
+            if (r)
                 return r;
 
             TAKE_PTR(counter);
         }
+
+        r = bf_list_add_tail(&_counters, nested);
+        if (r)
+            return r;
+
+        TAKE_PTR(nested);
     }
 
     *chains = bf_list_move(_chains);
-    if (with_counters)
-        *counters = bf_list_move(_counters);
+    *hookopts = bf_list_move(_hookopts);
+    *counters = bf_list_move(_counters);
 
     return 0;
 }
