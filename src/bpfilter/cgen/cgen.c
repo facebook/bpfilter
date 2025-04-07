@@ -10,12 +10,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "bpfilter/cgen/dump.h"
 #include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/ctx.h"
 #include "core/chain.h"
+#include "core/counter.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/helper.h"
@@ -307,4 +309,35 @@ void bf_cgen_unload(struct bf_cgen *cgen)
     bf_assert(cgen);
 
     bf_program_unload(cgen->program);
+}
+
+int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
+{
+    bf_list _counters = bf_list_default_from(*counters);
+    int r;
+
+    bf_assert(cgen && counters);
+
+    for (ssize_t i = BF_COUNTER_POLICY;
+         i < (ssize_t)bf_list_size(&cgen->chain->rules); ++i) {
+        _cleanup_bf_counter_ struct bf_counter *counter = NULL;
+
+        r = bf_counter_new(&counter, 0, 0);
+        if (r)
+            return r;
+
+        r = bf_cgen_get_counter(cgen, i, counter);
+        if (r)
+            return r;
+
+        r = bf_list_add_tail(&_counters, counter);
+        if (r)
+            return r;
+
+        TAKE_PTR(counter);
+    }
+
+    *counters = bf_list_move(_counters);
+
+    return 0;
 }
