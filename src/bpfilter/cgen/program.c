@@ -1205,8 +1205,7 @@ int bf_program_load(struct bf_program *prog)
     return r;
 }
 
-int bf_program_attach(struct bf_program *prog,
-                      const struct bf_hookopts *hookopts)
+int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
 {
     int r;
 

@@ -366,9 +366,6 @@ static_assert(ARRAY_SIZE(_bf_hookopts_ops) == _BF_HOOKOPTS_MAX,
     ((_bf_hookopts_ops[type].supported_by & (1 << (flavor))) ||                \
      _bf_hookopts_is_required((type), (flavor)))
 
-#define _bf_hookopts_is_used(hookopts, type)                                   \
-    ((hookopts)->used_opts & (1 << (type)))
-
 static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
 {
     bf_assert(key);
@@ -406,15 +403,15 @@ int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
         return r;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
+        return bf_err_r(-EINVAL, "bf_hookopts: missing used_opts field");
     memcpy(&_hookopts->used_opts, child->data, sizeof(_hookopts->used_opts));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
+        return bf_err_r(-EINVAL, "bf_hookopts: missing ifindex field");
     memcpy(&_hookopts->ifindex, child->data, sizeof(_hookopts->ifindex));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
+        return bf_err_r(-EINVAL, "bf_hookopts: missing cgpath field");
     if (child->data_len) {
         _hookopts->cgpath = strdup(child->data);
         if (!_hookopts->cgpath)
@@ -422,7 +419,7 @@ int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
     }
 
     if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
+        return bf_err_r(-EINVAL, "bf_hookopts: missing family field");
     memcpy(&_hookopts->family, child->data, sizeof(_hookopts->family));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
@@ -568,7 +565,7 @@ int bf_hookopts_validate(const struct bf_hookopts *hookopts, enum bf_hook hook)
 
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         struct bf_hookopts_ops *ops = &_bf_hookopts_ops[type];
-        bool is_used = _bf_hookopts_is_used(hookopts, type);
+        bool is_used = bf_hookopts_is_used(hookopts, type);
         bool is_required = _bf_hookopts_is_required(type, flavor);
         bool is_supported = _bf_hookopts_is_supported(type, flavor);
 

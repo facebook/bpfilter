@@ -24,7 +24,7 @@ struct bf_link
     char name[BPF_OBJ_NAME_LEN];
 
     /** Hook options used for the link. Only valid if the link is materialized */
-    struct bf_hookopts hookopts;
+    struct bf_hookopts *hookopts;
 
     /** File descriptor of the link, only valid once the link object has been
      * created. */
@@ -102,7 +102,7 @@ void bf_link_dump(const struct bf_link *link, prefix_t *prefix);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_link_attach(struct bf_link *link, enum bf_hook hook,
-                   const struct bf_hookopts *hookopts, int prog_fd);
+                   struct bf_hookopts **hookopts, int prog_fd);
 
 /**
  * Replace the program attached to the link.

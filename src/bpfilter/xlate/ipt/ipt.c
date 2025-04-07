@@ -658,7 +658,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
             if (r)
                 return r;
 
-            r = bf_cgen_attach(cgen, req->ns, hookopts);
+            r = bf_cgen_attach(cgen, req->ns, &hookopts);
             if (r) {
                 bf_err(
                     "failed to load a program for iptables hook %d, skipping",

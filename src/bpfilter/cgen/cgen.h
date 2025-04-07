@@ -121,7 +121,7 @@ int bf_cgen_load(struct bf_cgen *cgen);
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
-                   struct bf_hookopts *hookopts);
+                   struct bf_hookopts **hookopts);
 
 /**
  * Update the program attached to the hook.
