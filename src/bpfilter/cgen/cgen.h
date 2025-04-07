@@ -10,6 +10,7 @@
 #include "core/counter.h"
 #include "core/dump.h"
 #include "core/front.h"
+#include "core/list.h"
 
 struct bf_chain;
 struct bf_marsh;
@@ -167,8 +168,8 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
  */
 enum bf_counter_type
 {
-    BF_COUNTER_POLICY = -1,
-    BF_COUNTER_ERRORS = -2,
+    BF_COUNTER_POLICY = -2,
+    BF_COUNTER_ERRORS = -1,
 };
 
 /**
@@ -190,3 +191,21 @@ enum bf_counter_type
 int bf_cgen_get_counter(const struct bf_cgen *cgen,
                         enum bf_counter_type counter_idx,
                         struct bf_counter *counter);
+
+/**
+ * Get the counters for all the rules.
+ *
+ * Create a new `bf_counter` structure for each rule (and the policy/error
+ * counters) and add it to the list.
+ *
+ * The caller owns the `bf_counter` in the list and is responsible for freeing
+ * it.
+ *
+ * A `bf_counter` object will be created even if the rule has no counter
+ * define, but it will be empty.
+ *
+ * @param cgen Codegen to fetch the counters for. Can't be NULL.
+ * @param counters List of counters, filled by the function. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters);
