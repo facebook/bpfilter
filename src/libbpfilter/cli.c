@@ -97,8 +97,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
         if (r)
             return r;
 
-        for (struct bf_marsh *counter_marsh =
-                 bf_marsh_next_child(schild, NULL);
+        for (struct bf_marsh *counter_marsh = bf_marsh_next_child(schild, NULL);
              counter_marsh;
              counter_marsh = bf_marsh_next_child(schild, counter_marsh)) {
             _cleanup_bf_counter_ struct bf_counter *counter = NULL;
