@@ -102,10 +102,10 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
          * reference value. This is a JLT/JGT comparison, we need to have the
          * MSB where the machine expects then. */
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JLT, BPF_REG_1, port[0], 0));
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JGT, BPF_REG_1, port[1], 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JLT, BPF_REG_1, port[0], 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_1, port[1], 0));
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
