@@ -45,6 +45,8 @@ add_custom_target(e2e
                 --bpfilter $<TARGET_FILE:bpfilter>
     COMMAND
         ${CMAKE_SOURCE_DIR}/tools/asroot ${CMAKE_CURRENT_SOURCE_DIR}/netns.sh
+    COMMAND
+        ${CMAKE_SOURCE_DIR}/tools/asroot ${CMAKE_CURRENT_SOURCE_DIR}/cli.sh
     DEPENDS
         e2e_bin
         bpfilter
