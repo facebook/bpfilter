@@ -191,7 +191,7 @@ int _bf_do_ruleset_get(int argc, char *argv[])
     if (r < 0)
         return bf_err_r(r, "failed to request ruleset");
 
-    r = bf_cli_dump_ruleset(&chains, &hookopts, &counters);
+    r = bfc_ruleset_dump(&chains, &hookopts, &counters);
     if (r)
         return bf_err_r(r, "failed to dump ruleset");
 
