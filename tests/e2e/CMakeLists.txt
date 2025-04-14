@@ -43,12 +43,20 @@ add_custom_target(e2e
         ${CMAKE_SOURCE_DIR}/tools/asroot
             $<TARGET_FILE:e2e_bin>
                 --bpfilter $<TARGET_FILE:bpfilter>
-    COMMAND
-        ${CMAKE_SOURCE_DIR}/tools/asroot ${CMAKE_CURRENT_SOURCE_DIR}/netns.sh
-    COMMAND
-        ${CMAKE_SOURCE_DIR}/tools/asroot ${CMAKE_CURRENT_SOURCE_DIR}/cli.sh
+    # Comment those until the dependencies are updated to include ip
+    # COMMAND
+    #     ${CMAKE_SOURCE_DIR}/tools/asroot
+    #         ${CMAKE_CURRENT_SOURCE_DIR}/netns.sh
+    #             --bpfilter $<TARGET_FILE:bpfilter>
+    #             --bfcli $<TARGET_FILE:bfcli>
+    # COMMAND
+    #     #${CMAKE_SOURCE_DIR}/tools/asroot
+    #         ${CMAKE_CURRENT_SOURCE_DIR}/cli.sh
+    #             --bpfilter $<TARGET_FILE:bpfilter>
+    #             --bfcli $<TARGET_FILE:bfcli>
     DEPENDS
         e2e_bin
         bpfilter
+        bfcli
     COMMENT "Running end-to-end tests"
 )
