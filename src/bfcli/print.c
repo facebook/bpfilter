@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
+
 #include "bfcli/print.h"
 
 #include <errno.h>
@@ -46,17 +47,8 @@ static void bf_dump_hex_local(const void *data, size_t len)
     }
 }
 
-/**
- * Dump the details of a chain, including its rules and counters.
- *
- * @param chain Chain to be dumped. Can't be NULL.
- * @param hookopts Hook options used to attach the chain to its hook. NULL if
- *        the chain is not attached.
- * @param counters List of `bf_counter` object representing the counter
- *        values for each rule.
- */
-static void _bf_cli_chain_dump(struct bf_chain *chain,
-                               struct bf_hookopts *hookopts, bf_list *counters)
+void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
+                    bf_list *counters)
 {
     struct bf_counter *counter;
     bf_list_node *counter_node;
@@ -133,11 +125,9 @@ static void _bf_cli_chain_dump(struct bf_chain *chain,
 
         (void)fprintf(stdout, "        %s\n", bf_verdict_to_str(rule->verdict));
     }
-
-    (void)fprintf(stdout, "\n");
 }
 
-int bf_cli_dump_ruleset(bf_list *chains, bf_list *hookopts, bf_list *counters)
+int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
     struct bf_list_node *chain_node;
     struct bf_list_node *hookopts_node;
@@ -155,9 +145,9 @@ int bf_cli_dump_ruleset(bf_list *chains, bf_list *hookopts, bf_list *counters)
     counter_node = bf_list_get_head(counters);
 
     while (chain_node) {
-        _bf_cli_chain_dump(bf_list_node_get_data(chain_node),
-                           bf_list_node_get_data(hookopts_node),
-                           bf_list_node_get_data(counter_node));
+        bfc_chain_dump(bf_list_node_get_data(chain_node),
+                       bf_list_node_get_data(hookopts_node),
+                       bf_list_node_get_data(counter_node));
 
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);
