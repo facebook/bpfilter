@@ -933,69 +933,6 @@ int bf_program_generate(struct bf_program *program)
 }
 
 /**
- * Pin the BPF objects that should survive the daemon's lifetime.
- *
- * If any of the BPF objects can't be pinned, unpin all of them to ensure
- * there are no leftovers.
- *
- * @param program `bf_program` object to pin. Must be loaded. Can't be NULL.
- * @return 0 on success, or negative erron value on failure.
- */
-static int _bf_program_pin(const struct bf_program *program)
-{
-    _cleanup_close_ int pindir_fd = -1;
-    int r;
-
-    bf_assert(program);
-
-    r = _bf_program_get_pindir_fd(program);
-    if (r < 0)
-        return bf_err_r(r, "failed to open bf_program pin directory");
-    pindir_fd = r;
-
-    r = bf_bpf_obj_pin(program->prog_name, program->runtime.prog_fd, pindir_fd);
-    if (r < 0) {
-        bf_err_r(r, "failed to pin program '%s' in %s", program->prog_name,
-                 BF_PIN_DIR);
-        goto err_prog_pin;
-    }
-
-    r = bf_map_pin(program->cmap, pindir_fd);
-    if (r < 0)
-        goto err_cmap_pin;
-
-    r = bf_map_pin(program->pmap, pindir_fd);
-    if (r < 0)
-        goto err_pmap_pin;
-
-    r = bf_link_pin(program->link, pindir_fd);
-    if (r)
-        goto err_link_pin;
-
-    bf_list_foreach (&program->sets, set_node) {
-        r = bf_map_pin(bf_list_node_get_data(set_node), pindir_fd);
-        if (r < 0)
-            goto err_set_pin;
-    }
-
-    return 0;
-
-err_set_pin:
-    bf_list_foreach (&program->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
-    bf_link_unpin(program->link, program->runtime.pindir_fd);
-err_link_pin:
-    bf_map_unpin(program->pmap, pindir_fd);
-err_pmap_pin:
-    bf_map_unpin(program->cmap, pindir_fd);
-err_cmap_pin:
-    unlinkat(pindir_fd, program->prog_name, 0);
-err_prog_pin:
-    closep(&pindir_fd);
-    return r;
-}
-
-/**
  * Unpin the BPF objects owned by a program.
  *
  * If the @p program object is deleted, the BPF object will disappear from
@@ -1162,6 +1099,67 @@ err_destroy_maps:
     return r;
 }
 
+/**
+ * Pin the BPF objects that should survive the daemon's lifetime.
+ *
+ * If any of the BPF objects can't be pinned, unpin all of them to ensure
+ * there are no leftovers.
+ *
+ * This function is called when the BPF program has been loaded, if the daemon
+ * is running in persist mode. Hence, the program hasn't been attached yet, so
+ * there is no need to pin the link.
+ *
+ * @param program `bf_program` object to pin. Must be loaded. Can't be NULL.
+ * @return 0 on success, or negative erron value on failure.
+ */
+static int _bf_program_pin_loaded(const struct bf_program *program)
+{
+    _cleanup_close_ int pindir_fd = -1;
+    int r;
+
+    bf_assert(program);
+
+    r = _bf_program_get_pindir_fd(program);
+    if (r < 0)
+        return bf_err_r(r, "failed to open bf_program pin directory");
+    pindir_fd = r;
+
+    r = bf_bpf_obj_pin(program->prog_name, program->runtime.prog_fd, pindir_fd);
+    if (r < 0) {
+        bf_err_r(r, "failed to pin program '%s' in %s", program->prog_name,
+                 BF_PIN_DIR);
+        goto err_prog_pin;
+    }
+
+    r = bf_map_pin(program->cmap, pindir_fd);
+    if (r < 0)
+        goto err_cmap_pin;
+
+    r = bf_map_pin(program->pmap, pindir_fd);
+    if (r < 0)
+        goto err_pmap_pin;
+
+    bf_list_foreach (&program->sets, set_node) {
+        r = bf_map_pin(bf_list_node_get_data(set_node), pindir_fd);
+        if (r < 0)
+            goto err_set_pin;
+    }
+
+    return 0;
+
+err_set_pin:
+    bf_list_foreach (&program->sets, set_node)
+        bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
+    bf_map_unpin(program->pmap, pindir_fd);
+err_pmap_pin:
+    bf_map_unpin(program->cmap, pindir_fd);
+err_cmap_pin:
+    unlinkat(pindir_fd, program->prog_name, 0);
+err_prog_pin:
+    closep(&pindir_fd);
+    return r;
+}
+
 int bf_program_load(struct bf_program *prog)
 {
     int r;
@@ -1189,7 +1187,7 @@ int bf_program_load(struct bf_program *prog)
         return bf_err_r(r, "failed to load bf_program");
 
     if (bf_opts_persist()) {
-        r = _bf_program_pin(prog);
+        r = _bf_program_pin_loaded(prog);
         if (r) {
             bf_err_r(
                 r,
