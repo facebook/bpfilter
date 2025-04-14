@@ -154,8 +154,12 @@ int _bf_do_ruleset_get(int argc, char *argv[])
     return 0;
 }
 
+#define BFC_COMMAND_NAME_LEN 32
+static char _bfc_command_name[BFC_COMMAND_NAME_LEN];
+
 int main(int argc, char *argv[])
 {
+    const char *name = argv[0];
     const char *obj_str = NULL;
     const char *action_str = NULL;
     int argv_skip = 0;
@@ -184,6 +188,10 @@ int main(int argc, char *argv[])
             exit(0);
         }
     }
+
+    (void)snprintf(_bfc_command_name, BFC_COMMAND_NAME_LEN, "%s %s %s", name,
+                   obj_str, action_str);
+    argv[0] = _bfc_command_name;
 
     if (streq(obj_str, "ruleset") && streq(action_str, "set")) {
         r = _bf_do_ruleset_set(argc, argv);
