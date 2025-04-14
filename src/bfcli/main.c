@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bfcli/chain.h"
 #include "bfcli/helper.h"
 #include "bfcli/print.h"
 #include "core/chain.h"
@@ -199,6 +200,18 @@ int main(int argc, char *argv[])
         r = _bf_do_ruleset_get(argc, argv);
     } else if (streq(obj_str, "ruleset") && streq(action_str, "flush")) {
         r = bf_cli_ruleset_flush();
+    } else if (streq(obj_str, "chain") && streq(action_str, "set")) {
+        r = bfc_chain_set(argc, argv);
+    } else if (streq(obj_str, "chain") && streq(action_str, "get")) {
+        r = bfc_chain_get(argc, argv);
+    } else if (streq(obj_str, "chain") && streq(action_str, "load")) {
+        r = bfc_chain_load(argc, argv);
+    } else if (streq(obj_str, "chain") && streq(action_str, "attach")) {
+        r = bfc_chain_attach(argc, argv);
+    } else if (streq(obj_str, "chain") && streq(action_str, "update")) {
+        r = bfc_chain_update(argc, argv);
+    } else if (streq(obj_str, "chain") && streq(action_str, "flush")) {
+        r = bfc_chain_flush(argc, argv);
     } else {
         return bf_err_r(-EINVAL, "unrecognized object '%s' and action '%s'",
                         obj_str, action_str);

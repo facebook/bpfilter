@@ -237,6 +237,327 @@ err_load:
     return r;
 }
 
+int _bf_cli_chain_set(const struct bf_request *request,
+                      struct bf_response **response)
+{
+    struct bf_cgen *old_cgen;
+    struct bf_marsh *marsh, *child = NULL;
+    _cleanup_bf_cgen_ struct bf_cgen *new_cgen = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    int r;
+
+    bf_assert(request && response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
+    r = bf_chain_new_from_marsh(&chain, child);
+    if (r)
+        return r;
+
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return bf_err_r(-ENOENT, "expecting marsh for hookopts, none found");
+    if (child->data_len) {
+        r = bf_hookopts_new_from_marsh(&hookopts, child);
+        if (r)
+            return r;
+    }
+
+    r = bf_cgen_new(&new_cgen, BF_FRONT_CLI, &chain);
+    if (r)
+        return r;
+
+    r = bf_cgen_load(new_cgen);
+    if (r)
+        return r;
+
+    old_cgen = bf_ctx_get_cgen(new_cgen->chain->name);
+    if (old_cgen) {
+        /* bf_ctx_delete_cgen() can only fail if the codegen is not found,
+         * but we know this codegen exist. */
+        (void)bf_ctx_delete_cgen(old_cgen, true);
+    }
+
+    if (hookopts) {
+        r = bf_cgen_attach(new_cgen, request->ns, &hookopts);
+        if (r)
+            goto err_unload;
+    }
+
+    r = bf_ctx_set_cgen(new_cgen);
+    if (r)
+        goto err_detach;
+
+    TAKE_PTR(new_cgen);
+
+    return r;
+
+err_detach:
+    bf_cgen_detach(new_cgen);
+err_unload:
+    bf_cgen_unload(new_cgen);
+    return r;
+}
+
+static int _bf_cli_chain_get(const struct bf_request *request,
+                             struct bf_response **response)
+{
+    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _clean_bf_list_ bf_list counters =
+        bf_list_default(bf_counter_free, bf_counter_marsh);
+    struct bf_cgen *cgen;
+    struct bf_marsh *req_marsh, *child = NULL;
+    int r;
+
+    req_marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(req_marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    if (!(child = bf_marsh_next_child(req_marsh, child)))
+        return -EINVAL;
+    if (child->data_len < 2)
+        return bf_err_r(-EINVAL, "_bf_cli_chain_get: chain name is empty");
+    if (child->data[child->data_len - 1]) {
+        return bf_err_r(-EINVAL,
+                        "_bf_cli_chain_get: chain name if not nul-terminated");
+    }
+
+    cgen = bf_ctx_get_cgen(child->data);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' not found", req_marsh->data);
+
+    r = bf_marsh_new(&marsh, NULL, 0);
+    if (r < 0)
+        return bf_err_r(r, "failed to get new marsh");
+
+    {
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_chain_marsh(cgen->chain, &child);
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&marsh, child);
+        if (r)
+            return r;
+    }
+
+    if (cgen->program->link->hookopts) {
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_hookopts_marsh(cgen->program->link->hookopts, &child);
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&marsh, child);
+        if (r < 0)
+            return r;
+    } else {
+        r = bf_marsh_add_child_raw(&marsh, NULL, 0);
+        if (r)
+            return r;
+    }
+
+    {
+        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+
+        r = bf_cgen_get_counters(cgen, &counters);
+        if (r)
+            return r;
+
+        r = bf_list_marsh(&counters, &child);
+        if (r)
+            return r;
+
+        r = bf_marsh_add_child_obj(&marsh, child);
+        if (r)
+            return r;
+    }
+
+    return bf_response_new_success(response, (void *)marsh,
+                                   bf_marsh_size(marsh));
+}
+
+int _bf_cli_chain_load(const struct bf_request *request,
+                       struct bf_response **response)
+{
+    struct bf_marsh *marsh, *child = NULL;
+    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    int r;
+
+    bf_assert(request && response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    bf_info("marsh=%p, child=%p", marsh, child);
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
+    bf_info("chaib load unmarsh chain: %p", child);
+    r = bf_chain_new_from_marsh(&chain, child);
+    if (r)
+        return r;
+
+    if (bf_ctx_get_cgen(chain->name)) {
+        return bf_err_r(-EEXIST,
+                        "_bf_cli_chain_load: chain '%s' already exists",
+                        chain->name);
+    }
+
+    r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
+    if (r)
+        return r;
+
+    r = bf_cgen_load(cgen);
+    if (r)
+        return r;
+
+    r = bf_ctx_set_cgen(cgen);
+    if (r) {
+        bf_cgen_unload(cgen);
+        return bf_err_r(
+            r, "bf_ctx_set_cgen: failed to add cgen to the runtime context");
+    }
+
+    TAKE_PTR(cgen);
+
+    return r;
+}
+
+int _bf_cli_chain_attach(const struct bf_request *request,
+                         struct bf_response **response)
+{
+    struct bf_marsh *marsh, *child = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    struct bf_cgen *cgen = NULL;
+    const char *name;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    int r;
+
+    bf_assert(request && response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    if (marsh->data[marsh->data_len - 1]) {
+        return bf_err_r(
+            -EINVAL, "_bf_cli_chain_attach: chain name if not nul-terminated");
+    }
+    name = child->data;
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    r = bf_hookopts_new_from_marsh(&hookopts, child);
+    if (r)
+        return r;
+
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
+    if (cgen->program->link->hookopts)
+        return bf_err_r(-EBUSY, "chain '%s' is already linked to a hook", name);
+
+    r = bf_hookopts_validate(hookopts, cgen->chain->hook);
+    if (r)
+        return bf_err_r(r, "failed to validate hook options");
+
+    r = bf_cgen_attach(cgen, request->ns, &hookopts);
+    if (r)
+        return bf_err_r(r, "failed to attach codegen to hook");
+
+    return r;
+}
+
+int _bf_cli_chain_update(const struct bf_request *request,
+                         struct bf_response **response)
+{
+    struct bf_marsh *marsh, *child = NULL;
+    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    struct bf_cgen *cgen = NULL;
+    int r;
+
+    bf_assert(request && response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    child = bf_marsh_next_child(marsh, child);
+    if (!child)
+        return -EINVAL;
+    r = bf_chain_new_from_marsh(&chain, child);
+    if (r)
+        return r;
+
+    cgen = bf_ctx_get_cgen(chain->name);
+    if (!cgen)
+        return -ENOENT;
+
+    r = bf_cgen_update(cgen, &chain);
+    if (r)
+        return -EINVAL;
+
+    return r;
+}
+
+int _bf_cli_chain_flush(const struct bf_request *request,
+                        struct bf_response **response)
+{
+    struct bf_marsh *marsh, *child = NULL;
+    struct bf_cgen *cgen = NULL;
+
+    bf_assert(request && response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    if (child->data_len < 2)
+        return bf_err_r(-EINVAL, "_bf_cli_chain_flush: chain name is empty");
+    if (child->data[child->data_len - 1]) {
+        return bf_err_r(
+            -EINVAL, "_bf_cli_chain_flush: chain name if not nul-terminated");
+    }
+
+    cgen = bf_ctx_get_cgen(child->data);
+    if (!cgen)
+        return -ENOENT;
+
+    return bf_ctx_delete_cgen(cgen, true);
+}
+
 static int _bf_cli_request_handler(struct bf_request *request,
                                    struct bf_response **response)
 {
@@ -254,6 +575,24 @@ static int _bf_cli_request_handler(struct bf_request *request,
         break;
     case BF_REQ_RULESET_GET:
         r = _bf_cli_ruleset_get(request, response);
+        break;
+    case BF_REQ_CHAIN_SET:
+        r = _bf_cli_chain_set(request, response);
+        break;
+    case BF_REQ_CHAIN_GET:
+        r = _bf_cli_chain_get(request, response);
+        break;
+    case BF_REQ_CHAIN_LOAD:
+        r = _bf_cli_chain_load(request, response);
+        break;
+    case BF_REQ_CHAIN_ATTACH:
+        r = _bf_cli_chain_attach(request, response);
+        break;
+    case BF_REQ_CHAIN_UPDATE:
+        r = _bf_cli_chain_update(request, response);
+        break;
+    case BF_REQ_CHAIN_FLUSH:
+        r = _bf_cli_chain_flush(request, response);
         break;
     default:
         r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",

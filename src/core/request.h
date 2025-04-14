@@ -36,6 +36,13 @@ enum bf_request_cmd
      * front-end and replaced with the chains defined in the request. */
     BF_REQ_RULESET_SET,
 
+    BF_REQ_CHAIN_SET,
+    BF_REQ_CHAIN_GET,
+    BF_REQ_CHAIN_LOAD,
+    BF_REQ_CHAIN_ATTACH,
+    BF_REQ_CHAIN_UPDATE,
+    BF_REQ_CHAIN_FLUSH,
+
     BF_REQ_COUNTERS_SET,
     BF_REQ_COUNTERS_GET,
     BF_REQ_CUSTOM,
