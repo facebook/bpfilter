@@ -1,7 +1,7 @@
 ``bfcli``
 =========
 
-``bfcli`` is part of the ``bpfilter`` project, it has been created to accelerate ``bpfilter`` development by providing a CLI using a trivial communication format with the daemon. For this reason, ``bfcli`` is the main CLI used to develop ``bpfilter``, and it uses the new features of ``bpfilter`` before any other front-end.
+``bfcli`` is a command line tool to communicate with the bpfilter daemon. It provides supports for extended features compared to the iptables client.
 
 Commands
 --------
@@ -23,8 +23,8 @@ Define a new ruleset: replace all the existing chains with the ruleset provided.
 
 .. code:: shell
 
-    bfcli ruleset set --file myruleset.tx
-    bfcli ruleset set --str "chain BF_HOOK_XDP policy ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
+    bfcli ruleset set --file myruleset.txt
+    bfcli ruleset set --str "chain my_xdp_chain BF_HOOK_XDP ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
 
 ``ruleset get``
 ~~~~~~~~~~~~~~~
@@ -36,12 +36,12 @@ Print the ruleset: request all the chains and rules from the daemon with counter
 .. code:: shell
 
     $ sudo bfcli ruleset get
-    chain BF_HOOK_NF_LOCAL_IN{attach=yes} policy ACCEPT
-        counters policy 3818 packets 2473532 bytes; error 0 packets 0 bytes
-        rule
-            ip4.saddr eq 0x0a 0x00 0x00 0x01 0xff 0xff 0xff 0xff
-            counters 0 packets 0 bytes
-            ACCEPT
+      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+          counters policy 87 packets 9085 bytes; error 0 packets 0 bytes
+          rule
+              ip4.saddr eq 0xc0 0xa8 0x01 0x01 0xff 0xff 0xff 0xff
+              counters 2 packets 196 bytes
+              ACCEPT
 
 ``ruleset flush``
 ~~~~~~~~~~~~~~~~~
@@ -52,7 +52,173 @@ Remove all the chains and rules defined by the daemon. Once this command complet
 
 .. code:: shell
 
-    bfcli ruleset flush
+    $ sudo bfcli ruleset get
+      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+          counters policy 87 packets 9085 bytes; error 0 packets 0 bytes
+          rule
+              ip4.saddr eq 0xc0 0xa8 0x01 0x01 0xff 0xff 0xff 0xff
+              counters 2 packets 196 bytes
+              ACCEPT
+    $ sudo bfcli ruleset flush
+    $ sudo bfcli ruleset get
+    $ # Empty ruleset
+
+``chain set``
+~~~~~~~~~~~~~
+
+Generate and load a chain into the kernel. If the chain definition contains hook options, the daemon will attach it to its hook. Any existing chain with the same name (attached or not) will be discarded and replaced with the new one.
+
+If you want to update an existing chain without downtime, use ``bfcli chain update`` instead.
+
+**Options**
+  - ``--from-str CHAIN``: read the chain to set from the command line arguments.
+  - ``--from-file FILEPATH``: read the chain from a file.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Create an empty XDP chain, do not attach it
+    $ sudo bfcli chain set --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT"
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP ACCEPT
+          counters policy 0 packets 0 bytes; error 0 packets 0 bytes
+
+    # Create an empty TC chain and attach it
+    $ sudo bfcli chain set --from-str "chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT"
+    $ sudo bfcli chain get --name my_tc_chain
+      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+          counters policy 35 packets 4091 bytes; error 0 packets 0 bytes
+
+``chain get``
+~~~~~~~~~~~~~
+
+Print a chain.
+
+**Options**
+  - ``--name NAME``: name of the chain to print.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Create a Netfilter chain and print it
+    $ sudo bfcli chain set --from-str "chain my_input_chain BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT"
+    $ sudo bfcli chain get --name my_input_chain
+      chain my_input_chain BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT
+          counters policy 1161 packets 149423 bytes; error 0 packets 0 bytes
+
+``chain load``
+~~~~~~~~~~~~~~
+
+Generate and load a chain into the kernel. Hook options are ignored.
+
+If a chain with the same name already exist, it won't be replaced. See ``bfcli chain set`` or ``bfcli chain update`` to replace an existing chain.
+
+**Options**
+  - ``--from-str CHAIN``: read the chain to set from the command line arguments.
+  - ``--from-file FILEPATH``: read the chain from a file.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Create an XDP chain and print it
+    $ sudo bfcli chain load --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT"
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP ACCEPT
+          counters policy 0 packets 0 bytes; error 0 packets 0 bytes
+
+    $ # Create a single chain from a string containing 2 chains. Hook options are ignored.
+    $ sudo bfcli chain load --name my_other_xdp_chain --from-str "
+        chain my_next_xdp_chain BF_HOOK_XDP DROP
+        chain my_other_xdp_chain BF_HOOK_XDP ACCEPT"
+    $ sudo bfcli chain get --name my_other_xdp_chain
+      chain my_other_xdp_chain BF_HOOK_XDP ACCEPT
+          counters policy 0 packets 0 bytes; error 0 packets 0 bytes
+
+``chain attach``
+~~~~~~~~~~~~~~~~
+
+Attach a loaded chain to its hook.
+
+Only loaded chains (not attached) can be attached. See ``bfcli chain set`` and ``bfcli chain update`` if you want to update an existing chain.
+
+See below for a list of available hook options.
+
+**Options**
+  - ``--name NAME``: name of the chain to attach.
+  - ``--option OPTION``: hook-specific options to attach the chain to its hook. See hook options below.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Load and attach an XDP chain, print it
+    $ sudo bfcli chain load --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT"
+    $ sudo bfcli chain attach --name my_xdp_chain --option ifindex=2
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+          counters policy 101 packets 11714 bytes; error 0 packets 0 bytes
+
+``chain update``
+~~~~~~~~~~~~~~~~
+
+Update an existing chain. The new chain will atomically update the existing one. Hook options are ignored. The new chain will replace the existing chain with the same name.
+
+If you want to modify the hook options, use ``bfcli chain set`` instead.
+
+**Options**
+  - ``--from-str CHAIN``: read the chain to set from the command line arguments.
+  - ``--from-file FILEPATH``: read the chain from a file.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Set an XDP chain and update it
+    $ sudo bfcli chain set --from-str "chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT"
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+          counters policy 307 packets 36544 bytes; error 0 packets 0 bytes
+    $ sudo bfcli chain update --from-str "
+          chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+              rule
+                  ip4.proto eq icmp
+                  counter
+                  DROP"
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+          counters policy 204 packets 24074 bytes; error 0 packets 0 bytes
+          rule
+              ip4.proto eq 0x01
+              counters 0 packets 0 bytes
+              DROP
+
+``chain flush``
+~~~~~~~~~~~~~~~
+
+Detach, unload, and discard an existing chain.
+
+**Options**
+  - ``--name NAME``: name of the chain to flush.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Set an XDP chain and update it
+    $ sudo bfcli chain set --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT"
+    $ sudo bfcli chain get --name my_xdp_chain
+      chain my_xdp_chain BF_HOOK_XDP ACCEPT
+          counters policy 0 packets 0 bytes; error 0 packets 0 bytes
+    $ sudo bfcli chain flush --name my_xdp_chain
+    $ sudo bfcli chain get --name my_xdp_chain
+    $ # No output, chain doesn't exist
+
 
 Filters definition
 ------------------
@@ -63,7 +229,7 @@ Example of a ruleset:
 
 .. code-block:: shell
 
-    chain $HOOK policy $POLICY
+    chain $NAME $HOOK $HOOK_OPTIONS $POLICY
         rule
             $MATCHER
             $VERDICT
@@ -86,9 +252,10 @@ Chains are defined such as:
 
 .. code:: shell
 
-    chain $HOOK{$OPTIONS} policy $POLICY
+    chain $NAME $HOOK{$OPTIONS} $POLICY
 
 With:
+  - ``$NAME``: user-defined name for the chain.
   - ``$HOOK``: hook in the kernel to attach the chain to:
 
     - ``BF_HOOK_XDP``: XDP hook.
@@ -101,7 +268,6 @@ With:
     - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
-
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
 
 ``$OPTIONS`` are hook-specific comma separated key value pairs:
