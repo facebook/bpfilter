@@ -54,6 +54,55 @@ trap 'cleanup 1' INT TERM
 
 ################################################################################
 #
+# Options
+#
+################################################################################
+
+BFCLI="bfcli"
+BPFILTER="bpfilter"
+
+# Function to display usage information
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  --${BFCLI} PATH      Path to ${BFCLI} executable (default: $BFCLI)"
+    echo "  --bpfilter PATH   Path to bpfilter executable (default: $BPFILTER)"
+    echo "  -h, --help        Display this help message and exit"
+    exit 1
+}
+
+# Parse command line options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --${BFCLI})
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "Error: --${BFCLI} requires a path argument."
+                usage
+            fi
+            BFCLI="$2"
+            shift 2
+            ;;
+        --bpfilter)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "Error: --bpfilter requires a path argument."
+                usage
+            fi
+            BPFILTER="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Error: Unknown option '$1'"
+            usage
+            ;;
+    esac
+done
+
+
+################################################################################
+#
 # Configure the network namespace
 #
 ################################################################################
@@ -89,7 +138,7 @@ ip netns exec ${NAMESPACE} ping -c 1 ${HOST_IP_ADDR} > /dev/null 2>&1 && success
 
 log "Starting bpfilter in background..."
 BPFILTER_OUTPUT_FILE=$(mktemp)
-bpfilter --transient --verbose debug --verbose bpf > "$BPFILTER_OUTPUT_FILE" 2>&1 &
+${BPFILTER} --transient --verbose debug --verbose bpf > "$BPFILTER_OUTPUT_FILE" 2>&1 &
 BPFILTER_PID=$!
 
 # Wait for bpfilter to initialize
@@ -103,13 +152,13 @@ sleep 0.25
 ################################################################################
 
 log "[TEST] Can't attach chain to netns iface from host"
-! bfcli ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
+! ${BFCLI} ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
 
 log "[TEST] Can ping host iface from netns"
 ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR} > /dev/null 2>&1 && success || failure
 
 log "[TEST] Attach chain to host iface"
-bfcli ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${HOST_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" && success || failure
+${BFCLI} ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${HOST_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" && success || failure
 
 log "[TEST] Can't ping host iface from netns"
 ! ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR} > /dev/null 2>&1 && success || failure
@@ -118,16 +167,16 @@ log "[TEST] Pings have been blocked on ingress"
 bpftool --json map dump name ${COUNTERS_MAP_NAME} | jq --exit-status '.[0].formatted.value.packets == 1' > /dev/null 2>&1 && success || failure
 
 log "Flushing the ruleset"
-bfcli ruleset flush && success || failure
+${BFCLI} ruleset flush && success || failure
 
 log "[TEST] Can't attach chain to host iface from netns"
-! ip netns exec ${NAMESPACE} bfcli ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${HOST_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
+! ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${HOST_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
 
 log "[TEST] Can ping the netns iface from the host"
 ping -c 1 -W 0.25 ${NS_IP_ADDR} > /dev/null 2>&1  && success || failure
 
 log "[TEST] Attach chain to the netns iface"
-ip netns exec ${NAMESPACE} bfcli ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
+ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP" > /dev/null 2>&1 && success || failure
 
 log "[TEST] Can't ping the netns iface from the host"
 ! ping -c 1 -W 0.25 ${NS_IP_ADDR} > /dev/null 2>&1 && success || failure
@@ -136,10 +185,10 @@ log "[TEST] Pings have been blocked on ingress"
 bpftool --json map dump name ${COUNTERS_MAP_NAME} | jq --exit-status '.[0].formatted.value.packets == 1' > /dev/null 2>&1 && success || failure
 
 log "Flushing the ruleset"
-bfcli ruleset flush && success || failure
+${BFCLI} ruleset flush && success || failure
 
 log "[TEST] Attach chain to the netns iface"
-ip netns exec ${NAMESPACE} bfcli ruleset set --str "chain xdp BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=100-101} ACCEPT" > /dev/null 2>&1 && success || failure
+ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str "chain xdp BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=100-101} ACCEPT" > /dev/null 2>&1 && success || failure
 
 log "[TEST] Pinging the host interface should not update the counters of the program in the namespace"
 ping -c 1 -W 0.25 ${HOST_IP_ADDR} > /dev/null 2>&1 && success || failure
