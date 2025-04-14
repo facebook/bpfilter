@@ -11,8 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bfcli/lexer.h"
-#include "bfcli/parser.h"
+#include "bfcli/helper.h"
 #include "bfcli/print.h"
 #include "core/chain.h"
 #include "core/helper.h"
@@ -38,11 +37,6 @@ struct bf_ruleset_get_opts
     bool with_counters;
 };
 
-enum
-{
-    BF_OPT_COUNTERS = 1,
-};
-
 static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
                                            struct argp_state *state)
 {
@@ -66,44 +60,6 @@ static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
     }
 
     return 0;
-}
-
-static int _bf_cli_parse_file(const char *file, struct bf_ruleset *ruleset)
-{
-    FILE *rules;
-    int r;
-
-    rules = fopen(file, "r");
-    if (!rules)
-        return bf_err_r(errno, "failed to read rules from %s:", file);
-
-    yyin = rules;
-
-    r = yyparse(ruleset);
-    if (r == 1)
-        r = bf_err_r(-EINVAL, "failed to parse rules, invalid syntax");
-    else if (r == 2)
-        r = bf_err_r(-ENOMEM, "failed to parse rules, not enough memory");
-
-    return r;
-}
-
-static int _bf_cli_parse_str(const char *str, struct bf_ruleset *ruleset)
-{
-    YY_BUFFER_STATE buffer;
-    int r;
-
-    buffer = yy_scan_string(str);
-
-    r = yyparse(ruleset);
-    if (r == 1)
-        r = bf_err_r(-EINVAL, "failed to parse rules, invalid syntax");
-    else if (r == 2)
-        r = bf_err_r(-ENOMEM, "failed to parse rules, not enough memory");
-
-    yy_delete_buffer(buffer);
-
-    return r;
 }
 
 int _bf_do_ruleset_set(int argc, char *argv[])
@@ -136,9 +92,9 @@ int _bf_do_ruleset_set(int argc, char *argv[])
     }
 
     if (opts.input_file)
-        r = _bf_cli_parse_file(opts.input_file, &ruleset);
+        r = bfc_parse_file(opts.input_file, &ruleset);
     else
-        r = _bf_cli_parse_str(opts.input_string, &ruleset);
+        r = bfc_parse_str(opts.input_string, &ruleset);
     if (r) {
         bf_err_r(r, "failed to parse ruleset");
         goto end_clean;

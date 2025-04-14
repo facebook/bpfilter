@@ -10,12 +10,11 @@
     #include <stdbool.h>
 
     #include "core/list.h"
+    #include "bfcli/helper.h"
 
     extern int yylex();
     extern int yyparse();
     extern FILE *yyin;
-
-    struct bf_ruleset;
 
     void yyerror(struct bf_ruleset *ruleset, const char *fmt, ...);
 %}
@@ -25,6 +24,7 @@
     #include <linux/in6.h>
     #include <linux/if_ether.h>
     #include <limits.h>
+    #include "bfcli/helper.h"
     #include "core/verdict.h"
     #include "core/hook.h"
     #include "core/matcher.h"
@@ -50,13 +50,6 @@
         yyerror(ruleset, fmt, ##__VA_ARGS__);                                  \
         YYABORT;                                                               \
     })
-
-    struct bf_ruleset
-    {
-        bf_list chains;
-        bf_list sets;
-        bf_list hookopts;
-    };
 }
 
 %define parse.error detailed
