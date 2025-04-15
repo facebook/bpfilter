@@ -1,4 +1,4 @@
-FROM fedora:40
+FROM fedora:42
 
 RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_weak_deps=False -y install \
     autoconf \

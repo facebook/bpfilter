@@ -3,15 +3,74 @@ Build from sources
 
 This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+.
 
-If you want to perform a full build of ``bpfilter``, the following dependencies are required:
+If you want to perform a full build of ``bpfilter`` (including all test tests, code check, benchmarks, and documentation), the following dependencies are required:
 
 .. code-block:: shell
 
     # Fedora 40+
-    sudo dnf install -y bison clang-tools-extra cmake doxygen flex g++ gcc git google-benchmark-devel lcov libasan libbpf-devel libcmocka-devel libgit2-devel libnl3-devel libubsan pkgconf python3-breathe python3-furo python3-linuxdoc python3-sphinx
+    sudo dnf -y install \
+        autoconf \
+        automake \
+        gawk \
+        bpftool \
+        bison \
+        clang-tools-extra \
+        cmake \
+        doxygen \
+        flex \
+        gcc \
+        gcc-c++ \
+        git-core \
+        google-benchmark-devel \
+        iproute \
+        iputils \
+        jq \
+        lcov \
+        libbpf-devel \
+        libcmocka-devel \
+        libgit2-devel \
+        libnl3-devel \
+        libtool \
+        python3-breathe \
+        python3-dateutil \
+        python3-furo \
+        python3-GitPython \
+        python3-linuxdoc \
+        python3-scapy \
+        python3-sphinx
 
     # Ubuntu 24.04+
-    sudo apt-get install -y bison clang-format clang-tidy cmake doxygen flex furo git lcov libpf-dev libcmocka-dev libbenchmark-dev libgit2-dev libnl-3-dev linux-tools-common python3-breathe python3-pip python3-sphinx pkgconf pip3 install linuxdoc
+    sudo apt-get install -y \
+        autoconf \
+        automake \
+        bison \
+        clang-tidy \
+        clang-format \
+        cmake \
+        doxygen \
+        flex \
+        furo \
+        g++ \
+        git \
+        iproute2 \
+        iputils-ping \
+        lcov \
+        libbenchmark-dev \
+        libbpf-dev \
+        libc-dev \
+        libcmocka-dev \
+        libgit2-dev \
+        libnl-3-dev \
+        libtool \
+        linux-tools-common \
+        make \
+        pkgconf \
+        python3-breathe \
+        python3-dateutil \
+        python3-git \
+        python3-pip \
+        python3-scapy \
+        python3-sphinx
 
 You can then use CMake to generate the build system:
 
