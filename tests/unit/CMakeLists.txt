@@ -86,7 +86,7 @@ get_target_property(lib_srcs libbpfilter SOURCES)
 
 list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 
-add_executable(unit_bin
+add_executable(unit_bin EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fake.h  ${CMAKE_CURRENT_SOURCE_DIR}/fake.c

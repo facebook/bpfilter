@@ -8,7 +8,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 
-add_executable(benchmark_bin
+add_executable(benchmark_bin EXCLUDE_FROM_ALL
     main.cpp
     benchmark.cpp benchmark.hpp
 )
