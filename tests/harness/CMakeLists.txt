@@ -28,7 +28,7 @@ pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
 pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
-add_library(harness
+add_library(harness EXCLUDE_FROM_ALL
     STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/daemon.h    ${CMAKE_CURRENT_SOURCE_DIR}/daemon.c
         ${CMAKE_CURRENT_SOURCE_DIR}/filters.h   ${CMAKE_CURRENT_SOURCE_DIR}/filters.c
