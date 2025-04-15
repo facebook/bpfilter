@@ -147,7 +147,6 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain);
  * The program is not unloaded or unpinned from the filesystem.
  *
  * @param cgen Codegen to detach. Can't be NULL.
- * @return 0 on success, negative error code on failure.
  */
 void bf_cgen_detach(struct bf_cgen *cgen);
 
@@ -155,7 +154,6 @@ void bf_cgen_detach(struct bf_cgen *cgen);
  * Unload a program from the kernel.
  *
  * @param cgen Codege to unload. Can't be NULL.
- * @return 0 on success, negative error code on failure.
  */
 void bf_cgen_unload(struct bf_cgen *cgen);
 

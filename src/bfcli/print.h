@@ -23,7 +23,6 @@ struct bf_hookopts;
  *        first to entries in the list to be the policy and error counters.
  *        Then, every rule should have an entry in the list in the order they
  *        are defined, even if the rule doesn't have counters enabled.
- * @return 0 on success, negative errno code on failure.
  */
 void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                     bf_list *counters);
@@ -34,6 +33,5 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
  * @param chains List of chains to print.
  * @param hookopts List of hookoptions to print.
  * @param counters List of counters to print.
- * @return 0 on success, negative errno code on failure.
  */
 int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters);
