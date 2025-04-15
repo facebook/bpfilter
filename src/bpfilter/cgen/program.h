@@ -391,7 +391,6 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts);
  * The program is detached but not unloaded.
  *
  * @param prog Program to detach. Can't be NULL.
- * @return 0 on success, or negative errno value on failure.
  */
 void bf_program_detach(struct bf_program *prog);
 
