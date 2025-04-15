@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -e
 
 # Define variables
@@ -195,7 +196,35 @@ sleep 0.25
 #
 ################################################################################
 
-log "[SUITE] chain set"
+log "[SUITE] netns: define chains from the host"
+expect_failure "can't attach chain to netns iface from host" \
+    ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+expect_success "can ping host iface from netns" \
+    ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
+expect_success "attach chain to host iface" \
+    ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+expect_failure "can't ping host iface from netns" \
+    ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
+expect_success "pings have been blocked on ingress" \
+    bpftool --json map dump name ${COUNTERS_MAP_NAME} \| jq --exit-status \'.[0].formatted.value.packets == 1\'
+expect_success "flushing the ruleset" \
+    ${BFCLI} ruleset flush
+
+log "[SUITE] Define chain from the netns"
+expect_failure "can't attach chain to host iface from netns" \
+    ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+expect_success "can ping the netns iface from the host" \
+    ping -c 1 -W 0.25 ${NS_IP_ADDR}
+expect_success "attach chain to the netns iface" \
+    ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+expect_failure "can't ping the netns iface from the host" \
+    ping -c 1 -W 0.25 ${NS_IP_ADDR}
+expect_success "pings have been blocked on ingress" \
+    bpftool --json map dump name ${COUNTERS_MAP_NAME} \| jq --exit-status \'.[0].formatted.value.packets == 1\'
+expect_success "flushing the ruleset" \
+    ${BFCLI} ruleset flush
+
+log "[SUITE] netns: define chains from the netns"
 expect_failure "no chain defined in --from-str" \
     ${BFCLI} chain set --from-str \"\"
 expect_failure "multiple chains defined in --from-str, no --name" \
@@ -312,9 +341,9 @@ expect_success "load chain_attach_cgroup_0" \
 expect_success "load chain_attach_cgroup_1" \
     ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "attach chain_attach_cgroup_0" \
-    ${BFCLI} chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup/user.slice
+    ${BFCLI} chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup
 expect_success "fail to attach chain_attach_cgroup_1" \
-    ${BFCLI} chain attach --name chain_attach_cgroup_1 --option cgpath=/sys/fs/cgroup/user.slice
+    ${BFCLI} chain attach --name chain_attach_cgroup_1 --option cgpath=/sys/fs/cgroup
 expect_failure "pings from host to netns are blocked by cgroup chain" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_attach_cgroup_0" \
