@@ -30,9 +30,9 @@ jobs:
           - { name: ubuntu-24.04, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "42" }
           - { name: fedora, version: "41" }
           - { name: fedora, version: "40" }
-          - { name: fedora, version: "39" }
           - { name: ubuntu, version: "24.10" }
           - { name: ubuntu, version: "24.04" }
     runs-on: [ "${{ matrix.host.name }}" ]
@@ -67,9 +67,9 @@ jobs:
           - { name: ubuntu-24.04, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "42" }
           - { name: fedora, version: "41" }
           - { name: fedora, version: "40" }
-          - { name: fedora, version: "39" }
           - { name: ubuntu, version: "24.10" }
           - { name: ubuntu, version: "24.04" }
     runs-on: [ "${{ matrix.host.name }}" ]
