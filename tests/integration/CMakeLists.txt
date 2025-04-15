@@ -3,6 +3,7 @@
 
 include(ExternalProject)
 
+#[[
 set(BF_TOOLS_NFT_GIT_TAG v1.0.9)
 set(BF_TOOLS_NFT_SOURCE_DIR ${CMAKE_BINARY_DIR}/tools/nftables)
 set(BF_TOOLS_NFT_INSTALL_DIR ${CMAKE_BINARY_DIR}/tools/install)
@@ -31,14 +32,15 @@ ExternalProject_Add(nftables
                     --disable-man-doc
                     --prefix=${BF_TOOLS_NFT_INSTALL_DIR}
 )
+]]
 
-set(BF_TOOLS_NFT_GIT_TAG 8bf2bab8)
+set(BF_TOOLS_IPT_GIT_TAG 8bf2bab8)
 set(BF_TOOLS_IPT_SOURCE_DIR ${CMAKE_BINARY_DIR}/tools/iptables)
 set(BF_TOOLS_IPT_INSTALL_DIR ${CMAKE_BINARY_DIR}/tools/install)
 
 ExternalProject_Add(iptables
     GIT_REPOSITORY https://git.netfilter.org/iptables
-    GIT_TAG        ${BF_TOOLS_NFT_GIT_TAG}
+    GIT_TAG        ${BF_TOOLS_IPT_GIT_TAG}
 
     DEPENDS libbpfilter
     BUILD_IN_SOURCE true
@@ -46,7 +48,7 @@ ExternalProject_Add(iptables
     SOURCE_DIR  ${BF_TOOLS_IPT_SOURCE_DIR}
     INSTALL_DIR ${BF_TOOLS_IPT_INSTALL_DIR}
 
-    PATCH_COMMAND git reset --hard ${BF_TOOLS_NFT_GIT_TAG}
+    PATCH_COMMAND git reset --hard ${BF_TOOLS_IPT_GIT_TAG}
         COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/iptables/0001-iptables-add-support-for-bpfilter.patch
     CONFIGURE_COMMAND ./autogen.sh
         COMMAND
@@ -61,4 +63,6 @@ ExternalProject_Add(iptables
                     --prefix=${BF_TOOLS_IPT_INSTALL_DIR}
 )
 
-add_custom_target(integration DEPENDS iptables nftables)
+# add_custom_target(integration DEPENDS iptables nftables)
+
+add_custom_target(integration DEPENDS iptables)
