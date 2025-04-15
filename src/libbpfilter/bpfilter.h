@@ -8,8 +8,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "core/list.h"
-
 struct bf_response;
 struct bf_chain;
 struct ipt_getinfo;
@@ -32,6 +30,8 @@ const char *bf_version(void);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_cli_ruleset_flush(void);
+
+#define bf_list void
 
 /**
  * Request the daemon to return all the chains and all of
@@ -60,8 +60,6 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts);
-
-#undef bf_list
 
 /**
  * Set a chain.
@@ -114,6 +112,8 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts);
  */
 int bf_chain_get(const char *name, struct bf_chain **chain,
                  struct bf_hookopts **hookopts, bf_list *counters);
+
+#undef bf_list
 
 /**
  * Load a chain.
