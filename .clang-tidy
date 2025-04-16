@@ -33,6 +33,11 @@
 #   Avoid usage of Annex K functions for portability reasons.
 # - clang-analyzer-unix.Malloc
 #   Generates false positives.
+# - misc-include-cleaner
+#   False positives, e.g. with errno.h: E* macros are not directly defined in it,
+#   but it's the header we should include.
+# - misc-redundant-expression
+#   Macros having the same values can't be or'd without a warning.
 # - misc-static-assert
 #   We use bf_assert(0) for impossible default in switch...case.
 # - modernize-macro-to-enum
@@ -71,6 +76,8 @@ Checks: >
     -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
     -clang-analyzer-unix.Malloc,
   misc-*,
+    -misc-include-cleaner,
+    -misc-redundant-expression,
     -misc-static-assert,
   modernize-*,
     -modernize-macro-to-enum,
