@@ -35,15 +35,13 @@ static const char *_bf_verbose_strs[] = {
 static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
               "missing entries in _bf_verbose_strs array");
 
-int bf_verbose_to_str(const char *str, enum bf_verbose *opt)
+enum bf_verbose bf_verbose_from_str(const char *str)
 {
-    bf_assert(str && opt);
+    bf_assert(str);
 
-    for (size_t i = 0; i < _BF_VERBOSE_MAX; ++i) {
-        if (bf_streq(_bf_verbose_strs[i], str)) {
-            *opt = i;
-            return 0;
-        }
+    for (enum bf_verbose verbose = 0; verbose < _BF_VERBOSE_MAX; ++verbose) {
+        if (bf_streq(_bf_verbose_strs[verbose], str))
+            return verbose;
     }
 
     return -EINVAL;
@@ -108,7 +106,6 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     enum bf_verbose opt;
     long pow;
     char *end;
-    int r;
 
     switch (key) {
     case 't':
@@ -142,13 +139,16 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         args->fronts &= ~(1 << BF_FRONT_CLI);
         break;
     case 'v':
-        r = bf_verbose_to_str(arg, &opt);
-        if (r < 0)
+        opt = bf_verbose_from_str(arg);
+        if (opt < 0) {
             return bf_err_r(
-                EINVAL,
+                (int)opt,
                 "unknown --verbose option '%s', valid --verbose options: [debug, bpf, bytecode]",
                 arg);
+        }
         bf_info("enabling verbose for '%s'", arg);
+        if (opt == BF_VERBOSE_DEBUG)
+            bf_log_set_level(BF_LOG_DBG);
         args->verbose |= (1 << opt);
         break;
     case BF_OPT_VERSION:

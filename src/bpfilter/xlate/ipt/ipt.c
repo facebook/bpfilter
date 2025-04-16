@@ -611,8 +611,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
     if (bf_ipt_replace_size(replace) != req->data_len)
         return -EINVAL;
 
-    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))
-        bf_ipt_dump_replace(replace, EMPTY_PREFIX);
+    bf_ipt_dump_replace(replace, EMPTY_PREFIX);
 
     r = _bf_ipt_xlate_ruleset_set(replace, &chains);
     if (r)
