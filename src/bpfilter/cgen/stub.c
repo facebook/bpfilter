@@ -24,9 +24,9 @@
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/swich.h"
+#include "bpfilter/opts.h"
 #include "core/flavor.h"
 #include "core/helper.h"
-#include "core/opts.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"

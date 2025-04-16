@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "core/opts.h"
+#include "bpfilter/opts.h"
 
 #include <argp.h>
 #include <errno.h>

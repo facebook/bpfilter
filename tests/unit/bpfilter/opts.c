@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "core/opts.c"
+#include "bpfilter/opts.c"
 
 #include "fake.h"
 #include "harness/test.h"
