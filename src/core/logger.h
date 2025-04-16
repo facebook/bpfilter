@@ -8,7 +8,6 @@
 #include <stdio.h> // NOLINT: fprintf is used
 
 #include "core/helper.h"
-#include "core/opts.h" // NOLINT: bf_opts_verbose() is used
 
 enum bf_color
 {
