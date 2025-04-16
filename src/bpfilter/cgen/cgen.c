@@ -16,6 +16,7 @@
 #include "bpfilter/cgen/prog/link.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/ctx.h"
+#include "bpfilter/opts.h"
 #include "core/chain.h"
 #include "core/counter.h"
 #include "core/dump.h"
@@ -26,7 +27,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/ns.h"
-#include "core/opts.h"
 #include "core/rule.h"
 
 int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,

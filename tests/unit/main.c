@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #include "core/list.h"
-#include "core/opts.h"
+#include "bpfilter/opts.h"
 #include "harness/test.h"
 #include "harness/test.h"
 #include "core/helper.h"

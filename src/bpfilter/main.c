@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "bpfilter/ctx.h"
+#include "bpfilter/opts.h"
 #include "bpfilter/xlate/front.h"
 #include "core/btf.h"
 #include "core/dump.h"
@@ -22,7 +23,6 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/ns.h"
-#include "core/opts.h"
 #include "core/request.h"
 #include "core/response.h"
 

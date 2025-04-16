@@ -57,7 +57,6 @@ endfunction()
 enable_testing()
 
 set(bf_test_srcs
-    core/opts.c
     core/btf.c
     core/flavor.c
     core/front.c
@@ -68,6 +67,7 @@ set(bf_test_srcs
     core/matcher.c
     core/rule.c
     core/verdict.c
+    bpfilter/opts.c
     bpfilter/cgen/cgen.c
     bpfilter/cgen/jmp.c
     bpfilter/cgen/printer.c
