@@ -42,39 +42,52 @@ enum bf_style
     BF_STYLE_BOLD = 1,
 };
 
+enum bf_log_level
+{
+    BF_LOG_DBG,
+    BF_LOG_INFO,
+    BF_LOG_WARN,
+    BF_LOG_ERR,
+    BF_LOG_ABORT,
+    _BF_LOG_MAX,
+};
+
 /**
  * Log an error message to stderr.
  *
- * @param level Log level, as a string. Will prefix the log message.
+ * @param level Log level of the message. Used to check if the log message
+ *        should be printed, in which case the string representation of the log
+ *        level will be used.
  * @param color Color to print the prefix with, as a @ref bf_color .
  * @param fmt Format string.
  * @param ... Format arguments.
  */
 #define _bf_log_impl(level, color, fmt, ...)                                   \
-    (void)fprintf(stderr, "%s%-7s%s: " fmt "\n",                               \
-                  bf_logger_get_color((color), BF_STYLE_BOLD), (level),        \
-                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),         \
-                  ##__VA_ARGS__)
+    if (level >= bf_log_get_level()) {                                         \
+        (void)fprintf(stderr, "%s%-7s%s: " fmt "\n",                           \
+                      bf_logger_get_color((color), BF_STYLE_BOLD),             \
+                      bf_log_level_to_str(level),                              \
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),     \
+                      ##__VA_ARGS__);                                          \
+    }
 
 #define bf_abort(fmt, ...)                                                     \
     ({                                                                         \
-        _bf_log_impl("abort", BF_COLOR_RED, fmt, ##__VA_ARGS__);               \
+        _bf_log_impl(BF_LOG_ABORT, BF_COLOR_RED, fmt, ##__VA_ARGS__);          \
         abort();                                                               \
     })
 
-#define bf_err(fmt, ...) _bf_log_impl("error", BF_COLOR_RED, fmt, ##__VA_ARGS__)
+#define bf_err(fmt, ...)                                                       \
+    _bf_log_impl(BF_LOG_ERR, BF_COLOR_RED, fmt, ##__VA_ARGS__)
 
 #define bf_warn(fmt, ...)                                                      \
-    _bf_log_impl("warning", BF_COLOR_YELLOW, fmt, ##__VA_ARGS__)
+    _bf_log_impl(BF_LOG_WARN, BF_COLOR_YELLOW, fmt, ##__VA_ARGS__)
 
 #define bf_info(fmt, ...)                                                      \
-    _bf_log_impl("info", BF_COLOR_GREEN, fmt, ##__VA_ARGS__)
+    _bf_log_impl(BF_LOG_INFO, BF_COLOR_GREEN, fmt, ##__VA_ARGS__)
 
 #define bf_dbg(fmt, ...)                                                       \
-    ({                                                                         \
-        if (bf_opts_is_verbose(BF_VERBOSE_DEBUG))                              \
-            _bf_log_impl("debug", BF_COLOR_BLUE, fmt, ##__VA_ARGS__);          \
-    })
+    _bf_log_impl(BF_LOG_DBG, BF_COLOR_BLUE, fmt, ##__VA_ARGS__)
 
 /**
  * Log an error message to stderr, append the detail of the error code
@@ -89,7 +102,9 @@ enum bf_style
  *    return bf_err_r(ret, "failed to do something");
  * @endcode
  *
- * @param level Log level, as a string. Will prefix the log message.
+ * @param level Log level of the message. Used to check if the log message
+ *        should be printed, in which case the string representation of the log
+ *        level will be used.
  * @param color Color to print the prefix with, as a @ref bf_color .
  * @param code Error code, can be positive or negative.
  * @param fmt Format string.
@@ -98,50 +113,59 @@ enum bf_style
  */
 #define _bf_log_code_impl(level, color, code, fmt, ...)                        \
     ({                                                                         \
-        fprintf(stderr, "%s%-7s%s: " fmt ": %s\n",                             \
-                bf_logger_get_color((color), BF_STYLE_BOLD), (level),          \
-                bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),           \
-                ##__VA_ARGS__, bf_strerror(code));                             \
+        if ((level) >= bf_log_get_level()) {                                   \
+            (void)fprintf(stderr, "%s%-7s%s: " fmt ": %s\n",                   \
+                          bf_logger_get_color((color), BF_STYLE_BOLD),         \
+                          bf_log_level_to_str(level),                          \
+                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
+                          ##__VA_ARGS__, bf_strerror(code));                   \
+        }                                                                      \
         -abs(code);                                                            \
     })
 
 #define bf_err_r(code, fmt, ...)                                               \
-    _bf_log_code_impl("error", BF_COLOR_RED, code, fmt, ##__VA_ARGS__)
+    _bf_log_code_impl(BF_LOG_ERR, BF_COLOR_RED, code, fmt, ##__VA_ARGS__)
 
 #define bf_warn_r(code, fmt, ...)                                              \
-    _bf_log_code_impl("warning", BF_COLOR_YELLOW, code, fmt, ##__VA_ARGS__)
+    _bf_log_code_impl(BF_LOG_WARN, BF_COLOR_YELLOW, code, fmt, ##__VA_ARGS__)
 
 #define bf_info_r(code, fmt, ...)                                              \
-    _bf_log_code_impl("info", BF_COLOR_GREEN, code, fmt, ##__VA_ARGS__)
+    _bf_log_code_impl(BF_LOG_INFO, BF_COLOR_GREEN, code, fmt, ##__VA_ARGS__)
 
 #define bf_dbg_r(code, fmt, ...)                                               \
-    _bf_log_code_impl("debug", BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
+    _bf_log_code_impl(BF_LOG_DBG, BF_COLOR_BLUE, code, fmt, ##__VA_ARGS__)
 
 /**
  * Identical to @ref _bf_log_impl but for @p va_list arguments.
  *
- * @param level Log level, as a string. Will prefix the log message.
+ * @param level Log level of the message. Used to check if the log message
+ *        should be printed, in which case the string representation of the log
+ *        level will be used.
  * @param color Color to print the prefix with, as a @ref bf_color .
  * @param fmt Format string.
  * @param vargs @p va_list of arguments.
  */
 #define _bf_log_v_impl(level, color, fmt, vargs)                               \
-    do {                                                                       \
+    if ((level) >= bf_log_get_level()) {                                       \
         (void)fprintf(                                                         \
             stderr, "%s%-7s%s: ", bf_logger_get_color((color), BF_STYLE_BOLD), \
-            (level), bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));     \
+            bf_log_level_to_str(level),                                        \
+            bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));              \
         (void)vfprintf(stderr, (fmt), (vargs));                                \
         (void)fprintf(stderr, "\n");                                           \
-    } while (0)
+    }
 
-#define bf_err_v(fmt, vargs) _bf_log_v_impl("error", BF_COLOR_RED, fmt, vargs)
+#define bf_err_v(fmt, vargs)                                                   \
+    _bf_log_v_impl(BF_LOG_ERR, BF_COLOR_RED, fmt, vargs)
 
 #define bf_warn_v(fmt, vargs)                                                  \
-    _bf_log_v_impl("warning", BF_COLOR_YELLOW, fmt, vargs)
+    _bf_log_v_impl(BF_LOG_WARN, BF_COLOR_YELLOW, fmt, vargs)
 
-#define bf_info_v(fmt, vargs) _bf_log_v_impl("info", BF_COLOR_GREEN, fmt, vargs)
+#define bf_info_v(fmt, vargs)                                                  \
+    _bf_log_v_impl(BF_LOG_INFO, BF_COLOR_GREEN, fmt, vargs)
 
-#define bf_dbg_v(fmt, vargs) _bf_log_v_impl("debug", BF_COLOR_BLUE, fmt, vargs)
+#define bf_dbg_v(fmt, vargs)                                                   \
+    _bf_log_v_impl(BF_LOG_DBG, BF_COLOR_BLUE, fmt, vargs)
 
 /**
  * Initialise the logging system.
@@ -163,3 +187,37 @@ void bf_logger_setup(void);
  * @return Style string.
  */
 const char *bf_logger_get_color(enum bf_color color, enum bf_style style);
+
+/**
+ * Get the current log level.
+ *
+ * @return The current log level.
+ */
+enum bf_log_level bf_log_get_level(void);
+
+/**
+ * Set the current log level.
+ *
+ * All the log messages below this log level will be discarded. Defaults to
+ * `BF_LOG_INFO`.
+ *
+ * @param level New log level.
+ */
+void bf_log_set_level(enum bf_log_level level);
+
+/**
+ * Convert a log level to a string.
+ *
+ * @param level Log level to convert to a string.
+ * @return Log level, as a string.
+ */
+const char *bf_log_level_to_str(enum bf_log_level level);
+
+/**
+ * Convert a string to a log level.
+ *
+ * @param str String to convert to a `bf_log_level` value. Can't be NULL.
+ * @return A `bf_log_level` value if `str` is a valid log level, `-EINVAL`
+ *         otherwise.
+ */
+enum bf_log_level bf_log_level_from_str(const char *str);
