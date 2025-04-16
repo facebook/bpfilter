@@ -40,12 +40,16 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
  * @param attach_type Expected attach type of the BPF program. Use
  *        `bf_hook_to_bpf_attach_type` to get the proper attach type. 0 is a
  *        valid value.
+ * @param log_buf Buffer to write the loading logs to. If NULL, logs are not
+ *        collected.
+ * @param log_size Size of `log_buf`. If `log_buf` is NULL, `log_size` must be 0.
  * @param fd If the call succeed, this parameter will contain the loaded
  *        program's file descriptor.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, enum bpf_attach_type attach_type, int *fd);
+                     size_t img_len, enum bpf_attach_type attach_type,
+                     char *log_buf, size_t log_size, int *fd);
 
 /**
  * Get an element from a map.
