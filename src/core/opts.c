@@ -58,9 +58,6 @@ static struct bf_options
      * bpfilter is stopped, everything is cleaned up. */
     bool transient;
 
-    /** Size of the log buffer when loading a BPF program, as a power of 2. */
-    unsigned int bpf_log_buf_len_pow;
-
     /** Bit flags for enabled fronts. */
     uint16_t fronts;
 
@@ -70,7 +67,6 @@ static struct bf_options
     uint16_t verbose;
 } _bf_opts = {
     .transient = false,
-    .bpf_log_buf_len_pow = 16,
     .fronts = 0xffff,
     .verbose = 0,
 };
@@ -80,7 +76,7 @@ static struct argp_option options[] = {
      "Do not load or save runtime context and remove all BPF programs on shutdown",
      0},
     {"buffer-len", 'b', "BUF_LEN_POW", 0,
-     "Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
+     "DEPRECATED. Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
      0},
     {"no-iptables", BF_OPT_NO_IPTABLES_KEY, 0, 0, "Disable iptables support",
      0},
@@ -104,27 +100,14 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
 
     struct bf_options *args = state->input;
     enum bf_verbose opt;
-    long pow;
-    char *end;
 
     switch (key) {
     case 't':
         args->transient = true;
         break;
     case 'b':
-        errno = 0;
-        pow = strtol(arg, &end, 0);
-        if (errno == ERANGE) {
-            return bf_err_r(EINVAL, "failed to convert '%s' into an integer",
-                            arg);
-        }
-        if (pow > UINT_MAX) {
-            return bf_err_r(EINVAL, "--buffer-len can't be bigger than %d",
-                            UINT_MAX);
-        }
-        if (pow < 0)
-            return bf_err_r(EINVAL, "--buffer-len can't be negative");
-        args->bpf_log_buf_len_pow = (unsigned int)pow;
+        bf_warn(
+            "--buffer-len is deprecated, buffer size is defined automatically");
         break;
     case BF_OPT_NO_IPTABLES_KEY:
         bf_info("disabling iptables support");
@@ -140,7 +123,7 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         break;
     case 'v':
         opt = bf_verbose_from_str(arg);
-        if (opt < 0) {
+        if ((int)opt < 0) {
             return bf_err_r(
                 (int)opt,
                 "unknown --verbose option '%s', valid --verbose options: [debug, bpf, bytecode]",
@@ -176,11 +159,6 @@ bool bf_opts_transient(void)
 bool bf_opts_persist(void)
 {
     return !_bf_opts.transient;
-}
-
-unsigned int bf_opts_bpf_log_buf_len_pow(void)
-{
-    return _bf_opts.bpf_log_buf_len_pow;
 }
 
 bool bf_opts_is_front_enabled(enum bf_front front)

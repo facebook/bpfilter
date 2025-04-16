@@ -9,6 +9,7 @@
 #include <linux/bpf_common.h>
 #include <linux/limits.h>
 
+#include <bpf/bpf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -1162,6 +1163,7 @@ err_prog_pin:
 
 int bf_program_load(struct bf_program *prog)
 {
+    _cleanup_free_ char *log_buf = NULL;
     int r;
 
     bf_assert(prog && prog->img);
@@ -1178,13 +1180,23 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return r;
 
-    r = bf_bpf_prog_load(prog->prog_name,
-                         bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
-                         prog->img, prog->img_size,
-                         bf_hook_to_bpf_attach_type(prog->runtime.chain->hook),
-                         &prog->runtime.prog_fd);
-    if (r)
-        return bf_err_r(r, "failed to load bf_program");
+    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG)) {
+        log_buf = malloc(BPF_LOG_BUF_SIZE);
+        if (!log_buf) {
+            return bf_err_r(-ENOMEM,
+                            "failed to allocate BPF_PROG_LOAD logs buffer");
+        }
+    }
+
+    r = bf_bpf_prog_load(
+        prog->prog_name, bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
+        prog->img, prog->img_size,
+        bf_hook_to_bpf_attach_type(prog->runtime.chain->hook), log_buf,
+        log_buf ? BPF_LOG_BUF_SIZE : 0, &prog->runtime.prog_fd);
+    if (r) {
+        return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
+                        prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
+    }
 
     if (bf_opts_persist()) {
         r = _bf_program_pin_loaded(prog);

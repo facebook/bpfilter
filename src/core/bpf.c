@@ -15,7 +15,6 @@
 
 #include "core/helper.h"
 #include "core/logger.h"
-#include "core/opts.h"
 
 #if defined(__i386__)
 #define _BF_NR_bpf 357
@@ -37,37 +36,28 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 }
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, enum bpf_attach_type attach_type, int *fd)
+                     size_t img_len, enum bpf_attach_type attach_type,
+                     char *log_buf, size_t log_size, int *fd)
 {
-    _cleanup_free_ char *log_buf = NULL;
     union bpf_attr attr = {
         .prog_type = prog_type,
         .insns = bf_ptr_to_u64(img),
         .insn_cnt = (unsigned int)img_len,
         .license = bf_ptr_to_u64("GPL"),
         .expected_attach_type = attach_type,
+        .log_buf = bf_ptr_to_u64(log_buf),
+        .log_size = log_size,
+        .log_level = 1,
     };
     int r;
 
     bf_assert(name && img && fd);
 
-    if (bf_opts_is_verbose(BF_VERBOSE_BPF)) {
-        log_buf = malloc(1 << bf_opts_bpf_log_buf_len_pow());
-        if (!log_buf)
-            return -ENOMEM;
-
-        attr.log_buf = bf_ptr_to_u64(log_buf);
-        attr.log_size = (uint32_t)(1 << bf_opts_bpf_log_buf_len_pow());
-        attr.log_level = 1;
-    }
-
     (void)snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
 
     r = bf_bpf(BPF_PROG_LOAD, &attr);
-    if (r < 0) {
-        return bf_err_r(r, "failed to load BPF program (%lu bytes):\n%s\n",
-                        img_len, log_buf ?: "(no log buffer available)");
-    }
+    if (r < 0)
+        return r;
 
     *fd = r;
 
