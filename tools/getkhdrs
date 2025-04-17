@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import pathlib
-from pathlib import Path
+
 
 def run_gcc_command(cmd):
     """Run a GCC command and handle errors properly"""
@@ -19,7 +19,7 @@ def run_gcc_command(cmd):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=False  # Don't raise exception, we'll handle errors ourselves
+            check=False,  # Don't raise exception, we'll handle errors ourselves
         )
 
         if result.returncode != 0:
@@ -33,71 +33,42 @@ def run_gcc_command(cmd):
         print(f"Exception while running GCC: {e}")
         return None
 
-def extract_include_paths(compile_command):
-    """Extract include paths from compilation command"""
-    include_paths = []
-    tokens = compile_command.split()
 
-    for i, token in enumerate(tokens):
-        if token.startswith("-I"):
-            if len(token) > 2:  # Format: -I/path/to/include
-                include_paths.append(token[2:])
-            elif i + 1 < len(tokens):  # Format: -I /path/to/include
-                include_paths.append(tokens[i + 1])
-        elif token == "-isystem":
-            include_paths.append(tokens[i + 1])
-
-    return include_paths
-
-def get_kernel_headers_from_deps(deps_output):
+def get_kernel_headers_from_deps(prefix: pathlib.Path, deps_output: str):
     """Extract kernel header paths from GCC dependency output"""
     headers = set()
 
     # Common kernel header patterns
+    escaped_prefix = re.escape(str(prefix))
     patterns = [
-        r'/usr/include/linux/[^ :\\\n]+',
-        r'/usr/include/asm/[^ :\\\n]+',
-        r'/usr/include/asm-generic/[^ :\\\n]+',
+        rf"{escaped_prefix}/(linux/[^ :\\\n]+)",
+        rf"{escaped_prefix}/(asm/[^ :\\\n]+)",
+        rf"{escaped_prefix}/(asm-generic/[^ :\\\n]+)",
     ]
 
     for pattern in patterns:
         headers.update(re.findall(pattern, deps_output))
 
-    # Clean up headers (remove trailing backslashes or colons)
-    return {h.rstrip('\\:') for h in headers}
+    return {h.rstrip("\\:") for h in headers}
 
-def find_nested_includes(header_file):
-    """Find #include directives in a header file"""
-    includes = set()
-    include_patterns = [
-        r'#include\s+<linux/([^>]+)>',
-        r'#include\s+<asm/([^>]+)>',
-        r'#include\s+<asm-generic/([^>]+)>',
-    ]
 
-    try:
-        with open(header_file, 'r', errors='ignore') as f:
-            content = f.read()
+def get_file_hash(path: pathlib.Path) -> str:
+    return hashlib.md5(open(path, "rb").read()).hexdigest()
 
-            for pattern, regex in enumerate(include_patterns):
-                for match in re.finditer(regex, content):
-                    if pattern == 0:
-                        includes.add(f"linux/{match.group(1)}")
-                    elif pattern == 1:
-                        includes.add(f"asm/{match.group(1)}")
-                    elif pattern == 2:
-                        includes.add(f"asm-generic/{match.group(1)}")
-    except Exception as e:
-        print(f"Error parsing header {header_file}: {e}")
-
-    return includes
 
 def copy_header(header_path, khdr_dir, dest_dir):
     """Copy a header and its dependencies recursively"""
 
-    relpath = header_path.relative_to(pathlib.Path("/usr/include"))
-    src_abspath = khdr_dir.absolute() / relpath
-    dst_abspath = dest_dir.absolute() / relpath
+    src_abspath = khdr_dir.absolute() / header_path
+    dst_abspath = dest_dir.absolute() / header_path
+    copy_reason = None
+
+    if not dst_abspath.exists():
+        copy_reason = "new"
+    elif get_file_hash(src_abspath) != get_file_hash(dst_abspath):
+        copy_reason = "changed"
+    else:
+        return
 
     # Create target directory
     dst_absdir = dst_abspath.parent
@@ -105,26 +76,40 @@ def copy_header(header_path, khdr_dir, dest_dir):
 
     # Copy the header
     shutil.copy2(src_abspath, dst_abspath)
-    print(f"Copied: {src_abspath} -> {dst_abspath}")
+    print(f"Copied ({copy_reason}): {src_abspath} -> {dst_abspath}")
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Copy required Linux kernel headers using compile_commands.json')
-    parser.add_argument('srcdir', type=pathlib.Path, help='Path to the sources directory')
-    parser.add_argument('builddir', type=pathlib.Path, help='Path to the build directory')
-    parser.add_argument('destdir', type=pathlib.Path, help='Destination directory of the kernel headers')
-    parser.add_argument('--kernel-hdr-dir', type=pathlib.Path, default=pathlib.Path('/usr/include'), help='Path to the kernel UAPI headers directory (default: /usr/include)')
+    parser = argparse.ArgumentParser(
+        description="Copy required Linux kernel headers using compile_commands.json"
+    )
+    parser.add_argument(
+        "srcdir", type=pathlib.Path, help="Path to the sources directory"
+    )
+    parser.add_argument(
+        "builddir", type=pathlib.Path, help="Path to the build directory"
+    )
+    parser.add_argument(
+        "destdir", type=pathlib.Path, help="Destination directory of the kernel headers"
+    )
+    parser.add_argument(
+        "--kernel-hdr-dir",
+        type=pathlib.Path,
+        default=pathlib.Path("/usr/include"),
+        help="Path to the kernel UAPI headers directory (default: /usr/include)",
+    )
 
     args = parser.parse_args()
 
     # Check if compile_commands.json exists
-    ccmds_path = args.builddir / 'compile_commands.json'
+    ccmds_path = args.builddir / "compile_commands.json"
     if not ccmds_path.exists():
         print(f"Error: {ccmds_path} does not exist.")
         sys.exit(1)
 
     # Load compile_commands.json
     try:
-        with open(ccmds_path, 'r') as f:
+        with open(ccmds_path, "r") as f:
             ccmds = json.load(f)
     except json.JSONDecodeError as e:
         print(f"Error parsing {ccmds_path}: {e}")
@@ -139,11 +124,11 @@ def main():
 
     # Process each compilation command
     for entry in ccmds:
-        if 'file' not in entry or 'command' not in entry:
+        if "file" not in entry or "command" not in entry:
             continue
 
-        src_path = pathlib.Path(entry['file'])
-        cmd = entry['command']
+        src_path = pathlib.Path(entry["file"])
+        cmd = entry["command"]
 
         # Ignore tests files
         if not src_path.is_relative_to(srcdir / "src"):
@@ -152,7 +137,12 @@ def main():
         print(f"Processing: {src_path}")
 
         # Extract include paths
-        include_args = [f"-I{path}" for path in extract_include_paths(cmd)]
+        include_args = [
+            f"-I{args.kernel_hdr_dir}",
+            f"-I{args.srcdir}/src",
+            f"-I{args.builddir}/include",
+            f"-I{args.builddir}/src/bfcli/generated/include",
+        ]
 
         # Use GCC to get dependencies
         gcc_cmd = ["gcc", "-M"] + include_args + [str(src_path)]
@@ -160,14 +150,15 @@ def main():
 
         if deps_output:
             # Extract kernel headers from dependencies
-            headers = get_kernel_headers_from_deps(deps_output)
+            headers = get_kernel_headers_from_deps(args.kernel_hdr_dir, deps_output)
             all_headers.update(headers)
 
     # Copy all headers and their dependencies
     for header in all_headers:
-        copy_header(pathlib.Path(header), args.kernel_hdr_dir, args.destdir)
+        copy_header(header, args.kernel_hdr_dir, args.destdir)
 
     print("Kernel header copy completed!")
+
 
 if __name__ == "__main__":
     main()
