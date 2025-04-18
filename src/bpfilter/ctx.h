@@ -145,3 +145,10 @@ int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload);
  * @return A `bf_ns` object pointer.
  */
 struct bf_ns *bf_ctx_get_ns(void);
+
+/**
+ * Get the BPF token file descriptor.
+ *
+ * @return The BPF token file descriptor, or -1 if no token is used.
+ */
+int bf_ctx_token(void);

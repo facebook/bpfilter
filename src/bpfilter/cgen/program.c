@@ -1192,7 +1192,7 @@ int bf_program_load(struct bf_program *prog)
         prog->prog_name, bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
         prog->img, prog->img_size,
         bf_hook_to_bpf_attach_type(prog->runtime.chain->hook), log_buf,
-        log_buf ? BPF_LOG_BUF_SIZE : 0, &prog->runtime.prog_fd);
+        log_buf ? BPF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->runtime.prog_fd);
     if (r) {
         return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
                         prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");

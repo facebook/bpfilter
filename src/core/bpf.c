@@ -37,7 +37,7 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
                      size_t img_len, enum bpf_attach_type attach_type,
-                     char *log_buf, size_t log_size, int *fd)
+                     char *log_buf, size_t log_size, int token_fd, int *fd)
 {
     union bpf_attr attr = {
         .prog_type = prog_type,
@@ -54,6 +54,11 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
     bf_assert(name && img && fd);
 
     (void)snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
+
+    if (token_fd != -1) {
+        attr.prog_token_fd = token_fd;
+        attr.prog_flags |= BPF_F_TOKEN_FD;
+    }
 
     r = bf_bpf(BPF_PROG_LOAD, &attr);
     if (r < 0)

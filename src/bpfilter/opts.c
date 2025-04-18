@@ -23,6 +23,7 @@ enum
     BF_OPT_NO_IPTABLES_KEY,
     BF_OPT_NO_NFTABLES_KEY,
     BF_OPT_NO_CLI_KEY,
+    BF_OPT_WITH_BPF_TOKEN,
     BF_OPT_VERSION,
 };
 
@@ -58,6 +59,9 @@ static struct bf_options
      * bpfilter is stopped, everything is cleaned up. */
     bool transient;
 
+    /** Pass a token to BPF system calls, obtained from bpffs. */
+    bool with_bpf_token;
+
     /** Bit flags for enabled fronts. */
     uint16_t fronts;
 
@@ -67,6 +71,7 @@ static struct bf_options
     uint16_t verbose;
 } _bf_opts = {
     .transient = false,
+    .with_bpf_token = false,
     .fronts = 0xffff,
     .verbose = 0,
 };
@@ -83,6 +88,9 @@ static struct argp_option options[] = {
     {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0, "Disable nftables support",
      0},
     {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
+    {"with-bpf-token", BF_OPT_WITH_BPF_TOKEN, NULL, 0,
+     "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
+     0},
     {"verbose", 'v', "VERBOSE_FLAG", 0,
      "Verbose flags to enable. Can be used more than once.", 0},
     {"version", BF_OPT_VERSION, 0, 0, "Print the version and return.", 0},
@@ -120,6 +128,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case BF_OPT_NO_CLI_KEY:
         bf_info("disabling CLI support");
         args->fronts &= ~(1 << BF_FRONT_CLI);
+        break;
+    case BF_OPT_WITH_BPF_TOKEN:
+        args->with_bpf_token = true;
+        bf_info("using a BPF token");
         break;
     case 'v':
         opt = bf_verbose_from_str(arg);
@@ -164,6 +176,11 @@ bool bf_opts_persist(void)
 bool bf_opts_is_front_enabled(enum bf_front front)
 {
     return _bf_opts.fronts & (1 << front);
+}
+
+bool bf_opts_with_bpf_token(void)
+{
+    return _bf_opts.with_bpf_token;
 }
 
 bool bf_opts_is_verbose(enum bf_verbose opt)
