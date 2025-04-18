@@ -11,6 +11,7 @@ HOST_IP="10.0.0.1/24"
 NS_IP="10.0.0.2/24"
 HOST_IP_ADDR="10.0.0.1"
 NS_IP_ADDR="10.0.0.2"
+BPFILTER_PID=
 
 BLUE='\033[0;34m'
 BLUE_BOLD='\033[1;34m'
@@ -102,15 +103,17 @@ trap 'cleanup 1' INT TERM
 #
 ################################################################################
 
-BFCLI="bfcli"
-BPFILTER="bpfilter"
+BFCLI=
+BPFILTER=
+SETUSERNS=
 
 # Function to display usage information
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  --${BFCLI} PATH      Path to ${BFCLI} executable (default: $BFCLI)"
-    echo "  --bpfilter PATH   Path to bpfilter executable (default: $BPFILTER)"
+    echo "  --bfcli PATH      Path to bfcli executable"
+    echo "  --bpfilter PATH   Path to bpfilter executable"
+    echo "  --setuserns PATH  Path to the tool used to setup the user namespace"
     echo "  -h, --help        Display this help message and exit"
     exit 1
 }
@@ -118,12 +121,12 @@ usage() {
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --${BFCLI})
+        --bfcli)
             if [[ -z "$2" || "$2" == --* ]]; then
-                echo "Error: --${BFCLI} requires a path argument."
+                echo "Error: --bfcli requires a path argument."
                 usage
             fi
-            BFCLI="$2"
+            BFCLI=$(realpath $2)
             shift 2
             ;;
         --bpfilter)
@@ -131,7 +134,15 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --bpfilter requires a path argument."
                 usage
             fi
-            BPFILTER="$2"
+            BPFILTER=$(realpath $2)
+            shift 2
+            ;;
+        --setuserns)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "Error: --setuserns requires a path argument."
+                usage
+            fi
+            SETUSERNS=$(realpath $2)
             shift 2
             ;;
         -h|--help)
@@ -147,13 +158,31 @@ done
 
 ################################################################################
 #
-# Configure the network namespace
+# Start bpfilter
 #
 ################################################################################
 
-ip netns add ${NAMESPACE}
-ip link add ${VETH_HOST} type veth peer name ${VETH_NS}
+setenforce 0
 
+BPFILTER_OUTPUT_FILE=$(mktemp)
+SETUSERNS_SOCKET_PATH=$(mktemp -u)
+
+# Start the server to receive the bpffs FD and delegate BPF commands to it
+${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
+
+unshare --user --mount --net --keep-caps --map-groups=all --map-users=all -r /bin/bash -c "
+    ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH}
+    ${BPFILTER} --transient --verbose debug --verbose bpf --with-bpf-token
+" > "$BPFILTER_OUTPUT_FILE" 2>&1 &
+
+# Wait for bpfilter to initialize
+sleep 0.25
+
+BPFILTER_PID=$(pgrep bpfilter)
+log "bpfilter PID is ${BPFILTER_PID}"
+
+ip netns attach ${NAMESPACE} ${BPFILTER_PID}
+ip link add ${VETH_HOST} type veth peer name ${VETH_NS}
 ip link set ${VETH_NS} netns ${NAMESPACE}
 
 ip addr add ${HOST_IP} dev ${VETH_HOST}
@@ -172,23 +201,9 @@ log "  ${NS_IFINDEX}: ${VETH_NS} @ ${NS_IP_ADDR}"
 
 log "[SUITE] Setup"
 expect_success "validate namespace connectivity" \
-    ip netns exec ${NAMESPACE} ping -c 1 ${HOST_IP_ADDR}
+    ping -c 1 ${NS_IP_ADDR}
 
-
-################################################################################
-#
-# Start bpfilter
-#
-################################################################################
-
-log "Starting bpfilter in background..."
-BPFILTER_OUTPUT_FILE=$(mktemp)
-${BPFILTER} --transient --verbose debug --verbose bpf > "$BPFILTER_OUTPUT_FILE" 2>&1 &
-BPFILTER_PID=$!
-
-# Wait for bpfilter to initialize
-sleep 0.25
-
+FROM_NS="nsenter --all --target ${BPFILTER_PID}"
 
 ################################################################################
 #
@@ -196,205 +211,205 @@ sleep 0.25
 #
 ################################################################################
 
-log "[SUITE] netns: define chains from the host"
-expect_failure "can't attach chain to netns iface from host" \
-    ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+log "[SUITE] netns: define chains from ns"
+expect_failure "can't attach chain to host iface from ns" \
+    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "can ping host iface from netns" \
-    ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
-expect_success "attach chain to host iface" \
-    ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
-expect_failure "can't ping host iface from netns" \
-    ip netns exec ${NAMESPACE} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
+    ${FROM_NS} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
+expect_success "attach chain to ns iface" \
+    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+expect_failure "can't ping ns iface from host" \
+    ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "pings have been blocked on ingress" \
-    bpftool --json map dump name ${COUNTERS_MAP_NAME} \| jq --exit-status \'.[0].formatted.value.packets == 1\'
+    ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq 0x01/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
 expect_success "flushing the ruleset" \
-    ${BFCLI} ruleset flush
+    ${FROM_NS} ${BFCLI} ruleset flush
 
 log "[SUITE] Define chain from the netns"
 expect_failure "can't attach chain to host iface from netns" \
-    ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "can ping the netns iface from the host" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "attach chain to the netns iface" \
-    ip netns exec ${NAMESPACE} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_failure "can't ping the netns iface from the host" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "pings have been blocked on ingress" \
-    bpftool --json map dump name ${COUNTERS_MAP_NAME} \| jq --exit-status \'.[0].formatted.value.packets == 1\'
+    ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq 0x01/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
 expect_success "flushing the ruleset" \
-    ${BFCLI} ruleset flush
+    ${FROM_NS} ${BFCLI} ruleset flush
 
 log "[SUITE] netns: define chains from the netns"
 expect_failure "no chain defined in --from-str" \
-    ${BFCLI} chain set --from-str \"\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"\"
 expect_failure "multiple chains defined in --from-str, no --name" \
-    ${BFCLI} chain set --from-str \"chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT\"
 expect_failure "multiple chains defined in --from-str, --name does not exist" \
-    ${BFCLI} chain set --name invalid --from-str \"chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --name invalid --from-str \"chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, do not attach" \
-    ${BFCLI} chain set --from-str \"chain chain_set_xdp_0 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_xdp_0 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, attach" \
-    ${BFCLI} chain set --from-str \"chain chain_set_xdp_1 BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_xdp_1 BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT\"
 expect_success "multiple chains defined in --from-str, do not attach" \
-    ${BFCLI} chain set --name chain_set_tc_0 --from-str \"chain chain_set_tc_0 BF_HOOK_TC_INGRESS ACCEPT chain chain_set_tc_1 BF_HOOK_TC_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --name chain_set_tc_0 --from-str \"chain chain_set_tc_0 BF_HOOK_TC_INGRESS ACCEPT chain chain_set_tc_1 BF_HOOK_TC_INGRESS ACCEPT\"
 expect_success "multiple chains defined in --from-str, attach" \
-    ${BFCLI} chain set --name chain_set_tc_2 --from-str \"chain chain_set_tc_2 BF_HOOK_TC_EGRESS\{ifindex=${HOST_IFINDEX}\} ACCEPT chain chain_set_tc_3 BF_HOOK_TC_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --name chain_set_tc_2 --from-str \"chain chain_set_tc_2 BF_HOOK_TC_EGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT chain chain_set_tc_3 BF_HOOK_TC_INGRESS ACCEPT\"
 expect_success "replace a chain that is not attached, do not attach the new one" \
-    ${BFCLI} chain set --from-str \"chain chain_set_xdp_0 BF_HOOK_NF_LOCAL_IN ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_xdp_0 BF_HOOK_NF_LOCAL_IN ACCEPT\"
 expect_success "replace a chain that is not attached, attach the new one" \
-    ${BFCLI} chain set --from-str \"chain chain_set_tc_0 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=101-102\} ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_tc_0 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=101-102\} ACCEPT\"
 expect_success "replace a chain that is attached, do not attach the new one" \
-    ${BFCLI} chain set --from-str \"chain chain_set_xdp_1 BF_HOOK_NF_LOCAL_IN ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_xdp_1 BF_HOOK_NF_LOCAL_IN ACCEPT\"
 expect_success "replace a chain that is attached, attach the new one" \
-    ${BFCLI} chain set --from-str \"chain chain_set_tc_2 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=103-104\} ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_set_tc_2 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=103-104\} ACCEPT\"
 expect_success "flush chain_set_xdp_0" \
-    ${BFCLI} chain flush --name chain_set_xdp_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_set_xdp_0
 expect_success "flush chain_set_xdp_1" \
-    ${BFCLI} chain flush --name chain_set_xdp_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_set_xdp_1
 expect_success "flush chain_set_tc_0" \
-    ${BFCLI} chain flush --name chain_set_tc_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_set_tc_0
 expect_success "flush chain_set_tc_2" \
-    ${BFCLI} chain flush --name chain_set_tc_2
+    ${FROM_NS} ${BFCLI} chain flush --name chain_set_tc_2
 expect_failure "ensure removed chain can't be fetched" \
-    ${BFCLI} chain get --name chain_set_tc_2
+    ${FROM_NS} ${BFCLI} chain get --name chain_set_tc_2
 
 log "[SUITE] chain load"
 # No chain found
 expect_failure "no chain defined in --from-str" \
-    ${BFCLI} chain load --from-str \"\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"\"
 # Single chain found
 expect_failure "single chain defined in --from-str, invalid --name" \
-    ${BFCLI} chain load --name invalid_name --from-str \"chain chain_load_xdp_0 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --name invalid_name --from-str \"chain chain_load_xdp_0 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, no --name" \
-    ${BFCLI} chain load --from-str \"chain chain_load_xdp_1 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_load_xdp_1 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, select with valid --name" \
-    ${BFCLI} chain load --name chain_load_xdp_2 --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --name chain_load_xdp_2 --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
 expect_success "get chain_load_xdp_1" \
-    ${BFCLI} chain get --name chain_load_xdp_1
+    ${FROM_NS} ${BFCLI} chain get --name chain_load_xdp_1
 expect_success "get chain_load_xdp_2" \
-    ${BFCLI} chain get --name chain_load_xdp_2
+    ${FROM_NS} ${BFCLI} chain get --name chain_load_xdp_2
 expect_success "flush chain_load_xdp_1" \
-    ${BFCLI} chain flush --name chain_load_xdp_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_1
 expect_success "flush chain_load_xdp_2" \
-    ${BFCLI} chain flush --name chain_load_xdp_2
+    ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_2
 # Multiple chains found
 expect_failure "multiple chains defined in --from-str, no --name" \
-    ${BFCLI} chain load --from-str \"chain chain_load_tc_0 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_1 BF_HOOK_TC_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_load_tc_0 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_1 BF_HOOK_TC_INGRESS ACCEPT\"
 expect_failure "multiple chains defined in --from-str, invalid --name" \
-    ${BFCLI} chain load --name invalid --from-str \"chain chain_load_tc_2 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_3 BF_HOOK_TC_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --name invalid --from-str \"chain chain_load_tc_2 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_3 BF_HOOK_TC_INGRESS ACCEPT\"
 expect_success "multiple chains defined in --from-str, valid --name" \
-    ${BFCLI} chain load --name chain_load_tc_4 --from-str \"chain chain_load_tc_4 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_5 BF_HOOK_TC_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --name chain_load_tc_4 --from-str \"chain chain_load_tc_4 BF_HOOK_TC_INGRESS ACCEPT chain chain_load_tc_5 BF_HOOK_TC_INGRESS ACCEPT\"
 expect_success "get chain_load_tc_4" \
-    ${BFCLI} chain get --name chain_load_tc_4
+    ${FROM_NS} ${BFCLI} chain get --name chain_load_tc_4
 expect_success "flush chain_load_tc_4" \
-    ${BFCLI} chain flush --name chain_load_tc_4
+    ${FROM_NS} ${BFCLI} chain flush --name chain_load_tc_4
 
 log "[SUITE] chain attach"
 # Failures
 expect_success "load an XDP chain" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_0 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_0 BF_HOOK_XDP ACCEPT\"
 expect_failure "fail to attach with unsupported options" \
-    ${BFCLI} chain attach --name chain_attach_0 --option family=inet4 --option priorities=101-102
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_0 --option family=inet4 --option priorities=101-102
 expect_success "ensure hasn't been unloaded" \
-    ${BFCLI} chain get --name chain_attach_0
+    ${FROM_NS} ${BFCLI} chain get --name chain_attach_0
 expect_success "flush the chain" \
-    ${BFCLI} chain flush --name chain_attach_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_0
 # XDP
-expect_success "pings from host to netns are accepted" \
+expect_success "ping from host to netns is accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "load chain_attach_xdp_0" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_xdp_0 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_xdp_0 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "load chain_attach_xdp_1" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_xdp_1 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_xdp_1 BF_HOOK_XDP ACCEPT\"
 expect_success "attach chain_attach_xdp_0" \
-    ${BFCLI} chain attach --name chain_attach_xdp_0 --option ifindex=${HOST_IFINDEX}
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_0 --option ifindex=${NS_IFINDEX}
 expect_failure "fails to attach chain_attach_xdp_1" \
-    ${BFCLI} chain attach --name chain_attach_xdp_1 --option ifindex=${HOST_IFINDEX}
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_1 --option ifindex=${NS_IFINDEX}
 expect_failure "pings from host to netns are blocked by XDP chain" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_attach_xdp_0" \
-    ${BFCLI} chain flush --name chain_attach_xdp_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_xdp_0
 expect_success "flush chain_attach_xdp_1" \
-    ${BFCLI} chain flush --name chain_attach_xdp_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_xdp_1
 # TC
-expect_success "pings from host to netns are accepted" \
+expect_success "ping from host to netns is accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "load chain_attach_tc_0" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_tc_0 BF_HOOK_TC_EGRESS ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_tc_0 BF_HOOK_TC_EGRESS ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "load chain_attach_tc_1" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_tc_1 BF_HOOK_TC_EGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_tc_1 BF_HOOK_TC_EGRESS ACCEPT\"
 expect_success "attach chain_attach_tc_0" \
-    ${BFCLI} chain attach --name chain_attach_tc_0 --option ifindex=${HOST_IFINDEX}
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_0 --option ifindex=${NS_IFINDEX}
 expect_success "attach chain_attach_tc_1" \
-    ${BFCLI} chain attach --name chain_attach_tc_1 --option ifindex=${HOST_IFINDEX}
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_1 --option ifindex=${NS_IFINDEX}
 expect_failure "pings from host to netns are blocked by TC chain" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_attach_tc_0" \
-    ${BFCLI} chain flush --name chain_attach_tc_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_0
 expect_success "flush chain_attach_tc_1" \
-    ${BFCLI} chain flush --name chain_attach_tc_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_1
 # cgroup
 expect_success "pings from host to netns are accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "load chain_attach_cgroup_0" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_0 BF_HOOK_CGROUP_INGRESS ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_0 BF_HOOK_CGROUP_INGRESS ACCEPT\"
 expect_success "load chain_attach_cgroup_1" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "attach chain_attach_cgroup_0" \
-    ${BFCLI} chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup
 expect_success "fail to attach chain_attach_cgroup_1" \
-    ${BFCLI} chain attach --name chain_attach_cgroup_1 --option cgpath=/sys/fs/cgroup
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_1 --option cgpath=/sys/fs/cgroup
 expect_failure "pings from host to netns are blocked by cgroup chain" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_attach_cgroup_0" \
-    ${BFCLI} chain flush --name chain_attach_cgroup_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_cgroup_0
 expect_success "flush chain_attach_cgroup_1" \
-    ${BFCLI} chain flush --name chain_attach_cgroup_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_cgroup_1
 # Netfilter
 expect_success "pings from host to netns are accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "load chain_attach_nf_0" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_nf_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_nf_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "load chain_attach_nf_1" \
-    ${BFCLI} chain load --from-str \"chain chain_attach_nf_1 BF_HOOK_NF_LOCAL_IN ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_nf_1 BF_HOOK_NF_LOCAL_IN ACCEPT\"
 expect_success "attach chain_attach_nf_0" \
-    ${BFCLI} chain attach --name chain_attach_nf_0 --option family=inet4 --option priorities=101-102
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_nf_0 --option family=inet4 --option priorities=101-102
 expect_failure "fail to attach chain_attach_nf_1" \
-    ${BFCLI} chain attach --name chain_attach_nf_1 --option family=inet4 --option priorities=101-102
+    ${FROM_NS} ${BFCLI} chain attach --name chain_attach_nf_1 --option family=inet4 --option priorities=101-102
 expect_failure "pings from host to netns are blocked by Netfilter chain" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_attach_nf_0" \
-    ${BFCLI} chain flush --name chain_attach_nf_0
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_nf_0
 expect_success "flush chain_attach_nf_1" \
-    ${BFCLI} chain flush --name chain_attach_nf_1
+    ${FROM_NS} ${BFCLI} chain flush --name chain_attach_nf_1
 
 log "[SUITE] chain update"
 # Failures
 expect_failure "no chain defined in --from-str" \
-    ${BFCLI} chain update --from-str \"\"
+    ${FROM_NS} ${BFCLI} chain update --from-str \"\"
 expect_failure "invalid --name" \
-    ${BFCLI} chain update --name invalid_name --from-str \"chain chain_load_xdp_0 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain update --name invalid_name --from-str \"chain chain_load_xdp_0 BF_HOOK_XDP ACCEPT\"
 expect_failure "--name does not refer to an existing chain" \
-    ${BFCLI} chain update --name chain_load_xdp_1 --from-str \"chain chain_load_xdp_1 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_1 --from-str \"chain chain_load_xdp_1 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, do not attach" \
-    ${BFCLI} chain set --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
 expect_success "chain to update is not attached" \
-    ${BFCLI} chain update --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain update --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
 # Chain exist and is attached
 expect_success "define chain to update" \
-    ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT\"
 expect_success "pings from host to netns are accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "update chain, new chain has no hook options" \
-    ${BFCLI} chain update --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} chain update --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
 expect_failure "pings from host to netns are blocked" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "update chain, new chain has hook options (which are ignored)" \
-    ${BFCLI} chain update --name chain_load_xdp_3 --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT\"
+    ${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_3 --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT\"
 expect_success "pings from host to netns are accepted" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "flush chain_load_xdp_3" \
-    ${BFCLI} chain flush --name chain_load_xdp_3
+    ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_3
 
 
 ################################################################################

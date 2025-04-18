@@ -38,6 +38,16 @@ target_link_libraries(e2e_bin
         libbpfilter
 )
 
+add_executable(setuserns_bin EXCLUDE_FROM_ALL
+    ${CMAKE_CURRENT_SOURCE_DIR}/setuserns.c
+)
+
+target_link_libraries(setuserns_bin
+    PRIVATE
+        bf_global_flags
+        core
+)
+
 add_custom_target(e2e
     COMMAND
         ${CMAKE_SOURCE_DIR}/tools/asroot
@@ -48,9 +58,11 @@ add_custom_target(e2e
             ${CMAKE_CURRENT_SOURCE_DIR}/cli.sh
                 --bpfilter $<TARGET_FILE:bpfilter>
                 --bfcli $<TARGET_FILE:bfcli>
+                --setuserns $<TARGET_FILE:setuserns_bin>
     DEPENDS
-        e2e_bin
         bpfilter
         bfcli
+        e2e_bin
+        setuserns_bin
     COMMENT "Running end-to-end tests"
 )
