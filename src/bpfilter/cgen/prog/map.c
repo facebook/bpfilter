@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "bpfilter/ctx.h"
 #include "core/bpf.h"
 #include "core/dump.h"
 #include "core/helper.h"
@@ -214,6 +215,7 @@ struct bf_btf
     struct btf *btf;
     uint32_t key_type_id;
     uint32_t value_type_id;
+    int fd;
 };
 
 static void _bf_btf_free(struct bf_btf **btf);
@@ -227,6 +229,8 @@ static int _bf_btf_new(struct bf_btf **btf)
     _btf = malloc(sizeof(struct bf_btf));
     if (!_btf)
         return -ENOMEM;
+
+    _btf->fd = -1;
 
     _btf->btf = btf__new_empty();
     if (!_btf->btf)
@@ -245,7 +249,38 @@ static void _bf_btf_free(struct bf_btf **btf)
         return;
 
     btf__free((*btf)->btf);
+    closep(&(*btf)->fd);
     freep((void *)btf);
+}
+
+static int _bf_btf_load(struct bf_btf *btf)
+{
+    union bpf_attr attr = {};
+    int token_fd;
+    const void *raw;
+    int r;
+
+    bf_assert(btf);
+
+    raw = btf__raw_data(btf->btf, &attr.btf_size);
+    if (!raw)
+        return bf_err_r(errno, "failed to request BTF raw data");
+
+    attr.btf = bf_ptr_to_u64(raw);
+
+    token_fd = bf_ctx_token();
+    if (token_fd != -1) {
+        attr.btf_token_fd = token_fd;
+        attr.btf_flags |= BPF_F_TOKEN_FD;
+    }
+
+    r = bf_bpf(BPF_BTF_LOAD, &attr);
+    if (r < 0)
+        return bf_err_r(r, "failed to load BTF data");
+
+    btf->fd = r;
+
+    return 0;
 }
 
 /**
@@ -288,9 +323,9 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         return NULL;
     }
 
-    r = btf__load_into_kernel(kbtf);
-    if (r < 0) {
-        bf_err_r(r, "failed to load BPF map BTF data into kernel");
+    r = _bf_btf_load(btf);
+    if (r) {
+        bf_err_r(r, "failed to load BTF data");
         return NULL;
     }
 
@@ -299,6 +334,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
 
 int bf_map_create(struct bf_map *map, uint32_t flags)
 {
+    int token_fd;
     union bpf_attr attr = {};
     _cleanup_bf_btf_ struct bf_btf *btf = NULL;
     int r;
@@ -329,6 +365,11 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
     attr.max_entries = map->n_elems;
     attr.map_flags = flags;
 
+    if ((token_fd = bf_ctx_token()) != -1) {
+        attr.map_token_fd = token_fd;
+        attr.map_flags |= BPF_F_TOKEN_FD;
+    }
+
     /** The BTF data is not mandatory to use the map, but a good addition.
      * Hence, bpfilter will try to make the BTF data available, but will
      * ignore if that fails. @ref _bf_map_make_btf is used to isolate the
@@ -339,7 +380,7 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
      * freed on error, without preventing the BPF map to be created. */
     btf = _bf_map_make_btf(map);
     if (btf) {
-        attr.btf_fd = btf__fd(btf->btf);
+        attr.btf_fd = btf->fd;
         attr.btf_key_type_id = btf->key_type_id;
         attr.btf_value_type_id = btf->value_type_id;
     }

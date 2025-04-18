@@ -6,11 +6,14 @@
 #include "ctx.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
+#include "bpfilter/opts.h"
+#include "core/bpf.h"
 #include "core/chain.h"
 #include "core/dump.h"
 #include "core/front.h"
@@ -21,6 +24,7 @@
 #include "core/marsh.h"
 #include "core/ns.h"
 
+#define BF_BPFFS_DIR "/sys/fs/bpf"
 #define _cleanup_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
 /**
@@ -34,6 +38,9 @@ struct bf_ctx
     /// Namespaces the daemon was started in.
     struct bf_ns ns;
 
+    /// BPF token file descriptor
+    int token_fd;
+
     bf_list cgens;
 };
 
@@ -41,6 +48,33 @@ static void _bf_ctx_free(struct bf_ctx **ctx);
 
 /// Global daemon context. Hidden in this translation unit.
 static struct bf_ctx *_bf_global_ctx = NULL;
+
+static int _bf_ctx_gen_token(void)
+{
+    _cleanup_close_ int mnt_fd = -1;
+    _cleanup_close_ int bpffs_fd = -1;
+    _cleanup_close_ int token_fd = -1;
+    union bpf_attr _attr = {};
+
+    mnt_fd = open(BF_BPFFS_DIR, O_DIRECTORY);
+    if (mnt_fd < 0)
+        return bf_err_r(errno, "failed to open '%s'", BF_BPFFS_DIR);
+
+    bpffs_fd = openat(mnt_fd, ".", 0, O_RDWR);
+    if (bpffs_fd < 0)
+        return bf_err_r(errno, "failed to get bpffs FD from '%s'",
+                        BF_BPFFS_DIR);
+
+    _attr.token_create.bpffs_fd = bpffs_fd;
+
+    token_fd = bf_bpf(BPF_TOKEN_CREATE, &_attr);
+    if (token_fd < 0) {
+        return bf_err_r(token_fd, "failed to create BPF token for '%s'",
+                        BF_BPFFS_DIR);
+    }
+
+    return TAKE_FD(token_fd);
+}
 
 /**
  * Create and initialize a new context.
@@ -64,6 +98,17 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
     r = bf_ns_init(&_ctx->ns, getpid());
     if (r)
         return bf_err_r(r, "failed to initialise current bf_ns");
+
+    _ctx->token_fd = -1;
+    if (bf_opts_with_bpf_token()) {
+        _cleanup_close_ int token_fd = -1;
+
+        token_fd = _bf_ctx_gen_token();
+        if (token_fd < 0)
+            return bf_err_r(token_fd, "failed to generate a BPF token");
+
+        _ctx->token_fd = TAKE_FD(token_fd);
+    }
 
     _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_marsh);
 
@@ -132,6 +177,7 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     bf_ns_clean(&(*ctx)->ns);
+    closep(&(*ctx)->token_fd);
     bf_list_clean(&(*ctx)->cgens);
     freep((void *)ctx);
 }
@@ -162,6 +208,8 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "token_fd: %d", ctx->token_fd);
 
     // Codegens
     DUMP(bf_dump_prefix_last(prefix), "cgens: bf_list<struct bf_cgen>[%lu]",
@@ -416,4 +464,9 @@ int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload)
 struct bf_ns *bf_ctx_get_ns(void)
 {
     return &_bf_global_ctx->ns;
+}
+
+int bf_ctx_token(void)
+{
+    return _bf_global_ctx->token_fd;
 }

@@ -9,6 +9,7 @@ It is possible to customize the daemon's behavior using the following command-li
 - ``--no-cli``: disable ``bfcli`` support.
 - ``--no-nftables``: disable ``nftables`` support.
 - ``--no-iptables``: disable ``iptables`` support.
+- ``--with-bpf-token``: if set, the daemon will associate a BPF token to every ``bpf()`` system call. This is required when the daemon runs in user namespaces. The daemon will create the token from the bpffs mounted at ``/sys/fs/bpf``. The user is responsible for configuring the file system, so a token can be created. Only supported for kernel v6.9+.
 - ``-v=VERBOSE_FLAG``, ``--verbose=VERBOSE_FLAG``: enable verbose logs for ``VERBOSE_FLAG``. Currently, 3 verbose flags are supported:
 
   - ``debug``: enable all the debug logs in the application.
