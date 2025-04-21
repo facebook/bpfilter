@@ -162,18 +162,33 @@ done
 #
 ################################################################################
 
-setenforce 0
+# Disable selinux if available, not all distros enforce setlinux
+if command -v setenforce &> /dev/null; then
+    setenforce 0
+fi
 
 BPFILTER_OUTPUT_FILE=$(mktemp)
 SETUSERNS_SOCKET_PATH=$(mktemp -u)
 
-# Start the server to receive the bpffs FD and delegate BPF commands to it
-${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
+# Check if bpf_attr has a prog_token_fd field, if not, do not run bpfilter in a
+# userns.
+HAS_TOKEN_SUPPORT=0
+bash -c "sudo bpftool btf dump file /sys/kernel/btf/vmlinux format c | grep -q \"__s32 prog_token_fd;\"" && HAS_TOKEN_SUPPORT=1 || HAS_TOKEN_SUPPORT=0
 
-unshare --user --mount --net --keep-caps --map-groups=all --map-users=all -r /bin/bash -c "
-    ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH}
-    ${BPFILTER} --transient --verbose debug --verbose bpf --with-bpf-token
-" > "$BPFILTER_OUTPUT_FILE" 2>&1 &
+if [ $HAS_TOKEN_SUPPORT -eq 1 ]; then
+    log "starting bpfilter with BPF token"
+    ${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
+
+    unshare --user --mount --net --keep-caps --map-groups=all --map-users=all -r /bin/bash -c "
+        ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH}
+        ${BPFILTER} --transient --verbose debug --verbose bpf --with-bpf-token
+    " > "$BPFILTER_OUTPUT_FILE" 2>&1 &
+else
+    log "starting bpfilter without BPF token"
+    unshare --net /bin/bash -c "
+        ${BPFILTER} --transient --verbose debug --verbose bpf
+    " > "$BPFILTER_OUTPUT_FILE" 2>&1 &
+fi
 
 # Wait for bpfilter to initialize
 sleep 0.25

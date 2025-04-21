@@ -14,6 +14,7 @@
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/opts.h"
 #include "core/bpf.h"
+#include "core/btf.h"
 #include "core/chain.h"
 #include "core/dump.h"
 #include "core/front.h"
@@ -102,6 +103,15 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
     _ctx->token_fd = -1;
     if (bf_opts_with_bpf_token()) {
         _cleanup_close_ int token_fd = -1;
+
+        r = bf_btf_kernel_has_token();
+        if (r == -ENOENT) {
+            bf_err(
+                "--with-bpf-token requested, but this kernel doesn't support BPF token");
+            return r;
+        }
+        if (r)
+            return bf_err_r(r, "failed to check for BPF token support");
 
         token_fd = _bf_ctx_gen_token();
         if (token_fd < 0)
