@@ -6,7 +6,8 @@
 #include "core/list.c"
 
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
+
 static int dummy_marsh(const void *data, struct bf_marsh **marsh)
 {
     assert_success(bf_marsh_new(marsh, data, sizeof(int)));

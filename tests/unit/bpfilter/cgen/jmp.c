@@ -7,7 +7,7 @@
 
 #include "fake.h"
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 /**
  * Create a context and emit a given number of instructions.

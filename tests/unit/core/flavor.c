@@ -6,7 +6,7 @@
 #include "core/flavor.c"
 
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 Test(flavor, flavor_to_str)
 {

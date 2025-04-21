@@ -1,28 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-# - Define a new mock
-#
-# bpfilter uses ld's --wrap option to mock functions. --wrap will rename the
-# given symbol ${SYM} as __real_${SYM}, and every call to ${SYM} will actually
-# call __wrap_${SYM}. This function will had the necessary option to the
-# target in order for ld to wrap the requested symbol.
-#
-# See https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html.
-#
-function(bf_test_mock TARGET)
-    cmake_parse_arguments(PARSE_ARGV 1 _LOCAL "" "" "FUNCTIONS")
-
-    message(STATUS "Mocking the following function(s):")
-    foreach(_function IN LISTS _LOCAL_FUNCTIONS)
-        target_link_options(${TARGET}
-            PUBLIC
-                -Wl,--wrap=${_function}
-        )
-        message(STATUS "  ${_function}()")
-    endforeach()
-endfunction()
-
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 pkg_check_modules(cmocka REQUIRED IMPORTED_TARGET cmocka)
@@ -50,22 +28,4 @@ target_link_libraries(harness
         PkgConfig::bpf
         PkgConfig::cmocka
         PkgConfig::nl
-)
-
-bf_test_mock(harness
-    FUNCTIONS
-        bf_bpf
-        bf_bpf_obj_get
-        btf__load_vmlinux_btf
-        calloc
-        malloc
-        nlmsg_alloc
-        nlmsg_append
-        nlmsg_convert
-        nlmsg_put
-        open
-        read
-        snprintf
-        vsnprintf
-        write
 )

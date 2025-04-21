@@ -8,8 +8,8 @@
 #include <stdbool.h>
 
 #include "harness/test.h"
-#include "harness/mock.h"
 #include "fake.h"
+#include "mock.h"
 
 Test(ctx, create_delete_assert)
 {

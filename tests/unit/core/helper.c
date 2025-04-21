@@ -7,7 +7,7 @@
 
 #include "fake.h"
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 static const char content[] =
     "Il est assis au fond du métro, où personne ne regarde"

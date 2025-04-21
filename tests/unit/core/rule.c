@@ -7,7 +7,7 @@
 
 #include "fake.h"
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 Test(rule, new_and_free)
 {
