@@ -6,7 +6,7 @@
 #include "core/verdict.c"
 
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 Test(verdict, verdict_to_str_to_verdict)
 {

@@ -6,7 +6,7 @@
 #include "core/btf.c"
 
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 Test(btf, init)
 {

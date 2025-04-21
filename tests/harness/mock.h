@@ -83,8 +83,27 @@ void bf_test_filepath_free(char **path);
 #define bf_test_mock_will_return_always(mock, value)                           \
     _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), -1)
 
-struct nlmsghdr;
-struct nl_msg;
+#define bf_test_mock_real(mock) __real_##mock
+#define bf_test_mock_define(ret, x, args)                                      \
+    bool __bf_test_mock_##x##_on = false;                                      \
+                                                                               \
+    void bf_test_mock_##x##_enable(void)                                       \
+    {                                                                          \
+        __bf_test_mock_##x##_on = true;                                        \
+    }                                                                          \
+                                                                               \
+    void bf_test_mock_##x##_disable(void)                                      \
+    {                                                                          \
+        __bf_test_mock_##x##_on = false;                                       \
+    }                                                                          \
+                                                                               \
+    bool bf_test_mock_##x##_is_enabled(void)                                   \
+    {                                                                          \
+        return __bf_test_mock_##x##_on;                                        \
+    }                                                                          \
+                                                                               \
+    extern ret __real_##x args;                                                \
+    ret __wrap_##x args
 
 typedef struct
 {
@@ -93,23 +112,3 @@ typedef struct
 } bf_test_mock;
 
 void bf_test_mock_clean(bf_test_mock *mock);
-
-bf_test_mock_declare(void *, malloc, (size_t size));
-bf_test_mock_declare(void *, calloc, (size_t nmemb, size_t size));
-bf_test_mock_declare(int, open, (const char *pathname, int flags, mode_t mode));
-bf_test_mock_declare(ssize_t, read, (int fd, void *buf, size_t count));
-bf_test_mock_declare(ssize_t, write, (int fd, const void *buf, size_t count));
-bf_test_mock_declare(struct btf *, btf__load_vmlinux_btf, (void));
-bf_test_mock_declare(struct nl_msg *, nlmsg_alloc, ());
-bf_test_mock_declare(struct nl_msg *, nlmsg_convert, (struct nlmsghdr * nlh));
-bf_test_mock_declare(struct nlmsghdr *, nlmsg_put,
-                     (struct nl_msg * nlmsg, uint32_t pid, uint32_t seq,
-                      int type, int payload, int flags));
-bf_test_mock_declare(int, nlmsg_append,
-                     (struct nl_msg * nlmsg, void *data, size_t len, int pad));
-bf_test_mock_declare(int, bf_bpf_obj_get, (const char *path, int *fd));
-bf_test_mock_declare(int, vsnprintf,
-                     (char *str, size_t size, const char *fmt, va_list args));
-bf_test_mock_declare(int, snprintf,
-                     (char *str, size_t size, const char *fmt, ...));
-bf_test_mock_declare(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr));

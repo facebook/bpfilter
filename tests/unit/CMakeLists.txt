@@ -54,6 +54,30 @@ function(bf_test_configure_non_build_srcs TARGET)
     endforeach()
 endfunction()
 
+# - Define a new mock
+#
+# bpfilter uses ld's --wrap option to mock functions. --wrap will rename the
+# given symbol ${SYM} as __real_${SYM}, and every call to ${SYM} will actually
+# call __wrap_${SYM}. This function will add the necessary option to the
+# target in order for ld to wrap the requested symbol.
+#
+# See https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_3.html.
+#
+function(bf_test_mock TARGET)
+    cmake_parse_arguments(PARSE_ARGV 1 _LOCAL "" "" "FUNCTIONS")
+
+    list(LENGTH _LOCAL_FUNCTIONS N_MOCKS)
+
+    message(STATUS "Mocking ${N_MOCKS} functions for target '${TARGET}'")
+    foreach(_function IN LISTS _LOCAL_FUNCTIONS)
+        target_link_options(${TARGET}
+            PUBLIC
+                -Wl,--wrap=${_function}
+        )
+        message(VERBOSE "  - ${_function}()")
+    endforeach()
+endfunction()
+
 enable_testing()
 
 set(bf_test_srcs
@@ -90,6 +114,7 @@ add_executable(unit_bin EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fake.h  ${CMAKE_CURRENT_SOURCE_DIR}/fake.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mock.h  ${CMAKE_CURRENT_SOURCE_DIR}/mock.c
 
     ${bf_test_srcs}
 
@@ -129,6 +154,25 @@ target_link_libraries(unit_bin
         bf_global_flags
         harness
         gcov
+)
+
+bf_test_mock(unit_bin
+    FUNCTIONS
+        bf_bpf
+        bf_bpf_obj_get
+        bf_ctx_token
+        btf__load_vmlinux_btf
+        calloc
+        malloc
+        nlmsg_alloc
+        nlmsg_append
+        nlmsg_convert
+        nlmsg_put
+        open
+        read
+        snprintf
+        vsnprintf
+        write
 )
 
 add_custom_target(test

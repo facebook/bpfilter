@@ -6,7 +6,7 @@
 #include "core/hook.c"
 
 #include "harness/test.h"
-#include "harness/mock.h"
+#include "mock.h"
 
 Test(hook, hook_to_str_and_back)
 {
