@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     linux-tools-common \
     make \
     pkgconf \
+    procps \
     python3-breathe \
     python3-dateutil \
     python3-git \

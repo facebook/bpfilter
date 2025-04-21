@@ -31,6 +31,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         libgit2-devel \
         libnl3-devel \
         libtool \
+        procps-ng \
         python3-breathe \
         python3-dateutil \
         python3-furo \
@@ -65,6 +66,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         linux-tools-common \
         make \
         pkgconf \
+        procps \
         python3-breathe \
         python3-dateutil \
         python3-git \
