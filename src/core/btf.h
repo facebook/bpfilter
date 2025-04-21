@@ -44,6 +44,18 @@ int bf_btf_get_id(const char *name);
 const char *bf_btf_get_name(int id);
 
 /**
+ * Check if BPF token is supported by the current system.
+ *
+ * Read the kernel's BTF data to check if `prog_token_fd` is a valid field, if
+ * so it is assume BPF token is supported by the current kernel.
+ *
+ * @return 0 on success, or a negative errno value on failure, including:
+ * - `-ENOENT`: `prog_token_fd` can't be found, meaning BPF token is likely
+ *   unsupported.
+ */
+int bf_btf_kernel_has_token(void);
+
+/**
  * Get the offset of a field in a kernel structure.
  *
  * Use Linux' BTF data to find the offset of a specific field in a structure.
