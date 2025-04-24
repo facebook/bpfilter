@@ -1,7 +1,7 @@
 ``iptables``
 ============
 
-A custom ``iptables`` binary is required to use with ``bpfilter``, but it can be build directly from the ``bpfilter`` source tree: ``make iptables``. Once you have build ``iptables``, you can force it to communicate with ``bpfilter`` instead of the kernel using ``--bpf``.
+A custom ``iptables`` binary is required to use with ``bpfilter``, but it can be built directly from the ``bpfilter`` source tree: ``make iptables``. Once you have build ``iptables``, you can force it to communicate with ``bpfilter`` instead of the kernel using ``--bpf``.
 
 The following filters are supported:
 
