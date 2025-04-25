@@ -315,8 +315,8 @@ static int _bf_clean(void)
  * a negative error code is returned, an error occured during @p request
  * processing, and no response is available.
  *
- * @param request Request to process.
- * @param response Response to fill.
+ * @param request Request to process. Can't be NULL.
+ * @param response Response to fill. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
 static int _bf_process_request(struct bf_request *request,
@@ -325,8 +325,19 @@ static int _bf_process_request(struct bf_request *request,
     const struct bf_front_ops *ops;
     int r;
 
-    bf_assert(request);
-    bf_assert(response);
+    bf_assert(request && response);
+
+    if (request->front < 0 || request->front >= _BF_FRONT_MAX) {
+        bf_warn("received a request from front %d, unknown front, ignoring",
+                request->front);
+        return bf_response_new_failure(response, -EINVAL);
+    }
+
+    if (request->cmd < 0 || request->cmd >= _BF_REQ_CMD_MAX) {
+        bf_warn("received a request with command %d, unknown command, ignoring",
+                request->cmd);
+        return bf_response_new_failure(response, -EINVAL);
+    }
 
     if (!bf_opts_is_front_enabled(request->front)) {
         bf_warn("received a request from %s, but front is disabled, ignoring",
@@ -334,7 +345,9 @@ static int _bf_process_request(struct bf_request *request,
         return bf_response_new_failure(response, -ENOTSUP);
     }
 
-    bf_info("received a request from %s", bf_front_to_str(request->front));
+    bf_info("processing request %s from %s",
+            bf_request_cmd_to_str(request->cmd),
+            bf_front_to_str(request->front));
 
     ops = bf_front_ops_get(request->front);
     r = ops->request_handler(request, response);
