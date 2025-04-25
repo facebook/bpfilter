@@ -56,3 +56,26 @@ void bf_request_free(struct bf_request **request)
     free(*request);
     *request = NULL;
 }
+
+const char *bf_request_cmd_to_str(enum bf_request_cmd cmd)
+{
+    static const char *cmd_strs[] = {
+        [BF_REQ_RULESET_FLUSH] = "BF_REQ_RULESET_FLUSH",
+        [BF_REQ_RULESET_GET] = "BF_REQ_RULESET_GET",
+        [BF_REQ_RULESET_SET] = "BF_REQ_RULESET_SET",
+        [BF_REQ_CHAIN_SET] = "BF_REQ_CHAIN_SET",
+        [BF_REQ_CHAIN_GET] = "BF_REQ_CHAIN_GET",
+        [BF_REQ_CHAIN_LOAD] = "BF_REQ_CHAIN_LOAD",
+        [BF_REQ_CHAIN_ATTACH] = "BF_REQ_CHAIN_ATTACH",
+        [BF_REQ_CHAIN_UPDATE] = "BF_REQ_CHAIN_UPDATE",
+        [BF_REQ_CHAIN_FLUSH] = "BF_REQ_CHAIN_FLUSH",
+        [BF_REQ_COUNTERS_SET] = "BF_REQ_COUNTERS_SET",
+        [BF_REQ_COUNTERS_GET] = "BF_REQ_COUNTERS_GET",
+        [BF_REQ_CUSTOM] = "BF_REQ_CUSTOM",
+    };
+
+    static_assert(ARRAY_SIZE(cmd_strs) == _BF_REQ_CMD_MAX,
+                  "missing entries in bf_request_cmd array");
+
+    return cmd_strs[cmd];
+}

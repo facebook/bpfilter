@@ -129,3 +129,11 @@ static inline size_t bf_request_size(const struct bf_request *request)
 
     return sizeof(struct bf_request) + request->data_len;
 }
+
+/**
+ * @brief Convert a `bf_request_cmd` value to a string.
+ *
+ * @param cmd The request command to convert. Must be a valid command.
+ * @return String representation of `cmd`.
+ */
+const char *bf_request_cmd_to_str(enum bf_request_cmd cmd);
