@@ -36,6 +36,8 @@
 # - misc-include-cleaner
 #   False positives, e.g. with errno.h: E* macros are not directly defined in it,
 #   but it's the header we should include.
+# - misc-no-recursion
+#   Let me use recursion.
 # - misc-redundant-expression
 #   Macros having the same values can't be or'd without a warning.
 # - misc-static-assert
@@ -77,6 +79,7 @@ Checks: >
     -clang-analyzer-unix.Malloc,
   misc-*,
     -misc-include-cleaner,
+    -misc-no-recursion,
     -misc-redundant-expression,
     -misc-static-assert,
   modernize-*,
