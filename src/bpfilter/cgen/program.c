@@ -1288,3 +1288,69 @@ int bf_cgen_set_counters(struct bf_program *program,
 
     return -ENOTSUP;
 }
+
+int bf_program_pin(struct bf_program *prog, int dir_fd)
+{
+    const char *name;
+    int r;
+
+    bf_assert(prog);
+
+    name = prog->runtime.chain->name;
+
+    r = bf_bpf_obj_pin(prog->prog_name, prog->runtime.prog_fd, dir_fd);
+    if (r) {
+        bf_err_r(r, "failed to pin BPF program for '%s'", name);
+        goto err_unpin_all;
+    }
+
+    r = bf_map_pin(prog->cmap, dir_fd);
+    if (r) {
+        bf_err_r(r, "failed to pin BPF counters map for '%s'", name);
+        goto err_unpin_all;
+    }
+
+    r = bf_map_pin(prog->pmap, dir_fd);
+    if (r) {
+        bf_err_r(r, "failed to pin BPF printer map for '%s'", name);
+        goto err_unpin_all;
+    }
+
+    bf_list_foreach (&prog->sets, set_node) {
+        r = bf_map_pin(bf_list_node_get_data(set_node), dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF set map for '%s'", name);
+            goto err_unpin_all;
+        }
+    }
+
+    // If a link exists, pin it too.
+    if (prog->link->hookopts) {
+        r = bf_link_pin(prog->link, dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF link for '%s'", name);
+            goto err_unpin_all;
+        }
+    }
+
+    return 0;
+
+err_unpin_all:
+    bf_program_unpin(prog, dir_fd);
+    return r;
+}
+
+void bf_program_unpin(struct bf_program *prog, int dir_fd)
+{
+    bf_assert(prog);
+
+    bf_map_unpin(prog->cmap, dir_fd);
+    bf_map_unpin(prog->pmap, dir_fd);
+
+    bf_list_foreach (&prog->sets, set_node)
+        bf_map_unpin(bf_list_node_get_data(set_node), dir_fd);
+
+    bf_link_unpin(prog->link, dir_fd);
+
+    unlinkat(dir_fd, prog->prog_name, 0);
+}
