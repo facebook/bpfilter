@@ -18,12 +18,15 @@
 #include "core/logger.h"
 #include "version.h"
 
+#define BF_DEFAULT_BPFFS_PATH "/sys/fs/bpf"
+
 enum
 {
     BF_OPT_NO_IPTABLES_KEY,
     BF_OPT_NO_NFTABLES_KEY,
     BF_OPT_NO_CLI_KEY,
     BF_OPT_WITH_BPF_TOKEN,
+    BF_OPT_BPFFS_PATH,
     BF_OPT_VERSION,
 };
 
@@ -62,6 +65,9 @@ static struct bf_options
     /** Pass a token to BPF system calls, obtained from bpffs. */
     bool with_bpf_token;
 
+    /** Path to the bpffs to pin the BPF objects into. */
+    const char *bpffs_path;
+
     /** Bit flags for enabled fronts. */
     uint16_t fronts;
 
@@ -72,6 +78,7 @@ static struct bf_options
 } _bf_opts = {
     .transient = false,
     .with_bpf_token = false,
+    .bpffs_path = BF_DEFAULT_BPFFS_PATH,
     .fronts = 0xffff,
     .verbose = 0,
 };
@@ -90,6 +97,10 @@ static struct argp_option options[] = {
     {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
     {"with-bpf-token", BF_OPT_WITH_BPF_TOKEN, NULL, 0,
      "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
+     0},
+    {"bpffs-path", BF_OPT_BPFFS_PATH, "BPFFS_PATH", 0,
+     "Path to the bpffs to pin the BPF objects into. Defaults to " BF_DEFAULT_BPFFS_PATH
+     ".",
      0},
     {"verbose", 'v', "VERBOSE_FLAG", 0,
      "Verbose flags to enable. Can be used more than once.", 0},
@@ -132,6 +143,10 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
     case BF_OPT_WITH_BPF_TOKEN:
         args->with_bpf_token = true;
         bf_info("using a BPF token");
+        break;
+    case BF_OPT_BPFFS_PATH:
+        args->bpffs_path = arg;
+        bf_info("using bpffs at %s", args->bpffs_path);
         break;
     case 'v':
         opt = bf_verbose_from_str(arg);
@@ -181,6 +196,11 @@ bool bf_opts_is_front_enabled(enum bf_front front)
 bool bf_opts_with_bpf_token(void)
 {
     return _bf_opts.with_bpf_token;
+}
+
+const char *bf_opts_bpffs_path(void)
+{
+    return _bf_opts.bpffs_path;
 }
 
 bool bf_opts_is_verbose(enum bf_verbose opt)
