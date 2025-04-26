@@ -5,6 +5,9 @@
 
 #pragma once
 
+#include <stdbool.h>
+#include <sys/types.h>
+
 #define BF_RUNTIME_DIR "/run/bpfilter"
 #define BF_SOCKET_PATH BF_RUNTIME_DIR "/daemon.sock"
 #define BF_PIN_DIR "/sys/fs/bpf/bpfilter"
@@ -65,3 +68,37 @@ int bf_recv_response(int fd, struct bf_response **response);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_ensure_dir(const char *dir);
+
+/**
+ * @brief Open a directory and return its file descriptor.
+ *
+ * @param path Path of the directory to open. Can't be NULL.
+ * @return A file descriptor of the open directory on success, or a negative
+ *         errno value on failure.
+ */
+int bf_opendir(const char *path);
+
+/**
+ * @brief Open a directory from a parent directory file descriptor.
+ *
+ * @param parent_fd File descriptor of the parent directory to open the
+ *        directory from.
+ * @param dir_name Name of the directory to open. Can't be NULL.
+ * @param mkdir_if_missing If true, `dir_name` will be created (if missing)
+ *        before opening it.
+ * @return File descriptor of the open directory, or a negative errno value
+ *         on failure.
+ */
+int bf_opendir_at(int parent_fd, const char *dir_name, bool mkdir_if_missing);
+
+/**
+ * @brief Remove a directory from a parent directory file descriptor.
+ *
+ * @param parent_fd File descriptor of the parent directory to remove
+ *        `dir_name` from.
+ * @param dir_name Name of the directory to remove. Can't be NULL.
+ * @param recursive If true, remove the content of the directory before removing
+ *        the directory. If false, fails if the directory is not empty.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive);
