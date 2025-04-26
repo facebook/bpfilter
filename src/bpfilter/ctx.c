@@ -25,7 +25,6 @@
 #include "core/marsh.h"
 #include "core/ns.h"
 
-#define BF_BPFFS_DIR "/sys/fs/bpf"
 #define _cleanup_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
 /**
@@ -57,21 +56,21 @@ static int _bf_ctx_gen_token(void)
     _cleanup_close_ int token_fd = -1;
     union bpf_attr _attr = {};
 
-    mnt_fd = open(BF_BPFFS_DIR, O_DIRECTORY);
+    mnt_fd = open(bf_opts_bpffs_path(), O_DIRECTORY);
     if (mnt_fd < 0)
-        return bf_err_r(errno, "failed to open '%s'", BF_BPFFS_DIR);
+        return bf_err_r(errno, "failed to open '%s'", bf_opts_bpffs_path());
 
     bpffs_fd = openat(mnt_fd, ".", 0, O_RDWR);
     if (bpffs_fd < 0)
         return bf_err_r(errno, "failed to get bpffs FD from '%s'",
-                        BF_BPFFS_DIR);
+                        bf_opts_bpffs_path());
 
     _attr.token_create.bpffs_fd = bpffs_fd;
 
     token_fd = bf_bpf(BPF_TOKEN_CREATE, &_attr);
     if (token_fd < 0) {
         return bf_err_r(token_fd, "failed to create BPF token for '%s'",
-                        BF_BPFFS_DIR);
+                        bf_opts_bpffs_path());
     }
 
     return TAKE_FD(token_fd);

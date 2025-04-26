@@ -22,5 +22,6 @@ bool bf_opts_transient(void);
 bool bf_opts_persist(void);
 bool bf_opts_is_front_enabled(enum bf_front front);
 bool bf_opts_with_bpf_token(void);
+const char *bf_opts_bpffs_path(void);
 bool bf_opts_is_verbose(enum bf_verbose opt);
 void bf_opts_set_verbose(enum bf_verbose opt);
