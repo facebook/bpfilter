@@ -158,6 +158,56 @@ int _bf_do_ruleset_get(int argc, char *argv[])
 #define BFC_COMMAND_NAME_LEN 32
 static char _bfc_command_name[BFC_COMMAND_NAME_LEN];
 
+static const char help_message[] =
+    "bfcli - Command line interface for bpfilter daemon\n\n"
+    "Usage: bfcli [OBJECT] [ACTION] [OPTIONS]\n\n"
+    "Objects and Actions:\n"
+    "  ruleset\n"
+    "    set     - Define a new ruleset and replace all existing chains\n"
+    "              Options:\n"
+    "                --file FILE     - Read ruleset from file\n"
+    "                --str RULESET   - Read ruleset from command line\n"
+    "    get     - Print current ruleset with counters\n"
+    "    flush   - Remove all chains and rules\n\n"
+    "  chain\n"
+    "    set     - Generate and load a chain into kernel\n"
+    "              Options:\n"
+    "                --from-str CHAIN - Read chain from command line\n"
+    "                --from-file FILE - Read chain from file\n"
+    "                --name NAME      - Specify which chain to send to the daemon if --from-str or --from-file provides multiple chains.\n"
+    "    get     - Print a chain\n"
+    "              Options:\n"
+    "                --name NAME      - Name of chain to print\n"
+    "    load    - Generate and load chain (ignores hook options)\n"
+    "              Options:\n"
+    "                --from-str CHAIN - Read chain from command line arguments\n"
+    "                --from-file FILE - Read chain from file\n"
+    "                --name NAME      - Specify which chain to send to the daemon if --from-str or --from-file provides multiple chains.\n"
+    "    attach  - Attach loaded chain to hook\n"
+    "              Options:\n"
+    "                --name NAME      - Chain name\n"
+    "                --option HOOKOPT=VALUE - Hook option\n"
+    "    update  - Update existing chain atomically\n"
+    "              Options:\n"
+    "                --from-str CHAIN - Read chain from command line\n"
+    "                --from-file FILE - Read chain from file\n"
+    "                --name NAME      - Specify which chain to send to the daemon if --from-str or --from-file provides multiple chains.\n"
+    "    flush   - Remove existing chain\n"
+    "              Options:\n"
+    "                --name NAME      - Name of the chain to flush.\n\n"
+    "Global Options:\n"
+    "  --version - Print version and exit\n"
+    "  --help    - Print this help message\n\n"
+    "Examples:\n"
+    "  # Set a ruleset from file\n"
+    "  bfcli ruleset set --file myruleset.txt\n\n"
+    "  # Create an XDP chain\n"
+    "  bfcli chain set --from-str \"chain my_xdp_chain BF_HOOK_XDP ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT\"\n\n"
+    "  # Get current ruleset\n"
+    "  bfcli ruleset get\n\n"
+    "  # Flush all rules\n"
+    "  bfcli ruleset flush\n";
+
 int main(int argc, char *argv[])
 {
     const char *name = argv[0];
@@ -181,11 +231,14 @@ int main(int argc, char *argv[])
 
     bf_logger_setup();
 
-    // If any of the arguments is --version, print the version and return.
+    // If any of the arguments is --version or --help, print the version/help message and return.
     for (int i = 0; i < argc; ++i) {
         if (bf_streq("--version", argv[i])) {
             bf_info("bfcli version %s, libbpfilter version %s", BF_VERSION,
                     bf_version());
+            exit(0);
+        } else if (bf_streq("--help", argv[i])) {
+            printf("%s", help_message);
             exit(0);
         }
     }
