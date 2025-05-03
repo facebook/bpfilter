@@ -77,7 +77,7 @@
  * - Preprocess the L2, L3, and L4 headers
  *
  * The header's preprocessing is required to discover the protocols used in the
- * packet: processing L2 will rovide us with information about L3, and so on. The
+ * packet: processing L2 will provide us with information about L3, and so on. The
  * logic used to process layer X is responsible for discovering layer X+1: the L2
  * header preprocessing logic will discover the L3 protocol ID. When processing
  * layer X, if the protocol is not supported, the protocol ID is reset to 0 (so
