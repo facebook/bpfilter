@@ -5,6 +5,7 @@
 
 #define _GNU_SOURCE
 
+#include <argp.h>
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 #include "core/ns.h"
 #include "core/request.h"
 #include "core/response.h"
+#include "version.h"
 
 /**
  * Global flag to indicate whether the daemon should stop.
@@ -467,6 +469,8 @@ int main(int argc, char *argv[])
     int r;
 
     bf_logger_setup();
+
+    argp_program_version = "bpfilter version " BF_VERSION;
 
     r = bf_btf_setup();
     if (r < 0)

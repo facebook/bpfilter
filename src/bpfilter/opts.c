@@ -16,7 +16,6 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/logger.h"
-#include "version.h"
 
 #define BF_DEFAULT_BPFFS_PATH "/sys/fs/bpf"
 
@@ -104,7 +103,6 @@ static struct argp_option options[] = {
      0},
     {"verbose", 'v', "VERBOSE_FLAG", 0,
      "Verbose flags to enable. Can be used more than once.", 0},
-    {"version", BF_OPT_VERSION, 0, 0, "Print the version and return.", 0},
     {0},
 };
 
@@ -161,9 +159,6 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
             bf_log_set_level(BF_LOG_DBG);
         args->verbose |= BF_FLAG(opt);
         break;
-    case BF_OPT_VERSION:
-        bf_info("bpfilter version %s", BF_VERSION);
-        exit(0);
     default:
         return ARGP_ERR_UNKNOWN;
     }
