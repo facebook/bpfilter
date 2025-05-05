@@ -9,7 +9,6 @@
 #include <linux/bpf_common.h>
 #include <linux/limits.h>
 
-#include <bpf/bpf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -58,6 +57,7 @@
 
 #include "external/filter.h"
 
+#define _BF_LOG_BUF_SIZE (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
 static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
@@ -1181,7 +1181,7 @@ int bf_program_load(struct bf_program *prog)
         return r;
 
     if (bf_opts_is_verbose(BF_VERBOSE_DEBUG)) {
-        log_buf = malloc(BPF_LOG_BUF_SIZE);
+        log_buf = malloc(_BF_LOG_BUF_SIZE);
         if (!log_buf) {
             return bf_err_r(-ENOMEM,
                             "failed to allocate BPF_PROG_LOAD logs buffer");
@@ -1192,7 +1192,7 @@ int bf_program_load(struct bf_program *prog)
         prog->prog_name, bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
         prog->img, prog->img_size,
         bf_hook_to_bpf_attach_type(prog->runtime.chain->hook), log_buf,
-        log_buf ? BPF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->runtime.prog_fd);
+        log_buf ? _BF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->runtime.prog_fd);
     if (r) {
         return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
                         prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
