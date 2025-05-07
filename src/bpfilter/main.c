@@ -280,6 +280,7 @@ static int _bf_init(int argc, char *argv[])
  */
 static int _bf_clean(void)
 {
+    _cleanup_close_ int pindir_fd = -1;
     int r;
 
     for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
@@ -295,8 +296,9 @@ static int _bf_clean(void)
 
     bf_ctx_teardown(bf_opts_transient());
 
-    // BF_PIN_DIR will be removed only if it's empty (see rmdir(3))
-    rmdir(BF_PIN_DIR);
+    r = bf_ctx_rm_pindir();
+    if (r < 0 && r != -ENOENT && errno != -ENOTEMPTY)
+        return bf_err_r(r, "failed to remove pin directory");
 
     return 0;
 }

@@ -162,8 +162,8 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
                         struct bf_response **response)
 {
     _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
-    struct bf_marsh *marsh, *child = NULL;
-    int r = 0;
+    struct bf_marsh *marsh, *list_elem = NULL;
+    int r;
 
     bf_assert(request && response);
 
@@ -177,26 +177,25 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
 
     bf_ctx_flush(BF_FRONT_CLI);
 
-    while ((child = bf_marsh_next_child(marsh, child))) {
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    while ((list_elem = bf_marsh_next_child(marsh, list_elem))) {
         _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-        struct bf_marsh *cchild = NULL;
+        struct bf_marsh *child = NULL;
 
-        cchild = bf_marsh_next_child(child, cchild);
-        if (!cchild)
+        child = bf_marsh_next_child(list_elem, child);
+        if (!child)
             return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
 
-        r = bf_chain_new_from_marsh(&chain, cchild);
+        r = bf_chain_new_from_marsh(&chain, child);
         if (r)
             goto err_load;
 
-        cchild = bf_marsh_next_child(child, cchild);
-        if (!cchild)
+        child = bf_marsh_next_child(list_elem, child);
+        if (!child)
             return bf_err_r(-ENOENT, "expecting marsh for hook, none found");
-
-        if (cchild->data_len) {
-            r = bf_hookopts_new_from_marsh(&hookopts, cchild);
+        if (child->data_len) {
+            r = bf_hookopts_new_from_marsh(&hookopts, child);
             if (r)
                 goto err_load;
         }
@@ -205,35 +204,28 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
         if (r)
             goto err_load;
 
-        r = bf_cgen_load(cgen);
-        if (r)
+        r = bf_cgen_set(cgen, request->ns, hookopts ? &hookopts : NULL);
+        if (r) {
+            bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
             goto err_load;
-
-        if (hookopts) {
-            r = bf_cgen_attach(cgen, request->ns, &hookopts);
-            if (r)
-                goto err_load;
         }
 
         r = bf_ctx_set_cgen(cgen);
         if (r) {
-            bf_err("failed to add cgen to the runtime context");
+            /* The codegen is loaded already, if the daemon runs in persistent
+             * mode, cleaning the codegen won't be sufficient to discard the
+             * chain, it must be unpinned. */
+            bf_cgen_unload(cgen);
             goto err_load;
         }
-
-        r = bf_list_add_tail(&cgens, cgen);
-        if (r)
-            goto err_load;
 
         TAKE_PTR(cgen);
     }
 
-    return r;
+    return 0;
 
 err_load:
-    bf_list_foreach (&cgens, cgen_node)
-        bf_ctx_delete_cgen(bf_list_node_get_data(cgen_node), true);
-
+    bf_ctx_flush(BF_FRONT_CLI);
     return r;
 }
 
@@ -276,10 +268,6 @@ int _bf_cli_chain_set(const struct bf_request *request,
     if (r)
         return r;
 
-    r = bf_cgen_load(new_cgen);
-    if (r)
-        return r;
-
     old_cgen = bf_ctx_get_cgen(new_cgen->chain->name);
     if (old_cgen) {
         /* bf_ctx_delete_cgen() can only fail if the codegen is not found,
@@ -287,24 +275,18 @@ int _bf_cli_chain_set(const struct bf_request *request,
         (void)bf_ctx_delete_cgen(old_cgen, true);
     }
 
-    if (hookopts) {
-        r = bf_cgen_attach(new_cgen, request->ns, &hookopts);
-        if (r)
-            goto err_unload;
-    }
+    r = bf_cgen_set(new_cgen, request->ns, hookopts ? &hookopts : NULL);
+    if (r)
+        return r;
 
     r = bf_ctx_set_cgen(new_cgen);
-    if (r)
-        goto err_detach;
+    if (r) {
+        bf_cgen_unload(new_cgen);
+        return r;
+    }
 
     TAKE_PTR(new_cgen);
 
-    return r;
-
-err_detach:
-    bf_cgen_detach(new_cgen);
-err_unload:
-    bf_cgen_unload(new_cgen);
     return r;
 }
 
@@ -519,6 +501,10 @@ int _bf_cli_chain_update(const struct bf_request *request,
     cgen = bf_ctx_get_cgen(chain->name);
     if (!cgen)
         return -ENOENT;
+
+    if (!cgen->program->link->hookopts) {
+        return bf_err_r(-EINVAL, "chain '%s' is not attached", chain->name);
+    }
 
     r = bf_cgen_update(cgen, &chain);
     if (r)
