@@ -338,7 +338,7 @@ void bf_program_free(struct bf_program **program);
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
 int bf_program_unmarsh(const struct bf_marsh *marsh,
                        struct bf_program **program,
-                       const struct bf_chain *chain);
+                       const struct bf_chain *chain, int dir_fd);
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
 
