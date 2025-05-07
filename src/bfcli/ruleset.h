@@ -18,3 +18,6 @@ struct bfc_ruleset
 #define _clean_bfc_ruleset_ __attribute__((__cleanup__(bfc_ruleset_clean)))
 
 void bfc_ruleset_clean(struct bfc_ruleset *ruleset);
+
+int bfc_ruleset_set(int argc, char *argv[]);
+int bfc_ruleset_get(int argc, char *argv[]);
