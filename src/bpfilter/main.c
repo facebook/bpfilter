@@ -359,7 +359,12 @@ static int _bf_process_request(struct bf_request *request,
     }
 
     if (!bf_opts_transient() && (request->cmd == BF_REQ_RULESET_FLUSH ||
-                                 request->cmd == BF_REQ_RULESET_SET))
+                                 request->cmd == BF_REQ_RULESET_SET ||
+                                 request->cmd == BF_REQ_CHAIN_SET ||
+                                 request->cmd == BF_REQ_CHAIN_LOAD ||
+                                 request->cmd == BF_REQ_CHAIN_ATTACH ||
+                                 request->cmd == BF_REQ_CHAIN_UPDATE ||
+                                 request->cmd == BF_REQ_CHAIN_FLUSH))
         r = _bf_save(ctx_path);
 
     return r;
