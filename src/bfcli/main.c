@@ -52,9 +52,11 @@ static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
         break;
     case ARGP_KEY_END:
         if (!opts->input_file && !opts->input_string)
-            return bf_err_r(-EINVAL, "--file or --str argument is required");
+            return bf_err_r(-EINVAL,
+                            "--from-file or --from-str argument is required");
         if (opts->input_file && opts->input_string)
-            return bf_err_r(-EINVAL, "--file is incompatible with --str");
+            return bf_err_r(-EINVAL,
+                            "--from-file is incompatible with --from-str");
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -69,8 +71,8 @@ int _bf_do_ruleset_set(int argc, char *argv[])
         .input_file = NULL,
     };
     static struct argp_option options[] = {
-        {"file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
-        {"str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
+        {"from-file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
+        {"from-str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
         {0},
     };
     struct argp argp = {

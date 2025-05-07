@@ -228,11 +228,11 @@ FROM_NS="nsenter --all --target ${BPFILTER_PID}"
 
 log "[SUITE] netns: define chains from ns"
 expect_failure "can't attach chain to host iface from ns" \
-    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "can ping host iface from netns" \
     ${FROM_NS} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
 expect_success "attach chain to ns iface" \
-    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_failure "can't ping ns iface from host" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "pings have been blocked on ingress" \
@@ -242,11 +242,11 @@ expect_success "flushing the ruleset" \
 
 log "[SUITE] Define chain from the netns"
 expect_failure "can't attach chain to host iface from netns" \
-    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_success "can ping the netns iface from the host" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "attach chain to the netns iface" \
-    ${FROM_NS} ${BFCLI} ruleset set --str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
 expect_failure "can't ping the netns iface from the host" \
     ping -c 1 -W 0.25 ${NS_IP_ADDR}
 expect_success "pings have been blocked on ingress" \

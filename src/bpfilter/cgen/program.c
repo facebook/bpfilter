@@ -57,7 +57,8 @@
 
 #include "external/filter.h"
 
-#define _BF_LOG_BUF_SIZE (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
+#define _BF_LOG_BUF_SIZE                                                       \
+    (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 
 static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
