@@ -135,6 +135,7 @@ enum bf_hookopts_type
     _BF_HOOKOPTS_MAX,
 };
 
+#define _clean_bf_hookopts_ __attribute__((cleanup(bf_hookopts_clean)))
 #define _free_bf_hookopts_ __attribute__((cleanup(bf_hookopts_free)))
 
 /**
@@ -156,6 +157,15 @@ int bf_hookopts_new(struct bf_hookopts **hookopts);
  */
 int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
                                const struct bf_marsh *marsh);
+
+/**
+ * @brief Cleanup a `bf_hookopts` object.
+ *
+ * Release the allocated memory *in* the object, but not the object itself.
+ *
+ * @param hookopts `bf_hookopts` object to cleanup. Can't be NULL.
+ */
+void bf_hookopts_clean(struct bf_hookopts *hookopts);
 
 /**
  * Deallocate a `bf_hookopts` object.

@@ -434,6 +434,11 @@ int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
     return 0;
 }
 
+void bf_hookopts_clean(struct bf_hookopts *hookopts)
+{
+    freep((void *)&hookopts->cgpath);
+}
+
 void bf_hookopts_free(struct bf_hookopts **hookopts)
 {
     bf_assert(hookopts);
@@ -441,7 +446,7 @@ void bf_hookopts_free(struct bf_hookopts **hookopts)
     if (!*hookopts)
         return;
 
-    freep((void *)&(*hookopts)->cgpath);
+    bf_hookopts_clean(*hookopts);
     freep((void *)hookopts);
 }
 
