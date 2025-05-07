@@ -431,6 +431,17 @@ expect_success "pings from host to netns are accepted" \
 expect_success "flush chain_load_xdp_3" \
     ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_3
 
+log "[SUITE] ruleset"
+expect_success "ruleset set" \
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain ruleset_set_xdp_0 BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT chain ruleset_set_xdp_1 BF_HOOK_XDP DROP chain ruleset_set_tc_0 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=103-104\} ACCEPT\"
+expect_success "flush chain ruleset_set_xdp_0" \
+    ${FROM_NS} ${BFCLI} chain flush --name ruleset_set_xdp_0
+expect_success "ruleset get" \
+    ${FROM_NS} ${BFCLI} ruleset get
+expect_success "replace ruleset" \
+    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain ruleset_set_xdp_0 BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT chain ruleset_set_xdp_1 BF_HOOK_XDP DROP chain ruleset_set_tc_0 BF_HOOK_NF_LOCAL_IN\{family=inet4,priorities=103-104\} ACCEPT\"
+expect_success "ruleset flush" \
+    ${FROM_NS} ${BFCLI} ruleset flush
 
 ################################################################################
 #
