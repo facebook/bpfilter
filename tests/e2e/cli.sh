@@ -83,6 +83,8 @@ cleanup() {
         kill $BPFILTER_PID 2>/dev/null || true
     fi
 
+    sleep 0.5
+
     if [ "${1:-0}" -ne 0 ] && [ -f "$BPFILTER_OUTPUT_FILE" ]; then
         log "bpfilter output:"
         cat "$BPFILTER_OUTPUT_FILE"
@@ -180,13 +182,16 @@ if [ $HAS_TOKEN_SUPPORT -eq 1 ]; then
     ${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
 
     unshare --user --mount --net --keep-caps --map-groups=all --map-users=all -r /bin/bash -c "
-        ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH}
-        ${BPFILTER} --transient --verbose debug --verbose bpf --with-bpf-token
+        set -e
+        mount -t tmpfs tmpfs /run
+        mkdir -p /tmp/bpffs
+        ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH} --bpffs-mount-path /tmp/bpffs
+        ${BPFILTER} --verbose debug --verbose bpf --with-bpf-token --bpffs-path /tmp/bpffs
     " > "$BPFILTER_OUTPUT_FILE" 2>&1 &
 else
     log "starting bpfilter without BPF token"
     unshare --net /bin/bash -c "
-        ${BPFILTER} --transient --verbose debug --verbose bpf
+        ${BPFILTER} --verbose debug --verbose bpf
     " > "$BPFILTER_OUTPUT_FILE" 2>&1 &
 fi
 
@@ -408,7 +413,7 @@ expect_failure "--name does not refer to an existing chain" \
     ${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_1 --from-str \"chain chain_load_xdp_1 BF_HOOK_XDP ACCEPT\"
 expect_success "single chain defined in --from-str, do not attach" \
     ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
-expect_success "chain to update is not attached" \
+expect_failure "chain to update is not attached" \
     ${FROM_NS} ${BFCLI} chain update --from-str \"chain chain_load_xdp_2 BF_HOOK_XDP ACCEPT\"
 # Chain exist and is attached
 expect_success "define chain to update" \
