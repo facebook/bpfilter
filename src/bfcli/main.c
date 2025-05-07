@@ -14,6 +14,7 @@
 #include "bfcli/chain.h"
 #include "bfcli/helper.h"
 #include "bfcli/print.h"
+#include "bfcli/ruleset.h"
 #include "core/chain.h"
 #include "core/helper.h"
 #include "core/hook.h"
@@ -27,13 +28,13 @@
 
 int bf_send(const struct bf_request *request, struct bf_response **response);
 
-struct bf_ruleset_set_opts
+struct bfc_ruleset_set_opts
 {
     const char *input_file;
     const char *input_string;
 };
 
-struct bf_ruleset_get_opts
+struct bfc_ruleset_get_opts
 {
     bool with_counters;
 };
@@ -41,7 +42,7 @@ struct bf_ruleset_get_opts
 static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
                                            struct argp_state *state)
 {
-    struct bf_ruleset_set_opts *opts = state->input;
+    struct bfc_ruleset_set_opts *opts = state->input;
 
     switch (key) {
     case 'f':
@@ -67,11 +68,12 @@ static error_t _bf_ruleset_set_opts_parser(int key, const char *arg,
 
 int _bf_do_ruleset_set(int argc, char *argv[])
 {
-    static struct bf_ruleset_set_opts opts = {
+    static struct bfc_ruleset_set_opts opts = {
         .input_file = NULL,
     };
     static struct argp_option options[] = {
-        {"from-file", 'f', "INPUT_FILE", 0, "Input file to use a rules source", 0},
+        {"from-file", 'f', "INPUT_FILE", 0, "Input file to use a rules source",
+         0},
         {"from-str", 's', "INPUT_STRING", 0, "String to use as rules", 0},
         {0},
     };
@@ -81,7 +83,7 @@ int _bf_do_ruleset_set(int argc, char *argv[])
         0,       NULL,
         NULL,
     };
-    struct bf_ruleset ruleset = {
+    struct bfc_ruleset ruleset = {
         .chains = bf_list_default(bf_chain_free, bf_chain_marsh),
         .sets = bf_set_list(),
         .hookopts = bf_list_default(bf_hookopts_free, bf_hookopts_marsh),
@@ -222,7 +224,7 @@ int main(int argc, char *argv[])
     return r;
 }
 
-void yyerror(struct bf_ruleset *ruleset, const char *fmt, ...)
+void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
 {
     UNUSED(ruleset);
 

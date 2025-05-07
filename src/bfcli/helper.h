@@ -8,16 +8,7 @@
 
 #include "core/list.h"
 
-struct bf_ruleset
-{
-    bf_list chains;
-    bf_list sets;
-    bf_list hookopts;
-};
+struct bfc_ruleset;
 
-#define _clean_bf_ruleset_ __attribute__((__cleanup__(bf_ruleset_clean)))
-
-void bf_ruleset_clean(struct bf_ruleset *ruleset);
-
-int bfc_parse_file(const char *file, struct bf_ruleset *ruleset);
-int bfc_parse_str(const char *str, struct bf_ruleset *ruleset);
+int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset);
+int bfc_parse_str(const char *str, struct bfc_ruleset *ruleset);

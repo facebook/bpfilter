@@ -11,20 +11,9 @@
 
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
-#include "core/helper.h"
-#include "core/list.h"
 #include "core/logger.h"
 
-void bf_ruleset_clean(struct bf_ruleset *ruleset)
-{
-    bf_assert(ruleset);
-
-    bf_list_clean(&ruleset->chains);
-    bf_list_clean(&ruleset->hookopts);
-    bf_list_clean(&ruleset->sets);
-}
-
-int bfc_parse_file(const char *file, struct bf_ruleset *ruleset)
+int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset)
 {
     FILE *rules;
     int r;
@@ -44,7 +33,7 @@ int bfc_parse_file(const char *file, struct bf_ruleset *ruleset)
     return r;
 }
 
-int bfc_parse_str(const char *str, struct bf_ruleset *ruleset)
+int bfc_parse_str(const char *str, struct bfc_ruleset *ruleset)
 {
     YY_BUFFER_STATE buffer;
     int r;

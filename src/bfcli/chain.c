@@ -12,6 +12,7 @@
 
 #include "bfcli/helper.h"
 #include "bfcli/print.h"
+#include "bfcli/ruleset.h"
 #include "core/chain.h"
 #include "core/counter.h"
 #include "core/helper.h"
@@ -84,7 +85,7 @@ static error_t _bfc_chain_opts_parser(int key, const char *arg,
     return r;
 }
 
-static int _bfc_get_chain_from_ruleset(const struct bf_ruleset *ruleset,
+static int _bfc_get_chain_from_ruleset(const struct bfc_ruleset *ruleset,
                                        const char *name,
                                        struct bf_chain **chain,
                                        struct bf_hookopts **hookopts)
@@ -159,7 +160,7 @@ int bfc_chain_set(int argc, char **argv)
 
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
-    _clean_bf_ruleset_ struct bf_ruleset ruleset = bf_ruleset_default();
+    _clean_bfc_ruleset_ struct bfc_ruleset ruleset = bf_ruleset_default();
     struct bfc_chain_opts opts = {
         .validation_cb = _bfc_chain_set_validate_cb,
     };
@@ -264,7 +265,7 @@ int bfc_chain_load(int argc, char **argv)
 
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
-    _clean_bf_ruleset_ struct bf_ruleset ruleset = bf_ruleset_default();
+    _clean_bfc_ruleset_ struct bfc_ruleset ruleset = bf_ruleset_default();
     struct bfc_chain_opts opts = {
         .validation_cb = _bfc_chain_load_validate_cb,
     };
@@ -374,7 +375,7 @@ int bfc_chain_update(int argc, char **argv)
 
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
-    _clean_bf_ruleset_ struct bf_ruleset ruleset = bf_ruleset_default();
+    _clean_bfc_ruleset_ struct bfc_ruleset ruleset = bf_ruleset_default();
     struct bfc_chain_opts opts = {
         .validation_cb = _bfc_chain_update_validate_cb,
     };

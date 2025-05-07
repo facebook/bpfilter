@@ -10,13 +10,13 @@
     #include <stdbool.h>
 
     #include "core/list.h"
-    #include "bfcli/helper.h"
+    #include "bfcli/ruleset.h"
 
     extern int yylex();
     extern int yyparse();
     extern FILE *yyin;
 
-    void yyerror(struct bf_ruleset *ruleset, const char *fmt, ...);
+    void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...);
 %}
 
 %code requires {
@@ -53,7 +53,7 @@
 }
 
 %define parse.error detailed
-%parse-param {struct bf_ruleset *ruleset}
+%parse-param {struct bfc_ruleset *ruleset}
 
 %union {
     bool bval;
