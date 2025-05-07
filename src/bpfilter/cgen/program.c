@@ -76,34 +76,6 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
     return flavor_ops[flavor];
 }
 
-static int _bf_program_get_pindir_fd(const struct bf_program *program)
-{
-    char dir[PATH_MAX];
-    int pindir_fd;
-    int r;
-
-    bf_assert(program);
-
-    r = bf_ensure_dir(BF_PIN_DIR);
-    if (r)
-        return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
-
-    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR,
-                   program->runtime.chain->name);
-
-    r = bf_ensure_dir(dir);
-    if (r)
-        return bf_err_r(r, "failed to ensure BPF objects pin directory exists");
-
-    pindir_fd = open(dir, O_DIRECTORY, 0);
-    if (pindir_fd < 0) {
-        return bf_err_r(errno, "failed to open bf_program pin directory %s",
-                        dir);
-    }
-
-    return TAKE_FD(pindir_fd);
-}
-
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
@@ -119,15 +91,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 
     _program->flavor = bf_hook_to_flavor(chain->hook);
     _program->runtime.prog_fd = -1;
-    _program->runtime.pindir_fd = -1;
     _program->runtime.ops = bf_flavor_ops_get(_program->flavor);
     _program->runtime.chain = chain;
-
-    if (bf_opts_persist()) {
-        _program->runtime.pindir_fd = _bf_program_get_pindir_fd(_program);
-        if (_program->runtime.pindir_fd < 0)
-            return _program->runtime.pindir_fd;
-    }
 
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s", "bf_prog");
 
@@ -190,7 +155,6 @@ void bf_program_free(struct bf_program **program)
      * won't be called, but the programs are pinned, so they can be closed
      * safely. */
     closep(&(*program)->runtime.prog_fd);
-    closep(&(*program)->runtime.pindir_fd);
 
     bf_map_free(&(*program)->cmap);
     bf_map_free(&(*program)->pmap);
@@ -299,7 +263,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
 int bf_program_unmarsh(const struct bf_marsh *marsh,
                        struct bf_program **program,
-                       const struct bf_chain *chain)
+                       const struct bf_chain *chain, int dir_fd)
 {
     _cleanup_bf_program_ struct bf_program *_program = NULL;
     struct bf_marsh *child = NULL;
@@ -314,16 +278,14 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     bf_map_free(&_program->cmap);
-    r = bf_map_new_from_marsh(&_program->cmap, _program->runtime.pindir_fd,
-                              child);
+    r = bf_map_new_from_marsh(&_program->cmap, dir_fd, child);
     if (r < 0)
         return r;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     bf_map_free(&_program->pmap);
-    r = bf_map_new_from_marsh(&_program->pmap, _program->runtime.pindir_fd,
-                              child);
+    r = bf_map_new_from_marsh(&_program->pmap, dir_fd, child);
     if (r < 0)
         return r;
 
@@ -343,8 +305,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         while ((set_elem = bf_marsh_next_child(child, set_elem))) {
             _cleanup_bf_map_ struct bf_map *map = NULL;
 
-            r = bf_map_new_from_marsh(&map, _program->runtime.pindir_fd,
-                                      set_elem);
+            r = bf_map_new_from_marsh(&map, dir_fd, set_elem);
             if (r < 0)
                 return r;
 
@@ -361,8 +322,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         return -EINVAL;
 
     bf_link_free(&_program->link);
-    r = bf_link_new_from_marsh(&_program->link, _program->runtime.pindir_fd,
-                               child);
+    r = bf_link_new_from_marsh(&_program->link, dir_fd, child);
     if (r)
         return bf_err_r(r, "failed to restore bf_program.link");
 
@@ -390,8 +350,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
 
-    r = bf_bpf_obj_get(_program->prog_name, _program->runtime.pindir_fd,
-                       &_program->runtime.prog_fd);
+    r = bf_bpf_obj_get(_program->prog_name, dir_fd, &_program->runtime.prog_fd);
     if (r < 0)
         return bf_err_r(r, "failed to get prog fd");
 
@@ -464,7 +423,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(bf_dump_prefix_last(prefix), "runtime: <anonymous>");
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
-    DUMP(prefix, "pindir_fd: %d", program->runtime.pindir_fd);
     DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
     bf_dump_prefix_pop(prefix);
 
@@ -934,40 +892,6 @@ int bf_program_generate(struct bf_program *program)
     return 0;
 }
 
-/**
- * Unpin the BPF objects owned by a program.
- *
- * If the @p program object is deleted, the BPF object will disappear from
- * the system.
- *
- * @param program Program containing the objects to unpin. Can't be NULL.
- */
-static void _bf_program_unpin(struct bf_program *program)
-{
-    char dir[PATH_MAX];
-    int r;
-
-    bf_assert(program);
-
-    unlinkat(program->runtime.pindir_fd, program->prog_name, 0);
-    bf_map_unpin(program->pmap, program->runtime.pindir_fd);
-    bf_map_unpin(program->cmap, program->runtime.pindir_fd);
-    bf_link_unpin(program->link, program->runtime.pindir_fd);
-    bf_list_foreach (&program->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node),
-                     program->runtime.pindir_fd);
-
-    closep(&program->runtime.pindir_fd);
-
-    (void)snprintf(dir, PATH_MAX, "%s/%s", BF_PIN_DIR,
-                   program->runtime.chain->name);
-    r = rmdir(dir);
-    if (r) {
-        bf_warn_r(r, "failed to remove bf_program pin directory %s, ignoring",
-                  dir);
-    }
-}
-
 static int _bf_program_load_printer_map(struct bf_program *program)
 {
     _cleanup_free_ void *pstr = NULL;
@@ -1101,67 +1025,6 @@ err_destroy_maps:
     return r;
 }
 
-/**
- * Pin the BPF objects that should survive the daemon's lifetime.
- *
- * If any of the BPF objects can't be pinned, unpin all of them to ensure
- * there are no leftovers.
- *
- * This function is called when the BPF program has been loaded, if the daemon
- * is running in persist mode. Hence, the program hasn't been attached yet, so
- * there is no need to pin the link.
- *
- * @param program `bf_program` object to pin. Must be loaded. Can't be NULL.
- * @return 0 on success, or negative erron value on failure.
- */
-static int _bf_program_pin_loaded(const struct bf_program *program)
-{
-    _cleanup_close_ int pindir_fd = -1;
-    int r;
-
-    bf_assert(program);
-
-    r = _bf_program_get_pindir_fd(program);
-    if (r < 0)
-        return bf_err_r(r, "failed to open bf_program pin directory");
-    pindir_fd = r;
-
-    r = bf_bpf_obj_pin(program->prog_name, program->runtime.prog_fd, pindir_fd);
-    if (r < 0) {
-        bf_err_r(r, "failed to pin program '%s' in %s", program->prog_name,
-                 BF_PIN_DIR);
-        goto err_prog_pin;
-    }
-
-    r = bf_map_pin(program->cmap, pindir_fd);
-    if (r < 0)
-        goto err_cmap_pin;
-
-    r = bf_map_pin(program->pmap, pindir_fd);
-    if (r < 0)
-        goto err_pmap_pin;
-
-    bf_list_foreach (&program->sets, set_node) {
-        r = bf_map_pin(bf_list_node_get_data(set_node), pindir_fd);
-        if (r < 0)
-            goto err_set_pin;
-    }
-
-    return 0;
-
-err_set_pin:
-    bf_list_foreach (&program->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node), pindir_fd);
-    bf_map_unpin(program->pmap, pindir_fd);
-err_pmap_pin:
-    bf_map_unpin(program->cmap, pindir_fd);
-err_cmap_pin:
-    unlinkat(pindir_fd, program->prog_name, 0);
-err_prog_pin:
-    closep(&pindir_fd);
-    return r;
-}
-
 int bf_program_load(struct bf_program *prog)
 {
     _cleanup_free_ char *log_buf = NULL;
@@ -1199,17 +1062,6 @@ int bf_program_load(struct bf_program *prog)
                         prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
     }
 
-    if (bf_opts_persist()) {
-        r = _bf_program_pin_loaded(prog);
-        if (r) {
-            bf_err_r(
-                r,
-                "bf_program loaded, but failed to pin. Unloading the program.");
-            bf_program_unload(prog);
-            return r;
-        }
-    }
-
     if (bf_opts_is_verbose(BF_VERBOSE_BYTECODE))
         bf_program_dump_bytecode(prog);
 
@@ -1229,15 +1081,6 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
                         bf_flavor_to_str(prog->flavor));
     }
 
-    if (bf_opts_persist()) {
-        r = bf_link_pin(prog->link, prog->runtime.pindir_fd);
-        if (r) {
-            bf_err_r(r, "failed to pin bf_link for %s program",
-                     bf_flavor_to_str(prog->flavor));
-            bf_link_detach(prog->link);
-        }
-    }
-
     return r;
 }
 
@@ -1246,16 +1089,11 @@ void bf_program_detach(struct bf_program *prog)
     bf_assert(prog);
 
     bf_link_detach(prog->link);
-    if (bf_opts_persist())
-        bf_link_unpin(prog->link, prog->runtime.pindir_fd);
 }
 
 void bf_program_unload(struct bf_program *prog)
 {
     bf_assert(prog);
-
-    if (prog->runtime.pindir_fd != -1)
-        _bf_program_unpin(prog);
 
     closep(&prog->runtime.prog_fd);
     bf_link_detach(prog->link);
