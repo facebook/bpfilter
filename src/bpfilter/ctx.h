@@ -152,3 +152,23 @@ struct bf_ns *bf_ctx_get_ns(void);
  * @return The BPF token file descriptor, or -1 if no token is used.
  */
 int bf_ctx_token(void);
+
+/**
+ * @brief Return a file descriptor to bpfilter's pin directory.
+ *
+ * @return File descriptor to bpfilter's pin directory, or a negative errno
+ *         value on failure.
+ */
+int bf_ctx_get_pindir_fd(void);
+
+/**
+ * @brief Remove the pin directory.
+ *
+ * If the pin directory can't be removed, an error is printed. However, if it's
+ * due to the directory not being empty, or not existing, no error is printed,
+ * but the errno value is returned anyway. The called will know how to deal with
+ * this situation.
+ *
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_ctx_rm_pindir(void);

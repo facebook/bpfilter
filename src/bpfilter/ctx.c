@@ -20,6 +20,7 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -478,4 +479,42 @@ struct bf_ns *bf_ctx_get_ns(void)
 int bf_ctx_token(void)
 {
     return _bf_global_ctx->token_fd;
+}
+
+int bf_ctx_get_pindir_fd(void)
+{
+    _cleanup_close_ int bpffs_fd = -1;
+    _cleanup_close_ int pindir_fd = -1;
+
+    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    if (bpffs_fd < 0) {
+        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
+                        bf_opts_bpffs_path());
+    }
+
+    pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", true);
+    if (pindir_fd < 0) {
+        return bf_err_r(pindir_fd, "failed to open pin directory %s/bpfilter",
+                        bf_opts_bpffs_path());
+    }
+
+    return TAKE_FD(pindir_fd);
+}
+
+int bf_ctx_rm_pindir(void)
+{
+    _cleanup_close_ int bpffs_fd = -1;
+    int r;
+
+    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    if (bpffs_fd < 0) {
+        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
+                        bf_opts_bpffs_path());
+    }
+
+    r = bf_rmdir_at(bpffs_fd, "bpfilter", false);
+    if (r < 0 && r != -ENOTEMPTY && r != -ENOENT)
+        return bf_err_r(r, "failed to remove bpfilter bpffs directory");
+
+    return 0;
 }
