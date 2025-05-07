@@ -14,17 +14,17 @@ Commands
 Define a new ruleset: replace all the existing chains with the ruleset provided. Replacement is not atomic.
 
 **Options**
-  - ``--str RULESET``: read and apply the ruleset defining from the command line.
-  - ``--file FILE``: read ``FILE`` and apply the ruleset contained in it.
+  - ``--from-str RULESET``: read and apply the ruleset defining from the command line.
+  - ``--from-file FILE``: read ``FILE`` and apply the ruleset contained in it.
 
-``--str`` and ``--file`` are mutually exclusive.
+``--from-str`` and ``--from-file`` are mutually exclusive.
 
 **Example**
 
 .. code:: shell
 
-    bfcli ruleset set --file myruleset.txt
-    bfcli ruleset set --str "chain my_xdp_chain BF_HOOK_XDP ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
+    bfcli ruleset set --from-file myruleset.txt
+    bfcli ruleset set --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT rule ip4.saddr in {192.168.1.1} ACCEPT"
 
 ``ruleset get``
 ~~~~~~~~~~~~~~~

@@ -75,14 +75,14 @@ Now that the daemon is up and running, we will use ``bfcli`` to send a filtering
 
 .. code-block:: bash
 
-	$ sudo bfcli ruleset set --str "
+	$ sudo bfcli ruleset set --from-str "
 	chain BF_HOOK_NF_LOCAL_OUT policy ACCEPT
 	    rule
 	        ip4.proto icmp
 	        DROP
 	"
 
-We split the chain over multiple lines, to it's easier to read. Alternatively, you can write the chain in a file and call ``bfcli ruleset set --file $MYFILE``. We choose to create a chain attached to ``BF_HOOK_NF_LOCAL_OUT`` which is called for every packet leaving this host with ``ACCEPT`` as the default policy: if a packet doesn't match any of the rules defined, it will be accepted by default.
+We split the chain over multiple lines, to it's easier to read. Alternatively, you can write the chain in a file and call ``bfcli ruleset set --from-file $MYFILE``. We choose to create a chain attached to ``BF_HOOK_NF_LOCAL_OUT`` which is called for every packet leaving this host with ``ACCEPT`` as the default policy: if a packet doesn't match any of the rules defined, it will be accepted by default.
 
 Our chain contains a single rule matching against the IPv4's ``protocol`` field. Packets matching this rule will be ``DROP`` ed.
 

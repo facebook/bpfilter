@@ -809,7 +809,7 @@ int Chain::apply()
     for (const auto &rule: rules_)
         chain += rule + " ";
 
-    const ::std::vector<::std::string> args {"ruleset", "set", "--str", chain};
+    const ::std::vector<::std::string> args {"ruleset", "set", "--from-str", chain};
 
     const auto [r, out, err] = run(bin_, args);
     if (r != 0) {
