@@ -96,6 +96,20 @@ void bf_cgen_free(struct bf_cgen **cgen);
 int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
 
 /**
+ * @brief Set a chain.
+ *
+ * Generate and load a new chain. Attach the chain if `hookopts` is not NULL. It
+ * is assumed that no chain with the same name exist.
+ *
+ * @param cgen Codegen to attach to the kernel. Can't be NULL.
+ * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
+ * @param hookopts Hook options.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
+                struct bf_hookopts **hookopts);
+
+/**
  * Create and load a `bf_program` into the kernel.
  *
  * Create a new `bf_program` for `cgen`, and generate it based on the chain
