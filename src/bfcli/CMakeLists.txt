@@ -53,6 +53,7 @@ add_executable(bfcli
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.h     ${CMAKE_CURRENT_SOURCE_DIR}/chain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.h    ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/print.h     ${CMAKE_CURRENT_SOURCE_DIR}/print.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ruleset.h   ${CMAKE_CURRENT_SOURCE_DIR}/ruleset.c
     ${CMAKE_BINARY_DIR}/include/version.h
     ${CMAKE_CURRENT_BINARY_DIR}/generated/include/bfcli/parser.h
     ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/parser.c
