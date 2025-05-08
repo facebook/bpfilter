@@ -120,6 +120,8 @@ jobs:
         with:
           path: build/output/tests
           key: tests-results-${{ github.run_id }}
+      - name: Mount bpffs
+        run: mount bpffs /sys/fs/bpf -t bpf
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Run unit tests
