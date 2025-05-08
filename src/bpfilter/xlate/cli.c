@@ -389,11 +389,10 @@ int _bf_cli_chain_load(const struct bf_request *request,
             "request payload is expected to have the same size as the marsh");
     }
 
-    bf_info("marsh=%p, child=%p", marsh, child);
     child = bf_marsh_next_child(marsh, child);
     if (!child)
         return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
-    bf_info("chaib load unmarsh chain: %p", child);
+
     r = bf_chain_new_from_marsh(&chain, child);
     if (r)
         return r;
