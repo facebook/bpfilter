@@ -37,21 +37,24 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr)
 
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
                      size_t img_len, enum bpf_attach_type attach_type,
-                     char *log_buf, size_t log_size, int token_fd, int *fd)
+                     const char *log_buf, size_t log_size, int token_fd,
+                     int *fd)
 {
-    union bpf_attr attr = {
-        .prog_type = prog_type,
-        .insns = bf_ptr_to_u64(img),
-        .insn_cnt = (unsigned int)img_len,
-        .license = bf_ptr_to_u64("GPL"),
-        .expected_attach_type = attach_type,
-        .log_buf = bf_ptr_to_u64(log_buf),
-        .log_size = log_size,
-        .log_level = 1,
-    };
+    union bpf_attr attr;
     int r;
 
     bf_assert(name && img && fd);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.prog_type = prog_type;
+    attr.insns = bf_ptr_to_u64(img);
+    attr.insn_cnt = (unsigned int)img_len;
+    attr.license = bf_ptr_to_u64("GPL");
+    attr.expected_attach_type = attach_type;
+    attr.log_buf = bf_ptr_to_u64(log_buf);
+    attr.log_size = log_size;
+    attr.log_level = 1;
 
     (void)snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
 
@@ -71,42 +74,48 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
 
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
 {
-    union bpf_attr attr = {
-        .map_fd = fd,
-        .key = (uint64_t)key,
-        .value = (uint64_t)value,
-    };
+    union bpf_attr attr;
 
     bf_assert(key);
     bf_assert(value);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.map_fd = fd;
+    attr.key = (uint64_t)key;
+    attr.value = (uint64_t)value;
 
     return bf_bpf(BPF_MAP_LOOKUP_ELEM, &attr);
 }
 
 int bf_bpf_map_update_elem(int fd, const void *key, void *value)
 {
-    union bpf_attr attr = {
-        .map_fd = fd,
-        .key = bf_ptr_to_u64(key),
-        .value = bf_ptr_to_u64(value),
-        .flags = BPF_ANY,
-    };
+    union bpf_attr attr;
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.map_fd = fd;
+    attr.key = bf_ptr_to_u64(key);
+    attr.value = bf_ptr_to_u64(value);
+    attr.flags = BPF_ANY;
 
     return bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
 }
 
 int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 {
-    union bpf_attr attr = {
-        .pathname = bf_ptr_to_u64(path),
-        .bpf_fd = fd,
-        .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
-        .path_fd = dir_fd,
-    };
+    union bpf_attr attr;
 
     bf_assert(path);
     bf_assert(dir_fd >= 0);
     bf_assert(path[0] == '/' ? !dir_fd : 1);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.pathname = bf_ptr_to_u64(path);
+    attr.bpf_fd = fd;
+    attr.file_flags = dir_fd ? BPF_F_PATH_FD : 0;
+    attr.path_fd = dir_fd;
 
     int r = bf_bpf(BPF_OBJ_PIN, &attr);
     return r;
@@ -114,16 +123,18 @@ int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 
 int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
 {
-    union bpf_attr attr = {
-        .pathname = bf_ptr_to_u64(path),
-        .file_flags = dir_fd ? BPF_F_PATH_FD : 0,
-        .path_fd = dir_fd,
-    };
+    union bpf_attr attr;
     int r;
 
     bf_assert(path && fd);
     bf_assert(dir_fd >= 0);
     bf_assert(path[0] == '/' ? !dir_fd : 1);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.pathname = bf_ptr_to_u64(path);
+    attr.file_flags = dir_fd ? BPF_F_PATH_FD : 0;
+    attr.path_fd = dir_fd;
 
     r = bf_bpf(BPF_OBJ_GET, &attr);
     if (r < 0)
@@ -137,12 +148,14 @@ int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
 int bf_prog_run(int prog_fd, const void *pkt, size_t pkt_len, const void *ctx,
                 size_t ctx_len)
 {
-    union bpf_attr attr = {};
+    union bpf_attr attr;
     int r;
 
     bf_assert(pkt);
     bf_assert(pkt_len > 0);
     bf_assert(!(!!ctx ^ !!ctx_len));
+
+    memset(&attr, 0, sizeof(attr));
 
     attr.test.prog_fd = prog_fd;
     attr.test.data_size_in = pkt_len;

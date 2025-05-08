@@ -178,7 +178,9 @@
  */
 #define EMIT_LOAD_SET_FD_FIXUP(program, reg, index)                            \
     ({                                                                         \
-        union bf_fixup_attr __attr = {.set_index = (index)};                   \
+        union bf_fixup_attr __attr;                                            \
+        memset(&__attr, 0, sizeof(__attr));                                    \
+        __attr.set_index = (index);                                            \
         const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
         int __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_SET_MAP_FD,   \
                                         ld_insn[0], &__attr);                  \
