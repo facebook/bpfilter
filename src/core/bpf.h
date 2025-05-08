@@ -51,7 +51,8 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
  */
 int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
                      size_t img_len, enum bpf_attach_type attach_type,
-                     char *log_buf, size_t log_size, int token_fd, int *fd);
+                     const char *log_buf, size_t log_size, int token_fd,
+                     int *fd);
 
 /**
  * Get an element from a map.
