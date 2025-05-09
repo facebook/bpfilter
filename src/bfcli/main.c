@@ -27,10 +27,20 @@
 #include "libbpfilter/bpfilter.h"
 #include "version.h"
 
+static void _bfc_print_version(FILE *stream, struct argp_state *state)
+{
+    UNUSED(state);
+
+    (void)fprintf(stream, "bfcli version %s, libbpfilter version %s\n",
+                  BF_VERSION, bf_version());
+}
+
 int main(int argc, char *argv[])
 {
     _clean_bfc_opts_ struct bfc_opts opts = bfc_opts_default();
     int r;
+
+    argp_program_version_hook = &_bfc_print_version;
 
     r = bfc_opts_parse(&opts, argc, argv);
     if (r < 0)
