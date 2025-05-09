@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import tempfile
+import shutil
+from subprocess import Popen, run
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="perfrec",
+        description="perf wrapper to collect bpfilter/bfcli performance data and format them properly",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="perf.data",
+        help="Path to the perf output file",
+    )
+    parser.add_argument(
+        "--target",
+        "-t",
+        choices=["firefox"],
+        default=None,
+        help="Target tool to format the data for (optional)",
+    )
+    args, remaining_args = parser.parse_known_args()
+
+    tmp_output = tempfile.NamedTemporaryFile()
+
+    process = Popen(
+        [
+            "perf",
+            "record",
+            "--output",
+            tmp_output.name,
+            "-g",
+            "-F",
+            "max",
+            *remaining_args,
+        ]
+    )
+
+    process.wait()
+
+    if args.target == "firefox":
+        with open(args.output, "w") as f:
+            run(["perf", "script", "-i", tmp_output.name, "-F", "+pid"], stdout=f)
+    else:
+        shutil.copyfile(tmp_output.name, args.output)
+
+    sudo = os.getenv("SUDO_USER")
+    if sudo:
+        print(
+            f"perfrecord started with 'sudo', changing output file ownership to '{sudo}'"
+        )
+        os.chown(args.output, int(os.getenv("SUDO_UID")), int(os.getenv("SUDO_GID")))
+
+
+if __name__ == "__main__":
+    main()
