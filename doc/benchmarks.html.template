@@ -83,7 +83,7 @@
             const newInsns = newResults.nInsn;
 
             let newHtml = `<td class="text-end font-monospace">${newTime.str} ${newTime.unit}</td>`;
-            newHtml += `<td class="text-end font-monospace">${newResults.nInsn}</td>`;
+            newHtml += `<td class="text-end font-monospace">${newInsns ? newInsns : "n/a"}</td>`;
 
             let diffHtml = '';
             let oldHtml = '';
@@ -104,7 +104,15 @@
                 const nInsnsDiffClass = diffInsns > 0 ? "text-danger" : "text-success";
                 diffHtml += `<td class="text-end font-monospace ${timeDiffClass}">${(diffTime < 0 ? "" : "+") + parseFloat(diffTime).toFixed(2)}% (${absTime.raw < 0 ? "" : "+"}${absTime.str} ${absTime.unit})</td>`;
 
+                if (diffInsns === 0)
+                    diffHtml += `<td class="text-end font-monospace">no change</td>`;
+                else if (isNaN(diffInsns))
+                    diffHtml += `<td class="text-end font-monospace">n/a</td>`;
+                else
+                    diffHtml += `<td class="text-end font-monospace ${nInsnsDiffClass}">${(diffInsns < 0 ? "" : "+") + parseFloat(diffInsns).toFixed(2)}% (${(absInsns < 0 ? "" : "+") + parseFloat(absInsns)})</td>`;
+
                 oldHtml += `<td class="text-end font-monospace">${oldTime.str} ${oldTime.unit}</td>`;
+                oldHtml += `<td class="text-end font-monospace">${oldInsns ? oldInsns : "n/a"}</td>`;
             } else {
                 diffHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
                 oldHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
@@ -143,7 +151,10 @@
                     nInsns.push(null);
                 } else {
                     durations.push(result.time);
-                    nInsns.push(result.nInsn);
+
+                    // nInsn doesn't exist if the benchmark doesn't report it
+                    if (result.nInsn !== undefined)
+                         nInsns.push(result.nInsn);
                 }
 
                 labels.push(commit.sha);
@@ -228,6 +239,8 @@
                                 display: true,
                                 text: '# insn'
                             },
+                            // Only display the nInsns axis if we have values
+                            display: nInsns.length != 0
                         },
                         x: {
                             title: {
