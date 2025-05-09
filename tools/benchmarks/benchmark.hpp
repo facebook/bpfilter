@@ -200,6 +200,7 @@ public:
 
     Chain &operator<<(const ::std::string &rule);
     Chain &repeat(const ::std::string &rule, ::std::size_t count);
+    void insertRuleIPv4Set(unsigned int nIps);
     int apply();
     [[nodiscard]] Program getProgram() const;
 

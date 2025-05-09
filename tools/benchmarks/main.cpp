@@ -16,6 +16,23 @@
 namespace
 {
 
+void loadChainLargeSet(::benchmark::State &state)
+{
+    ::bf::Chain chain(::bf::config.bfcli);
+
+    chain.insertRuleIPv4Set(state.range(0));
+
+    for (auto _: state) {
+        chain.apply();
+    }
+}
+
+BENCHMARK(loadChainLargeSet)
+    ->Arg(10000)
+    ->Arg(100000)
+    ->Iterations(10)
+    ->Unit(benchmark::kMillisecond);
+
 void firstRuleDropCounter(::benchmark::State &state)
 {
     ::bf::Chain chain(::bf::config.bfcli);
