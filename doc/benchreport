@@ -10,6 +10,8 @@ import argparse
 
 VERBOSE: bool = False
 
+TIME_MULTI: dict = {"ns": 1, "us": 1000, "ms": 1000 * 1000, "s": 1000 * 1000 * 1000}
+
 
 def log(msg: str) -> None:
     if VERBOSE:
@@ -71,13 +73,9 @@ def main() -> None:
 
                 benchmarks["results"][bench["name"]][gitrev] = {
                     "iters": bench["iterations"],
-                    "time": bench["real_time"],
+                    "time": bench["real_time"] * TIME_MULTI[bench["time_unit"]],
                     "nInsn": bench.get("nInsn", 0),
                 }
-
-                if bench["time_unit"] != "ns":
-                    error("Only ns time unit is supported")
-                    sys.exit(-1)
 
     repo = git.Repo.init(args.sources)
 
