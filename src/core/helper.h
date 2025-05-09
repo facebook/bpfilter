@@ -14,6 +14,99 @@
 
 extern const char *strerrordesc_np(int errnum);
 
+#define _BF_APPLY0(t, s, dummy)
+#define _BF_APPLY1(t, s, a) t(a)
+#define _BF_APPLY2(t, s, a, b) t(a) s t(b)
+#define _BF_APPLY3(t, s, a, b, c)                                              \
+    t(a) s t(b)                                                                \
+    s t(c)
+#define _BF_APPLY4(t, s, a, b, c, d)                                           \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)
+#define _BF_APPLY5(t, s, a, b, c, d, e)                                        \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)
+#define _BF_APPLY6(t, s, a, b, c, d, e, f)                                     \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)                                                                     \
+    s t(f)
+#define _BF_APPLY7(t, s, a, b, c, d, e, f, g)                                  \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)                                                                     \
+    s t(f)                                                                     \
+    s t(g)
+#define _BF_APPLY8(t, s, a, b, c, d, e, f, g, h)                               \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)                                                                     \
+    s t(f)                                                                     \
+    s t(g)                                                                     \
+    s t(h)
+#define _BF_APPLY9(t, s, a, b, c, d, e, f, g, h, i)                            \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)                                                                     \
+    s t(f)                                                                     \
+    s t(g)                                                                     \
+    s t(h)                                                                     \
+    s t(i)
+#define _BF_APPLY10(t, s, a, b, c, d, e, f, g, h, i, j)                        \
+    t(a) s t(b)                                                                \
+    s t(c)                                                                     \
+    s t(d)                                                                     \
+    s t(e)                                                                     \
+    s t(f)                                                                     \
+    s t(g)                                                                     \
+    s t(h)                                                                     \
+    s t(i)                                                                     \
+    s t(j)
+
+#define __BF_NUM_ARGS1(dummy, x10, x9, x8, x7, x6, x5, x4, x3, x2, x1, x0,     \
+                       ...)                                                    \
+    x0
+#define _BF_NUM_ARGS(...)                                                      \
+    __BF_NUM_ARGS1(dummy, ##__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define ___BF_APPLY_ALL(t, s, n, ...) _BF_APPLY##n(t, s, __VA_ARGS__)
+#define __BF_APPLY_ALL(t, s, n, ...) ___BF_APPLY_ALL(t, s, n, __VA_ARGS__)
+#define _BF_APPLY_ALL(t, s, ...)                                               \
+    __BF_APPLY_ALL(t, s, _BF_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+/**
+ * @brief Generate a bitflag from multiple values.
+ *
+ * Enumeration are used extensively to define related values. Thanks to
+ * enumeration's continuous values, they are used as array indexes to convert
+ * them into strings.
+ *
+ * However, they can sometimes be combined, leading to very wordy code, e.g.
+ * `1 << ENUM_VAL_1 | 1 << ENUM_VAL_5`.
+ *
+ * `BF_FLAGS` can be used to replace the wordy code with a simpler macro call,
+ * e.g. `BF_FLAGS(ENUL_VAL_1, ENUM_VAL_5)`. It will automatically create an
+ * integer with the enumeration values as a set bit index in the bitflag.
+ *
+ * @return Bitflag for variadic values.
+ */
+#define BF_FLAGS(...) _BF_APPLY_ALL(BF_FLAG, |, __VA_ARGS__)
+
+/**
+ * @brief Shift 1 by `n` to create a flag.
+ *
+ * @see `BF_FLAGS`
+ *
+ * @return `1 << n` to be used as a flag.
+ */
+#define BF_FLAG(n) (1 << (n))
+
 #define bf_packed __attribute__((packed))
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))

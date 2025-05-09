@@ -100,7 +100,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_SET,
         .valid_opts =
-            1 << BFC_OPT_RULESET_FROM_STR | 1 << BFC_OPT_RULESET_FROM_FILE,
+            BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
         .doc =
             "Set the ruleset.\vRemove all the chains on the system and "
             "replaced them with the one provided in --from-file or --from-str.",
@@ -124,8 +124,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain set",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_SET,
-        .valid_opts = 1 << BFC_OPT_CHAIN_FROM_STR |
-                      1 << BFC_OPT_CHAIN_FROM_FILE | 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+                               BFC_OPT_CHAIN_NAME),
         .doc =
             "Set a new chain\vCreate a new chain, attach it if hook options "
             "are defined. Any existing chain with the same --name will be "
@@ -137,7 +137,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain get",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_GET,
-        .valid_opts = 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print an existing chain\vRequest the chain --name from the daemon "
             "and print it.",
@@ -147,8 +147,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain load",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOAD,
-        .valid_opts = 1 << BFC_OPT_CHAIN_FROM_STR |
-                      1 << BFC_OPT_CHAIN_FROM_FILE | 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+                               BFC_OPT_CHAIN_NAME),
         .doc =
             "Load a new chain\vCreate a new chain, and load it into the "
             "kernel. An error will be returned if any existing chain has the "
@@ -160,7 +160,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain attach",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_ATTACH,
-        .valid_opts = 1 << BFC_OPT_CHAIN_HOOK_OPTS | 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_HOOK_OPTS, BFC_OPT_CHAIN_NAME),
         .doc =
             "Attach an existing chain\vAttach a loaded chain to a hook. Hook "
             "options defined with --option are specific to the chain and the "
@@ -171,8 +171,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain update",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_UPDATE,
-        .valid_opts = 1 << BFC_OPT_CHAIN_FROM_STR |
-                      1 << BFC_OPT_CHAIN_FROM_FILE | 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+                               BFC_OPT_CHAIN_NAME),
         .doc = "Update a chain\vAtomically update chain --name with the new "
                "definition provided by --from-str or --from-file.",
         .cb = bfc_chain_update,
@@ -181,7 +181,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain flush",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_FLUSH,
-        .valid_opts = 1 << BFC_OPT_CHAIN_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc = "Delete a chain\vRemove a chain from the system.",
         .cb = bfc_chain_flush,
     },
@@ -337,7 +337,7 @@ static error_t _bfc_opts_cmd_parser(int key, char *arg,
     for (int i = 0; i < _BFC_OPT_MAX; ++i) {
         struct bfc_opts_opt *opt = &_bfc_options[i];
 
-        if (!(cmd->valid_opts & (1 << i)) || key != opt->key)
+        if (!(cmd->valid_opts & BF_FLAG(i)) || key != opt->key)
             continue;
 
         opt->parser(state, arg, opts);
@@ -402,7 +402,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         return r;
 
     for (int i = 0; i < _BFC_OPT_MAX; ++i) {
-        if (opts->cmd->valid_opts & (1 << i)) {
+        if (opts->cmd->valid_opts & BF_FLAG(i)) {
             suboptions[suboptions_idx++] = (struct argp_option) {
                 .name = _bfc_options[i].name,
                 .key = _bfc_options[i].key,

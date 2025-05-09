@@ -196,7 +196,7 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
         return bf_err_r(-E2BIG, "ifindex is too big: %lu", ifindex);
 
     hookopts->ifindex = (int)ifindex;
-    hookopts->used_opts |= 1 << BF_HOOKOPTS_IFINDEX;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
 
     return 0;
 }
@@ -220,7 +220,7 @@ static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
                         raw_opt);
     }
 
-    hookopts->used_opts |= 1 << BF_HOOKOPTS_CGPATH;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_CGPATH);
 
     return 0;
 }
@@ -245,7 +245,7 @@ static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
     else
         return bf_err_r(-ENOTSUP, "unknown netfilter family '%s'", raw_opt);
 
-    hookopts->used_opts |= 1 << BF_HOOKOPTS_FAMILY;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_FAMILY);
 
     return 0;
 }
@@ -302,7 +302,7 @@ static int _bf_hookopts_priorities_parse(struct bf_hookopts *hookopts,
 
     hookopts->priorities[0] = (int)priorities[0];
     hookopts->priorities[1] = (int)priorities[1];
-    hookopts->used_opts |= 1 << BF_HOOKOPTS_PRIORITIES;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_PRIORITIES);
 
     return 0;
 
@@ -332,25 +332,25 @@ static struct bf_hookopts_ops
     [BF_HOOKOPTS_IFINDEX] = {.name = "ifindex",
                              .type = BF_HOOKOPTS_IFINDEX,
                              .required_by =
-                                 1 << BF_FLAVOR_XDP | 1 << BF_FLAVOR_TC,
+                                 BF_FLAGS(BF_FLAVOR_XDP, BF_FLAVOR_TC),
                              .supported_by = 0,
                              .parse = _bf_hookopts_ifindex_parse,
                              .dump = _bf_hookopts_ifindex_dump},
     [BF_HOOKOPTS_CGPATH] = {.name = "cgpath",
                             .type = BF_HOOKOPTS_CGPATH,
-                            .required_by = 1 << BF_FLAVOR_CGROUP,
+                            .required_by = BF_FLAGS(BF_FLAVOR_CGROUP),
                             .supported_by = 0,
                             .parse = _bf_hookopts_cgpath_parse,
                             .dump = _bf_hookopts_cgpath_dump},
     [BF_HOOKOPTS_FAMILY] = {.name = "family",
                             .type = BF_HOOKOPTS_FAMILY,
-                            .required_by = 1 << BF_FLAVOR_NF,
+                            .required_by = BF_FLAGS(BF_FLAVOR_NF),
                             .supported_by = 0,
                             .parse = _bf_hookopts_family_parse,
                             .dump = _bf_hookopts_family_dump},
     [BF_HOOKOPTS_PRIORITIES] = {.name = "priorities",
                                 .type = BF_HOOKOPTS_PRIORITIES,
-                                .required_by = 1 << BF_FLAVOR_NF,
+                                .required_by = BF_FLAGS(BF_FLAVOR_NF),
                                 .supported_by = 0,
                                 .parse = _bf_hookopts_priorities_parse,
                                 .dump = _bf_hookopts_priorities_dump},
@@ -360,10 +360,10 @@ static_assert(ARRAY_SIZE(_bf_hookopts_ops) == _BF_HOOKOPTS_MAX,
               "missing entries in bf_hookopts_ops array");
 
 #define _bf_hookopts_is_required(type, flavor)                                 \
-    (_bf_hookopts_ops[type].required_by & (1 << (flavor)))
+    (_bf_hookopts_ops[type].required_by & BF_FLAG(flavor))
 
 #define _bf_hookopts_is_supported(type, flavor)                                \
-    ((_bf_hookopts_ops[type].supported_by & (1 << (flavor))) ||                \
+    ((_bf_hookopts_ops[type].supported_by & BF_FLAG(flavor)) ||                \
      _bf_hookopts_is_required((type), (flavor)))
 
 static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)

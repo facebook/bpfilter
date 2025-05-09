@@ -474,7 +474,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
          *   sizeof(ipt_entry) + sizeof(ipt_standard_target)
          * Matchers and user-defined chains are not supported. */
 
-        _replace->valid_hooks |= 1 << hook;
+        _replace->valid_hooks |= BF_FLAG(hook);
         _replace->hook_entry[hook] = next_chain_off;
         _replace->underflow[hook] =
             next_chain_off + bf_list_size(&chain->rules) * rule_size;

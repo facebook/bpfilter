@@ -130,15 +130,15 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         break;
     case BF_OPT_NO_IPTABLES_KEY:
         bf_info("disabling iptables support");
-        args->fronts &= ~(1 << BF_FRONT_IPT);
+        args->fronts &= ~BF_FLAG(BF_FRONT_IPT);
         break;
     case BF_OPT_NO_NFTABLES_KEY:
         bf_info("disabling nftables support");
-        args->fronts &= ~(1 << BF_FRONT_NFT);
+        args->fronts &= ~BF_FLAG(BF_FRONT_NFT);
         break;
     case BF_OPT_NO_CLI_KEY:
         bf_info("disabling CLI support");
-        args->fronts &= ~(1 << BF_FRONT_CLI);
+        args->fronts &= ~BF_FLAG(BF_FRONT_CLI);
         break;
     case BF_OPT_WITH_BPF_TOKEN:
         args->with_bpf_token = true;
@@ -159,7 +159,7 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
         bf_info("enabling verbose for '%s'", arg);
         if (opt == BF_VERBOSE_DEBUG)
             bf_log_set_level(BF_LOG_DBG);
-        args->verbose |= (1 << opt);
+        args->verbose |= BF_FLAG(opt);
         break;
     case BF_OPT_VERSION:
         bf_info("bpfilter version %s", BF_VERSION);
@@ -190,7 +190,7 @@ bool bf_opts_persist(void)
 
 bool bf_opts_is_front_enabled(enum bf_front front)
 {
-    return _bf_opts.fronts & (1 << front);
+    return _bf_opts.fronts & BF_FLAG(front);
 }
 
 bool bf_opts_with_bpf_token(void)
@@ -205,10 +205,10 @@ const char *bf_opts_bpffs_path(void)
 
 bool bf_opts_is_verbose(enum bf_verbose opt)
 {
-    return _bf_opts.verbose & (1 << opt);
+    return _bf_opts.verbose & BF_FLAG(opt);
 }
 
 void bf_opts_set_verbose(enum bf_verbose opt)
 {
-    _bf_opts.verbose |= (1 << opt);
+    _bf_opts.verbose |= BF_FLAG(opt);
 }

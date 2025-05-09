@@ -238,4 +238,4 @@ int bf_hookopts_validate(const struct bf_hookopts *hookopts, enum bf_hook hook);
  * @return True if the option is used, false otherwise.
  */
 #define bf_hookopts_is_used(hookopts, type)                                    \
-    ((hookopts)->used_opts & (1 << (type)))
+    ((hookopts)->used_opts & BF_FLAG(type))
