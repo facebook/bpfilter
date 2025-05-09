@@ -74,8 +74,11 @@ def main() -> None:
                 benchmarks["results"][bench["name"]][gitrev] = {
                     "iters": bench["iterations"],
                     "time": bench["real_time"] * TIME_MULTI[bench["time_unit"]],
-                    "nInsn": bench.get("nInsn", 0),
                 }
+
+                nInsn = bench.get("nInsn", None)
+                if nInsn:
+                    benchmarks["results"][bench["name"]][gitrev]["nInsn"] = nInsn
 
     repo = git.Repo.init(args.sources)
 
