@@ -15,5 +15,5 @@ Test(opts, no_nftables)
 
     _bf_opts.fronts = 0xffff;
     assert_success(bf_opts_init(ARRAY_SIZE(opt0), opt0));
-    assert(0 == (_bf_opts.fronts & (1 << BF_FRONT_NFT)));
+    assert(0 == (_bf_opts.fronts & BF_FLAG(BF_FRONT_NFT)));
 }

@@ -99,13 +99,11 @@ FormatStyle: none
 UseColor: yes
 
 CheckOptions:
-  # Allow use of reserved identifiers as long as they start with "_bf",
-  # "_BF", or "_cleanup". This check has been modified starting with
-  # clang-tools-extra v18 (https://releases.llvm.org/18.1.0/tools/clang/tools/extra/docs/ReleaseNotes.html#improvements-to-clang-tidy)
-  # and will behave differently for macros. Hence clang-tidy v18+ won't
-  # warn about _cleanup_ identifiers.
+  # Allow use of reserved identifier was (_)+ underscore, followed by a bpfilter
+  # specific prefix (.e.g _BF). Other idenfitiers defined by GCC are allowed,
+  # such as _start, _end...
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: '^_(_start|_stop|bf|bfc|BF|BFC|cleanup|GNU)_[a-zA-Z0-9_]+$'
+    value: '^(_)+(start|stop|bf|bfc|BF|BFC|cleanup|GNU)_[a-zA-Z0-9_]+$'
   - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value: true
   # Unless a *statement* takes 1 line, it should be in braces

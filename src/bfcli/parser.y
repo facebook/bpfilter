@@ -526,7 +526,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                             continue;
                         }
 
-                        flags |= 1 << flag;
+                        flags |= BF_FLAG(flag);
                     }
 
                     free($3);

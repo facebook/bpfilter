@@ -15,7 +15,7 @@
  * @return 0 if @p hook is not enabled, any value otherwise.
  */
 #define ipt_is_hook_enabled(replace, hook)                                     \
-    ((replace)->valid_hooks & (1 << (hook)))
+    ((replace)->valid_hooks & BF_FLAG(hook))
 
 /**
  * Get @p ipt_entry's match at @p offset.
