@@ -19,7 +19,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <git2/commit.h>
 #include <git2/errors.h>
 #include <git2/global.h>
@@ -30,6 +32,7 @@
 #include <git2/types.h>
 #include <initializer_list>
 #include <iostream> // NOLINT
+#include <numeric>
 #include <optional>
 #include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>
@@ -802,6 +805,23 @@ Chain &Chain::repeat(const ::std::string &rule, ::std::size_t count)
     return *this;
 }
 
+void Chain::insertRuleIPv4Set(unsigned int nIps)
+{
+    ::std::string rule = "rule ip4.saddr in {";
+
+    for (unsigned int i = 0; i < nIps; ++i) {
+        ::std::string ip;
+
+        rule +=
+            ::std::format("{}.{}.{}.{}{}", (i >> 24), (i >> 16) & 0xff,
+                          (i >> 8) & 0xff, i & 0xff, i == nIps - 1 ? "" : ",");
+    }
+
+    rule += "} DROP";
+
+    *this << rule;
+}
+
 int Chain::apply()
 {
     ::std::string chain = "chain bf_benchmark BF_HOOK_CGROUP_INGRESS DROP ";
@@ -809,13 +829,21 @@ int Chain::apply()
     for (const auto &rule: rules_)
         chain += rule + " ";
 
-    const ::std::vector<::std::string> args {"ruleset", "set", "--from-str", chain};
+    ::std::filesystem::path temp_file = ::std::filesystem::temp_directory_path() / "ruleset.bpfilter";
+    ::std::ofstream file(temp_file);
+    file << chain << ::std::endl;
+    file.close();
+
+    const ::std::vector<::std::string> args {"ruleset", "set", "--from-file",
+                                             temp_file.string()};
 
     const auto [r, out, err] = run(bin_, args);
     if (r != 0) {
         abort("failed to exec '{}': {}\nError logs: {}", bin_, r, err);
         return r;
     }
+
+    ::std::filesystem::remove(temp_file);
 
     return 0;
 }
