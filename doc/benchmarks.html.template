@@ -17,6 +17,56 @@
 
         const data = {{ DATA }}
 
+        function formatTimeDuration(value, fixed = 2, unit = null) {
+            const coeff = {
+                "ns": 1,
+                "μs": 1000,
+                "ms": 1000*1000,
+                "s": 1000*1000*1000
+            };
+
+            // Specific unit requested, use it
+            if (unit !== null) {
+                return {
+                    value: value / coeff[unit],
+                    str: parseFloat(value / coeff[unit]).toFixed(2),
+                    unit: unit,
+                    raw: value
+                };
+            }
+
+            // No unit requested, find the best one
+            if (value < 1000) {
+                return {
+                    value: value,
+                    str: parseFloat(value).toFixed(2),
+                    unit: "ns",
+                    raw: value
+                };
+            } else if (value < 1000000) {
+                return {
+                    value: value / coeff["μs"],
+                    str: parseFloat(value / coeff["μs"]).toFixed(2),
+                    unit: "μs",
+                    raw: value
+                };
+            } else if (value < 1000000000) {
+                return {
+                    value: value / coeff["ms"],
+                    str: parseFloat(value / coeff["ms"]).toFixed(2),
+                    unit: "ms",
+                    raw: value
+                };
+            } else {
+                return {
+                    value: value / coeff["s"],
+                    str: parseFloat(value / coeff["s"]).toFixed(2),
+                    unit: "s",
+                    raw: value
+                };
+            }
+        }
+
         function render() {
             for (const benchName of data.benchNames) {
                 makeTable(benchName, data.commits, data.results[benchName])
@@ -29,10 +79,10 @@
 
             const newCommit = commits[commits.length - 1];
             const newResults = results[newCommit.sha];
-            const newTime = newResults.time;
+            const newTime = formatTimeDuration(newResults.time);
             const newInsns = newResults.nInsn;
 
-            let newHtml = `<td class="text-end font-monospace">${parseFloat(newResults.time).toFixed(2)}</td>`;
+            let newHtml = `<td class="text-end font-monospace">${newTime.str} ${newTime.unit}</td>`;
             newHtml += `<td class="text-end font-monospace">${newResults.nInsn}</td>`;
 
             let diffHtml = '';
@@ -43,20 +93,18 @@
                 const oldCommit = commits.length > 1 ? commits[commits.length - 2] : null;
                 const oldResults = results[oldCommit.sha];
 
-                const oldTime = oldResults.time;
+                const oldTime = formatTimeDuration(oldResults.time, 2, newTime.unit);
                 const oldInsns = oldResults.nInsn;
-                const absTime = newTime - oldTime;
+                const absTime = formatTimeDuration(newTime.raw - oldTime.raw, 2, newTime.unit);
                 const absInsns = newInsns - oldInsns;
-                const diffTime = (absTime / oldTime) * 100;
+                const diffTime = (absTime.raw / oldTime.raw) * 100;
                 const diffInsns = (absInsns / oldInsns) * 100;
 
                 const timeDiffClass = diffTime > 0 ? "text-danger" : "text-success";
                 const nInsnsDiffClass = diffInsns > 0 ? "text-danger" : "text-success";
-                diffHtml += `<td class="text-end font-monospace ${timeDiffClass}">${(diffTime < 0 ? "" : "+") + parseFloat(diffTime).toFixed(2)}% (${(absTime < 0 ? "" : "+") + parseFloat(absTime).toFixed(2)})</td>`;
-                diffHtml += `<td class="text-end font-monospace ${nInsnsDiffClass}">${(diffInsns < 0 ? "" : "+") + parseFloat(diffInsns).toFixed(2)}% (${(absInsns < 0 ? "" : "+") + parseFloat(absInsns)})</td>`;
+                diffHtml += `<td class="text-end font-monospace ${timeDiffClass}">${(diffTime < 0 ? "" : "+") + parseFloat(diffTime).toFixed(2)}% (${absTime.raw < 0 ? "" : "+"}${absTime.str} ${absTime.unit})</td>`;
 
-                oldHtml += `<td class="text-end font-monospace">${parseFloat(oldResults.time).toFixed(2)}</td>`;
-                oldHtml += `<td class="text-end font-monospace">${oldResults.nInsn}</td>`;
+                oldHtml += `<td class="text-end font-monospace">${oldTime.str} ${oldTime.unit}</td>`;
             } else {
                 diffHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
                 oldHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
@@ -101,6 +149,9 @@
                 labels.push(commit.sha);
             }
 
+            const maxValue = Math.max(...durations);
+            const bestUnit = formatTimeDuration(maxValue).unit;
+
             const afterTitle = (tooltipItems) => {
                 const commit = commits.find((e) => e.sha == tooltipItems[0].label);
                 return commit.message;
@@ -139,16 +190,14 @@
                             callbacks: {
                                 afterTitle: afterTitle,
                                 label: function (context) {
-                                    let label = '';
-
-                                    if (context.dataset.yAxisID == "duration")
-                                        label = parseFloat(context.parsed.y).toFixed(2) + " ns"
-                                    else if (context.dataset.yAxisID == "instructions")
-                                        label = parseInt(context.parsed.y) + " instructions"
-                                    else
-                                        label = context.parsed.y;
-
-                                    return label;
+                                    if (context.dataset.yAxisID == "duration") {
+                                        duration = formatTimeDuration(context.parsed.y, 2, bestUnit);
+                                        return `${duration.str} ${duration.unit}`;
+                                    } else if (context.dataset.yAxisID == "instructions") {
+                                        return parseInt(context.parsed.y) + " instructions";
+                                    } else {
+                                        return context.parsed.y;
+                                    }
                                 }
                             }
                         }
@@ -161,8 +210,14 @@
                             min: 0,
                             title: {
                                 display: true,
-                                text: 'ns'
+                                text: "Duration"
                             },
+                            ticks: {
+                                callback: function (value) {
+                                    duration = formatTimeDuration(value, 2, bestUnit);
+                                    return `${duration.str} ${duration.unit}`;
+                                }
+                            }
                         },
                         instructions: {
                             id: '# insn',
