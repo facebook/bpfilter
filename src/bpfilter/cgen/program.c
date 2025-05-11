@@ -563,8 +563,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
             if (r)
                 return r;
             break;
-        case BF_MATCHER_IP4_SRC_ADDR:
-        case BF_MATCHER_IP4_DST_ADDR:
+        case BF_MATCHER_IP4_SADDR:
+        case BF_MATCHER_IP4_DADDR:
         case BF_MATCHER_IP4_PROTO:
             r = bf_matcher_generate_ip4(program, matcher);
             if (r)

@@ -36,7 +36,7 @@ Test(ip4, daddr_eq_mask_match)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_DST_ADDR, BF_MATCHER_EQ,
+                    bf_matcher_get(BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
                         (uint8_t[]) {
                             // IP address
                             0x7f, 0x02, 0x0a, 0x0b,
