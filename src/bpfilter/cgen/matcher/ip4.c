@@ -29,7 +29,7 @@ _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
                                      const struct bf_matcher *matcher)
 {
     struct bf_matcher_ip4_addr *addr = (void *)&matcher->payload;
-    size_t offset = matcher->type == BF_MATCHER_IP4_SRC_ADDR ?
+    size_t offset = matcher->type == BF_MATCHER_IP4_SADDR ?
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
@@ -64,7 +64,7 @@ static int _bf_matcher_generate_ip4_addr_set(struct bf_program *program,
 
     switch (set->type) {
     case BF_SET_IP4:
-        offset = matcher->type == BF_MATCHER_IP4_SRC_ADDR ?
+        offset = matcher->type == BF_MATCHER_IP4_SADDR ?
                      offsetof(struct iphdr, saddr) :
                      offsetof(struct iphdr, daddr);
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_6, offset));
@@ -130,8 +130,8 @@ int bf_matcher_generate_ip4(struct bf_program *program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
 
     switch (matcher->type) {
-    case BF_MATCHER_IP4_SRC_ADDR:
-    case BF_MATCHER_IP4_DST_ADDR:
+    case BF_MATCHER_IP4_SADDR:
+    case BF_MATCHER_IP4_DADDR:
         r = _bf_matcher_generate_ip4_addr(program, matcher);
         break;
     case BF_MATCHER_IP4_PROTO:

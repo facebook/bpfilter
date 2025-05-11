@@ -207,7 +207,7 @@ static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
         };
 
         r = bf_rule_add_matcher(
-            _rule, BF_MATCHER_IP4_SRC_ADDR,
+            _rule, BF_MATCHER_IP4_SADDR,
             entry->ip.invflags & IPT_INV_SRCIP ? BF_MATCHER_NE : BF_MATCHER_EQ,
             &addr, sizeof(addr));
         if (r)
@@ -222,7 +222,7 @@ static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
         };
 
         r = bf_rule_add_matcher(
-            _rule, BF_MATCHER_IP4_DST_ADDR,
+            _rule, BF_MATCHER_IP4_DADDR,
             entry->ip.invflags & IPT_INV_DSTIP ? BF_MATCHER_NE : BF_MATCHER_EQ,
             &addr, sizeof(addr));
         if (r)
@@ -275,14 +275,14 @@ static int _bf_rule_to_ipt_entry(const struct bf_rule *rule,
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
         switch (matcher->type) {
-        case BF_MATCHER_IP4_SRC_ADDR:
+        case BF_MATCHER_IP4_SADDR:
             if (matcher->op == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_SRCIP;
             addr = (void *)&matcher->payload;
             entry->ip.src.s_addr = addr->addr;
             entry->ip.smsk.s_addr = addr->mask;
             break;
-        case BF_MATCHER_IP4_DST_ADDR:
+        case BF_MATCHER_IP4_DADDR:
             if (matcher->op == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_DSTIP;
             addr = (void *)&matcher->payload;

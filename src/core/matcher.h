@@ -54,9 +54,9 @@ enum bf_matcher_type
     /// Matches the destination port for UDP and TCP packets.
     BF_MATCHER_META_DPORT,
     /// Matches IPv4 source address.
-    BF_MATCHER_IP4_SRC_ADDR,
+    BF_MATCHER_IP4_SADDR,
     /// Matches IPv4 destination address.
-    BF_MATCHER_IP4_DST_ADDR,
+    BF_MATCHER_IP4_DADDR,
     /// Matches against the IPv4 protocol field
     BF_MATCHER_IP4_PROTO,
     /// Matches IPv6 source address.
@@ -82,7 +82,7 @@ enum bf_matcher_type
 
 /**
  * Defines the structure of the payload for bf_matcher's
- * @ref BF_MATCHER_IP4_SRC_ADDR and @ref BF_MATCHER_IP4_DST_ADDR types.
+ * @ref BF_MATCHER_IP4_SADDR and @ref BF_MATCHER_IP4_DADDR types.
  */
 struct bf_matcher_ip4_addr
 {
