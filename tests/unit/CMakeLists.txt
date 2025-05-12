@@ -140,6 +140,7 @@ set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_
 target_compile_options(unit_bin
     PRIVATE
         -include ${CMAKE_CURRENT_SOURCE_DIR}/assert_override.h
+        -fno-inline-small-functions     # Prevent inlining that would be -Wl,wrap (e.g. bf_ctx_token())
 )
 
 target_include_directories(unit_bin
