@@ -61,12 +61,12 @@ Test(map, marsh_unmarsh)
     _cleanup_bf_map_ struct bf_map *map0 = NULL;
     _cleanup_bf_map_ struct bf_map *map1 = NULL;
     _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf_obj_get, 1);
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf_obj_get, 0);
 
     assert_success(bf_map_new(&map0, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 2, 3));
 
     assert_success(bf_map_marsh(map0, &marsh));
-    assert_success(bf_map_new_from_marsh(&map1, 0,marsh));
+    assert_success(bf_map_new_from_marsh(&map1, 0, marsh));
 
     // Ensure we won't try to close a garbage FD
     map1->fd = -1;
