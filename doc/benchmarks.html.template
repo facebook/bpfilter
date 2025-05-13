@@ -165,28 +165,30 @@
                 return commit.message.split("\n")[0];
             };
 
+            const datasets = [
+                {
+                    label: 'Duration',
+                    data: durations,
+                    yAxisID: 'duration',
+                    tension: 0.1,
+                    order: 1,
+                    pointRadius: 0,
+                },
+                {
+                    label: '# of instructions',
+                    data: nInsns,
+                    yAxisID: 'instructions',
+                    tension: 0.1,
+                    order: 2,
+                    pointRadius: 0,
+                }
+            ];
+
             new Chart(document.getElementById(name + "Chart"), {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'Duration',
-                            data: durations,
-                            yAxisID: 'duration',
-                            tension: 0.1,
-                            order: 1,
-                            pointRadius: 0,
-                        },
-                        {
-                            label: '# of instructions',
-                            data: nInsns,
-                            yAxisID: 'instructions',
-                            tension: 0.1,
-                            order: 2,
-                            pointRadius: 0,
-                        }
-                    ]
+                    datasets: datasets.filter(ds => ds.data.length !== 0)
                 },
                 options: {
                     interaction: {
