@@ -176,7 +176,7 @@
                             yAxisID: 'duration',
                             tension: 0.1,
                             order: 1,
-                            order: 2,
+                            pointRadius: 0,
                         },
                         {
                             label: '# of instructions',
@@ -184,6 +184,7 @@
                             yAxisID: 'instructions',
                             tension: 0.1,
                             order: 2,
+                            pointRadius: 0,
                         }
                     ]
                 },
