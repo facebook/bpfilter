@@ -219,7 +219,8 @@
                             id: 't (ns)',
                             type: 'linear',
                             position: 'left',
-                            min: 0,
+                            suggestedMin: 0,
+                            suggestedMax: Math.max(...durations) * 1.1,
                             title: {
                                 display: true,
                                 text: "Duration"
@@ -235,7 +236,8 @@
                             id: '# insn',
                             type: 'linear',
                             position: 'right',
-                            min: 0,
+                            suggestedMin:0,
+                            suggestedMax: Math.max(...nInsns) * 1.1,
                             title: {
                                 display: true,
                                 text: '# insn'
