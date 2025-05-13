@@ -15,14 +15,12 @@
             render();
         })
 
-        const data = {{ DATA }}
-
         function formatTimeDuration(value, fixed = 2, unit = null) {
             const coeff = {
                 "ns": 1,
                 "μs": 1000,
-                "ms": 1000*1000,
-                "s": 1000*1000*1000
+                "ms": 1000 * 1000,
+                "s": 1000 * 1000 * 1000
             };
 
             // Specific unit requested, use it
@@ -67,71 +65,167 @@
             }
         }
 
-        function render() {
-            for (const benchName of data.benchNames) {
-                makeTable(benchName, data.commits, data.results[benchName])
-                makeChart(benchName, data.commits, data.results[benchName])
-            }
-
+        // Determine if a result is statistically significant
+        function isSignificant(stat) {
+            return Math.abs(stat.zscore) > 3;
         }
 
-        function makeTable(name, commits, results) {
+        function calculateBenchmarkStats(values, windowSize = 10) {
+            if (!values || values.length <= 2) return null;
 
-            const newCommit = commits[commits.length - 1];
-            const newResults = results[newCommit.sha];
-            const newTime = formatTimeDuration(newResults.time);
-            const newInsns = newResults.nInsn;
+            const lastResult = values[values.length - 1]
+            const last10Results = values.slice(-windowSize - 1, -1);
 
-            let newHtml = `<td class="text-end font-monospace">${newTime.str} ${newTime.unit}</td>`;
-            newHtml += `<td class="text-end font-monospace">${newInsns ? newInsns : "n/a"}</td>`;
+            const sum = values.reduce((a, b) => a + b, 0);
+            const mean = sum / values.length;
+            const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+            const stdDev = Math.sqrt(variance);
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const zscore = (lastResult - mean) / stdDev;
 
-            let diffHtml = '';
-            let oldHtml = '';
+            return { min, max, mean, stdDev, zscore };
+        }
 
-            if (commits.length > 1) {
-                // There is a second to last commit
-                const oldCommit = commits.length > 1 ? commits[commits.length - 2] : null;
-                const oldResults = results[oldCommit.sha];
+        function formatData(data) {
+            /* Format commits as { sha, date, subject } with subject being only
+             * the subject of the commit, not the whole body. Store the
+             * formatted commits information in a map with the commit SHA as key. */
+            const commitsInfo = data.commits.reduce((acc, { sha, message, ...otherFields }) => {
+                const parts = message.split('\n\n');
+                const subject = parts[0].replace(/\n/g, ' ');
 
-                const oldTime = formatTimeDuration(oldResults.time, 2, newTime.unit);
-                const oldInsns = oldResults.nInsn;
-                const absTime = formatTimeDuration(newTime.raw - oldTime.raw, 2, newTime.unit);
-                const absInsns = newInsns - oldInsns;
-                const diffTime = (absTime.raw / oldTime.raw) * 100;
-                const diffInsns = (absInsns / oldInsns) * 100;
+                acc[sha] = {
+                    sha,
+                    subject,
+                    ...otherFields
+                };
 
-                const timeDiffClass = diffTime > 0 ? "text-danger" : "text-success";
-                const nInsnsDiffClass = diffInsns > 0 ? "text-danger" : "text-success";
-                diffHtml += `<td class="text-end font-monospace ${timeDiffClass}">${(diffTime < 0 ? "" : "+") + parseFloat(diffTime).toFixed(2)}% (${absTime.raw < 0 ? "" : "+"}${absTime.str} ${absTime.unit})</td>`;
+                return acc;
+            }, {});
 
-                if (diffInsns === 0)
-                    diffHtml += `<td class="text-end font-monospace">no change</td>`;
-                else if (isNaN(diffInsns))
-                    diffHtml += `<td class="text-end font-monospace">n/a</td>`;
-                else
-                    diffHtml += `<td class="text-end font-monospace ${nInsnsDiffClass}">${(diffInsns < 0 ? "" : "+") + parseFloat(diffInsns).toFixed(2)}% (${(absInsns < 0 ? "" : "+") + parseFloat(absInsns)})</td>`;
+            // Use a map to preserve tests order
+            const benchmarks = new Map(
+                data.benchNames.map(name => {
+                    return [name.replace(/\/iterations:[0-9]+$/, ''), {}];
+                })
+            );
 
-                oldHtml += `<td class="text-end font-monospace">${oldTime.str} ${oldTime.unit}</td>`;
-                oldHtml += `<td class="text-end font-monospace">${oldInsns ? oldInsns : "n/a"}</td>`;
-            } else {
-                diffHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
-                oldHtml += '<td class="text-end font-monospace">n/a</td><td class="font-monospace">n/a</td>';
+            var benchmarksResults = [];
+            for (var [benchmarkName, rawResults] of Object.entries(data.results)) {
+                benchmarkName = benchmarkName.replace(/\/iterations:[0-9]+$/, '');
+                const lastTime = formatTimeDuration(2);
+
+                var processedResults = [];
+                for (const [commitSha, commitResults] of Object.entries(rawResults)) {
+                    processedResults.push(
+                        {
+                            commit: commitsInfo[commitSha],
+                            time: commitResults.time,
+                            nInsn: commitResults.nInsn ? commitResults.nInsn : null,
+                        }
+                    );
+                }
+
+                processedResults = processedResults.sort((a, b) => a.commit.date - b.commit.date);
+
+                benchmarksResults.push({
+                    name: benchmarkName,
+                    results: processedResults,
+                    stats: {
+                        time: calculateBenchmarkStats(processedResults.map(item => item.time)),
+                        nInsn: calculateBenchmarkStats(processedResults.map(item => item.nInsn).filter((item) => item != null)),
+                    },
+                    unit: formatTimeDuration(processedResults.at(-1).time).unit,
+                });
             }
 
+            return benchmarksResults;
+        }
 
-            let data = '<tr>';
-            data += `<td>${name}</td>`;
-            data += diffHtml;
+        const data = {{ DATA }};
+
+        function render() {
+            const formattedData = formatData(data);
+
+            for (const benchmarkResults of formattedData) {
+                makeTable(benchmarkResults);
+                makeChart(benchmarkResults);
+            }
+        }
+
+        function makeTable(benchmarkResults, name, commits, results) {
+            const nResults = benchmarkResults.results.length;
+            const lastResult = benchmarkResults.results[nResults - 1];
+            const lastTime = formatTimeDuration(lastResult.time);
+            const lastNInsn = lastResult.nInsn;
+
+            let newHtml = `<td class="text-end font-monospace">${lastTime.str} ${lastTime.unit}</td>`;
+            newHtml += `<td class="text-end font-monospace">${lastNInsn ? lastNInsn : "n/a"}</td>`;
+
+            let diffTimeHtml = '<td class="text-end font-monospace">n/a</td>';
+            let baselineTimeHtml = '<td class="text-end font-monospace">n/a</td>';
+            if (benchmarkResults.stats.time) {
+                const baselineStats = benchmarkResults.stats.time;
+
+                const baseline = formatTimeDuration(baselineStats.mean, 2, lastTime.unit);
+                const abs = formatTimeDuration(lastTime.raw - baseline.raw, 2, lastTime.unit);
+                const diff = (lastTime.raw / baseline.raw - 1) * 100;
+                const significant = Math.abs(baselineStats.zscore) >= 2;
+                const diffClass = significant ? (baselineStats.zscore > 0 ? "text-danger" : "text-success") : "text-muted";
+                const symbol = significant ? (baselineStats.zscore > 0 ? "⚠️" : "🥳") : false;
+
+                diffTimeHtml = `<td class="text-end font-monospace ${diffClass}">
+                ${(diff < 0 ? "" : "+") + parseFloat(diff).toFixed(2)}%
+                (${abs.raw < 0 ? "" : "+"}${abs.str} ${abs.unit})
+                ${symbol ? symbol : ""}
+            </td>`;
+
+                baselineTimeHtml = `<td class="text-end font-monospace">
+                ${baseline.str} ${baseline.unit}
+                <small class="text-muted">(±${(baselineStats.stdDev / baselineStats.mean * 100).toFixed(1)}%)</small>
+            </td>`;
+            }
+
+            let diffInsnHtml = '<td class="text-end font-monospace">n/a</td>';
+            let baselineInsnHtml = '<td class="text-end font-monospace">n/a</td>';
+            if (benchmarkResults.stats.nInsn) {
+                const baselineStats = benchmarkResults.stats.nInsn;
+
+                const baseline = baselineStats.mean;
+                const abs = lastNInsn - baseline;
+                const diff = (abs / baseline) * 100;
+                const significant = Math.abs(baselineStats.zscore) >= 2;
+                const diffClass = significant ? (baselineStats.zscore > 0 ? "text-danger" : "text-success") : "text-muted";
+                const symbol = significant ? (baselineStats.zscore > 0 ? "⚠️" : "🥳") : false;
+
+                diffInsnHtml = `<td class="text-end font-monospace ${diffClass}">
+                ${(diff < 0 ? "" : "+") + parseFloat(diff).toFixed(2)}%
+                (${(abs < 0 ? "" : "+") + parseFloat(abs)})
+                ${symbol ? symbol : ""}
+            </td>`;
+
+                baselineInsnHtml = `<td class="text-end font-monospace">
+                ${baseline ? baseline.toFixed(0) : "n/a"}
+                ${baseline ? `<small class="text-muted">(±${(baselineStats.stdDev / baselineStats.mean * 100).toFixed(1)}%)</small>` : ""}
+            </td>`;
+            }
+
+            var data = `<td><a href="#${benchmarkResults.name}" class="link-primary link-underline-opacity-0">${benchmarkResults.name}</a></td>`;
+            data += diffTimeHtml + diffInsnHtml;
             data += newHtml;
-            data += oldHtml;
+            data += baselineTimeHtml + baselineInsnHtml;
             data += '</tr>';
 
             const table = document.getElementById('table-body');
             table.insertAdjacentHTML("beforeend", data);
         }
 
-        function makeChart(name, commits, results) {
+        function makeChart(benchmarkResults) {
             const ctx = document.getElementById('charts');
+            const name = benchmarkResults.name;
+            const unit = benchmarkResults.unit;
+
             ctx.insertAdjacentHTML("beforeend",
                 `<div class="col container-fluid my-3" id="${name}"><h5>${name}</h5></div>`
             );
@@ -144,51 +238,36 @@
             var durations = []
             var nInsns = []
             var labels = []
-            for (commit of commits) {
-                const result = results[commit.sha]
-                if (result == undefined)
-                    continue;
-
+            for (result of benchmarkResults.results) {
                 durations.push(result.time);
-                labels.push(commit.sha);
+                labels.push(result.commit.sha);
 
-                // nInsn doesn't exist if the benchmark doesn't report it
-                if (result.nInsn !== undefined)
-                        nInsns.push(result.nInsn);
+                if (result.nInsn)
+                    nInsns.push(result.nInsn);
             }
-
-            const maxValue = Math.max(...durations);
-            const bestUnit = formatTimeDuration(maxValue).unit;
-
-            const afterTitle = (tooltipItems) => {
-                const commit = commits.find((e) => e.sha == tooltipItems[0].label);
-                return commit.message.split("\n")[0];
-            };
-
-            const datasets = [
-                {
-                    label: 'Duration',
-                    data: durations,
-                    yAxisID: 'duration',
-                    tension: 0.1,
-                    order: 1,
-                    pointRadius: 0,
-                },
-                {
-                    label: '# of instructions',
-                    data: nInsns,
-                    yAxisID: 'instructions',
-                    tension: 0.1,
-                    order: 2,
-                    pointRadius: 0,
-                }
-            ];
 
             new Chart(document.getElementById(name + "Chart"), {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: datasets.filter(ds => ds.data.length !== 0)
+                    datasets: [
+                        {
+                            label: 'Duration',
+                            data: durations,
+                            yAxisID: 'duration',
+                            tension: 0.1,
+                            order: 1,
+                            pointRadius: 0,
+                        },
+                        {
+                            label: '# of instructions',
+                            data: nInsns,
+                            yAxisID: 'instructions',
+                            tension: 0.1,
+                            order: 2,
+                            pointRadius: 0,
+                        }
+                    ].filter(ds => ds.data.length !== 0)
                 },
                 options: {
                     interaction: {
@@ -200,10 +279,13 @@
                             position: "nearest",
                             yAlign: "top",
                             callbacks: {
-                                afterTitle: afterTitle,
+                                afterTitle: (tooltipItems) => {
+                                    const result = benchmarkResults.results.find((e) => e.commit.sha == tooltipItems[0].label);
+                                    return result.commit.subject;
+                                },
                                 label: function (context) {
                                     if (context.dataset.yAxisID == "duration") {
-                                        duration = formatTimeDuration(context.parsed.y, 2, bestUnit);
+                                        duration = formatTimeDuration(context.parsed.y, 2, unit);
                                         return `${duration.str} ${duration.unit}`;
                                     } else if (context.dataset.yAxisID == "instructions") {
                                         return parseInt(context.parsed.y) + " instructions";
@@ -227,7 +309,7 @@
                             },
                             ticks: {
                                 callback: function (value) {
-                                    duration = formatTimeDuration(value, 2, bestUnit);
+                                    duration = formatTimeDuration(value, 2, unit);
                                     return `${duration.str} ${duration.unit}`;
                                 }
                             }
@@ -236,7 +318,7 @@
                             id: '# insn',
                             type: 'linear',
                             position: 'right',
-                            suggestedMin:0,
+                            suggestedMin: 0,
                             suggestedMax: Math.max(...nInsns) * 1.1,
                             title: {
                                 display: true,
@@ -272,8 +354,10 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
                 <picture>
-                    <source loading="lazy" srcset="../../_static/logo-dark-mode.png" media="(prefers-color-scheme: dark)">
-                    <img loading="lazy" src="../../_static/logo-light-mode.png"  height="30" class="d-inline-block align-top" alt="">
+                    <source loading="lazy" srcset="../../_static/logo-dark-mode.png"
+                        media="(prefers-color-scheme: dark)">
+                    <img loading="lazy" src="../../_static/logo-light-mode.png" height="30"
+                        class="d-inline-block align-top" alt="">
                 </picture>
                 bpfilter benchmark
             </a>
@@ -281,16 +365,17 @@
     </nav>
     <div class="jumbotron m-5 p-5 bg-light">
         <div class="container">
-            <h2>Last results</h2>
-            <p class="lead">Performance of the last commit, compared to the second to last.</p>
+            <h2>Summary</h2>
+            <p class="lead">Latest benchmark results compared to a statistical baseline from the previous 10 commits.
+            </p>
         </div>
         <table class="table">
             <thead>
                 <tr>
                     <th scope="col" rowspan="2">Benchmark</th>
-                    <th scope="col" colspan="2" class="text-end">Diff</th>
-                    <th scope="col" colspan="2" class="text-end">New</th>
-                    <th scope="col" colspan="2" class="text-end">Old</th>
+                    <th scope="col" colspan="2" class="text-end">Diff vs baseline</th>
+                    <th scope="col" colspan="2" class="text-end">Latest result</th>
+                    <th scope="col" colspan="2" class="text-end">10-commits baseline</th>
                 </tr>
                 <tr>
                     <th scope="col" class="text-end">Runtime</th>
@@ -304,12 +389,26 @@
             <tbody id="table-body">
             </tbody>
         </table>
+        <div class="alert alert-info mt-4">
+            <h5>Understanding the results:</h5>
+            <ul>
+                <li><strong>Baseline:</strong> average of the 10 previous commits (with standard deviation)</li>
+                <li><strong>Significant changes:</strong> if the last commit's benchmark has a standard score (zscore) above 3, compared
+                    to the 10 previous commit average baseline, it is considered a significant change. Hence, the last commit introduced
+                    a genuine performance shift rather than noise.</li>
+                <li><strong>Color coding:</strong>
+                    <span class="text-success">Green</span> = significant improvement,
+                    <span class="text-danger">Red</span> = significant regression,
+                    <span class="text-muted">Gray</span> = no significant change
+                </li>
+            </ul>
+        </div>
     </div>
 
     <div class="jumbotron m-5 p-5 bg-light">
         <div class="container">
-            <h2>Results over time</h2>
-            <p class="lead">Evolution of the benchmark results over time.</p>
+            <h2>History</h2>
+            <p class="lead">Benchmark results evolution over time.</p>
         </div>
         <div class="container-fluid">
             <div class="row row-cols-2" id="charts">
