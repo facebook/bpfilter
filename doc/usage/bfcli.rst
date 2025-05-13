@@ -347,7 +347,8 @@ With:
   - ``$PAYLOAD``: payload to compare to the processed network packet. The exact payload format depends on ``$TYPE``.
 
 
-**Meta matchers**
+Meta
+####
 
 .. flat-table::
     :header-rows: 1
@@ -393,7 +394,8 @@ With:
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
 
-**IPv4 matchers**
+IPv4
+####
 
 .. flat-table::
     :header-rows: 1
@@ -430,7 +432,8 @@ With:
       - Only ``icmp`` is supported for now, more protocols will be added.
 
 
-**IPv6 matchers**
+IPv6
+####
 
 .. flat-table::
     :header-rows: 1
@@ -454,7 +457,8 @@ With:
     * - ``not``
 
 
-**TCP matchers**
+TCP
+###
 
 .. flat-table::
     :header-rows: 1
@@ -494,7 +498,8 @@ With:
     * - ``all``
 
 
-**UDP matchers**
+UDP
+###
 
 .. flat-table::
     :header-rows: 1
