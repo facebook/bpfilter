@@ -49,6 +49,11 @@ add_executable(bpfilter
     ${CMAKE_SOURCE_DIR}/src/external/murmur3.h           ${CMAKE_SOURCE_DIR}/src/external/murmur3.c
 )
 
+target_compile_definitions(bpfilter
+    PRIVATE
+        BF_CONTACT="${BF_CONTACT}"
+)
+
 target_include_directories(bpfilter
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src

@@ -31,6 +31,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "")       # No NDEBUG in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "")     # No NDEBUG in release mode
 
+set(BF_CONTACT "Quentin Deslandes <qde@naccy.de>")
+
 if (NOT CMAKE_BUILD_TYPE)
   message(STATUS "Setting build type to 'release' as none was specified.")
   set(CMAKE_BUILD_TYPE "release" CACHE STRING "Choose the type of build." FORCE)

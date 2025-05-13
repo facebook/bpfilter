@@ -471,6 +471,7 @@ int main(int argc, char *argv[])
     bf_logger_setup();
 
     argp_program_version = "bpfilter version " BF_VERSION;
+    argp_program_bug_address = BF_CONTACT;
 
     r = bf_btf_setup();
     if (r < 0)
