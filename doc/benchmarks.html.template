@@ -146,18 +146,15 @@
             var labels = []
             for (commit of commits) {
                 const result = results[commit.sha]
-                if (result == undefined) {
-                    durations.push(null);
-                    nInsns.push(null);
-                } else {
-                    durations.push(result.time);
+                if (result == undefined)
+                    continue;
 
-                    // nInsn doesn't exist if the benchmark doesn't report it
-                    if (result.nInsn !== undefined)
-                         nInsns.push(result.nInsn);
-                }
-
+                durations.push(result.time);
                 labels.push(commit.sha);
+
+                // nInsn doesn't exist if the benchmark doesn't report it
+                if (result.nInsn !== undefined)
+                        nInsns.push(result.nInsn);
             }
 
             const maxValue = Math.max(...durations);
