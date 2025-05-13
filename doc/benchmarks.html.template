@@ -162,7 +162,7 @@
 
             const afterTitle = (tooltipItems) => {
                 const commit = commits.find((e) => e.sha == tooltipItems[0].label);
-                return commit.message;
+                return commit.message.split("\n")[0];
             };
 
             new Chart(document.getElementById(name + "Chart"), {
@@ -193,8 +193,9 @@
                         mode: 'index',
                     },
                     plugins: {
-
                         tooltip: {
+                            position: "nearest",
+                            yAlign: "top",
                             callbacks: {
                                 afterTitle: afterTitle,
                                 label: function (context) {
