@@ -62,6 +62,11 @@ add_executable(bfcli
     ${CMAKE_CURRENT_BINARY_DIR}/generated/bfcli/lexer.c
 )
 
+target_compile_definitions(bfcli
+    PRIVATE
+        BF_CONTACT="${BF_CONTACT}"
+)
+
 target_include_directories(bfcli
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src
