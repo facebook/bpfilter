@@ -239,7 +239,10 @@
                                 text: '# insn'
                             },
                             // Only display the nInsns axis if we have values
-                            display: nInsns.length != 0
+                            display: nInsns.length != 0,
+                            grid: {
+                                drawOnChartArea: false, // only want the grid lines for one axis to show up
+                            }
                         },
                         x: {
                             title: {
