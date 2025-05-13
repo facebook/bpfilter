@@ -175,7 +175,7 @@
                             data: durations,
                             yAxisID: 'duration',
                             tension: 0.1,
-                            fill: true,
+                            order: 1,
                             order: 2,
                         },
                         {
@@ -183,7 +183,7 @@
                             data: nInsns,
                             yAxisID: 'instructions',
                             tension: 0.1,
-                            order: 1,
+                            order: 2,
                         }
                     ]
                 },
