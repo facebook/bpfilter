@@ -333,7 +333,7 @@ struct bf_program
     } runtime;
 };
 
-#define _cleanup_bf_program_ __attribute__((__cleanup__(bf_program_free)))
+#define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
 void bf_program_free(struct bf_program **program);

@@ -35,8 +35,8 @@ static int emit_in_ctx(struct bf_program *program, struct bf_jmpctx *ctx,
 
 Test(jmp, create_and_close)
 {
-    _cleanup_bf_program_ struct bf_program *program = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain(BF_HOOK_XDP, BF_VERDICT_ACCEPT);
+    _free_bf_program_ struct bf_program *program = NULL;
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain(BF_HOOK_XDP, BF_VERDICT_ACCEPT);
 
     assert_success(bf_program_new(&program, chain));
 
@@ -61,7 +61,7 @@ Test(jmp, create_and_close)
         size_t idx;
 
         {
-            _cleanup_bf_jmpctx_ struct bf_jmpctx _;
+            _clean_bf_jmpctx_ struct bf_jmpctx _;
             assert_int_equal(emit_in_ctx(program, &_, 0), 0);
             idx = _.insn_idx;
         }
@@ -69,7 +69,7 @@ Test(jmp, create_and_close)
         assert_int_equal(program->img[idx].off, 0);
 
         {
-            _cleanup_bf_jmpctx_ struct bf_jmpctx _;
+            _clean_bf_jmpctx_ struct bf_jmpctx _;
             assert_int_equal(emit_in_ctx(program, &_, 1), 0);
             idx = _.insn_idx;
         }
@@ -77,7 +77,7 @@ Test(jmp, create_and_close)
         assert_int_equal(program->img[idx].off, 1);
 
         {
-            _cleanup_bf_jmpctx_ struct bf_jmpctx _;
+            _clean_bf_jmpctx_ struct bf_jmpctx _;
             assert_int_equal(emit_in_ctx(program, &_, 2), 0);
             idx = _.insn_idx;
         }

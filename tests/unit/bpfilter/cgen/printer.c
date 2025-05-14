@@ -15,7 +15,7 @@ Test(printer, msg_lifetime)
 
     {
         // Automatic cleanup
-        _cleanup_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
+        _free_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
 
         assert_int_equal(_bf_printer_msg_new(&msg), 0);
     }
@@ -53,9 +53,9 @@ Test(printer, msg_marsh_unmarsh)
     expect_assert_failure(_bf_printer_msg_marsh(NOT_NULL, NULL));
     expect_assert_failure(_bf_printer_msg_marsh(NULL, NULL));
 
-    _cleanup_bf_printer_msg_ struct bf_printer_msg *msg0 = NULL;
-    _cleanup_bf_printer_msg_ struct bf_printer_msg *msg1 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_printer_msg_ struct bf_printer_msg *msg0 = NULL;
+    _free_bf_printer_msg_ struct bf_printer_msg *msg1 = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
     assert_int_equal(_bf_printer_msg_new(&msg0), 0);
     msg0->offset = 17;
@@ -77,7 +77,7 @@ Test(printer, printer_lifetime)
 
     {
         // Automatic cleanup
-        _cleanup_bf_printer_ struct bf_printer *printer = NULL;
+        _free_bf_printer_ struct bf_printer *printer = NULL;
 
         assert_int_equal(bf_printer_new(&printer), 0);
     }
@@ -119,12 +119,12 @@ Test(printer, printer_marsh_unmarsh)
     expect_assert_failure(bf_printer_add_msg(NOT_NULL, NULL));
     expect_assert_failure(bf_printer_add_msg(NULL, NULL));
 
-    _cleanup_bf_printer_ struct bf_printer *printer0 = NULL;
-    _cleanup_bf_printer_ struct bf_printer *printer1 = NULL;
+    _free_bf_printer_ struct bf_printer *printer0 = NULL;
+    _free_bf_printer_ struct bf_printer *printer1 = NULL;
     const struct bf_printer_msg *msg0;
     const struct bf_printer_msg *msg1;
     const struct bf_printer_msg *msg2;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
     // Insert messages into the printer, and ensure inserting 2 times the
     // same message will only create 1 message.

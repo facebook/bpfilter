@@ -81,7 +81,7 @@ typedef struct
     bf_list_ops ops;
 } bf_list;
 
-#define _cleanup_bf_list_ __attribute__((cleanup(bf_list_free)))
+#define _free_bf_list_ __attribute__((cleanup(bf_list_free)))
 #define _clean_bf_list_ __attribute__((cleanup(bf_list_clean)))
 
 /**

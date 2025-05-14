@@ -26,7 +26,7 @@ struct bf_counter
     uint64_t bytes;
 } bf_packed;
 
-#define _cleanup_bf_counter_ __attribute__((__cleanup__(bf_counter_free)))
+#define _free_bf_counter_ __attribute__((__cleanup__(bf_counter_free)))
 
 /**
  * Free a @ref bf_counter structure.

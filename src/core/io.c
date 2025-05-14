@@ -90,7 +90,7 @@ int bf_send_request(int fd, const struct bf_request *request)
 int bf_recv_request(int fd, struct bf_request **request)
 {
     struct bf_request req;
-    _cleanup_bf_request_ struct bf_request *_request = NULL;
+    _free_bf_request_ struct bf_request *_request = NULL;
     ssize_t r;
 
     bf_assert(request);
@@ -157,7 +157,7 @@ int bf_send_response(int fd, struct bf_response *response)
 int bf_recv_response(int fd, struct bf_response **response)
 {
     struct bf_response res;
-    _cleanup_bf_response_ struct bf_response *_response = NULL;
+    _free_bf_response_ struct bf_response *_response = NULL;
     ssize_t r;
 
     bf_assert(response);

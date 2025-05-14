@@ -118,10 +118,10 @@ chains          : chain { UNUSED($1); }
 
 chain           : CHAIN STRING hook hookopts verdict rules
                 {
-                    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+                    _free_bf_chain_ struct bf_chain *chain = NULL;
                     _cleanup_free_ const char *name = $2;
                     _free_bf_hookopts_ struct bf_hookopts *hookopts = $4;
-                    _cleanup_bf_list_ bf_list *rules = $6;
+                    _free_bf_list_ bf_list *rules = $6;
                     int r;
 
                     if ($5 >= _BF_TERMINAL_VERDICT_MAX)
@@ -204,7 +204,7 @@ rules           : %empty { $$ = NULL; }
                 ;
 rule            : RULE matchers counter verdict
                 {
-                    _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+                    _free_bf_rule_ struct bf_rule *rule = NULL;
 
                     if (bf_rule_new(&rule) < 0)
                         bf_parse_err("failed to create a new bf_rule\n");
@@ -228,7 +228,7 @@ rule            : RULE matchers counter verdict
 
 matchers        : matcher
                 {
-                    _cleanup_bf_list_ bf_list *list = NULL;
+                    _free_bf_list_ bf_list *list = NULL;
 
                     if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_matcher_free, .marsh = (bf_list_ops_marsh)bf_matcher_marsh}}) < 0)
                         bf_parse_err("failed to allocate a new bf_list for bf_matcher\n");
@@ -250,7 +250,7 @@ matchers        : matcher
                 ;
 matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     unsigned long lifindex;
                     uint32_t ifindex;
 
@@ -273,7 +273,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_META_L3_PROTO
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint16_t proto;
 
                     if (bf_streq($3, "ipv4"))
@@ -292,7 +292,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_META_L4_PROTO
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint8_t proto;
 
                     if (bf_streq($3, "icmp"))
@@ -315,7 +315,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_IP_PROTO
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint8_t proto;
 
                     if (bf_streq($3, "icmp"))
@@ -332,7 +332,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_IPADDR
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     struct bf_matcher_ip4_addr addr;
                     char *mask;
                     int r;
@@ -367,8 +367,8 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_IP_ADDR_SET
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    _cleanup_bf_set_ struct bf_set *set = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_set_ struct bf_set *set = NULL;
                     uint32_t set_id = bf_list_size(&ruleset->sets);
                     int r;
 
@@ -422,7 +422,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_IP6_ADDR
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     struct bf_matcher_ip6_addr addr = {};
                     char *mask_str;
                     int mask = 128;
@@ -459,7 +459,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_PORT
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     long raw_val;
                     uint16_t port;
 
@@ -478,7 +478,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_PORT_RANGE
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     long raw_val;
                     char *end_port_str;
                     uint16_t ports[2];
@@ -506,7 +506,7 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                 }
                 | matcher_type matcher_op MATCHER_TCP_FLAGS
                 {
-                    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     uint8_t flags = 0;
                     char *flags_str;
                     char *saveptr;

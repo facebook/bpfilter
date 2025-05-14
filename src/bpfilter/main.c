@@ -413,9 +413,9 @@ static int _bf_run(void)
 
     while (!_bf_stop_received) {
         _cleanup_close_ int client_fd = -1;
-        _cleanup_bf_request_ struct bf_request *request = NULL;
-        _cleanup_bf_response_ struct bf_response *response = NULL;
-        _clean_bf_ns_ struct bf_ns ns;
+        _free_bf_request_ struct bf_request *request = NULL;
+        _free_bf_response_ struct bf_response *response = NULL;
+        _clean_bf_ns_ struct bf_ns ns = bf_ns_default();
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {

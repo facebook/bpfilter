@@ -30,7 +30,7 @@ int bf_nfgroup_new(struct bf_nfgroup **group)
 {
     bf_assert(group);
 
-    _cleanup_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
+    _free_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
 
     _group = calloc(1, sizeof(*_group));
     if (!_group)
@@ -54,7 +54,7 @@ int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
     /* nlmsg_ok() takes an int. length should not be larger than INT_MAX, but
      * we check anyway to be safe. */
 
-    _cleanup_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
+    _free_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
     int len = (int)length;
     int r;
 
@@ -63,7 +63,7 @@ int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
         return r;
 
     while (nlmsg_ok(nlh, len)) {
-        _cleanup_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
+        _free_bf_nfmsg_ struct bf_nfmsg *msg = NULL;
 
         if (nlh->nlmsg_type == NFNL_MSG_BATCH_BEGIN ||
             nlh->nlmsg_type == NFNL_MSG_BATCH_END) {
@@ -141,7 +141,7 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
 {
     bf_assert(group);
 
-    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     int r;
 
     r = bf_nfmsg_new(&_msg, command, seqnr);
@@ -166,8 +166,8 @@ int bf_nfgroup_to_response(const struct bf_nfgroup *group,
     bf_assert(group);
     bf_assert(resp);
 
-    _cleanup_bf_response_ struct bf_response *_resp = NULL;
-    _cleanup_bf_nfmsg_ struct bf_nfmsg *done = NULL;
+    _free_bf_response_ struct bf_response *_resp = NULL;
+    _free_bf_nfmsg_ struct bf_nfmsg *done = NULL;
     size_t size = bf_nfgroup_size(group);
     bool is_multipart = bf_list_size(&group->messages) != 1;
     void *payload;

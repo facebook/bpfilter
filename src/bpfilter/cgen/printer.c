@@ -52,8 +52,7 @@ struct bf_printer
     bf_list msgs;
 };
 
-#define _cleanup_bf_printer_msg_                                               \
-    __attribute__((__cleanup__(_bf_printer_msg_free)))
+#define _free_bf_printer_msg_ __attribute__((__cleanup__(_bf_printer_msg_free)))
 
 static void _bf_printer_msg_free(struct bf_printer_msg **msg);
 
@@ -66,7 +65,7 @@ static void _bf_printer_msg_free(struct bf_printer_msg **msg);
  */
 static int _bf_printer_msg_new(struct bf_printer_msg **msg)
 {
-    _cleanup_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
+    _free_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
 
     bf_assert(msg);
 
@@ -91,7 +90,7 @@ static int _bf_printer_msg_new(struct bf_printer_msg **msg)
 static int _bf_printer_msg_new_from_marsh(struct bf_printer_msg **msg,
                                           const struct bf_marsh *marsh)
 {
-    _cleanup_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
+    _free_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -153,7 +152,7 @@ static void _bf_printer_msg_free(struct bf_printer_msg **msg)
 static int _bf_printer_msg_marsh(const struct bf_printer_msg *msg,
                                  struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(msg);
@@ -203,7 +202,7 @@ size_t bf_printer_msg_len(const struct bf_printer_msg *msg)
 
 int bf_printer_new(struct bf_printer **printer)
 {
-    _cleanup_bf_printer_ struct bf_printer *_printer;
+    _free_bf_printer_ struct bf_printer *_printer = NULL;
 
     bf_assert(printer);
 
@@ -221,7 +220,7 @@ int bf_printer_new(struct bf_printer **printer)
 int bf_printer_new_from_marsh(struct bf_printer **printer,
                               const struct bf_marsh *marsh)
 {
-    _cleanup_bf_printer_ struct bf_printer *_printer = NULL;
+    _free_bf_printer_ struct bf_printer *_printer = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -233,7 +232,7 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
         return bf_err_r(r, "failed to allocate a new bf_printer object");
 
     while ((child = bf_marsh_next_child(marsh, child))) {
-        _cleanup_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
+        _free_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
 
         r = _bf_printer_msg_new_from_marsh(&msg, child);
         if (r)
@@ -319,7 +318,7 @@ static size_t _bf_printer_total_size(const struct bf_printer *printer)
 const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
                                                 const char *str)
 {
-    _cleanup_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
+    _free_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
     int r;
 
     bf_assert(printer);

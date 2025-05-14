@@ -20,13 +20,13 @@ Test(ctx, create_delete_assert)
 Test(ctx, create_delete)
 {
     // Rely on the cleanup attrubte
-    _cleanup_bf_ctx_ struct bf_ctx *ctx0 = NULL;
+    _free_bf_ctx_ struct bf_ctx *ctx0 = NULL;
 
     assert_success(_bf_ctx_new(&ctx0));
     assert_non_null(ctx0);
 
     // Use the cleanup attribute, but free manually
-    _cleanup_bf_ctx_ struct bf_ctx *ctx1 = NULL;
+    _free_bf_ctx_ struct bf_ctx *ctx1 = NULL;
 
     assert_success(_bf_ctx_new(&ctx1));
     assert_non_null(ctx1);
@@ -48,10 +48,10 @@ Test(ctx, create_delete)
 Test(ctx, set_get_chain)
 {
     // Rely on the cleanup attrubte
-    _cleanup_bf_ctx_ struct bf_ctx *ctx = NULL;
-    _cleanup_bf_cgen_ struct bf_cgen *cgen0 = bf_test_cgen_quick();
-    _cleanup_bf_cgen_ struct bf_cgen *cgen1 = bf_test_cgen_quick();
-    _cleanup_bf_cgen_ struct bf_cgen *cgen2 = bf_test_cgen_quick();
+    _free_bf_ctx_ struct bf_ctx *ctx = NULL;
+    _free_bf_cgen_ struct bf_cgen *cgen0 = bf_test_cgen_quick();
+    _free_bf_cgen_ struct bf_cgen *cgen1 = bf_test_cgen_quick();
+    _free_bf_cgen_ struct bf_cgen *cgen2 = bf_test_cgen_quick();
 
     // Change the name of cgen2
     freep(&cgen2->chain->name);

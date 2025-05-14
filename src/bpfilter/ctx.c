@@ -26,7 +26,7 @@
 #include "core/marsh.h"
 #include "core/ns.h"
 
-#define _cleanup_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
+#define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
 /**
  * @struct bf_ctx
@@ -87,7 +87,7 @@ static int _bf_ctx_gen_token(void)
  */
 static int _bf_ctx_new(struct bf_ctx **ctx)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
+    _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
     bf_assert(ctx);
@@ -138,7 +138,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
 static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
                                   const struct bf_marsh *marsh)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
+    _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     struct bf_marsh *child = NULL;
     struct bf_marsh *elem = NULL;
     int r;
@@ -153,7 +153,7 @@ static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     while ((elem = bf_marsh_next_child(child, elem))) {
-        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
 
         r = bf_cgen_new_from_marsh(&cgen, elem);
         if (r < 0)
@@ -258,7 +258,7 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
  */
 static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(ctx && marsh);
@@ -268,7 +268,7 @@ static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
         return bf_err_r(r, "failed to create marsh for context");
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_list_marsh(&ctx->cgens, &child);
         if (r < 0)
@@ -365,7 +365,7 @@ static int _bf_ctx_delete_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen,
 
 int bf_ctx_setup(void)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *_ctx = NULL;
+    _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
     bf_assert(!_ctx);
@@ -391,7 +391,7 @@ void bf_ctx_teardown(bool clear)
 
 int bf_ctx_save(struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(marsh);
@@ -407,7 +407,7 @@ int bf_ctx_save(struct bf_marsh **marsh)
 
 int bf_ctx_load(const struct bf_marsh *marsh)
 {
-    _cleanup_bf_ctx_ struct bf_ctx *ctx = NULL;
+    _free_bf_ctx_ struct bf_ctx *ctx = NULL;
     int r;
 
     bf_assert(marsh);

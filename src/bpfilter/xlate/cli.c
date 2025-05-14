@@ -62,10 +62,10 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
 static int _bf_cli_ruleset_get(const struct bf_request *request,
                                struct bf_response **response)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *hookopts_marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *counters_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *hookopts_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *counters_marsh = NULL;
     _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
     _clean_bf_list_ bf_list chains = bf_list_default(NULL, bf_chain_marsh);
     _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, bf_hookopts_marsh);
@@ -85,7 +85,7 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
 
     bf_list_foreach (&cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-        _cleanup_bf_list_ bf_list *cgen_counters = NULL;
+        _free_bf_list_ bf_list *cgen_counters = NULL;
 
         r = bf_list_add_tail(&chains, cgen->chain);
         if (r)
@@ -124,7 +124,7 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
     r = bf_marsh_new(&hookopts_marsh, NULL, 0);
     bf_list_foreach (&hookopts, hookopts_node) {
         struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         if (hookopts) {
             r = bf_hookopts_marsh(bf_list_node_get_data(hookopts_node), &child);
@@ -178,8 +178,8 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
     bf_ctx_flush(BF_FRONT_CLI);
 
     while ((list_elem = bf_marsh_next_child(marsh, list_elem))) {
-        _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _free_bf_chain_ struct bf_chain *chain = NULL;
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         struct bf_marsh *child = NULL;
 
@@ -234,8 +234,8 @@ int _bf_cli_chain_set(const struct bf_request *request,
 {
     struct bf_cgen *old_cgen;
     struct bf_marsh *marsh, *child = NULL;
-    _cleanup_bf_cgen_ struct bf_cgen *new_cgen = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_cgen_ struct bf_cgen *new_cgen = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     int r;
 
@@ -293,7 +293,7 @@ int _bf_cli_chain_set(const struct bf_request *request,
 static int _bf_cli_chain_get(const struct bf_request *request,
                              struct bf_response **response)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     _clean_bf_list_ bf_list counters =
         bf_list_default(bf_counter_free, bf_counter_marsh);
     struct bf_cgen *cgen;
@@ -325,7 +325,7 @@ static int _bf_cli_chain_get(const struct bf_request *request,
         return bf_err_r(r, "failed to get new marsh");
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_chain_marsh(cgen->chain, &child);
         if (r)
@@ -337,7 +337,7 @@ static int _bf_cli_chain_get(const struct bf_request *request,
     }
 
     if (cgen->program->link->hookopts) {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_hookopts_marsh(cgen->program->link->hookopts, &child);
         if (r)
@@ -353,7 +353,7 @@ static int _bf_cli_chain_get(const struct bf_request *request,
     }
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_cgen_get_counters(cgen, &counters);
         if (r)
@@ -376,8 +376,8 @@ int _bf_cli_chain_load(const struct bf_request *request,
                        struct bf_response **response)
 {
     struct bf_marsh *marsh, *child = NULL;
-    _cleanup_bf_cgen_ struct bf_cgen *cgen = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     int r;
 
     bf_assert(request && response);
@@ -427,7 +427,7 @@ int _bf_cli_chain_attach(const struct bf_request *request,
                          struct bf_response **response)
 {
     struct bf_marsh *marsh, *child = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     struct bf_cgen *cgen = NULL;
     const char *name;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
@@ -477,7 +477,7 @@ int _bf_cli_chain_update(const struct bf_request *request,
                          struct bf_response **response)
 {
     struct bf_marsh *marsh, *child = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     struct bf_cgen *cgen = NULL;
     int r;
 

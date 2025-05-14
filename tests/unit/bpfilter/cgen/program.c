@@ -11,14 +11,14 @@
 
 Test(program, emit_fixup_call)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
 
     expect_assert_failure(bf_program_emit_fixup_call(
         NULL, BF_FIXUP_FUNC_UPDATE_COUNTERS));
 
     {
         // Instructions buffer should grow
-        _cleanup_bf_program_ struct bf_program *program = NULL;
+        _free_bf_program_ struct bf_program *program = NULL;
         size_t start_cap;
 
         assert_success(bf_program_new(&program, chain));

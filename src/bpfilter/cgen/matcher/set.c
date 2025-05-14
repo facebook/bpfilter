@@ -29,7 +29,7 @@
 int _bf_matcher_generate_set_ip6port(struct bf_program *program,
                                      const struct bf_matcher *matcher)
 {
-    _cleanup_bf_swich_ struct bf_swich swich;
+    _clean_bf_swich_ struct bf_swich swich;
     uint32_t set_id;
     int r;
 

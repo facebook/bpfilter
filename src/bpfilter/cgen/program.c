@@ -78,7 +78,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
 
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 {
-    _cleanup_bf_program_ struct bf_program *_program = NULL;
+    _free_bf_program_ struct bf_program *_program = NULL;
     char name[BPF_OBJ_NAME_LEN];
     uint32_t set_idx = 0;
     int r;
@@ -111,7 +111,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     _program->sets = bf_map_list();
     bf_list_foreach (&chain->sets, set_node) {
         struct bf_set *set = bf_list_node_get_data(set_node);
-        _cleanup_bf_map_ struct bf_map *map = NULL;
+        _free_bf_map_ struct bf_map *map = NULL;
 
         (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x", (uint8_t)set_idx++);
         r = bf_map_new(&map, name, BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_HASH,
@@ -168,7 +168,7 @@ void bf_program_free(struct bf_program **program)
 
 int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(program);
@@ -180,7 +180,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
     {
         // Serialize bf_program.counters
-        _cleanup_bf_marsh_ struct bf_marsh *counters_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *counters_elem = NULL;
 
         r = bf_map_marsh(program->cmap, &counters_elem);
         if (r < 0)
@@ -193,7 +193,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
     {
         // Serialize bf_program.pmap
-        _cleanup_bf_marsh_ struct bf_marsh *pmap_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *pmap_elem = NULL;
 
         r = bf_map_marsh(program->pmap, &pmap_elem);
         if (r < 0)
@@ -206,7 +206,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
     {
         // Serialize bf_program.sets
-        _cleanup_bf_marsh_ struct bf_marsh *sets_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *sets_elem = NULL;
 
         r = bf_list_marsh(&program->sets, &sets_elem);
         if (r < 0)
@@ -222,7 +222,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
     {
         // Serialize bf_program.links
-        _cleanup_bf_marsh_ struct bf_marsh *links_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *links_elem = NULL;
 
         r = bf_link_marsh(program->link, &links_elem);
         if (r)
@@ -238,7 +238,7 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
 
     {
         // Serialise bf_program.printer
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_printer_marsh(program->printer, &child);
         if (r)
@@ -265,7 +265,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
                        struct bf_program **program,
                        const struct bf_chain *chain, int dir_fd)
 {
-    _cleanup_bf_program_ struct bf_program *_program = NULL;
+    _free_bf_program_ struct bf_program *_program = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -303,7 +303,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         struct bf_marsh *set_elem = NULL;
 
         while ((set_elem = bf_marsh_next_child(child, set_elem))) {
-            _cleanup_bf_map_ struct bf_map *map = NULL;
+            _free_bf_map_ struct bf_map *map = NULL;
 
             r = bf_map_new_from_marsh(&map, dir_fd, set_elem);
             if (r < 0)
@@ -662,7 +662,7 @@ static int _bf_program_generate_update_counters(struct bf_program *program)
 
     // If the counters doesn't exist, return from the function
     {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         if (bf_opts_is_verbose(BF_VERBOSE_BPF))
@@ -773,7 +773,7 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn, const union bf_fixup_attr *attr)
 {
-    _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
+    _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
     bf_assert(program);
@@ -806,7 +806,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_func function)
 {
-    _cleanup_bf_fixup_ struct bf_fixup *fixup = NULL;
+    _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
     bf_assert(program);

@@ -73,7 +73,7 @@ extern const bf_nfpolicy *bf_nf_verdict_policy;
 /**
  * Cleanup attribute for a @ref bf_nfmsg variable.
  */
-#define _cleanup_bf_nfmsg_ __attribute__((__cleanup__(bf_nfmsg_free)))
+#define _free_bf_nfmsg_ __attribute__((__cleanup__(bf_nfmsg_free)))
 
 /**
  * Create a new Netfilter Netlink message.
@@ -433,7 +433,7 @@ bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining);
 /**
  * Cleanup attribute for a @ref bf_nfnest variable.
  */
-#define _cleanup_bf_nfnest_ __attribute__((__cleanup__(bf_nfnest_cleanup)))
+#define _clean_bf_nfnest_ __attribute__((__cleanup__(bf_nfnest_cleanup)))
 
 /**
  * Convenience macro to create a new nested attribute context or jump to

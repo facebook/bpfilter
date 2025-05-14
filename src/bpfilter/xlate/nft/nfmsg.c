@@ -124,7 +124,7 @@ int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
 {
     bf_assert(msg);
 
-    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     struct nlmsghdr *nlh;
     struct nfgenmsg extra_hdr = {
         .nfgen_family = AF_INET,
@@ -159,7 +159,7 @@ int bf_nfmsg_new_done(struct bf_nfmsg **msg)
 {
     bf_assert(msg);
 
-    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     struct nlmsghdr *nlh;
     struct nfgenmsg extra_hdr = {
         .nfgen_family = AF_INET,
@@ -194,7 +194,7 @@ int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh)
     bf_assert(msg);
     bf_assert(nlh);
 
-    _cleanup_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
+    _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
 
     if (nlh->nlmsg_type >> 8 != NFNL_SUBSYS_NFTABLES) {
         return bf_err_r(-EINVAL, "invalid Netlink message type: %u",

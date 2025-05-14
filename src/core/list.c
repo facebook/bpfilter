@@ -54,7 +54,7 @@ static void bf_list_node_free(bf_list_node **node,
 
 int bf_list_new(bf_list **list, const bf_list_ops *ops)
 {
-    _cleanup_bf_list_ bf_list *_list = NULL;
+    _free_bf_list_ bf_list *_list = NULL;
 
     bf_assert(list);
 
@@ -109,7 +109,7 @@ void bf_list_clean(bf_list *list)
 
 int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(list && marsh);
@@ -120,7 +120,7 @@ int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh)
 
     if (list->ops.marsh) {
         bf_list_foreach (list, node) {
-            _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+            _free_bf_marsh_ struct bf_marsh *child = NULL;
 
             r = list->ops.marsh(bf_list_node_get_data(node), &child);
             if (r < 0)

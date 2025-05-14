@@ -32,7 +32,7 @@ struct bf_matcher;
 struct bf_marsh;
 
 /// Automatically destroy @ref bf_matcher objects going out of the scope.
-#define _cleanup_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
+#define _free_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
 
 /**
  * Matcher type.

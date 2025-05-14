@@ -453,7 +453,7 @@ void bf_hookopts_free(struct bf_hookopts **hookopts)
 int bf_hookopts_marsh(const struct bf_hookopts *hookopts,
                       struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r = 0;
 
     bf_assert(hookopts && marsh);

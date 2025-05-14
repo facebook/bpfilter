@@ -19,6 +19,16 @@ To format a source file using ClangFormat (from the root of the repository):
 
 ClangFormat is not sufficient to define a consistent code style, as its set of configuration option can't cover every use case. Hence, this document should serve as a reference for the code style ClangFormat can't validate.
 
+
+Memory management
+-----------------
+
+``_cleanup_`` attributes are used extensively in the codebase to simplify resource management. Custom macros are defined to simplify usage of the ``_cleanup`` attribute with the following name prefix:
+
+- ``_free_``: cleanup a dynamically allocated object (e.g. :c:func:`_free_bf_cgen_`).
+- ``_clean_``: cleanup an object with automatic storage duration (e.g. :c:func:`_clean_bf_list`).
+
+
 Comments
 --------
 

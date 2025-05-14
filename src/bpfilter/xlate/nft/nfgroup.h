@@ -33,7 +33,7 @@ struct bf_nfmsg;
 /**
  * Cleanup function for @ref bf_nfgroup.
  */
-#define _cleanup_bf_nfgroup_ __attribute__((__cleanup__(bf_nfgroup_free)))
+#define _free_bf_nfgroup_ __attribute__((__cleanup__(bf_nfgroup_free)))
 
 /**
  * Create a new Netlink messages group.

@@ -23,13 +23,13 @@ Test(map, create_delete_assert)
 Test(map, create_delete)
 {
     // Rely on the cleanup attribute
-    _cleanup_bf_map_ struct bf_map *map0 = NULL;
+    _free_bf_map_ struct bf_map *map0 = NULL;
 
     assert_success(bf_map_new(&map0, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_non_null(map0);
 
     // Use the cleanup attribute, but free manually
-    _cleanup_bf_map_ struct bf_map *map1 = NULL;
+    _free_bf_map_ struct bf_map *map1 = NULL;
 
     assert_success(bf_map_new(&map1, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     assert_non_null(map1);
@@ -58,9 +58,9 @@ Test(map, marsh_unmarsh_assert)
 
 Test(map, marsh_unmarsh)
 {
-    _cleanup_bf_map_ struct bf_map *map0 = NULL;
-    _cleanup_bf_map_ struct bf_map *map1 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_map_ struct bf_map *map0 = NULL;
+    _free_bf_map_ struct bf_map *map1 = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf_obj_get, 0);
 
     assert_success(bf_map_new(&map0, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 2, 3));
@@ -87,7 +87,7 @@ Test(map, dump_assert)
 
 Test(map, dump)
 {
-    _cleanup_bf_map_ struct bf_map *map = NULL;
+    _free_bf_map_ struct bf_map *map = NULL;
 
     assert_success(bf_map_new(&map, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     bf_map_dump(map, EMPTY_PREFIX);
@@ -108,13 +108,13 @@ Test(map, btf_create_delete_assert)
 Test(map, btf_create_delete)
 {
     // Rely on the cleanup attribute
-    _cleanup_bf_btf_ struct bf_btf *btf0 = NULL;
+    _free_bf_btf_ struct bf_btf *btf0 = NULL;
 
     assert_success(_bf_btf_new(&btf0));
     assert_non_null(btf0);
 
     // Use the cleanup attribute, but free manually
-    _cleanup_bf_btf_ struct bf_btf *btf1 = NULL;
+    _free_bf_btf_ struct bf_btf *btf1 = NULL;
 
     assert_success(_bf_btf_new(&btf1));
     assert_non_null(btf1);
@@ -140,7 +140,7 @@ Test(map, map_create_assert)
 
 Test(map, map_create)
 {
-    _cleanup_bf_map_ struct bf_map *map = NULL;
+    _free_bf_map_ struct bf_map *map = NULL;
     _clean_bf_test_mock_ bf_test_mock _0 = bf_test_mock_get(bf_bpf, 16);
     _clean_bf_test_mock_ bf_test_mock _1 = bf_test_mock_get(bf_ctx_token, -1);
 
@@ -156,7 +156,7 @@ Test(map, map_create)
 
 Test(map, map_create_failure)
 {
-    _cleanup_bf_map_ struct bf_map *map = NULL;
+    _free_bf_map_ struct bf_map *map = NULL;
     _clean_bf_test_mock_ bf_test_mock _0 = bf_test_mock_get(bf_bpf, -1);
     _clean_bf_test_mock_ bf_test_mock _1 = bf_test_mock_get(bf_ctx_token, -1);
 

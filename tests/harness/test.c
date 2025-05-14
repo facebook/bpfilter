@@ -216,7 +216,7 @@ extern bf_test __stop_bf_test;
 
 int bf_test_discover_test_suite(bf_test_suite **suite)
 {
-    _cleanup_bf_list_ bf_list *symbols = NULL;
+    _free_bf_list_ bf_list *symbols = NULL;
     _free_bf_test_suite_ bf_test_suite *_suite = NULL;
     bf_test *test;
     int r;

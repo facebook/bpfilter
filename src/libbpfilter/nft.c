@@ -16,8 +16,8 @@
 
 int bf_nft_send(const void *data, size_t len)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     if (!data || !len)
@@ -39,8 +39,8 @@ int bf_nft_send(const void *data, size_t len)
 int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
                     struct nlmsghdr *res, size_t *res_len)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     if (!req || !req_len || !res || !res_len)

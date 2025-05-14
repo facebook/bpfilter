@@ -72,7 +72,7 @@ The example below will create an empty chain with a default ``ACCEPT`` policy.
 
     Test(policy, accept_no_rule)
     {
-        _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
             BF_HOOK_XDP,
             BF_VERDICT_ACCEPT,
             NULL,

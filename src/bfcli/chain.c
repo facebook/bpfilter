@@ -100,7 +100,7 @@ int bfc_chain_set(const struct bfc_opts *opts)
 
 int bfc_chain_get(const struct bfc_opts *opts)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
     int r;

@@ -49,7 +49,7 @@ int bf_set_new(struct bf_set **set, enum bf_set_type type)
 
 int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh)
 {
-    _cleanup_bf_set_ struct bf_set *_set = NULL;
+    _free_bf_set_ struct bf_set *_set = NULL;
     struct bf_marsh *child;
     enum bf_set_type type;
     int r;
@@ -99,7 +99,7 @@ void bf_set_free(struct bf_set **set)
 
 int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     _cleanup_free_ uint8_t *data = NULL;
     size_t elem_idx = 0;
     int r;

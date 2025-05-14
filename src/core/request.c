@@ -16,7 +16,7 @@
 int bf_request_new(struct bf_request **request, const void *data,
                    size_t data_len)
 {
-    _cleanup_bf_request_ struct bf_request *_request = NULL;
+    _free_bf_request_ struct bf_request *_request = NULL;
 
     bf_assert(request);
     bf_assert(!(!!data ^ !!data_len));
@@ -37,7 +37,7 @@ int bf_request_new(struct bf_request **request, const void *data,
 
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
 {
-    _cleanup_bf_request_ struct bf_request *_request = NULL;
+    _free_bf_request_ struct bf_request *_request = NULL;
 
     bf_assert(dest);
     bf_assert(src);

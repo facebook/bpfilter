@@ -75,7 +75,7 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_3, BPF_REG_2, offset));
 
     {
-        _cleanup_bf_swich_ struct bf_swich swich =
+        _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_3);
 
         EMIT_SWICH_OPTION(&swich, AF_INET,

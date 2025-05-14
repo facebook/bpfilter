@@ -22,8 +22,8 @@
 
 int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
@@ -54,7 +54,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
         return -EINVAL;
     for (struct bf_marsh *schild = bf_marsh_next_child(child, NULL); schild;
          schild = bf_marsh_next_child(child, schild)) {
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+        _free_bf_chain_ struct bf_chain *chain = NULL;
 
         r = bf_chain_new_from_marsh(&chain, schild);
         if (r)
@@ -90,7 +90,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
         return -EINVAL;
     for (struct bf_marsh *schild = bf_marsh_next_child(child, NULL); schild;
          schild = bf_marsh_next_child(child, schild)) {
-        _cleanup_bf_list_ bf_list *nested = NULL;
+        _free_bf_list_ bf_list *nested = NULL;
 
         r = bf_list_new(
             &nested, &bf_list_ops_default(bf_counter_free, bf_counter_marsh));
@@ -100,7 +100,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
         for (struct bf_marsh *counter_marsh = bf_marsh_next_child(schild, NULL);
              counter_marsh;
              counter_marsh = bf_marsh_next_child(schild, counter_marsh)) {
-            _cleanup_bf_counter_ struct bf_counter *counter = NULL;
+            _free_bf_counter_ struct bf_counter *counter = NULL;
 
             r = bf_counter_new_from_marsh(&counter, counter_marsh);
             if (r)
@@ -129,8 +129,8 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 
 int bf_cli_ruleset_flush(void)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     r = bf_request_new(&request, NULL, 0);
@@ -149,9 +149,9 @@ int bf_cli_ruleset_flush(void)
 
 int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     struct bf_list_node *chain_node = bf_list_get_head(chains);
     struct bf_list_node *hookopts_node = bf_list_get_head(hookopts);
     int r;
@@ -164,9 +164,9 @@ int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts)
         return r;
 
     while (chain_node && hookopts_node) {
-        _cleanup_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *hook_marsh = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *hook_marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
         struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
 
@@ -220,11 +220,11 @@ int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts)
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *hook_marsh = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *hook_marsh = NULL;
     int r;
 
     r = bf_marsh_new(&marsh, NULL, 0);
@@ -270,13 +270,13 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 int bf_chain_get(const char *name, struct bf_chain **chain,
                  struct bf_hookopts **hookopts, bf_list *counters)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_chain_ struct bf_chain *_chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
     struct bf_marsh *marsh, *child = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *req_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *req_marsh = NULL;
     int r;
 
     r = bf_marsh_new(&req_marsh, NULL, 0);
@@ -327,7 +327,7 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     for (struct bf_marsh *counter_marsh = bf_marsh_next_child(child, NULL);
          counter_marsh;
          counter_marsh = bf_marsh_next_child(child, counter_marsh)) {
-        _cleanup_bf_counter_ struct bf_counter *counter = NULL;
+        _free_bf_counter_ struct bf_counter *counter = NULL;
 
         r = bf_counter_new_from_marsh(&counter, counter_marsh);
         if (r)
@@ -349,9 +349,9 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 
 int bf_chain_load(struct bf_chain *chain)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     int r;
 
     r = bf_marsh_new(&marsh, NULL, 0);
@@ -359,7 +359,7 @@ int bf_chain_load(struct bf_chain *chain)
         return r;
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_chain_marsh(chain, &child);
         if (r)
@@ -386,9 +386,9 @@ int bf_chain_load(struct bf_chain *chain)
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     int r;
 
     r = bf_marsh_new(&marsh, NULL, 0);
@@ -400,7 +400,7 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
         return r;
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_hookopts_marsh(hookopts, &child);
         if (r)
@@ -427,10 +427,10 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 
 int bf_chain_update(const struct bf_chain *chain)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *child = NULL;
     int r;
 
     r = bf_marsh_new(&marsh, NULL, 0);
@@ -461,9 +461,9 @@ int bf_chain_update(const struct bf_chain *chain)
 
 int bf_chain_flush(const char *name)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     int r;
 
     r = bf_marsh_new(&marsh, NULL, 0);

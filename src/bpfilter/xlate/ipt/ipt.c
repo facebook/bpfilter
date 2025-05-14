@@ -178,7 +178,7 @@ static int _bf_verdict_to_ipt_target(enum bf_verdict verdict,
 static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
                                  struct bf_rule **rule)
 {
-    _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
+    _free_bf_rule_ struct bf_rule *_rule = NULL;
     int r;
 
     bf_assert(entry && rule);
@@ -305,7 +305,7 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
                                     struct ipt_entry *first,
                                     struct ipt_entry *last)
 {
-    _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
+    _free_bf_chain_ struct bf_chain *_chain = NULL;
     enum bf_verdict policy;
     int r;
 
@@ -322,7 +322,7 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
         return r;
 
     while (first < last) {
-        _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+        _free_bf_rule_ struct bf_rule *rule = NULL;
 
         r = _bf_ipt_entry_to_rule(first, &rule);
         if (r)
@@ -367,7 +367,7 @@ struct bf_ipt_gen_ruleset_entry
 static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
                                    size_t *nrules, bf_list *dummy_chains)
 {
-    _clean_bf_list_ bf_list cgens;
+    _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
     size_t _nrules = 0;
     int r;
 
@@ -394,7 +394,7 @@ static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
      * ipt_replace structure. */
     for (enum nf_inet_hooks hook = NF_INET_LOCAL_IN; hook <= NF_INET_LOCAL_OUT;
          ++hook) {
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+        _free_bf_chain_ struct bf_chain *chain = NULL;
 
         if (ruleset[hook].cgen)
             continue;
@@ -568,7 +568,7 @@ _bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
     bf_assert(ipt && chains);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
-        _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+        _free_bf_chain_ struct bf_chain *chain = NULL;
 
         if (!ipt_is_hook_enabled(ipt, i)) {
             bf_dbg("iptables hook %d is not enabled, skipping", i);
@@ -632,8 +632,8 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
     }
 
     for (int i = 0; i < NF_INET_NUMHOOKS; i++) {
-        _cleanup_bf_cgen_ struct bf_cgen *cgen = cur_cgens[i];
-        _cleanup_bf_chain_ struct bf_chain *chain = TAKE_PTR(chains[i]);
+        _free_bf_cgen_ struct bf_cgen *cgen = cur_cgens[i];
+        _free_bf_chain_ struct bf_chain *chain = TAKE_PTR(chains[i]);
 
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
 

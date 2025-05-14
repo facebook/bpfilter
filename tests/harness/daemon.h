@@ -36,7 +36,7 @@ enum bf_test_daemon_option
     _BF_TEST_DAEMON_LAST = BF_TEST_DAEMON_NO_NFTABLES,
 };
 
-#define _cleanup_bf_test_daemon_                                               \
+#define _clean_bf_test_daemon_                                                 \
     __attribute__((__cleanup__(bf_test_daemon_clean)))
 
 #define bft_daemon_default()                                                   \

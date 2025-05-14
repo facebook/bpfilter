@@ -34,7 +34,7 @@ int bf_counter_new(struct bf_counter **counter, uint64_t packets,
 int bf_counter_new_from_marsh(struct bf_counter **counter,
                               const struct bf_marsh *marsh)
 {
-    _cleanup_bf_counter_ struct bf_counter *_counter = NULL;
+    _free_bf_counter_ struct bf_counter *_counter = NULL;
     struct bf_marsh *elem = NULL;
 
     bf_assert(counter && marsh);
@@ -68,7 +68,7 @@ void bf_counter_free(struct bf_counter **counter)
 
 int bf_counter_marsh(const struct bf_counter *counter, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(counter && marsh);

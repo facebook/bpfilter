@@ -66,9 +66,9 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
 
 int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
 {
-    _cleanup_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    _cleanup_bf_program_ struct bf_program *program = NULL;
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
+    _free_bf_program_ struct bf_program *program = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     struct bf_marsh *marsh_elem = NULL;
     enum bf_front front;
     int r;
@@ -141,7 +141,7 @@ void bf_cgen_free(struct bf_cgen **cgen)
 
 int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(cgen);
@@ -157,7 +157,7 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
 
     {
         // Serialize cgen.chain
-        _cleanup_bf_marsh_ struct bf_marsh *chain_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *chain_elem = NULL;
 
         r = bf_chain_marsh(cgen->chain, &chain_elem);
         if (r < 0)
@@ -169,7 +169,7 @@ int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
     }
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *prog_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *prog_elem = NULL;
 
         if (cgen->program) {
             r = bf_program_marsh(cgen->program, &prog_elem);
@@ -243,7 +243,7 @@ int bf_cgen_get_counter(const struct bf_cgen *cgen,
 int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
                 struct bf_hookopts **hookopts)
 {
-    _cleanup_bf_program_ struct bf_program *prog = NULL;
+    _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
     int r;
 
@@ -293,7 +293,7 @@ int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
 
 int bf_cgen_load(struct bf_cgen *cgen)
 {
-    _cleanup_bf_program_ struct bf_program *prog = NULL;
+    _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
     int r;
 
@@ -373,7 +373,7 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
 
 int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 {
-    _cleanup_bf_program_ struct bf_program *new_prog = NULL;
+    _free_bf_program_ struct bf_program *new_prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
     struct bf_program *old_prog;
     int r;
@@ -463,7 +463,7 @@ int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
 
     for (ssize_t i = BF_COUNTER_POLICY;
          i < (ssize_t)bf_list_size(&cgen->chain->rules); ++i) {
-        _cleanup_bf_counter_ struct bf_counter *counter = NULL;
+        _free_bf_counter_ struct bf_counter *counter = NULL;
 
         r = bf_counter_new(&counter, 0, 0);
         if (r)

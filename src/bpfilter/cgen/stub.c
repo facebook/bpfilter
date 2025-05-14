@@ -55,7 +55,7 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
 
     // If the function call failed, quit the program
     {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
         // Update the error counter
@@ -105,7 +105,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
     // If the function call failed, quit the program
     {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
@@ -140,7 +140,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
-    _cleanup_bf_jmpctx_ struct bf_jmpctx _;
+    _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
     int r;
 
     bf_assert(program);
@@ -149,7 +149,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
      * ID stored in r7. If the protocol is not supported, we store 0 into r7
      * and we skip the instructions below. */
     {
-        _cleanup_bf_swich_ struct bf_swich swich =
+        _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_7);
 
         EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
@@ -175,7 +175,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
     // If the function call failed, quit the program
     {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
@@ -201,7 +201,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
      * function and would jump over the block below, so there is no need to
      * worry about them here. */
     {
-        _cleanup_bf_swich_ struct bf_swich swich =
+        _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_7);
 
         EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
@@ -235,7 +235,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
 int bf_stub_parse_l4_hdr(struct bf_program *program)
 {
-    _cleanup_bf_jmpctx_ struct bf_jmpctx _;
+    _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
     int r;
 
     bf_assert(program);
@@ -243,7 +243,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     /* Parse the L4 protocol and handle unuspported protocol, similarly to
      * bf_stub_parse_l3_hdr() above. */
     {
-        _cleanup_bf_swich_ struct bf_swich swich =
+        _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_8);
 
         EMIT_SWICH_OPTION(&swich, IPPROTO_TCP,
@@ -273,7 +273,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
 
     // If the function call failed, quit the program
     {
-        _cleanup_bf_jmpctx_ struct bf_jmpctx _ =
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
