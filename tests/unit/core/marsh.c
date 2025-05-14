@@ -12,12 +12,12 @@ Test(marsh, new)
 {
     {
         // Call bf_marsh_free() with NULL marsh.
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     }
 
     {
         // Create a new empty marsh.
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
         assert_int_equal(0, marsh->data_len);
@@ -27,7 +27,7 @@ Test(marsh, new)
     {
         // Create a new marsh with data but size 0.
         int a = 3;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, &a, 0));
         assert_int_equal(0, marsh->data_len);
@@ -37,7 +37,7 @@ Test(marsh, new)
     {
         // Create a new marsh with data.
         int a = 3;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, &a, sizeof(a)));
         assert_int_equal(sizeof(a), marsh->data_len);
@@ -53,7 +53,7 @@ Test(marsh, new_failure)
     expect_assert_failure(bf_marsh_new(NOT_NULL, NULL, 1));
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
 
         assert_true(bf_marsh_new(NOT_NULL, NULL, 0) < 0);
@@ -62,9 +62,9 @@ Test(marsh, new_failure)
 
 Test(marsh, add_child_obj)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *child0 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *child1 = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *child0 = NULL;
+    _free_bf_marsh_ struct bf_marsh *child1 = NULL;
 
     assert_success(bf_marsh_new(&marsh, NULL, 0));
     assert_success(bf_marsh_new(&child0, NULL, 0));
@@ -83,7 +83,7 @@ Test(marsh, add_child_obj)
 
 Test(marsh, add_child_raw)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     struct bf_marsh *child0;
     struct bf_marsh *child1;
     struct bf_marsh *child2;
@@ -123,7 +123,7 @@ Test(marsh, next_child)
 {
     {
         // Empty marsh.
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
         assert_null(bf_marsh_next_child(marsh, NULL));
@@ -131,7 +131,7 @@ Test(marsh, next_child)
 
     {
         // Access all childs
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child;
         const char *str = "hello, world";
 
@@ -146,7 +146,7 @@ Test(marsh, next_child)
 
     {
         // Modify childs
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child0;
         struct bf_marsh *child1;
         const char *str = "hello, world";
@@ -179,7 +179,7 @@ Test(marsh, child_assert_failure)
     {
         // bf_marsh_add_child_obj() will call assert() on *marsh, so we need to
         // have a valid marsh.
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
         expect_assert_failure(bf_marsh_add_child_obj(&marsh, NULL));
@@ -188,7 +188,7 @@ Test(marsh, child_assert_failure)
     {
         // bf_marsh_add_child_raw() will call assert() on *marsh, so we need to
         // have a valid marsh.
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
         expect_assert_failure(bf_marsh_add_child_raw(&marsh, NULL, 1));
@@ -198,7 +198,7 @@ Test(marsh, child_assert_failure)
 Test(marsh, child_is_valid)
 {
     {
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child0;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
@@ -223,7 +223,7 @@ Test(marsh, child_is_valid)
     }
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         struct bf_marsh *child0;
 
         assert_success(bf_marsh_new(&marsh, NULL, 0));
@@ -236,8 +236,8 @@ Test(marsh, child_is_valid)
 
 Test(marsh, add_child_obj_failure)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *child = NULL;
 
     assert_success(bf_marsh_new(&marsh, NULL, 0));
     assert_success(bf_marsh_new(&child, NULL, 0));

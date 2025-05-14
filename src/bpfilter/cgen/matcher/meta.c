@@ -58,7 +58,7 @@ static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
 static int _bf_matcher_generate_meta_port(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
-    _cleanup_bf_swich_ struct bf_swich swich;
+    _clean_bf_swich_ struct bf_swich swich;
     uint16_t *port = (uint16_t *)&matcher->payload;
     int r;
 

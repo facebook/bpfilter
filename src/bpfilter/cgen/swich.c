@@ -23,8 +23,7 @@
 #include "external/filter.h"
 
 /// Cleanup attribute for a @ref bf_swich_option variable.
-#define _cleanup_bf_swich_option_                                              \
-    __attribute__((cleanup(_bf_swich_option_free)))
+#define _free_bf_swich_option_ __attribute__((cleanup(_bf_swich_option_free)))
 
 /**
  * @struct bf_swich_option
@@ -59,7 +58,7 @@ static void _bf_swich_option_free(struct bf_swich_option **option);
 static int _bf_swich_option_new(struct bf_swich_option **option, uint32_t imm,
                                 const struct bpf_insn *insns, size_t insns_len)
 {
-    _cleanup_bf_swich_option_ struct bf_swich_option *_option = NULL;
+    _free_bf_swich_option_ struct bf_swich_option *_option = NULL;
 
     bf_assert(option);
     bf_assert(insns);
@@ -125,7 +124,7 @@ void bf_swich_cleanup(struct bf_swich *swich)
 int bf_swich_add_option(struct bf_swich *swich, uint32_t imm,
                         const struct bpf_insn *insns, size_t insns_len)
 {
-    _cleanup_bf_swich_option_ struct bf_swich_option *option = NULL;
+    _free_bf_swich_option_ struct bf_swich_option *option = NULL;
     int r;
 
     bf_assert(swich);
@@ -147,7 +146,7 @@ int bf_swich_add_option(struct bf_swich *swich, uint32_t imm,
 int bf_swich_set_default(struct bf_swich *swich, const struct bpf_insn *insns,
                          size_t insns_len)
 {
-    _cleanup_bf_swich_option_ struct bf_swich_option *option = NULL;
+    _free_bf_swich_option_ struct bf_swich_option *option = NULL;
     int r;
 
     bf_assert(swich);

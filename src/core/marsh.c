@@ -43,7 +43,7 @@ void bf_marsh_free(struct bf_marsh **marsh)
 
 int bf_marsh_add_child_obj(struct bf_marsh **marsh, const struct bf_marsh *obj)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *new = NULL;
+    _free_bf_marsh_ struct bf_marsh *new = NULL;
     size_t new_data_len;
 
     bf_assert(marsh && *marsh);
@@ -68,7 +68,7 @@ int bf_marsh_add_child_obj(struct bf_marsh **marsh, const struct bf_marsh *obj)
 int bf_marsh_add_child_raw(struct bf_marsh **marsh, const void *data,
                            size_t data_len)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+    _free_bf_marsh_ struct bf_marsh *child = NULL;
     int r;
 
     bf_assert(marsh && *marsh);

@@ -18,7 +18,7 @@ struct bf_program;
 struct bf_ns;
 struct bf_hookopts;
 
-#define _cleanup_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
+#define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
 /**
  * Convenience macro to initialize a list of @ref bf_cgen .

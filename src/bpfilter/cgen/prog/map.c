@@ -26,7 +26,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
                enum bf_map_bpf_type bpf_type, size_t key_size,
                size_t value_size, size_t n_elems)
 {
-    _cleanup_bf_map_ struct bf_map *_map = NULL;
+    _free_bf_map_ struct bf_map *_map = NULL;
 
     bf_assert(map && name);
     bf_assert(name[0] != '\0');
@@ -53,7 +53,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
 int bf_map_new_from_marsh(struct bf_map **map, int dir_fd,
                           const struct bf_marsh *marsh)
 {
-    _cleanup_bf_map_ struct bf_map *_map = NULL;
+    _free_bf_map_ struct bf_map *_map = NULL;
     struct bf_marsh *elem = NULL;
     int r;
 
@@ -115,7 +115,7 @@ void bf_map_free(struct bf_map **map)
 
 int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(map);
@@ -208,7 +208,7 @@ _bf_map_bpf_type_to_kernel_type(enum bf_map_bpf_type bpf_type)
     return _kernel_types[bpf_type];
 }
 
-#define _cleanup_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
+#define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
 
 struct bf_btf
 {
@@ -222,7 +222,7 @@ static void _bf_btf_free(struct bf_btf **btf);
 
 static int _bf_btf_new(struct bf_btf **btf)
 {
-    _cleanup_bf_btf_ struct bf_btf *_btf = NULL;
+    _free_bf_btf_ struct bf_btf *_btf = NULL;
 
     bf_assert(btf);
 
@@ -293,7 +293,7 @@ static int _bf_btf_load(struct bf_btf *btf)
  */
 static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
 {
-    _cleanup_bf_btf_ struct bf_btf *btf = NULL;
+    _free_bf_btf_ struct bf_btf *btf = NULL;
     struct btf *kbtf;
     int r;
 
@@ -336,7 +336,7 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
 {
     int token_fd;
     union bpf_attr attr = {};
-    _cleanup_bf_btf_ struct bf_btf *btf = NULL;
+    _free_bf_btf_ struct bf_btf *btf = NULL;
     int r;
 
     bf_assert(map);

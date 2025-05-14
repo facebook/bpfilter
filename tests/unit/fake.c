@@ -102,7 +102,7 @@ struct nlmsghdr *bf_test_get_nlmsghdr(size_t nmsg, size_t *len)
 
 struct bf_nfgroup *bf_test_get_nfgroup(size_t nmsg, size_t *len)
 {
-    _cleanup_bf_nfgroup_ struct bf_nfgroup *group = NULL;
+    _free_bf_nfgroup_ struct bf_nfgroup *group = NULL;
     _cleanup_free_ struct nlmsghdr *nlh = NULL;
 
     nlh = bf_test_get_nlmsghdr(nmsg, len);
@@ -115,7 +115,7 @@ struct bf_nfgroup *bf_test_get_nfgroup(size_t nmsg, size_t *len)
 
 struct bf_rule *bf_test_get_rule(size_t nmatchers)
 {
-    _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+    _free_bf_rule_ struct bf_rule *rule = NULL;
 
     assert_int_equal(0, bf_rule_new(&rule));
 

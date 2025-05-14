@@ -16,7 +16,7 @@
 
 struct bf_marsh;
 
-#define _cleanup_bf_rule_ __attribute__((__cleanup__(bf_rule_free)))
+#define _free_bf_rule_ __attribute__((__cleanup__(bf_rule_free)))
 
 /**
  * Convenience macro to initialize a list of @ref bf_rule .

@@ -22,7 +22,7 @@
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)
 {
-    _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
+    _free_bf_chain_ struct bf_chain *_chain = NULL;
 
     bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
 
@@ -53,7 +53,7 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
 int bf_chain_new_from_marsh(struct bf_chain **chain,
                             const struct bf_marsh *marsh)
 {
-    _cleanup_bf_chain_ struct bf_chain *_chain = NULL;
+    _free_bf_chain_ struct bf_chain *_chain = NULL;
     struct bf_marsh *child = NULL;
     struct bf_marsh *list_elem;
     enum bf_hook hook;
@@ -88,7 +88,7 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     while ((list_elem = bf_marsh_next_child(child, list_elem))) {
-        _cleanup_bf_set_ struct bf_set *set = NULL;
+        _free_bf_set_ struct bf_set *set = NULL;
 
         r = bf_set_new_from_marsh(&set, list_elem);
         if (r)
@@ -106,7 +106,7 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
     while ((list_elem = bf_marsh_next_child(child, list_elem))) {
-        _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+        _free_bf_rule_ struct bf_rule *rule = NULL;
 
         r = bf_rule_unmarsh(list_elem, &rule);
         if (r)
@@ -139,7 +139,7 @@ void bf_chain_free(struct bf_chain **chain)
 
 int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(chain && marsh);
@@ -162,7 +162,7 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
 
     {
         // Serialize bf_chain.sets
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_list_marsh(&chain->sets, &child);
         if (r < 0)
@@ -175,7 +175,7 @@ int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
 
     {
         // Serialize bf_chain.rules
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_list_marsh(&chain->rules, &child);
         if (r < 0)

@@ -46,7 +46,7 @@ struct bf_map
 
 struct bf_marsh;
 
-#define _cleanup_bf_map_ __attribute__((__cleanup__(bf_map_free)))
+#define _free_bf_map_ __attribute__((__cleanup__(bf_map_free)))
 
 /**
  * Convenience macro to initialize a list of @ref bf_map .

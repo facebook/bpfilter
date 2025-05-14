@@ -17,7 +17,7 @@ Test(rule, new_and_free)
 
     // New, free, new again, then cleanup
     {
-        _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+        _free_bf_rule_ struct bf_rule *rule = NULL;
 
         assert_success(bf_rule_new(&rule));
         bf_rule_free(&rule);
@@ -45,9 +45,9 @@ Test(rule, marsh_unmarsh)
 
     // All good
     {
-        _cleanup_bf_rule_ struct bf_rule *rule0 = bf_test_get_rule(10);
-        _cleanup_bf_rule_ struct bf_rule *rule1 = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_rule_ struct bf_rule *rule0 = bf_test_get_rule(10);
+        _free_bf_rule_ struct bf_rule *rule1 = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_non_null(rule0);
         assert_int_equal(0, bf_rule_marsh(rule0, &marsh));
@@ -62,8 +62,8 @@ Test(rule, marsh_unmarsh)
 
     // Failed serialisation
     {
-        _cleanup_bf_rule_ struct bf_rule *rule = bf_test_get_rule(10);
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_rule_ struct bf_rule *rule = bf_test_get_rule(10);
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_non_null(rule);
 

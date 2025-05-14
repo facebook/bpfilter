@@ -99,7 +99,7 @@ void bf_link_free(struct bf_link **link)
 
 int bf_link_marsh(const struct bf_link *link, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(link && marsh);
@@ -114,7 +114,7 @@ int bf_link_marsh(const struct bf_link *link, struct bf_marsh **marsh)
 
     // Serialize link.hookopts
     if (link->hookopts) {
-        _cleanup_bf_marsh_ struct bf_marsh *hookopts_elem = NULL;
+        _free_bf_marsh_ struct bf_marsh *hookopts_elem = NULL;
 
         r = bf_hookopts_marsh(link->hookopts, &hookopts_elem);
         if (r < 0)

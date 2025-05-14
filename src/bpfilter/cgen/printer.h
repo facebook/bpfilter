@@ -50,7 +50,7 @@ struct bf_marsh;
 struct bf_printer;
 struct bf_printer_msg;
 
-#define _cleanup_bf_printer_ __attribute__((__cleanup__(bf_printer_free)))
+#define _free_bf_printer_ __attribute__((__cleanup__(bf_printer_free)))
 
 /**
  * Emit BPF instructions to print a log message.

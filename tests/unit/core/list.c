@@ -187,12 +187,12 @@ Test(list, serialize_deserialize)
     // bf_list_marsh() will be tested with actual data by the various
     // xxx_marsh() functions.
 
-    _cleanup_bf_list_ bf_list *l0 = NULL;
-    _cleanup_bf_list_ bf_list *l1 = NULL;
-    _cleanup_bf_list_ bf_list *l2 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *m0 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *m1 = NULL;
-    _cleanup_bf_marsh_ struct bf_marsh *m2 = NULL;
+    _free_bf_list_ bf_list *l0 = NULL;
+    _free_bf_list_ bf_list *l1 = NULL;
+    _free_bf_list_ bf_list *l2 = NULL;
+    _free_bf_marsh_ struct bf_marsh *m0 = NULL;
+    _free_bf_marsh_ struct bf_marsh *m1 = NULL;
+    _free_bf_marsh_ struct bf_marsh *m2 = NULL;
     struct bf_marsh *child = NULL;
     bf_list_ops free_ops = bf_list_ops_default(freep, dummy_marsh);
     bf_list_ops free_nomarsh_ops = bf_list_ops_default(freep, NULL);
@@ -366,7 +366,7 @@ Test(list, prev_next_node_access)
     expect_assert_failure(bf_list_node_prev(NULL));
 
     {
-        _cleanup_bf_list_ bf_list *l = NULL;
+        _free_bf_list_ bf_list *l = NULL;
 
         new_and_fill(&l, 0, NULL, bf_list_add_head);
 
@@ -375,7 +375,7 @@ Test(list, prev_next_node_access)
     }
 
     {
-        _cleanup_bf_list_ bf_list *l = NULL;
+        _free_bf_list_ bf_list *l = NULL;
 
         new_and_fill(&l, 1, NULL, bf_list_add_head);
 
@@ -385,7 +385,7 @@ Test(list, prev_next_node_access)
     }
 
     {
-        _cleanup_bf_list_ bf_list *l = NULL;
+        _free_bf_list_ bf_list *l = NULL;
 
         new_and_fill(&l, 2, NULL, bf_list_add_head);
 
@@ -402,7 +402,7 @@ Test(list, node_take_data)
     bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
     {
-        _cleanup_bf_list_ bf_list *l = NULL;
+        _free_bf_list_ bf_list *l = NULL;
 
         new_and_fill(&l, 5, &free_ops, dummy_filler_tail);
 

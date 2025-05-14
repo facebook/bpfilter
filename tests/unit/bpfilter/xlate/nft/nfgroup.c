@@ -26,7 +26,7 @@ Test(nfgroup, new_and_free)
     }
 
     {
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), 0);
         assert_non_null(gp);
@@ -35,7 +35,7 @@ Test(nfgroup, new_and_free)
     {
         // calloc failure
         _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(calloc, NULL);
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), -ENOMEM);
     }
@@ -50,7 +50,7 @@ Test(nfgroup, new_from_stream)
 
     {
         // 1 Netlink message
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
         size_t nlh_len = 0;
         _cleanup_free_ struct nlmsghdr *nlh = bf_test_get_nlmsghdr(1, &nlh_len);
 
@@ -60,7 +60,7 @@ Test(nfgroup, new_from_stream)
 
     {
         // 2 Netlink messages
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
         size_t nlh_len = 0;
         _cleanup_free_ struct nlmsghdr *nlh = bf_test_get_nlmsghdr(2, &nlh_len);
 
@@ -77,7 +77,7 @@ Test(nfgroup, helpers)
 
     for (int i = 0; i < 10; ++i) {
         size_t len;
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp =
+        _free_bf_nfgroup_ struct bf_nfgroup *gp =
             bf_test_get_nfgroup(i, &len);
 
         assert_int_equal(bf_nfgroup_is_empty(gp), i == 0);
@@ -94,7 +94,7 @@ Test(nfgroup, add_new_message)
     expect_assert_failure(bf_nfgroup_add_new_message(NULL, NOT_NULL, 0, 0));
 
     {
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), 0);
 
@@ -108,7 +108,7 @@ Test(nfgroup, add_new_message)
     }
 
     {
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), 0);
 
@@ -128,8 +128,8 @@ Test(nfgroup, to_response)
     {
         // Group without any message
 
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
-        _cleanup_bf_response_ struct bf_response *res = NULL;
+        _free_bf_nfgroup_ struct bf_nfgroup *gp = NULL;
+        _free_bf_response_ struct bf_response *res = NULL;
 
         assert_int_equal(bf_nfgroup_new(&gp), 0);
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
@@ -142,9 +142,9 @@ Test(nfgroup, to_response)
         // Group without multiple messages
 
         size_t len;
-        _cleanup_bf_nfgroup_ struct bf_nfgroup *gp =
+        _free_bf_nfgroup_ struct bf_nfgroup *gp =
             bf_test_get_nfgroup(10, &len);
-        _cleanup_bf_response_ struct bf_response *res = NULL;
+        _free_bf_response_ struct bf_response *res = NULL;
 
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
         assert_non_null(res);

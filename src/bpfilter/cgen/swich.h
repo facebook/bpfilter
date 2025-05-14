@@ -50,7 +50,7 @@
 struct bf_program;
 
 /// Cleanup attribute for a @ref bf_swich variable.
-#define _cleanup_bf_swich_ __attribute__((cleanup(bf_swich_cleanup)))
+#define _clean_bf_swich_ __attribute__((cleanup(bf_swich_cleanup)))
 
 /**
  * Create, initialize, and return a new @ref bf_swich object.

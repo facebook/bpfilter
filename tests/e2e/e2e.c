@@ -52,7 +52,7 @@ static struct {
 int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
                  const struct bft_prog_run_args *args)
 {
-    _cleanup_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
+    _clean_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
     bool success = true, daemon_failure = false;
     int retval[_BF_FLAVOR_MAX] = {};
     int r;

@@ -50,7 +50,7 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
 
 struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[])
 {
-    _cleanup_bf_set_ struct bf_set *set = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
     r = bf_set_new(&set, type);
@@ -90,7 +90,7 @@ struct bf_matcher *bf_matcher_get(enum bf_matcher_type type,
 struct bf_rule *bf_rule_get(bool counters, enum bf_verdict verdict,
                             struct bf_matcher **matchers)
 {
-    _cleanup_bf_rule_ struct bf_rule *rule = NULL;
+    _free_bf_rule_ struct bf_rule *rule = NULL;
     int r;
 
     r = bf_rule_new(&rule);
@@ -124,7 +124,7 @@ err_free_matchers:
 struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
                                    struct bf_set **sets, struct bf_rule **rules)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
     _clean_bf_list_ bf_list sets_list = bf_set_list();
     _clean_bf_list_ bf_list rules_list = bf_rule_list();
     int r;

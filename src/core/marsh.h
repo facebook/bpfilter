@@ -24,7 +24,7 @@ struct bf_marsh
     char data[];
 } bf_packed;
 
-#define _cleanup_bf_marsh_ __attribute__((__cleanup__(bf_marsh_free)))
+#define _free_bf_marsh_ __attribute__((__cleanup__(bf_marsh_free)))
 
 /**
  * Returns true if a marsh object is empty (only contains a header).

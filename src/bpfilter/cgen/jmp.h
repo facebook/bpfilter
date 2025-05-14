@@ -18,7 +18,7 @@
  * @code{.c}
  *  // Within a function body
  *  {
- *      _cleanup_bf_jmpctx_ struct bf_jmpctx ctx =
+ *      _clean_bf_jmpctx_ struct bf_jmpctx ctx =
  *          bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 0));
  *
  *      EMIT(program,
@@ -28,7 +28,7 @@
  *  }
  * @endcode
  *
- * @c ctx is a variable local to the scope, marked with @c _cleanup_bf_jmpctx_ .
+ * @c ctx is a variable local to the scope, marked with @c _clean_bf_jmpctx_ .
  * The second argument to @c bf_jmpctx_get is the jump instruction to emit, with
  * the correct condition. When the scope is exited, the jump instruction is
  * automatically updated to point to the first instruction outside of the scope.
@@ -43,7 +43,9 @@ struct bf_program;
 /**
  * Cleanup attribute for a @ref bf_jmpctx variable.
  */
-#define _cleanup_bf_jmpctx_ __attribute__((cleanup(bf_jmpctx_cleanup)))
+#define _clean_bf_jmpctx_ __attribute__((cleanup(bf_jmpctx_cleanup)))
+
+#define bf_jmpctx_default() {.program = NULL}
 
 /**
  * Create a new @ref bf_jmpctx variable.

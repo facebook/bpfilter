@@ -9,7 +9,7 @@
 
 #include "core/helper.h"
 
-#define _cleanup_bf_response_ __attribute__((cleanup(bf_response_free)))
+#define _free_bf_response_ __attribute__((cleanup(bf_response_free)))
 
 /**
  * @enum bf_response_type

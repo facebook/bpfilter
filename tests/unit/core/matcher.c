@@ -19,7 +19,7 @@ Test(matcher, new_and_free)
 
     // New, free, new again, then cleanup
     {
-        _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher = NULL;
 
         assert_success(bf_matcher_new(&matcher, 0, 0, NULL, 0));
         bf_matcher_free(&matcher);
@@ -58,9 +58,9 @@ Test(matcher, marsh_unmarsh)
 
     // All good
     {
-        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _cleanup_bf_matcher_ struct bf_matcher *matcher1 = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher1 = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_int_equal(
             0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
@@ -70,8 +70,8 @@ Test(matcher, marsh_unmarsh)
 
     // Failed serialisation
     {
-        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
 
         assert_int_equal(
             0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
@@ -82,8 +82,8 @@ Test(matcher, marsh_unmarsh)
 
     // Failed deserialisation
     {
-        _cleanup_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _cleanup_bf_marsh_ struct bf_marsh *marsh = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
         // No cleanup, it's not supposed to be allocated
         struct bf_matcher *matcher1 = NULL;
 

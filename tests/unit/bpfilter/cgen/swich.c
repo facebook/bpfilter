@@ -23,7 +23,7 @@ Test(swich, new_and_free_option)
 
     {
         // Auto cleanup
-        _cleanup_bf_swich_option_ struct bf_swich_option *option = NULL;
+        _free_bf_swich_option_ struct bf_swich_option *option = NULL;
 
         assert_int_equal(
             0, _bf_swich_option_new(&option, 0, (struct bpf_insn[]) {}, 0));
@@ -44,7 +44,7 @@ Test(swich, new_and_free_option)
 
 Test(swich, init_and_cleanup)
 {
-    _cleanup_bf_swich_ struct bf_swich swich;
+    _clean_bf_swich_ struct bf_swich swich;
 
     expect_assert_failure(bf_swich_init(NULL, NOT_NULL, 0));
     expect_assert_failure(bf_swich_init(NOT_NULL, NULL, 0));
@@ -57,7 +57,7 @@ Test(swich, init_and_cleanup)
 
 Test(swich, generate_swich)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_quick();
     struct bpf_insn insns[] = {
         BPF_EXIT_INSN(),
         BPF_EXIT_INSN(),
@@ -66,8 +66,8 @@ Test(swich, generate_swich)
 
     {
         // No default option
-        _cleanup_bf_program_ struct bf_program *program = NULL;
-        _cleanup_bf_swich_ struct bf_swich swich;
+        _free_bf_program_ struct bf_program *program = NULL;
+        _clean_bf_swich_ struct bf_swich swich;
 
         assert_success(bf_program_new(&program, chain));
         assert_success(bf_swich_init(&swich, program, 0));
@@ -82,8 +82,8 @@ Test(swich, generate_swich)
 
     {
         // With default option (2 times)
-        _cleanup_bf_program_ struct bf_program *program = NULL;
-        _cleanup_bf_swich_ struct bf_swich swich;
+        _free_bf_program_ struct bf_program *program = NULL;
+        _clean_bf_swich_ struct bf_swich swich;
 
         assert_success(bf_program_new(&program, chain));
         assert_success(bf_swich_init(&swich, program, 0));

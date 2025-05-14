@@ -64,7 +64,7 @@ struct bf_fixup
     union bf_fixup_attr attr;
 };
 
-#define _cleanup_bf_fixup_ __attribute__((cleanup(bf_fixup_free)))
+#define _free_bf_fixup_ __attribute__((cleanup(bf_fixup_free)))
 
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
                  size_t insn_offset, const union bf_fixup_attr *attr);

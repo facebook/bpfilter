@@ -214,7 +214,8 @@ int bf_test_process_stop(struct bf_test_process *process)
 
 int bf_run(const char *cmd, char **args, size_t nargs)
 {
-    _cleanup_bf_test_process_ struct bf_test_process process;
+    _clean_bf_test_process_ struct bf_test_process process =
+        bft_process_default();
     int r;
 
     r = bf_test_process_init(&process, cmd, args, nargs);

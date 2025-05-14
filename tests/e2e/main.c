@@ -13,7 +13,7 @@
 
 Test(policy, accept_no_rule)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -27,7 +27,7 @@ Test(policy, accept_no_rule)
 
 Test(ip4, daddr_eq_mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -57,7 +57,7 @@ Test(ip4, daddr_eq_mask_match)
 
 Test(ip6, saddr_eq_nomask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -89,7 +89,7 @@ Test(ip6, saddr_eq_nomask_match)
 
 Test(ip6, saddr_eq_nomask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -121,7 +121,7 @@ Test(ip6, saddr_eq_nomask_nomatch)
 
 Test(ip6, saddr_ne_nomask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -153,7 +153,7 @@ Test(ip6, saddr_ne_nomask_match)
 
 Test(ip6, saddr_ne_nomask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -185,7 +185,7 @@ Test(ip6, saddr_ne_nomask_nomatch)
 
 Test(ip6, saddr_eq_8mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -217,7 +217,7 @@ Test(ip6, saddr_eq_8mask_match)
 
 Test(ip6, saddr_eq_8mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -249,7 +249,7 @@ Test(ip6, saddr_eq_8mask_nomatch)
 
 Test(ip6, saddr_ne_8mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -281,7 +281,7 @@ Test(ip6, saddr_ne_8mask_match)
 
 Test(ip6, saddr_ne_8mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -313,7 +313,7 @@ Test(ip6, saddr_ne_8mask_nomatch)
 
 Test(ip6, saddr_eq_120mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -343,7 +343,7 @@ Test(ip6, saddr_eq_120mask_match)
 
 Test(ip6, saddr_eq_120mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -375,7 +375,7 @@ Test(ip6, saddr_eq_120mask_nomatch)
 
 Test(ip6, saddr_ne_120mask_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -407,7 +407,7 @@ Test(ip6, saddr_ne_120mask_nomatch)
 
 Test(ip6, saddr_ne_120mask_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -439,7 +439,7 @@ Test(ip6, saddr_ne_120mask_match)
 
 struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
 {
-    _cleanup_bf_set_ struct bf_set *set = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
     r = bf_set_new(&set, BF_SET_SRCIP6PORT);
@@ -474,7 +474,7 @@ struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
 
 Test(ip6, port_200kset_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
@@ -501,7 +501,7 @@ Test(ip6, port_200kset_match)
 
 Test(ip6, port_200kset_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
@@ -528,7 +528,7 @@ Test(ip6, port_200kset_nomatch)
 
 struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
 {
-    _cleanup_bf_set_ struct bf_set *set = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
     r = bf_set_new(&set, BF_SET_SRCIP6);
@@ -563,7 +563,7 @@ struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
 
 Test(ip6, addrport_200kset_match)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
@@ -590,7 +590,7 @@ Test(ip6, addrport_200kset_match)
 
 Test(ip6, addrport_200kset_nomatch)
 {
-    _cleanup_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
@@ -617,7 +617,7 @@ Test(ip6, addrport_200kset_nomatch)
 
 Test(tcp, dport_range)
 {
-    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -641,7 +641,7 @@ Test(tcp, dport_range)
     );
     bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_tcp);
 
-    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -665,7 +665,7 @@ Test(tcp, dport_range)
     );
     bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
 
-    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -692,7 +692,7 @@ Test(tcp, dport_range)
 
 Test(udp, dport_range)
 {
-    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -716,7 +716,7 @@ Test(udp, dport_range)
     );
     bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_udp);
 
-    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -740,7 +740,7 @@ Test(udp, dport_range)
     );
     bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
 
-    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -767,7 +767,7 @@ Test(udp, dport_range)
 
 Test(meta, dport_range)
 {
-    _cleanup_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *in_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -792,7 +792,7 @@ Test(meta, dport_range)
     bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_tcp);
     bft_e2e_test(in_range, BF_VERDICT_DROP, pkt_local_ip6_udp);
 
-    _cleanup_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *under_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -817,7 +817,7 @@ Test(meta, dport_range)
     bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
     bft_e2e_test(under_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
 
-    _cleanup_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *over_range = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,

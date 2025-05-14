@@ -18,7 +18,7 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
                    size_t payload_len)
 {
-    _cleanup_bf_matcher_ struct bf_matcher *_matcher = NULL;
+    _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
 
     bf_assert(matcher);
     bf_assert((payload && payload_len) || (!payload && !payload_len));
@@ -87,7 +87,7 @@ void bf_matcher_free(struct bf_matcher **matcher)
 
 int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(matcher);

@@ -28,7 +28,7 @@ int bf_response_new_raw(struct bf_response **response, size_t data_len)
 int bf_response_new_success(struct bf_response **response, const char *data,
                             size_t data_len)
 {
-    _cleanup_bf_response_ struct bf_response *_response = NULL;
+    _free_bf_response_ struct bf_response *_response = NULL;
 
     bf_assert(response);
     bf_assert(!(!!data ^ !!data_len));
@@ -48,7 +48,7 @@ int bf_response_new_success(struct bf_response **response, const char *data,
 
 int bf_response_new_failure(struct bf_response **response, int error)
 {
-    _cleanup_bf_response_ struct bf_response *_response = NULL;
+    _free_bf_response_ struct bf_response *_response = NULL;
 
     bf_assert(response);
 
@@ -72,7 +72,7 @@ void bf_response_free(struct bf_response **response)
 
 int bf_response_copy(struct bf_response **dest, const struct bf_response *src)
 {
-    _cleanup_bf_response_ struct bf_response *_response = NULL;
+    _free_bf_response_ struct bf_response *_response = NULL;
 
     bf_assert(dest);
     bf_assert(src);

@@ -32,7 +32,7 @@
 
 struct bf_marsh;
 
-#define _cleanup_bf_set_ __attribute__((__cleanup__(bf_set_free)))
+#define _free_bf_set_ __attribute__((__cleanup__(bf_set_free)))
 
 /**
  * Convenience macro to initialize a list of @ref bf_set .

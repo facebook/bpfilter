@@ -47,8 +47,8 @@
 
 int bf_ipt_replace(struct ipt_replace *ipt_replace)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     bf_assert(ipt_replace);
@@ -79,8 +79,8 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
 
 int bf_ipt_add_counters(struct xt_counters_info *counters)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     bf_assert(counters);
@@ -111,8 +111,8 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
 
 int bf_ipt_get_info(struct ipt_getinfo *info)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     bf_assert(info);
@@ -144,8 +144,8 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
 
 int bf_ipt_get_entries(struct ipt_get_entries *entries)
 {
-    _cleanup_bf_request_ struct bf_request *request = NULL;
-    _cleanup_bf_response_ struct bf_response *response = NULL;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
     bf_assert(entries);

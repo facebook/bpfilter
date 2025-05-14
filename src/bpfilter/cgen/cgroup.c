@@ -67,7 +67,7 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
 
     {
-        _cleanup_bf_swich_ struct bf_swich swich =
+        _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_2);
 
         EMIT_SWICH_OPTION(&swich, AF_INET,

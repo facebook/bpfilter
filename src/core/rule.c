@@ -52,7 +52,7 @@ void bf_rule_free(struct bf_rule **rule)
 
 int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 {
-    _cleanup_bf_marsh_ struct bf_marsh *_marsh = NULL;
+    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
     bf_assert(rule);
@@ -67,7 +67,7 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
         return r;
 
     {
-        _cleanup_bf_marsh_ struct bf_marsh *child = NULL;
+        _free_bf_marsh_ struct bf_marsh *child = NULL;
 
         r = bf_list_marsh(&rule->matchers, &child);
         if (r < 0)
@@ -92,7 +92,7 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
 
 int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 {
-    _cleanup_bf_rule_ struct bf_rule *_rule = NULL;
+    _free_bf_rule_ struct bf_rule *_rule = NULL;
     struct bf_marsh *rule_elem = NULL;
     int r;
 
@@ -114,7 +114,7 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
         struct bf_marsh *matcher_elem = NULL;
 
         while ((matcher_elem = bf_marsh_next_child(rule_elem, matcher_elem))) {
-            _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+            _free_bf_matcher_ struct bf_matcher *matcher = NULL;
 
             r = bf_matcher_new_from_marsh(&matcher, matcher_elem);
             if (r)
@@ -179,7 +179,7 @@ int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
                         enum bf_matcher_op op, const void *payload,
                         size_t payload_len)
 {
-    _cleanup_bf_matcher_ struct bf_matcher *matcher = NULL;
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
     int r;
 
     bf_assert(rule);

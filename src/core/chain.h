@@ -14,7 +14,7 @@ struct bf_hookopts;
 struct bf_marsh;
 struct bf_rule;
 
-#define _cleanup_bf_chain_ __attribute__((cleanup(bf_chain_free)))
+#define _free_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 
 struct bf_chain
 {

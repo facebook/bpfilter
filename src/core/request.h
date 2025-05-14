@@ -12,7 +12,7 @@
 
 struct bf_ns;
 
-#define _cleanup_bf_request_ __attribute__((cleanup(bf_request_free)))
+#define _free_bf_request_ __attribute__((cleanup(bf_request_free)))
 
 /**
  * @enum bf_request_cmd

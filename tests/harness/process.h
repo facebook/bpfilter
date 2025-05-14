@@ -49,7 +49,7 @@ struct bf_test_process
     int err_fd;
 };
 
-#define _cleanup_bf_test_process_                                              \
+#define _clean_bf_test_process_                                                \
     __attribute__((__cleanup__(bf_test_process_clean)))
 
 #define bft_process_default()                                                  \
