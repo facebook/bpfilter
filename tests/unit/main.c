@@ -91,6 +91,8 @@ int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
     _free_bf_test_opts_ bf_test_opts *opts = NULL;
+    extern bf_test __start_bf_test;
+    extern bf_test __stop_bf_test;
     int failed = 0;
     char *bf_opts[] = {
         argv[0],
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
     if (r)
         return bf_err_r(r, "failed to enable transient mode for unit tests");
 
-    r = bf_test_discover_test_suite(&suite);
+    r = bf_test_discover_test_suite(&suite, &__start_bf_test, &__stop_bf_test);
     if (r < 0)
         return bf_err_r(r, "test suite discovery failed");
 

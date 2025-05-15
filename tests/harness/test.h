@@ -147,14 +147,17 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite);
 /**
  * Discover the test suite in the current ELF file.
  *
- * Parse the sections in the current ELF file to discover the symbols in the
- * `.bf_test` section and create the associated test suite.
+ * Read all the tests stores in `tests` and add them to the suite.
  *
  * @param suite Discovered test suite. Can't be `NULL`. On success, this
  *        argument will be point to a valid test suite.
+ * @param tests Tests to process. Usually from the `bf_test` section of the
+ *        ELF file. Can't be NULL.
+ * @param sentinel First address after the last test. Used to detect when the
+ *        tests section ends. Can't be NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_test_discover_test_suite(bf_test_suite **suite);
+int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests, void *sentinel);
 
 /**
  * A filter to apply to the tests to run.

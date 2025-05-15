@@ -211,10 +211,7 @@ int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
     return 0;
 }
 
-extern bf_test __start_bf_test;
-extern bf_test __stop_bf_test;
-
-int bf_test_discover_test_suite(bf_test_suite **suite)
+int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests, void *sentinel)
 {
     _free_bf_list_ bf_list *symbols = NULL;
     _free_bf_test_suite_ bf_test_suite *_suite = NULL;
@@ -227,7 +224,7 @@ int bf_test_discover_test_suite(bf_test_suite **suite)
     if (r < 0)
         return bf_err_r(r, "failed to create a bf_test_suite object");
 
-    for (test = &__start_bf_test; test < &__stop_bf_test; ++test) {
+    for (test = tests; test < (bf_test *)sentinel; ++test) {
         r = bf_test_suite_add_test(_suite, test->group_name, test);
         if (r)
             return r;
