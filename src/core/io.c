@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -315,4 +316,20 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive)
         return -errno;
 
     return 0;
+}
+
+int bf_acquire_lock(const char *path)
+{
+    _cleanup_close_ int fd = -1;
+
+    bf_assert(path);
+
+    fd = open(path, O_CREAT | O_RDWR, BF_PERM_755);
+    if (fd < 0)
+        return -errno;
+
+    if (flock(fd, LOCK_EX | LOCK_NB) < 0)
+        return -errno;
+
+    return TAKE_FD(fd);
 }
