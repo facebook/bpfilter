@@ -10,6 +10,7 @@
 
 #define BF_RUNTIME_DIR "/run/bpfilter"
 #define BF_SOCKET_PATH BF_RUNTIME_DIR "/daemon.sock"
+#define BF_LOCK_PATH BF_RUNTIME_DIR "/daemon.lock"
 
 struct bf_request;
 struct bf_response;
@@ -101,3 +102,14 @@ int bf_opendir_at(int parent_fd, const char *dir_name, bool mkdir_if_missing);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive);
+
+/**
+ * @brief Open an acquire an exclusive file lock on `path`.
+ *
+ * @param path Path to the file to get a lock on, it will be created if it
+ *             doesn't exist. Can't be NULL.
+ * @return A file descriptor to the lock on success, or a negative errno value
+ *         on failure. The caller is responsible for closing the lock file
+ *         descriptor.
+ */
+int bf_acquire_lock(const char *path);

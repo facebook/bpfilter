@@ -59,6 +59,10 @@ add_custom_target(e2e
                 --bpfilter $<TARGET_FILE:bpfilter>
                 --bfcli $<TARGET_FILE:bfcli>
                 --setuserns $<TARGET_FILE:setuserns_bin>
+    COMMAND
+        ${CMAKE_SOURCE_DIR}/tools/asroot
+            ${CMAKE_CURRENT_SOURCE_DIR}/daemon.sh
+                --bpfilter $<TARGET_FILE:bpfilter>
     DEPENDS
         bpfilter
         bfcli

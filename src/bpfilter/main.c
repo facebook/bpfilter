@@ -388,15 +388,26 @@ static int _bf_process_request(struct bf_request *request,
 static int _bf_run(void)
 {
     _cleanup_close_ int fd = -1;
+    _cleanup_close_ int lock = -1;
     struct sockaddr_un addr = {};
     struct ucred peer_cred;
     socklen_t peer_cred_len = sizeof(peer_cred);
     int r;
 
+    lock = bf_acquire_lock(BF_LOCK_PATH);
+    if (lock < 0) {
+        return bf_err_r(
+            lock,
+            "failed to acquire the daemon lock, is the daemon already running? Error");
+    }
+
     fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
         return bf_err_r(errno, "failed to create socket");
 
+    // We have a lock on the lock file, so no other daemon is running, we can
+    // remove the socket file (if any).
+    unlink(BF_SOCKET_PATH);
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
@@ -487,8 +498,6 @@ int main(int argc, char *argv[])
 
     _bf_clean();
     bf_btf_teardown();
-
-    unlink(BF_SOCKET_PATH); // Remove socket file.
 
     return r;
 }
