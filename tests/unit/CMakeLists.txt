@@ -134,7 +134,7 @@ bf_test_configure_non_build_srcs(unit_bin
 
 set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_srcs}
     PROPERTIES
-        COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs"
+        COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs;-fprofile-abs-path"
 )
 
 target_compile_options(unit_bin
@@ -205,6 +205,7 @@ if (NOT ${NO_DOCS})
                 --directory ${CMAKE_BINARY_DIR}
                 --output-file ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
                 --parallel ${N}
+                --quiet
         # Only keep the coverage for bpfilter's source files, not the tests.
         COMMAND
             ${LCOV_BIN}
@@ -212,7 +213,11 @@ if (NOT ${NO_DOCS})
                 --extract ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
                 --ignore-errors unused
                 --parallel ${N}
+                --quiet
                 "${CMAKE_SOURCE_DIR}/src/\\*"
+        COMMAND
+            ${LCOV_BIN}
+                --summary ${CMAKE_BINARY_DIR}/output/tests/lcov.out
         COMMENT "Generate the lcov.out summary file"
     )
 endif ()
