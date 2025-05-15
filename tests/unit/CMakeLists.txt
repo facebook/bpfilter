@@ -185,7 +185,13 @@ add_custom_target(test
 )
 
 if (NOT ${NO_DOCS})
+    include(ProcessorCount)
     find_program(LCOV_BIN lcov REQUIRED)
+
+    ProcessorCount(N)
+    if(N EQUAL 0)
+        set(N 1)
+    endif()
 
     add_custom_command(TARGET test
         POST_BUILD
@@ -198,12 +204,14 @@ if (NOT ${NO_DOCS})
                 --capture
                 --directory ${CMAKE_BINARY_DIR}
                 --output-file ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
+                --parallel ${N}
         # Only keep the coverage for bpfilter's source files, not the tests.
         COMMAND
             ${LCOV_BIN}
                 --output-file ${CMAKE_BINARY_DIR}/output/tests/lcov.out
                 --extract ${CMAKE_CURRENT_BINARY_DIR}/lcov.out
                 --ignore-errors unused
+                --parallel ${N}
                 "${CMAKE_SOURCE_DIR}/src/\\*"
         COMMENT "Generate the lcov.out summary file"
     )
