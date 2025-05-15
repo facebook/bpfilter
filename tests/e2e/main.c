@@ -846,6 +846,8 @@ Test(meta, dport_range)
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
+    extern bf_test __start_bf_test;
+    extern bf_test __stop_bf_test;
     int failed = 0;
     int r;
 
@@ -853,7 +855,7 @@ int main(int argc, char *argv[])
     if (r)
         return r;
 
-    r = bf_test_discover_test_suite(&suite);
+    r = bf_test_discover_test_suite(&suite, &__start_bf_test, &__stop_bf_test);
     if (r < 0)
         return bf_err_r(r, "test suite discovery failed");
 
