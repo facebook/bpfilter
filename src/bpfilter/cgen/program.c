@@ -266,6 +266,7 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
                        const struct bf_chain *chain, int dir_fd)
 {
     _free_bf_program_ struct bf_program *_program = NULL;
+    _free_bf_link_ struct bf_link *link = NULL;
     struct bf_marsh *child = NULL;
     int r;
 
@@ -321,9 +322,13 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
 
-    bf_link_free(&_program->link);
-    r = bf_link_new_from_marsh(&_program->link, dir_fd, child);
-    if (r)
+    /* Try to restore the link: on success, replace the program's link with the
+     * restored on. If -ENOENT is returned, the link doesn't exist, meaning the
+     * program is not attached. Otherwise, return an error. */
+    r = bf_link_new_from_marsh(&link, dir_fd, child);
+    if (!r)
+        bf_swap(_program->link, link);
+    else if (r != -ENOENT)
         return bf_err_r(r, "failed to restore bf_program.link");
 
     // Unmarsh bf_program.printer
