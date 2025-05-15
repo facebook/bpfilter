@@ -19,10 +19,13 @@ HOST_IP="10.0.0.1/24"
 NS_IP="10.0.0.2/24"
 HOST_IP_ADDR="10.0.0.1"
 NS_IP_ADDR="10.0.0.2"
+HOST_IFINDEX=
+NS_IFINDEX=
 
 # Tested binaries
 BFCLI=
-BPFILTER=
+_BPFILTER= # bpfilter binary path
+BPFILTER= # bpfilter command to use in tests (includes the required options)
 SETUSERNS=
 
 # Colors
@@ -74,7 +77,7 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --bpfilter requires a path argument."
                 usage
             fi
-            BPFILTER=$(realpath $2)
+            _BPFILTER=$(realpath $2)
             shift 2
             ;;
         --setuserns)
@@ -140,9 +143,11 @@ setup() {
                 ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH} --bpffs-mount-path ${BPFILTER_BPFFS_PATH}
         " > "$NS_OUTPUT_FILE" 2>&1 &
 
+        BPFILTER="${_BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${BPFILTER_BPFFS_PATH}"
         wait $SETUSERNS_PID
     else
         unshare --net=/var/run/netns/${NETNS_NAME} > "$NS_OUTPUT_FILE" 2>&1 &
+        BPFILTER="${_BPFILTER} --verbose debug"
     fi
 
     # Create the veth
@@ -169,7 +174,7 @@ setup() {
     log "${BLUE}    ${NS_IFINDEX}: ${VETH_NS} @ ${NS_IP_ADDR}"
     log "${BLUE}  Tested binaries"
     log "${BLUE}    bfcli: ${BFCLI}"
-    log "${BLUE}    bpfilter: ${BPFILTER}"
+    log "${BLUE}    bpfilter: ${_BPFILTER}"
     log "${BLUE}    setuserns: ${SETUSERNS}"
 }
 
@@ -208,7 +213,7 @@ start_daemon() {
     local start_time=$(date +%s)
     local end_time=$((start_time + timeout))
 
-    ${FROM_NS} ${BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${BPFILTER_BPFFS_PATH} > ${BF_OUTPUT_FILE} 2>&1 &
+    ${FROM_NS} ${BPFILTER} > ${BF_OUTPUT_FILE} 2>&1 &
     BPFILTER_PID=$!
 
     # Wait for the daemon to listen to the requests
@@ -235,6 +240,10 @@ with_daemon() {
     stop_daemon
 }
 
+without_daemon() {
+    "$@"
+}
+
 # Set trap to ensure cleanup happens
 trap 'cleanup $?' EXIT
 trap 'cleanup 1' INT TERM
@@ -251,7 +260,7 @@ setup
 
 expect_result() {
     local description="$1"
-    local expected_result="$2"  # 0 = success, non-zero = failure
+    local expected_result="$2"  # 0 = success, "non-zero" or any number for failure
     shift 2
 
     # Build the command string for eval
@@ -263,8 +272,9 @@ expect_result() {
     output=$(eval "$cmd" 2>&1) || result=$?
 
     # Check if the result matches the expected result
-    if { [ "$expected_result" -eq 0 ] && [ $result -eq 0 ]; } ||
-       { [ "$expected_result" -ne 0 ] && [ $result -ne 0 ]; }; then
+    if { [ "$expected_result" = "0" ] && [ $result -eq 0 ]; } ||
+       { [ "$expected_result" = "non-zero" ] && [ $result -ne 0 ]; } ||
+       { [ "$expected_result" != "0" ] && [ "$expected_result" != "non-zero" ] && [ $result -eq "$expected_result" ]; }; then
         # Success case
         echo -e "${GREEN}[+] -> Success: ${GREEN_BOLD}${description}${RESET}" >&2
 
@@ -279,24 +289,31 @@ expect_result() {
         # Print the captured output
         echo -e "${YELLOW}Output:${RESET}" >&2
         echo "$output" >&2
+
+        # Show expected vs actual result
+        if [ "$expected_result" = "0" ]; then
+            echo -e "${YELLOW}Expected exit code 0, got ${result}${RESET}" >&2
+        elif [ "$expected_result" = "non-zero" ]; then
+            echo -e "${YELLOW}Expected non-zero exit code, got ${result}${RESET}" >&2
+        else
+            echo -e "${YELLOW}Expected exit code ${expected_result}, got ${result}${RESET}" >&2
+        fi
         echo >&2
 
         return 1
     fi
 }
 
-# Wrapper function to maintain backward compatibility for expect_success
 expect_success() {
     local description="$1"
     shift
     expect_result "$description" 0 "$@"
 }
 
-# Wrapper function to maintain backward compatibility for expect_failure
 expect_failure() {
     local description="$1"
     shift
-    expect_result "$description" 1 "$@"
+    expect_result "$description" "non-zero" "$@"
 }
 
 FROM_NS=
@@ -305,6 +322,8 @@ if [ "${HAS_TOKEN_SUPPORT:-1}" -eq 1 ]; then
 else
     FROM_NS="nsenter --net=/var/run/netns/${NETNS_NAME}"
 fi
+
+WITH_TIMEOUT="timeout --signal INT --preserve-status .5"
 
 
 ################################################################################
@@ -545,6 +564,37 @@ suite_ruleset() {
         ${FROM_NS} ${BFCLI} ruleset flush
 }
 with_daemon suite_ruleset
+
+suite_daemon_already_running() {
+    log "[SUITE] daemon: daemon is already running"
+    expect_failure "start the daemon" \
+        ${FROM_NS} ${WITH_TIMEOUT} ${BPFILTER}
+}
+with_daemon suite_daemon_already_running
+
+suite_daemon_existing_sock() {
+    log "[SUITE] daemon: handle existing daemon and leftover socket"
+    expect_success "create a fake socket file" \
+        ${FROM_NS} touch /run/bpfilter/daemon.sock
+    expect_success "socket file exists, but no daemon running" \
+        ${FROM_NS} ${WITH_TIMEOUT} ${BPFILTER}
+}
+without_daemon suite_daemon_existing_sock
+
+suite_daemon_restore_non_attached() {
+    log "[SUITE] daemon: restore non-attached programs"
+
+    start_daemon
+        expect_success "create a chain, do not attach it" \
+            ${FROM_NS} ${BFCLI} chain set --from-str \"chain test_chain BF_HOOK_XDP ACCEPT\"
+    stop_daemon
+
+    start_daemon
+        expect_success "attach the restored chain" \
+            ${FROM_NS} ${BFCLI} chain attach --name test_chain --option ifindex=${NS_IFINDEX}
+    stop_daemon
+}
+without_daemon suite_daemon_restore_non_attached
 
 
 ################################################################################
