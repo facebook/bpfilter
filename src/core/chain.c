@@ -23,7 +23,9 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)
 {
     _free_bf_chain_ struct bf_chain *_chain = NULL;
+    size_t ridx = 0;
 
+    bf_assert(chain && name);
     bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
 
     _chain = malloc(sizeof(*_chain));
@@ -44,6 +46,8 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     _chain->rules = bf_list_default(bf_rule_free, bf_rule_marsh);
     if (rules)
         _chain->rules = bf_list_move(*rules);
+    bf_list_foreach (&_chain->rules, rule_node)
+        ((struct bf_rule *)bf_list_node_get_data(rule_node))->index = ridx++;
 
     *chain = TAKE_PTR(_chain);
 
@@ -112,7 +116,7 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
         if (r)
             return r;
 
-        r = bf_list_add_tail(&_chain->rules, rule);
+        r = bf_chain_add_rule(_chain, rule);
         if (r)
             return r;
 
