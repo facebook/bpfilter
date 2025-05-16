@@ -461,15 +461,22 @@ int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
 
     bf_assert(cgen && counters);
 
-    for (ssize_t i = BF_COUNTER_POLICY;
-         i < (ssize_t)bf_list_size(&cgen->chain->rules); ++i) {
+    /* Iterate over all the rules, then the policy counter (size(rules)) and
+     * the errors counters (sizeof(rules) + 1)*/
+    for (size_t i = 0; i < bf_list_size(&cgen->chain->rules) + 2; ++i) {
         _free_bf_counter_ struct bf_counter *counter = NULL;
+        ssize_t idx = (ssize_t)i;
+
+        if (i == bf_list_size(&cgen->chain->rules))
+            idx = BF_COUNTER_POLICY;
+        else if (i == bf_list_size(&cgen->chain->rules) + 1)
+            idx = BF_COUNTER_ERRORS;
 
         r = bf_counter_new(&counter, 0, 0);
         if (r)
             return r;
 
-        r = bf_cgen_get_counter(cgen, i, counter);
+        r = bf_cgen_get_counter(cgen, idx, counter);
         if (r)
             return r;
 

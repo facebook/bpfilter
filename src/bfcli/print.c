@@ -51,12 +51,21 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                     bf_list *counters)
 {
     struct bf_counter *counter;
-    bf_list_node *counter_node;
+    bf_list_node *counter_node, *policy_counter_node, *err_counter_node;
     bool need_comma = false;
 
     bf_assert(chain && counters);
 
+    if (bf_list_size(counters) != bf_list_size(&chain->rules) + 2) {
+        bf_err(
+            "chain %s is corrupted: total number of counters doesn't match the number of rules and chain counters",
+            chain->name);
+        return;
+    }
+
     counter_node = bf_list_get_head(counters);
+    policy_counter_node = bf_list_get_tail(counters);
+    err_counter_node = bf_list_node_prev(policy_counter_node);
 
     (void)fprintf(stdout, "chain %s %s", chain->name,
                   bf_hook_to_str(chain->hook));
@@ -92,15 +101,13 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
     (void)fprintf(stdout, " %s\n", bf_verdict_to_str(chain->policy));
 
-    counter = bf_list_node_get_data(counter_node);
+    counter = bf_list_node_get_data(policy_counter_node);
     (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
                   counter->packets, counter->bytes);
-    counter_node = bf_list_node_next(counter_node);
 
-    counter = bf_list_node_get_data(counter_node);
+    counter = bf_list_node_get_data(err_counter_node);
     (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->packets,
                   counter->bytes);
-    counter_node = bf_list_node_next(counter_node);
 
     // Loop over rules
     bf_list_foreach (&chain->rules, rule_node) {
