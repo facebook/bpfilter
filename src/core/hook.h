@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "core/dump.h"
+#include "core/flavor.h"
 #include "core/list.h"
 
 /**
