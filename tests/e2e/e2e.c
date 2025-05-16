@@ -10,6 +10,7 @@
 #include "bpfilter.h"
 #include "opts.h"
 #include "core/bpf.h"
+#include "core/chain.h"
 #include "core/flavor.h"
 #include "core/logger.h"
 #include "harness/daemon.h"
@@ -49,12 +50,13 @@ static struct {
     },
 };
 
-int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
-                 const struct bft_prog_run_args *args)
+static int _bft_e2e_test_with_counter(struct bf_chain *chain,
+                                      enum bf_verdict expect,
+                                      const struct bft_prog_run_args *args,
+                                      const struct bft_counter *counter)
 {
     _clean_bf_test_daemon_ struct bf_test_daemon daemon = bft_daemon_default();
     bool success = true, daemon_failure = false;
-    int retval[_BF_FLAVOR_MAX] = {};
     int r;
 
     bf_assert(chain && args);
@@ -73,6 +75,9 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
     for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor) {
         _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
         const struct bft_prog_run_args *arg = &args[flavor];
+        _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
+        _free_bf_chain_ struct bf_chain *_0 = NULL;
+        _free_bf_hookopts_ struct bf_hookopts *_1 = NULL;
         int test_ret;
 
         chain->hook = _bf_tests_meta[flavor].hook;
@@ -91,9 +96,48 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
             break;
         }
 
+        r = bf_chain_get(chain->name, &_0, &_1, &counters);
+        if (r) {
+            bf_info("failed to retrieve chain 'bf_test'");
+            daemon_failure = true;
+            break;
+        }
+
         bf_cli_ruleset_flush();
 
-        retval[flavor] = test_ret;
+        if (_bf_tests_meta[flavor].verdicts[expect] != test_ret) {
+            print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",
+                        "             ", bf_flavor_to_str(flavor), test_ret,
+                        _bf_tests_meta[flavor].verdicts[expect]);
+            success = false;
+        }
+
+        if (counter) {
+            const struct bf_counter *ref = &counter->counter;
+            const struct bf_counter *test;
+
+            test = bf_list_get_at(&counters, counter->index);
+            if (!test) {
+                print_error("%sERROR: %s: missing counters for index %lu\n",
+                            "             ",
+                            bf_flavor_to_str(flavor), counter->index);
+                success = false;
+            }
+
+            if (test && ref->packets != BFT_NO_PKTS && ref->packets != test->packets) {
+                print_error("%sERROR: %s: rule #%lu: expecting %lu packets, got %lu\n",
+                            "             ", bf_flavor_to_str(flavor),
+                            counter->index, ref->packets, test->packets);
+                success = false;
+            }
+
+            if (test && ref->bytes != BFT_NO_BYTES && ref->bytes != test->bytes) {
+                print_error("%sERROR: %s: rule #%lu: expecting %lu bytes, got %lu\n",
+                            "             ", bf_flavor_to_str(flavor),
+                            counter->index, ref->bytes, test->bytes);
+                success = false;
+            }
+        }
     }
 
     r = bf_test_daemon_stop(&daemon);
@@ -106,19 +150,20 @@ int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
         fail();
     }
 
-    for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor) {
-        if (_bf_tests_meta[flavor].verdicts[expect] == retval[flavor])
-            continue;
-
-        // Not ideal, but at least it's properly formatted
-        print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",
-                    "             ", bf_flavor_to_str(flavor), retval[flavor],
-                    _bf_tests_meta[flavor].verdicts[expect]);
-        success = false;
-    }
-
     if (!success)
         fail();
 
     return 0;
+}
+
+int bft_e2e_test_with_counter(struct bf_chain *chain, enum bf_verdict expect,
+    const struct bft_prog_run_args *args, const struct bft_counter *counter)
+{
+    return _bft_e2e_test_with_counter(chain, expect, args, counter);
+}
+
+int bft_e2e_test(struct bf_chain *chain, enum bf_verdict expect,
+                 const struct bft_prog_run_args *args)
+{
+    return _bft_e2e_test_with_counter(chain, expect, args, NULL);
 }
