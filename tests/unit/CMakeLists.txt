@@ -82,6 +82,7 @@ enable_testing()
 
 set(bf_test_srcs
     core/btf.c
+    core/chain.c
     core/flavor.c
     core/front.c
     core/helper.c
