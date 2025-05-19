@@ -203,7 +203,7 @@
 
                 diffInsnHtml = `<td class="text-end font-monospace ${diffClass}">
                 ${(diff < 0 ? "" : "+") + parseFloat(diff).toFixed(2)}%
-                (${(abs < 0 ? "" : "+") + parseFloat(abs)})
+                (${(abs < 0 ? "" : "+") + parseFloat(abs).toFixed(2)})
                 ${symbol ? symbol : ""}
             </td>`;
 
