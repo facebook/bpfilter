@@ -101,6 +101,9 @@ int main(int argc, char *argv[])
         return -EPERM;
     }
 
+    if (::bf::disableASLR(argv) < 0)
+        return -1;
+
     if (::bf::setup(std::span<char *>(argv, argc)) < 0)
         return -1;
 

@@ -91,6 +91,7 @@ public:
 
 extern Config config;
 
+int disableASLR(char **argv);
 int setup(std::span<char *> args);
 void restorePermissions(::std::string outfile);
 
