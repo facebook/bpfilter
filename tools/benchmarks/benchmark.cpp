@@ -38,6 +38,7 @@
 #include <span>
 #include <stdlib.h> // NOLINT
 #include <string>
+#include <sys/personality.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <thread>
@@ -288,6 +289,33 @@ run(::std::string bin, const ::std::vector<::std::string> &args)
             logErr ? *logErr : noLog};
 }
 } // namespace
+
+int disableASLR(char **argv)
+{
+    // Inspired by Google Benchmark:
+    // https://github.com/google/benchmark/blob/eddb024/src/benchmark.cc#L826-L861
+
+    // Disable ASLR for the current process
+    unsigned long curr_personality = personality(0xffffffff);
+    if (curr_personality == -1) {
+        err("failed to read current process personality: {}", -errno);
+        return -errno;
+    }
+
+    // Is ASLR is already disabled, return and proceed to the benchmark
+    if (curr_personality & ADDR_NO_RANDOMIZE)
+        return 0;
+
+    unsigned long new_personality = personality(curr_personality | ADDR_NO_RANDOMIZE);
+    if (new_personality == -1) {
+        err("failed to set new process persionality: {}", -errno);
+        return -errno;
+    }
+
+    execv(argv[0], argv);
+
+    return 0;
+}
 
 int setup(std::span<char *> args)
 {
