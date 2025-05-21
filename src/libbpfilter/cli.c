@@ -20,7 +20,7 @@
 #include "core/rule.h"
 #include "libbpfilter/generic.h"
 
-int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
+int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
@@ -127,7 +127,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     return 0;
 }
 
-int bf_cli_ruleset_flush(void)
+int bf_ruleset_flush(void)
 {
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
@@ -147,7 +147,7 @@ int bf_cli_ruleset_flush(void)
     return response->type == BF_RES_FAILURE ? response->error : 0;
 }
 
-int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts)
+int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
