@@ -32,7 +32,7 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
     if (r)
         bf_err_r(r, "failed to parse ruleset");
 
-    r = bf_cli_ruleset_set(&ruleset.chains, &ruleset.hookopts);
+    r = bf_ruleset_set(&ruleset.chains, &ruleset.hookopts);
     if (r)
         bf_err_r(r, "failed to set ruleset");
 
@@ -48,7 +48,7 @@ int bfc_ruleset_get(const struct bfc_opts *opts)
     _clean_bf_list_ bf_list counters = bf_list_default(bf_list_free, NULL);
     int r;
 
-    r = bf_cli_ruleset_get(&chains, &hookopts, &counters);
+    r = bf_ruleset_get(&chains, &hookopts, &counters);
     if (r < 0)
         return bf_err_r(r, "failed to request ruleset");
 
@@ -63,5 +63,5 @@ int bfc_ruleset_flush(const struct bfc_opts *opts)
 {
     UNUSED(opts);
 
-    return bf_cli_ruleset_flush();
+    return bf_ruleset_flush();
 }

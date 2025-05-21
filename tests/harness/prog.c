@@ -44,7 +44,7 @@ struct bf_test_prog *bf_test_prog_get(struct bf_chain *chain)
         return NULL;
     }
 
-    r = bf_cli_ruleset_set(&chains, &hooks);
+    r = bf_ruleset_set(&chains, &hooks);
     if (r < 0) {
         bf_err_r(r, "failed to create a new chain");
         return NULL;

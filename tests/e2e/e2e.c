@@ -103,7 +103,7 @@ static int _bft_e2e_test_with_counter(struct bf_chain *chain,
             break;
         }
 
-        bf_cli_ruleset_flush();
+        bf_ruleset_flush();
 
         if (_bf_tests_meta[flavor].verdicts[expect] != test_ret) {
             print_error("%sERROR: %s: BPF_PROG_RUN returned %d, expecting %d\n",

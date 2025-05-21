@@ -29,7 +29,7 @@ const char *bf_version(void);
  *
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_ruleset_flush(void);
+int bf_ruleset_flush(void);
 
 #define bf_list void
 
@@ -42,7 +42,7 @@ int bf_cli_ruleset_flush(void);
  * @param counters List of bf_counter type to be filled.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
+int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
 
 /**
  * Load a complete ruleset.
@@ -59,7 +59,7 @@ int bf_cli_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
  *        NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_cli_ruleset_set(bf_list *chains, bf_list *hookopts);
+int bf_ruleset_set(bf_list *chains, bf_list *hookopts);
 
 /**
  * Set a chain.
