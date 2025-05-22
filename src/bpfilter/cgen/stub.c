@@ -59,7 +59,8 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
         // Update the error counter
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, program->num_counters - 1));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_1, bf_program_error_counter_idx(program)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
                                   BF_PROG_CTX_OFF(pkt_size)));
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
@@ -109,7 +110,8 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, program->num_counters - 1));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_1, bf_program_error_counter_idx(program)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
                                   BF_PROG_CTX_OFF(pkt_size)));
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
@@ -179,7 +181,8 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, program->num_counters - 1));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_1, bf_program_error_counter_idx(program)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
                                   BF_PROG_CTX_OFF(pkt_size)));
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
@@ -277,7 +280,8 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
 
         // Update the error counter
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, program->num_counters - 1));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_1, bf_program_error_counter_idx(program)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
                                   BF_PROG_CTX_OFF(pkt_size)));
         EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);

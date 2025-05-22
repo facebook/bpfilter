@@ -63,9 +63,10 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         return;
     }
 
+    // Last counter is the error counter, the chain counter is second to last
     counter_node = bf_list_get_head(counters);
-    policy_counter_node = bf_list_get_tail(counters);
-    err_counter_node = bf_list_node_prev(policy_counter_node);
+    err_counter_node = bf_list_get_tail(counters);
+    policy_counter_node = bf_list_node_prev(err_counter_node);
 
     (void)fprintf(stdout, "chain %s %s", chain->name,
                   bf_hook_to_str(chain->hook));

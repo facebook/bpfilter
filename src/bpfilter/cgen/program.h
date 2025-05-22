@@ -301,11 +301,6 @@ struct bf_program
     /// Link objects attaching the program to a hook.
     struct bf_link *link;
 
-    /** Number of counters in the counters map. Not all of them are used by
-     * the program, but this value is common for all the programs of a given
-     * codegen. */
-    size_t num_counters;
-
     /* Bytecode */
     uint32_t functions_location[_BF_FIXUP_FUNC_MAX];
     struct bpf_insn *img;
@@ -431,3 +426,6 @@ int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter);
 int bf_program_set_counters(struct bf_program *program,
                             const struct bf_counter *counters);
+
+size_t bf_program_chain_counter_idx(const struct bf_program *program);
+size_t bf_program_error_counter_idx(const struct bf_program *program);
