@@ -249,8 +249,6 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
             return bf_err_r(r, "failed to append object to marsh");
     }
 
-    r |= bf_marsh_add_child_raw(&_marsh, &program->num_counters,
-                                sizeof(program->num_counters));
     r |= bf_marsh_add_child_raw(&_marsh, program->img,
                                 program->img_size * sizeof(struct bpf_insn));
     if (r)
@@ -343,11 +341,6 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&_program->num_counters, child->data,
-           sizeof(_program->num_counters));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
     _program->img = bf_memdup(child->data, child->data_len);
     _program->img_size = child->data_len / sizeof(struct bpf_insn);
     _program->img_cap = child->data_len / sizeof(struct bpf_insn);
@@ -373,7 +366,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
 
-    DUMP(prefix, "num_counters: %lu", program->num_counters);
     DUMP(prefix, "prog_name: %s", program->prog_name);
 
     DUMP(prefix, "cmap: struct bf_map *");
@@ -848,11 +840,6 @@ int bf_program_generate(struct bf_program *program)
     const struct bf_chain *chain = program->runtime.chain;
     int r;
 
-    /* Add 1 to the number of counters for the policy counter, and 1
-     * for the first reserved error slot. This must be done ahead of
-     * generation, as we will index into the error counters. */
-    program->num_counters = bf_list_size(&chain->rules) + 2;
-
     // Save the program's argument into the context.
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
@@ -938,7 +925,8 @@ static int _bf_program_load_counters_map(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_map_set_n_elems(program->cmap, program->num_counters);
+    r = bf_map_set_n_elems(program->cmap,
+                           bf_list_size(&program->runtime.chain->rules) + 2);
     if (r < 0)
         return r;
 
@@ -1196,4 +1184,14 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
     bf_link_unpin(prog->link, dir_fd);
 
     unlinkat(dir_fd, prog->prog_name, 0);
+}
+
+size_t bf_program_chain_counter_idx(const struct bf_program *program)
+{
+    return bf_list_size(&program->runtime.chain->rules);
+}
+
+size_t bf_program_error_counter_idx(const struct bf_program *program)
+{
+    return bf_list_size(&program->runtime.chain->rules) + 1;
 }
