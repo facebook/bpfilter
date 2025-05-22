@@ -13,6 +13,8 @@ Commands
 
 Define a new ruleset: replace all the existing chains with the ruleset provided. Replacement is not atomic.
 
+Chains with valid hook options defined are attached to their hook. Chains without hook options are only loaded into the kernel.
+
 **Options**
   - ``--from-str RULESET``: read and apply the ruleset defining from the command line.
   - ``--from-file FILE``: read ``FILE`` and apply the ruleset contained in it.
