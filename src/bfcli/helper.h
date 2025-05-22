@@ -10,5 +10,6 @@
 
 struct bfc_ruleset;
 
+int compute_buf_size(unsigned long chain_length);
 int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset);
 int bfc_parse_str(const char *str, struct bfc_ruleset *ruleset);
