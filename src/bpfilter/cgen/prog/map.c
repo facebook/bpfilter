@@ -315,8 +315,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         break;
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
-        bf_warn("bf_map type %s is not yet supported",
-                _bf_map_type_to_str(map->type));
+        // No BTF data available for this map types
         return NULL;
     default:
         bf_err_r(-ENOTSUP, "bf_map type %d is not supported", map->type);
