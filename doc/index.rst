@@ -23,6 +23,7 @@
    :hidden:
    :caption: External
 
+   GitHub repository <https://github.com/facebook/bpfilter>
    external/benchmarks/index
    external/coverage/index
 
