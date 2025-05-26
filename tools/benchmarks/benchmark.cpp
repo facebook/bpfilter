@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <fcntl.h>
 #include <filesystem>
 #include <format>
@@ -420,7 +421,7 @@ Sources::~Sources()
     return {git_oid_tostr(buff.data(), buff.size(), &oid), maxCommitHashLen};
 }
 
-int64_t Sources::getLastCommitTime() const
+std::time_t Sources::getLastCommitTime() const
 {
     git_oid oid;
     git_commit *commit;
@@ -443,7 +444,7 @@ int64_t Sources::getLastCommitTime() const
     auto time = git_commit_time(commit);
     git_commit_free(commit);
 
-    return time;
+    return static_cast<std::time_t>(time);
 }
 
 bool Sources::isDirty() const
