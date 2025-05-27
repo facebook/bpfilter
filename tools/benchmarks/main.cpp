@@ -30,6 +30,8 @@ void loadChainLargeSet(::benchmark::State &state)
 BENCHMARK(loadChainLargeSet)
     ->Arg(10000)
     ->Arg(100000)
+    ->Arg(200000)
+    ->Arg(500000)
     ->Iterations(10)
     ->Unit(benchmark::kMillisecond);
 

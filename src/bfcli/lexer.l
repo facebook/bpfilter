@@ -11,6 +11,8 @@
     #include "core/verdict.h"
     #include "core/hook.h"
     #include "core/matcher.h"
+
+    extern int yy_read_buf_size;
 %}
 
 %option noyywrap

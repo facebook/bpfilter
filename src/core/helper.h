@@ -194,6 +194,13 @@ extern const char *strerrordesc_np(int errnum);
         _a < _b ? _a : _b;                                                     \
     })
 
+#define bf_max(a, b)                                                           \
+    ({                                                                         \
+        __typeof__(a) _a = (a);                                                \
+        __typeof__(b) _b = (b);                                                \
+        _a > _b ? _a : _b;                                                     \
+    })
+
 /**
  * Free a pointer and set it to NULL.
  *

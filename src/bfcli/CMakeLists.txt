@@ -65,6 +65,7 @@ add_executable(bfcli
 target_compile_definitions(bfcli
     PRIVATE
         BF_CONTACT="${BF_CONTACT}"
+        "YY_READ_BUF_SIZE=(yy_read_buf_size)"
 )
 
 target_include_directories(bfcli
