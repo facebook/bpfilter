@@ -8,15 +8,41 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "bfcli/lexer.h"
 #include "bfcli/parser.h"
 #include "core/logger.h"
 
+// To speed up parsing very large rulesets, we can increase YY_READ_BUF_SIZE
+int yy_read_buf_size;
+
+#define _BF_LEX_MIN_BUF_POW 14
+#define _BF_LEX_MAX_BUF_POW 20
+
+static int _bf_compute_lexer_buf_size(size_t len)
+{
+    int val = _BF_LEX_MIN_BUF_POW;
+
+    if (len) {
+        val = (int)sizeof(len) * 8 - __builtin_clzl(len);
+        val = bf_min(bf_max(val - 3, _BF_LEX_MIN_BUF_POW), _BF_LEX_MAX_BUF_POW);
+    }
+
+    return 1 << val;
+}
+
 int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset)
 {
     FILE *rules;
+    struct stat stt;
     int r;
+
+    if (stat(file, &stt) == -1)
+        return bf_err_r(errno, "failed to stat file %s:", file);
+
+    yy_read_buf_size = _bf_compute_lexer_buf_size(stt.st_size);
+    bf_dbg("yy_read_buf_size choosen is %d", yy_read_buf_size);
 
     rules = fopen(file, "r");
     if (!rules)
@@ -36,7 +62,12 @@ int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset)
 int bfc_parse_str(const char *str, struct bfc_ruleset *ruleset)
 {
     YY_BUFFER_STATE buffer;
+    unsigned long str_size;
     int r;
+
+    str_size = strlen(str);
+    yy_read_buf_size = _bf_compute_lexer_buf_size(str_size);
+    bf_dbg("yy_read_buf_size choosen is %d", yy_read_buf_size);
 
     buffer = yy_scan_string(str);
 
