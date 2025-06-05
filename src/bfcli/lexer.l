@@ -27,6 +27,7 @@
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_PORT
+%s STATE_MATCHER_ICMP
 %s STATE_MATCHER_TCP_FLAGS
 
 %%
@@ -127,6 +128,15 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
     [0-9]+-[0-9]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_PORT_RANGE;
+    }
+}
+
+icmp\.(code|type) { BEGIN(STATE_MATCHER_ICMP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_ICMP>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (\!)?[0-9]+ {
+        yylval.sval = strdup(yytext);
+        return MATCHER_ICMP;
     }
 }
 

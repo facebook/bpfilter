@@ -366,6 +366,36 @@ suite_host_to_netns() {
 }
 with_daemon suite_host_to_netns
 
+suite_icmp_TC() {
+    log "[SUITE] icmp: block by TC"
+    expect_success "can ping the netns iface from the host" \
+        ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
+    expect_success "attach chain to ns iface" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq 8 icmp.code eq 0 counter DROP\"
+    expect_failure "can't ping ns iface from host" \
+        ping -c 1 -W 0.25 ${NS_IP_ADDR}
+    expect_success "pings have been blocked by TC chain" \
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0x00/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+    expect_success "flushing the ruleset" \
+        ${FROM_NS} ${BFCLI} ruleset flush
+}
+with_daemon suite_icmp_TC
+
+suite_icmp_XDP() {
+    log "[SUITE] icmp: block by XDP"
+    expect_success "can ping the netns iface from the host" \
+        ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
+    expect_success "attach chain to ns iface" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq 8 icmp.code eq 0 counter DROP\"
+    expect_failure "can't ping the netns iface from the host" \
+        ping -c 1 -W 0.25 ${NS_IP_ADDR}
+    expect_success "pings have been blocked by XDP chain" \
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0x00/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+    expect_success "flushing the ruleset" \
+        ${FROM_NS} ${BFCLI} ruleset flush
+}
+with_daemon suite_icmp_XDP
+
 suite_chain_set() {
     log "[SUITE] chain: set"
     expect_failure "no chain defined in --from-str" \

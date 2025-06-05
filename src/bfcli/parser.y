@@ -78,6 +78,7 @@
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP6_ADDR
 %token <sval> MATCHER_PORT MATCHER_PORT_RANGE
+%token <sval> MATCHER_ICMP
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 %token <sval> RAW_HOOKOPT
@@ -533,6 +534,26 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
 
                     if (bf_matcher_new(&matcher, $1, $2, &flags, sizeof(flags)))
                         bf_parse_err("failed to create a new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_ICMP
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    long raw_val;
+                    uint8_t value;
+
+                    raw_val = atol($3);
+                    if (raw_val < 0 || UINT8_MAX < raw_val)
+                        bf_parse_err("invalid %s value: %s\n",
+                                     bf_matcher_type_to_str($1), $3);
+
+                    value = (uint8_t)raw_val;
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &value, sizeof(value)))
+                        bf_parse_err("failed to create new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
                 }

@@ -254,7 +254,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
         EMIT_SWICH_OPTION(&swich, IPPROTO_UDP,
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct udphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMP,
-                          BPF_MOV64_IMM(BPF_REG_4, sizeof(struct udphdr)));
+                          BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmp6hdr)));
         EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_8, 0));
