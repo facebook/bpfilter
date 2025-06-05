@@ -25,6 +25,7 @@ add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/tcp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/tcp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/udp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/udp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/icmp.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/icmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.c

@@ -77,6 +77,10 @@ enum bf_matcher_type
     BF_MATCHER_SET_SRCIP6PORT,
     /// Matches the source IPv6 address against a set
     BF_MATCHER_SET_SRCIP6,
+    /// Matches against the ICMP type
+    BF_MATCHER_ICMP_TYPE,
+    /// Matches against the ICMP code
+    BF_MATCHER_ICMP_CODE,
     _BF_MATCHER_TYPE_MAX,
 };
 

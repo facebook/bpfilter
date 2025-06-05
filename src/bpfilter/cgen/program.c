@@ -29,6 +29,7 @@
 #include "bpfilter/cgen/matcher/set.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
+#include "bpfilter/cgen/matcher/icmp.h"
 #include "bpfilter/cgen/nf.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/prog/link.h"
@@ -589,6 +590,12 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_SET_SRCIP6PORT:
         case BF_MATCHER_SET_SRCIP6:
             r = bf_matcher_generate_set(program, matcher);
+            if (r)
+                return r;
+            break;
+        case BF_MATCHER_ICMP_TYPE:
+        case BF_MATCHER_ICMP_CODE:
+            r = bf_matcher_generate_icmp(program, matcher);
             if (r)
                 return r;
             break;

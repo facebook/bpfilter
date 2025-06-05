@@ -5,7 +5,7 @@ import pathlib
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP as IPv4
-from scapy.layers.inet import TCP, UDP
+from scapy.layers.inet import TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
 
 packets = [
@@ -41,6 +41,16 @@ packets = [
             src="127.2.10.10",
             dst="127.2.10.11"
         )
+    },
+    {
+        "name": "pkt_local_ip4_icmp",
+        "family": "NFPROTO_IPV4",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv4(
+            src="127.2.10.10",
+            dst="127.2.10.11"
+        )
+        / ICMP(type=8, code=0),
     }
 ]
 
