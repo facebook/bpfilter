@@ -531,3 +531,55 @@ UDP
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
+
+ICMP
+####
+
+.. flat-table::
+    :header-rows: 1
+    :widths: 2 2 1 4 12
+    :fill-cells:
+
+    * - Matches
+      - Type
+      - Operator
+      - Payload
+      - Notes
+    * - :rspan:`1` Type
+      - :rspan:`1` ``icmp.type``
+      - ``eq``
+      - :rspan:`1` ``$ICMP_TYPE``
+      - :rspan:`1` ``$ICMP_TYPE`` is a valid ICMP message type as a decimal integer.
+    * - ``not``
+    * - :rspan:`1` Code
+      - :rspan:`1` ``icmp.code``
+      - ``eq``
+      - :rspan:`1` ``$ICMP_CODE``
+      - :rspan:`1` ``$ICMP_CODE`` is a valid ICMP message code as a decimal integer.
+    * - ``not``
+
+ICMPv6
+######
+
+.. flat-table::
+    :header-rows: 1
+    :widths: 2 2 1 4 12
+    :fill-cells:
+
+    * - Matches
+      - Type
+      - Operator
+      - Payload
+      - Notes
+    * - :rspan:`1` Type
+      - :rspan:`1` ``icmpv6.type``
+      - ``eq``
+      - :rspan:`1` ``$ICMPV6_TYPE``
+      - :rspan:`1` ``$ICMPV6_TYPE`` is a valid ICMPv6 message type as a decimal integer.
+    * - ``not``
+    * - :rspan:`1` Code
+      - :rspan:`1` ``icmpv6.code``
+      - ``eq``
+      - :rspan:`1` ``$ICMPV6_CODE``
+      - :rspan:`1` ``$ICMPV6_CODE`` is a valid ICMPv6 message code as a decimal integer.
+    * - ``not``

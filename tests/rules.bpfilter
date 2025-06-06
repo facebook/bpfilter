@@ -91,6 +91,16 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         udp.dport 30-39
         counter
         ACCEPT
+    rule
+        icmp.type eq 8
+        icmp.code eq 0
+        counter
+        ACCEPT
+    rule
+        icmpv6.type eq 128
+        icmpv6.code eq 0
+        counter
+        ACCEPT
 
 # Create a TC chain
 chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
@@ -175,6 +185,16 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
         tcp.dport 10-19
         udp.sport 20-29
         udp.dport 30-39
+        counter
+        ACCEPT
+    rule
+        icmp.type eq 8
+        icmp.code eq 0
+        counter
+        ACCEPT
+    rule
+        icmpv6.type eq 128
+        icmpv6.code eq 0
         counter
         ACCEPT
 
@@ -271,6 +291,16 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         udp.dport 30-39
         counter
         ACCEPT
+    rule
+        icmp.type eq 8
+        icmp.code eq 0
+        counter
+        ACCEPT
+    rule
+        icmpv6.type eq 128
+        icmpv6.code eq 0
+        counter
+        ACCEPT
 
 # Create a Netfilter chain
 chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
@@ -363,5 +393,15 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
         tcp.dport 10-19
         udp.sport 20-29
         udp.dport 30-39
+        counter
+        ACCEPT
+    rule
+        icmp.type eq 8
+        icmp.code eq 0
+        counter
+        ACCEPT
+    rule
+        icmpv6.type eq 128
+        icmpv6.code eq 0
         counter
         ACCEPT

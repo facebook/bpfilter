@@ -131,7 +131,7 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
     }
 }
 
-icmp\.(code|type) { BEGIN(STATE_MATCHER_ICMP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+icmp(v6)?\.(code|type) { BEGIN(STATE_MATCHER_ICMP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_ICMP>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     (\!)?[0-9]+ {
