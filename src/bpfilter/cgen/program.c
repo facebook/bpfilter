@@ -595,6 +595,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
             break;
         case BF_MATCHER_ICMP_TYPE:
         case BF_MATCHER_ICMP_CODE:
+        case BF_MATCHER_ICMPV6_TYPE:
+        case BF_MATCHER_ICMPV6_CODE:
             r = bf_matcher_generate_icmp(program, matcher);
             if (r)
                 return r;

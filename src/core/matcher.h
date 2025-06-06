@@ -81,6 +81,10 @@ enum bf_matcher_type
     BF_MATCHER_ICMP_TYPE,
     /// Matches against the ICMP code
     BF_MATCHER_ICMP_CODE,
+    /// Matches against the ICMPv6 type
+    BF_MATCHER_ICMPV6_TYPE,
+    /// Matches against the ICMPv6 code
+    BF_MATCHER_ICMPV6_CODE,
     _BF_MATCHER_TYPE_MAX,
 };
 
