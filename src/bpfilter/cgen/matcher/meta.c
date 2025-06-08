@@ -55,6 +55,20 @@ static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
     return 0;
 }
 
+static int
+_bf_matcher_generate_meta_probability(struct bf_program *program,
+                                      const struct bf_matcher *matcher)
+{
+    uint8_t proba = *(uint8_t *)matcher->payload;
+
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_prandom_u32));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(BPF_JGT, BPF_REG_0,
+                             (int)(UINT32_MAX * (proba / 100.0)), 0));
+
+    return 0;
+}
+
 static int _bf_matcher_generate_meta_port(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
@@ -129,6 +143,9 @@ int bf_matcher_generate_meta(struct bf_program *program,
         break;
     case BF_MATCHER_META_L4_PROTO:
         r = _bf_matcher_generate_meta_l4_proto(program, matcher);
+        break;
+    case BF_MATCHER_META_PROBABILITY:
+        r = _bf_matcher_generate_meta_probability(program, matcher);
         break;
     case BF_MATCHER_META_SPORT:
     case BF_MATCHER_META_DPORT:

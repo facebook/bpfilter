@@ -395,6 +395,11 @@ Meta
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
+    * - Probability
+      - ``meta.probability``
+      - ``eq``
+      - ``$PROBABILITY``
+      - ``$PROBABILITY`` is an integer between 0 and 100 followed by the ``%`` sign.
 
 IPv4
 ####

@@ -23,13 +23,13 @@
 #include "bpfilter/cgen/dump.h"
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
+#include "bpfilter/cgen/matcher/icmp.h"
 #include "bpfilter/cgen/matcher/ip4.h"
 #include "bpfilter/cgen/matcher/ip6.h"
 #include "bpfilter/cgen/matcher/meta.h"
 #include "bpfilter/cgen/matcher/set.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
-#include "bpfilter/cgen/matcher/icmp.h"
 #include "bpfilter/cgen/nf.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/prog/link.h"
@@ -555,6 +555,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_META_IFINDEX:
         case BF_MATCHER_META_L3_PROTO:
         case BF_MATCHER_META_L4_PROTO:
+        case BF_MATCHER_META_PROBABILITY:
         case BF_MATCHER_META_SPORT:
         case BF_MATCHER_META_DPORT:
             r = bf_matcher_generate_meta(program, matcher);

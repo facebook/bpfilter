@@ -23,6 +23,7 @@
 %s STATE_MATCHER_META_IFINDEX
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_META_L4_PROTO
+%s STATE_MATCHER_META_PROBA
 %s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_IP6_ADDR
@@ -78,6 +79,15 @@ meta\.l4_proto  { BEGIN(STATE_MATCHER_META_L4_PROTO); yylval.sval = strdup(yytex
     [a-z0-9]+ {
         yylval.sval = strdup(yytext);
         return MATCHER_META_L4_PROTO;
+    }
+}
+
+meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_PROBA>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (-)?[0-9]+% {
+        yylval.sval = strdup(yytext);
+        return MATCHER_META_PROBA;
     }
 }
 

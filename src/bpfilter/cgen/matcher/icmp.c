@@ -22,12 +22,12 @@ static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
 
     switch (matcher->op) {
     case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, value, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, value, 0));
         break;
     case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, value, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, value, 0));
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
