@@ -49,6 +49,8 @@ enum bf_matcher_type
     BF_MATCHER_META_L3_PROTO,
     /// Matches the L4 protocol, idependently from the L3 protocol.
     BF_MATCHER_META_L4_PROTO,
+    /// Matches packets based on a random probability
+    BF_MATCHER_META_PROBABILITY,
     /// Matches the source port for UDP and TCP packets.
     BF_MATCHER_META_SPORT,
     /// Matches the destination port for UDP and TCP packets.

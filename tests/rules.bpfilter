@@ -101,6 +101,10 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         icmpv6.code eq 0
         counter
         ACCEPT
+    rule
+        meta.probability eq 50%
+        counter
+        CONTINUE
 
 # Create a TC chain
 chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT

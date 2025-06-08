@@ -135,6 +135,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_META_IFINDEX] = "meta.ifindex",
     [BF_MATCHER_META_L3_PROTO] = "meta.l3_proto",
     [BF_MATCHER_META_L4_PROTO] = "meta.l4_proto",
+    [BF_MATCHER_META_PROBABILITY] = "meta.probability",
     [BF_MATCHER_META_SPORT] = "meta.sport",
     [BF_MATCHER_META_DPORT] = "meta.dport",
     [BF_MATCHER_IP4_SADDR] = "ip4.saddr",
