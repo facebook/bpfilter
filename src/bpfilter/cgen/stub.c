@@ -257,6 +257,39 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmp6hdr)));
+        /* For extended headers read only the first 2 bytes (except frag header).
+         * If you want to read the content it's needed a dynamic header size calculation.
+         * So read it as less as possible.
+         */
+        EMIT_SWICH_OPTION(&swich, IPPROTO_HOPOPTS,
+                          BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IPV6), 2),
+                          BPF_MOV64_IMM(BPF_REG_4, 0),
+                          BPF_JMP_A(1),
+                          BPF_MOV64_IMM(BPF_REG_4, 2));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_ROUTING,
+                          BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IPV6), 2),
+                          BPF_MOV64_IMM(BPF_REG_4, 0),
+                          BPF_JMP_A(1),
+                          BPF_MOV64_IMM(BPF_REG_4, 2));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_FRAGMENT,
+                          BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IPV6), 2),
+                          BPF_MOV64_IMM(BPF_REG_4, 0),
+                          BPF_JMP_A(1),
+                          BPF_MOV64_IMM(BPF_REG_4, 8));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_DSTOPTS,
+                          BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IPV6), 2),
+                          BPF_MOV64_IMM(BPF_REG_4, 0),
+                          BPF_JMP_A(1),
+                          BPF_MOV64_IMM(BPF_REG_4, 2));
+        EMIT_SWICH_OPTION(&swich, IPPROTO_MH,
+                          BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IPV6), 2),
+                          BPF_MOV64_IMM(BPF_REG_4, 0),
+                          BPF_JMP_A(1),
+                          BPF_MOV64_IMM(BPF_REG_4, 2));
+        /* managed by default case
+         * EMIT_SWICH_OPTION(&swich, IPPROTO_NONE,
+         *                  BPF_MOV64_IMM(BPF_REG_8, 0));
+         */
         EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_8, 0));
 
         r = bf_swich_generate(&swich);

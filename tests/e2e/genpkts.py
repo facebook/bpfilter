@@ -6,7 +6,7 @@ import pathlib
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP as IPv4
 from scapy.layers.inet import TCP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, IPv6ExtHdrHopByHop
 
 packets = [
     {
@@ -29,6 +29,13 @@ packets = [
         "packet": Ether(src=0x01, dst=0x02)
         / IPv6(src="::1", dst="::2")
         / ICMPv6EchoRequest(),
+    },
+    {
+        "name": "pkt_local_ip6_hop",
+        "family": "NFPROTO_IPV6",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv6(src="::1", dst="::2")
+        / IPv6ExtHdrHopByHop(),
     },
     {
         "name": "pkt_remote_ip6_tcp",

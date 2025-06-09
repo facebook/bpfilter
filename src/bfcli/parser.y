@@ -77,6 +77,8 @@
 %token <sval> MATCHER_IP_PROTO MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP6_ADDR
+%token <sval> MATCHER_IP6_NEXTHDR
+%token <sval> MATCHER_IP6_NEXTHDR_SET
 %token <sval> MATCHER_PORT MATCHER_PORT_RANGE
 %token <sval> MATCHER_ICMP
 %token <sval> STRING
@@ -475,6 +477,110 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr)))
+                        bf_parse_err("failed to create a new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_IP6_NEXTHDR
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    uint8_t nexthdr;
+
+                    if (bf_streq($3, "hop"))
+                        nexthdr = IPPROTO_HOPOPTS;
+                    else if (bf_streq($3, "route"))
+                        nexthdr = IPPROTO_ROUTING;
+                    else if (bf_streq($3, "frag"))
+                        nexthdr = IPPROTO_FRAGMENT;
+                    else if (bf_streq($3, "dst"))
+                        nexthdr = IPPROTO_DSTOPTS;
+                    else if (bf_streq($3, "mh"))
+                        nexthdr = IPPROTO_MH;
+                    else if (bf_streq($3, "tcp"))
+                        nexthdr = IPPROTO_TCP;
+                    else if (bf_streq($3, "udp"))
+                        nexthdr = IPPROTO_UDP;
+                    else if (bf_streq($3, "icmpv6"))
+                        nexthdr = IPPROTO_ICMPV6;
+                    else
+                        bf_parse_err("unsupported %s value '%s'\n",
+                                     bf_matcher_type_to_str($1), $3);
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &nexthdr, sizeof(nexthdr)) < 0)
+                        bf_parse_err("failed to create a new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_IP6_NEXTHDR_SET
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_set_ struct bf_set *set = NULL;
+                    uint32_t set_id = bf_list_size(&ruleset->sets);
+                    int r;
+
+                    char *data = $3 + 1;
+                    data[strlen(data) - 1] = '\0';
+
+                    r = bf_set_new(&set, BF_SET_IP6_NEXTHDR);
+                    if (r < 0)
+                        bf_parse_err("failed to create a new set\n");
+
+                    char *nexthdr;
+                    char *next = data;
+                    do {
+                        uint16_t value;
+
+                        nexthdr = next;
+                        next = strchr(nexthdr, ',');
+
+                        if (next) {
+                            *next = '\0';
+                            ++next;
+
+                            // Handle trailing comma
+                            if (*next == '\0')
+                                next = NULL;
+                        }
+
+                        if (bf_streq(nexthdr, "hop"))
+                            value = IPPROTO_HOPOPTS;
+                        else if (bf_streq(nexthdr, "route"))
+                            value = IPPROTO_ROUTING;
+                        else if (bf_streq(nexthdr, "frag"))
+                            value = IPPROTO_FRAGMENT;
+                        else if (bf_streq(nexthdr, "dst"))
+                            value = IPPROTO_DSTOPTS;
+                        else if (bf_streq(nexthdr, "mh"))
+                            value = IPPROTO_MH;
+                        else if (bf_streq($3, "tcp"))
+                            value = IPPROTO_TCP;
+                        else if (bf_streq($3, "udp"))
+                            value = IPPROTO_UDP;
+                        else if (bf_streq($3, "icmpv6"))
+                            value = IPPROTO_ICMPV6;
+                        else {
+                            value = 0x100;
+                            bf_parse_err("unsupported %s value '%s'\n",
+                                         bf_matcher_type_to_str($1), nexthdr);
+                        }
+                        if (value < 0x100) {
+                            r = bf_set_add_elem(set, &value);
+                            if (r < 0)
+                                bf_parse_err("failed to add element to set\n");
+                        }
+                    } while (next);
+
+                    r = bf_list_add_tail(&ruleset->sets, set);
+                    if (r < 0)
+                        bf_parse_err("failed to add new set to list of sets\n");
+
+                    TAKE_PTR(set);
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);

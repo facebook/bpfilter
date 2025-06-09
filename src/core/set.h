@@ -57,6 +57,8 @@ enum bf_set_type
     BF_SET_SRCIP6PORT,
     /// Keys are IPv6 addresses (16 bytes).
     BF_SET_SRCIP6,
+    /// Keys are IPv6 next-headers (8 bytes).
+    BF_SET_IP6_NEXTHDR,
     _BF_SET_MAX,
 };
 

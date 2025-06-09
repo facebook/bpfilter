@@ -19,6 +19,7 @@
 #include "bpfilter/cgen/program.h"
 #include "core/logger.h"
 #include "core/matcher.h"
+#include "core/set.h"
 
 #include "external/filter.h"
 
@@ -155,6 +156,67 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_ip6_nexthdr_set(struct bf_program *program,
+                                                const struct bf_matcher *matcher)
+{
+    uint32_t set_id;
+    struct bf_set *set;
+
+    bf_assert(program);
+    bf_assert(matcher);
+
+    set_id = *(uint32_t *)matcher->payload;
+    set = bf_list_get_at(&program->runtime.chain->sets, set_id);
+
+    switch (set->type) {
+    case BF_SET_IP6_NEXTHDR:
+        EMIT(program,
+             BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_1, BF_PROG_SCR_OFF(0)));
+        break;
+    default:
+        return bf_err_r(-EINVAL, "unsupported set type: %s",
+                        bf_set_type_to_str(set->type));
+    }
+
+    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
+    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
+
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+
+    // Jump to the next rule if map_lookup_elem returned 0
+    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+
+    return 0;
+}
+
+static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
+                                            const struct bf_matcher *matcher)
+{
+    const uint8_t nexthdr = matcher->payload[0];
+
+    EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6,
+                              offsetof(struct ipv6hdr, nexthdr)));
+
+    switch (matcher->op) {
+    case BF_MATCHER_EQ:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, nexthdr, 0));
+        break;
+    case BF_MATCHER_NE:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, nexthdr, 0));
+        break;
+    case BF_MATCHER_IN:
+        return _bf_matcher_generate_ip6_nexthdr_set(program, matcher);
+    default:
+        return -EINVAL;
+    }
+
+
+    return 0;
+}
+
 int bf_matcher_generate_ip6(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -170,6 +232,9 @@ int bf_matcher_generate_ip6(struct bf_program *program,
     case BF_MATCHER_IP6_SADDR:
     case BF_MATCHER_IP6_DADDR:
         r = _bf_matcher_generate_ip6_addr(program, matcher);
+        break;
+    case BF_MATCHER_IP6_NEXTHDR:
+        r = _bf_matcher_generate_ip6_nexthdr(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);

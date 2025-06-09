@@ -23,6 +23,7 @@ size_t _bf_set_type_elem_size(enum bf_set_type type)
         [BF_SET_IP4] = 4,
         [BF_SET_SRCIP6PORT] = 18,
         [BF_SET_SRCIP6] = 16,
+        [BF_SET_IP6_NEXTHDR] = 8,
     };
 
     static_assert(ARRAY_SIZE(sizes) == _BF_SET_MAX,
@@ -189,6 +190,7 @@ static const char *_bf_set_type_strs[] = {
     [BF_SET_IP4] = "BF_SET_IP4",
     [BF_SET_SRCIP6PORT] = "BF_SET_SRCIP6PORT",
     [BF_SET_SRCIP6] = "BF_SET_SRCIP6",
+    [BF_SET_IP6_NEXTHDR] = "BF_SET_IP6_NEXTHDR",
 };
 
 static_assert(ARRAY_SIZE(_bf_set_type_strs) == _BF_SET_MAX, "");
