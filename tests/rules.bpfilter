@@ -102,6 +102,12 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq udp
+        ip6.nexthdr eq icmpv6
+        counter
+        ACCEPT
+    rule
         meta.probability eq 50%
         counter
         CONTINUE
@@ -199,6 +205,12 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
     rule
         icmpv6.type eq 128
         icmpv6.code eq 0
+        counter
+        ACCEPT
+    rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq udp
+        ip6.nexthdr eq icmpv6
         counter
         ACCEPT
 
@@ -305,6 +317,12 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         icmpv6.code eq 0
         counter
         ACCEPT
+    rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq udp
+        ip6.nexthdr eq icmpv6
+        counter
+        ACCEPT
 
 # Create a Netfilter chain
 chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
@@ -407,5 +425,11 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
     rule
         icmpv6.type eq 128
         icmpv6.code eq 0
+        counter
+        ACCEPT
+    rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq udp
+        ip6.nexthdr eq icmpv6
         counter
         ACCEPT

@@ -462,6 +462,14 @@ IPv6
       - :rspan:`1` ``ip6.daddr``
       - ``eq``
     * - ``not``
+    * - :rspan:`2` Next header
+      - :rspan:`2` ``ip6.nexthdr``
+      - ``eq``
+      - :rspan:`1` ``$NEXT_HEADER``
+      - :rspan:`1` ``$NEXT_HEADER`` can be one of the following strings: ``dst``, ``frag``, ``hop``, ``icmpv6``, ``mh``, ``route``, ``tcp``, ``udp``
+    * - ``not``
+    * - ``in``
+      - ``{$NEXT_HEADER[,...]}``
 
 
 TCP

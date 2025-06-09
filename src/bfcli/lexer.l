@@ -27,6 +27,7 @@
 %s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_IP6_ADDR
+%s STATE_MATCHER_IP6_NEXTHDR
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_ICMP
 %s STATE_MATCHER_TCP_FLAGS
@@ -123,6 +124,16 @@ ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext
          * anyway! */
         yylval.sval = strdup(yytext);
         return MATCHER_IP6_ADDR;
+    }
+}
+
+ip6\.nexthdr    { BEGIN(STATE_MATCHER_IP6_NEXTHDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP6_NEXTHDR>{
+    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (dst|frag|hop|icmpv6|mh|route|tcp|udp) { yylval.sval = strdup(yytext); return MATCHER_IP6_NEXTHDR; }
+    \{(dst|frag|hop|icmpv6|mh|route|tcp|udp)(,(dst|frag|hop|icmpv6|mh|route|tcp|udp))*\} {
+        yylval.sval = strdup(yytext);
+        return MATCHER_IP6_NEXTHDR;
     }
 }
 

@@ -65,6 +65,8 @@ enum bf_matcher_type
     BF_MATCHER_IP6_SADDR,
     /// Matches IPv6 destination address.
     BF_MATCHER_IP6_DADDR,
+    /// Matches IPv6 next header
+    BF_MATCHER_IP6_NEXTHDR,
     /// Matches against the TCP source port
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port

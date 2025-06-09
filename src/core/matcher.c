@@ -143,6 +143,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP4_PROTO] = "ip4.proto",
     [BF_MATCHER_IP6_SADDR] = "ip6.saddr",
     [BF_MATCHER_IP6_DADDR] = "ip6.daddr",
+    [BF_MATCHER_IP6_NEXTHDR] = "ip6.nexthdr",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
     [BF_MATCHER_TCP_FLAGS] = "tcp.flags",
