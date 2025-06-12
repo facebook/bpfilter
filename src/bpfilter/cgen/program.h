@@ -5,20 +5,12 @@
 
 #pragma once
 
-#include <linux/bpf.h>
-#include <linux/icmp.h>
-#include <linux/icmpv6.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/ipv6.h>
-#include <linux/tcp.h>
-#include <linux/udp.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/printer.h"
+#include "bpfilter/cgen/runtime.h"
 #include "core/chain.h"
 #include "core/dump.h"
 #include "core/flavor.h"
@@ -64,9 +56,9 @@
  * on the stack. This means the verification will fail because the verifier
  * can't verify branches properly.
  *
- * @ref bf_program_context is used to represent the layout of the first stack
- * frame in the program. It is filled during preprocessing and contains data
- * required for packet filtering.
+ * `bf_runtime` is used to represent the layout of the first stack frame in the
+ * program. It is filled during preprocessing and contains data required for
+ * packet filtering.
  *
  * **About preprocessing**
  *
@@ -103,19 +95,6 @@
  * - The program can now start executing the rules. No layer 4 rule will be
  *   executed as @c r8 won't match any protocol ID.
  */
-
-/** Convenience macro to get the offset of a field in @ref
- * bf_program_context based on the frame pointer in @c BPF_REG_10 .
- */
-#define BF_PROG_CTX_OFF(field)                                                 \
-    (-(int)sizeof(struct bf_program_context) +                                 \
-     (int)offsetof(struct bf_program_context, field))
-
-/** Convenience macro to get an address in the scratch area of
- * @ref bf_program_context . */
-#define BF_PROG_SCR_OFF(offset)                                                \
-    (-(int)sizeof(struct bf_program_context) +                                 \
-     (int)offsetof(struct bf_program_context, scratch) + (offset))
 
 #define EMIT(program, x)                                                       \
     ({                                                                         \
@@ -197,91 +176,6 @@ struct bf_marsh;
 struct bf_counter;
 struct bf_link;
 struct bf_hookopts;
-
-/**
- * BPF program runtime context.
- *
- * This structure is used to easily read and write data from the program's
- * stack. At runtime, the first stack frame of each generated program will
- * contain data according to @ref bf_program_context .
- *
- * The generated programs uses BPF dynamic pointer slices to safely access the
- * packet's data. @c bpf_dynptr_slice requires a user-provided buffer into which
- * it might copy the requested data, depending on the BPF program type: that is
- * the purpose of the anonynous unions, big enough to store the supported
- * protocol headers. @c bpf_dynptr_slice returns the address of the requested
- * data, which is either the address of the user-buffer, or the address of the
- * data in the packet (if the data hasn't be copied). The program will store
- * this address into the runtime context (i.e. @c l2 , @c l3 , and
- * @c l4 ), and it will be used to access the packet's data.
- *
- * While earlier versions of this structure contained the L3 and L4 protocol IDs,
- * they have been move to registers instead, as old version of the verifier
- * can't keep track of scalar values in the stack, leading to verification
- * failures.
- *
- * @warning Not all the BPF verifier versions are born equal as older ones might
- * require stack access to be 8-bytes aligned to work properly.
- */
-struct bf_program_context
-{
-    /** Argument passed to the BPF program, its content depends on the BPF
-     * program type. */
-    void *arg;
-
-    /** BPF dynamic pointer representing the packet data. Dynamic pointers are
-     * used with every program type. */
-    struct bpf_dynptr dynptr;
-
-    /** Total size of the packet. */
-    uint64_t pkt_size;
-
-    /** Offset of the layer 3 protocol. */
-    uint32_t l3_offset;
-
-    /** Offset of the layer 4 protocol. */
-    uint32_t l4_offset;
-
-    /** On ingress, index of the input interface. On egress, index of the
-     * output interface. */
-    uint32_t ifindex;
-
-    /** Pointer to the L2 protocol header. */
-    void *l2_hdr;
-
-    /** Pointer to the L3 protocol header. */
-    void *l3_hdr;
-
-    /** Pointer to the L4 protocol header. */
-    void *l4_hdr;
-
-    /** Layer 2 header. */
-    union _bf_l2
-    {
-        struct ethhdr eth;
-    } bf_aligned(8) l2;
-
-    /** Layer 3 header. */
-    union _bf_l3
-    {
-        struct iphdr ip4;
-        struct ipv6hdr ip6;
-    } bf_aligned(8) l3;
-
-    /** Layer 3 header. */
-    union _bf_l4
-    {
-        struct icmphdr icmp;
-        struct udphdr udp;
-        struct tcphdr tcp;
-        struct icmp6hdr icmp6;
-    } bf_aligned(8) l4;
-
-    uint8_t bf_aligned(8) scratch[64];
-} bf_aligned(8);
-
-static_assert(sizeof(struct bf_program_context) % 8 == 0,
-              "struct bf_program_context must be 8-bytes aligned");
 
 struct bf_program
 {

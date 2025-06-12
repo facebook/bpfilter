@@ -133,7 +133,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
     EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_7, BPF_REG_0,
                               offsetof(struct ethhdr, h_proto)));
 
-    // Set bf_program_context.l3_offset
+    // Set bf_runtime.l3_offset
     EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset),
                              sizeof(struct ethhdr)));
 

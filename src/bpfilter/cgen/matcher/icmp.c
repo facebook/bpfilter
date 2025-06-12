@@ -5,6 +5,7 @@
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
+#include <linux/icmp.h>
 #include <linux/icmpv6.h>
 
 #include <errno.h>

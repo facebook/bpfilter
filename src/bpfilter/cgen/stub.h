@@ -44,9 +44,9 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, int skb_reg);
  * - If the slice creation fails, the error counter is updated and the
  *   program accepts the packet
  * - The header address returned by @c bpf_dynptr_slice is stored in
- *   @c bf_program_context.l2_hdr
+ *   `bf_runtime.l2_hdr`
  * - The L3 protocol ID (extracted from the ethertype field) is stored in @c r7
- * - The offset of the L3 header is stored in  @c bf_program_context.l2_offset
+ * - The offset of the L3 header is stored in  `bf_runtime.l2_offset`
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.
