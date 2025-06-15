@@ -14,6 +14,24 @@ file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/tests/harness/*.h       ${CMAKE_SOURCE_DIR}/tests/harness/*.c
 )
 
+# Create a custom rawstubs.h header to be included instead of bpfilter's
+# rawstubs.h, without any included source file ($STUB.inc.c), as those are
+# generated source file and we don't want to check them.
+file(GLOB_RECURSE bf_elfstubs ${CMAKE_SOURCE_DIR}/src/bpfilter/bpf/*.c)
+foreach (stub ${bf_elfstubs})
+    get_filename_component(filename ${stub} NAME_WE)
+
+    set(HDR_INC "${HDR_INC}static const unsigned char ${filename}[1] = {};\nstatic const unsigned int ${filename}_len = 1;\n")
+    set(HDR_DECL "${HDR_DECL}{ .elf = ${filename}, .len = ${filename}_len, },")
+endforeach ()
+
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/tools/cmake/rawstubs.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
+    @ONLY
+)
+
 add_custom_command(
     DEPENDS
         ${CMAKE_BINARY_DIR}/compile_commands.json
@@ -55,6 +73,7 @@ foreach (filepath ${bf_srcs})
                 --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
                 -p ${CMAKE_CURRENT_BINARY_DIR}
                 --extra-arg=-fno-caret-diagnostics
+                --extra-arg-before="-I${CMAKE_CURRENT_BINARY_DIR}/include"
                 ${filepath}
         COMMAND
             ${CLANG_FORMAT_BIN}
