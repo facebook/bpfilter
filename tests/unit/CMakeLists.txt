@@ -40,12 +40,18 @@ function(bf_test_configure_non_build_srcs TARGET)
     endforeach()
 
     foreach(_bf_src IN LISTS _LOCAL_SOURCES)
+        get_source_file_property(
+            IS_HEADER_ONLY ${_bf_src}
+            TARGET_DIRECTORY bpfilter
+            HEADER_FILE_ONLY
+        )
+
         # Get absolute path to source file, and path relative to the project's
         # root directory.
         get_filename_component(_abs_bf_src ${_bf_src} ABSOLUTE)
         file(RELATIVE_PATH _rel_bf_src ${CMAKE_SOURCE_DIR}/src ${_abs_bf_src})
 
-        if (${_rel_bf_src} IN_LIST _test_srcs)
+        if (${_rel_bf_src} IN_LIST _test_srcs OR IS_HEADER_ONLY)
             set_source_files_properties(${_abs_bf_src}
                 PROPERTIES
                     HEADER_FILE_ONLY ON

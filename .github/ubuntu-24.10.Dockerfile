@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     autoconf \
     automake \
     bison \
+    clang \
     clang-tidy \
     clang-format \
     cmake \
@@ -32,7 +33,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-pip \
     python3-scapy \
     python3-setuptools \
-    python3-sphinx && \
+    python3-sphinx \
+    sed \
+    xxd && \
     rm -rf /var/lib/apt/lists/*
 
 RUN pip install --break-system-packages linuxdoc

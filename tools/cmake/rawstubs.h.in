@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+ */
+
+#pragma once
+
+#include <elf.h>
+#include <stddef.h>
+
+struct bpf_insn;
+
+@HDR_INC@
+
+struct bf_rawstub {
+    const void *elf;
+    size_t len;
+} _bf_rawstubs[] = {
+    @HDR_DECL@
+};

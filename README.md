@@ -52,7 +52,7 @@ sudo dnf install -y bpfilter bpfilter-devel
 
 ```shell
 # Essential build requirements
-sudo dnf install -y cmake gcc libbpf-devel libnl3-devel bison flex
+sudo dnf install -y clang cmake gcc libbpf-devel libnl3-devel bison flex sed xxd
 
 # Configure the project and build bpfilter
 cmake -S $SOURCES_DIR -B $BUILD_DIR -DNO_DOCS=ON -DNO_TESTS=ON -DNO_CHECKS=ON -DNO_BENCHMARKS=ON

@@ -14,6 +14,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         gawk \
         bpftool \
         bison \
+        clang \
         clang-tools-extra \
         cmake \
         doxygen \
@@ -38,13 +39,16 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         python3-GitPython \
         python3-linuxdoc \
         python3-scapy \
-        python3-sphinx
+        python3-sphinx \
+        sed \
+        xxd
 
     # Ubuntu 24.04+
     sudo apt-get install -y \
         autoconf \
         automake \
         bison \
+        clang \
         clang-tidy \
         clang-format \
         cmake \
@@ -72,7 +76,9 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         python3-git \
         python3-pip \
         python3-scapy \
-        python3-sphinx
+        python3-sphinx \
+        sed \
+        xxd
 
 You can then use CMake to generate the build system:
 
