@@ -6,7 +6,12 @@ import pathlib
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP as IPv4
 from scapy.layers.inet import TCP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
+from scapy.layers.inet6 import (
+    IPv6,
+    ICMPv6EchoRequest,
+    IPv6ExtHdrHopByHop,
+    IPv6ExtHdrRouting,
+)
 
 packets = [
     {
@@ -38,6 +43,30 @@ packets = [
             src="542c:1a31:f964:946c:5a24:e71e:4d26:b87e",
             dst="5232:185a:52f9:0ab4:8025:7974:2299:eb04",
         )
+        / TCP(sport=31337, dport=31415),
+    },
+    {
+        "name": "pkt_remote_ip6_eh",
+        "family": "NFPROTO_IPV6",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv6(
+            src="542c:1a31:f964:946c:5a24:e71e:4d26:b87e",
+            dst="5232:185a:52f9:0ab4:8025:7974:2299:eb04",
+        )
+        / IPv6ExtHdrHopByHop()
+        / IPv6ExtHdrRouting()
+        / IPv6ExtHdrHopByHop(),
+    },
+    {
+        "name": "pkt_remote_ip6_eh_tcp",
+        "family": "NFPROTO_IPV6",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv6(
+            src="542c:1a31:f964:946c:5a24:e71e:4d26:b87e",
+            dst="5232:185a:52f9:0ab4:8025:7974:2299:eb04",
+        )
+        / IPv6ExtHdrHopByHop()
+        / IPv6ExtHdrRouting()
         / TCP(sport=31337, dport=31415),
     },
     {

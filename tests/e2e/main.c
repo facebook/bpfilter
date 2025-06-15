@@ -1159,6 +1159,32 @@ Test(icmpv6, type_code_v6)
     bft_e2e_test(combo_drop, BF_VERDICT_DROP, pkt_local_ip6_icmp);
 }
 
+Test(ipv6, extension_headers)
+{
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                        (uint8_t[]) { 0xb7, 0x7a },
+                        2
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_eh);
+    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_eh_tcp);
+}
+
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;
