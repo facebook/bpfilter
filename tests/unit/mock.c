@@ -159,3 +159,11 @@ bf_test_mock_define(int, bf_ctx_token, (void))
 
     return mock_type(int);
 }
+
+bf_test_mock_define(int, bf_btf_get_id, (const char *name))
+{
+    if (!bf_test_mock_bf_btf_get_id_is_enabled())
+        return bf_test_mock_real(bf_btf_get_id)(name);
+
+    return mock_type(int);
+}

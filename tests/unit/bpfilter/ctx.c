@@ -19,6 +19,9 @@ Test(ctx, create_delete_assert)
 
 Test(ctx, create_delete)
 {
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_empty(bf_btf_get_id);
+    bf_test_mock_will_return_always(_, 1);
+
     // Rely on the cleanup attrubte
     _free_bf_ctx_ struct bf_ctx *ctx0 = NULL;
 
@@ -47,6 +50,9 @@ Test(ctx, create_delete)
 
 Test(ctx, set_get_chain)
 {
+    _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_empty(bf_btf_get_id);
+    bf_test_mock_will_return_always(_, 1);
+
     // Rely on the cleanup attrubte
     _free_bf_ctx_ struct bf_ctx *ctx = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen0 = bf_test_cgen_quick();
