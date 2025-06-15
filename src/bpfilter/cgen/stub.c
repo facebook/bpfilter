@@ -7,6 +7,7 @@
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
+#include <linux/icmp.h>
 #include <linux/icmpv6.h>
 #include <linux/if_ether.h>
 #include <linux/in.h> // NOLINT
@@ -19,17 +20,21 @@
 #include <endian.h>
 #include <stddef.h>
 
+#include "bpfilter/cgen/elfstub.h"
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/jmp.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/cgen/swich.h"
 #include "bpfilter/opts.h"
+#include "core/btf.h"
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
+
+#define _BF_LOW_EH_BITMASK 0x1801800000000801ULL
 
 /**
  * Generate stub to create a dynptr.
@@ -204,33 +209,84 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
      * function and would jump over the block below, so there is no need to
      * worry about them here. */
     {
-        _clean_bf_swich_ struct bf_swich swich =
-            bf_swich_get(program, BPF_REG_7);
+        // IPv4
+        _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
+            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IP), 0));
 
-        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IP),
-                          BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_0, 0),
-                          BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0f),
-                          BPF_ALU64_IMM(BPF_LSH, BPF_REG_1, 2),
-                          BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10,
-                                      BF_PROG_CTX_OFF(l3_offset)),
-                          BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2),
-                          BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1,
-                                      BF_PROG_CTX_OFF(l4_offset)),
-                          BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
-                                      offsetof(struct iphdr, protocol)));
-        EMIT_SWICH_OPTION(&swich, htobe16(ETH_P_IPV6),
-                          BPF_MOV64_IMM(BPF_REG_1, sizeof(struct ipv6hdr)),
-                          BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10,
-                                      BF_PROG_CTX_OFF(l3_offset)),
-                          BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2),
-                          BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1,
-                                      BF_PROG_CTX_OFF(l4_offset)),
-                          BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
-                                      offsetof(struct ipv6hdr, nexthdr)));
+        EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_0, 0));
+        EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0f));
+        EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_1, 2));
+        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(l3_offset)));
+        EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2));
+        EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1,
+                                  BF_PROG_CTX_OFF(l4_offset)));
+        EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
+                                  offsetof(struct iphdr, protocol)));
+    }
 
-        r = bf_swich_generate(&swich);
-        if (r)
-            return r;
+    {
+        // IPv6
+        struct bf_jmpctx tcpjmp, udpjmp, noehjmp, ehjmp;
+        struct bpf_insn ld64[2] = {BPF_LD_IMM64(BPF_REG_2, _BF_LOW_EH_BITMASK)};
+        _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
+            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IPV6), 0));
+
+        EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
+                                  offsetof(struct ipv6hdr, nexthdr)));
+
+        /* Fast path for TCP and UDP: quickly recognize the most used protocol
+         * to process them as fast as possible. */
+        tcpjmp = bf_jmpctx_get(program,
+                               BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, IPPROTO_TCP, 0));
+        udpjmp = bf_jmpctx_get(program,
+                               BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, IPPROTO_UDP, 0));
+
+        /* For all the EH protocol numbers <64, use a bitmask:
+         * mask = (1<<0) | (1<<43) | (1<<44) | (1<<50) | (1<<51) | (1<<60)
+         *
+         * Pseudo-code:
+         * - r3 = 1 << r8 (nexthdr)
+         * - r3 = r3 & mask
+         * - if r3 != 0: go to slow path (EH present) */
+        EMIT(program, ld64[0]);
+        EMIT(program, ld64[1]);
+        EMIT(program, BPF_JMP_IMM(BPF_JGE, BPF_REG_8, 64, 4));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_3, 1));
+        EMIT(program, BPF_ALU64_REG(BPF_LSH, BPF_REG_3, BPF_REG_8));
+        EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_3, BPF_REG_2));
+        EMIT(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_3, 0, 4));
+
+        // EH with protocol numbers >64 are processed individually
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, 135, 3));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, 139, 2));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, 140, 1));
+
+        // If no EH matched, nexthdr is L4, skip EH processing
+        noehjmp = bf_jmpctx_get(program, BPF_JMP_A(0));
+
+        // Process EH
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PARSE_IPV6_EH);
+        EMIT(program, BPF_MOV64_REG(BPF_REG_8, BPF_REG_0));
+
+        ehjmp = bf_jmpctx_get(program, BPF_JMP_A(0));
+
+        // If no EH found, all the jmp will end up here
+        bf_jmpctx_cleanup(&tcpjmp);
+        bf_jmpctx_cleanup(&udpjmp);
+        bf_jmpctx_cleanup(&noehjmp);
+
+        // Process IPv6 header, no EH (BPF_REG_8 already contains nexthdr)
+        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(l3_offset)));
+        EMIT(program,
+             BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, sizeof(struct ipv6hdr)));
+        EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2,
+                                  BF_PROG_CTX_OFF(l4_offset)));
+
+        bf_jmpctx_cleanup(&ehjmp);
     }
 
     return 0;
