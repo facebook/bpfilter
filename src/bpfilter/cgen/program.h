@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "bpfilter/cgen/elfstub.h"
 #include "bpfilter/cgen/fixup.h"
 #include "bpfilter/cgen/printer.h"
 #include "bpfilter/cgen/runtime.h"
@@ -124,6 +125,13 @@
             return __r;                                                        \
     })
 
+#define EMIT_FIXUP_ELFSTUB(program, elfstub_id)                                \
+    ({                                                                         \
+        int __r = bf_program_emit_fixup_elfstub((program), (elfstub_id));      \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
 #define EMIT_FIXUP_JMP_NEXT_RULE(program, insn)                                \
     ({                                                                         \
         int __r = bf_program_emit_fixup(                                       \
@@ -197,6 +205,7 @@ struct bf_program
 
     /* Bytecode */
     uint32_t functions_location[_BF_FIXUP_FUNC_MAX];
+    uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
     struct bpf_insn *img;
     size_t img_size;
     size_t img_cap;
@@ -240,6 +249,8 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           const union bf_fixup_attr *attr);
 int bf_program_emit_fixup_call(struct bf_program *program,
                                enum bf_fixup_func function);
+int bf_program_emit_fixup_elfstub(struct bf_program *program,
+                                  enum bf_elfstub_id id);
 int bf_program_generate(struct bf_program *program);
 
 /**

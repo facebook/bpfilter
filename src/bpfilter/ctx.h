@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 
+#include "bpfilter/cgen/elfstub.h"
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/hook.h"
@@ -172,3 +173,11 @@ int bf_ctx_get_pindir_fd(void);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_ctx_rm_pindir(void);
+
+/**
+ * @brief Get a ELF stub from its ID.
+ *
+ * @param id ID of the ELF stub to retrieve.
+ * @return The requested ELF stub.
+ */
+const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);

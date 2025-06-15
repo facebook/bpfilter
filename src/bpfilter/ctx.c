@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "bpfilter/cgen/cgen.h"
+#include "bpfilter/cgen/elfstub.h"
 #include "bpfilter/opts.h"
 #include "core/bpf.h"
 #include "core/btf.h"
@@ -43,6 +44,8 @@ struct bf_ctx
     int token_fd;
 
     bf_list cgens;
+
+    struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
 };
 
 static void _bf_ctx_free(struct bf_ctx **ctx);
@@ -92,7 +95,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
 
     bf_assert(ctx);
 
-    _ctx = malloc(sizeof(*_ctx));
+    _ctx = calloc(1, sizeof(*_ctx));
     if (!_ctx)
         return -ENOMEM;
 
@@ -121,6 +124,12 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
     }
 
     _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_marsh);
+
+    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
+        r = bf_elfstub_new(&_ctx->stubs[id], id);
+        if (r)
+            return bf_err_r(r, "failed to create ELF stub ID %u", id);
+    }
 
     *ctx = TAKE_PTR(_ctx);
 
@@ -189,6 +198,10 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
     bf_ns_clean(&(*ctx)->ns);
     closep(&(*ctx)->token_fd);
     bf_list_clean(&(*ctx)->cgens);
+
+    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
+        bf_elfstub_free(&(*ctx)->stubs[id]);
+
     freep((void *)ctx);
 }
 
@@ -517,4 +530,9 @@ int bf_ctx_rm_pindir(void)
         return bf_err_r(r, "failed to remove bpfilter bpffs directory");
 
     return 0;
+}
+
+const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
+{
+    return _bf_global_ctx->stubs[id];
 }

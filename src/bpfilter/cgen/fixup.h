@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include "bpfilter/cgen/elfstub.h"
 #include "core/dump.h"
 
 /**
@@ -48,6 +49,8 @@ enum bf_fixup_type
     BF_FIXUP_TYPE_SET_MAP_FD,
     /// Jump to a custom function.
     BF_FIXUP_TYPE_FUNC_CALL,
+    /// Call an ELF stub.
+    BF_FIXUP_ELFSTUB_CALL,
     _BF_FIXUP_TYPE_MAX
 };
 
@@ -55,6 +58,7 @@ union bf_fixup_attr
 {
     size_t set_index;
     enum bf_fixup_func function;
+    enum bf_elfstub_id elfstub_id;
 };
 
 struct bf_fixup
