@@ -527,6 +527,14 @@ static int _bf_program_fixup(struct bf_program *program,
             bf_assert(offset < INT_MAX);
             value = (int32_t)offset;
             break;
+        case BF_FIXUP_ELFSTUB_CALL:
+            insn_type = BF_FIXUP_INSN_IMM;
+            offset = program->elfstubs_location[fixup->attr.elfstub_id] -
+                     fixup->insn - 1;
+            if (offset >= INT_MAX)
+                return bf_err_r(-EINVAL, "invalid ELF stub call offset");
+            value = (int32_t)offset;
+            break;
         default:
             bf_abort("unsupported fixup type, this should not happen: %d",
                      type);
@@ -702,6 +710,44 @@ static int _bf_program_generate_update_counters(struct bf_program *program)
     return 0;
 }
 
+static int _bf_program_generate_elfstubs(struct bf_program *program)
+{
+    const struct bf_elfstub *elfstub;
+    int r;
+
+    bf_assert(program);
+
+    bf_list_foreach (&program->fixups, fixup_node) {
+        struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
+        size_t off = program->img_size;
+
+        if (fixup->type != BF_FIXUP_ELFSTUB_CALL)
+            continue;
+
+        // Only generate each function once
+        if (program->elfstubs_location[fixup->attr.elfstub_id])
+            continue;
+
+        bf_dbg("generate ELF stub for ID %d", fixup->attr.elfstub_id);
+
+        elfstub = bf_ctx_get_elfstub(fixup->attr.elfstub_id);
+        if (!elfstub) {
+            return bf_err_r(-ENOENT, "no ELF stub found for ID %d",
+                            fixup->attr.elfstub_id);
+        }
+
+        for (size_t i = 0; i < elfstub->ninsns; ++i) {
+            r = bf_program_emit(program, elfstub->insns[i]);
+            if (r)
+                return bf_err_r(r, "failed to insert ELF stub instruction");
+        }
+
+        program->elfstubs_location[fixup->attr.elfstub_id] = off;
+    }
+
+    return 0;
+}
+
 static int _bf_program_generate_functions(struct bf_program *program)
 {
     int r;
@@ -845,6 +891,37 @@ int bf_program_emit_fixup_call(struct bf_program *program,
     return 0;
 }
 
+int bf_program_emit_fixup_elfstub(struct bf_program *program,
+                                  enum bf_elfstub_id id)
+{
+    _free_bf_fixup_ struct bf_fixup *fixup = NULL;
+    int r;
+
+    bf_assert(program);
+
+    if (program->img_size == program->img_cap) {
+        r = bf_program_grow_img(program);
+        if (r)
+            return r;
+    }
+
+    r = bf_fixup_new(&fixup, BF_FIXUP_ELFSTUB_CALL, program->img_size, NULL);
+    if (r)
+        return r;
+
+    fixup->attr.elfstub_id = id;
+
+    r = bf_list_add_tail(&program->fixups, fixup);
+    if (r)
+        return r;
+
+    TAKE_PTR(fixup);
+
+    EMIT(program, BPF_CALL_REL(0));
+
+    return 0;
+}
+
 int bf_program_generate(struct bf_program *program)
 {
     const struct bf_chain *chain = program->runtime.chain;
@@ -890,6 +967,14 @@ int bf_program_generate(struct bf_program *program)
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL);
     if (r)
         return bf_err_r(r, "failed to generate function call fixups");
+
+    r = _bf_program_generate_elfstubs(program);
+    if (r)
+        return r;
+
+    r = _bf_program_fixup(program, BF_FIXUP_ELFSTUB_CALL);
+    if (r)
+        return bf_err_r(r, "failed to generate ELF stub call fixups");
 
     return 0;
 }
@@ -1055,6 +1140,9 @@ int bf_program_load(struct bf_program *prog)
         }
     }
 
+    if (bf_opts_is_verbose(BF_VERBOSE_BYTECODE))
+        bf_program_dump_bytecode(prog);
+
     r = bf_bpf_prog_load(
         prog->prog_name, bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
         prog->img, prog->img_size,
@@ -1064,9 +1152,6 @@ int bf_program_load(struct bf_program *prog)
         return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
                         prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
     }
-
-    if (bf_opts_is_verbose(BF_VERBOSE_BYTECODE))
-        bf_program_dump_bytecode(prog);
 
     return r;
 }

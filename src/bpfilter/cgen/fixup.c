@@ -47,6 +47,7 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
         [BF_FIXUP_TYPE_PRINTER_MAP_FD] = "BF_FIXUP_TYPE_PRINTER_MAP_FD",
         [BF_FIXUP_TYPE_SET_MAP_FD] = "BF_FIXUP_TYPE_SET_MAP_FD",
         [BF_FIXUP_TYPE_FUNC_CALL] = "BF_FIXUP_TYPE_FUNC_CALL",
+        [BF_FIXUP_ELFSTUB_CALL] = "BF_FIXUP_ELFSTUB_CALL",
     };
 
     bf_assert(0 <= type && type < _BF_FIXUP_TYPE_MAX);
