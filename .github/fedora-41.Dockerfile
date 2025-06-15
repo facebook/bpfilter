@@ -6,6 +6,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     gawk \
     bpftool \
     bison \
+    clang \
     clang-tools-extra \
     cmake \
     doxygen \
@@ -30,5 +31,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     python3-GitPython \
     python3-linuxdoc \
     python3-scapy \
-    python3-sphinx && \
+    python3-sphinx \
+    sed \
+    xxd && \
     dnf clean all -y
