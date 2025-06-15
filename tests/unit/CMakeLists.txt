@@ -84,6 +84,8 @@ function(bf_test_mock TARGET)
     endforeach()
 endfunction()
 
+include(ElfStubs)
+
 enable_testing()
 
 set(bf_test_srcs
@@ -130,6 +132,15 @@ add_executable(unit_bin EXCLUDE_FROM_ALL
     ${lib_srcs}
 )
 
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/bpfilter/cgen)
+bf_target_add_elfstubs(unit_bin
+    DIR ${CMAKE_SOURCE_DIR}/src/bpfilter/bpf
+    SYM_PREFIX "_bf_rawstubs_"
+    DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
+    STUBS
+        "parse_ipv6_eh"
+)
+
 bf_test_configure_non_build_srcs(unit_bin
     TESTS
         ${bf_test_srcs}
@@ -155,6 +166,7 @@ target_include_directories(unit_bin
         ${CMAKE_SOURCE_DIR}/src         # First look for headers in src/
         ${CMAKE_CURRENT_SOURCE_DIR}     # Then use overrides in tests/units
         ${CMAKE_BINARY_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
 target_link_libraries(unit_bin
@@ -168,6 +180,7 @@ bf_test_mock(unit_bin
     FUNCTIONS
         bf_bpf
         bf_bpf_obj_get
+        bf_btf_get_id
         bf_ctx_token
         btf__load_vmlinux_btf
         calloc
