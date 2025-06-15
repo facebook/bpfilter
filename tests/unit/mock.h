@@ -36,3 +36,4 @@ bf_test_mock_declare(int, snprintf,
                     (char *str, size_t size, const char *fmt, ...));
 bf_test_mock_declare(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr));
 bf_test_mock_declare(int, bf_ctx_token, (void));
+bf_test_mock_declare(int, bf_btf_get_id, (const char *name));
