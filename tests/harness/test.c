@@ -211,7 +211,8 @@ int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
     return 0;
 }
 
-int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests, void *sentinel)
+int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests,
+                                void *sentinel)
 {
     _free_bf_list_ bf_list *symbols = NULL;
     _free_bf_test_suite_ bf_test_suite *_suite = NULL;

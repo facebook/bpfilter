@@ -157,7 +157,8 @@ int bf_test_suite_make_cmtests(const bf_test_suite *suite);
  *        tests section ends. Can't be NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests, void *sentinel);
+int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests,
+                                void *sentinel);
 
 /**
  * A filter to apply to the tests to run.

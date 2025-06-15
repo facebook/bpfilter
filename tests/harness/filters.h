@@ -32,18 +32,25 @@
 
 #define BF_E2E_NAME "bf_e2e"
 
+// clang-format off
 #define bft_fake_matchers                                                      \
     (struct bf_matcher *[])                                                    \
     {                                                                          \
         bf_matcher_get(                                                        \
             BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,                               \
-            (uint8_t[]) {0x7d, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00}, 8),  \
+            (uint8_t[]) {0x7d, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00},      \
+            8                                                                  \
+        ),                                                                     \
         bf_matcher_get(                                                        \
             BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,                               \
-            (uint8_t[]) {0x7e, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00}, 8),  \
+            (uint8_t[]) {0x7e, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00},      \
+            8                                                                  \
+        ),                                                                     \
         bf_matcher_get(                                                        \
             BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,                               \
-            (uint8_t[]) {0x7f, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00}, 8),  \
+            (uint8_t[]) {0x7f, 0x02, 0x0a, 0x0b, 0xff, 0xff, 0x00, 0x00},      \
+            8                                                                  \
+        ),                                                                     \
         NULL,                                                                  \
     }
 
@@ -56,6 +63,7 @@
         bf_rule_get(false, BF_VERDICT_DROP, bft_fake_matchers),                \
         NULL,                                                                  \
     }
+// clang-format on
 
 /**
  * Create a new hook options object.

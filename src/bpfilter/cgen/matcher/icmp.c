@@ -39,7 +39,7 @@ static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
 }
 
 static int _bf_matcher_generate_icmp6_fields(struct bf_program *program,
-                                            const struct bf_matcher *matcher)
+                                             const struct bf_matcher *matcher)
 {
     size_t offset = matcher->type == BF_MATCHER_ICMPV6_TYPE ?
                         offsetof(struct icmp6hdr, icmp6_type) :
@@ -54,14 +54,14 @@ static int _bf_matcher_generate_icmp6_fields(struct bf_program *program,
 }
 
 static int _bf_matcher_generate_icmp4_fields(struct bf_program *program,
-                                            const struct bf_matcher *matcher)
+                                             const struct bf_matcher *matcher)
 {
     size_t offset = matcher->type == BF_MATCHER_ICMP_TYPE ?
                         offsetof(struct icmphdr, type) :
                         offsetof(struct icmphdr, code);
 
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_8, IPPROTO_ICMP, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program,
+                             BPF_JMP_IMM(BPF_JNE, BPF_REG_8, IPPROTO_ICMP, 0));
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
 
