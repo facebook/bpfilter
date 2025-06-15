@@ -4,6 +4,8 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
 
+include(ElfStubs)
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/bpfilter.service.in
     ${CMAKE_BINARY_DIR}/output/usr/lib/systemd/system/bpfilter.service
@@ -17,6 +19,7 @@ add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.c
@@ -51,6 +54,15 @@ add_executable(bpfilter
     ${CMAKE_SOURCE_DIR}/src/external/murmur3.h           ${CMAKE_SOURCE_DIR}/src/external/murmur3.c
 )
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen)
+bf_target_add_elfstubs(bpfilter
+    DIR ${CMAKE_CURRENT_SOURCE_DIR}/bpf
+    SYM_PREFIX "_bf_rawstubs_"
+    DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
+    STUBS
+        "parse_ipv6_eh"
+)
+
 target_compile_definitions(bpfilter
     PRIVATE
         BF_CONTACT="${BF_CONTACT}"
@@ -60,6 +72,7 @@ target_include_directories(bpfilter
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_BINARY_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
 target_link_libraries(bpfilter
