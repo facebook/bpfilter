@@ -21,18 +21,6 @@ enum bf_fixup_insn
 };
 
 /**
- * Custom function to call.
- *
- * A fixup can be used to jump to a custom function defined later in the
- * BPF program. This enum contains the list of functions available.
- */
-enum bf_fixup_func
-{
-    BF_FIXUP_FUNC_UPDATE_COUNTERS,
-    _BF_FIXUP_FUNC_MAX,
-};
-
-/**
  * Type of the fixup.
  *
  * Defines how a fixup should be processed.
@@ -47,8 +35,6 @@ enum bf_fixup_type
     BF_FIXUP_TYPE_PRINTER_MAP_FD,
     /// Set a set map file descriptor in the @c BPF_LD_MAP_FD instruction.
     BF_FIXUP_TYPE_SET_MAP_FD,
-    /// Jump to a custom function.
-    BF_FIXUP_TYPE_FUNC_CALL,
     /// Call an ELF stub.
     BF_FIXUP_ELFSTUB_CALL,
     _BF_FIXUP_TYPE_MAX
@@ -57,7 +43,6 @@ enum bf_fixup_type
 union bf_fixup_attr
 {
     size_t set_index;
-    enum bf_fixup_func function;
     enum bf_elfstub_id elfstub_id;
 };
 

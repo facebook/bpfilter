@@ -46,7 +46,6 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
         [BF_FIXUP_TYPE_COUNTERS_MAP_FD] = "BF_FIXUP_TYPE_COUNTERS_MAP_FD",
         [BF_FIXUP_TYPE_PRINTER_MAP_FD] = "BF_FIXUP_TYPE_PRINTER_MAP_FD",
         [BF_FIXUP_TYPE_SET_MAP_FD] = "BF_FIXUP_TYPE_SET_MAP_FD",
-        [BF_FIXUP_TYPE_FUNC_CALL] = "BF_FIXUP_TYPE_FUNC_CALL",
         [BF_FIXUP_ELFSTUB_CALL] = "BF_FIXUP_ELFSTUB_CALL",
     };
 
@@ -54,18 +53,6 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
     static_assert(ARRAY_SIZE(str) == _BF_FIXUP_TYPE_MAX);
 
     return str[type];
-}
-
-static const char *_bf_fixup_func_to_str(enum bf_fixup_func func)
-{
-    static const char *str[] = {
-        [BF_FIXUP_FUNC_UPDATE_COUNTERS] = "BF_FIXUP_FUNC_UPDATE_COUNTERS",
-    };
-
-    bf_assert(0 <= func && func < _BF_FIXUP_FUNC_MAX);
-    static_assert(ARRAY_SIZE(str) == _BF_FIXUP_FUNC_MAX);
-
-    return str[func];
 }
 
 void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
@@ -88,10 +75,6 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
         break;
     case BF_FIXUP_TYPE_SET_MAP_FD:
         DUMP(prefix, "set_index: %lu", fixup->attr.set_index);
-        break;
-    case BF_FIXUP_TYPE_FUNC_CALL:
-        DUMP(prefix, "function: %s",
-             _bf_fixup_func_to_str(fixup->attr.function));
         break;
     default:
         DUMP(prefix, "unsupported bf_fixup_type: %d", fixup->type);
