@@ -616,10 +616,11 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (rule->counters) {
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_1, rule->index));
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10,
-                                  BF_PROG_CTX_OFF(pkt_size)));
-        EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+        EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, rule->index));
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
     }
 
     switch (rule->verdict) {
@@ -982,10 +983,12 @@ int bf_program_generate(struct bf_program *program)
         return r;
 
     // Call the update counters function
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_1, bf_list_size(&chain->rules)));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);
     EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, BF_PROG_CTX_OFF(pkt_size)));
-    EMIT_FIXUP_CALL(program, BF_FIXUP_FUNC_UPDATE_COUNTERS);
+         BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
+    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
     EMIT(program, BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
                                                chain->policy)));
