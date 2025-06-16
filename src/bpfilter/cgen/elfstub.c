@@ -18,6 +18,31 @@
 static_assert(ARRAY_SIZE(_bf_rawstubs) == _BF_ELFSTUB_MAX,
               "_bf_rawstubs doesn't contain as many entries as bf_elfstub_id");
 
+#define _free_bf_printk_str_ __attribute__((cleanup(_bf_printk_str_free)))
+
+static int _bf_printk_str_new(struct bf_printk_str **pstr, size_t insn_idx,
+                              const char *str)
+{
+    bf_assert(pstr && str);
+
+    *pstr = malloc(sizeof(struct bf_printk_str));
+    if (!*pstr)
+        return -ENOMEM;
+
+    (*pstr)->insn_idx = insn_idx;
+    (*pstr)->str = str;
+
+    return 0;
+}
+
+static void _bf_printk_str_free(struct bf_printk_str **pstr)
+{
+    if (!*pstr)
+        return;
+
+    freep((void *)pstr);
+}
+
 static int _bf_elfstub_prepare(struct bf_elfstub *stub,
                                const struct bf_rawstub *raw)
 {
@@ -26,10 +51,12 @@ static int _bf_elfstub_prepare(struct bf_elfstub *stub,
     Elf64_Shdr *shdrs;
     Elf64_Shdr *symtab = NULL;
     Elf64_Shdr *symstrtab = NULL;
+    Elf64_Shdr *rodata_shdr = NULL;
     Elf64_Sym *symbols;
     char *sym_strtab;
     size_t sym_count;
     char *strtab;
+    int r;
 
     if (raw->len < sizeof(Elf64_Ehdr))
         return bf_err_r(-EINVAL, "invalid ELF header (wrong header size)");
@@ -78,14 +105,13 @@ static int _bf_elfstub_prepare(struct bf_elfstub *stub,
 
     // Find symbol table and its string table
     for (int i = 0; i < ehdr->e_shnum; i++) {
-        if (shdrs[i].sh_type != SHT_SYMTAB)
-            continue;
-
-        symtab = &shdrs[i];
-        if (shdrs[i].sh_link < ehdr->e_shnum)
-            symstrtab = &shdrs[shdrs[i].sh_link];
-
-        break;
+        if (shdrs[i].sh_type == SHT_SYMTAB) {
+            symtab = &shdrs[i];
+            if (shdrs[i].sh_link < ehdr->e_shnum)
+                symstrtab = &shdrs[shdrs[i].sh_link];
+        } else if (bf_streq(&strtab[shdrs[i].sh_name], ".rodata")) {
+            rodata_shdr = &shdrs[i];
+        }
     }
 
     if (!symtab || !symstrtab)
@@ -134,6 +160,22 @@ static int _bf_elfstub_prepare(struct bf_elfstub *stub,
                     bf_dbg("updated stub to call '%s' from instruction %lu",
                            name, idx);
                 }
+            } else if (type == R_BPF_64_64 && rodata_shdr) {
+                _free_bf_printk_str_ struct bf_printk_str *pstr = NULL;
+                size_t insn_idx = rels[j].r_offset / 8;
+                size_t str_offset = stub->insns[insn_idx].imm;
+                const char *str =
+                    raw->elf + rodata_shdr->sh_offset + str_offset;
+
+                r = _bf_printk_str_new(&pstr, insn_idx, str);
+                if (r)
+                    return bf_err_r(r, "failed to create printk_str");
+
+                r = bf_list_add_tail(&stub->strs, pstr);
+                if (r)
+                    return bf_err_r(r, "failed to add printk_str to elfstub");
+
+                TAKE_PTR(pstr);
             }
         }
     }
@@ -152,6 +194,8 @@ int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id)
     if (!_stub)
         return -ENOMEM;
 
+    _stub->strs = bf_list_default(_bf_printk_str_free, NULL);
+
     r = _bf_elfstub_prepare(_stub, &_bf_rawstubs[id]);
     if (r)
         return r;
@@ -168,6 +212,7 @@ void bf_elfstub_free(struct bf_elfstub **stub)
     if (!*stub)
         return;
 
+    bf_list_clean(&(*stub)->strs);
     freep((void *)&(*stub)->insns);
     freep((void *)stub);
 }
