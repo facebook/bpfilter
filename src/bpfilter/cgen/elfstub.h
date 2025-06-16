@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#include "core/list.h"
+
 /**
  * @file elfstub.h
  *
@@ -62,6 +64,9 @@
  *
  * Those limitations might evolve, as new BPF features are developed and the ELF
  * stub implementation is improved.
+ *
+ * While map are not supported, `bpf_printk()` can be used, as bpfilter is
+ * able to add the strings to its own map.
  */
 
 struct bpf_insn;
@@ -89,6 +94,12 @@ enum bf_elfstub_id
     _BF_ELFSTUB_MAX,
 };
 
+struct bf_printk_str
+{
+    size_t insn_idx;
+    const char *str;
+};
+
 /**
  * @brief Processed ELF stub to be integrated into a BPF program.
  */
@@ -97,6 +108,7 @@ struct bf_elfstub
     enum bf_elfstub_id id;
     struct bpf_insn *insns;
     size_t ninsns;
+    bf_list strs;
 };
 
 #define _free_bf_elfstub_ __attribute__((__cleanup__(bf_elfstub_free)))

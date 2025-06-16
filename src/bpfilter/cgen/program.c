@@ -713,6 +713,7 @@ static int _bf_program_generate_update_counters(struct bf_program *program)
 static int _bf_program_generate_elfstubs(struct bf_program *program)
 {
     const struct bf_elfstub *elfstub;
+    size_t start_at;
     int r;
 
     bf_assert(program);
@@ -724,7 +725,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
         if (fixup->type != BF_FIXUP_ELFSTUB_CALL)
             continue;
 
-        // Only generate each function once
+        // Only generate each ELF stub once
         if (program->elfstubs_location[fixup->attr.elfstub_id])
             continue;
 
@@ -736,10 +737,40 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
                             fixup->attr.elfstub_id);
         }
 
+        start_at = program->img_size;
+
         for (size_t i = 0; i < elfstub->ninsns; ++i) {
             r = bf_program_emit(program, elfstub->insns[i]);
             if (r)
                 return bf_err_r(r, "failed to insert ELF stub instruction");
+        }
+
+        bf_list_foreach (&elfstub->strs, pstr_node) {
+            _free_bf_fixup_ struct bf_fixup *fixup = NULL;
+            struct bf_printk_str *pstr = bf_list_node_get_data(pstr_node);
+            size_t insn_idx = start_at + pstr->insn_idx;
+            const struct bf_printer_msg *msg =
+                bf_printer_add_msg(program->printer, pstr->str);
+            struct bpf_insn ld_insn[2] = {
+                BPF_LD_MAP_FD(BPF_REG_1, 0),
+            };
+
+            ld_insn[0].src_reg = BPF_PSEUDO_MAP_VALUE;
+            ld_insn[1].imm = (int)bf_printer_msg_offset(msg);
+
+            program->img[insn_idx] = ld_insn[0];
+            program->img[insn_idx + 1] = ld_insn[1];
+
+            r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_PRINTER_MAP_FD, insn_idx,
+                             NULL);
+            if (r)
+                return r;
+
+            r = bf_list_add_tail(&program->fixups, fixup);
+            if (r)
+                return r;
+
+            TAKE_PTR(fixup);
         }
 
         program->elfstubs_location[fixup->attr.elfstub_id] = off;
