@@ -6,6 +6,11 @@ Bytecode generation
 
 .. doxygenfile:: program.h
 
+ELF stubs
+---------
+
+.. doxygenfile:: elfstub.h
+
 Switch-cases
 ------------
 
