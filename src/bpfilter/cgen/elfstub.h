@@ -85,12 +85,25 @@ enum bf_elfstub_id
      * `__u8 bf_parse_ipv6(struct bf_runtime *ctx)`
      *
      * **Parameters**
-     * - `ctx`: Address of the `bf_runtime` context of the program.
+     * - `ctx`: address of the `bf_runtime` context of the program.
      *
      * **Return** The L4 protocol on success, or 0 if the program fails creating
      *            a dynamic pointer slice.
      */
     BF_ELFSTUB_PARSE_IPV6_EH,
+    /**
+     * Update the counters for a given rule.
+     *
+     * `__u8 bf_update_counters(struct bf_runtime *ctx, void *map, __u64 key)`
+     *
+     * **Parameters**
+     * - `ctx`: address of the `bf_runtime` context of the program.
+     * - `map`: address of the counters map.
+     * - `key`: key of the map to update.
+     *
+     * **Return** 0 on success, or 1 on error.
+     */
+    BF_ELFSTUB_UPDATE_COUNTERS,
     _BF_ELFSTUB_MAX,
 };
 
