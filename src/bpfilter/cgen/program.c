@@ -520,13 +520,6 @@ static int _bf_program_fixup(struct bf_program *program,
             insn_type = BF_FIXUP_INSN_IMM;
             value = map->fd;
             break;
-        case BF_FIXUP_TYPE_FUNC_CALL:
-            insn_type = BF_FIXUP_INSN_IMM;
-            offset = program->functions_location[fixup->attr.function] -
-                     fixup->insn - 1;
-            bf_assert(offset < INT_MAX);
-            value = (int32_t)offset;
-            break;
         case BF_FIXUP_ELFSTUB_CALL:
             insn_type = BF_FIXUP_INSN_IMM;
             offset = program->elfstubs_location[fixup->attr.elfstub_id] -
@@ -647,70 +640,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
     return 0;
 }
 
-/**
- * Generate the BPF function to update a rule's counters.
- *
- * This function defines a new function **in** the generated BPF program to
- * be called during packet processing.
- *
- * Parameters:
- * - @c r1 : index of the rule to update the counters for.
- * - @c r2 : size of the packet.
- * Returns:
- * 0 on success, non-zero on error.
- *
- * @param program Program to emit the function into. Can not be NULL.
- * @return 0 on success, or negative errno value on error.
- */
-static int _bf_program_generate_update_counters(struct bf_program *program)
-{
-    // Move the counters key in scratch[0..4] and the packet size in scratch[8..15]
-    EMIT(program,
-         BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_1, BF_PROG_SCR_OFF(0)));
-    EMIT(program,
-         BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
-
-    // Call bpf_map_lookup_elem()
-    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_1);
-    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
-    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
-
-    // If the counters doesn't exist, return from the function
-    {
-        _clean_bf_jmpctx_ struct bf_jmpctx _ =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
-
-        if (bf_opts_is_verbose(BF_VERBOSE_BPF))
-            EMIT_PRINT(program, "failed to fetch the rule's counters");
-
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_0, 1));
-        EMIT(program, BPF_EXIT_INSN());
-    }
-
-    // Increment the packets count by 1.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0,
-                              offsetof(struct bf_counter, packets)));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, 1));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1,
-                              offsetof(struct bf_counter, packets)));
-
-    // Increase the total byte by the size of the packet.
-    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_0,
-                              offsetof(struct bf_counter, bytes)));
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_10, BF_PROG_SCR_OFF(8)));
-    EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_1, BPF_REG_2));
-    EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_0, BPF_REG_1,
-                              offsetof(struct bf_counter, bytes)));
-
-    // On success, return 0
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_0, 0));
-    EMIT(program, BPF_EXIT_INSN());
-
-    return 0;
-}
-
 static int _bf_program_generate_elfstubs(struct bf_program *program)
 {
     const struct bf_elfstub *elfstub;
@@ -775,44 +704,6 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
         }
 
         program->elfstubs_location[fixup->attr.elfstub_id] = off;
-    }
-
-    return 0;
-}
-
-static int _bf_program_generate_functions(struct bf_program *program)
-{
-    int r;
-
-    bf_assert(program);
-
-    bf_list_foreach (&program->fixups, fixup_node) {
-        struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
-        size_t off = program->img_size;
-
-        if (fixup->type != BF_FIXUP_TYPE_FUNC_CALL)
-            continue;
-
-        bf_assert(fixup->attr.function >= 0 &&
-                  fixup->attr.function < _BF_FIXUP_FUNC_MAX);
-
-        // Only generate each function once
-        if (program->functions_location[fixup->attr.function])
-            continue;
-
-        switch (fixup->attr.function) {
-        case BF_FIXUP_FUNC_UPDATE_COUNTERS:
-            r = _bf_program_generate_update_counters(program);
-            if (r)
-                return r;
-            break;
-        default:
-            bf_abort("unsupported fixup function, this should not happen: %d",
-                     fixup->attr.function);
-            break;
-        }
-
-        program->functions_location[fixup->attr.function] = off;
     }
 
     return 0;
@@ -888,41 +779,6 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     return 0;
 }
 
-int bf_program_emit_fixup_call(struct bf_program *program,
-                               enum bf_fixup_func function)
-{
-    _free_bf_fixup_ struct bf_fixup *fixup = NULL;
-    int r;
-
-    bf_assert(program);
-
-    if (program->img_size == program->img_cap) {
-        r = bf_program_grow_img(program);
-        if (r)
-            return r;
-    }
-
-    r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_FUNC_CALL, program->img_size, NULL);
-    if (r)
-        return r;
-
-    fixup->attr.function = function;
-
-    r = bf_list_add_tail(&program->fixups, fixup);
-    if (r)
-        return r;
-
-    TAKE_PTR(fixup);
-
-    /* This call could fail and return an error, in which case it is not
-     * properly handled. However, this shouldn't be an issue as we previously
-     * test whether enough room is available in cgen.img, which is currently
-     * the only reason for EMIT() to fail. */
-    EMIT(program, BPF_CALL_REL(0));
-
-    return 0;
-}
-
 int bf_program_emit_fixup_elfstub(struct bf_program *program,
                                   enum bf_elfstub_id id)
 {
@@ -993,14 +849,6 @@ int bf_program_generate(struct bf_program *program)
     EMIT(program, BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
                                                chain->policy)));
     EMIT(program, BPF_EXIT_INSN());
-
-    r = _bf_program_generate_functions(program);
-    if (r)
-        return r;
-
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_FUNC_CALL);
-    if (r)
-        return bf_err_r(r, "failed to generate function call fixups");
 
     r = _bf_program_generate_elfstubs(program);
     if (r)
