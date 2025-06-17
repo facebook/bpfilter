@@ -201,6 +201,7 @@ _bf_map_bpf_type_to_kernel_type(enum bf_map_bpf_type bpf_type)
     static const enum bpf_map_type _kernel_types[] = {
         [BF_MAP_BPF_TYPE_ARRAY] = BPF_MAP_TYPE_ARRAY,
         [BF_MAP_BPF_TYPE_HASH] = BPF_MAP_TYPE_HASH,
+        [BF_MAP_BPF_TYPE_LPM_TRIE] = BPF_MAP_TYPE_LPM_TRIE,
     };
 
     bf_assert(0 <= bpf_type && bpf_type < _BF_MAP_BPF_TYPE_MAX);
@@ -364,6 +365,10 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
     attr.max_entries = map->n_elems;
     attr.map_flags = flags;
 
+    // NO_PREALLOC is *required* for LPM_TRIE map
+    if (map->bpf_type == BF_MAP_BPF_TYPE_LPM_TRIE)
+        attr.map_flags |= BPF_F_NO_PREALLOC;
+
     if ((token_fd = bf_ctx_token()) != -1) {
         attr.map_token_fd = token_fd;
         attr.map_flags |= BPF_F_TOKEN_FD;
@@ -493,6 +498,7 @@ int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
 static const char *_bf_map_bpf_type_strs[] = {
     [BF_MAP_BPF_TYPE_ARRAY] = "BF_MAP_BPF_TYPE_ARRAY",
     [BF_MAP_BPF_TYPE_HASH] = "BF_MAP_BPF_TYPE_HASH",
+    [BF_MAP_BPF_TYPE_LPM_TRIE] = "BF_MAP_BPF_TYPE_LPM_TRIE",
 };
 
 static_assert(ARRAY_SIZE(_bf_map_bpf_type_strs) == _BF_MAP_BPF_TYPE_MAX,

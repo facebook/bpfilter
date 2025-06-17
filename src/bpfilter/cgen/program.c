@@ -115,8 +115,9 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         _free_bf_map_ struct bf_map *map = NULL;
 
         (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x", (uint8_t)set_idx++);
-        r = bf_map_new(&map, name, BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_HASH,
-                       set->elem_size, 1, bf_list_size(&set->elems));
+        r = bf_map_new(&map, name, BF_MAP_TYPE_SET,
+                       bf_set_type_to_map_bpf_type(set->type), set->elem_size,
+                       1, bf_list_size(&set->elems));
         if (r < 0)
             return r;
 
@@ -564,7 +565,9 @@ static int _bf_program_generate_rule(struct bf_program *program,
                 return r;
             break;
         case BF_MATCHER_IP4_SADDR:
+        case BF_MATCHER_IP4_SNET:
         case BF_MATCHER_IP4_DADDR:
+        case BF_MATCHER_IP4_DNET:
         case BF_MATCHER_IP4_PROTO:
             r = bf_matcher_generate_ip4(program, matcher);
             if (r)

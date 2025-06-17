@@ -72,6 +72,12 @@
 
 #define bf_aligned(x) __attribute__((aligned(x)))
 
+struct bf_ip4_lpm_key
+{
+    __u32 prefixlen;
+    __u32 data;
+};
+
 /**
  * @brief Runtime stack layout for the generated BPF programs.
  *

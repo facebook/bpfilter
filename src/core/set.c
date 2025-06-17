@@ -11,6 +11,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "bpfilter/cgen/prog/map.h"
+#include "bpfilter/cgen/runtime.h"
 #include "core/dump.h"
 #include "core/helper.h"
 #include "core/list.h"
@@ -23,6 +25,7 @@ size_t _bf_set_type_elem_size(enum bf_set_type type)
         [BF_SET_IP4] = 4,
         [BF_SET_SRCIP6PORT] = 18,
         [BF_SET_SRCIP6] = 16,
+        [BF_SET_IP4_SUBNET] = sizeof(struct bf_ip4_lpm_key),
     };
 
     static_assert(ARRAY_SIZE(sizes) == _BF_SET_MAX,
@@ -189,6 +192,7 @@ static const char *_bf_set_type_strs[] = {
     [BF_SET_IP4] = "BF_SET_IP4",
     [BF_SET_SRCIP6PORT] = "BF_SET_SRCIP6PORT",
     [BF_SET_SRCIP6] = "BF_SET_SRCIP6",
+    [BF_SET_IP4_SUBNET] = "BF_SET_IP4_SUBNET",
 };
 
 static_assert(ARRAY_SIZE(_bf_set_type_strs) == _BF_SET_MAX, "");
@@ -198,6 +202,20 @@ const char *bf_set_type_to_str(enum bf_set_type type)
     bf_assert(0 <= type && type < _BF_SET_MAX);
 
     return _bf_set_type_strs[type];
+}
+
+static enum bf_map_bpf_type _bf_set_type_to_map_bpf_type[] = {
+    [BF_SET_IP4] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_SRCIP6PORT] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_SRCIP6] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_IP4_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
+};
+
+static_assert(ARRAY_SIZE(_bf_set_type_to_map_bpf_type) == _BF_SET_MAX, "");
+
+enum bf_map_bpf_type bf_set_type_to_map_bpf_type(enum bf_set_type type)
+{
+    return _bf_set_type_to_map_bpf_type[type];
 }
 
 int bf_set_type_from_str(const char *str, enum bf_set_type *type)
