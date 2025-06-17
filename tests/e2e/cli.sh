@@ -407,6 +407,17 @@ suite_ip4() {
 }
 with_daemon suite_ip4
 
+suite_ip6() {
+    log "[SUITE] ip6: parse matchers"
+    expect_success "ip6.snet in" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.snet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64} DROP\"
+    expect_success "ip6.dnet in" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64} DROP\"
+    expect_success "flushing the ruleset" \
+        ${FROM_NS} ${BFCLI} ruleset flush
+}
+with_daemon suite_ip6
+
 suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \

@@ -59,6 +59,8 @@ enum bf_set_type
     BF_SET_SRCIP6,
     /// Keys are IPv4 subnets (IPv4 network address, mask), (8 bytes)
     BF_SET_IP4_SUBNET,
+    /// Keys are IPv4 subnets (IPv4 network address, mask), (20 bytes)
+    BF_SET_IP6_SUBNET,
     _BF_SET_MAX,
 };
 

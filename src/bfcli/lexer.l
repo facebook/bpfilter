@@ -28,6 +28,7 @@
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP6_ADDR
+%s STATE_MATCHER_IP6_NET
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_ICMP
 %s STATE_MATCHER_TCP_FLAGS
@@ -134,6 +135,16 @@ ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext
          * anyway! */
         yylval.sval = strdup(yytext);
         return MATCHER_IP6_ADDR;
+    }
+}
+
+ip6\.snet       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip6\.dnet       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP6_NET>{
+    (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    \{([a-zA-Z0-9:/]+,?)+\} {
+        yylval.sval = strdup(yytext);
+        return MATCHER_IP6_NET;
     }
 }
 

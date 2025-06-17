@@ -634,6 +634,156 @@ Test(ip6, saddr_ne_120mask_match)
     bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
+Test(ip6, snet_in)
+{
+    _free_bf_chain_ struct bf_chain *not_in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP6_SUBNET,
+                (struct bf_ip6_lpm_key []){
+                    (struct bf_ip6_lpm_key) {
+                        .prefixlen = 64,
+                        .data = {
+                            0x54, 0x2b /* Changed */, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e
+                        },
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(not_in, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
+
+    _free_bf_chain_ struct bf_chain *in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP6_SUBNET,
+                (struct bf_ip6_lpm_key []){
+                    (struct bf_ip6_lpm_key) {
+                        .prefixlen = 64,
+                        .data = {
+                            0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                            0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e
+                        },
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(in, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
+}
+
+Test(ip6, dnet_in)
+{
+    _free_bf_chain_ struct bf_chain *not_in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP6_SUBNET,
+                (struct bf_ip6_lpm_key []){
+                    (struct bf_ip6_lpm_key) {
+                        .prefixlen = 64,
+                        .data = {
+                            0x52, 0x31 /* Changed */, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                            0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04
+                        },
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(not_in, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
+
+    _free_bf_chain_ struct bf_chain *in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP6_SUBNET,
+                (struct bf_ip6_lpm_key []){
+                    (struct bf_ip6_lpm_key) {
+                        .prefixlen = 64,
+                        .data = {
+                            0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                            0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04
+                        },
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(in, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
+}
+
 struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
 {
     _free_bf_set_ struct bf_set *set = NULL;

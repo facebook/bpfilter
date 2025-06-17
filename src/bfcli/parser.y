@@ -79,6 +79,7 @@
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_ADDR
+%token <sval> MATCHER_IP6_NET
 %token <sval> MATCHER_PORT MATCHER_PORT_RANGE
 %token <sval> MATCHER_ICMP
 %token <sval> STRING
@@ -540,6 +541,69 @@ matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
                     free($3);
 
                     if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr)))
+                        bf_parse_err("failed to create a new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | matcher_type matcher_op MATCHER_IP6_NET
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _free_bf_set_ struct bf_set *set = NULL;
+                    uint32_t set_id = bf_list_size(&ruleset->sets);
+                    int r;
+
+                    char *data = $3 + 1;
+                    data[strlen(data) - 1] = '\0';
+
+                    r = bf_set_new(&set, BF_SET_IP6_SUBNET);
+                    if (r < 0)
+                        bf_parse_err("failed to create a new set\n");
+
+                    char *elem;
+                    char *delim;
+                    char *next = data;
+                    do {
+                        struct bf_ip6_lpm_key key;
+
+                        elem = next;
+                        next = strchr(elem, ',');
+                        if (next) {
+                            *next = '\0';
+                            ++next;
+
+                            // Handle trailing comma
+                            if (*next == '\0')
+                                next = NULL;
+                        }
+
+                        delim = strchr(elem, '/');
+                        if (!delim)
+                            bf_parse_err("no mask found in set element: %s", elem);
+
+                        *delim = '\0';
+                        ++delim;
+                        key.prefixlen = strtol(delim, NULL, 10);
+                        if (key.prefixlen == (unsigned int)LONG_MAX)
+                            bf_parse_err("invalid subnet mask '%s'", delim);
+
+                        r = inet_pton(AF_INET6, elem, &key.data);
+                        if (r != 1)
+                            bf_parse_err("failed to parse IPv6 address: %s\n", elem);
+
+                        r = bf_set_add_elem(set, &key);
+                        if (r < 0)
+                            bf_parse_err("failed to add element to set\n");
+                    } while (next);
+
+                    r = bf_list_add_tail(&ruleset->sets, set);
+                    if (r < 0)
+                        bf_parse_err("failed to add new set to list of sets\n");
+
+                    TAKE_PTR(set);
+
+                    free($3);
+
+                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);

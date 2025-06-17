@@ -26,6 +26,7 @@ size_t _bf_set_type_elem_size(enum bf_set_type type)
         [BF_SET_SRCIP6PORT] = 18,
         [BF_SET_SRCIP6] = 16,
         [BF_SET_IP4_SUBNET] = sizeof(struct bf_ip4_lpm_key),
+        [BF_SET_IP6_SUBNET] = sizeof(struct bf_ip6_lpm_key),
     };
 
     static_assert(ARRAY_SIZE(sizes) == _BF_SET_MAX,
@@ -193,6 +194,7 @@ static const char *_bf_set_type_strs[] = {
     [BF_SET_SRCIP6PORT] = "BF_SET_SRCIP6PORT",
     [BF_SET_SRCIP6] = "BF_SET_SRCIP6",
     [BF_SET_IP4_SUBNET] = "BF_SET_IP4_SUBNET",
+    [BF_SET_IP6_SUBNET] = "BF_SET_IP6_SUBNET",
 };
 
 static_assert(ARRAY_SIZE(_bf_set_type_strs) == _BF_SET_MAX, "");
@@ -209,6 +211,7 @@ static enum bf_map_bpf_type _bf_set_type_to_map_bpf_type[] = {
     [BF_SET_SRCIP6PORT] = BF_MAP_BPF_TYPE_HASH,
     [BF_SET_SRCIP6] = BF_MAP_BPF_TYPE_HASH,
     [BF_SET_IP4_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
+    [BF_SET_IP6_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
 };
 
 static_assert(ARRAY_SIZE(_bf_set_type_to_map_bpf_type) == _BF_SET_MAX, "");
