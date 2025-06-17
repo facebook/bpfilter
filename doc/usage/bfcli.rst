@@ -470,6 +470,14 @@ IPv6
       - :rspan:`1` ``ip6.daddr``
       - ``eq``
     * - ``not``
+    * - Source network
+      - ``ip6.snet``
+      - ``in``
+      - ``{$IP/$MASK[,...]}``
+    * - Destination network
+      - ``ip6.dnet``
+      - ``in``
+      - ``{$IP/$MASK[,...]}``
 
 
 TCP

@@ -105,6 +105,22 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         meta.probability eq 50%
         counter
         CONTINUE
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/128}
+        counter
+        CONTINUE
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/64}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
+        counter
+        CONTINUE
 
 # Create a TC chain
 chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
@@ -201,6 +217,22 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
         icmpv6.code eq 0
         counter
         ACCEPT
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/128}
+        counter
+        CONTINUE
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/64}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
+        counter
+        CONTINUE
 
 # Create a cgroup chain
 chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slice} ACCEPT
@@ -305,6 +337,22 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         icmpv6.code eq 0
         counter
         ACCEPT
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/128}
+        counter
+        CONTINUE
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/64}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
+        counter
+        CONTINUE
 
 # Create a Netfilter chain
 chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
@@ -409,3 +457,19 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
         icmpv6.code eq 0
         counter
         ACCEPT
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/128}
+        counter
+        CONTINUE
+    rule
+        ip6.snet in {fdb2:2c26:f4e4::1/64}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
+        counter
+        CONTINUE
+    rule
+        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
+        counter
+        CONTINUE

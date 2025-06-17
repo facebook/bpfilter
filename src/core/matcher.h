@@ -67,8 +67,12 @@ enum bf_matcher_type
     BF_MATCHER_IP4_PROTO,
     /// Matches IPv6 source address.
     BF_MATCHER_IP6_SADDR,
+    /// Matches IPv6 source network.
+    BF_MATCHER_IP6_SNET,
     /// Matches IPv6 destination address.
     BF_MATCHER_IP6_DADDR,
+    /// Matches IPv6 destination network.
+    BF_MATCHER_IP6_DNET,
     /// Matches against the TCP source port
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
