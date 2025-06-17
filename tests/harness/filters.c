@@ -48,7 +48,7 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
     return TAKE_PTR(hookopts);
 }
 
-struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[])
+struct bf_set *bft_set_get(enum bf_set_type type, void *data, size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
@@ -59,13 +59,12 @@ struct bf_set *bf_test_set_get(enum bf_set_type type, uint8_t *data[])
         return NULL;
     }
 
-    while (data && *data) {
-        r = bf_set_add_elem(set, *data);
+    for (size_t i = 0; i < n_elems; ++i) {
+        r = bf_set_add_elem(set, data + i * set->elem_size);
         if (r < 0) {
             bf_err_r(r, "failed to add a new element to a test set");
             return NULL;
         }
-        ++data;
     }
 
     return TAKE_PTR(set);
