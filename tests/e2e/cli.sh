@@ -396,6 +396,17 @@ suite_icmp_XDP() {
 }
 with_daemon suite_icmp_XDP
 
+suite_ip4() {
+    log "[SUITE] ip4: parse matchers"
+    expect_success "ip4.snet in" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet in {192.168.1.14/24,10.211.0.0/16} DROP\"
+    expect_success "ip4.dnet in" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip4.dnet in {192.168.1.14/24,10.211.0.0/16} DROP\"
+    expect_success "flushing the ruleset" \
+        ${FROM_NS} ${BFCLI} ruleset flush
+}
+with_daemon suite_ip4
+
 suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \

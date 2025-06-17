@@ -60,7 +60,7 @@ struct bf_set *bft_set_get(enum bf_set_type type, void *data, size_t n_elems)
     }
 
     for (size_t i = 0; i < n_elems; ++i) {
-        r = bf_set_add_elem(set, data + i * set->elem_size);
+        r = bf_set_add_elem(set, data + (i * set->elem_size));
         if (r < 0) {
             bf_err_r(r, "failed to add a new element to a test set");
             return NULL;

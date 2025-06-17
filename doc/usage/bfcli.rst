@@ -432,6 +432,14 @@ IPv4
     * - ``in``
       - ``{$IP[,...]}``
       - Only support ``/32`` mask.
+    * - Source network
+      - ``ip4.snet``
+      - ``in``
+      - ``{$IP/$MASK[,...]}``
+    * - Destination network
+      - ``ip4.dnet``
+      - ``in``
+      - ``{$IP/$MASK[,...]}``
     * - Protocol
       - ``ip4.proto``
       - ``eq``

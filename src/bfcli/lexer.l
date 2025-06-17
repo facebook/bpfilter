@@ -26,6 +26,7 @@
 %s STATE_MATCHER_META_PROBA
 %s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
+%s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_ICMP
@@ -111,6 +112,16 @@ ip4\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); re
     \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3},?)+\} {
         yylval.sval = strdup(yytext);
         return MATCHER_IP_ADDR_SET;
+    }
+}
+
+ip4\.snet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP4_NET>{
+    (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{2},?)+\} {
+        yylval.sval = strdup(yytext);
+        return MATCHER_IP4_NET;
     }
 }
 

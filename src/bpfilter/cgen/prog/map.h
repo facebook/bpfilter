@@ -16,6 +16,7 @@ enum bf_map_bpf_type
 {
     BF_MAP_BPF_TYPE_ARRAY,
     BF_MAP_BPF_TYPE_HASH,
+    BF_MAP_BPF_TYPE_LPM_TRIE,
     _BF_MAP_BPF_TYPE_MAX,
 };
 

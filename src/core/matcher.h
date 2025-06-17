@@ -57,8 +57,12 @@ enum bf_matcher_type
     BF_MATCHER_META_DPORT,
     /// Matches IPv4 source address.
     BF_MATCHER_IP4_SADDR,
+    /// Matches IPv4 source network.
+    BF_MATCHER_IP4_SNET,
     /// Matches IPv4 destination address.
     BF_MATCHER_IP4_DADDR,
+    /// Matches IPv4 destination network.
+    BF_MATCHER_IP4_DNET,
     /// Matches against the IPv4 protocol field
     BF_MATCHER_IP4_PROTO,
     /// Matches IPv6 source address.

@@ -3,6 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include "bpfilter/cgen/runtime.h"
 #include "core/chain.h"
 #include "core/logger.h"
 #include "harness/filters.h"
@@ -109,6 +110,146 @@ Test(ip4, daddr_eq_mask_match)
     );
 
     bft_e2e_test(chain, BF_VERDICT_DROP, pkt_local_ip4);
+}
+
+Test(ip4, snet_in)
+{
+    _free_bf_chain_ struct bf_chain *not_in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP4_SUBNET,
+                (struct bf_ip4_lpm_key []){
+                    (struct bf_ip4_lpm_key) {
+                        .prefixlen = 24,
+                        .data = 0x0AC0A801,
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(not_in, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
+
+    _free_bf_chain_ struct bf_chain *in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP4_SUBNET,
+                (struct bf_ip4_lpm_key []){
+                    (struct bf_ip4_lpm_key) {
+                        .prefixlen = 24,
+                        // 127.2.10.10 reversed to deal with endianess
+                        .data = 0x0a0a027f,
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(in, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+}
+
+Test(ip4, dnet_in)
+{
+    _free_bf_chain_ struct bf_chain *not_in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP4_SUBNET,
+                (struct bf_ip4_lpm_key []){
+                    (struct bf_ip4_lpm_key) {
+                        .prefixlen = 24,
+                        .data = 0x0AC0A801,
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(not_in, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
+
+    _free_bf_chain_ struct bf_chain *in = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        (struct bf_set *[]) {
+            bft_set_get(
+                BF_SET_IP4_SUBNET,
+                (struct bf_ip4_lpm_key []){
+                    (struct bf_ip4_lpm_key) {
+                        .prefixlen = 24,
+                        // 127.2.10.10 reversed to deal with endianess
+                        .data = 0x0a0a027f,
+                    },
+                },
+                1
+            ),
+            NULL,
+        },
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                        (uint32_t[]) {0}, 4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(in, BF_VERDICT_DROP, pkt_local_ip4_icmp);
 }
 
 Test(ip6, saddr_eq_nomask_match)
