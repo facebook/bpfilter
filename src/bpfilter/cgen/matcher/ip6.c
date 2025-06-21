@@ -205,6 +205,31 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
+                                            const struct bf_matcher *matcher)
+{
+    uint16_t nh_mask = *(uint16_t *)&matcher->payload;
+
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(ipv6_nh)));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_6, nh_mask));
+
+    switch (matcher->op) {
+    case BF_MATCHER_EQ:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_6, 0, 0));
+        break;
+    case BF_MATCHER_NE:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_6, 0, 0));
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
 int bf_matcher_generate_ip6(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -213,17 +238,23 @@ int bf_matcher_generate_ip6(struct bf_program *program,
     EMIT_FIXUP_JMP_NEXT_RULE(
         program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IPV6), 0));
 
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
-
     switch (matcher->type) {
     case BF_MATCHER_IP6_SADDR:
     case BF_MATCHER_IP6_DADDR:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
+
         r = _bf_matcher_generate_ip6_addr(program, matcher);
         break;
     case BF_MATCHER_IP6_SNET:
     case BF_MATCHER_IP6_DNET:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
+
         r = _bf_matcher_generate_ip6_net(program, matcher);
+        break;
+    case BF_MATCHER_IP6_NEXTHDR:
+        r = _bf_matcher_generate_ip6_nexthdr(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
