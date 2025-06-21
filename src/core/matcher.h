@@ -73,6 +73,8 @@ enum bf_matcher_type
     BF_MATCHER_IP6_DADDR,
     /// Matches IPv6 destination network.
     BF_MATCHER_IP6_DNET,
+    /// Matches IPv6 next header
+    BF_MATCHER_IP6_NEXTHDR,
     /// Matches against the TCP source port
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port
@@ -117,6 +119,23 @@ struct bf_matcher_ip6_addr
     uint8_t addr[16];
     /// 128-bits IPv6 mask.
     uint8_t mask[16];
+};
+
+/**
+ * Define the IPv6 next headers as number of shifts of 1.
+ */
+enum bf_matcher_ipv6_nh
+{
+    BF_IPV6_NH_HOP = 0,
+    BF_IPV6_NH_ROUTING = 1,
+    BF_IPV6_NH_FRAGMENT = 2,
+    BF_IPV6_NH_DSTOPTS = 3,
+    BF_IPV6_NH_MH = 4,
+    BF_IPV6_NH_AH = 5,
+    BF_IPV6_NH_TCP = 6,
+    BF_IPV6_NH_UDP = 7,
+    BF_IPV6_NH_ICMPV6 = 8,
+    _BF_MATCHER_IPV6_NH_MAX,
 };
 
 /**
@@ -279,3 +298,21 @@ const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag);
  */
 int bf_matcher_tcp_flag_from_str(const char *str,
                                  enum bf_matcher_tcp_flag *flag);
+
+/**
+ * Convert a IPv6 next-header to a string.
+ *
+ * @param nexthdr IPv6 next-header to convert.
+ * @return String representation of the IPv6 next-header.
+ */
+const char *bf_matcher_ipv6_nh_to_str(enum bf_matcher_ipv6_nh nexthdr);
+
+/**
+ * Convert a string to the corresponding IPv6 next-header.
+ *
+ * @param str String containing the name of the IPv6 next-header.
+ * @param nexthdr IPv6 next-header value, if the parsing succeeds.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_matcher_ipv6_nh_from_str(const char *str,
+                                enum bf_matcher_ipv6_nh *nexthdr);
