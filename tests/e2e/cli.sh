@@ -422,12 +422,23 @@ suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \
 	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq 128 icmpv6.code eq 0 counter DROP\"
-    expect_success "can parse icmpv6 type and code by TC chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq 8 icmp.code eq 0 counter DROP\"
+    expect_success "can parse icmpv6 type and code by XDP chain" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq 8 icmp.code eq 0 counter DROP\"
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
 with_daemon suite_icmpv6_chain_set
+
+suite_ipv6_nexthdr_chain_set() {
+    log "[SUITE] ipv6 next-header: chain set"
+    expect_success "can parse ipv6 next-header by TC chain" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr eq hop counter DROP\"
+    expect_success "can parse ipv6 next-header by XDP chain" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr not tcp counter DROP\"
+    expect_success "flushing the ruleset" \
+        ${FROM_NS} ${BFCLI} ruleset flush
+}
+with_daemon suite_ipv6_nexthdr_chain_set
 
 suite_chain_set() {
     log "[SUITE] chain: set"
