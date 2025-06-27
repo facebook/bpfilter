@@ -26,6 +26,10 @@
 #define _bf_make32(a, b, c, d)                                                 \
     (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) |    \
      (uint32_t)(d))
+#define _BF_MASK_FIND_BYTE_LOW 0x0101010101010101ULL
+#define _BF_MASK_FIND_BYTE_HIGH 0x8080808080808080ULL
+#define _BF_MASK_FIND_BYTE_ALL 0xFFFFFFFFFFFFFFFFULL
+#define _BF_FIND_BYTE_CONST_INSN 6
 #define _BF_MASK_LAST_BYTE 15
 
 static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
@@ -175,18 +179,18 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
         // Copy bf_ip6_lpm_key entries starting at scratch offset 4, so the
         // 64-bits copies for the address will be aligned
         offset = matcher->type == BF_MATCHER_IP6_SNET ?
-                    offsetof(struct ipv6hdr, saddr) :
-                    offsetof(struct ipv6hdr, daddr);
+                     offsetof(struct ipv6hdr, saddr) :
+                     offsetof(struct ipv6hdr, daddr);
         EMIT(program, BPF_MOV64_IMM(BPF_REG_3, 128));
         EMIT(program,
              BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_3, BF_PROG_SCR_OFF(4)));
 
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset));
         EMIT(program,
-            BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
+             BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset + 8));
         EMIT(program,
-            BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(16)));
+             BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(16)));
         break;
     default:
         return bf_err_r(-EINVAL, "unsupported set type: %s",
@@ -202,6 +206,51 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
     // Jump to the next rule if map_lookup_elem returned 0
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
+    return 0;
+}
+
+static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
+                                            const struct bf_matcher *matcher)
+{
+    const uint8_t ehdr = matcher->payload[0];
+
+    if ((matcher->op != BF_MATCHER_EQ) && (matcher->op != BF_MATCHER_NE))
+        return -EINVAL;
+
+    if ((ehdr == IPPROTO_TCP) || (ehdr == IPPROTO_UDP) ||
+        (ehdr == IPPROTO_ICMPV6)) {
+        /* check l4 protocols using BPF_REG_8 */
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program,
+            BPF_JMP_IMM((matcher->op == BF_MATCHER_EQ) ? BPF_JNE : BPF_JEQ,
+                        BPF_REG_8, ehdr, 0));
+    } else {
+        /* Extension header check */
+        uint32_t pattern = _bf_make32(ehdr, ehdr, ehdr, ehdr);
+        struct bpf_insn constants[] = {
+            BPF_LD_IMM64(BPF_REG_2, _BF_MASK_FIND_BYTE_LOW),
+            BPF_LD_IMM64(BPF_REG_3, _BF_MASK_FIND_BYTE_HIGH),
+            BPF_LD_IMM64(BPF_REG_4, _BF_MASK_FIND_BYTE_ALL),
+        };
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(ipv6_eh)));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_2, pattern));
+        EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_2, 32));
+        EMIT(program, BPF_ALU64_IMM(BPF_OR, BPF_REG_2, pattern));
+        EMIT(program, BPF_ALU64_REG(BPF_XOR, BPF_REG_1, BPF_REG_2));
+        for (int i = 0; i < _BF_FIND_BYTE_CONST_INSN; ++i) {
+            EMIT(program, constants[i]);
+        }
+        EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_1));
+        EMIT(program, BPF_ALU64_REG(BPF_SUB, BPF_REG_1, BPF_REG_2));
+        EMIT(program, BPF_ALU64_REG(BPF_XOR, BPF_REG_5, BPF_REG_4));
+        EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_1, BPF_REG_5));
+        EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_1, BPF_REG_3));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program,
+            BPF_JMP_IMM((matcher->op == BF_MATCHER_EQ) ? BPF_JEQ : BPF_JNE,
+                        BPF_REG_1, 0, 0));
+    }
     return 0;
 }
 
@@ -224,6 +273,9 @@ int bf_matcher_generate_ip6(struct bf_program *program,
     case BF_MATCHER_IP6_SNET:
     case BF_MATCHER_IP6_DNET:
         r = _bf_matcher_generate_ip6_net(program, matcher);
+        break;
+    case BF_MATCHER_IP6_NEXTHDR:
+        r = _bf_matcher_generate_ip6_nexthdr(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);

@@ -35,6 +35,7 @@
 #include "external/filter.h"
 
 #define _BF_LOW_EH_BITMASK 0x1801800000000801ULL
+#define _BF_NEGATIVE_ONE 0xFFFFFFFFFFFFFFFFULL
 
 /**
  * Generate stub to create a dynptr.
@@ -231,8 +232,15 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         // IPv6
         struct bf_jmpctx tcpjmp, udpjmp, noehjmp, ehjmp;
         struct bpf_insn ld64[2] = {BPF_LD_IMM64(BPF_REG_2, _BF_LOW_EH_BITMASK)};
+        struct bpf_insn negative_one[2] = {
+            BPF_LD_IMM64(BPF_REG_2, _BF_NEGATIVE_ONE)};
         _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_get(
             program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7, htobe16(ETH_P_IPV6), 0));
+
+        EMIT(program, negative_one[0]);
+        EMIT(program, negative_one[1]);
+        EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2,
+                                  BF_PROG_CTX_OFF(ipv6_eh)));
 
         EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
                                   offsetof(struct ipv6hdr, nexthdr)));
