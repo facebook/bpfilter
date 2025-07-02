@@ -22,9 +22,8 @@
 %s STATE_HOOK_OPTS
 %s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
-%s STATE_MATCHER_META_L4_PROTO
+%s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
-%s STATE_MATCHER_IP_PROTO
 %s STATE_MATCHER_IPADDR
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP6_ADDR
@@ -77,12 +76,13 @@ meta\.l3_proto  { BEGIN(STATE_MATCHER_META_L3_PROTO); yylval.sval = strdup(yytex
     }
 }
 
-meta\.l4_proto  { BEGIN(STATE_MATCHER_META_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_META_L4_PROTO>{
+meta\.l4_proto  { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.proto      { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_L4_PROTO>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [a-z0-9]+ {
+    {int}|[0-9a-zA-Z-]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_META_L4_PROTO;
+        return RAW_PAYLOAD;
     }
 }
 
@@ -92,15 +92,6 @@ meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytex
     (-)?[0-9]+% {
         yylval.sval = strdup(yytext);
         return MATCHER_META_PROBA;
-    }
-}
-
-ip4\.proto      { BEGIN(STATE_MATCHER_IP_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_IP_PROTO>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [a-z]+ {
-        yylval.sval = strdup(yytext);
-        return MATCHER_IP_PROTO;
     }
 }
 

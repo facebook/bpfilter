@@ -358,3 +358,6 @@ int bf_matcher_ipv6_nh_from_str(const char *str,
 
 const char *bf_ethertype_to_str(uint16_t ethertype);
 int bf_ethertype_from_str(const char *str, uint16_t *ethertype);
+
+const char *bf_ipproto_to_str(uint8_t ipproto);
+int bf_ipproto_from_str(const char *str, uint8_t *ipproto);
