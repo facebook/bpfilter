@@ -2,5 +2,8 @@
 build/
 # VSCode configuration folder
 .vscode
+# Python cache
 *.pyc
 __pycache__
+# clangd cache
+.cache
