@@ -765,6 +765,88 @@ suite_matcher_meta() {
     expect_matcher_nok "meta.l4_proto not 0x342"
     expect_matcher_nok "meta.l4_proto not -18"
     expect_matcher_nok "meta.l4_proto not 256"
+
+    log "[SUITE] matcher: meta.sport eq"
+    expect_matcher_ok "meta.sport eq 0"
+    expect_matcher_ok "meta.sport eq 40"
+    expect_matcher_ok "meta.sport eq 65535"
+
+    expect_matcher_nok "meta.sport eq -40"
+    expect_matcher_nok "meta.sport eq 0x40"
+    expect_matcher_nok "meta.sport eq -0x00"
+    expect_matcher_nok "meta.sport eq 75000"
+    expect_matcher_nok "meta.sport eq 0xffffff"
+    expect_matcher_nok "meta.sport eq not_a_port"
+
+    log "[SUITE] matcher: meta.sport not"
+    expect_matcher_ok "meta.sport not 0"
+    expect_matcher_ok "meta.sport not 40"
+    expect_matcher_ok "meta.sport not 65535"
+
+    expect_matcher_nok "meta.sport not -40"
+    expect_matcher_nok "meta.sport not 0x40"
+    expect_matcher_nok "meta.sport not -0x00"
+    expect_matcher_nok "meta.sport not 75000"
+    expect_matcher_nok "meta.sport not 0xffffff"
+    expect_matcher_nok "meta.sport not not_a_port"
+
+    log "[SUITE] matcher: meta.sport range"
+    expect_matcher_ok "meta.sport range 0-0"
+    expect_matcher_ok "meta.sport range 0-65535"
+    expect_matcher_ok "meta.sport range 17-30"
+
+    expect_matcher_nok "meta.sport range 0"
+    expect_matcher_nok "meta.sport range 20-10"
+    expect_matcher_nok "meta.sport range 10-20-30"
+    expect_matcher_nok "meta.sport range 10000000-1000000"
+    expect_matcher_nok "meta.sport range 0x20"
+    expect_matcher_nok "meta.sport range 0x20-0x30"
+    expect_matcher_nok "meta.sport range 0x30-0x20"
+    expect_matcher_nok "meta.sport range -1-4"
+    expect_matcher_nok "meta.sport range -1--4"
+    expect_matcher_nok "meta.sport range not-port"
+    expect_matcher_nok "meta.sport range notport"
+
+    log "[SUITE] matcher: meta.dport eq"
+    expect_matcher_ok "meta.dport eq 0"
+    expect_matcher_ok "meta.dport eq 40"
+    expect_matcher_ok "meta.dport eq 65535"
+
+    expect_matcher_nok "meta.dport eq -40"
+    expect_matcher_nok "meta.dport eq 0x40"
+    expect_matcher_nok "meta.dport eq -0x00"
+    expect_matcher_nok "meta.dport eq 75000"
+    expect_matcher_nok "meta.dport eq 0xffffff"
+    expect_matcher_nok "meta.dport eq not_a_port"
+
+    log "[SUITE] matcher: meta.dport not"
+    expect_matcher_ok "meta.dport not 0"
+    expect_matcher_ok "meta.dport not 40"
+    expect_matcher_ok "meta.dport not 65535"
+
+    expect_matcher_nok "meta.dport not -40"
+    expect_matcher_nok "meta.dport not 0x40"
+    expect_matcher_nok "meta.dport not -0x00"
+    expect_matcher_nok "meta.dport not 75000"
+    expect_matcher_nok "meta.dport not 0xffffff"
+    expect_matcher_nok "meta.dport not not_a_port"
+
+    log "[SUITE] matcher: meta.dport range"
+    expect_matcher_ok "meta.dport range 0-0"
+    expect_matcher_ok "meta.dport range 0-65535"
+    expect_matcher_ok "meta.dport range 17-30"
+
+    expect_matcher_nok "meta.dport range 0"
+    expect_matcher_nok "meta.dport range 20-10"
+    expect_matcher_nok "meta.dport range 10-20-30"
+    expect_matcher_nok "meta.dport range 10000000-1000000"
+    expect_matcher_nok "meta.dport range 0x20"
+    expect_matcher_nok "meta.dport range 0x20-0x30"
+    expect_matcher_nok "meta.dport range 0x30-0x20"
+    expect_matcher_nok "meta.dport range -1-4"
+    expect_matcher_nok "meta.dport range -1--4"
+    expect_matcher_nok "meta.dport range not-port"
+    expect_matcher_nok "meta.dport range notport"
 }
 with_daemon suite_matcher_meta
 
@@ -796,6 +878,177 @@ suite_matcher_ip4() {
     expect_matcher_nok "ip4.proto not 256"
 }
 with_daemon suite_matcher_ip4
+
+suite_matcher_tcp() {
+    log "[SUITE] matcher: tcp.sport eq"
+    expect_matcher_ok "tcp.sport eq 0"
+    expect_matcher_ok "tcp.sport eq 40"
+    expect_matcher_ok "tcp.sport eq 65535"
+
+    expect_matcher_nok "tcp.sport eq -40"
+    expect_matcher_nok "tcp.sport eq 0x40"
+    expect_matcher_nok "tcp.sport eq -0x00"
+    expect_matcher_nok "tcp.sport eq 75000"
+    expect_matcher_nok "tcp.sport eq 0xffffff"
+    expect_matcher_nok "tcp.sport eq not_a_port"
+
+    log "[SUITE] matcher: tcp.sport not"
+    expect_matcher_ok "tcp.sport not 0"
+    expect_matcher_ok "tcp.sport not 40"
+    expect_matcher_ok "tcp.sport not 65535"
+
+    expect_matcher_nok "tcp.sport not -40"
+    expect_matcher_nok "tcp.sport not 0x40"
+    expect_matcher_nok "tcp.sport not -0x00"
+    expect_matcher_nok "tcp.sport not 75000"
+    expect_matcher_nok "tcp.sport not 0xffffff"
+    expect_matcher_nok "tcp.sport not not_a_port"
+
+    log "[SUITE] matcher: tcp.sport range"
+    expect_matcher_ok "tcp.sport range 0-0"
+    expect_matcher_ok "tcp.sport range 0-65535"
+    expect_matcher_ok "tcp.sport range 17-30"
+
+    expect_matcher_nok "tcp.sport range 0"
+    expect_matcher_nok "tcp.sport range 20-10"
+    expect_matcher_nok "tcp.sport range 10-20-30"
+    expect_matcher_nok "tcp.sport range 10000000-1000000"
+    expect_matcher_nok "tcp.sport range 0x20"
+    expect_matcher_nok "tcp.sport range 0x20-0x30"
+    expect_matcher_nok "tcp.sport range 0x30-0x20"
+    expect_matcher_nok "tcp.sport range -1-4"
+    expect_matcher_nok "tcp.sport range -1--4"
+    expect_matcher_nok "tcp.sport range not-port"
+    expect_matcher_nok "tcp.sport range notport"
+
+    log "[SUITE] matcher: tcp.dport eq"
+    expect_matcher_ok "tcp.dport eq 0"
+    expect_matcher_ok "tcp.dport eq 40"
+    expect_matcher_ok "tcp.dport eq 65535"
+
+    expect_matcher_nok "tcp.dport eq -40"
+    expect_matcher_nok "tcp.dport eq 0x40"
+    expect_matcher_nok "tcp.dport eq -0x00"
+    expect_matcher_nok "tcp.dport eq 75000"
+    expect_matcher_nok "tcp.dport eq 0xffffff"
+    expect_matcher_nok "tcp.dport eq not_a_port"
+
+    log "[SUITE] matcher: tcp.dport not"
+    expect_matcher_ok "tcp.dport not 0"
+    expect_matcher_ok "tcp.dport not 40"
+    expect_matcher_ok "tcp.dport not 65535"
+
+    expect_matcher_nok "tcp.dport not -40"
+    expect_matcher_nok "tcp.dport not 0x40"
+    expect_matcher_nok "tcp.dport not -0x00"
+    expect_matcher_nok "tcp.dport not 75000"
+    expect_matcher_nok "tcp.dport not 0xffffff"
+    expect_matcher_nok "tcp.dport not not_a_port"
+
+    log "[SUITE] matcher: tcp.dport range"
+    expect_matcher_ok "tcp.dport range 0-0"
+    expect_matcher_ok "tcp.dport range 0-65535"
+    expect_matcher_ok "tcp.dport range 17-30"
+
+    expect_matcher_nok "tcp.dport range 0"
+    expect_matcher_nok "tcp.dport range 20-10"
+    expect_matcher_nok "tcp.dport range 10-20-30"
+    expect_matcher_nok "tcp.dport range 10000000-1000000"
+    expect_matcher_nok "tcp.dport range 0x20"
+    expect_matcher_nok "tcp.dport range 0x20-0x30"
+    expect_matcher_nok "tcp.dport range 0x30-0x20"
+    expect_matcher_nok "tcp.dport range -1-4"
+    expect_matcher_nok "tcp.dport range -1--4"
+    expect_matcher_nok "tcp.dport range not-port"
+    expect_matcher_nok "tcp.dport range notport"
+}
+with_daemon suite_matcher_tcp
+
+suite_matcher_udp() {
+    log "[SUITE] matcher: udp.sport eq"
+    expect_matcher_ok "udp.sport eq 0"
+    expect_matcher_ok "udp.sport eq 40"
+    expect_matcher_ok "udp.sport eq 65535"
+
+    expect_matcher_nok "udp.sport eq -40"
+    expect_matcher_nok "udp.sport eq 0x40"
+    expect_matcher_nok "udp.sport eq -0x00"
+    expect_matcher_nok "udp.sport eq 75000"
+    expect_matcher_nok "udp.sport eq 0xffffff"
+    expect_matcher_nok "udp.sport eq not_a_port"
+
+    log "[SUITE] matcher: udp.sport not"
+    expect_matcher_ok "udp.sport not 0"
+    expect_matcher_ok "udp.sport not 40"
+    expect_matcher_ok "udp.sport not 65535"
+
+    expect_matcher_nok "udp.sport not -40"
+    expect_matcher_nok "udp.sport not 0x40"
+    expect_matcher_nok "udp.sport not -0x00"
+    expect_matcher_nok "udp.sport not 75000"
+    expect_matcher_nok "udp.sport not 0xffffff"
+    expect_matcher_nok "udp.sport not not_a_port"
+
+    log "[SUITE] matcher: udp.sport range"
+    expect_matcher_ok "udp.sport range 0-0"
+    expect_matcher_ok "udp.sport range 0-65535"
+    expect_matcher_ok "udp.sport range 17-30"
+
+    expect_matcher_nok "udp.sport range 0"
+    expect_matcher_nok "udp.sport range 20-10"
+    expect_matcher_nok "udp.sport range 10-20-30"
+    expect_matcher_nok "udp.sport range 10000000-1000000"
+    expect_matcher_nok "udp.sport range 0x20"
+    expect_matcher_nok "udp.sport range 0x20-0x30"
+    expect_matcher_nok "udp.sport range 0x30-0x20"
+    expect_matcher_nok "udp.sport range -1-4"
+    expect_matcher_nok "udp.sport range -1--4"
+    expect_matcher_nok "udp.sport range not-port"
+    expect_matcher_nok "udp.sport range notport"
+
+    log "[SUITE] matcher: udp.dport eq"
+    expect_matcher_ok "udp.dport eq 0"
+    expect_matcher_ok "udp.dport eq 40"
+    expect_matcher_ok "udp.dport eq 65535"
+
+    expect_matcher_nok "udp.dport eq -40"
+    expect_matcher_nok "udp.dport eq 0x40"
+    expect_matcher_nok "udp.dport eq -0x00"
+    expect_matcher_nok "udp.dport eq 75000"
+    expect_matcher_nok "udp.dport eq 0xffffff"
+    expect_matcher_nok "udp.dport eq not_a_port"
+
+    log "[SUITE] matcher: udp.dport not"
+    expect_matcher_ok "udp.dport not 0"
+    expect_matcher_ok "udp.dport not 40"
+    expect_matcher_ok "udp.dport not 65535"
+
+    expect_matcher_nok "udp.dport not -40"
+    expect_matcher_nok "udp.dport not 0x40"
+    expect_matcher_nok "udp.dport not -0x00"
+    expect_matcher_nok "udp.dport not 75000"
+    expect_matcher_nok "udp.dport not 0xffffff"
+    expect_matcher_nok "udp.dport not not_a_port"
+
+    log "[SUITE] matcher: udp.dport range"
+    expect_matcher_ok "udp.dport range 0-0"
+    expect_matcher_ok "udp.dport range 0-65535"
+    expect_matcher_ok "udp.dport range 17-30"
+
+    expect_matcher_nok "udp.dport range 0"
+    expect_matcher_nok "udp.dport range 20-10"
+    expect_matcher_nok "udp.dport range 10-20-30"
+    expect_matcher_nok "udp.dport range 10000000-1000000"
+    expect_matcher_nok "udp.dport range 0x20"
+    expect_matcher_nok "udp.dport range 0x20-0x30"
+    expect_matcher_nok "udp.dport range 0x30-0x20"
+    expect_matcher_nok "udp.dport range -1-4"
+    expect_matcher_nok "udp.dport range -1--4"
+    expect_matcher_nok "udp.dport range not-port"
+    expect_matcher_nok "udp.dport range notport"
+}
+with_daemon suite_matcher_udp
+
 
 ################################################################################
 #

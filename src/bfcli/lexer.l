@@ -152,13 +152,9 @@ tcp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
 udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_PORT>{
     (eq|not|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    (\!)?[0-9]+ {
+    {int}(-{int})? {
         yylval.sval = strdup(yytext);
-        return MATCHER_PORT;
-    }
-    [0-9]+-[0-9]+ {
-        yylval.sval = strdup(yytext);
-        return MATCHER_PORT_RANGE;
+        return RAW_PAYLOAD;
     }
 }
 

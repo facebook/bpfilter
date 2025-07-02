@@ -21,35 +21,68 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        meta.sport eq 0
+        meta.sport eq 17
+        meta.sport eq 65535
+        meta.sport not 0
+        meta.sport not 17
+        meta.sport not 65535
+        meta.sport range 0-65535
+        meta.sport range 17-31
+        meta.dport eq 0
+        meta.dport eq 17
+        meta.dport eq 65535
+        meta.dport not 0
+        meta.dport not 17
+        meta.dport not 65535
+        meta.dport range 0-65535
+        meta.dport range 17-31
+        counter
+        ACCEPT
+    rule
         ip4.proto eq icmp
         ip4.proto eq ICMPv6
         ip4.proto eq 6
         counter
         ACCEPT
     rule
-        meta.dport eq 22
+        tcp.sport eq 0
+        tcp.sport eq 17
+        tcp.sport eq 65535
+        tcp.sport not 0
+        tcp.sport not 17
+        tcp.sport not 65535
+        tcp.sport range 0-65535
+        tcp.sport range 17-31
+        tcp.dport eq 0
+        tcp.dport eq 17
+        tcp.dport eq 65535
+        tcp.dport not 0
+        tcp.dport not 17
+        tcp.dport not 65535
+        tcp.dport range 0-65535
+        tcp.dport range 17-31
         counter
-        CONTINUE
+        ACCEPT
     rule
-        meta.dport not 22
+        udp.sport eq 0
+        udp.sport eq 17
+        udp.sport eq 65535
+        udp.sport not 0
+        udp.sport not 17
+        udp.sport not 65535
+        udp.sport range 0-65535
+        udp.sport range 17-31
+        udp.dport eq 0
+        udp.dport eq 17
+        udp.dport eq 65535
+        udp.dport not 0
+        udp.dport not 17
+        udp.dport not 65535
+        udp.dport range 0-65535
+        udp.dport range 17-31
         counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
-        meta.sport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.sport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
+        ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
@@ -75,30 +108,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
-        tcp.sport 22
-        counter
-        ACCEPT
-    rule
-        tcp.dport 22
-        counter
-        ACCEPT
-    rule
         tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        udp.sport 22
-        counter
-        ACCEPT
-    rule
-        udp.dport 22
-        counter
-        ACCEPT
-    rule
-        tcp.sport 0-9
-        tcp.dport 10-19
-        udp.sport 20-29
-        udp.dport 30-39
         counter
         ACCEPT
     rule
@@ -147,30 +157,6 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
 # Create a TC chain
 chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
     rule
-        meta.dport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.dport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
-        meta.sport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.sport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -191,30 +177,7 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
-        tcp.sport 22
-        counter
-        ACCEPT
-    rule
-        tcp.dport 22
-        counter
-        ACCEPT
-    rule
         tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        udp.sport 22
-        counter
-        ACCEPT
-    rule
-        udp.dport 22
-        counter
-        ACCEPT
-    rule
-        tcp.sport 0-9
-        tcp.dport 10-19
-        udp.sport 20-29
-        udp.dport 30-39
         counter
         ACCEPT
     rule
@@ -253,30 +216,6 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
 # Create a cgroup chain
 chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slice} ACCEPT
     rule
-        meta.dport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.dport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
-        meta.sport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.sport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -297,30 +236,7 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         counter
         ACCEPT
     rule
-        tcp.sport 22
-        counter
-        ACCEPT
-    rule
-        tcp.dport 22
-        counter
-        ACCEPT
-    rule
         tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        udp.sport 22
-        counter
-        ACCEPT
-    rule
-        udp.dport 22
-        counter
-        ACCEPT
-    rule
-        tcp.sport 0-9
-        tcp.dport 10-19
-        udp.sport 20-29
-        udp.dport 30-39
         counter
         ACCEPT
     rule
@@ -359,30 +275,6 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
 # Create a Netfilter chain
 chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
     rule
-        meta.dport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.dport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
-        meta.sport eq 22
-        counter
-        CONTINUE
-    rule
-        meta.sport not 22
-        counter
-        CONTINUE
-    rule
-        meta.dport range 10-30
-        counter
-        CONTINUE
-    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -403,30 +295,7 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
         counter
         ACCEPT
     rule
-        tcp.sport 22
-        counter
-        ACCEPT
-    rule
-        tcp.dport 22
-        counter
-        ACCEPT
-    rule
         tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        udp.sport 22
-        counter
-        ACCEPT
-    rule
-        udp.dport 22
-        counter
-        ACCEPT
-    rule
-        tcp.sport 0-9
-        tcp.dport 10-19
-        udp.sport 20-29
-        udp.dport 30-39
         counter
         ACCEPT
     rule
