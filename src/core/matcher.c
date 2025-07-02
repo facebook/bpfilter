@@ -9,6 +9,7 @@
 #include <linux/in.h>
 #include <linux/in6.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -30,6 +31,8 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_IFACE,
     BF_MATCHER_PAYLOAD_L3_PROTO,
     BF_MATCHER_PAYLOAD_L4_PROTO,
+    BF_MATCHER_PAYLOAD_L4_PORT,
+    BF_MATCHER_PAYLOAD_L4_PORT_RANGE,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -160,6 +163,93 @@ void _bf_print_l4_proto(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
 }
 
+int _bf_parse_l4_port(const struct bf_matcher *matcher, void *payload,
+                      const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long port;
+    char *endptr;
+
+    port = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && port <= UINT16_MAX) {
+        *(uint16_t *)matcher->payload = (uint16_t)port;
+        return 0;
+    }
+
+    bf_err("\"%s %s\" expects a valid decimal port number, not '%s'",
+           bf_matcher_type_to_str(matcher->type),
+           bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_l4_port(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    (void)fprintf(stdout, "%" PRIu16, *(uint16_t *)matcher->payload);
+}
+
+#define BF_PORT_RANGE_MAX_LEN 16 // 65535-65535, with nul char, round to **2
+
+static int _bf_parse_l4_port_range(const struct bf_matcher *matcher,
+                                   void *payload, const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    uint16_t *ports = (uint16_t *)matcher->payload;
+    unsigned long port;
+    char buf[BF_PORT_RANGE_MAX_LEN];
+    char *first;
+    char *second;
+    char *endptr;
+
+    bf_strncpy(buf, BF_PORT_RANGE_MAX_LEN, raw_payload);
+
+    if (!isdigit(*raw_payload))
+        goto err;
+
+    first = strtok_r(buf, "-", &second);
+    if (!first)
+        goto err;
+
+    if (!*second)
+        goto err;
+
+    port = strtoul(first, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || port > UINT16_MAX)
+        goto err;
+    ports[0] = (uint16_t)port;
+
+    port = strtoul(second, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || port > UINT16_MAX)
+        goto err;
+    ports[1] = (uint16_t)port;
+
+    if (ports[1] < ports[0])
+        goto err;
+
+    return 0;
+
+err:
+    bf_err(
+        "\"%s %s\" expects two positive decimal port numbers as `$START-$END`, with `$START <= $END`, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_l4_port_range(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    uint16_t *ports = (uint16_t *)matcher->payload;
+
+    (void)fprintf(stdout, "%" PRIu16 "-%" PRIu16, ports[0], ports[1]);
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -167,6 +257,10 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_l3_proto),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PROTO, 1, _bf_parse_l4_proto,
                    _bf_print_l4_proto),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PORT, 2, _bf_parse_l4_port,
+                   _bf_print_l4_port),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PORT_RANGE, 4, _bf_parse_l4_port_range,
+                   _bf_print_l4_port_range),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -185,10 +279,46 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_META_L4_PROTO, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PORT),
+            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
+                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
         };
 
     return _matcher_ops[type][op];

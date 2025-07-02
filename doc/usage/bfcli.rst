@@ -381,7 +381,7 @@ Meta
       - :rspan:`2` ``meta.sport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
@@ -390,7 +390,7 @@ Meta
       - :rspan:`2` ``meta.dport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
@@ -503,7 +503,7 @@ TCP
       - :rspan:`2` ``tcp.sport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
@@ -512,7 +512,7 @@ TCP
       - :rspan:`2` ``tcp.dport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
@@ -544,7 +544,7 @@ UDP
       - :rspan:`2` ``udp.sport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
@@ -553,7 +553,7 @@ UDP
       - :rspan:`2` ``udp.dport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` is a valid port value, as a decimal integer.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``not``
     * - ``range``
       - ``$START-$END``
