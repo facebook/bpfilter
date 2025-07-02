@@ -381,7 +381,7 @@ suite_netns_to_host() {
     expect_failure "can't ping ns iface from host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked on ingress" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq 0x01/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq icmp/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -398,7 +398,7 @@ suite_host_to_netns() {
     expect_failure "can't ping the netns iface from the host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked on ingress" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq 0x01/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq icmp/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -739,8 +739,63 @@ suite_matcher_meta() {
     expect_matcher_nok "meta.l3_proto eq thisiswaytolongforaprotocolname"
     expect_matcher_nok "meta.l3_proto eq 0xffffff"
     expect_matcher_nok "meta.l3_proto eq -154252"
+
+    log "[SUITE] matcher: meta.l4_proto eq"
+    expect_matcher_ok "meta.l4_proto eq icmp"
+    expect_matcher_ok "meta.l4_proto eq ICMPv6"
+    expect_matcher_ok "meta.l4_proto eq 0"
+    expect_matcher_ok "meta.l4_proto eq 17"
+    expect_matcher_ok "meta.l4_proto eq 255"
+
+    expect_matcher_nok "meta.l4_proto eq ipv4"
+    expect_matcher_nok "meta.l4_proto eq imcp"
+    expect_matcher_nok "meta.l4_proto eq 0x342"
+    expect_matcher_nok "meta.l4_proto eq -18"
+    expect_matcher_nok "meta.l4_proto eq 256"
+
+    log "[SUITE] matcher: meta.l4_proto not"
+    expect_matcher_ok "meta.l4_proto not icmp"
+    expect_matcher_ok "meta.l4_proto not ICMPv6"
+    expect_matcher_ok "meta.l4_proto not 0"
+    expect_matcher_ok "meta.l4_proto not 17"
+    expect_matcher_ok "meta.l4_proto not 255"
+
+    expect_matcher_nok "meta.l4_proto not ipv4"
+    expect_matcher_nok "meta.l4_proto not imcp"
+    expect_matcher_nok "meta.l4_proto not 0x342"
+    expect_matcher_nok "meta.l4_proto not -18"
+    expect_matcher_nok "meta.l4_proto not 256"
 }
 with_daemon suite_matcher_meta
+
+suite_matcher_ip4() {
+    log "[SUITE] matcher: ip4.proto"
+    expect_matcher_ok "ip4.proto eq icmp"
+    expect_matcher_ok "ip4.proto eq ICMPv6"
+    expect_matcher_ok "ip4.proto eq 0"
+    expect_matcher_ok "ip4.proto eq 17"
+    expect_matcher_ok "ip4.proto eq 255"
+
+    expect_matcher_nok "ip4.proto eq ipv4"
+    expect_matcher_nok "ip4.proto eq imcp"
+    expect_matcher_nok "ip4.proto eq 0x342"
+    expect_matcher_nok "ip4.proto eq -18"
+    expect_matcher_nok "ip4.proto eq 256"
+
+    log "[SUITE] matcher: ip4.proto not"
+    expect_matcher_ok "ip4.proto not icmp"
+    expect_matcher_ok "ip4.proto not ICMPv6"
+    expect_matcher_ok "ip4.proto not 0"
+    expect_matcher_ok "ip4.proto not 17"
+    expect_matcher_ok "ip4.proto not 255"
+
+    expect_matcher_nok "ip4.proto not ipv4"
+    expect_matcher_nok "ip4.proto not imcp"
+    expect_matcher_nok "ip4.proto not 0x342"
+    expect_matcher_nok "ip4.proto not -18"
+    expect_matcher_nok "ip4.proto not 256"
+}
+with_daemon suite_matcher_ip4
 
 ################################################################################
 #

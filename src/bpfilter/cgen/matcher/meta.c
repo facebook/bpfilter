@@ -49,8 +49,8 @@ static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
                                               const struct bf_matcher *matcher)
 {
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(BPF_JNE, BPF_REG_8, *(uint8_t *)&matcher->payload, 0));
+        program, BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                             BPF_REG_8, *(uint8_t *)&matcher->payload, 0));
 
     return 0;
 }

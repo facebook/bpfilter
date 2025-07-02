@@ -6,6 +6,8 @@
 #include "core/matcher.h"
 
 #include <linux/if_ether.h>
+#include <linux/in.h>
+#include <linux/in6.h>
 
 #include <errno.h>
 #include <inttypes.h>
@@ -27,6 +29,7 @@ enum bf_matcher_payload_type
 {
     BF_MATCHER_PAYLOAD_IFACE,
     BF_MATCHER_PAYLOAD_L3_PROTO,
+    BF_MATCHER_PAYLOAD_L4_PROTO,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -118,11 +121,52 @@ void _bf_print_l3_proto(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "0x%04" PRIx16, *(uint16_t *)matcher->payload);
 }
 
+int _bf_parse_l4_proto(const struct bf_matcher *matcher, void *payload,
+                       const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long ipproto;
+    char *endptr;
+    int r;
+
+    r = bf_ipproto_from_str(raw_payload, payload);
+    if (!r)
+        return 0;
+
+    ipproto = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && ipproto <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)ipproto;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a transport layer protocol name (e.g. \"ICMP\", case insensitive), or a valid decimal internet protocol number, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_l4_proto(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    const char *ipproto = bf_ipproto_to_str(*(uint8_t *)matcher->payload);
+
+    if (ipproto)
+        (void)fprintf(stdout, "%s", ipproto);
+    else
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L3_PROTO, 2, _bf_parse_l3_proto,
                    _bf_print_l3_proto),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PROTO, 1, _bf_parse_l4_proto,
+                   _bf_print_l4_proto),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -137,6 +181,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_IFACE),
             BF_MATCHER_OPS(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L3_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_META_L4_PROTO, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
         };
 
     return _matcher_ops[type][op];
@@ -469,6 +521,32 @@ int bf_ethertype_from_str(const char *str, uint16_t *ethertype)
     if (bf_streq_i(str, "ipv6")) {
         *ethertype = ETH_P_IPV6;
         return 0;
+    }
+
+    return -EINVAL;
+}
+
+static const char *_bf_ipproto_strs[UINT8_MAX + 1] = {
+    [IPPROTO_ICMP] = "icmp", [IPPROTO_IGMP] = "igmp",     [IPPROTO_TCP] = "tcp",
+    [IPPROTO_UDP] = "udp",   [IPPROTO_ICMPV6] = "icmpv6",
+};
+static_assert(ARRAY_SIZE(_bf_ipproto_strs) == (UINT8_MAX + 1),
+              "missing entries in IP protocols strings array");
+
+const char *bf_ipproto_to_str(uint8_t ipproto)
+{
+    return _bf_ipproto_strs[ipproto];
+}
+
+int bf_ipproto_from_str(const char *str, uint8_t *ipproto)
+{
+    bf_assert(str && ipproto);
+
+    for (size_t i = 0; i <= UINT8_MAX; ++i) {
+        if (bf_streq_i(str, _bf_ipproto_strs[i])) {
+            *ipproto = (uint8_t)i;
+            return 0;
+        }
     }
 
     return -EINVAL;

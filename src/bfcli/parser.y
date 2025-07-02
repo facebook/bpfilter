@@ -74,8 +74,8 @@
 %token CHAIN
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_META_L4_PROTO MATCHER_META_PROBA
-%token <sval> MATCHER_IP_PROTO MATCHER_IPADDR
+%token <sval> MATCHER_META_PROBA
+%token <sval> MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_ADDR
@@ -266,29 +266,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                     $$ = TAKE_PTR(matcher);
                 }
-                | matcher_type matcher_op MATCHER_META_L4_PROTO
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    uint8_t proto;
-
-                    if (bf_streq($3, "icmp"))
-                        proto = IPPROTO_ICMP;
-                    else if (bf_streq($3, "tcp"))
-                        proto = IPPROTO_TCP;
-                    else if (bf_streq($3, "udp"))
-                        proto = IPPROTO_UDP;
-                    else if (bf_streq($3, "icmpv6"))
-                        proto = IPPROTO_ICMPV6;
-                    else
-                        bf_parse_err("unsupported L4 protocol to match '%s'\n", $3);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0)
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
                 | matcher_type matcher_op MATCHER_META_PROBA
                 {
                     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -307,23 +284,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                         bf_parse_err("failed to create new matcher\n");
 
                     bf_matcher_dump(matcher, EMPTY_PREFIX);
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IP_PROTO
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    uint8_t proto;
-
-                    if (bf_streq($3, "icmp"))
-                        proto = IPPROTO_ICMP;
-                    else
-                        bf_parse_err("unsupported ip4.proto value '%s'\n", $3);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &proto, sizeof(proto)) < 0)
-                        bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
                 }

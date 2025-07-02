@@ -376,7 +376,7 @@ Meta
       - ``meta.l4_proto``
       - ``eq``
       - ``$PROTOCOL``
-      - ``icmp``, ``icmpv6``, ``tcp``, ``udp`` are supported.
+      - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal `internet protocol number`_.
     * - :rspan:`2` Source port
       - :rspan:`2` ``meta.sport``
       - ``eq``
@@ -440,11 +440,12 @@ IPv4
       - ``ip4.dnet``
       - ``in``
       - ``{$IP/$MASK[,...]}``
-    * - Protocol
-      - ``ip4.proto``
+    * - :rspan:`1` Protocol
+      - :rspan:`1` ``ip4.proto``
       - ``eq``
-      - ``$PROTOCOL``
-      - Only ``icmp`` is supported for now, more protocols will be added.
+      - :rspan:`1` ``$PROTOCOL``
+      - :rspan:`1` ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal `internet protocol number`_.
+    * - ``not``
 
 
 IPv6
@@ -611,3 +612,4 @@ ICMPv6
     * - ``not``
 
 .. _IEEE 802 number: https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml cli,core: convert meta.l3_proto to new framework)
+.. _internet protocol number: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
