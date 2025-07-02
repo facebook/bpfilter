@@ -309,14 +309,19 @@ static inline int bf_realloc(void **ptr, size_t size)
 }
 
 /**
- * Returns true if @p a is equal to @p b.
+ * @brief Check if strings are equal.
+ *
+ * If any of `lhs`, `rhs` is NULL, the strings are considered inequal.
  *
  * @param lhs First string.
  * @param rhs Second string.
- * @return True if @p a == @p b, false otherwise.
+ * @return True if both strings are equal.
  */
-static inline bool bf_streq(const char *lhs, const char *rhs) // NOLINT
+static inline bool bf_streq(const char *lhs, const char *rhs)
 {
+    if (!lhs || !rhs)
+        return false;
+
     return strcmp(lhs, rhs) == 0;
 }
 
