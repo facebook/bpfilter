@@ -46,7 +46,7 @@ enum bf_matcher_type
 {
     /// Matches the packet's network interface index. On ingress it represents
     /// the input interface, on egress the output interface.
-    BF_MATCHER_META_IFINDEX,
+    BF_MATCHER_META_IFACE,
     /// Matches the L3 protocol.
     BF_MATCHER_META_L3_PROTO,
     /// Matches the L4 protocol, idependently from the L3 protocol.
@@ -198,6 +198,17 @@ struct bf_matcher
 };
 
 /**
+ * @brief Operations structure for a given matcher type and operator.
+ */
+struct bf_matcher_ops
+{
+    size_t payload_size;
+    int (*parser_cb)(const struct bf_matcher *matcher, void *payload,
+                     const char *raw_payload);
+    void (*printer_cb)(const struct bf_matcher *matcher);
+};
+
+/**
  * Allocate and initalise a new matcher.
  *
  * @param matcher Matcher object to allocate and initialise. Can't be NULL. On
@@ -213,6 +224,21 @@ struct bf_matcher
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
                    size_t payload_len);
+
+/**
+ * @brief Allocate and initialise a new matcher from a raw payload (string).
+ *
+ * @param matcher Matcher object to allocate and initialise. Can't be NULL. On
+ *        success, contain a pointer to the matcher object, unchanged on error.
+ * @param type Matcher type.
+ * @param op Comparison operator.
+ * @param payload Raw payload, as a string, to parse and populate the matcher
+ *        with. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_matcher_new_from_raw(struct bf_matcher **matcher,
+                            enum bf_matcher_type type, enum bf_matcher_op op,
+                            const char *payload);
 
 /**
  * Allocate a new matcher and initialise it from serialised data.
@@ -247,6 +273,16 @@ int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh);
  * @param prefix Prefix for each printed line.
  */
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
+
+/**
+ * @brief Get operations structure for a given (matcher type, matcher op) tuple.
+ *
+ * @param type Type of matcher to get the operations for.
+ * @param op Operator to get the matcher for.
+ * @return A pointer to a `bf_matcher_ops` structure, or NULL if not found.
+ */
+const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
+                                                enum bf_matcher_op op);
 
 /**
  * Convert a matcher type to a string.

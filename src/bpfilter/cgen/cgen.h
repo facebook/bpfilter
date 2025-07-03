@@ -127,7 +127,7 @@ int bf_cgen_load(struct bf_cgen *cgen);
  * `ns` is the namespace the codegen should switch to before attaching the
  * program. This is required to ensure the interface index the program is
  * attached to (for XDP and TC programs) is correct, and the interface index
- * the program filters on (e.g. `meta.ifindex`, for all hooks) is correct too.
+ * the program filters on (e.g. `meta.iface`, for all hooks) is correct too.
  *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
  * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.

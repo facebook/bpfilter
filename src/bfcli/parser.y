@@ -74,7 +74,7 @@
 %token CHAIN
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_META_IFINDEX MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO MATCHER_META_PROBA
+%token <sval> MATCHER_META_L3_PROTO MATCHER_META_L4_PROTO MATCHER_META_PROBA
 %token <sval> MATCHER_IP_PROTO MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
@@ -86,6 +86,7 @@
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
 %token <sval> RAW_HOOKOPT
+%token <sval> RAW_PAYLOAD
 
 // Grammar types
 %type <bval> counter
@@ -253,25 +254,14 @@ matchers        : matcher
                     $$ = TAKE_PTR($1);
                 }
                 ;
-matcher         : matcher_type matcher_op MATCHER_META_IFINDEX
+matcher         : matcher_type matcher_op RAW_PAYLOAD
                 {
                     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    unsigned long lifindex;
-                    uint32_t ifindex;
+                    _cleanup_free_ const char *payload = $3;
+                    int r;
 
-                    errno = 0;
-                    lifindex = strtoul($3, NULL, 0);
-                    if (errno != 0)
-                        bf_parse_err("failed to parse interface index '%s'", $3);
-
-                    if (lifindex > UINT_MAX)
-                        bf_parse_err("interface index is expected to be at most %u, but is %lu", UINT_MAX, lifindex);
-
-                    ifindex = (uint32_t)lifindex;
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &ifindex, sizeof(ifindex)) < 0)
+                    r = bf_matcher_new_from_raw(&matcher, $1, $2, payload);
+                    if (r)
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);

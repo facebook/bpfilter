@@ -43,15 +43,13 @@ int bf_if_index_from_name(const char *name);
 /**
  * Get an interface name from its index.
  *
- * If the interface index is invalid, or not found, @p buf is filled with
- * "<unknown>".
- *
  * This function copy the interface name into a static buffer, this would
  * probably be an issue for multi-threaded application, but thankfully bpfilter
  * is a single-threaded daemon.
  *
  * @param index Index of the interface.
- * @return Pointer to a static buffer containing the interface name.
+ * @return Pointer to a static buffer containing the interface name, or NULL
+ *         if the interface name is not found.
  */
 const char *bf_if_name_from_index(int index);
 

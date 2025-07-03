@@ -20,7 +20,7 @@
 %option nounput
 
 %s STATE_HOOK_OPTS
-%s STATE_MATCHER_META_IFINDEX
+%s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_META_L4_PROTO
 %s STATE_MATCHER_META_PROBA
@@ -34,6 +34,7 @@
 %s STATE_MATCHER_ICMP
 %s STATE_MATCHER_TCP_FLAGS
 
+int             (-|(0x))?[0-9a-zA-Z]+
 %%
 
 [ \t\n]         ;
@@ -58,12 +59,12 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
 (ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
 
     /* Matcher types */
-meta\.ifindex  { BEGIN(STATE_MATCHER_META_IFINDEX); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_META_IFINDEX>{
+meta\.iface  { BEGIN(STATE_MATCHER_META_IFACE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_IFACE>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [0-9]+ {
+    {int}|[0-9a-zA-Z-]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_META_IFINDEX;
+        return RAW_PAYLOAD;
     }
 }
 
