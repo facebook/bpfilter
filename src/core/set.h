@@ -81,4 +81,3 @@ int bf_set_add_elem(struct bf_set *set, void *elem);
 
 const char *bf_set_type_to_str(enum bf_set_type type);
 int bf_set_type_from_str(const char *str, enum bf_set_type *type);
-enum bf_map_bpf_type bf_set_type_to_map_bpf_type(enum bf_set_type type);
