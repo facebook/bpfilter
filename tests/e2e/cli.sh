@@ -847,6 +847,18 @@ suite_matcher_meta() {
     expect_matcher_nok "meta.dport range -1--4"
     expect_matcher_nok "meta.dport range not-port"
     expect_matcher_nok "meta.dport range notport"
+
+    log "[SUITE] matcher: meta.probability eq"
+    expect_matcher_ok "meta.probability eq 0%"
+    expect_matcher_ok "meta.probability eq 50%"
+    expect_matcher_ok "meta.probability eq 100%"
+
+    expect_matcher_nok "meta.probability eq 0"
+    expect_matcher_nok "meta.probability eq -10%"
+    expect_matcher_nok "meta.probability eq 1000"
+    expect_matcher_nok "meta.probability eq 1000%"
+    expect_matcher_nok "meta.probability eq 15.5%"
+    expect_matcher_nok "meta.probability eq teapot"
 }
 with_daemon suite_matcher_meta
 

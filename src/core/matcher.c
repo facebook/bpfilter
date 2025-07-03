@@ -33,6 +33,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_L4_PROTO,
     BF_MATCHER_PAYLOAD_L4_PORT,
     BF_MATCHER_PAYLOAD_L4_PORT_RANGE,
+    BF_MATCHER_PAYLOAD_PROBABILITY,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -250,6 +251,35 @@ void _bf_print_l4_port_range(const struct bf_matcher *matcher)
     (void)fprintf(stdout, "%" PRIu16 "-%" PRIu16, ports[0], ports[1]);
 }
 
+static int _bf_parse_probability(const struct bf_matcher *matcher,
+                                 void *payload, const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long proba;
+    char *endptr;
+
+    proba = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (endptr[0] == '%' && endptr[1] == '\0' && proba <= 100) {
+        *(uint8_t *)payload = (uint8_t)proba;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a valid decimal percentage value (i.e., within [0%%, 100%%]), not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_probability(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)matcher->payload);
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -261,6 +291,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_l4_port),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PORT_RANGE, 4, _bf_parse_l4_port_range,
                    _bf_print_l4_port_range),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_PROBABILITY, 1, _bf_parse_probability,
+                   _bf_print_probability),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -291,6 +323,8 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
                            BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_PROBABILITY),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,

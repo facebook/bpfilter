@@ -74,7 +74,6 @@
 %token CHAIN
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_META_PROBA
 %token <sval> MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
@@ -262,27 +261,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                     r = bf_matcher_new_from_raw(&matcher, $1, $2, payload);
                     if (r)
                         bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_META_PROBA
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    long raw_val;
-                    uint8_t proba;
-
-                    raw_val = atol($3);
-                    if (raw_val < 0 || 100 < raw_val)
-                        bf_parse_err("invalid meta.probability value: %s\n", $3);
-
-                    proba = (uint8_t)raw_val;
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &proba, sizeof(proba)))
-                        bf_parse_err("failed to create new matcher\n");
-
-                    bf_matcher_dump(matcher, EMPTY_PREFIX);
 
                     $$ = TAKE_PTR(matcher);
                 }

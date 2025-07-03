@@ -89,9 +89,9 @@ ip4\.proto      { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); r
 meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_PROBA>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    (-)?[0-9]+% {
+    {int}% {
         yylval.sval = strdup(yytext);
-        return MATCHER_META_PROBA;
+        return RAW_PAYLOAD;
     }
 }
 
