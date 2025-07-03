@@ -1,6 +1,11 @@
 # Create an XDP chain
 chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
     rule
+        meta.iface eq lo
+        meta.iface eq 1
+        counter
+        ACCEPT
+    rule
         meta.dport eq 22
         counter
         CONTINUE
@@ -24,14 +29,6 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         meta.dport range 10-30
         counter
         CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
@@ -161,14 +158,6 @@ chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
         counter
         CONTINUE
     rule
-        meta.ifindex 1
-        counter
-        CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        ACCEPT
-    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT
@@ -278,14 +267,6 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         meta.dport range 10-30
         counter
         CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
@@ -404,14 +385,6 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
         meta.dport range 10-30
         counter
         CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        CONTINUE
-    rule
-        meta.ifindex 1
-        counter
-        ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter

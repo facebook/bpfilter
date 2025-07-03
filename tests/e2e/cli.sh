@@ -708,6 +708,24 @@ suite_daemon_restore_non_attached() {
 }
 without_daemon suite_daemon_restore_non_attached
 
+suite_matcher_meta() {
+    log "[SUITE] matcher: meta.iface"
+    expect_matcher_ok "meta.iface eq lo"
+    expect_matcher_ok "meta.iface eq 1"
+    expect_matcher_ok "meta.iface eq 01"
+    expect_matcher_ok "meta.iface eq 4294967294"
+
+    expect_matcher_nok "meta.iface eq 0x10"
+    expect_matcher_nok "meta.iface eq -1"
+    expect_matcher_nok "meta.iface eq 42949672941"
+    expect_matcher_nok "meta.iface eq -2147483646"
+    expect_matcher_nok "meta.iface eq -1"
+    expect_matcher_nok "meta.iface eq -100"
+    expect_matcher_nok "meta.iface eq 0"
+    expect_matcher_nok "meta.iface eq noiface"
+    expect_matcher_nok "meta.iface eq iface_name_is_too_long"
+}
+with_daemon suite_matcher_meta
 
 ################################################################################
 #

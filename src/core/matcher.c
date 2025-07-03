@@ -6,13 +6,89 @@
 #include "core/matcher.h"
 
 #include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "core/dump.h"
 #include "core/helper.h"
+#include "core/if.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+
+#define BF_PAYLOAD_OPS(type, size, parser_cb, printer_cb)                      \
+    [type] = {size, parser_cb, printer_cb}
+
+enum bf_matcher_payload_type
+{
+    BF_MATCHER_PAYLOAD_IFACE,
+    _BF_MATCHER_PAYLOAD_MAX,
+};
+
+int _bf_parse_iface(const struct bf_matcher *matcher, void *payload,
+                    const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    int idx;
+    unsigned long ifindex;
+    char *endptr;
+
+    idx = bf_if_index_from_name(raw_payload);
+    if (idx > 0) {
+        *(uint32_t *)matcher->payload = (uint32_t)idx;
+        return 0;
+    }
+
+    ifindex = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && 0 < ifindex && ifindex <= UINT32_MAX) {
+        *(uint32_t *)matcher->payload = (uint32_t)ifindex;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects an interface name (e.g., \"eth0\", \"wlan0\") or a decimal interface index (e.g., \"1\", \"2\"), not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_iface(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    const char *ifname;
+    uint32_t ifindex = *(uint32_t *)matcher->payload;
+
+    ifname = bf_if_name_from_index((int)ifindex);
+    if (ifname)
+        (void)fprintf(stdout, "%s", ifname);
+    else
+        (void)fprintf(stdout, "%" PRIu32, ifindex);
+}
+
+static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
+                   _bf_print_iface),
+};
+
+#define BF_MATCHER_OPS(type, op, payload_type)                                 \
+    [type][op] = (&_bf_payload_ops[payload_type])
+
+const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
+                                                enum bf_matcher_op op)
+{
+    static const struct bf_matcher_ops
+        *_matcher_ops[_BF_MATCHER_TYPE_MAX][_BF_MATCHER_OP_MAX] = {
+            BF_MATCHER_OPS(BF_MATCHER_META_IFACE, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IFACE),
+        };
+
+    return _matcher_ops[type][op];
+}
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
@@ -31,6 +107,39 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
     _matcher->op = op;
     _matcher->len = sizeof(struct bf_matcher) + payload_len;
     bf_memcpy(_matcher->payload, payload, payload_len);
+
+    *matcher = TAKE_PTR(_matcher);
+
+    return 0;
+}
+
+int bf_matcher_new_from_raw(struct bf_matcher **matcher,
+                            enum bf_matcher_type type, enum bf_matcher_op op,
+                            const char *payload)
+{
+    _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
+    const struct bf_matcher_ops *ops;
+    int r;
+
+    bf_assert(matcher && payload);
+
+    ops = bf_matcher_get_ops(type, op);
+    if (!ops) {
+        return bf_err_r(-ENOENT, "payload ops not found for '%s %s'",
+                        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op));
+    }
+
+    _matcher = malloc(sizeof(*_matcher) + ops->payload_size);
+    if (!_matcher)
+        return -ENOMEM;
+
+    _matcher->type = type;
+    _matcher->op = op;
+    _matcher->len = sizeof(*_matcher) + ops->payload_size;
+
+    r = ops->parser_cb(_matcher, &_matcher->payload, payload);
+    if (r)
+        return r;
 
     *matcher = TAKE_PTR(_matcher);
 
@@ -132,7 +241,7 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 }
 
 static const char *_bf_matcher_type_strs[] = {
-    [BF_MATCHER_META_IFINDEX] = "meta.ifindex",
+    [BF_MATCHER_META_IFACE] = "meta.iface",
     [BF_MATCHER_META_L3_PROTO] = "meta.l3_proto",
     [BF_MATCHER_META_L4_PROTO] = "meta.l4_proto",
     [BF_MATCHER_META_PROBABILITY] = "meta.probability",
@@ -223,7 +332,8 @@ static const char *_bf_matcher_tcp_flags_strs[] = {
     [BF_MATCHER_TCP_FLAG_ECE] = "ECE", [BF_MATCHER_TCP_FLAG_CWR] = "CWR",
 };
 
-static_assert(ARRAY_SIZE(_bf_matcher_tcp_flags_strs) == _BF_MATCHER_TCP_FLAG_MAX);
+static_assert(ARRAY_SIZE(_bf_matcher_tcp_flags_strs) ==
+              _BF_MATCHER_TCP_FLAG_MAX);
 
 const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag)
 {
@@ -249,14 +359,10 @@ int bf_matcher_tcp_flag_from_str(const char *str,
 }
 
 static const char *_bf_matcher_ipv6_nh_strs[] = {
-    [BF_IPV6_NH_HOP] = "hop",
-    [BF_IPV6_NH_TCP] = "tcp",
-    [BF_IPV6_NH_UDP] = "udp",
-    [BF_IPV6_NH_ROUTING] = "route",
-    [BF_IPV6_NH_FRAGMENT] = "frag",
-    [BF_IPV6_NH_AH] = "ah",
-    [BF_IPV6_NH_ICMPV6] = "icmpv6",
-    [BF_IPV6_NH_DSTOPTS] = "dst",
+    [BF_IPV6_NH_HOP] = "hop",       [BF_IPV6_NH_TCP] = "tcp",
+    [BF_IPV6_NH_UDP] = "udp",       [BF_IPV6_NH_ROUTING] = "route",
+    [BF_IPV6_NH_FRAGMENT] = "frag", [BF_IPV6_NH_AH] = "ah",
+    [BF_IPV6_NH_ICMPV6] = "icmpv6", [BF_IPV6_NH_DSTOPTS] = "dst",
     [BF_IPV6_NH_MH] = "mh",
 };
 

@@ -80,6 +80,8 @@ extern const char *strerrordesc_np(int errnum);
 #define _BF_APPLY_ALL(t, s, ...)                                               \
     __BF_APPLY_ALL(t, s, _BF_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 
+#define BF_BASE_10 10
+
 /**
  * @brief Generate a bitflag from multiple values.
  *

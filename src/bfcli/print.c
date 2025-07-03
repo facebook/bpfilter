@@ -117,12 +117,20 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         (void)fprintf(stdout, "    rule\n");
         bf_list_foreach (&rule->matchers, matcher_node) {
             struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+            const struct bf_matcher_ops *ops =
+                bf_matcher_get_ops(matcher->type, matcher->op);
+
             (void)fprintf(stdout, "        %s",
                           bf_matcher_type_to_str(matcher->type));
             (void)fprintf(stdout, " %s ", bf_matcher_op_to_str(matcher->op));
 
-            bf_dump_hex_local(matcher->payload,
-                              matcher->len - sizeof(struct bf_matcher));
+            if (ops) {
+                ops->printer_cb(matcher);
+            } else {
+                bf_dump_hex_local(matcher->payload,
+                                  matcher->len - sizeof(struct bf_matcher));
+            }
+
             (void)fprintf(stdout, "\n");
         }
 

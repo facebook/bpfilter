@@ -23,8 +23,8 @@
 
 #include "external/filter.h"
 
-static int _bf_matcher_generate_meta_ifindex(struct bf_program *program,
-                                             const struct bf_matcher *matcher)
+static int _bf_matcher_generate_meta_iface(struct bf_program *program,
+                                           const struct bf_matcher *matcher)
 {
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(ifindex)));
@@ -135,8 +135,8 @@ int bf_matcher_generate_meta(struct bf_program *program,
     int r;
 
     switch (matcher->type) {
-    case BF_MATCHER_META_IFINDEX:
-        r = _bf_matcher_generate_meta_ifindex(program, matcher);
+    case BF_MATCHER_META_IFACE:
+        r = _bf_matcher_generate_meta_iface(program, matcher);
         break;
     case BF_MATCHER_META_L3_PROTO:
         r = _bf_matcher_generate_meta_l3_proto(program, matcher);

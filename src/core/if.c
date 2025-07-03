@@ -28,23 +28,19 @@ int bf_if_index_from_name(const char *name)
     bf_assert(name);
 
     r = if_nametoindex(name);
-    if (r == 0) {
-        return bf_err_r(errno, "failed to get ifindex for interface '%s'",
-                        name);
-    }
+    if (r == 0)
+        return -ENOENT;
 
     if (r > INT_MAX)
-        return bf_err_r(-E2BIG, "ifindex is too big: %d", r);
+        return -E2BIG;
 
     return (int)r;
 }
 
 const char *bf_if_name_from_index(int index)
 {
-    if (!if_indextoname(index, _bf_if_name)) {
-        bf_warn_r(errno, "failed to get ifname for interface '%d'", index);
-        strncpy(_bf_if_name, "<unknown>", IFNAMSIZ);
-    }
+    if (!if_indextoname(index, _bf_if_name))
+        return NULL;
 
     return _bf_if_name;
 }
