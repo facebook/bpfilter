@@ -5,6 +5,8 @@
 
 #include "core/matcher.h"
 
+#include <linux/if_ether.h>
+
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -24,6 +26,7 @@
 enum bf_matcher_payload_type
 {
     BF_MATCHER_PAYLOAD_IFACE,
+    BF_MATCHER_PAYLOAD_L3_PROTO,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -70,9 +73,56 @@ void _bf_print_iface(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "%" PRIu32, ifindex);
 }
 
+int _bf_parse_l3_proto(const struct bf_matcher *matcher, void *payload,
+                       const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long ethertype;
+    char *endptr;
+    int r;
+
+    r = bf_ethertype_from_str(raw_payload, payload);
+    if (!r)
+        return 0;
+
+    ethertype = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && ethertype <= UINT16_MAX) {
+        *(uint16_t *)matcher->payload = (uint16_t)ethertype;
+        return 0;
+    }
+
+    ethertype = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && ethertype <= UINT16_MAX) {
+        *(uint16_t *)matcher->payload = (uint16_t)ethertype;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects an internet layer protocol name (e.g. \"IPv6\", case insensitive), or a valid decimal or hexadecimal IEEE 802 number, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_l3_proto(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    const char *ethertype = bf_ethertype_to_str(*(uint16_t *)matcher->payload);
+
+    if (ethertype)
+        (void)fprintf(stdout, "%s", ethertype);
+    else
+        (void)fprintf(stdout, "0x%04" PRIx16, *(uint16_t *)matcher->payload);
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L3_PROTO, 2, _bf_parse_l3_proto,
+                   _bf_print_l3_proto),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -85,6 +135,8 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
         *_matcher_ops[_BF_MATCHER_TYPE_MAX][_BF_MATCHER_OP_MAX] = {
             BF_MATCHER_OPS(BF_MATCHER_META_IFACE, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_IFACE),
+            BF_MATCHER_OPS(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L3_PROTO),
         };
 
     return _matcher_ops[type][op];
@@ -388,6 +440,35 @@ int bf_matcher_ipv6_nh_from_str(const char *str,
             *nexthdr = i;
             return 0;
         }
+    }
+
+    return -EINVAL;
+}
+
+const char *bf_ethertype_to_str(uint16_t ethertype)
+{
+    switch (ethertype) {
+    case ETH_P_IP:
+        return "ipv4";
+    case ETH_P_IPV6:
+        return "ipv6";
+    default:
+        return NULL;
+    }
+}
+
+int bf_ethertype_from_str(const char *str, uint16_t *ethertype)
+{
+    bf_assert(str && ethertype);
+
+    if (bf_streq_i(str, "ipv4")) {
+        *ethertype = ETH_P_IP;
+        return 0;
+    }
+
+    if (bf_streq_i(str, "ipv6")) {
+        *ethertype = ETH_P_IPV6;
+        return 0;
     }
 
     return -EINVAL;

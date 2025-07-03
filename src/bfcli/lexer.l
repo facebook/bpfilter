@@ -71,9 +71,9 @@ meta\.iface  { BEGIN(STATE_MATCHER_META_IFACE); yylval.sval = strdup(yytext); re
 meta\.l3_proto  { BEGIN(STATE_MATCHER_META_L3_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_L3_PROTO>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [a-z0-9]+ {
+    {int}|[0-9a-zA-Z-]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_META_L3_PROTO;
+        return RAW_PAYLOAD;
     }
 }
 

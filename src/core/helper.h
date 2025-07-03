@@ -81,6 +81,7 @@ extern const char *strerrordesc_np(int errnum);
     __BF_APPLY_ALL(t, s, _BF_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 
 #define BF_BASE_10 10
+#define BF_BASE_16 16
 
 /**
  * @brief Generate a bitflag from multiple values.
@@ -325,6 +326,17 @@ static inline bool bf_streq(const char *lhs, const char *rhs)
         return false;
 
     return strcmp(lhs, rhs) == 0;
+}
+
+/**
+* @brief Case insensitive alternative to `bf_streq`.
+*/
+static inline bool bf_streq_i(const char *lhs, const char *rhs)
+{
+    if (!lhs || !rhs)
+        return false;
+
+    return strcasecmp(lhs, rhs) == 0;
 }
 
 /**

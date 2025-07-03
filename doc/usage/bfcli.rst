@@ -371,7 +371,7 @@ Meta
       - ``meta.l3_proto``
       - ``eq``
       - ``$PROTOCOL``
-      - ``ipv4`` and ``ipv6`` are supported.
+      - ``$PROTOCOL`` must be an internet layer protocol name (e.g. "IPv6", case insensitive), or a valid decimal or hexadecimal `IEEE 802 number`_.
     * - L4 protocol
       - ``meta.l4_proto``
       - ``eq``
@@ -609,3 +609,5 @@ ICMPv6
       - :rspan:`1` ``$ICMPV6_CODE``
       - :rspan:`1` ``$ICMPV6_CODE`` is a valid ICMPv6 message code as a decimal integer.
     * - ``not``
+
+.. _IEEE 802 number: https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml cli,core: convert meta.l3_proto to new framework)

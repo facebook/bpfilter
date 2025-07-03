@@ -724,6 +724,21 @@ suite_matcher_meta() {
     expect_matcher_nok "meta.iface eq 0"
     expect_matcher_nok "meta.iface eq noiface"
     expect_matcher_nok "meta.iface eq iface_name_is_too_long"
+
+    log "[SUITE] matcher: meta.l3_proto"
+    expect_matcher_ok "meta.l3_proto eq ipv4"
+    expect_matcher_ok "meta.l3_proto eq IPv6"
+    expect_matcher_ok "meta.l3_proto eq 0"
+    expect_matcher_ok "meta.l3_proto eq 17"
+    expect_matcher_ok "meta.l3_proto eq 65535"
+    expect_matcher_ok "meta.l3_proto eq 0x00"
+    expect_matcher_ok "meta.l3_proto eq 0x17"
+    expect_matcher_ok "meta.l3_proto eq 0xffff"
+
+    expect_matcher_nok "meta.l3_proto eq ipv65"
+    expect_matcher_nok "meta.l3_proto eq thisiswaytolongforaprotocolname"
+    expect_matcher_nok "meta.l3_proto eq 0xffffff"
+    expect_matcher_nok "meta.l3_proto eq -154252"
 }
 with_daemon suite_matcher_meta
 
