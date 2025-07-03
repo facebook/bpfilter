@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "core/dump.h"
+#include "core/set.h"
 
 enum bf_map_bpf_type
 {
@@ -252,3 +253,11 @@ const char *bf_map_bpf_type_to_str(enum bf_map_bpf_type bpf_type);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_map_bpf_type_from_str(const char *str, enum bf_map_bpf_type *bpf_type);
+
+/**
+ * @brief Convert a generic set type into a BPF map type.
+ *
+ * @param type Set type to convert.
+ * @return BPF map type corresponding to the set type.
+ */
+enum bf_map_bpf_type bf_map_bpf_type_from_set_type(enum bf_set_type type);

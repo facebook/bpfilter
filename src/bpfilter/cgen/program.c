@@ -116,7 +116,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 
         (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x", (uint8_t)set_idx++);
         r = bf_map_new(&map, name, BF_MAP_TYPE_SET,
-                       bf_set_type_to_map_bpf_type(set->type), set->elem_size,
+                       bf_map_bpf_type_from_set_type(set->type), set->elem_size,
                        1, bf_list_size(&set->elems));
         if (r < 0)
             return r;

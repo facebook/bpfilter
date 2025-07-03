@@ -525,3 +525,18 @@ int bf_map_bpf_type_from_str(const char *str, enum bf_map_bpf_type *bpf_type)
 
     return -EINVAL;
 }
+
+static enum bf_map_bpf_type _bf_map_bpf_type_to_set_type[] = {
+    [BF_SET_IP4] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_SRCIP6PORT] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_SRCIP6] = BF_MAP_BPF_TYPE_HASH,
+    [BF_SET_IP4_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
+    [BF_SET_IP6_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
+};
+
+static_assert(ARRAY_SIZE(_bf_map_bpf_type_to_set_type) == _BF_SET_MAX, "");
+
+enum bf_map_bpf_type bf_map_bpf_type_from_set_type(enum bf_set_type type)
+{
+    return _bf_map_bpf_type_to_set_type[type];
+}
