@@ -205,7 +205,14 @@ cleanup() {
 
     umount ${WORKDIR}/ns || true
 
-    exit ${1:-0}
+    # Use RETURN_VALUE when $1 is 0 or unset
+    if [ -z "$1" ] || [ "$1" -eq 0 ]; then
+        exit_code=$RETURN_VALUE
+    else
+        exit_code=$1
+    fi
+
+    exit $exit_code
 }
 
 start_daemon() {
@@ -258,6 +265,8 @@ setup
 #
 ################################################################################
 
+RETURN_VALUE=0
+
 expect_result() {
     local description="$1"
     local expected_result="$2"  # 0 = success, "non-zero" or any number for failure
@@ -283,24 +292,35 @@ expect_result() {
         # Failure case
         echo -e "${RED}[-] -> Failure: ${RED_BOLD}${description}${RESET}" >&2
 
+        echo >&2
+
+        # Show expected vs actual result
+        if [ "$expected_result" = "0" ]; then
+            echo -e "${RED_BOLD}bfcli exited with ${result}, expected 0${RESET}" >&2
+        elif [ "$expected_result" = "non-zero" ]; then
+            echo -e "${RED_BOLD}bfcli exited with ${result}, expected non-zero${RESET}" >&2
+        else
+            echo -e "${RED_BOLD}bfcli exited with ${result}, expected ${expected_result}${RESET}" >&2
+        fi
+
         # Print the command that was executed
         echo -e "${YELLOW}Command:${RESET} $cmd" >&2
 
         # Print the captured output
         echo -e "${YELLOW}Output:${RESET}" >&2
         echo "$output" >&2
-
-        # Show expected vs actual result
-        if [ "$expected_result" = "0" ]; then
-            echo -e "${YELLOW}Expected exit code 0, got ${result}${RESET}" >&2
-        elif [ "$expected_result" = "non-zero" ]; then
-            echo -e "${YELLOW}Expected non-zero exit code, got ${result}${RESET}" >&2
-        else
-            echo -e "${YELLOW}Expected exit code ${expected_result}, got ${result}${RESET}" >&2
-        fi
         echo >&2
 
-        return 1
+        if ! kill -0 "$BPFILTER_PID" 2>/dev/null; then
+            echo -e "${RED_BOLD}bpfilter crashed${RESET}"
+            return 1
+        fi
+
+        # Ensure that if we don't stop right now, we'll return an error code
+        # when the test ends.
+        RETURN_VALUE=1
+
+        return 0
     fi
 }
 
