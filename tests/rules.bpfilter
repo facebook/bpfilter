@@ -6,6 +6,15 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        meta.l3_proto eq ipv4
+        meta.l3_proto eq ipv6
+        meta.l3_proto eq IPv4
+        meta.l3_proto eq IPv6
+        meta.l3_proto eq 1024
+        meta.l3_proto eq 0x0600
+        counter
+        ACCEPT
+    rule
         meta.dport eq 22
         counter
         CONTINUE
@@ -39,10 +48,6 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         ACCEPT
     rule
         ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        meta.l3_proto ipv6
         counter
         ACCEPT
     rule
@@ -280,10 +285,6 @@ chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slic
         counter
         ACCEPT
     rule
-        meta.l3_proto ipv6
-        counter
-        ACCEPT
-    rule
         meta.l4_proto tcp
         counter
         ACCEPT
@@ -395,10 +396,6 @@ chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
         ACCEPT
     rule
         ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        meta.l3_proto ipv6
         counter
         ACCEPT
     rule

@@ -7,6 +7,7 @@
 
 #include <linux/in.h>
 #include <linux/in6.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -354,3 +355,6 @@ const char *bf_matcher_ipv6_nh_to_str(enum bf_matcher_ipv6_nh nexthdr);
  */
 int bf_matcher_ipv6_nh_from_str(const char *str,
                                 enum bf_matcher_ipv6_nh *nexthdr);
+
+const char *bf_ethertype_to_str(uint16_t ethertype);
+int bf_ethertype_from_str(const char *str, uint16_t *ethertype);
