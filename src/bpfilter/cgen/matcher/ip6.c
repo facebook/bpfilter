@@ -175,18 +175,18 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
         // Copy bf_ip6_lpm_key entries starting at scratch offset 4, so the
         // 64-bits copies for the address will be aligned
         offset = matcher->type == BF_MATCHER_IP6_SNET ?
-                    offsetof(struct ipv6hdr, saddr) :
-                    offsetof(struct ipv6hdr, daddr);
+                     offsetof(struct ipv6hdr, saddr) :
+                     offsetof(struct ipv6hdr, daddr);
         EMIT(program, BPF_MOV64_IMM(BPF_REG_3, 128));
         EMIT(program,
              BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_3, BF_PROG_SCR_OFF(4)));
 
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset));
         EMIT(program,
-            BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
+             BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(8)));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset + 8));
         EMIT(program,
-            BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(16)));
+             BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(16)));
         break;
     default:
         return bf_err_r(-EINVAL, "unsupported set type: %s",
