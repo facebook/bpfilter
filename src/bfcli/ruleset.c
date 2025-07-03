@@ -30,7 +30,7 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
     else
         r = bfc_parse_str(opts->from_str, &ruleset);
     if (r)
-        bf_err_r(r, "failed to parse ruleset");
+        return bf_err_r(r, "failed to parse ruleset");
 
     r = bf_ruleset_set(&ruleset.chains, &ruleset.hookopts);
     if (r)
