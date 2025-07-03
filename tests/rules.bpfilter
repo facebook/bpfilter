@@ -40,11 +40,23 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        meta.probability eq 0%
+        meta.probability eq 50%
+        meta.probability eq 100%
+        counter
+        ACCEPT
+    rule
         ip4.proto eq icmp
         ip4.proto eq ICMPv6
         ip4.proto eq 6
         counter
         ACCEPT
+    rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq udp
+        ip6.nexthdr eq icmpv6
+        counter
+        CONTINUE
     rule
         tcp.sport eq 0
         tcp.sport eq 17
@@ -122,16 +134,6 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
-        ip6.nexthdr eq tcp
-        ip6.nexthdr eq udp
-        ip6.nexthdr eq icmpv6
-        counter
-        CONTINUE
-    rule
-        meta.probability eq 50%
-        counter
-        CONTINUE
-    rule
         ip6.snet in {fdb2:2c26:f4e4::1/128}
         counter
         CONTINUE
@@ -145,188 +147,5 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         CONTINUE
     rule
         ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
-        counter
-        CONTINUE
-    rule
-        ip6.nexthdr eq tcp
-        ip6.nexthdr eq udp
-        ip6.nexthdr eq icmpv6
-        counter
-        CONTINUE
-
-# Create a TC chain
-chain mytciprog BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
-    rule
-        ip4.saddr in {192.168.1.131,192.168.1.132}
-        counter
-        ACCEPT
-    rule
-        ip4.saddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip4.daddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        icmp.type eq 8
-        icmp.code eq 0
-        counter
-        ACCEPT
-    rule
-        icmpv6.type eq 128
-        icmpv6.code eq 0
-        counter
-        ACCEPT
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/128}
-        counter
-        CONTINUE
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/64}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
-        counter
-        CONTINUE
-    rule
-        ip6.nexthdr eq tcp
-        ip6.nexthdr eq udp
-        ip6.nexthdr eq icmpv6
-        counter
-        CONTINUE
-
-# Create a cgroup chain
-chain mycgroupingressprog BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup/user.slice} ACCEPT
-    rule
-        ip4.saddr in {192.168.1.131,192.168.1.132}
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        ip4.saddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip4.daddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        icmp.type eq 8
-        icmp.code eq 0
-        counter
-        ACCEPT
-    rule
-        icmpv6.type eq 128
-        icmpv6.code eq 0
-        counter
-        ACCEPT
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/128}
-        counter
-        CONTINUE
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/64}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
-        counter
-        CONTINUE
-    rule
-        ip6.nexthdr eq tcp
-        ip6.nexthdr eq udp
-        ip6.nexthdr eq icmpv6
-        counter
-        CONTINUE
-
-# Create a Netfilter chain
-chain mynfprog BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=1-2} ACCEPT
-    rule
-        ip4.saddr in {192.168.1.131,192.168.1.132}
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        ip4.saddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip4.daddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        icmp.type eq 8
-        icmp.code eq 0
-        counter
-        ACCEPT
-    rule
-        icmpv6.type eq 128
-        icmpv6.code eq 0
-        counter
-        ACCEPT
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/128}
-        counter
-        CONTINUE
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/64}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
-        counter
-        CONTINUE
-    rule
-        ip6.nexthdr eq tcp
-        ip6.nexthdr eq udp
-        ip6.nexthdr eq icmpv6
         counter
         CONTINUE

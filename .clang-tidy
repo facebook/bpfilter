@@ -94,7 +94,7 @@ Checks: >
     -readability-isolate-declaration,
     -readability-suspicious-call-argument
 
-WarningsAsErrors: '*'
+WarningsAsErrors: "*"
 FormatStyle: none
 UseColor: yes
 
@@ -103,7 +103,7 @@ CheckOptions:
   # specific prefix (.e.g _BF). Other idenfitiers defined by GCC are allowed,
   # such as _start, _end...
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: '^(_)+(start|stop|bf|bfc|BF|BFC|GNU)_[a-zA-Z0-9_]+$'
+    value: "^(_)+(start|stop|bf|bfc|BF|BFC|GNU)_[a-zA-Z0-9_]+$"
   - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value: true
   # Unless a *statement* takes 1 line, it should be in braces
@@ -111,13 +111,13 @@ CheckOptions:
     value: 6
   # Allowed short variable names
   - key: readability-identifier-length.IgnoredVariableNames
-    value: '_|i|fd|r|j[0-9]|op|ns'
+    value: "_|i|fd|r|j[0-9]|op|ns"
   # Allowed short parameter names
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'ip|fd|op|id|cb|ns'
+    value: "ip|fd|op|id|cb|ns"
   # Allow for magic constants that are power of 2.
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: true
   # Allow specific masks
   - key: readability-magic-numbers.IgnoredIntegerValues
-    value: 255;65535
+    value: 255;65535;100

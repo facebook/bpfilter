@@ -399,7 +399,7 @@ Meta
       - ``meta.probability``
       - ``eq``
       - ``$PROBABILITY``
-      - ``$PROBABILITY`` is an integer between 0 and 100 followed by the ``%`` sign.
+      - ``$PROBABILITY`` is a valid decimal percentage value (i.e., within [0%, 100%]).
 
 IPv4
 ####
