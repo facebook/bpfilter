@@ -345,6 +345,24 @@ fi
 
 WITH_TIMEOUT="timeout --signal INT --preserve-status .5"
 
+expect_matcher_ok() {
+    local matcher="$1"
+
+    CHAIN="chain xdp BF_HOOK_XDP ACCEPT rule ${matcher} counter DROP"
+
+    expect_success "valid matcher '${matcher}'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"${CHAIN}\"
+}
+
+expect_matcher_nok() {
+    local matcher="$1"
+
+    CHAIN="chain xdp BF_HOOK_XDP ACCEPT rule ${matcher} counter DROP"
+
+    expect_failure "invalid matcher '${matcher}'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"${CHAIN}\"
+}
+
 
 ################################################################################
 #
