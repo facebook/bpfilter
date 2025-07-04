@@ -112,7 +112,11 @@ ip4\.daddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext);
 ip4\.snet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP4_NET>{
-    (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int}\.{int}\.{int}\.{int}\/{int} {
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
     \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{2},?)+\} {
         yylval.sval = strdup(yytext);
         return MATCHER_IP4_NET;

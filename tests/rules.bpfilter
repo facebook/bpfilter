@@ -56,6 +56,16 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        ip4.snet eq 1.1.1.1/24
+        ip4.snet not 192.168.1.1/10
+        counter
+        ACCEPT
+    rule
+        ip4.dnet eq 1.1.1.1/26
+        ip4.dnet not 192.168.1.1/12
+        counter
+        ACCEPT
+    rule
         ip4.proto eq icmp
         ip4.proto eq ICMPv6
         ip4.proto eq 6

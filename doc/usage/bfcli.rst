@@ -428,15 +428,22 @@ IPv4
       - :rspan:`1` ``$ADDR``
     * - ``not``
     * - ``in``
-      - ``{$IPv4[,...]}``
-    * - Source network
-      - ``ip4.snet``
-      - ``in``
-      - ``{$IP/$MASK[,...]}``
-    * - Destination network
-      - ``ip4.dnet``
-      - ``in``
-      - ``{$IP/$MASK[,...]}``
+      - ``{$ADDR[,...]}``
+    * - :rspan:`2` Source network
+      - :rspan:`2` ``ip4.snet``
+      - ``eq``
+      - :rspan:`1` ``$ADDR/$MASK``
+      - :rspan:`5` ``$ADDR`` is an IPv4 network address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255, ``$MASK`` is a subnet mask in the range 0 to 32.
+    * - ``not``
+    * - ``in``
+      - ``{$ADDR/$MASK[,...]}``
+    * - :rspan:`2` Destination network
+      - :rspan:`2` ``ip4.dnet``
+      - ``eq``
+      - :rspan:`1` ``$ADDR/$MASK``
+    * - ``not``
+    * - ``in``
+      - ``{$ADDR/$MASK[,...]}``
     * - :rspan:`1` Protocol
       - :rspan:`1` ``ip4.proto``
       - ``eq``
