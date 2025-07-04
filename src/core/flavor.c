@@ -13,7 +13,7 @@ const char *bf_flavor_to_str(enum bf_flavor flavor)
         [BF_FLAVOR_TC] = "BF_FLAVOR_TC",
         [BF_FLAVOR_NF] = "BF_FLAVOR_NF",
         [BF_FLAVOR_XDP] = "BF_FLAVOR_XDP",
-        [BF_FLAVOR_CGROUP] = "BF_FLAVOR_GROUP",
+        [BF_FLAVOR_CGROUP] = "BF_FLAVOR_CGROUP",
     };
 
     bf_assert(0 <= flavor && flavor < _BF_FLAVOR_MAX);
