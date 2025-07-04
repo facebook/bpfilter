@@ -46,6 +46,16 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        ip4.saddr eq 1.1.1.1
+        ip4.saddr not 1.1.1.1
+        counter
+        ACCEPT
+    rule
+        ip4.daddr eq 1.1.1.1
+        ip4.daddr not 1.1.1.1
+        counter
+        ACCEPT
+    rule
         ip4.proto eq icmp
         ip4.proto eq ICMPv6
         ip4.proto eq 6

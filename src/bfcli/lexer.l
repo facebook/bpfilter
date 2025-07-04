@@ -24,7 +24,7 @@
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
-%s STATE_MATCHER_IPADDR
+%s STATE_MATCHER_IPV4_ADDR
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_IP6_NET
@@ -95,13 +95,13 @@ meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytex
     }
 }
 
-ip4\.saddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-ip4\.daddr       { BEGIN(STATE_MATCHER_IPADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_IPADDR>{
+ip4\.saddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip4\.daddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IPV4_ADDR>{
     (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(\/[0-9]+)? {
+    {int}\.{int}\.{int}\.{int} {
         yylval.sval = strdup(yytext);
-        return MATCHER_IPADDR;
+        return RAW_PAYLOAD;
     }
     \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3},?)+\} {
         yylval.sval = strdup(yytext);

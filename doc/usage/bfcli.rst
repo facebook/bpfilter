@@ -417,21 +417,18 @@ IPv4
     * - :rspan:`2` Source address
       - :rspan:`2` ``ip4.saddr``
       - ``eq``
-      - :rspan:`1` ``$IP/$MASK``
-      - :rspan:`1` ``/$MASK`` is optional, ``/32`` is used by default.
+      - :rspan:`1` ``$ADDR``
+      - :rspan:`5` ``$ADDR`` is an IPv4 address in dotted-decimal format, "ddd.ddd.ddd.ddd", where ddd is a decimal number of up to three digits in the range 0 to 255. To filter on an IPv4 network (using an IPv4 address and a subnet mask), see ``ip4.snet`` or ``ip4.dnet``.
     * - ``not``
     * - ``in``
-      - ``{$IP[,...]}``
-      - Only support ``/32`` mask.
+      - ``{$ADDR[,...]}``
     * - :rspan:`2` Destination address
       - :rspan:`2` ``ip4.daddr``
       - ``eq``
-      - :rspan:`1` ``$IP/$MASK``
-      - :rspan:`1` ``/$MASK`` is optional, ``/32`` is used by default.
+      - :rspan:`1` ``$ADDR``
     * - ``not``
     * - ``in``
-      - ``{$IP[,...]}``
-      - Only support ``/32`` mask.
+      - ``{$IPv4[,...]}``
     * - Source network
       - ``ip4.snet``
       - ``in``

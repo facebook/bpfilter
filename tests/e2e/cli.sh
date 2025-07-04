@@ -863,6 +863,42 @@ suite_matcher_meta() {
 with_daemon suite_matcher_meta
 
 suite_matcher_ip4() {
+    log "[SUITE] matcher: ip4.saddr eq"
+    expect_matcher_ok "ip4.saddr eq 1.1.1.1"
+    expect_matcher_ok "ip4.saddr eq 255.255.255.255"
+
+    expect_matcher_nok "ip4.saddr eq notanip"
+    expect_matcher_nok "ip4.saddr eq 1.1.1.1.1"
+    expect_matcher_nok "ip4.saddr eq 1.1.1.1/24"
+    expect_matcher_nok "ip4.saddr eq -1.1.1.1"
+
+    log "[SUITE] matcher: ip4.saddr not"
+    expect_matcher_ok "ip4.saddr not 1.1.1.1"
+    expect_matcher_ok "ip4.saddr not 255.255.255.255"
+
+    expect_matcher_nok "ip4.saddr not notanip"
+    expect_matcher_nok "ip4.saddr not 1.1.1.1.1"
+    expect_matcher_nok "ip4.saddr not 1.1.1.1/24"
+    expect_matcher_nok "ip4.saddr not -1.1.1.1"
+
+    log "[SUITE] matcher: ip4.daddr eq"
+    expect_matcher_ok "ip4.daddr eq 1.1.1.1"
+    expect_matcher_ok "ip4.daddr eq 255.255.255.255"
+
+    expect_matcher_nok "ip4.daddr eq notanip"
+    expect_matcher_nok "ip4.daddr eq 1.1.1.1.1"
+    expect_matcher_nok "ip4.daddr eq 1.1.1.1/24"
+    expect_matcher_nok "ip4.daddr eq -1.1.1.1"
+
+    log "[SUITE] matcher: ip4.daddr not"
+    expect_matcher_ok "ip4.daddr not 1.1.1.1"
+    expect_matcher_ok "ip4.daddr not 255.255.255.255"
+
+    expect_matcher_nok "ip4.daddr not notanip"
+    expect_matcher_nok "ip4.daddr not 1.1.1.1.1"
+    expect_matcher_nok "ip4.daddr not 1.1.1.1/24"
+    expect_matcher_nok "ip4.daddr not -1.1.1.1"
+
     log "[SUITE] matcher: ip4.proto"
     expect_matcher_ok "ip4.proto eq icmp"
     expect_matcher_ok "ip4.proto eq ICMPv6"

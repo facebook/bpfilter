@@ -315,6 +315,206 @@ Test(ip4, proto)
     bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
 }
 
+Test(ip4, saddr)
+{
+    _free_bf_chain_ struct bf_chain *match_eq_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0a
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *nomatch_eq_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0b
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *match_ne_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0b
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *nomatch_ne_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0a
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(match_eq_pkt, BF_VERDICT_DROP, pkt_local_ip4);
+    bft_e2e_test(nomatch_eq_pkt, BF_VERDICT_ACCEPT, pkt_local_ip4);
+    bft_e2e_test(match_ne_pkt, BF_VERDICT_DROP, pkt_local_ip4);
+    bft_e2e_test(nomatch_ne_pkt, BF_VERDICT_ACCEPT, pkt_local_ip4);
+}
+
+Test(ip4, daddr)
+{
+    _free_bf_chain_ struct bf_chain *match_eq_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0b
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *nomatch_eq_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0c
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *match_ne_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0c
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    _free_bf_chain_ struct bf_chain *nomatch_ne_pkt = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP4_DADDR, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            // IP address
+                            0x7f, 0x02, 0x0a, 0x0b
+                        },
+                        4
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(match_eq_pkt, BF_VERDICT_DROP, pkt_local_ip4);
+    bft_e2e_test(nomatch_eq_pkt, BF_VERDICT_ACCEPT, pkt_local_ip4);
+    bft_e2e_test(match_ne_pkt, BF_VERDICT_DROP, pkt_local_ip4);
+    bft_e2e_test(nomatch_ne_pkt, BF_VERDICT_ACCEPT, pkt_local_ip4);
+}
+
 Test(ip4, daddr_eq_mask_match)
 {
     _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
