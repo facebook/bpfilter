@@ -39,6 +39,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_L4_PORT_RANGE,
     BF_MATCHER_PAYLOAD_PROBABILITY,
     BF_MATCHER_PAYLOAD_IPV4_ADDR,
+    BF_MATCHER_PAYLOAD_IPV4_NET,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -316,6 +317,67 @@ void _bf_print_ipv4_addr(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "<failed to print IPv4 address>");
 }
 
+#define BF_IPV4_NET_MAX_LEN                                                    \
+    32 // 255.255.255.255/32, with nul char, round to **2
+
+static int _bf_parse_ipv4_net(const struct bf_matcher *matcher, void *payload,
+                              const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    struct bf_matcher_ip4_addr *addr = payload;
+    char buf[BF_IPV4_NET_MAX_LEN];
+    unsigned long mask;
+    char *strip;
+    char *strmask;
+    char *endptr;
+    int r;
+
+    bf_strncpy(buf, BF_IPV4_NET_MAX_LEN, raw_payload);
+
+    if (!isdigit(*raw_payload))
+        goto err;
+
+    strip = strtok_r(buf, "/", &strmask);
+    if (!strip || !*strmask)
+        goto err;
+
+    r = inet_pton(AF_INET, strip, &addr->addr);
+    if (r != 1)
+        goto err;
+
+    mask = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || mask > 32)
+        goto err;
+
+    addr->mask = htobe32(((uint32_t)~0) << (32 - mask));
+
+    return 0;
+
+err:
+    bf_err(
+        "\"%s %s\" expects an IPv4 network address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255 followed by a subnet mask (e.g., \"124.24.12.5/30\"), not '%s' ",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_ipv4_net(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    char str[INET4_ADDRSTRLEN];
+    struct bf_matcher_ip4_addr *addr =
+        (struct bf_matcher_ip4_addr *)matcher->payload;
+    uint32_t mask = be32toh(addr->mask);
+
+    if (inet_ntop(AF_INET, &addr->addr, str, INET4_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, 32 - __builtin_ctz(mask));
+    else
+        (void)fprintf(stdout, "<failed to print IPv4 network>");
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -331,6 +393,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_probability),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_ADDR, 4, _bf_parse_ipv4_addr,
                    _bf_print_ipv4_addr),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_NET, 8, _bf_parse_ipv4_net,
+                   _bf_print_ipv4_net),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -371,6 +435,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_IPV4_ADDR),
             BF_MATCHER_OPS(BF_MATCHER_IP4_DADDR, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_IPV4_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV4_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV4_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV4_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV4_NET),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,
