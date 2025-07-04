@@ -23,8 +23,12 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
+#define INET4_ADDRSTRLEN 16
+
 #define BF_PAYLOAD_OPS(type, size, parser_cb, printer_cb)                      \
     [type] = {size, parser_cb, printer_cb}
+
+extern int inet_pton(int, const char *, void *);
 
 enum bf_matcher_payload_type
 {
@@ -34,6 +38,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_L4_PORT,
     BF_MATCHER_PAYLOAD_L4_PORT_RANGE,
     BF_MATCHER_PAYLOAD_PROBABILITY,
+    BF_MATCHER_PAYLOAD_IPV4_ADDR,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -280,6 +285,37 @@ void _bf_print_probability(const struct bf_matcher *matcher)
     (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)matcher->payload);
 }
 
+static int _bf_parse_ipv4_addr(const struct bf_matcher *matcher, void *payload,
+                               const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    int r;
+
+    r = inet_pton(AF_INET, raw_payload, payload);
+    if (r == 1)
+        return 0;
+
+    bf_err(
+        "\"%s %s\" expects an IPv4 address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255, not '%s' ",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_ipv4_addr(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    char str[INET4_ADDRSTRLEN];
+
+    if (inet_ntop(AF_INET, matcher->payload, str, INET4_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s", str);
+    else
+        (void)fprintf(stdout, "<failed to print IPv4 address>");
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -293,6 +329,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_l4_port_range),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_PROBABILITY, 1, _bf_parse_probability,
                    _bf_print_probability),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_ADDR, 4, _bf_parse_ipv4_addr,
+                   _bf_print_ipv4_addr),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -325,6 +363,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
             BF_MATCHER_OPS(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_PROBABILITY),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP4_DADDR, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,

@@ -74,7 +74,6 @@
 %token CHAIN
 %token RULE
 %token COUNTER
-%token <sval> MATCHER_IPADDR
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_ADDR
@@ -260,41 +259,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                     r = bf_matcher_new_from_raw(&matcher, $1, $2, payload);
                     if (r)
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IPADDR
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    struct bf_matcher_ip4_addr addr;
-                    char *mask;
-                    int r;
-
-                    // If '/' is found, parse the mask, otherwise use /32.
-                    mask = strchr($3, '/');
-                    if (mask) {
-                        *mask = '\0';
-                        ++mask;
-
-                        int m = atoi(mask);
-                        if (m == 0)
-                            bf_parse_err("failed to parse IPv4 mask: %s\n", mask);
-
-                        addr.mask = ((uint32_t)~0) << (32 - m);
-                        addr.mask = htobe32(addr.mask);
-                    } else {
-                        addr.mask = (uint32_t)~0;
-                    }
-
-                    // Convert the IPv4 from string to uint32_t.
-                    r = inet_pton(AF_INET, $3, &addr.addr);
-                    if (r != 1)
-                        bf_parse_err("failed to parse IPv4 adddress: %s\n", $3);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &addr, sizeof(addr)))
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);

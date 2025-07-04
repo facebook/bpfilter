@@ -28,19 +28,13 @@ static int
 _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
                                      const struct bf_matcher *matcher)
 {
-    struct bf_matcher_ip4_addr *addr = (void *)&matcher->payload;
+    uint32_t *addr = (uint32_t *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP4_SADDR ?
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_6, offset));
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_2, addr->addr));
-
-    if (addr->mask != ~0U) {
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, addr->mask));
-        EMIT(program, BPF_ALU32_REG(BPF_AND, BPF_REG_1, BPF_REG_3));
-        EMIT(program, BPF_ALU32_REG(BPF_AND, BPF_REG_2, BPF_REG_3));
-    }
+    EMIT(program, BPF_MOV32_IMM(BPF_REG_2, *addr));
 
     EMIT_FIXUP_JMP_NEXT_RULE(
         program, BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
