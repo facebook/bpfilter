@@ -43,6 +43,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_IPV4_ADDR,
     BF_MATCHER_PAYLOAD_IPV4_NET,
     BF_MATCHER_PAYLOAD_IPV6_ADDR,
+    BF_MATCHER_PAYLOAD_IPV6_NET,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -366,6 +367,21 @@ err:
     return -EINVAL;
 }
 
+void _bf_print_ipv4_net(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    char str[INET4_ADDRSTRLEN];
+    struct bf_matcher_ip4_addr *addr =
+        (struct bf_matcher_ip4_addr *)matcher->payload;
+    uint32_t mask = be32toh(addr->mask);
+
+    if (inet_ntop(AF_INET, &addr->addr, str, INET4_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, 32 - __builtin_ctz(mask));
+    else
+        (void)fprintf(stdout, "<failed to print IPv4 network>");
+}
+
 static int _bf_parse_ipv6_addr(const struct bf_matcher *matcher, void *payload,
                                const char *raw_payload)
 {
@@ -397,19 +413,67 @@ void _bf_print_ipv6_addr(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "<failed to print IPv6 address>");
 }
 
-void _bf_print_ipv4_net(const struct bf_matcher *matcher)
+#define BF_IPV6_NET_MAX_LEN (INET6_ADDRSTRLEN + 4)
+
+static int _bf_parse_ipv6_net(const struct bf_matcher *matcher, void *payload,
+                              const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    struct bf_matcher_ip6_addr *addr = payload;
+    char buf[BF_IPV6_NET_MAX_LEN];
+    unsigned long mask;
+    char *strip;
+    char *strmask;
+    char *endptr;
+    int r;
+
+    bf_strncpy(buf, BF_IPV6_NET_MAX_LEN, raw_payload);
+
+    if (!isalpha(*raw_payload) && !isdigit(*raw_payload) && *raw_payload != ':')
+        goto err;
+
+    strip = strtok_r(buf, "/", &strmask);
+    if (!strip || !*strmask)
+        goto err;
+
+    r = inet_pton(AF_INET6, strip, &addr->addr);
+    if (r != 1)
+        goto err;
+
+    mask = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || mask > 128)
+        goto err;
+
+    memset(addr->mask, 0xff, mask / 8);
+    if (mask % 8)
+        addr->mask[mask / 8] = 0xff << (8 - mask % 8) & 0xff;
+
+    return 0;
+
+err:
+    bf_err(
+        "\"%s %s\" expects an IPv6 network address composed of 8 hexadecimal numbers (abbreviations are supported) followed by a subnet mask (e.g., \"2001:db8:85a3::/48\"), not '%s' ",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_ipv6_net(const struct bf_matcher *matcher)
 {
     bf_assert(matcher);
 
-    char str[INET4_ADDRSTRLEN];
-    struct bf_matcher_ip4_addr *addr =
-        (struct bf_matcher_ip4_addr *)matcher->payload;
-    uint32_t mask = be32toh(addr->mask);
+    struct bf_matcher_ip6_addr *addr =
+        (struct bf_matcher_ip6_addr *)matcher->payload;
+    char str[INET6_ADDRSTRLEN];
+    uint32_t mask = 128 - __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask))) -
+                    __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask + 8)));
 
-    if (inet_ntop(AF_INET, &addr->addr, str, INET4_ADDRSTRLEN))
-        (void)fprintf(stdout, "%s/%u", str, 32 - __builtin_ctz(mask));
+    if (inet_ntop(AF_INET6, addr->addr, str, INET6_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, mask);
     else
-        (void)fprintf(stdout, "<failed to print IPv4 network>");
+        (void)fprintf(stdout, "<failed to print IPv6 address>");
 }
 
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
@@ -431,6 +495,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_ipv4_net),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_ADDR, 16, _bf_parse_ipv6_addr,
                    _bf_print_ipv6_addr),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_NET, 32, _bf_parse_ipv6_net,
+                   _bf_print_ipv6_net),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -491,6 +557,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_IPV6_ADDR),
             BF_MATCHER_OPS(BF_MATCHER_IP6_DADDR, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_IPV6_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV6_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV6_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV6_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV6_NET),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,

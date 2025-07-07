@@ -92,6 +92,21 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         CONTINUE
     rule
+        ip6.snet eq 2001:db8::1/42
+        ip6.snet eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334/64
+        ip6.snet eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+        ip6.snet not ::1/64
+        ip6.snet not ::1/128
+        counter
+        CONTINUE
+    rule
+        ip6.dnet eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334/64
+        ip6.dnet eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+        ip6.dnet not ::1/64
+        ip6.dnet not ::1/128
+        counter
+        CONTINUE
+    rule
         tcp.sport eq 0
         tcp.sport eq 17
         tcp.sport eq 65535
@@ -135,17 +150,11 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         ACCEPT
     rule
         ip6.snet in {fdb2:2c26:f4e4::1/128}
-        counter
-        CONTINUE
-    rule
         ip6.snet in {fdb2:2c26:f4e4::1/64}
         counter
         CONTINUE
     rule
         ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
-        counter
-        CONTINUE
-    rule
         ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
         counter
         CONTINUE
