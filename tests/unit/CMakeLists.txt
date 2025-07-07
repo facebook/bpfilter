@@ -139,6 +139,7 @@ bf_target_add_elfstubs(unit_bin
     DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
     STUBS
         "parse_ipv6_eh"
+        "parse_ipv6_nh"
         "update_counters"
 )
 

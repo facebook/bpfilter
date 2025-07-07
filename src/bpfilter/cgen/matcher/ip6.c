@@ -27,6 +27,13 @@
     (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) |    \
      (uint32_t)(d))
 #define _BF_MASK_LAST_BYTE 15
+#define BF_IPV6_EH_HOPOPTS(x) ((x) << 0)
+#define BF_IPV6_EH_ROUTING(x) ((x) << 1)
+#define BF_IPV6_EH_FRAGMENT(x) ((x) << 2)
+#define BF_IPV6_EH_AH(x) ((x) << 3)
+#define BF_IPV6_EH_DSTOPTS(x) ((x) << 4)
+#define BF_IPV6_EH_MH(x) ((x) << 5)
+
 
 static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
                                          const struct bf_matcher *matcher)
@@ -205,6 +212,47 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
+                                            const struct bf_matcher *matcher)
+{
+    const uint8_t ehdr = matcher->payload[0];
+
+    if ((matcher->op != BF_MATCHER_EQ) && (matcher->op != BF_MATCHER_NE))
+        return -EINVAL;
+
+    switch (ehdr) {
+    case IPPROTO_HOPOPTS:
+    case IPPROTO_ROUTING:
+    case IPPROTO_DSTOPTS:
+    case IPPROTO_FRAGMENT:
+    case IPPROTO_AH:
+    case IPPROTO_MH:
+        uint8_t eh_mask = (BF_IPV6_EH_HOPOPTS(ehdr == IPPROTO_HOPOPTS) |
+                           BF_IPV6_EH_ROUTING(ehdr == IPPROTO_ROUTING) |
+                           BF_IPV6_EH_FRAGMENT(ehdr == IPPROTO_FRAGMENT) |
+                           BF_IPV6_EH_AH(ehdr == IPPROTO_AH) |
+                           BF_IPV6_EH_DSTOPTS(ehdr == IPPROTO_DSTOPTS) |
+                           BF_IPV6_EH_MH(ehdr == IPPROTO_MH));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(ipv6_eh)));
+        EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program,
+            BPF_JMP_IMM((matcher->op == BF_MATCHER_EQ) ? BPF_JEQ : BPF_JNE,
+                        BPF_REG_1, 0, 0));
+        break;
+    default:
+        /* check l4 protocols using BPF_REG_8 */
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program,
+            BPF_JMP_IMM((matcher->op == BF_MATCHER_EQ) ? BPF_JNE : BPF_JEQ,
+                        BPF_REG_8, ehdr, 0));
+        break;
+    }
+
+    return 0;
+}
+
 int bf_matcher_generate_ip6(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -224,6 +272,9 @@ int bf_matcher_generate_ip6(struct bf_program *program,
     case BF_MATCHER_IP6_SNET:
     case BF_MATCHER_IP6_DNET:
         r = _bf_matcher_generate_ip6_net(program, matcher);
+        break;
+    case BF_MATCHER_IP6_NEXTHDR:
+        r = _bf_matcher_generate_ip6_nexthdr(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);

@@ -36,6 +36,15 @@ packets = [
         / ICMPv6EchoRequest(),
     },
     {
+        "name": "pkt_local_ip6_hop",
+        "family": "NFPROTO_IPV6",
+        "packet": Ether(src=0x01, dst=0x02)
+        / IPv6(src="::1", dst="::2")
+        / IPv6ExtHdrHopByHop()
+        / IPv6ExtHdrRouting()
+        / IPv6ExtHdrHopByHop(),
+    },
+    {
         "name": "pkt_remote_ip6_tcp",
         "family": "NFPROTO_IPV6",
         "packet": Ether(src=0x01, dst=0x02)

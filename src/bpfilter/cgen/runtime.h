@@ -127,6 +127,9 @@ struct bf_runtime
     /** Total size of the packet. */
     __u64 pkt_size;
 
+    /** IPv6 extension header mask */
+    __u8 bf_aligned(8) ipv6_eh;
+
     /** Offset of the layer 3 protocol header. */
     __u32 bf_aligned(8) l3_offset;
 
