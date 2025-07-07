@@ -132,10 +132,13 @@ ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext
     }
 }
 
-ip6\.snet       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-ip6\.dnet       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_NET>{
-    (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    [a-zA-Z0-9:\/]+ {
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
     \{([a-zA-Z0-9:/]+,?)+\} {
         yylval.sval = strdup(yytext);
         return MATCHER_IP6_NET;

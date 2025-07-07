@@ -475,20 +475,28 @@ IPv6
       - :rspan:`1` ``ip6.daddr``
       - ``eq``
     * - ``not``
-    * - Source network
-      - ``ip6.snet``
-      - ``in``
-      - ``{$IP/$MASK[,...]}``
-    * - Destination network
-      - ``ip6.dnet``
-      - ``in``
-      - ``{$IP/$MASK[,...]}``
+    * - :rspan:`2` Source network
+      - :rspan:`2` ``ip6.snet``
+      - ``eq``
+      - :rspan:`1` ``$ADDR/$MASK``
+      - :rspan:`5` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported), ``$MASK`` is a subnet mask in the range 0 to 128.
+    * - ``not``
+    * - ``in``
+      - ``{$ADDR/$MASK[,...]}``
+    * - :rspan:`2` Destination network
+      - :rspan:`2` ``ip6.dnet``
+      - ``eq``
+      - :rspan:`1` ``$ADDR/$MASK``
+    * - ``not``
+    * - ``in``
+      - ``{$ADDR/$MASK[,...]}``
     * - :rspan:`1` Next header
       - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
       - :rspan:`3` ``$NEXT_HEADER``
       - :rspan:`3` ``$NEXT_HEADER`` can be one of the following strings: ``ah``, ``dst``, ``frag``, ``hop``, ``icmpv6``, ``mh``, ``route``, ``tcp``, ``udp``
     * - ``not``
+
 
 TCP
 ###
