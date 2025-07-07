@@ -1476,6 +1476,58 @@ Test(ipv6, extension_headers)
     bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_eh_tcp);
 }
 
+Test(ip6, nexthdr)
+{
+    _free_bf_chain_ struct bf_chain *next_accept = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                           // Destination options
+                           0x3c,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(next_accept, BF_VERDICT_ACCEPT, pkt_local_ip6_hop);
+
+    _free_bf_chain_ struct bf_chain *next_drop = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            // Routing
+                            0x2b,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    bft_e2e_test(next_drop, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
+    bft_e2e_test(next_drop, BF_VERDICT_DROP, pkt_local_ip6_hop);
+}
+
 int main(int argc, char *argv[])
 {
     _free_bf_test_suite_ bf_test_suite *suite = NULL;

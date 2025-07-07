@@ -195,6 +195,8 @@ struct bf_program
 
     /// Link objects attaching the program to a hook.
     struct bf_link *link;
+    /// Program with ip6.nexthdr rules
+    bool ipv6_nexthdr;
 
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];

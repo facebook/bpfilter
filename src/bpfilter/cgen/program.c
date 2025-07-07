@@ -577,6 +577,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_IP6_SNET:
         case BF_MATCHER_IP6_DADDR:
         case BF_MATCHER_IP6_DNET:
+        case BF_MATCHER_IP6_NEXTHDR:
             r = bf_matcher_generate_ip6(program, matcher);
             if (r)
                 return r;
@@ -827,6 +828,21 @@ int bf_program_generate(struct bf_program *program)
     // Reset the protocol ID registers
     EMIT(program, BPF_MOV64_IMM(BPF_REG_7, 0));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
+
+    program->ipv6_nexthdr = false;
+    bf_list_foreach (&chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+        bf_list_foreach (&rule->matchers, matcher_node) {
+            struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+            if (matcher->type == BF_MATCHER_IP6_NEXTHDR) {
+                // Zeroing IPv6 extension headers
+                EMIT(program,
+                     BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_7, BF_PROG_CTX_OFF(ipv6_eh)));
+                program->ipv6_nexthdr = true;
+                break;
+            }
+        }
+    }
 
     r = program->runtime.ops->gen_inline_prologue(program);
     if (r)
