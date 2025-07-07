@@ -468,8 +468,8 @@ IPv6
     * - :rspan:`1` Source address
       - :rspan:`1` ``ip6.saddr``
       - ``eq``
-      - :rspan:`3` ``$IP/$PREFIX``
-      - :rspan:`3` ``/$PREFIX`` is optional, ``/128`` is used by default.
+      - :rspan:`3` ``$ADDR``
+      - :rspan:`3` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported). To filter on an IPv6 network (using an IPv6 address and a subnet mask), see ``ip6.snet`` or ``ip6.dnet``.
     * - ``not``
     * - :rspan:`1` Destination address
       - :rspan:`1` ``ip6.daddr``

@@ -76,6 +76,20 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         ip6.nexthdr eq udp
         ip6.nexthdr eq icmpv6
         counter
+        ACCEPT
+    rule
+        ip6.saddr eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+        ip6.saddr eq 2001:db8:85a3::8a2e:370:7334
+        ip6.saddr not ::1
+        ip6.saddr not 2001:db8::1
+        counter
+        ACCEPT
+    rule
+        ip6.daddr eq 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+        ip6.daddr eq 2001:db8:85a3::8a2e:370:7334
+        ip6.daddr not ::1
+        ip6.daddr not 2001:db8::1
+        counter
         CONTINUE
     rule
         tcp.sport eq 0
@@ -117,40 +131,6 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         ACCEPT
     rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce
-        counter
-        ACCEPT
-    rule
-        ip6.saddr fc00::fbaf:7b6b:ba41:abce/17
-        counter
-        ACCEPT
-    rule
-        ip4.saddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip4.daddr 192.168.1.1
-        counter
-        ACCEPT
-    rule
-        ip4.proto icmp
-        counter
-        ACCEPT
-    rule
-        tcp.flags any SYN,ACK
-        counter
-        ACCEPT
-    rule
-        icmp.type eq 8
-        icmp.code eq 0
-        counter
-        ACCEPT
-    rule
-        icmpv6.type eq 128
-        icmpv6.code eq 0
         counter
         ACCEPT
     rule

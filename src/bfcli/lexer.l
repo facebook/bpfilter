@@ -126,12 +126,9 @@ ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); re
 ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_ADDR>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    [a-zA-Z0-9:/]+ {
-        /* Let's not try to be smarter than we are (for now) and use a fancy
-         * regex for IPv6 detection, it will be validated by inet_pton()
-         * anyway! */
+    [a-zA-Z0-9:]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_IP6_ADDR;
+        return RAW_PAYLOAD;
     }
 }
 

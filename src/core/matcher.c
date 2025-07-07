@@ -24,11 +24,13 @@
 #include "core/marsh.h"
 
 #define INET4_ADDRSTRLEN 16
+#define INET6_ADDRSTRLEN 46
 
 #define BF_PAYLOAD_OPS(type, size, parser_cb, printer_cb)                      \
     [type] = {size, parser_cb, printer_cb}
 
 extern int inet_pton(int, const char *, void *);
+extern const char *inet_ntop(int, const void *, char *, socklen_t);
 
 enum bf_matcher_payload_type
 {
@@ -40,6 +42,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_PROBABILITY,
     BF_MATCHER_PAYLOAD_IPV4_ADDR,
     BF_MATCHER_PAYLOAD_IPV4_NET,
+    BF_MATCHER_PAYLOAD_IPV6_ADDR,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -363,6 +366,37 @@ err:
     return -EINVAL;
 }
 
+static int _bf_parse_ipv6_addr(const struct bf_matcher *matcher, void *payload,
+                               const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    int r;
+
+    r = inet_pton(AF_INET6, raw_payload, payload);
+    if (r == 1)
+        return 0;
+
+    bf_err(
+        "\"%s %s\" expects an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported), not '%s' ",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_ipv6_addr(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    char str[INET6_ADDRSTRLEN];
+
+    if (inet_ntop(AF_INET6, matcher->payload, str, INET6_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s", str);
+    else
+        (void)fprintf(stdout, "<failed to print IPv6 address>");
+}
+
 void _bf_print_ipv4_net(const struct bf_matcher *matcher)
 {
     bf_assert(matcher);
@@ -395,6 +429,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_ipv4_addr),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_NET, 8, _bf_parse_ipv4_net,
                    _bf_print_ipv4_net),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_ADDR, 16, _bf_parse_ipv6_addr,
+                   _bf_print_ipv6_addr),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -447,6 +483,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_DADDR, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,
