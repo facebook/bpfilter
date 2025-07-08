@@ -1336,6 +1336,54 @@ suite_matcher_tcp() {
     expect_matcher_nok "tcp.dport range -1--4"
     expect_matcher_nok "tcp.dport range not-port"
     expect_matcher_nok "tcp.dport range notport"
+
+    log "[SUITE] matcher: tcp.flags eq"
+    expect_matcher_ok "tcp.flags eq fin"
+    expect_matcher_ok "tcp.flags eq fin,syn,rst,psh,ack"
+    expect_matcher_ok "tcp.flags eq fin,syn,rst,psh,ack,urg"
+    expect_matcher_ok "tcp.flags eq fin,syn,rst,psh,ack,urg,ece"
+    expect_matcher_ok "tcp.flags eq fin,syn,rst,psh,ack,urg,ece,cwr"
+    expect_matcher_ok "tcp.flags eq syn,fin"
+    expect_matcher_ok "tcp.flags eq cwr,fin,ack"
+
+    expect_matcher_nok "tcp.flags eq invalid"
+    expect_matcher_nok "tcp.flags eq fin,syn,rst,psh,ack,urg,ece,cwr,invalid"
+
+    log "[SUITE] matcher: tcp.flags not"
+    expect_matcher_ok "tcp.flags not fin"
+    expect_matcher_ok "tcp.flags not syn"
+    expect_matcher_ok "tcp.flags not rst"
+    expect_matcher_ok "tcp.flags not psh"
+    expect_matcher_ok "tcp.flags not fin,syn,rst,psh,ack"
+    expect_matcher_ok "tcp.flags not fin,syn,rst,psh,ack,urg"
+    expect_matcher_ok "tcp.flags not fin,syn,rst,psh,ack,urg,ece"
+    expect_matcher_ok "tcp.flags not fin,syn,rst,psh,ack,urg,ece,cwr"
+
+    expect_matcher_nok "tcp.flags not invalid"
+    expect_matcher_nok "tcp.flags not fin,syn,rst,psh,ack,urg,ece,cwr,invalid"
+
+    log "[SUITE] matcher: tcp.flags any"
+    expect_matcher_ok "tcp.flags any fin"
+    expect_matcher_ok "tcp.flags any fin,syn,rst,psh,ack"
+    expect_matcher_ok "tcp.flags any fin,syn,rst,psh,ack,urg"
+    expect_matcher_ok "tcp.flags any fin,syn,rst,psh,ack,urg,ece"
+    expect_matcher_ok "tcp.flags any fin,syn,rst,psh,ack,urg,ece,cwr"
+    expect_matcher_ok "tcp.flags any syn,fin"
+    expect_matcher_ok "tcp.flags any cwr,fin,ack"
+
+    expect_matcher_nok "tcp.flags any invalid"
+    expect_matcher_nok "tcp.flags any fin,invalid"
+    expect_matcher_nok "tcp.flags any fin,,syn"
+
+    log "[SUITE] matcher: tcp.flags all"
+    expect_matcher_ok "tcp.flags all fin"
+    expect_matcher_ok "tcp.flags all syn"
+    expect_matcher_ok "tcp.flags all fin,syn"
+    expect_matcher_ok "tcp.flags all fin,syn,rst"
+    expect_matcher_ok "tcp.flags all fin,syn,rst,psh"
+    expect_matcher_ok "tcp.flags any fin,fin,syn"
+
+    expect_matcher_nok "tcp.flags all fin,syn,rst,psh,ack,urg,ece,cwr,invalid"
 }
 with_daemon suite_matcher_tcp
 

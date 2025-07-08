@@ -44,6 +44,7 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_IPV4_NET,
     BF_MATCHER_PAYLOAD_IPV6_ADDR,
     BF_MATCHER_PAYLOAD_IPV6_NET,
+    BF_MATCHER_PAYLOAD_TCP_FLAGS,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -476,6 +477,63 @@ void _bf_print_ipv6_net(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "<failed to print IPv6 address>");
 }
 
+static int _bf_parse_tcp_flags(const struct bf_matcher *matcher, void *payload,
+                               const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    _cleanup_free_ char *_raw_payload = NULL;
+    char *tmp;
+    char *saveptr;
+    char *token;
+    enum bf_tcp_flag *flags = payload;
+
+    _raw_payload = strdup(raw_payload);
+    if (!raw_payload)
+        goto err;
+
+    *flags = 0;
+    tmp = _raw_payload;
+
+    while ((token = strtok_r(tmp, ",", &saveptr))) {
+        enum bf_tcp_flag new_flag;
+        int r;
+
+        r = bf_tcp_flag_from_str(token, &new_flag);
+        if (r)
+            goto err;
+
+        *flags |= 1 << new_flag;
+
+        tmp = NULL;
+    }
+
+    return 0;
+
+err:
+    bf_err(
+        "\"%s %s\" expects a comma-separated list of one or more TCP flags (fin, syn, rst, psh, ack, urg, ece, or cwr), not '%s' ",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_tcp_flags(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    uint8_t flag = *(uint8_t *)matcher->payload;
+
+    for (uint32_t i = 0; i < _BF_TCP_MAX; ++i) {
+        if (flag & (1 << i)) {
+            flag &= ~(1 << i);
+            (void)fprintf(stdout, "%s%s", bf_tcp_flag_to_str(i),
+                          flag ? "," : "");
+        }
+    }
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -497,6 +555,8 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_ipv6_addr),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_NET, 32, _bf_parse_ipv6_net,
                    _bf_print_ipv6_net),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_TCP_FLAGS, 1, _bf_parse_tcp_flags,
+                   _bf_print_tcp_flags),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -577,6 +637,14 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
                            BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY,
+                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
+            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL,
+                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
             BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE,

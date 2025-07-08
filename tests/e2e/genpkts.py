@@ -76,7 +76,7 @@ packets = [
         )
         / IPv6ExtHdrHopByHop()
         / IPv6ExtHdrRouting()
-        / TCP(sport=31337, dport=31415),
+        / TCP(sport=31337, dport=31415, flags="SA"),
     },
     {
         "name": "pkt_local_ip4",
