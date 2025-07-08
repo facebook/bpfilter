@@ -829,31 +829,27 @@ int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op)
     return -EINVAL;
 }
 
-static const char *_bf_matcher_tcp_flags_strs[] = {
-    [BF_MATCHER_TCP_FLAG_FIN] = "FIN", [BF_MATCHER_TCP_FLAG_SYN] = "SYN",
-    [BF_MATCHER_TCP_FLAG_RST] = "RST", [BF_MATCHER_TCP_FLAG_PSH] = "PSH",
-    [BF_MATCHER_TCP_FLAG_ACK] = "ACK", [BF_MATCHER_TCP_FLAG_URG] = "URG",
-    [BF_MATCHER_TCP_FLAG_ECE] = "ECE", [BF_MATCHER_TCP_FLAG_CWR] = "CWR",
+static const char *_bf_tcp_flags_strs[] = {
+    [BF_TCP_FIN] = "fin", [BF_TCP_SYN] = "syn", [BF_TCP_RST] = "rst",
+    [BF_TCP_PSH] = "psh", [BF_TCP_ACK] = "ack", [BF_TCP_URG] = "urg",
+    [BF_TCP_ECE] = "ece", [BF_TCP_CWR] = "cwr",
 };
+static_assert(ARRAY_SIZE(_bf_tcp_flags_strs) == _BF_TCP_MAX);
 
-static_assert(ARRAY_SIZE(_bf_matcher_tcp_flags_strs) ==
-              _BF_MATCHER_TCP_FLAG_MAX);
-
-const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag)
+const char *bf_tcp_flag_to_str(enum bf_tcp_flag flag)
 {
-    bf_assert(0 <= flag && flag < _BF_MATCHER_TCP_FLAG_MAX);
+    bf_assert(0 <= flag && flag < _BF_TCP_MAX);
 
-    return _bf_matcher_tcp_flags_strs[flag];
+    return _bf_tcp_flags_strs[flag];
 }
 
-int bf_matcher_tcp_flag_from_str(const char *str,
-                                 enum bf_matcher_tcp_flag *flag)
+int bf_tcp_flag_from_str(const char *str, enum bf_tcp_flag *flag)
 {
     bf_assert(str);
     bf_assert(flag);
 
-    for (size_t i = 0; i < _BF_MATCHER_TCP_FLAG_MAX; ++i) {
-        if (bf_streq(_bf_matcher_tcp_flags_strs[i], str)) {
+    for (size_t i = 0; i < _BF_TCP_MAX; ++i) {
+        if (bf_streq_i(_bf_tcp_flags_strs[i], str)) {
             *flag = i;
             return 0;
         }
