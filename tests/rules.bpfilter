@@ -158,6 +158,38 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        icmp.type eq echo-reply
+        icmp.type eq 8
+        icmp.type eq 0x08
+        icmp.type not echo-reply
+        icmp.type not 8
+        icmp.type not 0x08
+        counter
+        ACCEPT
+    rule
+        icmp.code eq 17
+        icmp.code eq 0x17
+        icmp.code not 17
+        icmp.code not 0x17
+        counter
+        ACCEPT
+    rule
+        icmpv6.type eq echo-reply
+        icmpv6.type eq 8
+        icmpv6.type eq 0x08
+        icmpv6.type not echo-reply
+        icmpv6.type not 8
+        icmpv6.type not 0x08
+        counter
+        ACCEPT
+    rule
+        icmpv6.code eq 17
+        icmpv6.code eq 0x17
+        icmpv6.code not 17
+        icmpv6.code not 0x17
+        counter
+        ACCEPT
+    rule
         ip4.saddr in {192.168.1.131,192.168.1.132}
         counter
         ACCEPT

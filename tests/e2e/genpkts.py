@@ -33,7 +33,7 @@ packets = [
         "family": "NFPROTO_IPV6",
         "packet": Ether(src=0x01, dst=0x02)
         / IPv6(src="::1", dst="::2")
-        / ICMPv6EchoRequest(),
+        / ICMPv6EchoRequest(code=2),
     },
     {
         "name": "pkt_local_ip6_hop",
@@ -95,7 +95,7 @@ packets = [
             src="127.2.10.10",
             dst="127.2.10.11"
         )
-        / ICMP(type=8, code=0),
+        / ICMP(type=8, code=2),
     }
 ]
 

@@ -409,11 +409,11 @@ suite_icmp_TC() {
     expect_success "can ping the netns iface from the host" \
         ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "attach chain to ns iface" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq 8 icmp.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 counter DROP\"
     expect_failure "can't ping ns iface from host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked by TC chain" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0x00/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -424,11 +424,11 @@ suite_icmp_XDP() {
     expect_success "can ping the netns iface from the host" \
         ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "attach chain to ns iface" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq 8 icmp.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 counter DROP\"
     expect_failure "can't ping the netns iface from the host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked by XDP chain" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0x00/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -459,9 +459,9 @@ with_daemon suite_ip6
 suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq 128 icmpv6.code eq 0 counter DROP\"
-    expect_success "can parse icmpv6 type and code by XDP chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq 8 icmp.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq echo-request icmpv6.code eq 0 counter DROP\"
+    expect_success "can parse icmpv6 type and code by TC chain" \
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 counter DROP\"
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -1471,6 +1471,116 @@ suite_matcher_udp() {
     expect_matcher_nok "udp.dport range notport"
 }
 with_daemon suite_matcher_udp
+
+suite_matcher_icmp() {
+    log "[SUITE] matcher: icmp.type eq"
+    expect_matcher_ok "icmp.type eq echo-reply"
+    expect_matcher_ok "icmp.type eq router-advertisement"
+    expect_matcher_ok "icmp.type eq 0x23"
+    expect_matcher_ok "icmp.type eq 14"
+
+    expect_matcher_nok "icmp.type eq echo-repl"
+    expect_matcher_nok "icmp.type eq r"
+    expect_matcher_nok "icmp.type eq 0xf23"
+    expect_matcher_nok "icmp.type eq -14"
+    expect_matcher_nok "icmp.type eq 45574614"
+
+    log "[SUITE] matcher: icmp.type not"
+    expect_matcher_ok "icmp.type not echo-reply"
+    expect_matcher_ok "icmp.type not router-advertisement"
+    expect_matcher_ok "icmp.type not 0x23"
+    expect_matcher_ok "icmp.type not 14"
+
+    expect_matcher_nok "icmp.type not echo-repl"
+    expect_matcher_nok "icmp.type not r"
+    expect_matcher_nok "icmp.type not 0xf23"
+    expect_matcher_nok "icmp.type not -14"
+    expect_matcher_nok "icmp.type not 45574614"
+
+    log "[SUITE] matcher: icmp.code eq"
+    expect_matcher_ok "icmp.code eq 0"
+    expect_matcher_ok "icmp.code eq 10"
+    expect_matcher_ok "icmp.code eq 255"
+    expect_matcher_ok "icmp.code eq 0x00"
+    expect_matcher_ok "icmp.code eq 0x17"
+    expect_matcher_ok "icmp.code eq 0xff"
+
+    expect_matcher_nok "icmp.code eq auf"
+    expect_matcher_nok "icmp.code eq -1"
+    expect_matcher_nok "icmp.code eq 257"
+    expect_matcher_nok "icmp.code eq -0x01"
+    expect_matcher_nok "icmp.code eq -0xffff"
+
+    log "[SUITE] matcher: icmp.code not"
+    expect_matcher_ok "icmp.code not 0"
+    expect_matcher_ok "icmp.code not 10"
+    expect_matcher_ok "icmp.code not 255"
+    expect_matcher_ok "icmp.code not 0x00"
+    expect_matcher_ok "icmp.code not 0x17"
+    expect_matcher_ok "icmp.code not 0xff"
+
+    expect_matcher_nok "icmp.code not auf"
+    expect_matcher_nok "icmp.code not -1"
+    expect_matcher_nok "icmp.code not 257"
+    expect_matcher_nok "icmp.code not -0x01"
+    expect_matcher_nok "icmp.code not -0xffff"
+}
+with_daemon suite_matcher_icmp
+
+suite_matcher_icmpv6() {
+    log "[SUITE] matcher: icmpv6.type eq"
+    expect_matcher_ok "icmpv6.type eq mld-listener-report"
+    expect_matcher_ok "icmpv6.type eq echo-request"
+    expect_matcher_ok "icmpv6.type eq 0x23"
+    expect_matcher_ok "icmpv6.type eq 14"
+
+    expect_matcher_nok "icmpv6.type eq echo-repl"
+    expect_matcher_nok "icmpv6.type eq r"
+    expect_matcher_nok "icmpv6.type eq 0xf23"
+    expect_matcher_nok "icmpv6.type eq -14"
+    expect_matcher_nok "icmpv6.type eq 45574614"
+
+    log "[SUITE] matcher: icmpv6.type not"
+    expect_matcher_ok "icmpv6.type not mld-listener-report"
+    expect_matcher_ok "icmpv6.type not echo-request"
+    expect_matcher_ok "icmpv6.type not 0x23"
+    expect_matcher_ok "icmpv6.type not 14"
+
+    expect_matcher_nok "icmpv6.type not echo-repl"
+    expect_matcher_nok "icmpv6.type not r"
+    expect_matcher_nok "icmpv6.type not 0xf23"
+    expect_matcher_nok "icmpv6.type not -14"
+    expect_matcher_nok "icmpv6.type not 45574614"
+
+    log "[SUITE] matcher: icmpv6.code eq"
+    expect_matcher_ok "icmpv6.code eq 0"
+    expect_matcher_ok "icmpv6.code eq 10"
+    expect_matcher_ok "icmpv6.code eq 255"
+    expect_matcher_ok "icmpv6.code eq 0x00"
+    expect_matcher_ok "icmpv6.code eq 0x17"
+    expect_matcher_ok "icmpv6.code eq 0xff"
+
+    expect_matcher_nok "icmpv6.code eq auf"
+    expect_matcher_nok "icmpv6.code eq -1"
+    expect_matcher_nok "icmpv6.code eq 257"
+    expect_matcher_nok "icmpv6.code eq -0x01"
+    expect_matcher_nok "icmpv6.code eq -0xffff"
+
+    log "[SUITE] matcher: icmpv6.code not"
+    expect_matcher_ok "icmpv6.code not 0"
+    expect_matcher_ok "icmpv6.code not 10"
+    expect_matcher_ok "icmpv6.code not 255"
+    expect_matcher_ok "icmpv6.code not 0x00"
+    expect_matcher_ok "icmpv6.code not 0x17"
+    expect_matcher_ok "icmpv6.code not 0xff"
+
+    expect_matcher_nok "icmpv6.code not auf"
+    expect_matcher_nok "icmpv6.code not -1"
+    expect_matcher_nok "icmpv6.code not 257"
+    expect_matcher_nok "icmpv6.code not -0x01"
+    expect_matcher_nok "icmpv6.code not -0xffff"
+}
+with_daemon suite_matcher_icmpv6
 
 
 ################################################################################

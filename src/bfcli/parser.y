@@ -458,26 +458,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                     $$ = TAKE_PTR(matcher);
                 }
-                | matcher_type matcher_op MATCHER_ICMP
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    long raw_val;
-                    uint8_t value;
-
-                    raw_val = atol($3);
-                    if (raw_val < 0 || UINT8_MAX < raw_val)
-                        bf_parse_err("invalid %s value: %s\n",
-                                     bf_matcher_type_to_str($1), $3);
-
-                    value = (uint8_t)raw_val;
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &value, sizeof(value)))
-                        bf_parse_err("failed to create new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
                 ;
 matcher_type    : MATCHER_TYPE
                 {

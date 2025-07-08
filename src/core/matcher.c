@@ -5,6 +5,8 @@
 
 #include "core/matcher.h"
 
+#include <linux/icmp.h>
+#include <linux/icmpv6.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
 #include <linux/in6.h>
@@ -45,6 +47,9 @@ enum bf_matcher_payload_type
     BF_MATCHER_PAYLOAD_IPV6_ADDR,
     BF_MATCHER_PAYLOAD_IPV6_NET,
     BF_MATCHER_PAYLOAD_TCP_FLAGS,
+    BF_MATCHER_PAYLOAD_ICMP_TYPE,
+    BF_MATCHER_PAYLOAD_ICMP_CODE,
+    BF_MATCHER_PAYLOAD_ICMPV6_TYPE,
     _BF_MATCHER_PAYLOAD_MAX,
 };
 
@@ -534,6 +539,133 @@ void _bf_print_tcp_flags(const struct bf_matcher *matcher)
     }
 }
 
+static int _bf_parse_icmp_type(const struct bf_matcher *matcher, void *payload,
+                               const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long type;
+    char *endptr;
+    int r;
+
+    r = bf_icmp_type_from_str(raw_payload, payload);
+    if (!r)
+        return 0;
+
+    type = strtoul(raw_payload, &endptr, BF_BASE_10);
+
+    if (*endptr == '\0' && type <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)type;
+        return 0;
+    }
+
+    type = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && type <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)type;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects an ICMP type name (e.g. \"echo-reply\", case insensitive), or or a decimal or hexadecimal ICMP type value, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_icmp_type(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    const char *type = bf_icmp_type_to_str(*(uint8_t *)matcher->payload);
+
+    if (type)
+        (void)fprintf(stdout, "%s", type);
+    else
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+}
+
+static int _bf_parse_icmp_code(const struct bf_matcher *matcher, void *payload,
+                               const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long code;
+    char *endptr;
+
+    code = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && code <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)code;
+        return 0;
+    }
+
+    code = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && code <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)code;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a decimal or hexadecimal ICMP or ICMPv6 code value, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_icmp_code(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+}
+
+static int _bf_parse_icmpv6_type(const struct bf_matcher *matcher,
+                                 void *payload, const char *raw_payload)
+{
+    bf_assert(matcher && payload && raw_payload);
+
+    unsigned long type;
+    char *endptr;
+    int r;
+
+    r = bf_icmpv6_type_from_str(raw_payload, payload);
+    if (!r)
+        return 0;
+
+    type = strtoul(raw_payload, &endptr, BF_BASE_10);
+
+    if (*endptr == '\0' && type <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)type;
+        return 0;
+    }
+
+    type = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && type <= UINT8_MAX) {
+        *(uint8_t *)matcher->payload = (uint8_t)type;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects an ICMPv6 type name (e.g. \"echo-reply\", case insensitive), or a decimal or hexadecimal ICMPv6 type value, not '%s'",
+        bf_matcher_type_to_str(matcher->type),
+        bf_matcher_op_to_str(matcher->op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_icmpv6_type(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+
+    const char *type = bf_icmpv6_type_to_str(*(uint8_t *)matcher->payload);
+
+    if (type)
+        (void)fprintf(stdout, "%s", type);
+    else
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+}
+
 static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
                    _bf_print_iface),
@@ -557,6 +689,12 @@ static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
                    _bf_print_ipv6_net),
     BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_TCP_FLAGS, 1, _bf_parse_tcp_flags,
                    _bf_print_tcp_flags),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMP_TYPE, 1, _bf_parse_icmp_type,
+                   _bf_print_icmp_type),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMP_CODE, 1, _bf_parse_icmp_code,
+                   _bf_print_icmp_code),
+    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMPV6_TYPE, 1, _bf_parse_icmpv6_type,
+                   _bf_print_icmpv6_type),
 };
 
 #define BF_MATCHER_OPS(type, op, payload_type)                                 \
@@ -657,6 +795,22 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
                            BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_ICMP_TYPE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_ICMP_TYPE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_ICMP_CODE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMP_CODE, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_ICMP_CODE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_ICMPV6_TYPE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_ICMPV6_TYPE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_ICMP_CODE),
+            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_ICMP_CODE),
         };
 
     return _matcher_ops[type][op];
@@ -1009,6 +1163,91 @@ int bf_ipproto_from_str(const char *str, uint8_t *ipproto)
     for (size_t i = 0; i <= UINT8_MAX; ++i) {
         if (bf_streq_i(str, _bf_ipproto_strs[i])) {
             *ipproto = (uint8_t)i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
+#define ICMP_ROUTERADVERT 9
+#define ICMP_ROUTERSOLICIT 10
+
+static const char *_bf_icmp_type_strs[UINT8_MAX + 1] = {
+    [ICMP_ECHOREPLY] = "echo-reply",
+    [ICMP_DEST_UNREACH] = "destination-unreachable",
+    [ICMP_SOURCE_QUENCH] = "source-quench",
+    [ICMP_REDIRECT] = "redirect",
+    [ICMP_ECHO] = "echo-request",
+    [ICMP_ROUTERADVERT] = "router-advertisement",
+    [ICMP_ROUTERSOLICIT] = "router-solicitation",
+    [ICMP_TIME_EXCEEDED] = "time-exceeded",
+    [ICMP_PARAMETERPROB] = "parameter-problem",
+    [ICMP_TIMESTAMP] = "timestamp-request",
+    [ICMP_TIMESTAMPREPLY] = "timestamp-reply",
+    [ICMP_INFO_REQUEST] = "info-request",
+    [ICMP_INFO_REPLY] = "info-reply",
+    [ICMP_ADDRESS] = "address-mask-request",
+    [ICMP_ADDRESSREPLY] = "address-mask-reply",
+};
+static_assert(ARRAY_SIZE(_bf_icmp_type_strs) == (UINT8_MAX + 1),
+              "missing entries in ICMP types strings array");
+
+const char *bf_icmp_type_to_str(uint8_t type)
+{
+    return _bf_icmp_type_strs[type];
+}
+
+int bf_icmp_type_from_str(const char *str, uint8_t *type)
+{
+    bf_assert(str && type);
+
+    for (size_t i = 0; i <= UINT8_MAX; ++i) {
+        if (bf_streq_i(str, _bf_icmp_type_strs[i])) {
+            *type = (uint8_t)i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
+#define ICMPV6_ND_ROUTERSOLICIT 133
+#define ICMPV6_ND_ROUTERADVERT 134
+#define ICMPV6_ND_NEIGHSOLICIT 135
+#define ICMPV6_ND_NEIGHADVERT 136
+
+static const char *_bf_icmpv6_type_strs[UINT8_MAX + 1] = {
+    [ICMPV6_DEST_UNREACH] = "destination-unreachable",
+    [ICMPV6_PKT_TOOBIG] = "packet-too-big",
+    [ICMPV6_TIME_EXCEED] = "time-exceeded",
+    [ICMPV6_PARAMPROB] = "parameter-problem",
+    [ICMPV6_ECHO_REQUEST] = "echo-request",
+    [ICMPV6_ECHO_REPLY] = "echo-reply",
+    [ICMPV6_MGM_QUERY] = "mld-listener-query",
+    [ICMPV6_MGM_REPORT] = "mld-listener-report",
+    [ICMPV6_MGM_REDUCTION] = "mld-listener-reduction",
+    [ICMPV6_ND_ROUTERSOLICIT] = "nd-router-solicit",
+    [ICMPV6_ND_ROUTERADVERT] = "nd-router-advert",
+    [ICMPV6_ND_NEIGHSOLICIT] = "nd-neighbor-solicit",
+    [ICMPV6_ND_NEIGHADVERT] = "nd-neighbor-advert",
+    [ICMPV6_MLD2_REPORT] = "mld2-listener-report",
+};
+static_assert(ARRAY_SIZE(_bf_icmpv6_type_strs) == (UINT8_MAX + 1),
+              "missing entries in ICMPv6 types strings array");
+
+const char *bf_icmpv6_type_to_str(uint8_t type)
+{
+    return _bf_icmpv6_type_strs[type];
+}
+
+int bf_icmpv6_type_from_str(const char *str, uint8_t *type)
+{
+    bf_assert(str && type);
+
+    for (size_t i = 0; i <= UINT8_MAX; ++i) {
+        if (bf_streq_i(str, _bf_icmpv6_type_strs[i])) {
+            *type = (uint8_t)i;
             return 0;
         }
     }

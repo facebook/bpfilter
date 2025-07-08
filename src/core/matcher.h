@@ -360,3 +360,9 @@ int bf_ethertype_from_str(const char *str, uint16_t *ethertype);
 
 const char *bf_ipproto_to_str(uint8_t ipproto);
 int bf_ipproto_from_str(const char *str, uint8_t *ipproto);
+
+const char *bf_icmp_type_to_str(uint8_t type);
+int bf_icmp_type_from_str(const char *str, uint8_t *type);
+
+const char *bf_icmpv6_type_to_str(uint8_t type);
+int bf_icmpv6_type_from_str(const char *str, uint8_t *type);

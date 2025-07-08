@@ -596,15 +596,19 @@ ICMP
     * - :rspan:`1` Type
       - :rspan:`1` ``icmp.type``
       - ``eq``
-      - :rspan:`1` ``$ICMP_TYPE``
-      - :rspan:`1` ``$ICMP_TYPE`` is a valid ICMP message type as a decimal integer.
+      - :rspan:`1` ``$TYPE``
+      - :rspan:`1` ``$TYPE`` is an ICMP type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMP type value`_.
     * - ``not``
     * - :rspan:`1` Code
       - :rspan:`1` ``icmp.code``
       - ``eq``
-      - :rspan:`1` ``$ICMP_CODE``
-      - :rspan:`1` ``$ICMP_CODE`` is a valid ICMP message code as a decimal integer.
+      - :rspan:`1` ``$CODE``
+      - :rspan:`1` ``$CODE`` is a decimal or hexadecimal `ICMP code value`_.
     * - ``not``
+
+.. tip::
+
+    The following ICMP type name are recognized by bpfilter: echo-reply, destination-unreachable, source-quench, redirect, echo-request, time-exceeded, parameter-problem, timestamp-request, timestamp-reply, info-request, info-reply, address-mask-request, address-mask-reply, router-advertisement, router-solicitation.
 
 ICMPv6
 ######
@@ -622,15 +626,24 @@ ICMPv6
     * - :rspan:`1` Type
       - :rspan:`1` ``icmpv6.type``
       - ``eq``
-      - :rspan:`1` ``$ICMPV6_TYPE``
-      - :rspan:`1` ``$ICMPV6_TYPE`` is a valid ICMPv6 message type as a decimal integer.
+      - :rspan:`1` ``$TYPE``
+      - :rspan:`1` ``$TYPE`` is an ICMPv6 type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMPv6 type value`_.
     * - ``not``
     * - :rspan:`1` Code
       - :rspan:`1` ``icmpv6.code``
       - ``eq``
-      - :rspan:`1` ``$ICMPV6_CODE``
-      - :rspan:`1` ``$ICMPV6_CODE`` is a valid ICMPv6 message code as a decimal integer.
+      - :rspan:`1` ``$CODE``
+      - :rspan:`1` ``$CODE`` is a decimal or hexadecimal `ICMPv6 code value`_.
     * - ``not``
+
+.. tip::
+
+    The following ICMPv6 type name are recognized by bpfilter: destination-unreachable, packet-too-big, time-exceeded, echo-request, echo-reply, mld-listener-query, mld-listener-report, mld-listener-reduction, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, parameter-problem, mld2-listener-report.
+
 
 .. _IEEE 802 number: https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml cli,core: convert meta.l3_proto to new framework)
 .. _internet protocol number: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+.. _ICMP type value: https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+.. _ICMP code value: https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-codes
+.. _ICMPv6 type value: https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml#icmpv6-parameters-2
+.. _ICMPv6 code value: https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml#icmpv6-parameters-3
