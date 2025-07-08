@@ -532,11 +532,20 @@ TCP
     * - :rspan:`3` Flags
       - :rspan:`3` ``tcp.flags``
       - ``eq``
-      - :rspan:`3` ``$FLAGS``
-      - :rspan:`3` ``$FLAGS`` is a comma-separated list of capitalized TCP flags (``FIN``, ``RST``, ``ACK``, ``ECE``, ``SYN``, ``PSH``, ``URG``, ``CWR``).
+      - :rspan:`3` ``$FLAG[,...]``
+      - :rspan:`3` ``$FLAG`` is a comma-separated list of one or more TCP flags (``fin``, ``syn``, ``rst``, ``psh``, ``ack``, ``urg``, ``ece``, or ``cwr``). Flags are case-insensitive.
     * - ``not``
     * - ``any``
     * - ``all``
+
+.. tip::
+
+   The ``tcp.flags`` operators can be confusing, as they can be used to match all, some, or none of the flags available in the TCP header. This section aims to provide clarity to their exact behavior:
+
+   - ``eq``: the TCP header must contain the exact same flags as defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn,ack``, but not ``syn,ack,fin`` nor ``rst``.
+   - ``not``: opposite of ``eq``, the TCP header must not contain the exact same flags as defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn,ack,fin`` or ``rst``, but not ``syn,ack``.
+   - ``any``: the TCP header must contain any of the flags defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn``, or ``ack``, or ``syn,ack``, but not ``fin``.
+   - ``all``: the TCP header must contain at least the flags defined in the rule. The matcher ``tcp.flags all syn,ack`` will match ``syn,ack,fin``, but not ``syn``, or ``ack,fin``.
 
 
 UDP

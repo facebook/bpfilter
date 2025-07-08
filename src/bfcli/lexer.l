@@ -174,9 +174,9 @@ icmp(v6)?\.(code|type) { BEGIN(STATE_MATCHER_ICMP); yylval.sval = strdup(yytext)
 tcp\.flags      { BEGIN(STATE_MATCHER_TCP_FLAGS); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_TCP_FLAGS>{
     (eq|not|any|all) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    ([A-Z]+,?)+ {
+    ([a-zA-Z]+,?)+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_TCP_FLAGS;
+        return RAW_PAYLOAD;
     }
 }
 

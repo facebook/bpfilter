@@ -80,7 +80,7 @@
 %token <sval> MATCHER_IP6_NEXTHDR
 %token <sval> MATCHER_ICMP
 %token <sval> STRING
-%token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP MATCHER_TCP_FLAGS
+%token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 %token <sval> RAW_HOOKOPT
 %token <sval> RAW_PAYLOAD
 
@@ -455,38 +455,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                         bf_parse_err("failed to create a new matcher\n");
 
                     free($3);
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_TCP_FLAGS
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    uint8_t flags = 0;
-                    char *flags_str;
-                    char *saveptr;
-                    char *token;
-                    int r;
-
-                    for (flags_str = $3; ; flags_str = NULL) {
-                        enum bf_tcp_flag flag;
-
-                        token = strtok_r(flags_str, ",", &saveptr);
-                        if (!token)
-                            break;
-
-                        r = bf_tcp_flag_from_str(token, &flag);
-                        if (r) {
-                            bf_parse_err("Unknown TCP flag '%s', ignoring\n", token);
-                            continue;
-                        }
-
-                        flags |= BF_FLAG(flag);
-                    }
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &flags, sizeof(flags)))
-                        bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
                 }

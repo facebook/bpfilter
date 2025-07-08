@@ -126,6 +126,19 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        tcp.flags eq SYN
+        tcp.flags eq ACK
+        tcp.flags not ECE
+        tcp.flags not CWR
+        tcp.flags any ack
+        tcp.flags any SYN,ack
+        tcp.flags any cwr,ece,syn
+        tcp.flags all ack
+        tcp.flags all SYN,ack
+        tcp.flags all cwr,ece,syn
+        counter
+        ACCEPT
+    rule
         udp.sport eq 0
         udp.sport eq 17
         udp.sport eq 65535
