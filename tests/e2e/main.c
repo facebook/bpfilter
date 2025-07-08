@@ -1830,9 +1830,9 @@ Test(meta, dport_range)
     bft_e2e_test(over_range, BF_VERDICT_ACCEPT, pkt_local_ip6_udp);
 }
 
-Test(icmp, type_code_v4)
+Test(icmp, type)
 {
-    _free_bf_chain_ struct bf_chain *type_accept = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1843,8 +1843,7 @@ Test(icmp, type_code_v4)
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
                         (uint8_t[]) {
-                            // Echo Reply
-                            0x1,
+                            0x08,
                         },
                         1
                     ),
@@ -1854,9 +1853,7 @@ Test(icmp, type_code_v4)
             NULL,
         }
     );
-    bft_e2e_test(type_accept, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
-
-    _free_bf_chain_ struct bf_chain *type_drop = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *nomatch_eq = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1867,8 +1864,7 @@ Test(icmp, type_code_v4)
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
                         (uint8_t[]) {
-                            // Echo Request
-                            0x8,
+                            0x01,
                         },
                         1
                     ),
@@ -1878,9 +1874,7 @@ Test(icmp, type_code_v4)
             NULL,
         }
     );
-    bft_e2e_test(type_drop, BF_VERDICT_DROP, pkt_local_ip4_icmp);
-
-    _free_bf_chain_ struct bf_chain *code_accept = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *match_ne = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1889,10 +1883,9 @@ Test(icmp, type_code_v4)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
+                    bf_matcher_get(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE,
                         (uint8_t[]) {
-                            // Code
-                            0x1,
+                            0x01,
                         },
                         1
                     ),
@@ -1902,9 +1895,7 @@ Test(icmp, type_code_v4)
             NULL,
         }
     );
-    bft_e2e_test(code_accept, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
-
-    _free_bf_chain_ struct bf_chain *code_drop = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *nomatch_ne = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1913,10 +1904,9 @@ Test(icmp, type_code_v4)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
+                    bf_matcher_get(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE,
                         (uint8_t[]) {
-                            // Code
-                            0x0,
+                            0x08,
                         },
                         1
                     ),
@@ -1926,43 +1916,109 @@ Test(icmp, type_code_v4)
             NULL,
         }
     );
-    bft_e2e_test(code_drop, BF_VERDICT_DROP, pkt_local_ip4_icmp);
 
-    _free_bf_chain_ struct bf_chain *combo_drop = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        NULL,
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // Type
-                            0x8,
-                        },
-                        1
-                    ),
-                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // Code
-                            0x0,
-                        },
-                        1
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-    bft_e2e_test(combo_drop, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+    bft_e2e_test(match_eq, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+    bft_e2e_test(nomatch_eq, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
+    bft_e2e_test(match_ne, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+    bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
 }
 
-Test(icmpv6, type_code_v6)
+Test(icmp, code)
 {
-    _free_bf_chain_ struct bf_chain *type_accept = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            0x02,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_chain_ struct bf_chain *nomatch_eq = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
+                        (uint8_t[]) {
+                            0x03,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_chain_ struct bf_chain *match_ne = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            0x03,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_chain_ struct bf_chain *nomatch_ne = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMP_CODE, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            0x02,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(match_eq, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+    bft_e2e_test(nomatch_eq, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
+    bft_e2e_test(match_ne, BF_VERDICT_DROP, pkt_local_ip4_icmp);
+    bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_local_ip4_icmp);
+}
+
+Test(icmpv6, type)
+{
+    _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1973,7 +2029,27 @@ Test(icmpv6, type_code_v6)
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
                         (uint8_t[]) {
-                            // Echo Reply
+                            0x80,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_chain_ struct bf_chain *nomatch_eq = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
+                        (uint8_t[]) {
                             0x81,
                         },
                         1
@@ -1984,9 +2060,7 @@ Test(icmpv6, type_code_v6)
             NULL,
         }
     );
-    bft_e2e_test(type_accept, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
-
-    _free_bf_chain_ struct bf_chain *type_drop = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *match_ne = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -1995,9 +2069,29 @@ Test(icmpv6, type_code_v6)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
+                    bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_NE,
                         (uint8_t[]) {
-                            // Echo Request
+                            0x81,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+    _free_bf_chain_ struct bf_chain *nomatch_ne = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_NE,
+                        (uint8_t[]) {
                             0x80,
                         },
                         1
@@ -2008,9 +2102,16 @@ Test(icmpv6, type_code_v6)
             NULL,
         }
     );
-    bft_e2e_test(type_drop, BF_VERDICT_DROP, pkt_local_ip6_icmp);
 
-    _free_bf_chain_ struct bf_chain *code_accept = bf_test_chain_get(
+    bft_e2e_test(match_eq, BF_VERDICT_DROP, pkt_local_ip6_icmp);
+    bft_e2e_test(nomatch_eq, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
+    bft_e2e_test(match_ne, BF_VERDICT_DROP, pkt_local_ip6_icmp);
+    bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
+}
+
+Test(icmpv6, code)
+{
+    _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -2021,8 +2122,7 @@ Test(icmpv6, type_code_v6)
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ,
                         (uint8_t[]) {
-                            // Code
-                            0x1,
+                            0x02,
                         },
                         1
                     ),
@@ -2032,9 +2132,7 @@ Test(icmpv6, type_code_v6)
             NULL,
         }
     );
-    bft_e2e_test(code_accept, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
-
-    _free_bf_chain_ struct bf_chain *code_drop = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *nomatch_eq = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -2045,8 +2143,7 @@ Test(icmpv6, type_code_v6)
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ,
                         (uint8_t[]) {
-                            // Code
-                            0x0,
+                            0x03,
                         },
                         1
                     ),
@@ -2056,9 +2153,7 @@ Test(icmpv6, type_code_v6)
             NULL,
         }
     );
-    bft_e2e_test(code_drop, BF_VERDICT_DROP, pkt_local_ip6_icmp);
-
-    _free_bf_chain_ struct bf_chain *combo_drop = bf_test_chain_get(
+    _free_bf_chain_ struct bf_chain *match_ne = bf_test_chain_get(
         BF_HOOK_XDP,
         BF_VERDICT_ACCEPT,
         NULL,
@@ -2067,17 +2162,9 @@ Test(icmpv6, type_code_v6)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
+                    bf_matcher_get(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_NE,
                         (uint8_t[]) {
-                            // Type
-                            0x80,
-                        },
-                        1
-                    ),
-                    bf_matcher_get(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // Code
-                            0x0,
+                            0x03,
                         },
                         1
                     ),
@@ -2087,7 +2174,32 @@ Test(icmpv6, type_code_v6)
             NULL,
         }
     );
-    bft_e2e_test(combo_drop, BF_VERDICT_DROP, pkt_local_ip6_icmp);
+    _free_bf_chain_ struct bf_chain *nomatch_ne = bf_test_chain_get(
+        BF_HOOK_XDP,
+        BF_VERDICT_ACCEPT,
+        NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                false,
+                BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_NE,
+                        (uint8_t[]) {
+                            0x02,
+                        },
+                        1
+                    ),
+                    NULL,
+                }
+            ),
+            NULL,
+        }
+    );
+
+    bft_e2e_test(match_eq, BF_VERDICT_DROP, pkt_local_ip6_icmp);
+    bft_e2e_test(nomatch_eq, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
+    bft_e2e_test(match_ne, BF_VERDICT_DROP, pkt_local_ip6_icmp);
+    bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_local_ip6_icmp);
 }
 
 Test(ipv6, extension_headers)

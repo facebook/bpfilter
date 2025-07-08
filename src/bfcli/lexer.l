@@ -30,7 +30,8 @@
 %s STATE_MATCHER_IP6_NET
 %s STATE_MATCHER_IP6_NEXTHDR
 %s STATE_MATCHER_PORT
-%s STATE_MATCHER_ICMP
+%s STATE_MATCHER_ICMP_TYPE
+%s STATE_MATCHER_ICMP_CODE
 %s STATE_MATCHER_TCP_FLAGS
 
 int             (-|(0x))?[0-9a-zA-Z]+
@@ -162,12 +163,21 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
     }
 }
 
-icmp(v6)?\.(code|type) { BEGIN(STATE_MATCHER_ICMP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_ICMP>{
+icmp(v6)?\.type { BEGIN(STATE_MATCHER_ICMP_TYPE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_ICMP_TYPE>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    (\!)?[0-9]+ {
+    {int}|[0-9a-zA-Z-]+ {
         yylval.sval = strdup(yytext);
-        return MATCHER_ICMP;
+        return RAW_PAYLOAD;
+    }
+}
+
+icmp(v6)?\.code { BEGIN(STATE_MATCHER_ICMP_CODE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_ICMP_CODE>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int} {
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
     }
 }
 
