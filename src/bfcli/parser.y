@@ -468,13 +468,13 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                     int r;
 
                     for (flags_str = $3; ; flags_str = NULL) {
-                        enum bf_matcher_tcp_flag flag;
+                        enum bf_tcp_flag flag;
 
                         token = strtok_r(flags_str, ",", &saveptr);
                         if (!token)
                             break;
 
-                        r = bf_matcher_tcp_flag_from_str(token, &flag);
+                        r = bf_tcp_flag_from_str(token, &flag);
                         if (r) {
                             bf_parse_err("Unknown TCP flag '%s', ignoring\n", token);
                             continue;

@@ -144,17 +144,17 @@ enum bf_matcher_ipv6_nh
 /**
  * Define the TCP flags values as number of shifts of 1.
  */
-enum bf_matcher_tcp_flag
+enum bf_tcp_flag
 {
-    BF_MATCHER_TCP_FLAG_FIN = 0,
-    BF_MATCHER_TCP_FLAG_SYN = 1,
-    BF_MATCHER_TCP_FLAG_RST = 2,
-    BF_MATCHER_TCP_FLAG_PSH = 3,
-    BF_MATCHER_TCP_FLAG_ACK = 4,
-    BF_MATCHER_TCP_FLAG_URG = 5,
-    BF_MATCHER_TCP_FLAG_ECE = 6,
-    BF_MATCHER_TCP_FLAG_CWR = 7,
-    _BF_MATCHER_TCP_FLAG_MAX,
+    BF_TCP_FIN = 0,
+    BF_TCP_SYN = 1,
+    BF_TCP_RST = 2,
+    BF_TCP_PSH = 3,
+    BF_TCP_ACK = 4,
+    BF_TCP_URG = 5,
+    BF_TCP_ECE = 6,
+    BF_TCP_CWR = 7,
+    _BF_TCP_MAX,
 };
 
 /**
@@ -321,22 +321,21 @@ const char *bf_matcher_op_to_str(enum bf_matcher_op op);
 int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op);
 
 /**
- * Convert a TCP flag to a string.
+ * @brief Convert a TCP flag to a string.
  *
  * @param flag TCP flag to convert.
  * @return String representation of the TCP flag.
  */
-const char *bf_matcher_tcp_flag_to_str(enum bf_matcher_tcp_flag flag);
+const char *bf_tcp_flag_to_str(enum bf_tcp_flag flag);
 
 /**
- * Convert a string to the corresponding TCP flag.
+ * @brief Convert a string to the corresponding TCP flag.
  *
  * @param str String containing the name of the TCP flag.
  * @param flag TCP flag value, if the parsing succeeds.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_matcher_tcp_flag_from_str(const char *str,
-                                 enum bf_matcher_tcp_flag *flag);
+int bf_tcp_flag_from_str(const char *str, enum bf_tcp_flag *flag);
 
 /**
  * Convert a IPv6 next-header to a string.
