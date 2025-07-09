@@ -157,6 +157,9 @@ enum bf_tcp_flag
     _BF_TCP_MAX,
 };
 
+static_assert(_BF_TCP_MAX <= 8,
+              "too many TCP flags, they can't be used as bitmask in uint8_t");
+
 /**
  * Matcher comparison operator.
  *
