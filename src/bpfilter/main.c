@@ -229,6 +229,8 @@ static int _bf_init(int argc, char *argv[])
     if (sigaction(SIGTERM, &sighandler, NULL) < 0)
         return bf_err_r(errno, "can't override handler for SIGTERM");
 
+    bf_info("starting bpfilter version %s", BF_VERSION);
+
     r = bf_opts_init(argc, argv);
     if (r < 0)
         return bf_err_r(r, "failed to parse command line arguments");
