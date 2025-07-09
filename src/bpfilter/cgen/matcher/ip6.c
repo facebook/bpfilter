@@ -286,6 +286,7 @@ static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
                                             const struct bf_matcher *matcher)
 {
     const uint8_t ehdr = matcher->payload[0];
+    uint8_t eh_mask;
 
     if ((matcher->op != BF_MATCHER_EQ) && (matcher->op != BF_MATCHER_NE))
         return -EINVAL;
@@ -297,12 +298,12 @@ static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
     case IPPROTO_FRAGMENT:
     case IPPROTO_AH:
     case IPPROTO_MH:
-        uint8_t eh_mask = (BF_IPV6_EH_HOPOPTS(ehdr == IPPROTO_HOPOPTS) |
-                           BF_IPV6_EH_ROUTING(ehdr == IPPROTO_ROUTING) |
-                           BF_IPV6_EH_FRAGMENT(ehdr == IPPROTO_FRAGMENT) |
-                           BF_IPV6_EH_AH(ehdr == IPPROTO_AH) |
-                           BF_IPV6_EH_DSTOPTS(ehdr == IPPROTO_DSTOPTS) |
-                           BF_IPV6_EH_MH(ehdr == IPPROTO_MH));
+        eh_mask = (BF_IPV6_EH_HOPOPTS(ehdr == IPPROTO_HOPOPTS) |
+                   BF_IPV6_EH_ROUTING(ehdr == IPPROTO_ROUTING) |
+                   BF_IPV6_EH_FRAGMENT(ehdr == IPPROTO_FRAGMENT) |
+                   BF_IPV6_EH_AH(ehdr == IPPROTO_AH) |
+                   BF_IPV6_EH_DSTOPTS(ehdr == IPPROTO_DSTOPTS) |
+                   BF_IPV6_EH_MH(ehdr == IPPROTO_MH));
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
                                   BF_PROG_CTX_OFF(ipv6_eh)));
         EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
