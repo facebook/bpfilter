@@ -45,6 +45,21 @@ int bf_strncpy(char *dst, size_t len, const char *src)
     return copy_len != src_len ? -E2BIG : 0;
 }
 
+int bf_realloc(void **ptr, size_t size)
+{
+    _cleanup_free_ void *_ptr;
+
+    bf_assert(ptr);
+
+    _ptr = realloc(*ptr, size);
+    if (!_ptr)
+        return -ENOMEM;
+
+    *ptr = TAKE_PTR(_ptr);
+
+    return 0;
+}
+
 int bf_read_file(const char *path, void **buf, size_t *len)
 {
     _cleanup_close_ int fd = -1;
