@@ -296,20 +296,7 @@ static inline void *bf_memcpy(void *dst, const void *src, size_t len)
  * @param size New size of the memory buffer.
  * @return 0 on success, or a negative errno value on failure.
  */
-static inline int bf_realloc(void **ptr, size_t size)
-{
-    _cleanup_free_ void *_ptr;
-
-    bf_assert(ptr);
-
-    _ptr = realloc(*ptr, size);
-    if (!_ptr)
-        return -ENOMEM;
-
-    *ptr = TAKE_PTR(_ptr);
-
-    return 0;
-}
+int bf_realloc(void **ptr, size_t size);
 
 /**
  * @brief Check if strings are equal.
