@@ -107,6 +107,14 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         CONTINUE
     rule
+        ip6.nexthdr eq tcp
+        ip6.nexthdr eq 21
+        ip6.nexthdr eq 15
+        ip6.nexthdr eq hop
+        ip6.nexthdr eq routing
+        counter
+        CONTINUE
+    rule
         tcp.sport eq 0
         tcp.sport eq 17
         tcp.sport eq 65535

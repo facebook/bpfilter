@@ -494,9 +494,12 @@ IPv6
       - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
       - :rspan:`3` ``$NEXT_HEADER``
-      - :rspan:`3` ``$NEXT_HEADER`` can be one of the following strings: ``ah``, ``dst``, ``frag``, ``hop``, ``icmpv6``, ``mh``, ``route``, ``tcp``, ``udp``
+      - :rspan:`3` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal `internet protocol number`_.
     * - ``not``
 
+.. tip::
+
+    The following IPv6 extension header names are recognized by bpfilter: hop, route, frag, ah, dst, mh.
 
 TCP
 ###
