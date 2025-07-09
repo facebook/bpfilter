@@ -491,7 +491,7 @@ static int _bf_parse_tcp_flags(const struct bf_matcher *matcher, void *payload,
     char *tmp;
     char *saveptr;
     char *token;
-    enum bf_tcp_flag *flags = payload;
+    uint8_t *flags = payload;
 
     _raw_payload = strdup(raw_payload);
     if (!raw_payload)
@@ -508,7 +508,7 @@ static int _bf_parse_tcp_flags(const struct bf_matcher *matcher, void *payload,
         if (r)
             goto err;
 
-        *flags |= 1 << new_flag;
+        *flags |= (uint8_t)(1 << new_flag);
 
         tmp = NULL;
     }
