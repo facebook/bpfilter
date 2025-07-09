@@ -1251,6 +1251,32 @@ suite_matcher_ip6() {
     expect_matcher_nok "ip6.dnet not 2001:db8::1/"
     expect_matcher_nok "ip6.dnet not /128/"
     expect_matcher_nok "ip6.dnet not /2001:db8::/32"
+
+    log "[SUITE] matcher: ip6.nexthdr eq"
+    expect_matcher_ok "ip6.nexthdr eq icmp"
+    expect_matcher_ok "ip6.nexthdr eq hop"
+    expect_matcher_ok "ip6.nexthdr eq HOP"
+    expect_matcher_ok "ip6.nexthdr eq 17"
+    expect_matcher_ok "ip6.nexthdr eq 255"
+
+    expect_matcher_nok "ip6.nexthdr eq ipv4"
+    expect_matcher_nok "ip6.nexthdr eq imcp"
+    expect_matcher_nok "ip6.nexthdr eq 0x342"
+    expect_matcher_nok "ip6.nexthdr eq -18"
+    expect_matcher_nok "ip6.nexthdr eq 256"
+
+    log "[SUITE] matcher: ip6.nexthdr not"
+    expect_matcher_ok "ip6.nexthdr not icmp"
+    expect_matcher_ok "ip6.nexthdr not hop"
+    expect_matcher_ok "ip6.nexthdr not HOP"
+    expect_matcher_ok "ip6.nexthdr not 17"
+    expect_matcher_ok "ip6.nexthdr not 255"
+
+    expect_matcher_nok "ip6.nexthdr not ipv4"
+    expect_matcher_nok "ip6.nexthdr not imcp"
+    expect_matcher_nok "ip6.nexthdr not 0x342"
+    expect_matcher_nok "ip6.nexthdr not -18"
+    expect_matcher_nok "ip6.nexthdr not 256"
 }
 with_daemon suite_matcher_ip6
 

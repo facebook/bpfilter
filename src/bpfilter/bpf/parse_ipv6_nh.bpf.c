@@ -58,12 +58,13 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
 
         __u8 offset;
         __u8 shift;
-        ctx->ipv6_eh |= (BF_IPV6_EH_HOPOPTS(next_hdr_type == IPPROTO_HOPOPTS) |
-                         BF_IPV6_EH_ROUTING(next_hdr_type == IPPROTO_ROUTING) |
-                         BF_IPV6_EH_FRAGMENT(next_hdr_type == IPPROTO_FRAGMENT) |
-                         BF_IPV6_EH_AH(next_hdr_type == IPPROTO_AH) |
-                         BF_IPV6_EH_DSTOPTS(next_hdr_type == IPPROTO_DSTOPTS) |
-                         BF_IPV6_EH_MH(next_hdr_type == IPPROTO_MH));
+        ctx->ipv6_eh |=
+            (BF_IPV6_EH_HOPOPTS(next_hdr_type == IPPROTO_HOPOPTS) |
+             BF_IPV6_EH_ROUTING(next_hdr_type == IPPROTO_ROUTING) |
+             BF_IPV6_EH_FRAGMENT(next_hdr_type == IPPROTO_FRAGMENT) |
+             BF_IPV6_EH_AH(next_hdr_type == IPPROTO_AH) |
+             BF_IPV6_EH_DSTOPTS(next_hdr_type == IPPROTO_DSTOPTS) |
+             BF_IPV6_EH_MH(next_hdr_type == IPPROTO_MH));
 
         if (next_hdr_type == IPPROTO_AH) {
             offset = EH_AH_OFFSET;

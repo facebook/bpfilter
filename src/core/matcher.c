@@ -763,6 +763,10 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                            BF_MATCHER_PAYLOAD_IPV6_NET),
             BF_MATCHER_OPS(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                            BF_MATCHER_PAYLOAD_IPV6_NET),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
+            BF_MATCHER_OPS(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_NE,
+                           BF_MATCHER_PAYLOAD_L4_PROTO),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
                            BF_MATCHER_PAYLOAD_L4_PORT),
             BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,
@@ -1080,41 +1084,6 @@ int bf_tcp_flag_from_str(const char *str, enum bf_tcp_flag *flag)
     return -EINVAL;
 }
 
-static const char *_bf_matcher_ipv6_nh_strs[] = {
-    [BF_IPV6_NH_HOP] = "hop",       [BF_IPV6_NH_TCP] = "tcp",
-    [BF_IPV6_NH_UDP] = "udp",       [BF_IPV6_NH_ROUTING] = "route",
-    [BF_IPV6_NH_FRAGMENT] = "frag", [BF_IPV6_NH_AH] = "ah",
-    [BF_IPV6_NH_ICMPV6] = "icmpv6", [BF_IPV6_NH_DSTOPTS] = "dst",
-    [BF_IPV6_NH_MH] = "mh",
-};
-
-static_assert(ARRAY_SIZE(_bf_matcher_ipv6_nh_strs) == _BF_MATCHER_IPV6_NH_MAX);
-
-const char *bf_matcher_ipv6_nh_to_str(enum bf_matcher_ipv6_nh nexthdr)
-{
-    bf_assert(0 <= nexthdr && nexthdr < _BF_MATCHER_IPV6_NH_MAX);
-
-    return _bf_matcher_ipv6_nh_strs[nexthdr];
-}
-
-int bf_matcher_ipv6_nh_from_str(const char *str,
-                                enum bf_matcher_ipv6_nh *nexthdr)
-{
-    bf_assert(str && nexthdr);
-
-    for (size_t i = 0; i < _BF_MATCHER_IPV6_NH_MAX; ++i) {
-        /* sparse array */
-        if (!_bf_matcher_ipv6_nh_strs[i])
-            continue;
-        if (bf_streq(_bf_matcher_ipv6_nh_strs[i], str)) {
-            *nexthdr = i;
-            return 0;
-        }
-    }
-
-    return -EINVAL;
-}
-
 const char *bf_ethertype_to_str(uint16_t ethertype)
 {
     switch (ethertype) {
@@ -1145,8 +1114,12 @@ int bf_ethertype_from_str(const char *str, uint16_t *ethertype)
 }
 
 static const char *_bf_ipproto_strs[UINT8_MAX + 1] = {
-    [IPPROTO_ICMP] = "icmp", [IPPROTO_IGMP] = "igmp",     [IPPROTO_TCP] = "tcp",
-    [IPPROTO_UDP] = "udp",   [IPPROTO_ICMPV6] = "icmpv6",
+    [IPPROTO_HOPOPTS] = "hop",   [IPPROTO_ICMP] = "icmp",
+    [IPPROTO_IGMP] = "igmp",     [IPPROTO_TCP] = "tcp",
+    [IPPROTO_UDP] = "udp",       [IPPROTO_ROUTING] = "routing",
+    [IPPROTO_FRAGMENT] = "frag", [IPPROTO_AH] = "ah",
+    [IPPROTO_DSTOPTS] = "dst",   [IPPROTO_ICMPV6] = "icmpv6",
+    [IPPROTO_MH] = "mh",
 };
 static_assert(ARRAY_SIZE(_bf_ipproto_strs) == (UINT8_MAX + 1),
               "missing entries in IP protocols strings array");

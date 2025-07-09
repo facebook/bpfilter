@@ -271,8 +271,8 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
         EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
         EMIT_FIXUP_ELFSTUB(program, program->ipv6_nexthdr ?
-                                    BF_ELFSTUB_PARSE_IPV6_NH :
-                                    BF_ELFSTUB_PARSE_IPV6_EH);
+                                        BF_ELFSTUB_PARSE_IPV6_NH :
+                                        BF_ELFSTUB_PARSE_IPV6_EH);
         EMIT(program, BPF_MOV64_REG(BPF_REG_8, BPF_REG_0));
 
         ehjmp = bf_jmpctx_get(program, BPF_JMP_A(0));

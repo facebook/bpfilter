@@ -836,8 +836,8 @@ int bf_program_generate(struct bf_program *program)
             struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
             if (matcher->type == BF_MATCHER_IP6_NEXTHDR) {
                 // Zeroing IPv6 extension headers
-                EMIT(program,
-                     BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_7, BF_PROG_CTX_OFF(ipv6_eh)));
+                EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_7,
+                                          BF_PROG_CTX_OFF(ipv6_eh)));
                 program->ipv6_nexthdr = true;
                 break;
             }

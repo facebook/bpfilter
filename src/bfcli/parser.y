@@ -77,7 +77,6 @@
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_NET
-%token <sval> MATCHER_IP6_NEXTHDR
 %token <sval> MATCHER_ICMP
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
@@ -440,21 +439,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                     if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
                         bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IP6_NEXTHDR
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    enum bf_matcher_ipv6_nh nexthdr;
-
-                    if (bf_matcher_ipv6_nh_from_str($3, &nexthdr))
-                        bf_parse_err("Unknown IPv6 next-header '%s', ignoring\n", $3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &nexthdr, sizeof(nexthdr)) < 0)
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    free($3);
 
                     $$ = TAKE_PTR(matcher);
                 }

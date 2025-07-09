@@ -28,7 +28,6 @@
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_IP6_NET
-%s STATE_MATCHER_IP6_NEXTHDR
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_ICMP_TYPE
 %s STATE_MATCHER_ICMP_CODE
@@ -79,8 +78,9 @@ meta\.l3_proto  { BEGIN(STATE_MATCHER_META_L3_PROTO); yylval.sval = strdup(yytex
 
 meta\.l4_proto  { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.proto      { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+ip6\.nexthdr    { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_L4_PROTO>{
-    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}|[0-9a-zA-Z-]+ {
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
@@ -144,12 +144,6 @@ ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext)
         yylval.sval = strdup(yytext);
         return MATCHER_IP6_NET;
     }
-}
-
-ip6\.nexthdr    { BEGIN(STATE_MATCHER_IP6_NEXTHDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_IP6_NEXTHDR>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    (ah|dst|frag|hop|icmpv6|mh|route|tcp|udp) { yylval.sval = strdup(yytext); return MATCHER_IP6_NEXTHDR; }
 }
 
 meta\.(s|d)port { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
