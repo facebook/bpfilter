@@ -113,3 +113,21 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive);
  *         descriptor.
  */
 int bf_acquire_lock(const char *path);
+
+/**
+ * @brief Send a file descriptor over a Unix Domain Socket.
+ *
+ * @param sock_fd File descriptor of a Unix Domain Socket, used to send `fd`.
+ * @param fd File descriptor to send.
+ * @return 0, or a negative error value on failure.
+ */
+int bf_send_fd(int sock_fd, int fd);
+
+/**
+ * @brief Receive a file descriptor over a Unix Domain Socket.
+ *
+ * @param sock_fd Socket file descriptor to receive the file descriptor through.
+ * @return A file descriptor, or a negative error value on failure. The caller
+ *         owns the file descriptor.
+ */
+int bf_recv_fd(int sock_fd);
