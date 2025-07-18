@@ -18,6 +18,7 @@ enum bf_map_bpf_type
     BF_MAP_BPF_TYPE_ARRAY,
     BF_MAP_BPF_TYPE_HASH,
     BF_MAP_BPF_TYPE_LPM_TRIE,
+    BF_MAP_BPF_TYPE_RINGBUF,
     _BF_MAP_BPF_TYPE_MAX,
 };
 
@@ -25,6 +26,7 @@ enum bf_map_type
 {
     BF_MAP_TYPE_COUNTERS,
     BF_MAP_TYPE_PRINTER,
+    BF_MAP_TYPE_LOG,
     BF_MAP_TYPE_SET,
     _BF_MAP_TYPE_MAX,
 };
@@ -75,9 +77,9 @@ struct bf_marsh;
  * @param type Map type, defines the set of available operations.
  * @param bpf_type Map type. Not all BPF maps are supported, see
  *        @ref bf_map_bpf_type for the full list of supported types.
- * @param key_size Size (in bytes) of a key in the map. Can't be 0.
- * @param value_size Size (in bytes) of an element of the map. Can't be 0.
- * @param n_elems Number of elemets to reserve room for in the map. Can't be 0.
+ * @param key_size Size (in bytes) of a key in the map.
+ * @param value_size Size (in bytes) of an element of the map.
+ * @param n_elems Number of elements to reserve room for in the map. Can't be 0.
  *        If you don't yet know the number of elements in the map, use
  *        @ref BF_MAP_N_ELEMS_UNKNOWN , but @ref bf_map_create can't be called
  *        until you set an actual size with @ref bf_map_set_n_elems .

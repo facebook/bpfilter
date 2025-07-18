@@ -57,7 +57,7 @@ Similarly to the benchmarks (``make benchmark``), ``sudo`` will be used automati
 End-to-end tests are defined in ``tests/e2e`` and use ``cmocka`` as the testing library. To add a new end-to-end test:
 
 1. Add a new ``cmocka`` test in a source file under ``tests/e2e``.
-2. Create a chain: use the primitives in :ref:`Filters` to easily create chains, rules, and matchers. :c:struct:`bf_test_chain_get` will automatically disable attachment of the chain and generate a custom name for the BPF program prefixed with ``bf_e2e_``.
+2. Create a chain: use the primitives in :ref:`developers/tests:Filters` to easily create chains, rules, and matchers. :c:struct:`bf_test_chain_get` will automatically disable attachment of the chain and generate a custom name for the BPF program prefixed with ``bf_e2e_``.
 3. Run the test using :c:func:`bft_e2e_test` with the chain, the expected return value, and the generated packet name.
 
 **Example**

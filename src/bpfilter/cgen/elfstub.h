@@ -91,6 +91,7 @@ enum bf_elfstub_id
      *            a dynamic pointer slice.
      */
     BF_ELFSTUB_PARSE_IPV6_EH,
+
     /**
      * Parse IPv6 extension headers filling runtime context for ip6.nexthdr rule.
      *
@@ -103,6 +104,7 @@ enum bf_elfstub_id
      *            a dynamic pointer slice.
      */
     BF_ELFSTUB_PARSE_IPV6_NH,
+
     /**
      * Update the counters for a given rule.
      *
@@ -116,6 +118,23 @@ enum bf_elfstub_id
      * **Return** 0 on success, or 1 on error.
      */
     BF_ELFSTUB_UPDATE_COUNTERS,
+
+    /**
+     * Log user-requested packet headers to a ring buffer.
+     *
+     * `__u8 bf_log(struct bf_runtime *ctx, void *map, __u8 headers, __u16 l3_proto, __u8 l4_proto))`
+     *
+     * **Parameters**
+     * - `ctx`: address of the `bf_runtime` context of the program.
+     * - `map`: pointer to the logs ring buffer.
+     * - `layers`: user-requested headers to log.
+     * - `l3_proto`: layer 3 (internet) protocol identifier.
+     * - `l4_proto`: layer 4 (transport) protocol identifier.
+     *
+     * **Return** 0 on success, or 1 on error.
+     */
+    BF_ELFSTUB_LOG,
+
     _BF_ELFSTUB_MAX,
 };
 

@@ -7,6 +7,8 @@
 
 #include <linux/bpf.h>
 
+#include "core/runtime.h"
+
 /**
  * @file runtime.h
  *
@@ -20,36 +22,6 @@
  * This header can be included into C stubs to be integrated into the generated
  * BPF programs.
  */
-
-/**
- * @brief Size of the L2 dynamic pointer slice buffer.
- *
- * Only Ethernet is supported at L2, so the buffer should be as big as the
- * Ethernet header.
- */
-#define BF_L2_SLICE_LEN 14
-
-/**
- * @brief Size of the L3 dynamic pointer slice buffer.
- *
- * The buffer should be able to contain the largest supported L3 protocol header
- * among:
- * - IPv4: 20 bytes (ignoring the options)
- * - IPv6: 40 bytes (ignoring the extension headers)
- */
-#define BF_L3_SLICE_LEN 40
-
-/**
- * @brief Size of the L4 dynamic pointer slice buffer.
- *
- * The buffer should be able to contain the largest supported L4 protocol header
- * among:
- * - UDP: 8 bytes
- * - TCP: 20 bytes
- * - ICMP: 8 bytes (ignoring the payload)
- * - ICMPV6: 4 bytes (ignoring the body)
- */
-#define BF_L4_SLICE_LEN 20
 
 /**
  * @brief Return the offset of a field in the runtime context, from `BPF_REG_10`.
@@ -128,7 +100,11 @@ struct bf_runtime
     __u64 pkt_size;
 
     /** IPv6 extension header mask */
-    __u8 bf_aligned(8) ipv6_eh;
+    __u8 ipv6_eh;
+
+    __u8 l2_size;
+    __u8 l3_size;
+    __u8 l4_size;
 
     /** Offset of the layer 3 protocol header. */
     __u32 bf_aligned(8) l3_offset;

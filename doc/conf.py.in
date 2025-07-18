@@ -20,6 +20,7 @@ breathe_domain_by_extension = {
     "h": "c",
     "c": "c"
 }
+autosectionlabel_prefix_document = True
 
 breathe_show_define_initializer = False # Avoid showing badly formatted functions-like macros code.
 breathe_show_enumvalue_initializer = True

@@ -145,6 +145,18 @@
             return __r;                                                        \
     })
 
+#define EMIT_LOAD_LOG_FD_FIXUP(program, reg)                                   \
+    ({                                                                         \
+        const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
+        int __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_LOG_MAP_FD,   \
+                                        ld_insn[0], NULL);                     \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+        __r = bf_program_emit((program), ld_insn[1]);                          \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
 /**
  * Load a specific set's file descriptor.
  *
@@ -190,6 +202,8 @@ struct bf_program
     struct bf_map *cmap;
     /// Printer map
     struct bf_map *pmap;
+    /// Log map
+    struct bf_map *lmap;
     /// List of set maps
     bf_list sets;
 

@@ -61,6 +61,20 @@
 #define _BF_LOG_BUF_SIZE                                                       \
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
+#define _BF_LOG_MAP_N_ENTRIES 1000
+#define _BF_LOG_MAP_SIZE _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
+
+static inline size_t _bf_round_next_power_of_2(size_t value)
+{
+    value--;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+
+    return ++value;
+}
 
 static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
 {
@@ -108,6 +122,11 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
                    BF_MAP_VALUE_SIZE_UNKNOWN, 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the printer bf_map object");
+
+    r = bf_map_new(&_program->lmap, "log_map", BF_MAP_TYPE_LOG,
+                   BF_MAP_BPF_TYPE_RINGBUF, 0, 0, _BF_LOG_MAP_SIZE);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the log bf_map object");
 
     _program->sets = bf_map_list();
     bf_list_foreach (&chain->sets, set_node) {
@@ -160,6 +179,7 @@ void bf_program_free(struct bf_program **program)
 
     bf_map_free(&(*program)->cmap);
     bf_map_free(&(*program)->pmap);
+    bf_map_free(&(*program)->lmap);
     bf_list_clean(&(*program)->sets);
     bf_link_free(&(*program)->link);
     bf_printer_free(&(*program)->printer);
@@ -202,6 +222,19 @@ int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
             return r;
 
         r = bf_marsh_add_child_obj(&_marsh, pmap_elem);
+        if (r < 0)
+            return r;
+    }
+
+    {
+        // Serialize bf_program.lmap
+        _free_bf_marsh_ struct bf_marsh *lmap_elem = NULL;
+
+        r = bf_map_marsh(program->lmap, &lmap_elem);
+        if (r < 0)
+            return r;
+
+        r = bf_marsh_add_child_obj(&_marsh, lmap_elem);
         if (r < 0)
             return r;
     }
@@ -287,6 +320,13 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
         return -EINVAL;
     bf_map_free(&_program->pmap);
     r = bf_map_new_from_marsh(&_program->pmap, dir_fd, child);
+    if (r < 0)
+        return r;
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    bf_map_free(&_program->lmap);
+    r = bf_map_new_from_marsh(&_program->lmap, dir_fd, child);
     if (r < 0)
         return r;
 
@@ -380,6 +420,11 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_map_dump(program->pmap, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
 
+    DUMP(prefix, "lmap: struct bf_map *");
+    bf_dump_prefix_push(prefix);
+    bf_map_dump(program->lmap, bf_dump_prefix_last(prefix));
+    bf_dump_prefix_pop(prefix);
+
     DUMP(prefix, "sets: bf_list<bf_map>[%lu]", bf_list_size(&program->sets));
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&program->sets, map_node) {
@@ -426,18 +471,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
-}
-
-static inline size_t _bf_round_next_power_of_2(size_t value)
-{
-    value--;
-    value |= value >> 1;
-    value |= value >> 2;
-    value |= value >> 4;
-    value |= value >> 8;
-    value |= value >> 16;
-
-    return ++value;
 }
 
 int bf_program_grow_img(struct bf_program *program)
@@ -511,6 +544,10 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
             value = program->pmap->fd;
+            break;
+        case BF_FIXUP_TYPE_LOG_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = program->lmap->fd;
             break;
         case BF_FIXUP_TYPE_SET_MAP_FD:
             map = bf_list_get_at(&program->sets, fixup->attr.set_index);
@@ -612,6 +649,17 @@ static int _bf_program_generate_rule(struct bf_program *program,
         default:
             return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
         };
+    }
+
+    if (rule->log) {
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+        EMIT_LOAD_LOG_FD_FIXUP(program, BPF_REG_2);
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log));
+        EMIT(program, BPF_MOV64_REG(BPF_REG_4, BPF_REG_7));
+        EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_8));
+
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_LOG);
     }
 
     if (rule->counters) {
@@ -941,6 +989,26 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     return 0;
 }
 
+static int _bf_program_load_log_map(struct bf_program *program)
+{
+    _cleanup_close_ int _fd = -1;
+    int r;
+
+    bf_assert(program);
+
+    r = bf_map_create(program->lmap, 0);
+    if (r < 0)
+        return r;
+
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_LOG_MAP_FD);
+    if (r < 0) {
+        bf_map_destroy(program->lmap);
+        return bf_err_r(r, "failed to fixup log map FD");
+    }
+
+    return 0;
+}
+
 static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 {
     const bf_list_node *set_node;
@@ -1035,6 +1103,10 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return r;
 
+    r = _bf_program_load_log_map(prog);
+    if (r)
+        return r;
+
     if (bf_opts_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
         if (!log_buf) {
@@ -1090,6 +1162,7 @@ void bf_program_unload(struct bf_program *prog)
     bf_link_detach(prog->link);
     bf_map_destroy(prog->cmap);
     bf_map_destroy(prog->pmap);
+    bf_map_destroy(prog->lmap);
     bf_list_foreach (&prog->sets, map_node)
         bf_map_destroy(bf_list_node_get_data(map_node));
 }
@@ -1145,6 +1218,12 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
         goto err_unpin_all;
     }
 
+    r = bf_map_pin(prog->lmap, dir_fd);
+    if (r) {
+        bf_err_r(r, "failed to pin BPF log map for '%s'", name);
+        goto err_unpin_all;
+    }
+
     bf_list_foreach (&prog->sets, set_node) {
         r = bf_map_pin(bf_list_node_get_data(set_node), dir_fd);
         if (r) {
@@ -1175,6 +1254,7 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
 
     bf_map_unpin(prog->cmap, dir_fd);
     bf_map_unpin(prog->pmap, dir_fd);
+    bf_map_unpin(prog->lmap, dir_fd);
 
     bf_list_foreach (&prog->sets, set_node)
         bf_map_unpin(bf_list_node_get_data(set_node), dir_fd);
