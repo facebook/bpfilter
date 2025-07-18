@@ -57,10 +57,10 @@
 #define bft_fake_rules                                                         \
     (struct bf_rule *[])                                                       \
     {                                                                          \
-        bf_rule_get(true, BF_VERDICT_ACCEPT, bft_fake_matchers),               \
-        bf_rule_get(false, BF_VERDICT_ACCEPT, bft_fake_matchers),              \
-        bf_rule_get(true, BF_VERDICT_DROP, bft_fake_matchers),                 \
-        bf_rule_get(false, BF_VERDICT_DROP, bft_fake_matchers),                \
+        bf_rule_get(0, true, BF_VERDICT_ACCEPT, bft_fake_matchers),            \
+        bf_rule_get(0, false, BF_VERDICT_ACCEPT, bft_fake_matchers),           \
+        bf_rule_get(0, true, BF_VERDICT_DROP, bft_fake_matchers),              \
+        bf_rule_get(0, false, BF_VERDICT_DROP, bft_fake_matchers),             \
         NULL,                                                                  \
     }
 // clang-format on
@@ -127,7 +127,7 @@ struct bf_matcher *bf_matcher_get(enum bf_matcher_type type,
  *
  * @return 0 on success, or a negative errno value on error.
  */
-struct bf_rule *bf_rule_get(bool counters, enum bf_verdict verdict,
+struct bf_rule *bf_rule_get(uint8_t log, bool counters, enum bf_verdict verdict,
                             struct bf_matcher **matchers);
 
 /**

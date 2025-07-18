@@ -78,6 +78,7 @@ int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
             return r;
     }
 
+    r |= bf_marsh_add_child_raw(&_marsh, &rule->log, sizeof(rule->log));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->counters,
                                 sizeof(rule->counters));
     r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
@@ -130,6 +131,10 @@ int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
 
     if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
         return -EINVAL;
+    memcpy(&_rule->log, rule_elem->data, sizeof(_rule->log));
+
+    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
+        return -EINVAL;
     memcpy(&_rule->counters, rule_elem->data, sizeof(_rule->counters));
 
     if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
@@ -168,6 +173,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     }
     bf_dump_prefix_pop(prefix);
 
+    DUMP(prefix, "log: %02x", rule->log);
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
          bf_verdict_to_str(rule->verdict));
