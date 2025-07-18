@@ -108,7 +108,7 @@ done
 setup() {
     # Disable selinux if available, not all distros enforce setlinux
     if command -v setenforce &> /dev/null; then
-        setenforce 0
+        setenforce 0 || true
     fi
 
     # Check if BPF token is supported
