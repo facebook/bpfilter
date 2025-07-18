@@ -141,6 +141,7 @@ bf_target_add_elfstubs(unit_bin
         "parse_ipv6_eh"
         "parse_ipv6_nh"
         "update_counters"
+        "log"
 )
 
 bf_test_configure_non_build_srcs(unit_bin

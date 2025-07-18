@@ -33,6 +33,8 @@ enum bf_fixup_type
     BF_FIXUP_TYPE_COUNTERS_MAP_FD,
     /// Set the printer map file descriptor in the @c BPF_LD_MAP_FD instruction.
     BF_FIXUP_TYPE_PRINTER_MAP_FD,
+    /// Set the log map file descriptor in the @c BPF_LD_MAP_FD instruction.
+    BF_FIXUP_TYPE_LOG_MAP_FD,
     /// Set a set map file descriptor in the @c BPF_LD_MAP_FD instruction.
     BF_FIXUP_TYPE_SET_MAP_FD,
     /// Call an ELF stub.

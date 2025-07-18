@@ -24,6 +24,7 @@ set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/ns.h               ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/request.h          ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.h         ${CMAKE_CURRENT_SOURCE_DIR}/response.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.h             ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
     ${CMAKE_CURRENT_SOURCE_DIR}/set.h              ${CMAKE_CURRENT_SOURCE_DIR}/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.h          ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c

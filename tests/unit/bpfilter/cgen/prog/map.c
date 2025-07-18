@@ -14,8 +14,6 @@ Test(map, create_delete_assert)
     expect_assert_failure(bf_map_new(NULL, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     expect_assert_failure(bf_map_new(NOT_NULL, NULL, BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
     expect_assert_failure(bf_map_new(NOT_NULL, "", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 0, 1, 1));
-    expect_assert_failure(bf_map_new(NOT_NULL, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 0, 1));
     expect_assert_failure(bf_map_new(NOT_NULL, "012345", BF_MAP_TYPE_SET, BF_MAP_BPF_TYPE_ARRAY, 1, 1, 0));
     expect_assert_failure(bf_map_free(NULL));
 }

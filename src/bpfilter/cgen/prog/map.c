@@ -30,7 +30,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
 
     bf_assert(map && name);
     bf_assert(name[0] != '\0');
-    bf_assert(key_size > 0 && value_size > 0 && n_elems > 0);
+    bf_assert(n_elems > 0);
 
     _map = malloc(sizeof(*_map));
     if (!_map)
@@ -202,6 +202,7 @@ _bf_map_bpf_type_to_kernel_type(enum bf_map_bpf_type bpf_type)
         [BF_MAP_BPF_TYPE_ARRAY] = BPF_MAP_TYPE_ARRAY,
         [BF_MAP_BPF_TYPE_HASH] = BPF_MAP_TYPE_HASH,
         [BF_MAP_BPF_TYPE_LPM_TRIE] = BPF_MAP_TYPE_LPM_TRIE,
+        [BF_MAP_BPF_TYPE_RINGBUF] = BPF_MAP_TYPE_RINGBUF,
     };
 
     bf_assert(0 <= bpf_type && bpf_type < _BF_MAP_BPF_TYPE_MAX);
@@ -316,6 +317,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         break;
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
+    case BF_MAP_TYPE_LOG:
         // No BTF data available for this map types
         return NULL;
     default:
@@ -499,6 +501,7 @@ static const char *_bf_map_bpf_type_strs[] = {
     [BF_MAP_BPF_TYPE_ARRAY] = "BF_MAP_BPF_TYPE_ARRAY",
     [BF_MAP_BPF_TYPE_HASH] = "BF_MAP_BPF_TYPE_HASH",
     [BF_MAP_BPF_TYPE_LPM_TRIE] = "BF_MAP_BPF_TYPE_LPM_TRIE",
+    [BF_MAP_BPF_TYPE_RINGBUF] = "BF_MAP_BPF_TYPE_RINGBUF",
 };
 
 static_assert(ARRAY_SIZE(_bf_map_bpf_type_strs) == _BF_MAP_BPF_TYPE_MAX,
