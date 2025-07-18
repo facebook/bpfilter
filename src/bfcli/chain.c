@@ -7,8 +7,15 @@
 #include "bfcli/chain.h"
 
 #include <argp.h>
+#include <bpf/bpf.h>
+#include <bpf/libbpf.h>
+#include <endian.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <sys/epoll.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "bfcli/helper.h"
 #include "bfcli/opts.h"
@@ -20,10 +27,9 @@
 #include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/set.h"
 #include "libbpfilter/bpfilter.h"
 
-struct bfc_chain_opts;
+#define BF_RB_POLL_TIMEOUT 1000
 
 static int _bfc_get_chain_from_ruleset(const struct bfc_ruleset *ruleset,
                                        const char *name,
@@ -114,6 +120,50 @@ int bfc_chain_get(const struct bfc_opts *opts)
     bfc_chain_dump(chain, hookopts, &counters);
 
     return 0;
+}
+
+static int _bf_handle_rb_log(void *ctx, void *data, size_t data_size)
+{
+    struct bf_log *log = data;
+
+    UNUSED(ctx);
+    UNUSED(data_size);
+
+    bfc_print_log(log);
+
+    return 0;
+}
+
+int bfc_chain_logs(const struct bfc_opts *opts)
+{
+    _cleanup_close_ int fd = -1;
+    struct ring_buffer *rb;
+    int r;
+
+    fd = bf_chain_logs_fd(opts->name);
+    if (fd < 0) {
+        return bf_err_r(fd, "failed to request '%s' logs buffer FD",
+                        opts->name);
+    }
+
+    rb = ring_buffer__new(fd, _bf_handle_rb_log, NULL, NULL);
+    if (!rb)
+        return bf_err_r(-EINVAL, "failed to create libbpf ring buffer");
+
+    while (1) {
+        r = ring_buffer__poll(rb, BF_RB_POLL_TIMEOUT);
+        if (r == -EINTR)
+            continue;
+
+        if (r < 0) {
+            r = bf_err_r(r, "failed to poll ring buffer");
+            break;
+        }
+    }
+
+    ring_buffer__free(rb);
+
+    return r;
 }
 
 int bfc_chain_load(const struct bfc_opts *opts)

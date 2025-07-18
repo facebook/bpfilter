@@ -462,6 +462,7 @@ static int _bf_run(void)
             return bf_err_r(r, "failed to receive request");
 
         request->ns = &ns;
+        request->fd = client_fd;
 
         r = _bf_process_request(request, &response);
         if (r) {

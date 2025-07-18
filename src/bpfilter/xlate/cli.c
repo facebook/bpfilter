@@ -4,10 +4,10 @@
  */
 
 #include <errno.h>
-#include <stdlib.h>
 
 #include "bpfilter/cgen/cgen.h"
 #include "bpfilter/cgen/prog/link.h"
+#include "bpfilter/cgen/prog/map.h"
 #include "bpfilter/cgen/program.h"
 #include "bpfilter/ctx.h"
 #include "bpfilter/xlate/front.h"
@@ -16,6 +16,7 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -372,6 +373,45 @@ static int _bf_cli_chain_get(const struct bf_request *request,
                                    bf_marsh_size(marsh));
 }
 
+int _bf_cli_chain_logs_fd(const struct bf_request *request,
+                          struct bf_response **response)
+{
+    struct bf_cgen *cgen;
+    struct bf_marsh *marsh, *child = NULL;
+    int r;
+
+    UNUSED(response);
+
+    marsh = (struct bf_marsh *)request->data;
+    if (bf_marsh_size(marsh) != request->data_len) {
+        return bf_err_r(
+            -EINVAL,
+            "request payload is expected to have the same size as the marsh");
+    }
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    if (child->data_len < 2)
+        return bf_err_r(-EINVAL, "_bf_cli_chain_logs_fd: chain name is empty");
+    if (child->data[child->data_len - 1]) {
+        return bf_err_r(
+            -EINVAL, "_bf_cli_chain_logs_fd: chain name if not nul-terminated");
+    }
+
+    cgen = bf_ctx_get_cgen(child->data);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "failed to find chain '%s'", child->data);
+
+    if (!cgen->program || !cgen->program->lmap->fd)
+        return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", child->data);
+
+    r = bf_send_fd(request->fd, cgen->program->lmap->fd);
+    if (r < 0)
+        return bf_err_r(errno, "failed to send logs FD for '%s'", child->data);
+
+    return 0;
+}
+
 int _bf_cli_chain_load(const struct bf_request *request,
                        struct bf_response **response)
 {
@@ -566,6 +606,9 @@ static int _bf_cli_request_handler(struct bf_request *request,
         break;
     case BF_REQ_CHAIN_GET:
         r = _bf_cli_chain_get(request, response);
+        break;
+    case BF_REQ_CHAIN_LOGS_FD:
+        r = _bf_cli_chain_logs_fd(request, response);
         break;
     case BF_REQ_CHAIN_LOAD:
         r = _bf_cli_chain_load(request, response);
