@@ -39,6 +39,7 @@ struct bf_rule
 {
     uint32_t index;
     bf_list matchers;
+    uint8_t log;
     bool counters;
     enum bf_verdict verdict;
 };

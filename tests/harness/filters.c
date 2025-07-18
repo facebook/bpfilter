@@ -86,7 +86,7 @@ struct bf_matcher *bf_matcher_get(enum bf_matcher_type type,
     return matcher;
 }
 
-struct bf_rule *bf_rule_get(bool counters, enum bf_verdict verdict,
+struct bf_rule *bf_rule_get(uint8_t log, bool counters, enum bf_verdict verdict,
                             struct bf_matcher **matchers)
 {
     _free_bf_rule_ struct bf_rule *rule = NULL;
@@ -98,6 +98,7 @@ struct bf_rule *bf_rule_get(bool counters, enum bf_verdict verdict,
         goto err_free_matchers;
     }
 
+    rule->log = log;
     rule->counters = counters;
     rule->verdict = verdict;
 

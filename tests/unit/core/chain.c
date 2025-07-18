@@ -28,8 +28,8 @@ Test(chain, new_free)
     bf_chain_free(&chain);
     assert_null(chain);
 
-    assert_success(bf_list_add_tail(&rules, bf_rule_get(false, 0, bft_fake_matchers)));
-    assert_success(bf_list_add_tail(&rules, bf_rule_get(false, 0, bft_fake_matchers)));
+    assert_success(bf_list_add_tail(&rules, bf_rule_get(0, false, 0, bft_fake_matchers)));
+    assert_success(bf_list_add_tail(&rules, bf_rule_get(0, false, 0, bft_fake_matchers)));
 
     i = 0;
     assert_success(bf_chain_new(&chain, "name", 0, 0, NULL, &rules));
@@ -37,8 +37,6 @@ Test(chain, new_free)
         assert_int_equal(i++, ((struct bf_rule *)(bf_list_node_get_data(rule_node)))->index);
     }
 }
-
-#include "core/dump.h"
 
 Test(chain, marsh_unmarsh)
 {

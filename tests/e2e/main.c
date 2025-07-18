@@ -31,87 +31,31 @@ Test(counters, update_partially_disabled)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
         (struct bf_rule *[]) {
             // Do not match
-            bf_rule_get(false, BF_VERDICT_ACCEPT,
+            bf_rule_get(0, false, BF_VERDICT_ACCEPT,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                                            (uint8_t[]) {
                                                // IP address
-                                               0x54,
-                                               /* Modified */ 0x2d,
-                                               0x1a,
-                                               0x31,
-                                               0xf9,
-                                               0x64,
-                                               0x94,
-                                               0x6c,
-                                               0x5a,
-                                               0x24,
-                                               0xe7,
-                                               0x1e,
-                                               0x4d,
-                                               0x26,
-                                               0xb8,
-                                               0x7e,
+                                               0x54, /* Modified */ 0x2d, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                               0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
                                                // Prefix
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
+                                               0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                               0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                            },
                                            32),
                             NULL,
                         }),
             // Match
-            bf_rule_get(true, BF_VERDICT_DROP,
+            bf_rule_get(0, true, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                                            (uint8_t[]) {
                                                // IP address
-                                               0x54,
-                                               0x2c,
-                                               0x1a,
-                                               0x31,
-                                               0xf9,
-                                               0x64,
-                                               0x94,
-                                               0x6c,
-                                               0x5a,
-                                               0x24,
-                                               0xe7,
-                                               0x1e,
-                                               0x4d,
-                                               0x26,
-                                               0xb8,
-                                               0x7e,
+                                               0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                               0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
                                                // Prefix
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
-                                               0xff,
+                                               0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                               0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                            },
                                            32),
                             NULL,
@@ -131,6 +75,7 @@ Test(meta, l4_proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -153,6 +98,7 @@ Test(meta, l4_proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -175,6 +121,7 @@ Test(meta, l4_proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -197,6 +144,7 @@ Test(meta, l4_proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -227,6 +175,7 @@ Test(ip4, proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -249,6 +198,7 @@ Test(ip4, proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -271,6 +221,7 @@ Test(ip4, proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -293,6 +244,7 @@ Test(ip4, proto)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -323,6 +275,7 @@ Test(ip4, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -346,6 +299,7 @@ Test(ip4, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -369,6 +323,7 @@ Test(ip4, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -392,6 +347,7 @@ Test(ip4, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -423,6 +379,7 @@ Test(ip4, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -446,6 +403,7 @@ Test(ip4, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -469,6 +427,7 @@ Test(ip4, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -492,6 +451,7 @@ Test(ip4, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -523,6 +483,7 @@ Test(ip4, snet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -547,6 +508,7 @@ Test(ip4, snet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -571,6 +533,7 @@ Test(ip4, snet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -595,6 +558,7 @@ Test(ip4, snet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -627,6 +591,7 @@ Test(ip4, dnet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -651,6 +616,7 @@ Test(ip4, dnet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -675,6 +641,7 @@ Test(ip4, dnet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -699,6 +666,7 @@ Test(ip4, dnet)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -731,6 +699,7 @@ Test(ip4, daddr_eq_mask_match)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -773,6 +742,7 @@ Test(ip4, snet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -807,6 +777,7 @@ Test(ip4, snet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -843,6 +814,7 @@ Test(ip4, dnet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -877,6 +849,7 @@ Test(ip4, dnet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -901,6 +874,7 @@ Test(ip6, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -923,6 +897,7 @@ Test(ip6, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -945,6 +920,7 @@ Test(ip6, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -967,6 +943,7 @@ Test(ip6, saddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -998,6 +975,7 @@ Test(ip6, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1020,6 +998,7 @@ Test(ip6, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1042,6 +1021,7 @@ Test(ip6, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1064,6 +1044,7 @@ Test(ip6, daddr)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1093,7 +1074,7 @@ Test(ip6, snet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
                                 (uint8_t[]) {
@@ -1114,7 +1095,7 @@ Test(ip6, snet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
                                 (uint8_t[]) {
@@ -1135,7 +1116,7 @@ Test(ip6, snet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
                                 (uint8_t[]) {
@@ -1156,7 +1137,7 @@ Test(ip6, snet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
                                 (uint8_t[]) {
@@ -1187,7 +1168,7 @@ Test(ip6, dnet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
                                 (uint8_t[]) {
@@ -1208,7 +1189,7 @@ Test(ip6, dnet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
                                 (uint8_t[]) {
@@ -1229,7 +1210,7 @@ Test(ip6, dnet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                                 (uint8_t[]) {
@@ -1250,7 +1231,7 @@ Test(ip6, dnet)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT,
         NULL,
         (struct bf_rule *[]) {
-            bf_rule_get(false, BF_VERDICT_DROP,
+            bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                                 (uint8_t[]) {
@@ -1297,6 +1278,7 @@ Test(ip6, snet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1333,6 +1315,7 @@ Test(ip6, snet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1372,6 +1355,7 @@ Test(ip6, dnet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1408,6 +1392,7 @@ Test(ip6, dnet_in)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1470,6 +1455,7 @@ Test(ip6, port_200kset_match)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1497,6 +1483,7 @@ Test(ip6, port_200kset_nomatch)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1559,6 +1546,7 @@ Test(ip6, addrport_200kset_match)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1586,6 +1574,7 @@ Test(ip6, addrport_200kset_nomatch)
         },
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1610,6 +1599,7 @@ Test(tcp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1634,6 +1624,7 @@ Test(tcp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1658,6 +1649,7 @@ Test(tcp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1685,6 +1677,7 @@ Test(udp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1709,6 +1702,7 @@ Test(udp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1733,6 +1727,7 @@ Test(udp, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1760,6 +1755,7 @@ Test(meta, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1785,6 +1781,7 @@ Test(meta, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1810,6 +1807,7 @@ Test(meta, dport_range)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1838,6 +1836,7 @@ Test(icmp, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1859,6 +1858,7 @@ Test(icmp, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1880,6 +1880,7 @@ Test(icmp, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1901,6 +1902,7 @@ Test(icmp, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1931,6 +1933,7 @@ Test(icmp, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1952,6 +1955,7 @@ Test(icmp, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1973,6 +1977,7 @@ Test(icmp, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -1994,6 +1999,7 @@ Test(icmp, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2024,6 +2030,7 @@ Test(icmpv6, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2045,6 +2052,7 @@ Test(icmpv6, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2066,6 +2074,7 @@ Test(icmpv6, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2087,6 +2096,7 @@ Test(icmpv6, type)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2117,6 +2127,7 @@ Test(icmpv6, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2138,6 +2149,7 @@ Test(icmpv6, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2159,6 +2171,7 @@ Test(icmpv6, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2180,6 +2193,7 @@ Test(icmpv6, code)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2210,6 +2224,7 @@ Test(ipv6, extension_headers)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2236,6 +2251,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2257,6 +2273,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2278,6 +2295,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2299,6 +2317,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2320,6 +2339,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2341,6 +2361,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2362,6 +2383,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2383,6 +2405,7 @@ Test(tcp, flags)
         NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
+                0,
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
@@ -2415,7 +2438,7 @@ Test(ip6, nexthdr)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
-                false, BF_VERDICT_DROP,
+                0, false, BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
                                    (uint8_t[]) {
@@ -2433,7 +2456,7 @@ Test(ip6, nexthdr)
         BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
         (struct bf_rule *[]) {
             bf_rule_get(
-                false, BF_VERDICT_DROP,
+                0, false, BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
                                    (uint8_t[]) {
