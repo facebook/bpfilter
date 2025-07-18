@@ -20,6 +20,7 @@
 %option nounput
 
 %s STATE_HOOK_OPTS
+%s STATE_LOG_OPTS
 %s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_L4_PROTO
@@ -56,6 +57,15 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
 }
     /* Verdicts */
 (ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
+
+    /* Logs */
+log             { BEGIN(STATE_LOG_OPTS); return LOG; }
+<STATE_LOG_OPTS>{
+    [0-9a-zA-Z]+(,[0-9a-zA-Z]+)* {
+        yylval.sval = strdup(yytext);
+        return LOG_HEADERS;
+    }
+}
 
     /* Matcher types */
 meta\.iface  { BEGIN(STATE_MATCHER_META_IFACE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }

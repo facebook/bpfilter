@@ -33,6 +33,7 @@
     #include "core/rule.h"
     #include "core/chain.h"
     #include "core/set.h"
+    #include "core/runtime.h"
 
     extern int inet_pton(int af, const char *restrict src, void *restrict dst);
 
@@ -58,6 +59,7 @@
 
 %union {
     bool bval;
+    uint8_t u8;
     char *sval;
     enum bf_verdict verdict;
     enum bf_hook hook;
@@ -73,7 +75,8 @@
 // Tokens
 %token CHAIN
 %token RULE
-%token COUNTER
+%token LOG COUNTER
+%token <sval> LOG_HEADERS
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_NET
@@ -84,6 +87,7 @@
 %token <sval> RAW_PAYLOAD
 
 // Grammar types
+%type <u8> log
 %type <bval> counter
 %destructor { freep(&$$); } <sval>
 
@@ -203,15 +207,16 @@ rules           : %empty { $$ = NULL; }
                     $$ = TAKE_PTR($1);
                 }
                 ;
-rule            : RULE matchers counter verdict
+rule            : RULE matchers log counter verdict
                 {
                     _free_bf_rule_ struct bf_rule *rule = NULL;
 
                     if (bf_rule_new(&rule) < 0)
                         bf_parse_err("failed to create a new bf_rule\n");
 
-                    rule->counters = $3;
-                    rule->verdict = $4;
+                    rule->log = $3;
+                    rule->counters = $4;
+                    rule->verdict = $5;
 
                     bf_list_foreach ($2, matcher_node) {
                         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -463,6 +468,29 @@ matcher_op      : %empty { $$ = BF_MATCHER_EQ; }
 
                     free($1);
                     $$ = op;
+                }
+                ;
+
+log             : %empty    { $$ = 0; }
+                | LOG LOG_HEADERS
+                {
+                    _cleanup_free_ char *in = $2;
+                    char *tmp = in;
+                    char *saveptr;
+                    char *token;
+
+                    $$ = 0;
+
+                    while ((token = strtok_r(tmp, ",", &saveptr))) {
+                        enum bf_pkthdr header;
+
+                        if (bf_pkthdr_from_str(token, &header) < 0)
+                            bf_parse_err("unknown packet header '%s'", token);
+
+                        $$ |= BF_FLAG(header);
+
+                        tmp = NULL;
+                    }
                 }
                 ;
 

@@ -15,7 +15,36 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 #include "core/matcher.h"
+#include "core/runtime.h"
 #include "core/verdict.h"
+
+static const char *_bf_pkthdr_strs[] = {
+    [BF_PKTHDR_LINK] = "link",
+    [BF_PKTHDR_INTERNET] = "internet",
+    [BF_PKTHDR_TRANSPORT] = "transport",
+};
+static_assert_enum_mapping(_bf_pkthdr_strs, _BF_PKTHDR_MAX);
+
+const char *bf_pkthdr_to_str(enum bf_pkthdr hdr)
+{
+    bf_assert(hdr < _BF_PKTHDR_MAX);
+
+    return _bf_pkthdr_strs[hdr];
+}
+
+int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr)
+{
+    bf_assert(str);
+
+    for (int i = 0; i < _BF_PKTHDR_MAX; ++i) {
+        if (bf_streq_i(str, _bf_pkthdr_strs[i])) {
+            *hdr = (enum bf_pkthdr)i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
 
 int bf_rule_new(struct bf_rule **rule)
 {

@@ -310,11 +310,13 @@ Rules are defined such as:
 
     rule
         [$MATCHER...]
+        [log link,internet,transport]
         [counter]
         $VERDICT
 
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
+  - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required.
   - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP`` or ``CONTINUE``.
     - ``ACCEPT``: forward the packet to the kernel

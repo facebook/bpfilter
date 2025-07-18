@@ -134,6 +134,21 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             (void)fprintf(stdout, "\n");
         }
 
+        if (rule->log) {
+            uint8_t log = rule->log;
+
+            (void)fprintf(stdout, "        log ");
+
+            for (enum bf_pkthdr hdr = 0; hdr < _BF_PKTHDR_MAX; ++hdr) {
+                if (!(log & BF_FLAG(hdr)))
+                    continue;
+
+                log &= ~BF_FLAG(hdr);
+                (void)fprintf(stdout, "%s%s", bf_pkthdr_to_str(hdr),
+                              log ? "," : "\n");
+            }
+        }
+
         if (rule->counters) {
             counter = bf_list_node_get_data(counter_node);
             (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",

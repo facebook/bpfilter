@@ -12,9 +12,34 @@
 #include "core/dump.h"
 #include "core/list.h"
 #include "core/matcher.h"
+#include "core/runtime.h"
 #include "core/verdict.h"
 
 struct bf_marsh;
+
+/**
+ * @brief Return the string representation of a `bf_pkthdr` enumeration value.
+ * *
+ * @param hdr `bf_pkthdr` enumeration value.
+ * @return A pointer to the C-string representation of `hdr`.
+ */
+const char *bf_pkthdr_to_str(enum bf_pkthdr hdr);
+
+/**
+ * @brief Return the `bf_pkthdr` enumeration value corresponding to a string.
+ *
+ * @pre
+ * - `str` is a non-NULL pointer to a C-string.
+ * - `hdr != NULL`
+ * @post
+ * - On failure, `hdr` is unchanged.
+ *
+ * @param str String to get the corresponding `bf_pkthdr` enumeration value for.
+ * @param hdr On success, contains the `bf_pkthdr` enumeration value
+ *        corresponding to `str`.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr);
 
 #define _free_bf_rule_ __attribute__((__cleanup__(bf_rule_free)))
 
@@ -43,6 +68,10 @@ struct bf_rule
     bool counters;
     enum bf_verdict verdict;
 };
+
+static_assert(
+    _BF_PKTHDR_MAX < 8,
+    "bf_pkthdr has more than 8 values, it won't fit in bf_rule.log's 8 bits");
 
 /**
  * Allocated and initialise a new rule.

@@ -122,6 +122,19 @@ extern const char *strerrordesc_np(int errnum);
 #define _BF_STR(s) #s
 
 /**
+ * @brief Generate a build error if an enumeration to string mapping array
+ *        contains fewer entries than members in the enumeration.
+ *
+ * @param array Array containing the mapping between the enumeration values and
+ *        ther string representation.
+ * @param n_values Number of values in the enumeration, usually the
+ *        `_BF_$NAME_MAX` enumeration value.
+ */
+#define static_assert_enum_mapping(array, n_values)                            \
+    static_assert(ARRAY_SIZE(array) == (n_values),                             \
+                  "missing entries in " BF_STR(array) " array");
+
+/**
  * Mark a variable as unused, to prevent the compiler from emitting a warning.
  *
  * @param x The variable to mark as unused.
@@ -316,8 +329,8 @@ static inline bool bf_streq(const char *lhs, const char *rhs)
 }
 
 /**
-* @brief Case insensitive alternative to `bf_streq`.
-*/
+ * @brief Case insensitive alternative to `bf_streq`.
+ */
 static inline bool bf_streq_i(const char *lhs, const char *rhs)
 {
     if (!lhs || !rhs)
@@ -346,8 +359,8 @@ int bf_strncpy(char *dst, size_t len, const char *src);
  *
  * @param path Path to the file to read. Can't be NULL.
  * @param buf Pointer to a pointer to a buffer. The buffer will be allocated
- *        automatically. The caller is responsible to free it. If @ref bf_read_file
- *        fails, @p buf is left unchanged.
+ *        automatically. The caller is responsible to free it. If @ref
+ * bf_read_file fails, @p buf is left unchanged.
  * @param len Length of the allocated buffer. Populated by the function.
  * @return 0 on success, negative errno value on error.
  */
