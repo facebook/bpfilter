@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -332,4 +333,64 @@ int bf_acquire_lock(const char *path)
         return -errno;
 
     return TAKE_FD(fd);
+}
+
+int bf_send_fd(int sock_fd, int fd)
+{
+    char dummy = 'X';
+    struct cmsghdr *cmsg;
+    struct msghdr msg = {0};
+    char buf[CMSG_SPACE(sizeof(int))];
+    struct iovec iov = {.iov_base = &dummy, .iov_len = 1};
+    ssize_t r;
+
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = buf;
+    msg.msg_controllen = sizeof(buf);
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+
+    memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
+
+    r = sendmsg(sock_fd, &msg, 0);
+    if (r < 0)
+        return bf_err_r(errno, "failed to send file descriptor");
+
+    return 0;
+}
+
+int bf_recv_fd(int sock_fd)
+{
+    int fd;
+    char dummy;
+    struct cmsghdr *cmsg;
+    struct msghdr msg = {0};
+    char buf[CMSG_SPACE(sizeof(int))];
+    struct iovec iov = {.iov_base = &dummy, .iov_len = 1};
+    ssize_t r;
+
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = buf;
+    msg.msg_controllen = sizeof(buf);
+
+    r = recvmsg(sock_fd, &msg, 0);
+    if (r < 0)
+        return bf_err_r(errno, "failed to receive file descriptor");
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    if (!cmsg)
+        return bf_err_r(-ENOENT, "no control message received");
+    if (cmsg->cmsg_level != SOL_SOCKET)
+        return bf_err_r(-EINVAL, "invalid control message level");
+    if (cmsg->cmsg_type != SCM_RIGHTS)
+        return bf_err_r(-EINVAL, "invalid control message type");
+
+    memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+
+    return fd;
 }
