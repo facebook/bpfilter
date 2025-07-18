@@ -9,6 +9,7 @@ BPFILTER_BPFFS_PATH=/tmp/bpffs
 BPFILTER_PID=
 SETUSERNS_SOCKET_PATH=${WORKDIR}/setuserns.sock
 
+EARLY_EXIT=0
 HAS_TOKEN_SUPPORT=0
 
 # Network settings
@@ -57,6 +58,7 @@ usage() {
     echo "  --bfcli PATH      Path to bfcli executable"
     echo "  --bpfilter PATH   Path to bpfilter executable"
     echo "  --setuserns PATH  Path to the tool used to setup the user namespace"
+    echo "  --early-exit      Exit immediately on first test failure"
     echo "  -h, --help        Display this help message and exit"
     exit 1
 }
@@ -87,6 +89,10 @@ while [[ $# -gt 0 ]]; do
             fi
             SETUSERNS=$(realpath $2)
             shift 2
+            ;;
+        --early-exit)
+            EARLY_EXIT=1
+            shift
             ;;
         -h|--help)
             usage
@@ -313,6 +319,12 @@ expect_result() {
 
         if ! kill -0 "$BPFILTER_PID" 2>/dev/null; then
             echo -e "${RED_BOLD}bpfilter crashed${RESET}"
+            return 1
+        fi
+
+        # If early exit is enabled, exit immediately
+        if [ "$EARLY_EXIT" -eq 1 ]; then
+            echo -e "${RED_BOLD}Early exit requested, stopping tests${RESET}" >&2
             return 1
         fi
 
