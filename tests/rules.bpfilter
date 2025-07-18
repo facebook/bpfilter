@@ -1,6 +1,11 @@
 # Create an XDP chain
 chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
     rule
+        meta.dport eq 22
+        log internet
+        counter
+        ACCEPT
+    rule
         meta.iface eq lo
         meta.iface eq 1
         counter

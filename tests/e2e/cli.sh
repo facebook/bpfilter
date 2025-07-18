@@ -385,15 +385,15 @@ expect_matcher_nok() {
 suite_netns_to_host() {
     log "[SUITE] netns: netns -> host"
     expect_failure "can't attach chain to host iface from netns" \
-        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp log link,transport counter DROP\"
     expect_success "can ping host iface from netns" \
         ${FROM_NS} ping -c 1 -W 0.25 ${HOST_IP_ADDR}
     expect_success "attach chain to ns iface" \
-        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip4.proto icmp log link,internet counter DROP\"
     expect_failure "can't ping ns iface from host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked on ingress" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/ip4\.proto eq icmp/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/log link,internet/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -402,7 +402,7 @@ with_daemon suite_netns_to_host
 suite_host_to_netns() {
     log "[SUITE] netns: host -> netns"
     expect_failure "can't attach chain to host iface from netns" \
-        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${HOST_IFINDEX}\} ACCEPT rule ip4.proto icmp log link counter DROP\"
     expect_success "can ping the netns iface from the host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "attach chain to the netns iface" \
@@ -436,11 +436,11 @@ suite_icmp_XDP() {
     expect_success "can ping the netns iface from the host" \
         ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "attach chain to ns iface" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 log transport,internet counter DROP\"
     expect_failure "can't ping the netns iface from the host" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "pings have been blocked by XDP chain" \
-        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/icmp\.code eq 0/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
+        ${FROM_NS} ${BFCLI} chain get --name xdp \| awk \'/log internet,transport/{getline\; print \$2}\' \| grep -q \"^1$\" \&\& exit 0 \|\| exit 1
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -460,9 +460,9 @@ with_daemon suite_ip4
 suite_ip6() {
     log "[SUITE] ip6: parse matchers"
     expect_success "ip6.snet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.snet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.snet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} log link DROP\"
     expect_success "ip6.dnet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} log internet DROP\"
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -471,9 +471,9 @@ with_daemon suite_ip6
 suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq echo-request icmpv6.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmpv6.type eq echo-request icmpv6.code eq 0 log internet counter DROP\"
     expect_success "can parse icmpv6 type and code by TC chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule icmp.type eq echo-request icmp.code eq 0 log internet,link counter DROP\"
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -482,9 +482,9 @@ with_daemon suite_icmpv6_chain_set
 suite_ipv6_nexthdr_chain_set() {
     log "[SUITE] ipv6 next-header: chain set"
     expect_success "can parse ipv6 next-header by TC chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr eq hop counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr eq hop log internet counter DROP\"
     expect_success "can parse ipv6 next-header by XDP chain" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr not tcp counter DROP\"
+	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP\{ifindex=${NS_IFINDEX}\} ACCEPT rule ip6.nexthdr not tcp log transport counter DROP\"
     expect_success "flushing the ruleset" \
         ${FROM_NS} ${BFCLI} ruleset flush
 }
@@ -576,7 +576,7 @@ suite_chain_attach() {
     expect_success "ping from host to netns is accepted" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "load chain_attach_xdp_0" \
-        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_xdp_0 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_xdp_0 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,transport,internet counter DROP\"
     expect_success "load chain_attach_xdp_1" \
         ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_xdp_1 BF_HOOK_XDP ACCEPT\"
     expect_success "attach chain_attach_xdp_0" \
@@ -593,7 +593,7 @@ suite_chain_attach() {
     expect_success "ping from host to netns is accepted" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "load chain_attach_tc_0" \
-        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_tc_0 BF_HOOK_TC_EGRESS ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_tc_0 BF_HOOK_TC_EGRESS ACCEPT rule ip4.proto icmp log internet,link,transport counter DROP\"
     expect_success "load chain_attach_tc_1" \
         ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_tc_1 BF_HOOK_TC_EGRESS ACCEPT\"
     expect_success "attach chain_attach_tc_0" \
@@ -612,7 +612,7 @@ suite_chain_attach() {
     expect_success "load chain_attach_cgroup_0" \
         ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_0 BF_HOOK_CGROUP_INGRESS ACCEPT\"
     expect_success "load chain_attach_cgroup_1" \
-        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} chain load --from-str \"chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp log internet counter DROP\"
     expect_success "attach chain_attach_cgroup_0" \
         ${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup
     expect_success "fail to attach chain_attach_cgroup_1" \
@@ -662,7 +662,7 @@ suite_chain_update() {
     expect_success "pings from host to netns are accepted" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "update chain, new chain has no hook options" \
-        ${FROM_NS} ${BFCLI} chain update --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
+        ${FROM_NS} ${BFCLI} chain update --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log transport counter DROP\"
     expect_failure "pings from host to netns are blocked" \
         ping -c 1 -W 0.25 ${NS_IP_ADDR}
     expect_success "update chain, new chain has hook options (which are ignored)" \
@@ -719,6 +719,23 @@ suite_daemon_restore_non_attached() {
     stop_daemon
 }
 without_daemon suite_daemon_restore_non_attached
+
+suite_log() {
+    log "[SUITE] cli: log"
+    expect_failure "invalid log action" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log counter DROP\"
+    expect_failure "invalid log header" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log ip counter DROP\"
+    expect_success "single header" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link counter DROP\"
+    expect_success "multiple headers #1" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,internet counter DROP\"
+    expect_success "multiple headers #2" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,transport counter DROP\"
+    expect_success "multiple headers out of order" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log internet,link counter DROP\"
+}
+with_daemon suite_log
 
 suite_matcher_meta() {
     log "[SUITE] matcher: meta.iface"
