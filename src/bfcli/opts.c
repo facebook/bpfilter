@@ -58,8 +58,9 @@ enum bfc_object bfc_object_from_str(const char *str)
 static const char * const _bfc_action_strs[] = {
     "set", // BFC_ACTION_SET
     "get", // BFC_ACTION_GET
+    "logs", // BFC_ACTION_LOGS
     "load", // BFC_ACTION_LOAD
-    "attach", //BFC_ACTION_ATTACH
+    "attach", // BFC_ACTION_ATTACH
     "update", // BFC_ACTION_UPDATE
     "flush", // BFC_ACTION_FLUSH
 };
@@ -142,6 +143,17 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
             "Print an existing chain\vRequest the chain --name from the daemon "
             "and print it.",
         .cb = bfc_chain_get,
+    },
+    {
+        .name = "bfcli chain logs",
+        .object = BFC_OBJECT_CHAIN,
+        .action = BFC_ACTION_LOGS,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .doc =
+            "Print the packets logged by a chain\vIf the chain contains at "
+            "least one rule with a log action, print the logs to the console "
+            "as they are recorded. Press Ctrl+C to stop.",
+        .cb = bfc_chain_logs,
     },
     {
         .name = "bfcli chain load",
@@ -371,6 +383,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
             BFC_ACTION_SET,
             "Set a new chain, replace any existing chain with the same name, attach if required"),
         BFC_HELP_ENTRY(BFC_ACTION_GET, "Print an existing chain"),
+        BFC_HELP_ENTRY(BFC_ACTION_LOGS, "Print the logged packets"),
         BFC_HELP_ENTRY(BFC_ACTION_LOAD, "Load a new chain, do not attach it"),
         BFC_HELP_ENTRY(BFC_ACTION_ATTACH, "Attach a loaded chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),

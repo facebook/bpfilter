@@ -4,7 +4,6 @@
  */
 
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "core/chain.h"
@@ -12,6 +11,7 @@
 #include "core/front.h"
 #include "core/helper.h"
 #include "core/hook.h"
+#include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
 #include "core/marsh.h"
@@ -345,6 +345,42 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     *counters = bf_list_move(_counters);
 
     return 0;
+}
+
+int bf_chain_logs_fd(const char *name)
+{
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _cleanup_close_ int fd = -1;
+    int r;
+
+    if (!name)
+        return -EINVAL;
+
+    r = bf_marsh_new(&marsh, NULL, 0);
+    if (r)
+        return r;
+
+    r = bf_marsh_add_child_raw(&marsh, name, strlen(name) + 1);
+    if (r)
+        return r;
+
+    r = bf_request_new(&request, marsh, bf_marsh_size(marsh));
+    if (r < 0)
+        return bf_err_r(r, "failed to init request");
+
+    request->front = BF_FRONT_CLI;
+    request->cmd = BF_REQ_CHAIN_LOGS_FD;
+
+    fd = bf_send_with_fd(request, &response);
+    if (fd < 0)
+        return bf_err_r(fd, "failed to request logs FD from the daemon");
+
+    if (response->type == BF_RES_FAILURE)
+        return bf_err_r(response->error, "BF_REQ_CHAIN_LOGS failed");
+
+    return TAKE_FD(fd);
 }
 
 int bf_chain_load(struct bf_chain *chain)

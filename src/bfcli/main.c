@@ -43,6 +43,8 @@ int main(int argc, char *argv[])
     argp_program_version_hook = &_bfc_print_version;
     argp_program_bug_address = BF_CONTACT;
 
+    bf_logger_setup();
+
     r = bfc_opts_parse(&opts, argc, argv);
     if (r < 0)
         return r;

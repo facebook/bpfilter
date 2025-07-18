@@ -111,6 +111,41 @@ Print a chain.
       chain my_input_chain BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT
           counters policy 1161 packets 149423 bytes; error 0 packets 0 bytes
 
+``chain logs``
+~~~~~~~~~~~~~~
+
+Print a chain's logged packets.
+
+bfcli will print the logged headers as they are published by the chain. Only the headers requested in the ``log`` action will be printed. Hit ``Ctrl+C`` to quit.
+
+For each logged packet, bfcli will print the receive timestamp and the packet size, followed by each requested layer (see the ``log`` action below). If one of the requested layer could not be processed by the chain, the corresponding output will be truncated.
+
+**Options**
+  - ``--name NAME``: name of the chain to print the logged packets for.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Create an XDP chain with logs and print the logs
+    $ sudo bfcli chain set --from-str "
+      chain my_input_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+          rule
+              meta.l4_proto tcp
+              log transport
+              CONTINUE
+      "
+    $ sudo bfcli chain logs --name my_input_chain
+      [15:14:32.652085] Packet: 66 bytes
+        TCP       : 52719 → 22    [ack]
+                    seq=1643155516 ack=1290470623 win=4618
+
+      [15:14:32.652842] Packet: 66 bytes
+        TCP       : 52719 → 22    [ack]
+                    seq=1643155516 ack=1290470723 win=4619
+
+      [...]
+
 ``chain load``
 ~~~~~~~~~~~~~~
 

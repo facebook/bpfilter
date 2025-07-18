@@ -38,6 +38,7 @@ enum bf_request_cmd
 
     BF_REQ_CHAIN_SET,
     BF_REQ_CHAIN_GET,
+    BF_REQ_CHAIN_LOGS_FD,
     BF_REQ_CHAIN_LOAD,
     BF_REQ_CHAIN_ATTACH,
     BF_REQ_CHAIN_UPDATE,
@@ -73,6 +74,11 @@ struct bf_request
     /** Namespaces the request is coming from. This field will be automatically
      * populated by the daemon when receiving the request. */
     struct bf_ns *ns;
+
+    /** File descriptor of the receiver socket. This field is automatically
+     * populated by the daemon when receiving the request. The request doesn't
+     * own the file descriptor. */
+    int fd;
 
     union
     {
