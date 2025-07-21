@@ -46,6 +46,8 @@ function(bf_target_add_elfstubs TARGET)
     set(DECL_TEMPLATE_PATH ${CMAKE_SOURCE_DIR}/tools/cmake/rawstubs.h.in)
 
     foreach(_stub IN LISTS _LOCAL_STUBS)
+        string(REGEX REPLACE "[/.]" "_" SYM_NAME "${ELFSTUBS_ELF_DIR}/${_stub}.o")
+
         add_custom_command(
             COMMAND
                 ${CLANG_BIN}
@@ -58,13 +60,19 @@ function(bf_target_add_elfstubs TARGET)
             COMMAND
                 ${XXD_BIN}
                     -i
-                    -n ${SYM_PREFIX}${_stub}
                     ${ELFSTUBS_ELF_DIR}/${_stub}.o
                     ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
+            # The following sed commands will perform two operations:
+            # - Ensure the symbols defined are static const
+            # - Name the symbols as ${SYM_PREFIX}/${_stub}(_len). This can be
+            #   done using `xxd -n` but it's not supported on EPEL9.
             COMMAND
-                # By default, xxd variables are not static nor const, fix it
                 ${SED_BIN}
-                    -i 's/^unsigned /static const unsigned /'
+                    -i 's/^unsigned char ${SYM_NAME}/static const unsigned char ${SYM_PREFIX}${_stub}/'
+                    ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
+            COMMAND
+                ${SED_BIN}
+                    -i 's/^unsigned int ${SYM_NAME}_len/static const unsigned int ${SYM_PREFIX}${_stub}_len/'
                     ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
             DEPENDS
                 ${_LOCAL_DIR}/${_stub}.bpf.c
