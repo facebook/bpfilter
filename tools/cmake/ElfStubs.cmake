@@ -64,15 +64,15 @@ function(bf_target_add_elfstubs TARGET)
                     ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
             # The following sed commands will perform two operations:
             # - Ensure the symbols defined are static const
-            # - Name the symbols as ${SYM_PREFIX}/${_stub}(_len). This can be
+            # - Name the symbols as ${_LOCAL_SYM_PREFIX}/${_stub}(_len). This can be
             #   done using `xxd -n` but it's not supported on EPEL9.
             COMMAND
                 ${SED_BIN}
-                    -i 's/^unsigned char ${SYM_NAME}/static const unsigned char ${SYM_PREFIX}${_stub}/'
+                    -i 's/^unsigned char .*\\[\\]/static const unsigned char ${_LOCAL_SYM_PREFIX}${_stub}\\[\\]/'
                     ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
             COMMAND
                 ${SED_BIN}
-                    -i 's/^unsigned int ${SYM_NAME}_len/static const unsigned int ${SYM_PREFIX}${_stub}_len/'
+                    -i 's/^unsigned int .*_len \\=/static const unsigned int ${_LOCAL_SYM_PREFIX}${_stub}_len \\=/'
                     ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
             DEPENDS
                 ${_LOCAL_DIR}/${_stub}.bpf.c
@@ -83,7 +83,7 @@ function(bf_target_add_elfstubs TARGET)
         )
 
         set(HDR_INC "${HDR_INC}#include \"${_stub}.inc.c\"\n")
-        set(HDR_DECL "${HDR_DECL}{ .elf = ${SYM_PREFIX}${_stub}, .len = ${SYM_PREFIX}${_stub}_len, },\n")
+        set(HDR_DECL "${HDR_DECL}{ .elf = ${_LOCAL_SYM_PREFIX}${_stub}, .len = ${_LOCAL_SYM_PREFIX}${_stub}_len, },\n")
 
         # Add the source file containing the ELF file to the sources of the
         # given target, so the target will be build when the stub changes. It
