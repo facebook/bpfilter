@@ -253,13 +253,13 @@ static void _bf_chain_log_header(const struct bf_log *log)
     (void)strftime(time_str, sizeof(time_str), "%H:%M:%S",
                    localtime(&time.tv_sec));
 
-    (void)fprintf(stdout, "\n%s[%s.%06ld]%s Packet: %s%llu bytes%s\n",
-                  bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL),
-                  time_str, time.tv_nsec / BF_TIME_US,
-                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
-                  bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD),
-                  log->pkt_size,
-                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+    (void)fprintf(
+        stdout, "\n%s[%s.%06ld]%s Rule #%u matched %s%llu bytes%s\n",
+        bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL), time_str,
+        time.tv_nsec / BF_TIME_US,
+        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), log->rule_id,
+        bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD), log->pkt_size,
+        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
 }
 
 static void _bf_chain_log_l2(const struct bf_log *log)
@@ -309,7 +309,7 @@ static void _bf_chain_log_l3(const struct bf_log *log)
 
     switch (be16toh(log->l3_proto)) {
     case ETH_P_IP:
-        iphdr = (struct iphdr *)log->l3hdr;
+        iphdr = (struct iphdr *)&log->l3hdr[0];
 
         inet_ntop(AF_INET, &iphdr->saddr, src_addr, sizeof(src_addr));
         inet_ntop(AF_INET, &iphdr->daddr, dst_addr, sizeof(dst_addr));

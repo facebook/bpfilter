@@ -96,6 +96,9 @@ struct bf_runtime
      * used with for program flavor. */
     struct bpf_dynptr dynptr;
 
+    /** Ring buffer map containing the logged packets. */
+    void *log_map;
+
     /** Total size of the packet. */
     __u64 pkt_size;
 

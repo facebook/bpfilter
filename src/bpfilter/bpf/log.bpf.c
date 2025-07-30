@@ -10,12 +10,12 @@
 
 #include "bpfilter/cgen/runtime.h"
 
-__u8 bf_log(struct bf_runtime *ctx, void *map, __u8 headers, __u16 l3_proto,
-            __u8 l4_proto)
+__u8 bf_log(struct bf_runtime *ctx, __u32 rule_idx, __u8 headers,
+            __u16 l3_proto, __u8 l4_proto)
 {
     struct bf_log *log;
 
-    log = bpf_ringbuf_reserve(map, sizeof(struct bf_log), 0);
+    log = bpf_ringbuf_reserve(ctx->log_map, sizeof(struct bf_log), 0);
     if (!log) {
         bpf_printk("failed to reserve %d bytes in ringbuf",
                    sizeof(struct bf_log));
@@ -23,6 +23,7 @@ __u8 bf_log(struct bf_runtime *ctx, void *map, __u8 headers, __u16 l3_proto,
     }
 
     log->ts = bpf_ktime_get_ns();
+    log->rule_id = rule_idx;
     log->pkt_size = ctx->pkt_size;
     log->req_headers = headers;
     log->headers = 0;

@@ -81,6 +81,9 @@ struct bf_log
     /** Timestamp of the packet processing. */
     __u64 ts;
 
+    /** ID of the rule triggering the log. */
+    __u32 rule_id;
+
     /** Total size of the packet, including the payload. */
     __u64 pkt_size;
 
