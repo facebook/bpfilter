@@ -275,9 +275,12 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         // Process EH
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
         EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
-        EMIT_FIXUP_ELFSTUB(program, program->ipv6_nexthdr ?
-                                        BF_ELFSTUB_PARSE_IPV6_NH :
-                                        BF_ELFSTUB_PARSE_IPV6_EH);
+        // If any rule filters on ipv6.nexthdr, store the EH in the runtime context
+        // during process, so we won't have to process the EH again.
+        if (program->runtime.chain->flags & BF_FLAG(BF_CHAIN_STORE_NEXTHDR))
+            EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PARSE_IPV6_NH);
+        else
+            EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PARSE_IPV6_EH);
         EMIT(program, BPF_MOV64_REG(BPF_REG_8, BPF_REG_0));
 
         ehjmp = bf_jmpctx_get(program, BPF_JMP_A(0));

@@ -19,6 +19,23 @@
 #include "core/set.h"
 #include "core/verdict.h"
 
+static void _bf_chain_update_features(struct bf_chain *chain,
+                                      const struct bf_rule *rule)
+{
+    bf_assert(rule);
+
+    if (rule->log)
+        chain->flags |= BF_FLAG(BF_CHAIN_LOG);
+
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+        if (matcher->type == BF_MATCHER_IP6_NEXTHDR) {
+            chain->flags |= BF_FLAG(BF_CHAIN_STORE_NEXTHDR);
+            break;
+        }
+    }
+}
+
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)
 {
@@ -36,6 +53,7 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     if (!_chain->name)
         return -ENOMEM;
 
+    _chain->flags = 0;
     _chain->hook = hook;
     _chain->policy = policy;
 
@@ -46,8 +64,12 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     _chain->rules = bf_list_default(bf_rule_free, bf_rule_marsh);
     if (rules)
         _chain->rules = bf_list_move(*rules);
-    bf_list_foreach (&_chain->rules, rule_node)
-        ((struct bf_rule *)bf_list_node_get_data(rule_node))->index = ridx++;
+    bf_list_foreach (&_chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        rule->index = ridx++;
+        _bf_chain_update_features(_chain, rule);
+    }
 
     *chain = TAKE_PTR(_chain);
 
@@ -116,6 +138,7 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
         if (r)
             return r;
 
+        // Using bf_chain_add_rule() will automatically update chain->flags
         r = bf_chain_add_rule(_chain, rule);
         if (r)
             return r;
@@ -203,6 +226,7 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
     bf_dump_prefix_push(prefix);
 
     DUMP(prefix, "name: %s", chain->name);
+    DUMP(prefix, "flags: %02x", chain->flags);
     DUMP(prefix, "hook: %s", bf_hook_to_str(chain->hook));
     DUMP(prefix, "policy: %s", bf_verdict_to_str(chain->policy));
 
@@ -235,6 +259,7 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
     bf_assert(chain && rule);
 
     rule->index = bf_list_size(&chain->rules);
+    _bf_chain_update_features(chain, rule);
 
     return bf_list_add_tail(&chain->rules, rule);
 }
