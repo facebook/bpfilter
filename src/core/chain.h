@@ -16,9 +16,36 @@ struct bf_rule;
 
 #define _free_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 
+/**
+ * @brief Features used by the rules defined in the chain.
+ *
+ * Some features used by the rules have an impact at the chain or program level,
+ * these flags are used to define which feature is used at the chain level,  and
+ * generate the bytecode accordingly.
+ *
+ * For example, a pointer to the log ring buffer is store in the program's
+ * runtime context. This pointer should not be populated if no rule is has a
+ * 'log' instruction.
+ *
+ * Grouping the list of required features at the chain level prevents us from
+ * parsing all the rules and matchers everytime the feature would affect the
+ * bytecode.
+ */
+enum bf_chain_flags
+{
+    /** A rule will log data to the ring buffer. */
+    BF_CHAIN_LOG,
+
+    /** A rule will filter on IPv6 nexthdr field. */
+    BF_CHAIN_STORE_NEXTHDR,
+
+    _BF_CHAIN_FLAGS_MAX,
+};
+
 struct bf_chain
 {
     const char *name;
+    uint8_t flags;
     enum bf_hook hook;
     enum bf_verdict policy;
     bf_list sets;
