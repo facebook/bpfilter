@@ -53,6 +53,7 @@ function(bf_target_add_elfstubs TARGET)
                 ${CLANG_BIN}
                     -O2
                     -target bpf
+                    -g
                     -I ${CMAKE_SOURCE_DIR}/src
                     -I ${CMAKE_SOURCE_DIR}/src/external
                     -c ${_LOCAL_DIR}/${_stub}.bpf.c
