@@ -654,7 +654,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     if (rule->log) {
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
         EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
-        EMIT_LOAD_LOG_FD_FIXUP(program, BPF_REG_2);
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_2, rule->index));
         EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log));
         EMIT(program, BPF_MOV64_REG(BPF_REG_4, BPF_REG_7));
         EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_8));
@@ -876,6 +876,16 @@ int bf_program_generate(struct bf_program *program)
     // Reset the protocol ID registers
     EMIT(program, BPF_MOV64_IMM(BPF_REG_7, 0));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
+
+    // If at least one rule logs the matched packets, populate ctx->log_map
+    bf_list_foreach (&chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+        if (!rule->log)
+            continue;
+        EMIT_LOAD_LOG_FD_FIXUP(program, BPF_REG_2);
+        EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2, BF_PROG_CTX_OFF(log_map)));
+        break;
+    }
 
     program->ipv6_nexthdr = false;
     bf_list_foreach (&chain->rules, rule_node) {
