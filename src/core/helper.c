@@ -5,6 +5,7 @@
 
 #include "core/helper.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -117,4 +118,33 @@ int bf_write_file(const char *path, const void *buf, size_t len)
     closep(&fd);
 
     return 0;
+}
+
+char *bf_ltrim(char *str)
+{
+    bf_assert(str);
+
+    while (isspace(*str))
+        str++;
+    return str;
+}
+
+char *bf_rtrim(char *str)
+{
+    bf_assert(str);
+
+    char *back = str + strlen(str);
+    do {
+        --back;
+    } while (back > str && isspace(*back));
+
+    *(back + 1) = '\0';
+    return str;
+}
+
+char *bf_trim(char *str)
+{
+    bf_assert(str);
+
+    return bf_rtrim(bf_ltrim(str));
 }
