@@ -218,6 +218,35 @@ extern const char *strerrordesc_np(int errnum);
     })
 
 /**
+ * @brief Strip whitespace from the beginning of a string.
+ *
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_ltrim(char *str);
+
+/**
+ * @brief Strip whitespace from the end of a string.
+ *
+ * `str` will be modified to insert `\0` after the last non-whitespace
+ * character.
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_rtrim(char *str);
+
+/**
+ * @brief Strip whitespace from the beginning and the end of a string.
+ *
+ * `str` will be modified to insert `\0` after the last non-whitespace
+ * character.
+ *
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_trim(char *str);
+
+/**
  * Free a pointer and set it to NULL.
  *
  * @param ptr Pointer to free.
