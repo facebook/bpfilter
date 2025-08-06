@@ -207,9 +207,9 @@ struct bf_matcher
 struct bf_matcher_ops
 {
     size_t payload_size;
-    int (*parser_cb)(const struct bf_matcher *matcher, void *payload,
-                     const char *raw_payload);
-    void (*printer_cb)(const struct bf_matcher *matcher);
+    int (*parser_cb)(enum bf_matcher_type type, enum bf_matcher_op op,
+                     void *payload, const char *raw_payload);
+    void (*printer_cb)(const void *payload);
 };
 
 /**
