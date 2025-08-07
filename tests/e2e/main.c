@@ -67,6 +67,30 @@ Test(counters, update_partially_disabled)
                               bft_counter_p(1, 1, BFT_NO_BYTES));
 }
 
+Test(counters, packet_size)
+{
+    // Counters should be properly updated, even though some rules have counters
+    // disabled
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
+        (struct bf_rule *[]) {
+            // Do not match
+            bf_rule_get(0, true, BF_VERDICT_ACCEPT,
+                        (struct bf_matcher *[]) {
+                            bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                                           (uint8_t[]) {
+                                                127, 2, 10, 10
+                                           },
+                                           4),
+                            NULL,
+                        }),
+            NULL,
+        });
+
+    bft_e2e_test_with_counter(chain, BF_VERDICT_ACCEPT, pkt_local_ip4,
+                              bft_counter_p(0, 1, pkt_local_ip4[0].pkt_len));
+}
+
 Test(meta, l4_proto)
 {
     _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
