@@ -415,7 +415,7 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
     }
 
     if (bf_opts_persist()) {
-        r = bf_program_pin(cgen->program, pindir_fd);
+        r = bf_program_pin(new_prog, pindir_fd);
         if (r)
             bf_warn_r(r, "failed to pin new prog, ignoring");
     }
