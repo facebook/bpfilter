@@ -720,6 +720,38 @@ suite_daemon_restore_non_attached() {
 }
 without_daemon suite_daemon_restore_non_attached
 
+suite_daemon_pin_updated_chain() {
+    log "[SUITE] daemon: check if updated chain is pinned"
+
+    start_daemon
+        expect_success "create a chain and attach it" \
+            ${FROM_NS} ${BFCLI} chain set --from-str \"chain test_chain BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT\"
+        expect_success "can ping the netns iface from the host" \
+            ${FROM_NS} ping -c 1 -W 0.25 ${NS_IP_ADDR}
+        expect_success "after set the first chain, bpfilter only has a single BPF program" \
+            ${FROM_NS} ${BFCLI} ruleset get \| grep "^chain" \| awk 'END{exit\ NR!=1}'
+        expect_success "after set the first chain, bpftool only has a single bf_prog BPF program" \
+            bpftool prog \| grep \"name bf_prog\" \| awk 'END{exit\ NR!=1}'
+
+        expect_success "create a chain and attach it" \
+            ${FROM_NS} ${BFCLI} chain update --from-str \"chain test_chain BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule meta.l4_proto eq icmp DROP\"
+        expect_failure "can't ping the netns iface from the host" \
+            ping -c 1 -W 0.25 ${NS_IP_ADDR}
+        expect_success "after updating the chain, bpfilter only has a single BPF program" \
+            ${FROM_NS} ${BFCLI} ruleset get \| grep "^chain" \| awk 'END{exit\ NR!=1}'
+        expect_success "after updating the chain, bpftool only has a single bf_prog BPF program" \
+            bpftool prog \| grep \"name bf_prog\" \| awk 'END{exit\ NR!=1}'
+    stop_daemon
+
+    start_daemon
+        expect_success "after restarting the daemon, bpfilter only has a single BPF program" \
+            ${FROM_NS} ${BFCLI} ruleset get \| grep "^chain" \| awk 'END{exit\ NR!=1}'
+        expect_success "after restarting the daemon, bpftool only has a single bf_prog BPF program" \
+            bpftool prog \| grep \"name bf_prog\" \| awk 'END{exit\ NR!=1}'
+    stop_daemon
+}
+without_daemon suite_daemon_pin_updated_chain
+
 suite_log() {
     log "[SUITE] cli: log"
     expect_failure "invalid log action" \
