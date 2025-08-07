@@ -34,12 +34,9 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
 
     bf_assert(program);
 
-    // Calculate the packet size (+ETH_HLEN) and store it into the runtime context
-    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1,
-                              offsetof(struct __sk_buff, data)));
+    // Copy the packet size (+ETH_HLEN) into the runtime context
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_3, BPF_REG_1,
-                              offsetof(struct __sk_buff, data_end)));
-    EMIT(program, BPF_ALU64_REG(BPF_SUB, BPF_REG_3, BPF_REG_2));
+                              offsetof(struct __sk_buff, len)));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, ETH_HLEN));
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_3, BF_PROG_CTX_OFF(pkt_size)));
