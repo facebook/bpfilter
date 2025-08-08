@@ -102,6 +102,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .action = BFC_ACTION_SET,
         .valid_opts =
             BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
+        .required_opts =
+            BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
         .doc =
             "Set the ruleset.\vRemove all the chains on the system and "
             "replaced them with the one provided in --from-file or --from-str.",
@@ -127,6 +129,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .action = BFC_ACTION_SET,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME),
+        .required_opts =
+            BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc =
             "Set a new chain\vCreate a new chain, attach it if hook options "
             "are defined. Any existing chain with the same --name will be "
@@ -139,6 +143,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_GET,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print an existing chain\vRequest the chain --name from the daemon "
             "and print it.",
@@ -149,6 +154,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOGS,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print the packets logged by a chain\vIf the chain contains at "
             "least one rule with a log action, print the logs to the console "
@@ -161,6 +167,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .action = BFC_ACTION_LOAD,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME),
+        .required_opts =
+            BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc =
             "Load a new chain\vCreate a new chain, and load it into the "
             "kernel. An error will be returned if any existing chain has the "
@@ -173,6 +181,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_ATTACH,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_HOOK_OPTS, BFC_OPT_CHAIN_NAME),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Attach an existing chain\vAttach a loaded chain to a hook. Hook "
             "options defined with --option are specific to the chain and the "
@@ -185,6 +194,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .action = BFC_ACTION_UPDATE,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME),
+        .required_opts =
+            BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc = "Update a chain\vAtomically update chain --name with the new "
                "definition provided by --from-str or --from-file.",
         .cb = bfc_chain_update,
@@ -194,6 +205,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_FLUSH,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc = "Delete a chain\vRemove a chain from the system.",
         .cb = bfc_chain_flush,
     },
@@ -249,8 +261,7 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
 static void _bfc_opts_from_str_cb(struct argp_state *state, const char *arg,
                                   struct bfc_opts *opts)
 {
-    if (opts->from_file)
-        argp_error(state, "--from-str is incompatible with --from-file");
+    UNUSED(state);
 
     opts->from_str = arg;
 };
@@ -258,8 +269,7 @@ static void _bfc_opts_from_str_cb(struct argp_state *state, const char *arg,
 static void _bfc_opts_from_file_cb(struct argp_state *state, const char *arg,
                                    struct bfc_opts *opts)
 {
-    if (opts->from_str)
-        argp_error(state, "--from-file is incompatible with --from-str");
+    UNUSED(state);
 
     opts->from_file = arg;
 };
@@ -287,6 +297,7 @@ struct bfc_opts_opt
     const char *name;
     const char *arg;
     const char *doc;
+    uint32_t rejects;
     void (*parser)(struct argp_state *state, const char *arg,
                    struct bfc_opts *opts);
 } _bfc_options[] = {
@@ -296,6 +307,7 @@ struct bfc_opts_opt
         .name = "from-str",
         .arg = "STR",
         .doc = "String defining the ruleset",
+        .rejects = BF_FLAGS(BFC_OPT_RULESET_FROM_FILE),
         .parser = _bfc_opts_from_str_cb,
     },
     {
@@ -304,6 +316,7 @@ struct bfc_opts_opt
         .name = "from-file",
         .arg = "FILE",
         .doc = "File defining the ruleset",
+        .rejects = BF_FLAGS(BFC_OPT_RULESET_FROM_STR),
         .parser = _bfc_opts_from_file_cb,
     },
     {
@@ -312,6 +325,7 @@ struct bfc_opts_opt
         .name = "from-str",
         .arg = "STRING",
         .doc = "String defining the chain",
+        .rejects = BF_FLAGS(BFC_OPT_CHAIN_FROM_FILE),
         .parser = _bfc_opts_from_str_cb,
     },
     {
@@ -320,6 +334,7 @@ struct bfc_opts_opt
         .name = "from-file",
         .arg = "FILE",
         .doc = "File defining the chain",
+        .rejects = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR),
         .parser = _bfc_opts_from_file_cb,
     },
     {
@@ -340,19 +355,87 @@ struct bfc_opts_opt
     },
 };
 
+#define _BF_OPT_ERR_MSG_LEN 256
+
 static error_t _bfc_opts_cmd_parser(int key, char *arg,
                                     struct argp_state *state)
 {
     struct bfc_opts *opts = state->input;
     const struct bfc_opts_cmd *cmd = opts->cmd;
 
+    // When all the options have been processed, ensure they are valid
+    if (key == ARGP_KEY_END) {
+        char msg[_BF_OPT_ERR_MSG_LEN];
+        bool error = false;
+
+        strcpy(msg, "missing required option(s): ");
+
+        /* Go through all the options, if any of them is required for the
+         * current command but unset, error out.
+         * If the required option is incompatible with another option and this
+         * other option is set, do not error out. */
+        for (enum bfc_opts_option_id id = 0; id < _BFC_OPT_MAX; ++id) {
+            const struct bfc_opts_opt *opt;
+
+            // Option is not required by the command
+            if (!(opts->cmd->required_opts & BF_FLAG(id)))
+                continue;
+
+            opt = &_bfc_options[id];
+
+            // If the option is set, skip
+            if (opts->set_opts & BF_FLAG(id))
+                continue;
+
+            // If an incompatible option is set, we're good
+            if (opts->set_opts & opt->rejects)
+                continue;
+
+            (void)snprintf(&msg[strlen(msg)], _BF_OPT_ERR_MSG_LEN - strlen(msg),
+                           "%s--%s", error ? ", " : "", opt->name);
+            error = true;
+        }
+
+        if (error)
+            argp_error(state, "%s", msg);
+
+        /* Iterate over the set options, if it is incompatible with another set
+         * option, error out. */
+        for (enum bfc_opts_option_id id = 0; id < _BFC_OPT_MAX; ++id) {
+            const struct bfc_opts_opt *opt = &_bfc_options[id];
+
+            // Skip if option is not set
+            if (!(opts->set_opts & BF_FLAG(id)))
+                continue;
+
+            // Check every option and find which incompatible one is set
+            for (enum bfc_opts_option_id compat_id = 0;
+                 compat_id < _BFC_OPT_MAX; ++compat_id) {
+                const struct bfc_opts_opt *compat_opt =
+                    &_bfc_options[compat_id];
+
+                // Skip if option is not set or not incompatible
+                if (!(opt->rejects & BF_FLAG(compat_id)) ||
+                    !(opts->set_opts & BF_FLAG(compat_id)))
+                    continue;
+
+                argp_error(state, "option --%s is incompatible with --%s",
+                           opt->name, compat_opt->name);
+            }
+        }
+
+        return 0;
+    }
+
     for (int i = 0; i < _BFC_OPT_MAX; ++i) {
         struct bfc_opts_opt *opt = &_bfc_options[i];
 
+        // Ignore options that are not supported by this command
         if (!(cmd->valid_opts & BF_FLAG(i)) || key != opt->key)
             continue;
 
         opt->parser(state, arg, opts);
+        opts->set_opts |= BF_FLAG(i);
 
         return 0;
     }
@@ -436,6 +519,8 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
     argv += 2;
 
     r = argp_parse(&subparser, argc, argv, 0, NULL, opts);
+    if (r)
+        return r;
 
-    return r;
+    return 0;
 }

@@ -62,6 +62,8 @@ struct bfc_opts
     enum bfc_object object;
     enum bfc_action action;
 
+    uint32_t set_opts;
+
     const char *from_str;
     const char *from_file;
     const char *name;
@@ -73,7 +75,8 @@ struct bfc_opts_cmd
     enum bfc_object object;
     enum bfc_action action;
     const char *name;
-    int valid_opts;
+    uint32_t valid_opts;
+    uint32_t required_opts;
     const char *doc;
     int (*cb)(const struct bfc_opts *opts);
 };

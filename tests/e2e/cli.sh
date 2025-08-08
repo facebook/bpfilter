@@ -399,6 +399,42 @@ suite_netns_to_host() {
 }
 with_daemon suite_netns_to_host
 
+suite_bcli_options_error() {
+    log "[SUITE] bfcli: options error"
+    expect_failure "ruleset set: --from-str and --from-file are incompatible" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"\" --from-file \"\"
+    expect_failure "ruleset set: --from-str or --from-file are required" \
+        ${FROM_NS} ${BFCLI} ruleset set
+
+    expect_failure "chain set: --from-str and --from-file are incompatible" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"\" --from-file \"\"
+    expect_failure "chain set: --from-str or --from-file are required" \
+        ${FROM_NS} ${BFCLI} chain set
+
+    expect_failure "chain get: --name is required" \
+        ${FROM_NS} ${BFCLI} chain get
+
+    expect_failure "chain logs: --name is required" \
+        ${FROM_NS} ${BFCLI} chain logs
+
+    expect_failure "chain load: --from-str and --from-file are incompatible" \
+        ${FROM_NS} ${BFCLI} chain load --from-str \"\" --from-file \"\"
+    expect_failure "chain load: --from-str or --from-file are required" \
+        ${FROM_NS} ${BFCLI} chain load
+
+    expect_failure "chain attach: --name is required" \
+        ${FROM_NS} ${BFCLI} chain attach
+
+    expect_failure "chain attach: --from-str and --from-file are incompatible" \
+        ${FROM_NS} ${BFCLI} chain attach --from-str \"\" --from-file \"\"
+    expect_failure "chain attach: --from-str or --from-file are required" \
+        ${FROM_NS} ${BFCLI} chain attach
+
+    expect_failure "chain flush: --name is required" \
+        ${FROM_NS} ${BFCLI} chain flush
+}
+with_daemon suite_bcli_options_error
+
 suite_host_to_netns() {
     log "[SUITE] netns: host -> netns"
     expect_failure "can't attach chain to host iface from netns" \
