@@ -108,3 +108,16 @@ struct bf_log
     /** Layer 4 header. */
     __u8 l4hdr[BF_L4_SLICE_LEN];
 };
+
+struct bf_ip4_lpm_key
+{
+    __u32 prefixlen;
+    __u32 data;
+};
+
+struct bf_ip6_lpm_key
+{
+    __u32 prefixlen;
+    __u8 data[16];
+    __u32 _padding;
+};
