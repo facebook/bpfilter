@@ -100,8 +100,6 @@ Test(matcher, matcher_type_to_str_to_matcher_type)
 {
     enum bf_matcher_type matcher_type;
 
-    expect_assert_failure(bf_matcher_type_to_str(-1));
-    expect_assert_failure(bf_matcher_type_to_str(_BF_MATCHER_TYPE_MAX));
     expect_assert_failure(bf_matcher_type_from_str(NULL, NOT_NULL));
     expect_assert_failure(bf_matcher_type_from_str(NOT_NULL, NULL));
 

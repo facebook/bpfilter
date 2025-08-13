@@ -99,6 +99,7 @@ set(bf_test_srcs
     core/marsh.c
     core/matcher.c
     core/rule.c
+    core/set.c
     core/verdict.c
     bpfilter/opts.c
     bpfilter/cgen/cgen.c
