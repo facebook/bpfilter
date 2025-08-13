@@ -1030,6 +1030,9 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
 
 const struct bf_matcher_meta *bf_matcher_get_meta(enum bf_matcher_type type)
 {
+    if (type < 0 || _BF_MATCHER_TYPE_MAX <= type)
+        return NULL;
+
     return _bf_matcher_metas[type].layer == _BF_MATCHER_LAYER_UNDEFINED ?
                NULL :
                &_bf_matcher_metas[type];
@@ -1230,7 +1233,8 @@ static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,
 
 const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 {
-    bf_assert(0 <= type && type < _BF_MATCHER_TYPE_MAX);
+    if (type < 0 || _BF_MATCHER_TYPE_MAX <= type)
+        return "<invalid>";
 
     return _bf_matcher_type_strs[type];
 }

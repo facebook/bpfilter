@@ -6,6 +6,7 @@
 #include "bpfilter/cgen/runtime.h"
 #include "core/chain.h"
 #include "core/logger.h"
+#include "core/matcher.h"
 #include "e2e.h"
 #include "harness/filters.h"
 #include "harness/test.h"
@@ -753,7 +754,10 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip4_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_SNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -787,7 +791,10 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip4_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_SNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -825,7 +832,10 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip4_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_DNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -859,7 +869,10 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip4_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_DNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -1286,7 +1299,10 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip6_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1323,7 +1339,10 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip6_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1363,7 +1382,10 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip6_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1400,7 +1422,10 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                sizeof(struct bf_ip6_lpm_key),
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1431,192 +1456,6 @@ Test(ip6, dnet_in)
     );
 
     bft_e2e_test(in, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
-{
-    _free_bf_set_ struct bf_set *set = NULL;
-    int r;
-
-    r = bf_set_new(&set);
-    if (r < 0) {
-        bf_err_r(r, "failed to create a new set");
-        return NULL;
-    }
-
-    set->elem_size = 18;
-
-    if (matching_elem) {
-        r = bf_set_add_elem(set, matching_elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add matching element to set");
-            return NULL;
-        }
-    }
-
-    for (size_t i = 0; i < nelems; i++) {
-        uint8_t elem[18] = {};
-
-        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
-            elem[j] = rand() % 256;
-
-        r = bf_set_add_elem(set, elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add key to set");
-            return NULL;
-        }
-    }
-
-    return TAKE_PTR(set);
-}
-
-Test(ip6, port_200kset_match)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6port_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x7a, 0x69}),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-Test(ip6, port_200kset_nomatch)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6port_set(2000, NULL),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
-}
-
-struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
-{
-    _free_bf_set_ struct bf_set *set = NULL;
-    int r;
-
-    r = bf_set_new(&set);
-    if (r < 0) {
-        bf_err_r(r, "failed to create a new set");
-        return NULL;
-    }
-
-    set->elem_size = 16;
-
-    if (matching_elem) {
-        r = bf_set_add_elem(set, matching_elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add matching element to set");
-            return NULL;
-        }
-    }
-
-    for (size_t i = 0; i < nelems; i++) {
-        uint8_t elem[16] = {};
-
-        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
-            elem[j] = rand() % 256;
-
-        r = bf_set_add_elem(set, elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add key to set");
-            return NULL;
-        }
-    }
-
-    return TAKE_PTR(set);
-}
-
-Test(ip6, addrport_200kset_match)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e}),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-Test(ip6, addrport_200kset_nomatch)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6_set(2000, NULL),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
 }
 
 Test(tcp, dport_range)

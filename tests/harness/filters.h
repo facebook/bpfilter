@@ -87,27 +87,25 @@
 struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...);
 
 /**
- * Create a new set.
+ * @brief Create a new test set.
  *
  * @code {.c}
  *  bft_set_get(
- *      sizeof(struct my_custom_struct),
- *      (struct my_custom_struct []) {
- *          { 0x01, 0x02, 0x03, 0x04 },
- *      },
- *      1
+ *      (enum bf_matcher_type []){{ BF_MATCHER_IP4_PROTO }}, 1
+ *      (uint8_t[]) { IPPROTO_TCP, IPPROTO_UDP, }, 2
  *  );
  * @endcode
  *
  * The caller owns the set and is responsible for freeing it.
  *
- * @param elem_size Size of a single element of the set.
- * @param data Array of elements to fill the set with. The elements are
- *        expected to a size defined by their @p type .
+ * @param key Array of `bf_matcher_type` defining the key format.
+ * @param n_comps Number of matcher types in the key.
+ * @param data Array of elements to fill the set with.
  * @param n_elems Number of elements in @p data .
  * @return A valid @ref bf_set on success, or NULL on failure.
  */
-struct bf_set *bft_set_get(size_t elem_size, void *data, size_t n_elems);
+struct bf_set *bft_set_get(enum bf_matcher_type *key, size_t n_comps,
+                           void *data, size_t n_elems);
 
 /**
  * Create a new matcher.
