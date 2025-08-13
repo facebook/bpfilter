@@ -200,14 +200,62 @@ struct bf_matcher
 };
 
 /**
- * @brief Operations structure for a given matcher type and operator.
+ * @brief TCP/IP layer a matcher is applied to.
  */
-struct bf_matcher_ops
+enum bf_matcher_layer
 {
-    size_t payload_size;
-    int (*parser_cb)(enum bf_matcher_type type, enum bf_matcher_op op,
+    /** Special layer value if the matcher meta is undefined. */
+    _BF_MATCHER_LAYER_UNDEFINED = 0,
+
+    /** Some matchers do not apply to the packet, but to its metadata. */
+    BF_MATCHER_NO_LAYER = 1,
+
+    BF_MATCHER_LAYER_2 = 2,
+    BF_MATCHER_LAYER_3 = 3,
+    BF_MATCHER_LAYER_4 = 4,
+    _BF_MATCHER_LAYER_MAX,
+};
+
+/**
+ * @brief Meta structure to support matchers processing.
+ *
+ * Defines characteristics for a specific meta type in order to support
+ * generic-ish bytecode generation. Each matcher should have its associated
+ * `bf_matcher_meta` structure so bpfilter can process it.
+ */
+struct bf_matcher_meta
+{
+    /** TCP/IP model layer to apply the matcher to. */
+    enum bf_matcher_layer layer;
+
+    /** Identifier of the protocol supported by the matcher. Used with `layer`,
+     * this value will allow the BPF program to define if the matcher can be
+     * applied to the processed packet. */
+    uint32_t hdr_id;
+
+    /** Size of the payload processed by the matcher. This payload is the data
+     * read from the packet, not the user-provided data. */
+    size_t hdr_payload_size;
+
+    /** Offset of the payload in the packet header. */
+    size_t hdr_payload_offset;
+
+    /** Operator-specific parameters to process the user-specific data.
+     * Undefined operators are considered unsupported. */
+    struct bf_matcher_ops
+    {
+        /** Size of the payload to store in the matcher. This payload will be
+         * compared against the packet's payload. In some cases, this payload
+         * size is different from `hdr_payload_size` (e.g. ip4.snet). */
+        size_t ref_payload_size;
+
+        /** Callback function to parse the matcher's raw payload */
+        int (*parse)(enum bf_matcher_type type, enum bf_matcher_op op,
                      void *payload, const char *raw_payload);
-    void (*printer_cb)(const void *payload);
+
+        /** Callback function to pretty print the matcher's payload. */
+        void (*print)(const void *payload);
+    } ops[_BF_MATCHER_OP_MAX];
 };
 
 /**
@@ -275,6 +323,14 @@ int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh);
  * @param prefix Prefix for each printed line.
  */
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
+
+/**
+ * @brief Get meta structure for a given matcher type.
+ *
+ * @param type Type of the matcher to get the meta for.
+ * @return A pointer to a `bf_matcher_meta` structure, or NULL if not found.
+ */
+const struct bf_matcher_meta *bf_matcher_get_meta(enum bf_matcher_type type);
 
 /**
  * @brief Get operations structure for a given (matcher type, matcher op) tuple.

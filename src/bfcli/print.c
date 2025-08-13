@@ -156,7 +156,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             (void)fprintf(stdout, " %s ", bf_matcher_op_to_str(matcher->op));
 
             if (ops) {
-                ops->printer_cb(matcher->payload);
+                ops->print(matcher->payload);
             } else {
                 bf_dump_hex_local(matcher->payload,
                                   matcher->len - sizeof(struct bf_matcher));

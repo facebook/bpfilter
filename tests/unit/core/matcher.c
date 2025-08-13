@@ -128,13 +128,3 @@ Test(matcher, can_get_str_from_matcher_op)
     for (int i = 0; i < _BF_MATCHER_OP_MAX; ++i)
         assert_non_null(bf_matcher_op_to_str(i));
 }
-
-Test(matcher, check_ops)
-{
-    // Each payload type should provide a parser and a printer callback
-    for (enum bf_matcher_payload_type type = 0; type < _BF_MATCHER_PAYLOAD_MAX;
-         ++type) {
-        assert_non_null(_bf_payload_ops[type].parser_cb);
-        assert_non_null(_bf_payload_ops[type].printer_cb);
-    }
-}
