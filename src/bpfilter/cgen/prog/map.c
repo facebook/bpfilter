@@ -22,30 +22,29 @@
 #include "core/logger.h"
 #include "core/marsh.h"
 
-int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
-               size_t key_size, size_t value_size, size_t n_elems)
+static int _bf_map_new(struct bf_map **map, const char *name,
+                       enum bf_map_type type, enum bpf_map_type bpf_type,
+                       size_t key_size, size_t value_size, size_t n_elems)
 {
     bf_assert(map && name);
-    bf_assert(name[0] != '\0');
-    bf_assert(n_elems > 0);
-
-    static enum bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
-        [BF_MAP_TYPE_COUNTERS] = BPF_MAP_TYPE_ARRAY,
-        [BF_MAP_TYPE_PRINTER] = BPF_MAP_TYPE_ARRAY,
-        [BF_MAP_TYPE_LOG] = BPF_MAP_TYPE_RINGBUF,
-    };
 
     _free_bf_map_ struct bf_map *_map = NULL;
 
     if (type == BF_MAP_TYPE_SET)
         return bf_err_r(-EINVAL, "BF_MAP_TYPE_SET is not supported by bf_map");
 
+    if (name[0] == '\0')
+        return bf_err_r(-EINVAL, "map name can't be empty");
+
+    if (n_elems == 0)
+        return bf_err_r(-EINVAL, "map can't be created without elements");
+
     _map = malloc(sizeof(*_map));
     if (!_map)
         return -ENOMEM;
 
     _map->type = type;
-    _map->bpf_type = _map_type_to_bpf[type];
+    _map->bpf_type = bpf_type;
     _map->key_size = key_size;
     _map->value_size = value_size;
     _map->n_elems = n_elems;
@@ -56,6 +55,34 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
     *map = TAKE_PTR(_map);
 
     return 0;
+}
+
+int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
+               size_t key_size, size_t value_size, size_t n_elems)
+{
+    static enum bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
+        [BF_MAP_TYPE_COUNTERS] = BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_PRINTER] = BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_LOG] = BPF_MAP_TYPE_RINGBUF,
+    };
+
+    if (type == BF_MAP_TYPE_SET) {
+        return bf_err_r(
+            -EINVAL,
+            "use bf_map_new_from_set() to create a bf_map from a bf_set");
+    }
+
+    return _bf_map_new(map, name, type, _map_type_to_bpf[type], key_size,
+                       value_size, n_elems);
+}
+
+int bf_map_new_from_set(struct bf_map **map, const char *name,
+                        const struct bf_set *set)
+{
+    return _bf_map_new(map, name, BF_MAP_TYPE_SET,
+                       set->use_trie ? BPF_MAP_TYPE_LPM_TRIE :
+                                       BPF_MAP_TYPE_HASH,
+                       set->elem_size, 1, bf_list_size(&set->elems));
 }
 
 int bf_map_new_from_marsh(struct bf_map **map, int dir_fd,
@@ -200,8 +227,8 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "type: %s", _bf_map_type_to_str(map->type));
-    DUMP(prefix, "bpf_type: %s", _bf_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "name: %s", map->name);
+    DUMP(prefix, "bpf_type: %s", _bf_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "key_size: %lu", map->key_size);
     DUMP(prefix, "value_size: %lu", map->value_size);
 
