@@ -23,25 +23,33 @@
 #include "core/marsh.h"
 
 int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
-               enum bf_map_bpf_type bpf_type, size_t key_size,
-               size_t value_size, size_t n_elems)
+               size_t key_size, size_t value_size, size_t n_elems)
 {
-    _free_bf_map_ struct bf_map *_map = NULL;
-
     bf_assert(map && name);
     bf_assert(name[0] != '\0');
     bf_assert(n_elems > 0);
+
+    static enum bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
+        [BF_MAP_TYPE_COUNTERS] = BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_PRINTER] = BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_LOG] = BPF_MAP_TYPE_RINGBUF,
+    };
+
+    _free_bf_map_ struct bf_map *_map = NULL;
+
+    if (type == BF_MAP_TYPE_SET)
+        return bf_err_r(-EINVAL, "BF_MAP_TYPE_SET is not supported by bf_map");
 
     _map = malloc(sizeof(*_map));
     if (!_map)
         return -ENOMEM;
 
     _map->type = type;
-    _map->fd = -1;
-    _map->bpf_type = bpf_type;
+    _map->bpf_type = _map_type_to_bpf[type];
     _map->key_size = key_size;
     _map->value_size = value_size;
     _map->n_elems = n_elems;
+    _map->fd = -1;
 
     bf_strncpy(_map->name, BPF_OBJ_NAME_LEN, name);
 
@@ -160,6 +168,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
     static const char *type_strs[] = {
         [BF_MAP_TYPE_COUNTERS] = "BF_MAP_TYPE_COUNTERS",
         [BF_MAP_TYPE_PRINTER] = "BF_MAP_TYPE_PRINTER",
+        [BF_MAP_TYPE_LOG] = "BF_MAP_TYPE_LOG",
         [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
     };
 
@@ -168,6 +177,18 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
     bf_assert(0 <= type && type < _BF_MAP_TYPE_MAX);
 
     return type_strs[type];
+}
+
+static const char *_bf_bpf_type_to_str(enum bpf_map_type type)
+{
+    static const char *type_strs[] = {
+        [BPF_MAP_TYPE_ARRAY] = "BPF_MAP_TYPE_ARRAY",
+        [BPF_MAP_TYPE_RINGBUF] = "BPF_MAP_TYPE_RINGBUF",
+        [BPF_MAP_TYPE_LPM_TRIE] = "BPF_MAP_TYPE_LPM_TRIE",
+        [BPF_MAP_TYPE_HASH] = "BPF_MAP_TYPE_HASH",
+    };
+
+    return type_strs[type] ? type_strs[type] : "<no mapping>";
 }
 
 void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
@@ -179,35 +200,21 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
 
     bf_dump_prefix_push(prefix);
     DUMP(prefix, "type: %s", _bf_map_type_to_str(map->type));
-    DUMP(prefix, "fd: %d", map->fd);
+    DUMP(prefix, "bpf_type: %s", _bf_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "name: %s", map->name);
-    DUMP(prefix, "bpf_type: %s", bf_map_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "key_size: %lu", map->key_size);
     DUMP(prefix, "value_size: %lu", map->value_size);
 
-    bf_dump_prefix_last(prefix);
     if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
         DUMP(prefix, "n_elems: unknown");
     } else {
         DUMP(prefix, "n_elems: %lu", map->n_elems);
     }
 
+    bf_dump_prefix_last(prefix);
+    DUMP(prefix, "fd: %d", map->fd);
+
     bf_dump_prefix_pop(prefix);
-}
-
-static enum bpf_map_type
-_bf_map_bpf_type_to_kernel_type(enum bf_map_bpf_type bpf_type)
-{
-    static const enum bpf_map_type _kernel_types[] = {
-        [BF_MAP_BPF_TYPE_ARRAY] = BPF_MAP_TYPE_ARRAY,
-        [BF_MAP_BPF_TYPE_HASH] = BPF_MAP_TYPE_HASH,
-        [BF_MAP_BPF_TYPE_LPM_TRIE] = BPF_MAP_TYPE_LPM_TRIE,
-        [BF_MAP_BPF_TYPE_RINGBUF] = BPF_MAP_TYPE_RINGBUF,
-    };
-
-    bf_assert(0 <= bpf_type && bpf_type < _BF_MAP_BPF_TYPE_MAX);
-
-    return _kernel_types[bpf_type];
 }
 
 #define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
@@ -361,14 +368,14 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
             "can't create a map with BF_MAP_N_ELEMS_UNKNOWN number of elements");
     }
 
-    attr.map_type = _bf_map_bpf_type_to_kernel_type(map->bpf_type);
+    attr.map_type = map->bpf_type;
     attr.key_size = map->key_size;
     attr.value_size = map->value_size;
     attr.max_entries = map->n_elems;
     attr.map_flags = flags;
 
     // NO_PREALLOC is *required* for LPM_TRIE map
-    if (map->bpf_type == BF_MAP_BPF_TYPE_LPM_TRIE)
+    if (map->bpf_type == BPF_MAP_TYPE_LPM_TRIE)
         attr.map_flags |= BPF_F_NO_PREALLOC;
 
     if ((token_fd = bf_ctx_token()) != -1) {
@@ -495,51 +502,4 @@ int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
     attr.flags = BPF_ANY;
 
     return bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
-}
-
-static const char *_bf_map_bpf_type_strs[] = {
-    [BF_MAP_BPF_TYPE_ARRAY] = "BF_MAP_BPF_TYPE_ARRAY",
-    [BF_MAP_BPF_TYPE_HASH] = "BF_MAP_BPF_TYPE_HASH",
-    [BF_MAP_BPF_TYPE_LPM_TRIE] = "BF_MAP_BPF_TYPE_LPM_TRIE",
-    [BF_MAP_BPF_TYPE_RINGBUF] = "BF_MAP_BPF_TYPE_RINGBUF",
-};
-
-static_assert(ARRAY_SIZE(_bf_map_bpf_type_strs) == _BF_MAP_BPF_TYPE_MAX,
-              "missing entries in _bf_map_bpf_type_strs array");
-
-const char *bf_map_bpf_type_to_str(enum bf_map_bpf_type bpf_type)
-{
-    bf_assert(0 <= bpf_type && bpf_type < _BF_MAP_BPF_TYPE_MAX);
-
-    return _bf_map_bpf_type_strs[bpf_type];
-}
-
-int bf_map_bpf_type_from_str(const char *str, enum bf_map_bpf_type *bpf_type)
-{
-    bf_assert(str);
-    bf_assert(bpf_type);
-
-    for (size_t i = 0; i < _BF_MAP_BPF_TYPE_MAX; ++i) {
-        if (bf_streq(_bf_map_bpf_type_strs[i], str)) {
-            *bpf_type = i;
-            return 0;
-        }
-    }
-
-    return -EINVAL;
-}
-
-static enum bf_map_bpf_type _bf_map_bpf_type_to_set_type[] = {
-    [BF_SET_IP4] = BF_MAP_BPF_TYPE_HASH,
-    [BF_SET_SRCIP6PORT] = BF_MAP_BPF_TYPE_HASH,
-    [BF_SET_SRCIP6] = BF_MAP_BPF_TYPE_HASH,
-    [BF_SET_IP4_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
-    [BF_SET_IP6_SUBNET] = BF_MAP_BPF_TYPE_LPM_TRIE,
-};
-
-static_assert(ARRAY_SIZE(_bf_map_bpf_type_to_set_type) == _BF_SET_MAX, "");
-
-enum bf_map_bpf_type bf_map_bpf_type_from_set_type(enum bf_set_type type)
-{
-    return _bf_map_bpf_type_to_set_type[type];
 }

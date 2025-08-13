@@ -27,7 +27,6 @@
 #include "bpfilter/cgen/matcher/ip4.h"
 #include "bpfilter/cgen/matcher/ip6.h"
 #include "bpfilter/cgen/matcher/meta.h"
-#include "bpfilter/cgen/matcher/set.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
 #include "bpfilter/cgen/nf.h"
@@ -62,7 +61,8 @@
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
 #define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 #define _BF_LOG_MAP_N_ENTRIES 1000
-#define _BF_LOG_MAP_SIZE _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
+#define _BF_LOG_MAP_SIZE                                                       \
+    _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {
@@ -112,19 +112,17 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s", "bf_prog");
 
     r = bf_map_new(&_program->cmap, "counters_map", BF_MAP_TYPE_COUNTERS,
-                   BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
-                   sizeof(struct bf_counter), 1);
+                   sizeof(uint32_t), sizeof(struct bf_counter), 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the counters bf_map object");
 
     r = bf_map_new(&_program->pmap, "printer_map", BF_MAP_TYPE_PRINTER,
-                   BF_MAP_BPF_TYPE_ARRAY, sizeof(uint32_t),
-                   BF_MAP_VALUE_SIZE_UNKNOWN, 1);
+                   sizeof(uint32_t), BF_MAP_VALUE_SIZE_UNKNOWN, 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the printer bf_map object");
 
-    r = bf_map_new(&_program->lmap, "log_map", BF_MAP_TYPE_LOG,
-                   BF_MAP_BPF_TYPE_RINGBUF, 0, 0, _BF_LOG_MAP_SIZE);
+    r = bf_map_new(&_program->lmap, "log_map", BF_MAP_TYPE_LOG, 0, 0,
+                   _BF_LOG_MAP_SIZE);
     if (r < 0)
         return bf_err_r(r, "failed to create the log bf_map object");
 
@@ -134,9 +132,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         _free_bf_map_ struct bf_map *map = NULL;
 
         (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x", (uint8_t)set_idx++);
-        r = bf_map_new(&map, name, BF_MAP_TYPE_SET,
-                       bf_map_bpf_type_from_set_type(set->type), set->elem_size,
-                       1, bf_list_size(&set->elems));
+        r = bf_map_new(&map, name, BF_MAP_TYPE_SET, set->elem_size, 1,
+                       bf_list_size(&set->elems));
         if (r < 0)
             return r;
 
@@ -632,12 +629,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
             if (r)
                 return r;
             break;
-        case BF_MATCHER_SET_SRCIP6PORT:
-        case BF_MATCHER_SET_SRCIP6:
-            r = bf_matcher_generate_set(program, matcher);
-            if (r)
-                return r;
-            break;
         case BF_MATCHER_ICMP_TYPE:
         case BF_MATCHER_ICMP_CODE:
         case BF_MATCHER_ICMPV6_TYPE:
@@ -887,7 +878,7 @@ int bf_program_generate(struct bf_program *program)
     // Zeroing IPv6 extension headers
     if (program->runtime.chain->flags & BF_FLAG(BF_CHAIN_STORE_NEXTHDR)) {
         EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_7,
-                                    BF_PROG_CTX_OFF(ipv6_eh)));
+                                  BF_PROG_CTX_OFF(ipv6_eh)));
     }
 
     r = program->runtime.ops->gen_inline_prologue(program);
