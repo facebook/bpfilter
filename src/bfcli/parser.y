@@ -80,7 +80,6 @@
 %token <sval> MATCHER_IP_ADDR_SET
 %token <sval> MATCHER_IP4_NET
 %token <sval> MATCHER_IP6_NET
-%token <sval> MATCHER_ICMP
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 %token <sval> RAW_HOOKOPT
