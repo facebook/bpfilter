@@ -78,6 +78,21 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
                size_t key_size, size_t value_size, size_t n_elems);
 
 /**
+ * @brief Allocate and initialise a new BPF map object, from a set.
+ *
+ * @param map BPF map object to allocate and initialize. Can't be NULL. On
+ *        success, @c *map points to a valid @ref bf_map . On failure, @c *map
+ *        remain unchanged. Can't be NULL.
+ * @param name Name of the map. Will be used as the name of the BPF object, but
+ *        also as filename when pinning the map to the system. Can't be NULL or
+ *        empty.
+ * @param set Set to create the map from. Can't be NULL.
+ * @return 0 on success, or a negative error value on error.
+ */
+int bf_map_new_from_set(struct bf_map **map, const char *name,
+                        const struct bf_set *set);
+
+/**
  * Create a new BPF map object from serialized data.
  *
  * @note The new BPF map object will represent a BPF map from bpfilter's point
