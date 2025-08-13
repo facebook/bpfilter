@@ -151,6 +151,7 @@ add_custom_command(
 	DEPENDS
 		${CMAKE_CURRENT_SOURCE_DIR}/covreport
 		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+		${CMAKE_BINARY_DIR}/output/tests/lcov.out
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
 	COMMENT "Generate the coverage report"
 )
