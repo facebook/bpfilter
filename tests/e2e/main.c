@@ -753,7 +753,7 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                sizeof(struct bf_ip4_lpm_key),
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -770,7 +770,7 @@ Test(ip4, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -787,7 +787,7 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                sizeof(struct bf_ip4_lpm_key),
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -805,7 +805,7 @@ Test(ip4, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -825,7 +825,7 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                sizeof(struct bf_ip4_lpm_key),
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -842,7 +842,7 @@ Test(ip4, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -859,7 +859,7 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                sizeof(struct bf_ip4_lpm_key),
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -877,7 +877,7 @@ Test(ip4, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1286,7 +1286,7 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                sizeof(struct bf_ip6_lpm_key),
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1306,7 +1306,7 @@ Test(ip6, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1323,7 +1323,7 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                sizeof(struct bf_ip6_lpm_key),
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1343,7 +1343,7 @@ Test(ip6, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1363,7 +1363,7 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                sizeof(struct bf_ip6_lpm_key),
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1383,7 +1383,7 @@ Test(ip6, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1400,7 +1400,7 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                sizeof(struct bf_ip6_lpm_key),
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1420,7 +1420,7 @@ Test(ip6, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1438,11 +1438,13 @@ struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
-    r = bf_set_new(&set, BF_SET_SRCIP6PORT);
+    r = bf_set_new(&set);
     if (r < 0) {
         bf_err_r(r, "failed to create a new set");
         return NULL;
     }
+
+    set->elem_size = 18;
 
     if (matching_elem) {
         r = bf_set_add_elem(set, matching_elem);
@@ -1483,7 +1485,7 @@ Test(ip6, port_200kset_match)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1511,7 +1513,7 @@ Test(ip6, port_200kset_nomatch)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1529,11 +1531,13 @@ struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
-    r = bf_set_new(&set, BF_SET_SRCIP6);
+    r = bf_set_new(&set);
     if (r < 0) {
         bf_err_r(r, "failed to create a new set");
         return NULL;
     }
+
+    set->elem_size = 16;
 
     if (matching_elem) {
         r = bf_set_add_elem(set, matching_elem);
@@ -1574,7 +1578,7 @@ Test(ip6, addrport_200kset_match)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1602,7 +1606,7 @@ Test(ip6, addrport_200kset_nomatch)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,

@@ -13,15 +13,6 @@
 #include "core/dump.h"
 #include "core/set.h"
 
-enum bf_map_bpf_type
-{
-    BF_MAP_BPF_TYPE_ARRAY,
-    BF_MAP_BPF_TYPE_HASH,
-    BF_MAP_BPF_TYPE_LPM_TRIE,
-    BF_MAP_BPF_TYPE_RINGBUF,
-    _BF_MAP_BPF_TYPE_MAX,
-};
-
 enum bf_map_type
 {
     BF_MAP_TYPE_COUNTERS,
@@ -40,12 +31,12 @@ enum bf_map_type
 struct bf_map
 {
     enum bf_map_type type;
-    int fd;
+    enum bpf_map_type bpf_type;
     char name[BPF_OBJ_NAME_LEN];
-    enum bf_map_bpf_type bpf_type;
     size_t key_size;
     size_t value_size;
     size_t n_elems;
+    int fd;
 };
 
 struct bf_marsh;
@@ -75,8 +66,6 @@ struct bf_marsh;
  *        also as filename when pinning the map to the system. Can't be NULL or
  *        empty.
  * @param type Map type, defines the set of available operations.
- * @param bpf_type Map type. Not all BPF maps are supported, see
- *        @ref bf_map_bpf_type for the full list of supported types.
  * @param key_size Size (in bytes) of a key in the map.
  * @param value_size Size (in bytes) of an element of the map.
  * @param n_elems Number of elements to reserve room for in the map. Can't be 0.
@@ -86,8 +75,7 @@ struct bf_marsh;
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
-               enum bf_map_bpf_type bpf_type, size_t key_size,
-               size_t value_size, size_t n_elems);
+               size_t key_size, size_t value_size, size_t n_elems);
 
 /**
  * Create a new BPF map object from serialized data.
@@ -233,33 +221,3 @@ int bf_map_set_n_elems(struct bf_map *map, size_t n_elems);
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_map_set_elem(const struct bf_map *map, void *key, void *value);
-
-/**
- * Convert a @ref bf_map_bpf_type to a string.
- *
- * @param bpf_type Map type to convert to string. Must be a valid
- *        @ref bf_map_bpf_type (except for @ref _BF_MAP_BPF_TYPE_MAX ).
- * @return The map type, as a string.
- */
-const char *bf_map_bpf_type_to_str(enum bf_map_bpf_type bpf_type);
-
-/**
- * Convert a string into a @ref bf_map_bpf_type value.
- *
- * If the string is an invalid @ref bf_map_bpf_type string representation,
- * an error is returned.
- *
- * @param str String to convert to a @ref bf_map_bpf_type value. Can't be NULL.
- * @param bpf_type On success, contains the map type value. Unchanged on failure.
- *        Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_map_bpf_type_from_str(const char *str, enum bf_map_bpf_type *bpf_type);
-
-/**
- * @brief Convert a generic set type into a BPF map type.
- *
- * @param type Set type to convert.
- * @return BPF map type corresponding to the set type.
- */
-enum bf_map_bpf_type bf_map_bpf_type_from_set_type(enum bf_set_type type);

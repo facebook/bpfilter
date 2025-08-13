@@ -48,16 +48,18 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
     return TAKE_PTR(hookopts);
 }
 
-struct bf_set *bft_set_get(enum bf_set_type type, void *data, size_t n_elems)
+struct bf_set *bft_set_get(size_t elem_size, void *data, size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
-    r = bf_set_new(&set, type);
+    r = bf_set_new(&set);
     if (r < 0) {
         bf_err_r(r, "failed to create a new test set");
         return NULL;
     }
+
+    set->elem_size = elem_size;
 
     for (size_t i = 0; i < n_elems; ++i) {
         r = bf_set_add_elem(set, data + (i * set->elem_size));

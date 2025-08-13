@@ -109,28 +109,20 @@ meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytex
 ip4\.saddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.daddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPV4_ADDR>{
-    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}\.{int}\.{int}\.{int} {
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
-    }
-    \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3},?)+\} {
-        yylval.sval = strdup(yytext);
-        return MATCHER_IP_ADDR_SET;
     }
 }
 
 ip4\.snet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP4_NET>{
-    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}\.{int}\.{int}\.{int}\/{int} {
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
-    }
-    \{([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{2},?)+\} {
-        yylval.sval = strdup(yytext);
-        return MATCHER_IP4_NET;
     }
 }
 
@@ -145,14 +137,10 @@ ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext
 
 ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_NET>{
-    (eq|not|in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-zA-Z0-9:\/]+ {
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
-    }
-    \{([a-zA-Z0-9:/]+,?)+\} {
-        yylval.sval = strdup(yytext);
-        return MATCHER_IP6_NET;
     }
 }
 

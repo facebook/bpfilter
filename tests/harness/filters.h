@@ -91,7 +91,7 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...);
  *
  * @code {.c}
  *  bft_set_get(
- *      BF_SET_IP4,
+ *      sizeof(struct my_custom_struct),
  *      (struct my_custom_struct []) {
  *          { 0x01, 0x02, 0x03, 0x04 },
  *      },
@@ -101,13 +101,13 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...);
  *
  * The caller owns the set and is responsible for freeing it.
  *
- * @param type Set type. Defines the key size.
+ * @param elem_size Size of a single element of the set.
  * @param data Array of elements to fill the set with. The elements are
  *        expected to a size defined by their @p type .
  * @param n_elems Number of elements in @p data .
  * @return A valid @ref bf_set on success, or NULL on failure.
  */
-struct bf_set *bft_set_get(enum bf_set_type type, void *data, size_t n_elems);
+struct bf_set *bft_set_get(size_t elem_size, void *data, size_t n_elems);
 
 /**
  * Create a new matcher.

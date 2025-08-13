@@ -24,10 +24,11 @@
 
 #include "external/filter.h"
 
-static int
-_bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
-                                     const struct bf_matcher *matcher)
+static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
+                                         const struct bf_matcher *matcher)
 {
+    bf_assert(program && matcher);
+
     uint32_t *addr = (uint32_t *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP4_SADDR ?
                         offsetof(struct iphdr, saddr) :
@@ -41,59 +42,6 @@ _bf_matcher_generate_ip4_addr_unique(struct bf_program *program,
                              BPF_REG_1, BPF_REG_2, 0));
 
     return 0;
-}
-
-static int _bf_matcher_generate_ip4_addr_set(struct bf_program *program,
-                                             const struct bf_matcher *matcher)
-{
-    uint32_t set_id;
-    struct bf_set *set;
-    int16_t offset;
-
-    bf_assert(program);
-    bf_assert(matcher);
-
-    set_id = *(uint32_t *)matcher->payload;
-    set = bf_list_get_at(&program->runtime.chain->sets, set_id);
-
-    switch (set->type) {
-    case BF_SET_IP4:
-        offset = matcher->type == BF_MATCHER_IP4_SADDR ?
-                     offsetof(struct iphdr, saddr) :
-                     offsetof(struct iphdr, daddr);
-        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_6, offset));
-        EMIT(program,
-             BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(0)));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unsupported set type: %s",
-                        bf_set_type_to_str(set->type));
-    }
-
-    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
-    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
-
-    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
-
-    // Jump to the next rule if map_lookup_elem returned 0
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
-
-    return 0;
-}
-
-static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
-                                         const struct bf_matcher *matcher)
-{
-    switch (matcher->op) {
-    case BF_MATCHER_EQ:
-    case BF_MATCHER_NE:
-        return _bf_matcher_generate_ip4_addr_unique(program, matcher);
-    case BF_MATCHER_IN:
-        return _bf_matcher_generate_ip4_addr_set(program, matcher);
-    default:
-        return -EINVAL;
-    }
 
     return 0;
 }
@@ -101,6 +49,8 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
 static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
+    bf_assert(program && matcher);
+
     uint8_t proto = *(uint8_t *)&matcher->payload;
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6,
@@ -112,9 +62,11 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
     return 0;
 }
 
-static int _bf_matcher_generate_ip4_net_single(struct bf_program *program,
-                                               const struct bf_matcher *matcher)
+static int _bf_matcher_generate_ip4_net(struct bf_program *program,
+                                        const struct bf_matcher *matcher)
 {
+    bf_assert(program && matcher);
+
     struct bf_matcher_ip4_addr *addr =
         (struct bf_matcher_ip4_addr *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP4_SNET ?
@@ -137,76 +89,11 @@ static int _bf_matcher_generate_ip4_net_single(struct bf_program *program,
     return 0;
 }
 
-static int _bf_matcher_generate_ip4_net_in(struct bf_program *program,
-                                           const struct bf_matcher *matcher)
-{
-    uint32_t set_id;
-    struct bf_set *set;
-    int16_t offset;
-
-    bf_assert(program && matcher);
-
-    set_id = *(uint32_t *)matcher->payload;
-    set = bf_list_get_at(&program->runtime.chain->sets, set_id);
-    if (!set)
-        return bf_err_r(-ENOENT, "set #%d not found", set_id);
-
-    switch (set->type) {
-    case BF_SET_IP4_SUBNET:
-        offset = matcher->type == BF_MATCHER_IP4_SNET ?
-                     offsetof(struct iphdr, saddr) :
-                     offsetof(struct iphdr, daddr);
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_3, 32));
-        EMIT(program,
-             BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_3, BF_PROG_SCR_OFF(0)));
-        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_6, offset));
-        EMIT(program,
-             BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_2, BF_PROG_SCR_OFF(4)));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unsupported set type: %s",
-                        bf_set_type_to_str(set->type));
-    }
-
-    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, set_id);
-    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
-
-    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
-
-    // Jump to the next rule if map_lookup_elem returned 0
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
-
-    return 0;
-}
-
-static int _bf_matcher_generate_ip4_net(struct bf_program *program,
-                                        const struct bf_matcher *matcher)
-{
-    bf_assert(program && matcher);
-
-    int r;
-
-    switch (matcher->op) {
-    case BF_MATCHER_EQ:
-    case BF_MATCHER_NE:
-        r = _bf_matcher_generate_ip4_net_single(program, matcher);
-        break;
-    case BF_MATCHER_IN:
-        r = _bf_matcher_generate_ip4_net_in(program, matcher);
-        break;
-    default:
-        return bf_err_r(-ENOTSUP, "unsupported operator %s for matcher %s",
-                        bf_matcher_type_to_str(matcher->type),
-                        bf_matcher_op_to_str(matcher->op));
-    }
-
-    return r;
-}
-
 int bf_matcher_generate_ip4(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
+    bf_assert(program && matcher);
+
     int r;
 
     EMIT_FIXUP_JMP_NEXT_RULE(

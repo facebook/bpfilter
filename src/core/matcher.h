@@ -88,10 +88,6 @@ enum bf_matcher_type
     BF_MATCHER_UDP_SPORT,
     /// Matches against the UDP destination port
     BF_MATCHER_UDP_DPORT,
-    /// Matches the source (IPv6, port) tuple against a set
-    BF_MATCHER_SET_SRCIP6PORT,
-    /// Matches the source IPv6 address against a set
-    BF_MATCHER_SET_SRCIP6,
     /// Matches against the ICMP type
     BF_MATCHER_ICMP_TYPE,
     /// Matches against the ICMP code
@@ -100,6 +96,8 @@ enum bf_matcher_type
     BF_MATCHER_ICMPV6_TYPE,
     /// Matches against the ICMPv6 code
     BF_MATCHER_ICMPV6_CODE,
+    /// Matches in a set, the set knows how to build the key from the packet
+    BF_MATCHER_SET,
     _BF_MATCHER_TYPE_MAX,
 };
 
