@@ -32,7 +32,6 @@
     #include "core/list.h"
     #include "core/rule.h"
     #include "core/chain.h"
-    #include "core/set.h"
     #include "core/runtime.h"
 
     extern int inet_pton(int af, const char *restrict src, void *restrict dst);
@@ -77,9 +76,6 @@
 %token RULE
 %token LOG COUNTER
 %token <sval> LOG_HEADERS
-%token <sval> MATCHER_IP_ADDR_SET
-%token <sval> MATCHER_IP4_NET
-%token <sval> MATCHER_IP6_NET
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 %token <sval> RAW_HOOKOPT
@@ -261,187 +257,6 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                     r = bf_matcher_new_from_raw(&matcher, $1, $2, payload);
                     if (r)
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IP_ADDR_SET
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    _free_bf_set_ struct bf_set *set = NULL;
-                    uint32_t set_id = bf_list_size(&ruleset->sets);
-                    int r;
-
-                    char *data = $3 + 1;
-                    data[strlen(data) - 1] = '\0';
-
-                    r = bf_set_new(&set, BF_SET_IP4);
-                    if (r < 0)
-                        bf_parse_err("failed to create a new set\n");
-
-                    char *ip;
-                    char *next = data;
-                    do {
-                        _cleanup_free_ uint32_t *value = malloc(sizeof(uint32_t));
-                        if (!value)
-                            bf_parse_err("failed to allocate memory for IPv4 address\n");
-
-                        ip = next;
-                        next = strchr(ip, ',');
-
-                        if (next) {
-                            *next = '\0';
-                            ++next;
-
-                            // Handle trailing comma
-                            if (*next == '\0')
-                                next = NULL;
-                        }
-
-                        r = inet_pton(AF_INET, ip, value);
-                        if (r != 1)
-                            bf_parse_err("failed to parse IPv4 address: %s\n", ip);
-
-                        r = bf_set_add_elem(set, value);
-                        if (r < 0)
-                            bf_parse_err("failed to add element to set\n");
-                    } while (next);
-
-                    r = bf_list_add_tail(&ruleset->sets, set);
-                    if (r < 0)
-                        bf_parse_err("failed to add new set to list of sets\n");
-
-                    TAKE_PTR(set);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IP4_NET
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    _free_bf_set_ struct bf_set *set = NULL;
-                    uint32_t set_id = bf_list_size(&ruleset->sets);
-                    int r;
-
-                    char *data = $3 + 1;
-                    data[strlen(data) - 1] = '\0';
-
-                    r = bf_set_new(&set, BF_SET_IP4_SUBNET);
-                    if (r < 0)
-                        bf_parse_err("failed to create a new set\n");
-
-                    char *elem;
-                    char *delim;
-                    char *next = data;
-                    do {
-                        struct bf_ip4_lpm_key key;
-
-                        elem = next;
-                        next = strchr(elem, ',');
-                        if (next) {
-                            *next = '\0';
-                            ++next;
-
-                            // Handle trailing comma
-                            if (*next == '\0')
-                                next = NULL;
-                        }
-
-                        delim = strchr(elem, '/');
-                        if (!delim)
-                            bf_parse_err("no mask found in set element: %s", elem);
-
-                        *delim = '\0';
-                        ++delim;
-                        key.prefixlen = strtol(delim, NULL, 10);
-                        if (key.prefixlen == (unsigned int)LONG_MAX)
-                            bf_parse_err("invalid subnet mask '%s'", delim);
-
-                        r = inet_pton(AF_INET, elem, &key.data);
-                        if (r != 1)
-                            bf_parse_err("failed to parse IPv4 address: %s\n", elem);
-
-                        r = bf_set_add_elem(set, &key);
-                        if (r < 0)
-                            bf_parse_err("failed to add element to set\n");
-                    } while (next);
-
-                    r = bf_list_add_tail(&ruleset->sets, set);
-                    if (r < 0)
-                        bf_parse_err("failed to add new set to list of sets\n");
-
-                    TAKE_PTR(set);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
-                        bf_parse_err("failed to create a new matcher\n");
-
-                    $$ = TAKE_PTR(matcher);
-                }
-                | matcher_type matcher_op MATCHER_IP6_NET
-                {
-                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    _free_bf_set_ struct bf_set *set = NULL;
-                    uint32_t set_id = bf_list_size(&ruleset->sets);
-                    int r;
-
-                    char *data = $3 + 1;
-                    data[strlen(data) - 1] = '\0';
-
-                    r = bf_set_new(&set, BF_SET_IP6_SUBNET);
-                    if (r < 0)
-                        bf_parse_err("failed to create a new set\n");
-
-                    char *elem;
-                    char *delim;
-                    char *next = data;
-                    do {
-                        struct bf_ip6_lpm_key key;
-
-                        elem = next;
-                        next = strchr(elem, ',');
-                        if (next) {
-                            *next = '\0';
-                            ++next;
-
-                            // Handle trailing comma
-                            if (*next == '\0')
-                                next = NULL;
-                        }
-
-                        delim = strchr(elem, '/');
-                        if (!delim)
-                            bf_parse_err("no mask found in set element: %s", elem);
-
-                        *delim = '\0';
-                        ++delim;
-                        key.prefixlen = strtol(delim, NULL, 10);
-                        if (key.prefixlen == (unsigned int)LONG_MAX)
-                            bf_parse_err("invalid subnet mask '%s'", delim);
-
-                        r = inet_pton(AF_INET6, elem, &key.data);
-                        if (r != 1)
-                            bf_parse_err("failed to parse IPv6 address: %s\n", elem);
-
-                        r = bf_set_add_elem(set, &key);
-                        if (r < 0)
-                            bf_parse_err("failed to add element to set\n");
-                    } while (next);
-
-                    r = bf_list_add_tail(&ruleset->sets, set);
-                    if (r < 0)
-                        bf_parse_err("failed to add new set to list of sets\n");
-
-                    TAKE_PTR(set);
-
-                    free($3);
-
-                    if (bf_matcher_new(&matcher, $1, $2, &set_id, sizeof(set_id)))
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
