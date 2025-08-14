@@ -5,6 +5,9 @@
 
 #pragma once
 
+#include <stddef.h>
+
+struct bf_matcher_meta;
 struct bf_program;
 
 /**
@@ -86,3 +89,33 @@ int bf_stub_parse_l3_hdr(struct bf_program *program);
  * @return 0 on success, or negative errno value on error.
  */
 int bf_stub_parse_l4_hdr(struct bf_program *program);
+
+/**
+ * @brief Emit the instructions to check if the packet contains a specific
+ *        protocol.
+ *
+ * This stub is usually emitted at the beginning of a rule, to ensure the
+ * protocol this rule applies to is actually available in the packet. If not,
+ * the rule is skipped.
+ *
+ * @param program Program to emit the instructions into. Can't be NULL.
+ * @param meta Metadata for the matcher type to apply. Can't be NULL.
+ * @return 0 on success, or negative error value on error.
+ */
+int bf_stub_rule_check_protocol(struct bf_program *program,
+                                const struct bf_matcher_meta *meta);
+
+/**
+ * @brief Emit the instructions to load a header address into a register.
+ *
+ * @param program Program to emit the instructions into. Can't be NULL.
+ * @param meta Metadata for the matcher type to apply. Defines the layer to load
+ *        the header address for.
+ * @param reg Register to load the header address into.
+ * @return 0 on success, or negative error value on error.
+ */
+int bf_stub_load_header(struct bf_program *program,
+                        const struct bf_matcher_meta *meta, int reg);
+
+int bf_stub_stx_payload(struct bf_program *program,
+                        const struct bf_matcher_meta *meta, size_t offset);

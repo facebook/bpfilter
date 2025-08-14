@@ -83,6 +83,11 @@ extern const char *strerrordesc_np(int errnum);
 #define BF_BASE_10 10
 #define BF_BASE_16 16
 
+#define _BF_ALIGNED(addr, mask) (((addr) & (mask)) == 0)
+#define BF_ALIGNED_64(addr) _BF_ALIGNED(addr, 0x07)
+#define BF_ALIGNED_32(addr) _BF_ALIGNED(addr, 0x03)
+#define BF_ALIGNED_16(addr) _BF_ALIGNED(addr, 0x01)
+
 /**
  * @brief Generate a bitflag from multiple values.
  *
