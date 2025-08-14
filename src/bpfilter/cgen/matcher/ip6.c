@@ -19,7 +19,6 @@
 #include "bpfilter/cgen/program.h"
 #include "core/logger.h"
 #include "core/matcher.h"
-#include "core/set.h"
 
 #include "external/filter.h"
 
@@ -113,11 +112,23 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
     return 0;
 }
 
+static void _bf_ip6_prefix_to_mask(uint32_t prefixlen, uint8_t *mask)
+{
+    bf_assert(mask);
+
+    memset(mask, 0x00, 16);
+
+    memset(mask, 0xff, prefixlen / 8);
+    if (prefixlen % 8)
+        mask[prefixlen / 8] = 0xff << (8 - prefixlen % 8) & 0xff;
+}
+
 static int _bf_matcher_generate_ip6_net(struct bf_program *program,
                                         const struct bf_matcher *matcher)
 {
+    uint8_t mask[16];
     struct bf_jmpctx j0, j1;
-    struct bf_matcher_ip6_addr *addr = (void *)&matcher->payload;
+    struct bf_ip6_lpm_key *addr = (void *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP6_SNET ?
                         offsetof(struct ipv6hdr, saddr) :
                         offsetof(struct ipv6hdr, daddr);
@@ -125,108 +136,103 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_6, offset));
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset + 8));
 
-    if (addr->mask[_BF_MASK_LAST_BYTE] != (uint8_t)~0) {
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_3,
-                                    _bf_make32(addr->mask[7], addr->mask[6],
-                                               addr->mask[5], addr->mask[4])));
+    _bf_ip6_prefix_to_mask(addr->prefixlen, mask);
+
+    if (mask[_BF_MASK_LAST_BYTE] != (uint8_t)~0) {
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, _bf_make32(mask[7], mask[6],
+                                                          mask[5], mask[4])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->mask[3], addr->mask[2],
-                                               addr->mask[1], addr->mask[0])));
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_4, _bf_make32(mask[3], mask[2],
+                                                          mask[1], mask[0])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
         EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_1, BPF_REG_3));
 
-        EMIT(program,
-             BPF_MOV32_IMM(BPF_REG_3,
-                           _bf_make32(addr->mask[15], addr->mask[14],
-                                      addr->mask[13], addr->mask[12])));
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, _bf_make32(mask[15], mask[14],
+                                                          mask[13], mask[12])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->mask[11], addr->mask[10],
-                                               addr->mask[9], addr->mask[8])));
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_4, _bf_make32(mask[11], mask[10],
+                                                          mask[9], mask[8])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
         EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_2, BPF_REG_3));
     }
 
     if (matcher->op == BF_MATCHER_EQ) {
-        /* If we want to match an IP, both addr->addr[0] and addr->addr[1]
+        /* If we want to match an IP, both addr->data[0] and addr->data[1]
          * must match the packet, otherwise we jump to the next rule. */
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_3,
-                                    _bf_make32(addr->addr[7] & addr->mask[7],
-                                               addr->addr[6] & addr->mask[6],
-                                               addr->addr[5] & addr->mask[5],
-                                               addr->addr[4] & addr->mask[4])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_3, _bf_make32(addr->data[7] & mask[7],
+                                                 addr->data[6] & mask[6],
+                                                 addr->data[5] & mask[5],
+                                                 addr->data[4] & mask[4])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->addr[3] & addr->mask[3],
-                                               addr->addr[2] & addr->mask[2],
-                                               addr->addr[1] & addr->mask[1],
-                                               addr->addr[0] & addr->mask[0])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_4, _bf_make32(addr->data[3] & mask[3],
+                                                 addr->data[2] & mask[2],
+                                                 addr->data[1] & mask[1],
+                                                 addr->data[0] & mask[0])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
         EMIT_FIXUP_JMP_NEXT_RULE(program,
                                  BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, 0));
 
         EMIT(program,
-             BPF_MOV32_IMM(BPF_REG_3,
-                           _bf_make32(addr->addr[15] & addr->mask[15],
-                                      addr->addr[14] & addr->mask[14],
-                                      addr->addr[13] & addr->mask[13],
-                                      addr->addr[12] & addr->mask[12])));
+             BPF_MOV32_IMM(BPF_REG_3, _bf_make32(addr->data[15] & mask[15],
+                                                 addr->data[14] & mask[14],
+                                                 addr->data[13] & mask[13],
+                                                 addr->data[12] & mask[12])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->addr[11] & addr->mask[11],
-                                               addr->addr[10] & addr->mask[10],
-                                               addr->addr[9] & addr->mask[9],
-                                               addr->addr[8] & addr->mask[8])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_4, _bf_make32(addr->data[11] & mask[11],
+                                                 addr->data[10] & mask[10],
+                                                 addr->data[9] & mask[9],
+                                                 addr->data[8] & mask[8])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
         EMIT_FIXUP_JMP_NEXT_RULE(program,
                                  BPF_JMP_REG(BPF_JNE, BPF_REG_2, BPF_REG_3, 0));
     } else {
-        /* If we want to *not* match an IP, none of addr->addr[0] and
-         * addr->addr[1] should match the packet, otherwise we jump to the
+        /* If we want to *not* match an IP, none of addr->data[0] and
+         * addr->data[1] should match the packet, otherwise we jump to the
          * next rule. */
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_3,
-                                    _bf_make32(addr->addr[7] & addr->mask[7],
-                                               addr->addr[6] & addr->mask[6],
-                                               addr->addr[5] & addr->mask[5],
-                                               addr->addr[4] & addr->mask[4])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_3, _bf_make32(addr->data[7] & mask[7],
+                                                 addr->data[6] & mask[6],
+                                                 addr->data[5] & mask[5],
+                                                 addr->data[4] & mask[4])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->addr[3] & addr->mask[3],
-                                               addr->addr[2] & addr->mask[2],
-                                               addr->addr[1] & addr->mask[1],
-                                               addr->addr[0] & addr->mask[0])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_4, _bf_make32(addr->data[3] & mask[3],
+                                                 addr->data[2] & mask[2],
+                                                 addr->data[1] & mask[1],
+                                                 addr->data[0] & mask[0])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
 
         /* Branching:
-         * - addr->addr[0] matches the address' 64 MSB: continue to compare
+         * - addr->data[0] matches the address' 64 MSB: continue to compare
          *   the address' 64 LSB.
-         * - addr->addr[0] doesn't matches the address' 64 MSB: jump to the
+         * - addr->data[0] doesn't matches the address' 64 MSB: jump to the
          *   end of the matcher to continue the processing of the current rule.
          *   This matcher matched. */
         j0 = bf_jmpctx_get(program,
                            BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, 0));
 
         EMIT(program,
-             BPF_MOV32_IMM(BPF_REG_3,
-                           _bf_make32(addr->addr[15] & addr->mask[15],
-                                      addr->addr[14] & addr->mask[14],
-                                      addr->addr[13] & addr->mask[13],
-                                      addr->addr[12] & addr->mask[12])));
+             BPF_MOV32_IMM(BPF_REG_3, _bf_make32(addr->data[15] & mask[15],
+                                                 addr->data[14] & mask[14],
+                                                 addr->data[13] & mask[13],
+                                                 addr->data[12] & mask[12])));
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_3, 32));
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_4,
-                                    _bf_make32(addr->addr[11] & addr->mask[11],
-                                               addr->addr[10] & addr->mask[10],
-                                               addr->addr[9] & addr->mask[9],
-                                               addr->addr[8] & addr->mask[8])));
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_4, _bf_make32(addr->data[11] & mask[11],
+                                                 addr->data[10] & mask[10],
+                                                 addr->data[9] & mask[9],
+                                                 addr->data[8] & mask[8])));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_3, BPF_REG_4));
 
         /* Branching:
-         * - addr->addr[1] matches the address' 64 LSB: addr->addr matches the
+         * - addr->data[1] matches the address' 64 LSB: addr->data matches the
          *   packet's address, meaning the matcher doesn't match. Jump to the
          *   next rule.
-         * - addr->addr[1] doesn't matches the address' 64 LSB: the matcher
-         *   matched: addr->addr is not equal to the packet's address. Continue
+         * - addr->data[1] doesn't matches the address' 64 LSB: the matcher
+         *   matched: addr->data is not equal to the packet's address. Continue
          *   processing with the next matcher. */
         j1 = bf_jmpctx_get(program,
                            BPF_JMP_REG(BPF_JNE, BPF_REG_2, BPF_REG_3, 0));

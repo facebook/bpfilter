@@ -17,10 +17,9 @@
 
 #include "bpfilter/cgen/program.h"
 #include "core/helper.h"
-#include "core/list.h"
 #include "core/logger.h"
 #include "core/matcher.h"
-#include "core/set.h"
+#include "core/runtime.h"
 
 #include "external/filter.h"
 
@@ -42,8 +41,6 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
                              BPF_REG_1, BPF_REG_2, 0));
 
     return 0;
-
-    return 0;
 }
 
 static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
@@ -62,22 +59,35 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
     return 0;
 }
 
+static void _bf_ip4_prefix_to_mask(uint32_t prefixlen, uint8_t *mask)
+{
+    bf_assert(mask);
+
+    memset(mask, 0x00, 4);
+
+    memset(mask, 0xff, prefixlen / 8);
+    if (prefixlen % 8)
+        mask[prefixlen / 8] = 0xff << (8 - prefixlen % 8) & 0xff;
+}
+
 static int _bf_matcher_generate_ip4_net(struct bf_program *program,
                                         const struct bf_matcher *matcher)
 {
     bf_assert(program && matcher);
 
-    struct bf_matcher_ip4_addr *addr =
-        (struct bf_matcher_ip4_addr *)&matcher->payload;
+    uint32_t mask;
+    struct bf_ip4_lpm_key *addr = (struct bf_ip4_lpm_key *)&matcher->payload;
     size_t offset = matcher->type == BF_MATCHER_IP4_SNET ?
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
-    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_6, offset));
-    EMIT(program, BPF_MOV32_IMM(BPF_REG_2, addr->addr));
+    _bf_ip4_prefix_to_mask(addr->prefixlen, (void *)&mask);
 
-    if (addr->mask != ~0U) {
-        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, addr->mask));
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_6, offset));
+    EMIT(program, BPF_MOV32_IMM(BPF_REG_2, addr->data));
+
+    if (mask != ~0U) {
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, mask));
         EMIT(program, BPF_ALU32_REG(BPF_AND, BPF_REG_1, BPF_REG_3));
         EMIT(program, BPF_ALU32_REG(BPF_AND, BPF_REG_2, BPF_REG_3));
     }
