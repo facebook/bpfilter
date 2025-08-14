@@ -30,6 +30,7 @@
 #include "core/matcher.h"
 #include "core/rule.h"
 #include "core/runtime.h"
+#include "core/set.h"
 #include "core/verdict.h"
 
 struct bfc_chain_opts;
@@ -151,15 +152,52 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             const struct bf_matcher_ops *ops =
                 bf_matcher_get_ops(matcher->type, matcher->op);
 
-            (void)fprintf(stdout, "        %s",
-                          bf_matcher_type_to_str(matcher->type));
-            (void)fprintf(stdout, " %s ", bf_matcher_op_to_str(matcher->op));
+            if (matcher->type == BF_MATCHER_SET) {
+                struct bf_set *set =
+                    bf_chain_get_set_for_matcher(chain, matcher);
 
-            if (ops) {
-                ops->print(matcher->payload);
+                (void)fprintf(stdout, "        (");
+                for (size_t i = 0; i < set->n_comps; ++i) {
+                    (void)fprintf(stdout, "%s",
+                                  bf_matcher_type_to_str(set->key[i]));
+
+                    if (i != set->n_comps - 1)
+                        (void)fprintf(stdout, ", ");
+                }
+                (void)fprintf(stdout, ") in {\n");
+
+                bf_list_foreach (&set->elems, elem_node) {
+                    uint32_t payload_idx = 0;
+                    void *payload = bf_list_node_get_data(elem_node);
+
+                    (void)fprintf(stdout, "            ");
+                    for (size_t i = 0; i < set->n_comps; ++i) {
+                        const struct bf_matcher_meta *meta =
+                            bf_matcher_get_meta(set->key[i]);
+
+                        meta->ops[BF_MATCHER_IN].print(payload + payload_idx);
+                        payload_idx +=
+                            meta->ops[BF_MATCHER_IN].ref_payload_size;
+
+                        if (i != set->n_comps - 1)
+                            (void)fprintf(stdout, ", ");
+                    }
+                    (void)fprintf(stdout, "\n");
+                }
+
+                (void)fprintf(stdout, "        }");
             } else {
-                bf_dump_hex_local(matcher->payload,
-                                  matcher->len - sizeof(struct bf_matcher));
+                (void)fprintf(stdout, "        %s",
+                              bf_matcher_type_to_str(matcher->type));
+                (void)fprintf(stdout, " %s ",
+                              bf_matcher_op_to_str(matcher->op));
+
+                if (ops) {
+                    ops->print(matcher->payload);
+                } else {
+                    bf_dump_hex_local(matcher->payload,
+                                      matcher->len - sizeof(struct bf_matcher));
+                }
             }
 
             (void)fprintf(stdout, "\n");
