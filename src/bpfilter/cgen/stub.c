@@ -28,6 +28,7 @@
 #include "bpfilter/opts.h"
 #include "core/flavor.h"
 #include "core/helper.h"
+#include "core/matcher.h"
 #include "core/verdict.h"
 
 #include "external/filter.h"
@@ -369,6 +370,89 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     // Store the L4 header address into the runtime context
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_0, BF_PROG_CTX_OFF(l4_hdr)));
+
+    return 0;
+}
+
+int bf_stub_rule_check_protocol(struct bf_program *program,
+                                const struct bf_matcher_meta *meta)
+{
+    bf_assert(program && meta);
+
+    switch (meta->layer) {
+    case BF_MATCHER_LAYER_3:
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7,
+                                 htobe16((uint16_t)meta->hdr_id), 0));
+        break;
+    case BF_MATCHER_LAYER_4:
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_8, (uint8_t)meta->hdr_id, 0));
+        break;
+    default:
+        return bf_err_r(-EINVAL, "rule can't check for layer ID %d",
+                        meta->layer);
+    }
+
+    return 0;
+}
+
+int bf_stub_load_header(struct bf_program *program,
+                        const struct bf_matcher_meta *meta, int reg)
+{
+    bf_assert(program && meta);
+
+    switch (meta->layer) {
+    case BF_MATCHER_LAYER_3:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
+        break;
+    case BF_MATCHER_LAYER_4:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
+        break;
+    default:
+        return bf_err_r(-EINVAL,
+                        "layer ID %d is not a valid layer to load header for",
+                        meta->layer);
+    }
+
+    return 0;
+}
+
+int bf_stub_stx_payload(struct bf_program *program,
+                        const struct bf_matcher_meta *meta, size_t offset)
+{
+    bf_assert(program && meta);
+
+    size_t remaining_size = meta->hdr_payload_size;
+    size_t src_offset = 0;
+    size_t dst_offset = offset;
+
+    while (remaining_size) {
+        int bpf_size = BPF_B;
+        size_t copy_bytes = 1;
+
+        if (BF_ALIGNED_64(offset) && remaining_size >= 8) {
+            bpf_size = BPF_DW;
+            copy_bytes = 8;
+        } else if (BF_ALIGNED_32(offset) && remaining_size >= 4) {
+            bpf_size = BPF_W;
+            copy_bytes = 4;
+        } else if (BF_ALIGNED_16(offset) && remaining_size >= 2) {
+            bpf_size = BPF_H;
+            copy_bytes = 2;
+        }
+
+        EMIT(program, BPF_LDX_MEM(bpf_size, BPF_REG_1, BPF_REG_6,
+                                  meta->hdr_payload_offset + src_offset));
+        EMIT(program, BPF_STX_MEM(bpf_size, BPF_REG_10, BPF_REG_1,
+                                  BF_PROG_SCR_OFF(dst_offset)));
+
+        remaining_size -= copy_bytes;
+        src_offset += copy_bytes;
+        dst_offset += copy_bytes;
+    }
 
     return 0;
 }

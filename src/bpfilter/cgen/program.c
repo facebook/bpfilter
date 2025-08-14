@@ -27,6 +27,7 @@
 #include "bpfilter/cgen/matcher/ip4.h"
 #include "bpfilter/cgen/matcher/ip6.h"
 #include "bpfilter/cgen/matcher/meta.h"
+#include "bpfilter/cgen/matcher/set.h"
 #include "bpfilter/cgen/matcher/tcp.h"
 #include "bpfilter/cgen/matcher/udp.h"
 #include "bpfilter/cgen/nf.h"
@@ -633,6 +634,11 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_ICMPV6_TYPE:
         case BF_MATCHER_ICMPV6_CODE:
             r = bf_matcher_generate_icmp(program, matcher);
+            if (r)
+                return r;
+            break;
+        case BF_MATCHER_SET:
+            r = bf_matcher_generate_set(program, matcher);
             if (r)
                 return r;
             break;
