@@ -285,7 +285,6 @@ static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
 
     int r;
 
-    bf_info("parsing ipv4: %s", raw_payload);
     r = inet_pton(AF_INET, raw_payload, payload);
     if (r == 1)
         return 0;
@@ -317,12 +316,9 @@ static int _bf_parse_ipv4_net(enum bf_matcher_type type, enum bf_matcher_op op,
 {
     bf_assert(payload && raw_payload);
 
-    struct bf_matcher_ip4_addr *addr = payload;
+    struct bf_ip4_lpm_key *addr = payload;
     char buf[BF_IPV4_NET_MAX_LEN];
-    unsigned long mask;
-    char *strip;
-    char *strmask;
-    char *endptr;
+    char *strip, *strmask, *endptr;
     int r;
 
     bf_strncpy(buf, BF_IPV4_NET_MAX_LEN, raw_payload);
@@ -334,15 +330,13 @@ static int _bf_parse_ipv4_net(enum bf_matcher_type type, enum bf_matcher_op op,
     if (!strip || !*strmask)
         goto err;
 
-    r = inet_pton(AF_INET, strip, &addr->addr);
+    r = inet_pton(AF_INET, strip, &addr->data);
     if (r != 1)
         goto err;
 
-    mask = strtoul(strmask, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || mask > 32)
+    addr->prefixlen = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || addr->prefixlen > 32)
         goto err;
-
-    addr->mask = htobe32(((uint32_t)~0) << (32 - mask));
 
     return 0;
 
@@ -359,11 +353,10 @@ void _bf_print_ipv4_net(const void *payload)
     bf_assert(payload);
 
     char str[INET4_ADDRSTRLEN];
-    struct bf_matcher_ip4_addr *addr = (struct bf_matcher_ip4_addr *)payload;
-    uint32_t mask = be32toh(addr->mask);
+    const struct bf_ip4_lpm_key *addr = payload;
 
-    if (inet_ntop(AF_INET, &addr->addr, str, INET4_ADDRSTRLEN))
-        (void)fprintf(stdout, "%s/%u", str, 32 - __builtin_ctz(mask));
+    if (inet_ntop(AF_INET, &addr->data, str, INET4_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, addr->prefixlen);
     else
         (void)fprintf(stdout, "<failed to print IPv4 network>");
 }
@@ -405,12 +398,9 @@ static int _bf_parse_ipv6_net(enum bf_matcher_type type, enum bf_matcher_op op,
 {
     bf_assert(payload && raw_payload);
 
-    struct bf_matcher_ip6_addr *addr = payload;
+    struct bf_ip6_lpm_key *addr = payload;
     char buf[BF_IPV6_NET_MAX_LEN];
-    unsigned long mask;
-    char *strip;
-    char *strmask;
-    char *endptr;
+    char *strip, *strmask, *endptr;
     int r;
 
     bf_strncpy(buf, BF_IPV6_NET_MAX_LEN, raw_payload);
@@ -422,17 +412,13 @@ static int _bf_parse_ipv6_net(enum bf_matcher_type type, enum bf_matcher_op op,
     if (!strip || !*strmask)
         goto err;
 
-    r = inet_pton(AF_INET6, strip, &addr->addr);
+    r = inet_pton(AF_INET6, strip, &addr->data);
     if (r != 1)
         goto err;
 
-    mask = strtoul(strmask, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || mask > 128)
+    addr->prefixlen = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || addr->prefixlen > 128)
         goto err;
-
-    memset(addr->mask, 0xff, mask / 8);
-    if (mask % 8)
-        addr->mask[mask / 8] = 0xff << (8 - mask % 8) & 0xff;
 
     return 0;
 
@@ -448,13 +434,11 @@ void _bf_print_ipv6_net(const void *payload)
 {
     bf_assert(payload);
 
-    struct bf_matcher_ip6_addr *addr = (struct bf_matcher_ip6_addr *)payload;
+    const struct bf_ip6_lpm_key *addr = payload;
     char str[INET6_ADDRSTRLEN];
-    uint32_t mask = 128 - __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask))) -
-                    __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask + 8)));
 
-    if (inet_ntop(AF_INET6, addr->addr, str, INET6_ADDRSTRLEN))
-        (void)fprintf(stdout, "%s/%u", str, mask);
+    if (inet_ntop(AF_INET6, addr->data, str, INET6_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, addr->prefixlen);
     else
         (void)fprintf(stdout, "<failed to print IPv6 address>");
 }
