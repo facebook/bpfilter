@@ -76,6 +76,8 @@
 %token RULE
 %token LOG COUNTER
 %token <sval> LOG_HEADERS
+%token <sval> SET_TYPE
+%token <sval> SET_RAW_PAYLOAD
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 %token <sval> RAW_HOOKOPT
@@ -260,6 +262,35 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
+                }
+                | SET_TYPE matcher_op SET_RAW_PAYLOAD
+                {
+                     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                     _free_bf_set_ struct bf_set *set = NULL;
+                    _cleanup_free_ const char *raw_key = $1;
+                    _cleanup_free_ const char *payload = $3;
+                    enum bf_matcher_op op = $2;
+                     uint32_t set_id = bf_list_size(&ruleset->sets);
+                     int r;
+
+                    if (op != BF_MATCHER_IN)
+                        bf_parse_err("only the 'in' operator is supported for sets");
+
+                    r = bf_set_new_from_raw(&set, raw_key, payload);
+                    if (r)
+                        bf_parse_err("failed to create new set");
+
+                     r = bf_list_add_tail(&ruleset->sets, set);
+                     if (r < 0)
+                        bf_parse_err("failed to add new set to the ruleset");
+
+                     TAKE_PTR(set);
+
+                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
+                    if (r)
+                        bf_parse_err("failed to create a new matcher");
+
+                     $$ = TAKE_PTR(matcher);
                 }
                 ;
 matcher_type    : MATCHER_TYPE

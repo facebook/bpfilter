@@ -203,16 +203,18 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
-        ip4.saddr in {192.168.1.131,192.168.1.132}
+        (ip4.saddr, ip4.proto) in {
+            192.168.1.131, tcp
+            192.168.1.132, udp
+        }
+        (ip6.snet) in {
+            fdb2:2c26:f4e4::1/128
+            fdb2:2c26:f4e4::1/64
+        }
+        (ip6.dnet) in {
+            fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128
+            fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/127
+            fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/126
+        }
         counter
         ACCEPT
-    rule
-        ip6.snet in {fdb2:2c26:f4e4::1/128}
-        ip6.snet in {fdb2:2c26:f4e4::1/64}
-        counter
-        CONTINUE
-    rule
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/128}
-        ip6.dnet in {fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64}
-        counter
-        CONTINUE
