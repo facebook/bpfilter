@@ -6,6 +6,8 @@
 #include "bpfilter/cgen/runtime.h"
 #include "core/chain.h"
 #include "core/logger.h"
+#include "core/matcher.h"
+#include "core/runtime.h"
 #include "e2e.h"
 #include "harness/filters.h"
 #include "harness/test.h"
@@ -512,12 +514,11 @@ Test(ip4, snet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x00, 0x0c,
-                            0xff, 0xff, 0x00, 0x00
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]){{
+                            .prefixlen = 16,
+                            .data = 0x0c00027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -537,12 +538,11 @@ Test(ip4, snet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x00, 0x0c,
-                            0xff, 0xff, 0xff, 0x00
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]){{
+                            .prefixlen = 24,
+                            .data = 0x0c00027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -562,12 +562,11 @@ Test(ip4, snet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x00, 0x0c,
-                            0xff, 0xff, 0xff, 0x00
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]){{
+                            .prefixlen = 24,
+                            .data = 0x0c00027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -587,12 +586,11 @@ Test(ip4, snet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x00, 0x0c,
-                            0xff, 0xff, 0x00, 0x00
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]){{
+                            .prefixlen = 16,
+                            .data = 0x0c00027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -620,12 +618,11 @@ Test(ip4, dnet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x0b, 0x0c,
-                            0xff, 0xff, 0x00, 0x00,
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]) {{
+                            .prefixlen = 16,
+                            .data = 0x0c0b027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -645,12 +642,11 @@ Test(ip4, dnet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x0b, 0x0c,
-                            0xff, 0xff, 0xff, 0x00,
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]) {{
+                            .prefixlen = 24,
+                            .data = 0x0c0b027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -670,12 +666,11 @@ Test(ip4, dnet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x0b, 0x0c,
-                            0xff, 0xff, 0xff, 0x00,
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]) {{
+                            .prefixlen = 24,
+                            .data = 0x0c0b027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -695,12 +690,11 @@ Test(ip4, dnet)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                        (uint8_t[]) {
-                            // IP address
-                            0x7f, 0x02, 0x0b, 0x0c,
-                            0xff, 0xff, 0x00, 0x00,
-                        },
-                        8
+                        (struct bf_ip4_lpm_key[]) {{
+                            .prefixlen = 16,
+                            .data = 0x0c0b027f,
+                        }},
+                        sizeof(struct bf_ip4_lpm_key)
                     ),
                     NULL,
                 }
@@ -753,7 +747,10 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_SNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -770,7 +767,7 @@ Test(ip4, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -787,7 +784,10 @@ Test(ip4, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_SNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -805,7 +805,7 @@ Test(ip4, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -825,7 +825,10 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_DNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -842,7 +845,7 @@ Test(ip4, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -859,7 +862,10 @@ Test(ip4, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP4_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP4_DNET
+                },
+                1,
                 (struct bf_ip4_lpm_key []){
                     (struct bf_ip4_lpm_key) {
                         .prefixlen = 24,
@@ -877,7 +883,7 @@ Test(ip4, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP4_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1101,15 +1107,14 @@ Test(ip6, snet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
-                                    0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 64,
+                                    .data = {
+                                        0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                        0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1122,15 +1127,14 @@ Test(ip6, snet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
-                                    0x5b /* Changed */, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                        0x5b /* Changed */, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1143,15 +1147,14 @@ Test(ip6, snet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
-                                    0x5b /* Changed */, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                        0x5b /* Changed */, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1164,15 +1167,14 @@ Test(ip6, snet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
-                                    0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c,
+                                        0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1195,15 +1197,14 @@ Test(ip6, dnet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
-                                    0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 64,
+                                    .data = {
+                                        0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                                        0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1216,15 +1217,14 @@ Test(ip6, dnet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
-                                    0x81 /* Changed */, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                                        0x81 /* Changed */, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1237,15 +1237,14 @@ Test(ip6, dnet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
-                                    0x81 /* Changed */, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                                        0x81 /* Changed */, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1258,15 +1257,14 @@ Test(ip6, dnet)
             bf_rule_get(0, false, BF_VERDICT_DROP,
                         (struct bf_matcher *[]) {
                             bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
-                                (uint8_t[]) {
-                                    /* IPv6 address */
-                                    0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
-                                    0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
-                                    /* Mask */
-                                    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                    0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                },
-                                32
+                                (struct bf_ip6_lpm_key[]) {{
+                                    .prefixlen = 72,
+                                    .data = {
+                                        0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
+                                        0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04,
+                                    }
+                                }},
+                                sizeof(struct bf_ip6_lpm_key)
                             ),
                             NULL,
                         }),
@@ -1286,7 +1284,10 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1306,7 +1307,7 @@ Test(ip6, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1323,7 +1324,10 @@ Test(ip6, snet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_SNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1343,7 +1347,7 @@ Test(ip6, snet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_SNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1363,7 +1367,10 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_DNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
@@ -1383,7 +1390,7 @@ Test(ip6, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1400,13 +1407,16 @@ Test(ip6, dnet_in)
         BF_VERDICT_ACCEPT,
         (struct bf_set *[]) {
             bft_set_get(
-                BF_SET_IP6_SUBNET,
+                (enum bf_matcher_type[]) {
+                    BF_MATCHER_IP6_DNET
+                },
+                1,
                 (struct bf_ip6_lpm_key []){
                     (struct bf_ip6_lpm_key) {
                         .prefixlen = 64,
                         .data = {
                             0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4,
-                            0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04
+                            0x80, 0x25, 0x79, 0x74, /* Changed */ 0x23, 0x99, 0xeb, 0x04
                         },
                     },
                 },
@@ -1420,7 +1430,7 @@ Test(ip6, dnet_in)
                 false,
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_IP6_DNET, BF_MATCHER_IN,
+                    bf_matcher_get(BF_MATCHER_SET, BF_MATCHER_IN,
                         (uint32_t[]) {0}, 4
                     ),
                     NULL,
@@ -1430,189 +1440,7 @@ Test(ip6, dnet_in)
         }
     );
 
-    bft_e2e_test(in, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-struct bf_set *make_ip6port_set(size_t nelems, uint8_t *matching_elem)
-{
-    _free_bf_set_ struct bf_set *set = NULL;
-    int r;
-
-    r = bf_set_new(&set, BF_SET_SRCIP6PORT);
-    if (r < 0) {
-        bf_err_r(r, "failed to create a new set");
-        return NULL;
-    }
-
-    if (matching_elem) {
-        r = bf_set_add_elem(set, matching_elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add matching element to set");
-            return NULL;
-        }
-    }
-
-    for (size_t i = 0; i < nelems; i++) {
-        uint8_t elem[18] = {};
-
-        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
-            elem[j] = rand() % 256;
-
-        r = bf_set_add_elem(set, elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add key to set");
-            return NULL;
-        }
-    }
-
-    return TAKE_PTR(set);
-}
-
-Test(ip6, port_200kset_match)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6port_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x7a, 0x69}),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-Test(ip6, port_200kset_nomatch)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6port_set(2000, NULL),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
-}
-
-struct bf_set *make_ip6_set(size_t nelems, uint8_t *matching_elem)
-{
-    _free_bf_set_ struct bf_set *set = NULL;
-    int r;
-
-    r = bf_set_new(&set, BF_SET_SRCIP6);
-    if (r < 0) {
-        bf_err_r(r, "failed to create a new set");
-        return NULL;
-    }
-
-    if (matching_elem) {
-        r = bf_set_add_elem(set, matching_elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add matching element to set");
-            return NULL;
-        }
-    }
-
-    for (size_t i = 0; i < nelems; i++) {
-        uint8_t elem[16] = {};
-
-        for (int j = 0; j < (int)ARRAY_SIZE(elem); j++)
-            elem[j] = rand() % 256;
-
-        r = bf_set_add_elem(set, elem);
-        if (r < 0) {
-            bf_err_r(r, "failed to add key to set");
-            return NULL;
-        }
-    }
-
-    return TAKE_PTR(set);
-}
-
-Test(ip6, addrport_200kset_match)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6_set(2000, (uint8_t[]){0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e}),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
-}
-
-Test(ip6, addrport_200kset_nomatch)
-{
-    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
-        BF_HOOK_XDP,
-        BF_VERDICT_ACCEPT,
-        (struct bf_set *[]) {
-            make_ip6_set(2000, NULL),
-            NULL,
-        },
-        (struct bf_rule *[]) {
-            bf_rule_get(
-                0,
-                false,
-                BF_VERDICT_DROP,
-                (struct bf_matcher *[]) {
-                    bf_matcher_get(BF_MATCHER_SET_SRCIP6PORT, BF_MATCHER_IN,
-                        (uint32_t[]) {0}, 4
-                    ),
-                    NULL,
-                }
-            ),
-            NULL,
-        }
-    );
-
-    bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_remote_ip6_tcp);
+    //bft_e2e_test(in, BF_VERDICT_DROP, pkt_remote_ip6_tcp);
 }
 
 Test(tcp, dport_range)

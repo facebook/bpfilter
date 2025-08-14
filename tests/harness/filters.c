@@ -48,12 +48,13 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
     return TAKE_PTR(hookopts);
 }
 
-struct bf_set *bft_set_get(enum bf_set_type type, void *data, size_t n_elems)
+struct bf_set *bft_set_get(enum bf_matcher_type *key, size_t n_comps,
+                           void *data, size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
-    r = bf_set_new(&set, type);
+    r = bf_set_new(&set, key, n_comps);
     if (r < 0) {
         bf_err_r(r, "failed to create a new test set");
         return NULL;
@@ -125,7 +126,8 @@ struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
                                    struct bf_set **sets, struct bf_rule **rules)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list sets_list = bf_set_list();
+    _clean_bf_list_ bf_list sets_list =
+        bf_list_default(bf_set_free, bf_set_marsh);
     _clean_bf_list_ bf_list rules_list = bf_rule_list();
     int r;
 

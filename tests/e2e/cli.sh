@@ -482,28 +482,6 @@ suite_icmp_XDP() {
 }
 with_daemon suite_icmp_XDP
 
-suite_ip4() {
-    log "[SUITE] ip4: parse matchers"
-    expect_success "ip4.snet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet in \{192.168.1.14/24,10.211.0.0/16\} DROP\"
-    expect_success "ip4.dnet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip4.dnet in \{192.168.1.14/24,10.211.0.0/16\} DROP\"
-    expect_success "flushing the ruleset" \
-        ${FROM_NS} ${BFCLI} ruleset flush
-}
-with_daemon suite_ip4
-
-suite_ip6() {
-    log "[SUITE] ip6: parse matchers"
-    expect_success "ip6.snet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.snet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} log link DROP\"
-    expect_success "ip6.dnet in" \
-	    ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet in \{fdb2:2c26:f4e4:0:21c:42ff:fe09:1a95/64,fe80::21c:42ff:fe09:1a95/64\} log internet DROP\"
-    expect_success "flushing the ruleset" \
-        ${FROM_NS} ${BFCLI} ruleset flush
-}
-with_daemon suite_ip6
-
 suite_icmpv6_chain_set() {
     log "[SUITE] icmpv6: chain set"
     expect_success "can parse icmpv6 type and code by TC chain" \
@@ -804,6 +782,68 @@ suite_log() {
         ${FROM_NS} ${BFCLI} chain set --from-str \"chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log internet,link counter DROP\"
 }
 with_daemon suite_log
+
+suite_matcher_set() {
+    log "[SUITE] matcher: set"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {192.168.1.1,41; 192.168.1.1,42}"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {192.168.1.1 ,41; 192.168.1.1,42}"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {192.168.1.1, 41; 192.168.1.1,42}"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {192.168.1.1,41;192.168.1.1,42}"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {
+        192.168.1.1 , 41;
+        192.168.1.1,42
+    }"
+    expect_matcher_ok "(ip6.saddr) in {
+        ::1;
+        ::2
+    }"
+    expect_matcher_ok "(ip6.snet) in {
+        ::1/100;
+        ::2/89
+    }"
+    expect_matcher_ok "(ip4.saddr, icmp.code) in {
+        192.168.1.1 , 41 ;
+        192.168.1.1 , 42 ;
+    }"
+
+    # Testing all the matchers
+    expect_matcher_ok "(ip4.saddr, ip4.daddr) in {
+        192.168.1.1, 192.168.1.2;
+        192.168.1.3, 192.168.1.4
+    }"
+    expect_matcher_ok "(ip4.proto, ip6.nexthdr) in {6, 40; 40, 6}"
+    expect_matcher_ok "(ip6.saddr, ip6.daddr) in {
+        ::1, ::2;
+        ::3, ::4
+    }"
+    expect_matcher_ok "(icmp.code, icmp.type) in {
+        3, echo-reply;
+        2, echo-request
+    }"
+    expect_matcher_ok "(icmpv6.code, icmpv6.type) in {
+        3, echo-reply;
+        2, echo-request
+    }"
+
+    expect_matcher_nok "(ip4.snet, ip4.dnet) in {
+        192.168.1.1/24, 192.167.1.1/24;
+        10.211.55.2/24, 192.168.1.1/24
+    }"
+    expect_matcher_nok "(ip6.snet, ip6.dnet) in {
+        ::1/32, ::2/64;
+        ::3/96, ::4/128
+    }"
+    expect_matcher_nok "(ip4.saddr, ) in {192.168.1.1,41; 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.1,41 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.141; 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.1}"
+    expect_matcher_nok "(ip4.saddr;icmp.code) in {192.168.1.1,41; 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.,41; 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.1,cafe; 192.168.1.1,42}"
+    expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.1,41,192.168.1.1,42}"
+}
+with_daemon suite_matcher_set
 
 suite_matcher_meta() {
     log "[SUITE] matcher: meta.iface"

@@ -10,6 +10,10 @@
 #include <linux/if_ether.h>
 #include <linux/in.h>
 #include <linux/in6.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -24,6 +28,7 @@
 #include "core/if.h"
 #include "core/logger.h"
 #include "core/marsh.h"
+#include "core/runtime.h"
 
 #define INET4_ADDRSTRLEN 16
 #define INET6_ADDRSTRLEN 46
@@ -34,29 +39,10 @@
 extern int inet_pton(int, const char *, void *);
 extern const char *inet_ntop(int, const void *, char *, socklen_t);
 
-enum bf_matcher_payload_type
+int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
+                    void *payload, const char *raw_payload)
 {
-    BF_MATCHER_PAYLOAD_IFACE,
-    BF_MATCHER_PAYLOAD_L3_PROTO,
-    BF_MATCHER_PAYLOAD_L4_PROTO,
-    BF_MATCHER_PAYLOAD_L4_PORT,
-    BF_MATCHER_PAYLOAD_L4_PORT_RANGE,
-    BF_MATCHER_PAYLOAD_PROBABILITY,
-    BF_MATCHER_PAYLOAD_IPV4_ADDR,
-    BF_MATCHER_PAYLOAD_IPV4_NET,
-    BF_MATCHER_PAYLOAD_IPV6_ADDR,
-    BF_MATCHER_PAYLOAD_IPV6_NET,
-    BF_MATCHER_PAYLOAD_TCP_FLAGS,
-    BF_MATCHER_PAYLOAD_ICMP_TYPE,
-    BF_MATCHER_PAYLOAD_ICMP_CODE,
-    BF_MATCHER_PAYLOAD_ICMPV6_TYPE,
-    _BF_MATCHER_PAYLOAD_MAX,
-};
-
-int _bf_parse_iface(const struct bf_matcher *matcher, void *payload,
-                    const char *raw_payload)
-{
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     int idx;
     unsigned long ifindex;
@@ -64,30 +50,29 @@ int _bf_parse_iface(const struct bf_matcher *matcher, void *payload,
 
     idx = bf_if_index_from_name(raw_payload);
     if (idx > 0) {
-        *(uint32_t *)matcher->payload = (uint32_t)idx;
+        *(uint32_t *)payload = (uint32_t)idx;
         return 0;
     }
 
     ifindex = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && 0 < ifindex && ifindex <= UINT32_MAX) {
-        *(uint32_t *)matcher->payload = (uint32_t)ifindex;
+        *(uint32_t *)payload = (uint32_t)ifindex;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects an interface name (e.g., \"eth0\", \"wlan0\") or a decimal interface index (e.g., \"1\", \"2\"), not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_iface(const struct bf_matcher *matcher)
+void _bf_print_iface(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
     const char *ifname;
-    uint32_t ifindex = *(uint32_t *)matcher->payload;
+    uint32_t ifindex = *(uint32_t *)payload;
 
     ifname = bf_if_name_from_index((int)ifindex);
     if (ifname)
@@ -96,10 +81,10 @@ void _bf_print_iface(const struct bf_matcher *matcher)
         (void)fprintf(stdout, "%" PRIu32, ifindex);
 }
 
-int _bf_parse_l3_proto(const struct bf_matcher *matcher, void *payload,
-                       const char *raw_payload)
+int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
+                       void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     unsigned long ethertype;
     char *endptr;
@@ -111,40 +96,39 @@ int _bf_parse_l3_proto(const struct bf_matcher *matcher, void *payload,
 
     ethertype = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && ethertype <= UINT16_MAX) {
-        *(uint16_t *)matcher->payload = (uint16_t)ethertype;
+        *(uint16_t *)payload = (uint16_t)ethertype;
         return 0;
     }
 
     ethertype = strtoul(raw_payload, &endptr, BF_BASE_16);
     if (*endptr == '\0' && ethertype <= UINT16_MAX) {
-        *(uint16_t *)matcher->payload = (uint16_t)ethertype;
+        *(uint16_t *)payload = (uint16_t)ethertype;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects an internet layer protocol name (e.g. \"IPv6\", case insensitive), or a valid decimal or hexadecimal IEEE 802 number, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_l3_proto(const struct bf_matcher *matcher)
+void _bf_print_l3_proto(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    const char *ethertype = bf_ethertype_to_str(*(uint16_t *)matcher->payload);
+    const char *ethertype = bf_ethertype_to_str(*(uint16_t *)payload);
 
     if (ethertype)
         (void)fprintf(stdout, "%s", ethertype);
     else
-        (void)fprintf(stdout, "0x%04" PRIx16, *(uint16_t *)matcher->payload);
+        (void)fprintf(stdout, "0x%04" PRIx16, *(uint16_t *)payload);
 }
 
-int _bf_parse_l4_proto(const struct bf_matcher *matcher, void *payload,
-                       const char *raw_payload)
+int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
+                       void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     unsigned long ipproto;
     char *endptr;
@@ -156,66 +140,65 @@ int _bf_parse_l4_proto(const struct bf_matcher *matcher, void *payload,
 
     ipproto = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && ipproto <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)ipproto;
+        *(uint8_t *)payload = (uint8_t)ipproto;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects a transport layer protocol name (e.g. \"ICMP\", case insensitive), or a valid decimal internet protocol number, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_l4_proto(const struct bf_matcher *matcher)
+void _bf_print_l4_proto(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    const char *ipproto = bf_ipproto_to_str(*(uint8_t *)matcher->payload);
+    const char *ipproto = bf_ipproto_to_str(*(uint8_t *)payload);
 
     if (ipproto)
         (void)fprintf(stdout, "%s", ipproto);
     else
-        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-int _bf_parse_l4_port(const struct bf_matcher *matcher, void *payload,
-                      const char *raw_payload)
+int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
+                      void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     unsigned long port;
     char *endptr;
 
     port = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && port <= UINT16_MAX) {
-        *(uint16_t *)matcher->payload = (uint16_t)port;
+        *(uint16_t *)payload = (uint16_t)port;
         return 0;
     }
 
     bf_err("\"%s %s\" expects a valid decimal port number, not '%s'",
-           bf_matcher_type_to_str(matcher->type),
-           bf_matcher_op_to_str(matcher->op), raw_payload);
+           bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_l4_port(const struct bf_matcher *matcher)
+void _bf_print_l4_port(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    (void)fprintf(stdout, "%" PRIu16, *(uint16_t *)matcher->payload);
+    (void)fprintf(stdout, "%" PRIu16, *(uint16_t *)payload);
 }
 
 #define BF_PORT_RANGE_MAX_LEN 16 // 65535-65535, with nul char, round to **2
 
-static int _bf_parse_l4_port_range(const struct bf_matcher *matcher,
-                                   void *payload, const char *raw_payload)
+static int _bf_parse_l4_port_range(enum bf_matcher_type type,
+                                   enum bf_matcher_op op, void *payload,
+                                   const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
-    uint16_t *ports = (uint16_t *)matcher->payload;
+    uint16_t *ports = (uint16_t *)payload;
     unsigned long port;
     char buf[BF_PORT_RANGE_MAX_LEN];
     char *first;
@@ -252,25 +235,25 @@ static int _bf_parse_l4_port_range(const struct bf_matcher *matcher,
 err:
     bf_err(
         "\"%s %s\" expects two positive decimal port numbers as `$START-$END`, with `$START <= $END`, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_l4_port_range(const struct bf_matcher *matcher)
+void _bf_print_l4_port_range(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    uint16_t *ports = (uint16_t *)matcher->payload;
+    uint16_t *ports = (uint16_t *)payload;
 
     (void)fprintf(stdout, "%" PRIu16 "-%" PRIu16, ports[0], ports[1]);
 }
 
-static int _bf_parse_probability(const struct bf_matcher *matcher,
-                                 void *payload, const char *raw_payload)
+static int _bf_parse_probability(enum bf_matcher_type type,
+                                 enum bf_matcher_op op, void *payload,
+                                 const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     unsigned long proba;
     char *endptr;
@@ -283,23 +266,22 @@ static int _bf_parse_probability(const struct bf_matcher *matcher,
 
     bf_err(
         "\"%s %s\" expects a valid decimal percentage value (i.e., within [0%%, 100%%]), not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_probability(const struct bf_matcher *matcher)
+void _bf_print_probability(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)matcher->payload);
+    (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)payload);
 }
 
-static int _bf_parse_ipv4_addr(const struct bf_matcher *matcher, void *payload,
-                               const char *raw_payload)
+static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     int r;
 
@@ -309,19 +291,18 @@ static int _bf_parse_ipv4_addr(const struct bf_matcher *matcher, void *payload,
 
     bf_err(
         "\"%s %s\" expects an IPv4 address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255, not '%s' ",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_ipv4_addr(const struct bf_matcher *matcher)
+void _bf_print_ipv4_addr(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
     char str[INET4_ADDRSTRLEN];
 
-    if (inet_ntop(AF_INET, matcher->payload, str, INET4_ADDRSTRLEN))
+    if (inet_ntop(AF_INET, payload, str, INET4_ADDRSTRLEN))
         (void)fprintf(stdout, "%s", str);
     else
         (void)fprintf(stdout, "<failed to print IPv4 address>");
@@ -330,17 +311,14 @@ void _bf_print_ipv4_addr(const struct bf_matcher *matcher)
 #define BF_IPV4_NET_MAX_LEN                                                    \
     32 // 255.255.255.255/32, with nul char, round to **2
 
-static int _bf_parse_ipv4_net(const struct bf_matcher *matcher, void *payload,
-                              const char *raw_payload)
+static int _bf_parse_ipv4_net(enum bf_matcher_type type, enum bf_matcher_op op,
+                              void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
-    struct bf_matcher_ip4_addr *addr = payload;
+    struct bf_ip4_lpm_key *addr = payload;
     char buf[BF_IPV4_NET_MAX_LEN];
-    unsigned long mask;
-    char *strip;
-    char *strmask;
-    char *endptr;
+    char *strip, *strmask, *endptr;
     int r;
 
     bf_strncpy(buf, BF_IPV4_NET_MAX_LEN, raw_payload);
@@ -352,46 +330,41 @@ static int _bf_parse_ipv4_net(const struct bf_matcher *matcher, void *payload,
     if (!strip || !*strmask)
         goto err;
 
-    r = inet_pton(AF_INET, strip, &addr->addr);
+    r = inet_pton(AF_INET, strip, &addr->data);
     if (r != 1)
         goto err;
 
-    mask = strtoul(strmask, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || mask > 32)
+    addr->prefixlen = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || addr->prefixlen > 32)
         goto err;
-
-    addr->mask = htobe32(((uint32_t)~0) << (32 - mask));
 
     return 0;
 
 err:
     bf_err(
         "\"%s %s\" expects an IPv4 network address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255 followed by a subnet mask (e.g., \"124.24.12.5/30\"), not '%s' ",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_ipv4_net(const struct bf_matcher *matcher)
+void _bf_print_ipv4_net(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
     char str[INET4_ADDRSTRLEN];
-    struct bf_matcher_ip4_addr *addr =
-        (struct bf_matcher_ip4_addr *)matcher->payload;
-    uint32_t mask = be32toh(addr->mask);
+    const struct bf_ip4_lpm_key *addr = payload;
 
-    if (inet_ntop(AF_INET, &addr->addr, str, INET4_ADDRSTRLEN))
-        (void)fprintf(stdout, "%s/%u", str, 32 - __builtin_ctz(mask));
+    if (inet_ntop(AF_INET, &addr->data, str, INET4_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, addr->prefixlen);
     else
         (void)fprintf(stdout, "<failed to print IPv4 network>");
 }
 
-static int _bf_parse_ipv6_addr(const struct bf_matcher *matcher, void *payload,
-                               const char *raw_payload)
+static int _bf_parse_ipv6_addr(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     int r;
 
@@ -401,19 +374,18 @@ static int _bf_parse_ipv6_addr(const struct bf_matcher *matcher, void *payload,
 
     bf_err(
         "\"%s %s\" expects an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported), not '%s' ",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_ipv6_addr(const struct bf_matcher *matcher)
+void _bf_print_ipv6_addr(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
     char str[INET6_ADDRSTRLEN];
 
-    if (inet_ntop(AF_INET6, matcher->payload, str, INET6_ADDRSTRLEN))
+    if (inet_ntop(AF_INET6, payload, str, INET6_ADDRSTRLEN))
         (void)fprintf(stdout, "%s", str);
     else
         (void)fprintf(stdout, "<failed to print IPv6 address>");
@@ -421,17 +393,14 @@ void _bf_print_ipv6_addr(const struct bf_matcher *matcher)
 
 #define BF_IPV6_NET_MAX_LEN (INET6_ADDRSTRLEN + 4)
 
-static int _bf_parse_ipv6_net(const struct bf_matcher *matcher, void *payload,
-                              const char *raw_payload)
+static int _bf_parse_ipv6_net(enum bf_matcher_type type, enum bf_matcher_op op,
+                              void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
-    struct bf_matcher_ip6_addr *addr = payload;
+    struct bf_ip6_lpm_key *addr = payload;
     char buf[BF_IPV6_NET_MAX_LEN];
-    unsigned long mask;
-    char *strip;
-    char *strmask;
-    char *endptr;
+    char *strip, *strmask, *endptr;
     int r;
 
     bf_strncpy(buf, BF_IPV6_NET_MAX_LEN, raw_payload);
@@ -443,49 +412,41 @@ static int _bf_parse_ipv6_net(const struct bf_matcher *matcher, void *payload,
     if (!strip || !*strmask)
         goto err;
 
-    r = inet_pton(AF_INET6, strip, &addr->addr);
+    r = inet_pton(AF_INET6, strip, &addr->data);
     if (r != 1)
         goto err;
 
-    mask = strtoul(strmask, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || mask > 128)
+    addr->prefixlen = strtoul(strmask, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || addr->prefixlen > 128)
         goto err;
-
-    memset(addr->mask, 0xff, mask / 8);
-    if (mask % 8)
-        addr->mask[mask / 8] = 0xff << (8 - mask % 8) & 0xff;
 
     return 0;
 
 err:
     bf_err(
         "\"%s %s\" expects an IPv6 network address composed of 8 hexadecimal numbers (abbreviations are supported) followed by a subnet mask (e.g., \"2001:db8:85a3::/48\"), not '%s' ",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_ipv6_net(const struct bf_matcher *matcher)
+void _bf_print_ipv6_net(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    struct bf_matcher_ip6_addr *addr =
-        (struct bf_matcher_ip6_addr *)matcher->payload;
+    const struct bf_ip6_lpm_key *addr = payload;
     char str[INET6_ADDRSTRLEN];
-    uint32_t mask = 128 - __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask))) -
-                    __builtin_ctzl(be64toh(*(uint64_t *)(addr->mask + 8)));
 
-    if (inet_ntop(AF_INET6, addr->addr, str, INET6_ADDRSTRLEN))
-        (void)fprintf(stdout, "%s/%u", str, mask);
+    if (inet_ntop(AF_INET6, addr->data, str, INET6_ADDRSTRLEN))
+        (void)fprintf(stdout, "%s/%u", str, addr->prefixlen);
     else
         (void)fprintf(stdout, "<failed to print IPv6 address>");
 }
 
-static int _bf_parse_tcp_flags(const struct bf_matcher *matcher, void *payload,
-                               const char *raw_payload)
+static int _bf_parse_tcp_flags(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     _cleanup_free_ char *_raw_payload = NULL;
     char *tmp;
@@ -518,17 +479,16 @@ static int _bf_parse_tcp_flags(const struct bf_matcher *matcher, void *payload,
 err:
     bf_err(
         "\"%s %s\" expects a comma-separated list of one or more TCP flags (fin, syn, rst, psh, ack, urg, ece, or cwr), not '%s' ",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_tcp_flags(const struct bf_matcher *matcher)
+void _bf_print_tcp_flags(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    uint8_t flag = *(uint8_t *)matcher->payload;
+    uint8_t flag = *(uint8_t *)payload;
 
     for (uint32_t i = 0; i < _BF_TCP_MAX; ++i) {
         if (flag & (1 << i)) {
@@ -539,12 +499,12 @@ void _bf_print_tcp_flags(const struct bf_matcher *matcher)
     }
 }
 
-static int _bf_parse_icmp_type(const struct bf_matcher *matcher, void *payload,
-                               const char *raw_payload)
+static int _bf_parse_icmp_type(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
-    unsigned long type;
+    unsigned long icmptype;
     char *endptr;
     int r;
 
@@ -552,80 +512,79 @@ static int _bf_parse_icmp_type(const struct bf_matcher *matcher, void *payload,
     if (!r)
         return 0;
 
-    type = strtoul(raw_payload, &endptr, BF_BASE_10);
+    icmptype = strtoul(raw_payload, &endptr, BF_BASE_10);
 
-    if (*endptr == '\0' && type <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)type;
+    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)icmptype;
         return 0;
     }
 
-    type = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && type <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)type;
+    icmptype = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)icmptype;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects an ICMP type name (e.g. \"echo-reply\", case insensitive), or or a decimal or hexadecimal ICMP type value, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_icmp_type(const struct bf_matcher *matcher)
+void _bf_print_icmp_type(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    const char *type = bf_icmp_type_to_str(*(uint8_t *)matcher->payload);
+    const char *type = bf_icmp_type_to_str(*(uint8_t *)payload);
 
     if (type)
         (void)fprintf(stdout, "%s", type);
     else
-        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-static int _bf_parse_icmp_code(const struct bf_matcher *matcher, void *payload,
-                               const char *raw_payload)
+static int _bf_parse_icmp_code(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
     unsigned long code;
     char *endptr;
 
     code = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && code <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)code;
+        *(uint8_t *)payload = (uint8_t)code;
         return 0;
     }
 
     code = strtoul(raw_payload, &endptr, BF_BASE_16);
     if (*endptr == '\0' && code <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)code;
+        *(uint8_t *)payload = (uint8_t)code;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects a decimal or hexadecimal ICMP or ICMPv6 code value, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_icmp_code(const struct bf_matcher *matcher)
+void _bf_print_icmp_code(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+    (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-static int _bf_parse_icmpv6_type(const struct bf_matcher *matcher,
-                                 void *payload, const char *raw_payload)
+static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
+                                 enum bf_matcher_op op, void *payload,
+                                 const char *raw_payload)
 {
-    bf_assert(matcher && payload && raw_payload);
+    bf_assert(payload && raw_payload);
 
-    unsigned long type;
+    unsigned long icmptype;
     char *endptr;
     int r;
 
@@ -633,191 +592,445 @@ static int _bf_parse_icmpv6_type(const struct bf_matcher *matcher,
     if (!r)
         return 0;
 
-    type = strtoul(raw_payload, &endptr, BF_BASE_10);
+    icmptype = strtoul(raw_payload, &endptr, BF_BASE_10);
 
-    if (*endptr == '\0' && type <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)type;
+    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)icmptype;
         return 0;
     }
 
-    type = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && type <= UINT8_MAX) {
-        *(uint8_t *)matcher->payload = (uint8_t)type;
+    icmptype = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)icmptype;
         return 0;
     }
 
     bf_err(
         "\"%s %s\" expects an ICMPv6 type name (e.g. \"echo-reply\", case insensitive), or a decimal or hexadecimal ICMPv6 type value, not '%s'",
-        bf_matcher_type_to_str(matcher->type),
-        bf_matcher_op_to_str(matcher->op), raw_payload);
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
-void _bf_print_icmpv6_type(const struct bf_matcher *matcher)
+void _bf_print_icmpv6_type(const void *payload)
 {
-    bf_assert(matcher);
+    bf_assert(payload);
 
-    const char *type = bf_icmpv6_type_to_str(*(uint8_t *)matcher->payload);
+    const char *type = bf_icmpv6_type_to_str(*(uint8_t *)payload);
 
     if (type)
         (void)fprintf(stdout, "%s", type);
     else
-        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)matcher->payload);
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-static const struct bf_matcher_ops _bf_payload_ops[_BF_MATCHER_PAYLOAD_MAX] = {
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IFACE, 4, _bf_parse_iface,
-                   _bf_print_iface),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L3_PROTO, 2, _bf_parse_l3_proto,
-                   _bf_print_l3_proto),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PROTO, 1, _bf_parse_l4_proto,
-                   _bf_print_l4_proto),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PORT, 2, _bf_parse_l4_port,
-                   _bf_print_l4_port),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_L4_PORT_RANGE, 4, _bf_parse_l4_port_range,
-                   _bf_print_l4_port_range),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_PROBABILITY, 1, _bf_parse_probability,
-                   _bf_print_probability),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_ADDR, 4, _bf_parse_ipv4_addr,
-                   _bf_print_ipv4_addr),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV4_NET, 8, _bf_parse_ipv4_net,
-                   _bf_print_ipv4_net),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_ADDR, 16, _bf_parse_ipv6_addr,
-                   _bf_print_ipv6_addr),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_IPV6_NET, 32, _bf_parse_ipv6_net,
-                   _bf_print_ipv6_net),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_TCP_FLAGS, 1, _bf_parse_tcp_flags,
-                   _bf_print_tcp_flags),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMP_TYPE, 1, _bf_parse_icmp_type,
-                   _bf_print_icmp_type),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMP_CODE, 1, _bf_parse_icmp_code,
-                   _bf_print_icmp_code),
-    BF_PAYLOAD_OPS(BF_MATCHER_PAYLOAD_ICMPV6_TYPE, 1, _bf_parse_icmpv6_type,
-                   _bf_print_icmpv6_type),
+#define BF_MATCHER_OPS(op, payload_size, parse_cb, print_cb)                   \
+    [op] = {payload_size, parse_cb, print_cb}
+
+#define _BF_TCP_FLAGS_OFFSET 13
+
+static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
+    [BF_MATCHER_META_IFACE] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_iface, _bf_print_iface),
+                },
+        },
+    [BF_MATCHER_META_L3_PROTO] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l3_proto, _bf_print_l3_proto),
+                },
+        },
+    [BF_MATCHER_META_L4_PROTO] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                },
+        },
+    [BF_MATCHER_META_SPORT] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_META_DPORT] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_META_PROBABILITY] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_probability,
+                                   _bf_print_probability),
+                },
+        },
+    [BF_MATCHER_IP4_SADDR] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IP,
+            .hdr_payload_size = sizeof(uint32_t),
+            .hdr_payload_offset = offsetof(struct iphdr, saddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                },
+        },
+    [BF_MATCHER_IP4_DADDR] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IP,
+            .hdr_payload_size = sizeof(uint32_t),
+            .hdr_payload_offset = offsetof(struct iphdr, daddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
+                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
+                },
+        },
+    [BF_MATCHER_IP4_SNET] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IP,
+            .hdr_payload_size = sizeof(uint32_t),
+            .hdr_payload_offset = offsetof(struct iphdr, saddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                },
+        },
+    [BF_MATCHER_IP4_DNET] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IP,
+            .hdr_payload_size = sizeof(uint32_t),
+            .hdr_payload_offset = offsetof(struct iphdr, daddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip4_lpm_key),
+                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
+                },
+        },
+    [BF_MATCHER_IP4_PROTO] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IP,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct iphdr, protocol),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                },
+        },
+    [BF_MATCHER_IP6_SADDR] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(struct in6_addr),
+            .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                },
+        },
+    [BF_MATCHER_IP6_DADDR] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(struct in6_addr),
+            .hdr_payload_offset = offsetof(struct ipv6hdr, daddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct in6_addr),
+                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
+                },
+        },
+    [BF_MATCHER_IP6_SNET] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(struct in6_addr),
+            .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                },
+        },
+    [BF_MATCHER_IP6_DNET] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(struct in6_addr),
+            .hdr_payload_offset = offsetof(struct ipv6hdr, daddr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip6_lpm_key),
+                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
+                },
+        },
+    [BF_MATCHER_IP6_NEXTHDR] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct ipv6hdr, nexthdr),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                },
+        },
+    [BF_MATCHER_TCP_SPORT] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_TCP,
+            .hdr_payload_size = sizeof(uint16_t),
+            .hdr_payload_offset = offsetof(struct tcphdr, source),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_TCP_DPORT] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_TCP,
+            .hdr_payload_size = sizeof(uint16_t),
+            .hdr_payload_offset = offsetof(struct tcphdr, dest),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_TCP_FLAGS] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_TCP,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = _BF_TCP_FLAGS_OFFSET,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_tcp_flags, _bf_print_tcp_flags),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_tcp_flags, _bf_print_tcp_flags),
+                    BF_MATCHER_OPS(BF_MATCHER_ANY, sizeof(uint8_t),
+                                   _bf_parse_tcp_flags, _bf_print_tcp_flags),
+                    BF_MATCHER_OPS(BF_MATCHER_ALL, sizeof(uint8_t),
+                                   _bf_parse_tcp_flags, _bf_print_tcp_flags),
+                },
+        },
+    [BF_MATCHER_UDP_SPORT] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_UDP,
+            .hdr_payload_size = sizeof(uint16_t),
+            .hdr_payload_offset = offsetof(struct udphdr, source),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_UDP_DPORT] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_UDP,
+            .hdr_payload_size = sizeof(uint16_t),
+            .hdr_payload_offset = offsetof(struct udphdr, dest),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
+                                   _bf_parse_l4_port_range,
+                                   _bf_print_l4_port_range),
+                },
+        },
+    [BF_MATCHER_ICMP_TYPE] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_ICMP,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct icmphdr, type),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_icmp_type, _bf_print_icmp_type),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_icmp_type, _bf_print_icmp_type),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_icmp_type, _bf_print_icmp_type),
+                },
+        },
+    [BF_MATCHER_ICMP_CODE] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_ICMP,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct icmphdr, code),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                },
+        },
+    [BF_MATCHER_ICMPV6_TYPE] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_ICMPV6,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct icmp6hdr, icmp6_type),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_icmpv6_type,
+                                   _bf_print_icmpv6_type),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_icmpv6_type,
+                                   _bf_print_icmpv6_type),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_icmpv6_type,
+                                   _bf_print_icmpv6_type),
+                },
+        },
+    [BF_MATCHER_ICMPV6_CODE] =
+        {
+            .layer = BF_MATCHER_LAYER_4,
+            .hdr_id = IPPROTO_ICMPV6,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = offsetof(struct icmp6hdr, icmp6_code),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
+                                   _bf_parse_icmp_code, _bf_print_icmp_code),
+                },
+        },
 };
 
-#define BF_MATCHER_OPS(type, op, payload_type)                                 \
-    [type][op] = (&_bf_payload_ops[payload_type])
+const struct bf_matcher_meta *bf_matcher_get_meta(enum bf_matcher_type type)
+{
+    if (type < 0 || _BF_MATCHER_TYPE_MAX <= type)
+        return NULL;
+
+    return _bf_matcher_metas[type].layer == _BF_MATCHER_LAYER_UNDEFINED ?
+               NULL :
+               &_bf_matcher_metas[type];
+}
 
 const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
                                                 enum bf_matcher_op op)
 {
-    static const struct bf_matcher_ops
-        *_matcher_ops[_BF_MATCHER_TYPE_MAX][_BF_MATCHER_OP_MAX] = {
-            BF_MATCHER_OPS(BF_MATCHER_META_IFACE, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IFACE),
-            BF_MATCHER_OPS(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L3_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_META_L4_PROTO, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_PROBABILITY),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_DADDR, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV4_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV4_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV4_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV4_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV4_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_SADDR, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_DADDR, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV6_ADDR),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV6_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV6_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_IPV6_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_IPV6_NET),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PROTO),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_SPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY,
-                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
-            BF_MATCHER_OPS(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL,
-                           BF_MATCHER_PAYLOAD_TCP_FLAGS),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_SPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_L4_PORT),
-            BF_MATCHER_OPS(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
-                           BF_MATCHER_PAYLOAD_L4_PORT_RANGE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_ICMP_TYPE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_ICMP_TYPE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_ICMP_CODE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMP_CODE, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_ICMP_CODE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_ICMPV6_TYPE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_ICMPV6_TYPE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ,
-                           BF_MATCHER_PAYLOAD_ICMP_CODE),
-            BF_MATCHER_OPS(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_NE,
-                           BF_MATCHER_PAYLOAD_ICMP_CODE),
-        };
+    const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
 
-    return _matcher_ops[type][op];
+    if (!meta)
+        return NULL;
+
+    return meta->ops[op].ref_payload_size ? &meta->ops[op] : NULL;
 }
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
@@ -859,15 +1072,15 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
                         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op));
     }
 
-    _matcher = malloc(sizeof(*_matcher) + ops->payload_size);
+    _matcher = malloc(sizeof(*_matcher) + ops->ref_payload_size);
     if (!_matcher)
         return -ENOMEM;
 
     _matcher->type = type;
     _matcher->op = op;
-    _matcher->len = sizeof(*_matcher) + ops->payload_size;
+    _matcher->len = sizeof(*_matcher) + ops->ref_payload_size;
 
-    r = ops->parser_cb(_matcher, &_matcher->payload, payload);
+    r = ops->parse(_matcher->type, _matcher->op, &_matcher->payload, payload);
     if (r)
         return r;
 
@@ -992,12 +1205,11 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_TCP_FLAGS] = "tcp.flags",
     [BF_MATCHER_UDP_SPORT] = "udp.sport",
     [BF_MATCHER_UDP_DPORT] = "udp.dport",
-    [BF_MATCHER_SET_SRCIP6PORT] = "set.srcip6port",
-    [BF_MATCHER_SET_SRCIP6] = "set.srcip6",
     [BF_MATCHER_ICMP_TYPE] = "icmp.type",
     [BF_MATCHER_ICMP_CODE] = "icmp.code",
     [BF_MATCHER_ICMPV6_TYPE] = "icmpv6.type",
     [BF_MATCHER_ICMPV6_CODE] = "icmpv6.code",
+    [BF_MATCHER_SET] = "<set>",
 };
 
 static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,
@@ -1005,7 +1217,8 @@ static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,
 
 const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 {
-    bf_assert(0 <= type && type < _BF_MATCHER_TYPE_MAX);
+    if (type < 0 || _BF_MATCHER_TYPE_MAX <= type)
+        return "<invalid>";
 
     return _bf_matcher_type_strs[type];
 }

@@ -12,6 +12,7 @@
 
 struct bf_hookopts;
 struct bf_marsh;
+struct bf_matcher;
 struct bf_rule;
 
 #define _free_bf_chain_ __attribute__((cleanup(bf_chain_free)))
@@ -119,3 +120,14 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule);
+
+/**
+ * @brief Get the set used by a matcher.
+ *
+ * @param chain Chain to get the set from. Can't be NULL.
+ * @param matcher Matching filtering on a set. Can't be NULL.
+ * @return The set `matcher` filters on, or NULL if the set can't be found or
+ *         if `matcher->type` is not `BF_MATCHER_SET`.
+ */
+struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
+                                            const struct bf_matcher *matcher);

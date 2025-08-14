@@ -83,6 +83,11 @@ extern const char *strerrordesc_np(int errnum);
 #define BF_BASE_10 10
 #define BF_BASE_16 16
 
+#define _BF_ALIGNED(addr, mask) (((addr) & (mask)) == 0)
+#define BF_ALIGNED_64(addr) _BF_ALIGNED(addr, 0x07)
+#define BF_ALIGNED_32(addr) _BF_ALIGNED(addr, 0x03)
+#define BF_ALIGNED_16(addr) _BF_ALIGNED(addr, 0x01)
+
 /**
  * @brief Generate a bitflag from multiple values.
  *
@@ -117,6 +122,8 @@ extern const char *strerrordesc_np(int errnum);
 #ifndef bf_assert
 #define bf_assert(x) assert(x)
 #endif
+
+#define bf_static_assert(expr, msg) _Static_assert((expr), msg)
 
 #define BF_STR(s) _BF_STR(s)
 #define _BF_STR(s) #s
@@ -216,6 +223,35 @@ extern const char *strerrordesc_np(int errnum);
         __typeof__(b) _b = (b);                                                \
         _a > _b ? _a : _b;                                                     \
     })
+
+/**
+ * @brief Strip whitespace from the beginning of a string.
+ *
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_ltrim(char *str);
+
+/**
+ * @brief Strip whitespace from the end of a string.
+ *
+ * `str` will be modified to insert `\0` after the last non-whitespace
+ * character.
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_rtrim(char *str);
+
+/**
+ * @brief Strip whitespace from the beginning and the end of a string.
+ *
+ * `str` will be modified to insert `\0` after the last non-whitespace
+ * character.
+ *
+ * @param str String to trim. Can't be NULL.
+ * @return Trimmed version of `str`, as a pointer to a character of `str`.
+ */
+char *bf_trim(char *str);
 
 /**
  * Free a pointer and set it to NULL.

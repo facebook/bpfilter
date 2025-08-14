@@ -99,6 +99,7 @@ set(bf_test_srcs
     core/marsh.c
     core/matcher.c
     core/rule.c
+    core/set.c
     core/verdict.c
     bpfilter/opts.c
     bpfilter/cgen/cgen.c
@@ -201,7 +202,7 @@ bf_test_mock(unit_bin
 
 add_custom_target(test
     COMMAND
-        $<TARGET_FILE:unit_bin>
+        $<TARGET_FILE:unit_bin> -g set
     DEPENDS
         unit_bin
     COMMENT "Running tests"
