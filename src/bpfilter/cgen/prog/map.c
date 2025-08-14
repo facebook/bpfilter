@@ -30,9 +30,6 @@ static int _bf_map_new(struct bf_map **map, const char *name,
 
     _free_bf_map_ struct bf_map *_map = NULL;
 
-    if (type == BF_MAP_TYPE_SET)
-        return bf_err_r(-EINVAL, "BF_MAP_TYPE_SET is not supported by bf_map");
-
     if (name[0] == '\0')
         return bf_err_r(-EINVAL, "map name can't be empty");
 

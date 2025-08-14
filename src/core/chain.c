@@ -263,3 +263,18 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
 
     return bf_list_add_tail(&chain->rules, rule);
 }
+
+struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
+                                            const struct bf_matcher *matcher)
+{
+    bf_assert(chain && matcher);
+
+    uint32_t set_id;
+
+    if (matcher->type != BF_MATCHER_SET)
+        return NULL;
+
+    set_id = *(uint32_t *)matcher->payload;
+
+    return bf_list_get_at(&chain->sets, set_id);
+}
