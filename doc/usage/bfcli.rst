@@ -345,6 +345,7 @@ Rules are defined such as:
 
     rule
         [$MATCHER...]
+        [$SET...]
         [log link,internet,transport]
         [counter]
         $VERDICT
@@ -362,6 +363,45 @@ In a chain, as soon as a rule matches a packet, its verdict is applied. If the v
 
 Note ``CONTINUE`` means a packet can be counted more than once if multiple rules specify ``CONTINUE`` and ``counter``.
 
+Sets
+~~~~
+
+Sets defines a group of data of the same type. At runtime, the chain will check if the corresponding packet data is in the set, instead of checking against every single value from the set, which makes it much faster.
+
+In your ruleset, sets are defined as:
+
+.. code:: shell
+
+    rule
+        $KEY in { $ELEMENT_0; $ELEMENT_1 }
+        [...]
+
+    rule
+        $KEY in {
+            $ELEMENT_0
+            $ELEMENT_1
+        }
+        [...]
+
+With:
+  - ``$KEY``: the key of the same, the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])```. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component".
+  - ``$ELEMENT``: elements are the data to store in the set, each component of the key should have a corresponding value in each element. Components of an element are comma-separated, elements themselves are delimited by semicolon or new line.
+
+Here is an example:
+
+.. code:: shell
+
+    rule
+        (ip4.saddr, ip4.proto) in {
+            192.168.1.1, tcp
+            192.168.1.10, udp
+            # More can be added...
+        }
+        ACCEPT
+
+.. warning::
+
+    While the IPv4 and IPv6 ``snet`` and ``dnet`` matchers are supported in sets, they can be mixed with other matchers. A set key can be a single ``ip4.snet``, ``ip4.dnet``, ``ip6.snet``, ``ip6.dnet``, or a combination of non-network matchers.
 
 Matchers
 ~~~~~~~~
