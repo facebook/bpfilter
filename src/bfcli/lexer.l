@@ -21,6 +21,7 @@
 
 %s STATE_HOOK_OPTS
 %s STATE_LOG_OPTS
+%s STATE_MATCHER_SET
 %s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_L4_PROTO
@@ -64,6 +65,20 @@ log             { BEGIN(STATE_LOG_OPTS); return LOG; }
     [0-9a-zA-Z]+(,[0-9a-zA-Z]+)* {
         yylval.sval = strdup(yytext);
         return LOG_HEADERS;
+    }
+}
+
+    /* Sets */
+\(([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)([ \t\n\r\f\v]*,[ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+))*.*\) {
+    BEGIN(STATE_MATCHER_SET);
+    yylval.sval = strdup(yytext);
+    return SET_TYPE;
+}
+<STATE_MATCHER_SET>{
+    (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    \{[^}]*\} {
+        yylval.sval = strdup(yytext);
+        return SET_RAW_PAYLOAD;
     }
 }
 

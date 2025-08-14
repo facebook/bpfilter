@@ -835,14 +835,14 @@ Chain &Chain::repeat(const ::std::string &rule, ::std::size_t count)
 
 void Chain::insertRuleIPv4Set(unsigned int nIps)
 {
-    ::std::string rule = "rule ip4.saddr in {";
+    ::std::string rule = "rule (ip4.saddr) in {";
 
     for (unsigned int i = 0; i < nIps; ++i) {
         ::std::string ip;
 
         rule +=
-            ::std::format("{}.{}.{}.{}{}", (i >> 24), (i >> 16) & 0xff,
-                          (i >> 8) & 0xff, i & 0xff, i == nIps - 1 ? "" : ",");
+            ::std::format("{}.{}.{}.{};", (i >> 24), (i >> 16) & 0xff,
+                          (i >> 8) & 0xff, i & 0xff);
     }
 
     rule += "} DROP";
