@@ -142,6 +142,43 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->packets,
                   counter->bytes);
 
+    // Loop over named sets
+    bf_list_foreach (&chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+
+        if (!set->name)
+            continue;
+
+        (void)fprintf(stdout, "    set %s (", set->name);
+        for (size_t i = 0; i < set->n_comps; ++i) {
+            (void)fprintf(stdout, "%s", bf_matcher_type_to_str(set->key[i]));
+
+            if (i != set->n_comps - 1)
+                (void)fprintf(stdout, ", ");
+        }
+        (void)fprintf(stdout, ") in {\n");
+
+        bf_list_foreach (&set->elems, elem_node) {
+            uint32_t payload_idx = 0;
+            void *payload = bf_list_node_get_data(elem_node);
+
+            (void)fprintf(stdout, "        ");
+            for (size_t i = 0; i < set->n_comps; ++i) {
+                const struct bf_matcher_meta *meta =
+                    bf_matcher_get_meta(set->key[i]);
+
+                meta->ops[BF_MATCHER_IN].print(payload + payload_idx);
+                payload_idx += meta->ops[BF_MATCHER_IN].ref_payload_size;
+
+                if (i != set->n_comps - 1)
+                    (void)fprintf(stdout, ", ");
+            }
+            (void)fprintf(stdout, "\n");
+        }
+
+        (void)fprintf(stdout, "    }\n");
+    }
+
     // Loop over rules
     bf_list_foreach (&chain->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
@@ -164,28 +201,34 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                     if (i != set->n_comps - 1)
                         (void)fprintf(stdout, ", ");
                 }
-                (void)fprintf(stdout, ") in {\n");
 
-                bf_list_foreach (&set->elems, elem_node) {
-                    uint32_t payload_idx = 0;
-                    void *payload = bf_list_node_get_data(elem_node);
+                if (set->name) {
+                    (void)fprintf(stdout, ") in %s", set->name);
+                } else {
+                    (void)fprintf(stdout, ") in {\n");
 
-                    (void)fprintf(stdout, "            ");
-                    for (size_t i = 0; i < set->n_comps; ++i) {
-                        const struct bf_matcher_meta *meta =
-                            bf_matcher_get_meta(set->key[i]);
+                    bf_list_foreach (&set->elems, elem_node) {
+                        uint32_t payload_idx = 0;
+                        void *payload = bf_list_node_get_data(elem_node);
 
-                        meta->ops[BF_MATCHER_IN].print(payload + payload_idx);
-                        payload_idx +=
-                            meta->ops[BF_MATCHER_IN].ref_payload_size;
+                        (void)fprintf(stdout, "            ");
+                        for (size_t i = 0; i < set->n_comps; ++i) {
+                            const struct bf_matcher_meta *meta =
+                                bf_matcher_get_meta(set->key[i]);
 
-                        if (i != set->n_comps - 1)
-                            (void)fprintf(stdout, ", ");
+                            meta->ops[BF_MATCHER_IN].print(payload +
+                                                           payload_idx);
+                            payload_idx +=
+                                meta->ops[BF_MATCHER_IN].ref_payload_size;
+
+                            if (i != set->n_comps - 1)
+                                (void)fprintf(stdout, ", ");
+                        }
+                        (void)fprintf(stdout, "\n");
                     }
-                    (void)fprintf(stdout, "\n");
-                }
 
-                (void)fprintf(stdout, "        }");
+                    (void)fprintf(stdout, "        }");
+                }
             } else {
                 (void)fprintf(stdout, "        %s",
                               bf_matcher_type_to_str(matcher->type));

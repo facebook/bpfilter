@@ -74,6 +74,7 @@
 // Tokens
 %token CHAIN
 %token RULE
+%token SET
 %token LOG COUNTER
 %token <sval> LOG_HEADERS
 %token <sval> SET_TYPE
@@ -98,6 +99,9 @@
 
 %type <matcher_op> matcher_op
 
+%type <void> sets
+%type <void> set
+
 %type <list> matchers
 %destructor { bf_list_free(&$$); } matchers
 
@@ -118,12 +122,12 @@ chains          : chain { UNUSED($1); }
                 | chains chain { UNUSED($2); }
                 ;
 
-chain           : CHAIN STRING hook hookopts verdict rules
+chain           : CHAIN STRING hook hookopts verdict sets rules
                 {
                     _free_bf_chain_ struct bf_chain *chain = NULL;
                     _cleanup_free_ const char *name = $2;
                     _free_bf_hookopts_ struct bf_hookopts *hookopts = $4;
-                    _free_bf_list_ bf_list *rules = $6;
+                    _free_bf_list_ bf_list *rules = $7;
                     int r;
 
                     if ($5 >= _BF_TERMINAL_VERDICT_MAX)
@@ -186,6 +190,32 @@ hookopts        : %empty { $$ = NULL; }
                         bf_parse_err("failed to parse hook option");
 
                     $$ = TAKE_PTR(hookopts);
+                }
+                ;
+
+sets            : %empty { }
+                | sets set { }
+                ;
+set             : SET STRING SET_TYPE matcher_op SET_RAW_PAYLOAD
+                {
+                    _free_bf_set_ struct bf_set *set = NULL;
+                    _cleanup_free_ const char *name = $2;
+                    _cleanup_free_ const char *raw_key = $3;
+                    _cleanup_free_ const char *payload = $5;
+                    enum bf_matcher_op op = $4;
+                    int r;
+
+                    if (op != BF_MATCHER_IN)
+                        bf_parse_err("only the 'in' operator is supported for sets");
+
+                    r = bf_set_new_from_raw(&set, name, raw_key, payload);
+                    if (r)
+                        bf_parse_err("failed to create new set");
+
+                    if (bf_list_add_tail(&ruleset->sets, set) < 0)
+                        bf_parse_err("failed to insert rule into bf_list\n");
+
+                    TAKE_PTR(set);
                 }
                 ;
 
@@ -276,7 +306,7 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                     if (op != BF_MATCHER_IN)
                         bf_parse_err("only the 'in' operator is supported for sets");
 
-                    r = bf_set_new_from_raw(&set, raw_key, payload);
+                    r = bf_set_new_from_raw(&set, NULL, raw_key, payload);
                     if (r)
                         bf_parse_err("failed to create new set");
 
@@ -285,6 +315,46 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                         bf_parse_err("failed to add new set to the ruleset");
 
                      TAKE_PTR(set);
+
+                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
+                    if (r)
+                        bf_parse_err("failed to create a new matcher");
+
+                     $$ = TAKE_PTR(matcher);
+                }
+                | SET_TYPE matcher_op STRING
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _cleanup_free_ const char *raw_key = $1;
+                    _cleanup_free_ const char *name = $3;
+                     uint32_t set_id = 0;
+                    struct bf_set *found_set = NULL;
+                    _free_bf_set_ struct bf_set *test_key = NULL;
+                    int r;
+
+                    if ($2 != BF_MATCHER_IN)
+                        bf_parse_err("only the 'in' operator is supported for sets");
+
+                    r = bf_set_new_from_raw(&test_key, NULL, raw_key, "{}");
+                    if (r)
+                        bf_parse_err("failed to verify set key '%s'", raw_key);
+
+                    bf_list_foreach (&ruleset->sets, set_node) {
+                        struct bf_set *set = bf_list_node_get_data(set_node);
+
+                        if (bf_streq(set->name, name)) {
+                            found_set = set;
+                            break;
+                        }
+
+                        ++set_id;
+                    }
+
+                    if (!found_set)
+                        bf_parse_err("can't find set '%s'", name);
+
+                    if (found_set->n_comps != test_key->n_comps || memcmp(found_set->key, test_key->key, found_set->n_comps * sizeof(enum bf_matcher_type)))
+                        bf_parse_err("using named set '%s', but key doesn't match", name);
 
                     r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
                     if (r)

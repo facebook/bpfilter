@@ -43,6 +43,7 @@ int             (-|(0x))?[0-9a-zA-Z]+
 
 chain           { return CHAIN; }
 rule            { return RULE; }
+set             { return SET; }
 
     /* Keywords */
 counter         { return COUNTER; }
@@ -69,7 +70,7 @@ log             { BEGIN(STATE_LOG_OPTS); return LOG; }
 }
 
     /* Sets */
-\(([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)([ \t\n\r\f\v]*,[ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+))*.*\) {
+\([ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)([ \t\n\r\f\v]*,[ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+))*[ \t\n\r\f\v]*\) {
     BEGIN(STATE_MATCHER_SET);
     yylval.sval = strdup(yytext);
     return SET_TYPE;

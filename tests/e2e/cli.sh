@@ -357,6 +357,24 @@ fi
 
 WITH_TIMEOUT="timeout --signal INT --preserve-status .5"
 
+expect_ruleset_ok() {
+    local ruleset="$1"
+
+    CHAIN="chain xdp BF_HOOK_XDP ACCEPT ${ruleset}"
+
+    expect_success "valid ruleset '${ruleset}'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"${CHAIN}\"
+}
+
+expect_ruleset_nok() {
+    local ruleset="$1"
+
+    CHAIN="chain xdp BF_HOOK_XDP ACCEPT ${ruleset}"
+
+    expect_failure "invalid ruleset '${ruleset}'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"${CHAIN}\"
+}
+
 expect_matcher_ok() {
     local matcher="$1"
 
@@ -824,6 +842,18 @@ suite_matcher_set() {
         3, echo-reply;
         2, echo-request
     }"
+    expect_matcher_ok "(icmpv6.code, icmpv6.type   ) in {
+        3, echo-reply;
+        2, echo-request
+    }"
+    expect_matcher_ok "(icmpv6.code   , icmpv6.type   ) in {
+        3, echo-reply;
+        2, echo-request
+    }"
+    expect_matcher_ok "(  icmpv6.code,      icmpv6.type   ) in {
+        3, echo-reply;
+        2, echo-request
+    }"
 
     expect_matcher_nok "(ip4.snet, ip4.dnet) in {
         192.168.1.1/24, 192.167.1.1/24;
@@ -844,6 +874,43 @@ suite_matcher_set() {
     expect_matcher_nok "(ip4.saddr, icmp.code) in {192.168.1.1,41,192.168.1.1,42}"
 }
 with_daemon suite_matcher_set
+
+suite_matcher_named_set() {
+    log "[SUITE] matcher: named set"
+    expect_ruleset_ok "
+        set myset (ip4.saddr) in {
+            192.168.1.1;
+            192.168.1.2
+        }
+        rule
+            (ip4.saddr) in myset
+            counter
+            ACCEPT
+    "
+    expect_ruleset_ok "
+        set myset (ip4.saddr, ip4.proto) in {
+            192.168.1.1, tcp;
+            192.168.1.2, udp
+        }
+        rule
+            (ip4.saddr, ip4.proto) in myset
+            counter
+            ACCEPT
+    "
+
+    expect_ruleset_nok "set myset (ip4.saddr) eq { 192.168.1.1 }"
+    expect_ruleset_nok "set myset (ip4.saddr, meta.ifindex) in { 192.168.1.1 }"
+    expect_ruleset_nok "set myset (ip4.saddr, ip4.proto) in { 192.168.1.1 }"
+    expect_ruleset_nok "
+        set myset (ip4.saddr) in { 192.168.1.1 }
+        rule (ip4.daddr) in myset
+    "
+    expect_ruleset_nok "
+        set myset (ip4.saddr) in { 192.168.1.1 }
+        rule (ip4.daddr) in my_set
+    "
+}
+with_daemon suite_matcher_named_set
 
 suite_matcher_meta() {
     log "[SUITE] matcher: meta.iface"
