@@ -45,6 +45,9 @@ struct bf_marsh;
  */
 struct bf_set
 {
+    /** Name of the set. If NULL, the set is anonymous. */
+    const char *name;
+
     /** Key of the set. Can't contain more than `BF_SET_MAX_N_COMPS` types. */
     enum bf_matcher_type key[BF_SET_MAX_N_COMPS];
 
@@ -67,25 +70,30 @@ struct bf_set
  * @brief Allocate and initialise a new set.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
+ * @param name Name of the set, can be used to identify it. If NULL, the set
+ *        is anonymous.
  * @param key Key of the set, as an array of `bf_matcher_type`. Not all the
  *        matcher types can be used as set key components. Can't be NULL.
  * @param n_comps Number of components in `key`.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_set_new(struct bf_set **set, enum bf_matcher_type *key, size_t n_comps);
+int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
+               size_t n_comps);
 
 /**
  * @brief Allocate and initialise a new set from a raw key and payload values.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
+ * @param name Name of the set, can be used to identify it. If NULL, the set
+ *        is anonymous.
  * @param raw_key Set key, as a string of comma-separated matcher types enclosed
  *        in parentheses. Can't be NULL.
  * @param raw_payload Set payload, to parse according to `raw_key`. Can't be
  *        NULL.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_set_new_from_raw(struct bf_set **set, const char *raw_key,
-                        const char *raw_payload);
+int bf_set_new_from_raw(struct bf_set **set, const char *name,
+                        const char *raw_key, const char *raw_payload);
 
 int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh);
 void bf_set_free(struct bf_set **set);

@@ -54,7 +54,7 @@ struct bf_set *bft_set_get(enum bf_matcher_type *key, size_t n_comps,
     _free_bf_set_ struct bf_set *set = NULL;
     int r;
 
-    r = bf_set_new(&set, key, n_comps);
+    r = bf_set_new(&set, NULL, key, n_comps);
     if (r < 0) {
         bf_err_r(r, "failed to create a new test set");
         return NULL;

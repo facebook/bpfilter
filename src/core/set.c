@@ -22,7 +22,8 @@
     (BF_FLAGS(BF_MATCHER_IP4_SNET, BF_MATCHER_IP4_DNET, BF_MATCHER_IP6_SNET,   \
               BF_MATCHER_IP6_DNET))
 
-int bf_set_new(struct bf_set **set, enum bf_matcher_type *key, size_t n_comps)
+int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
+               size_t n_comps)
 {
     bf_assert(set && key);
 
@@ -44,6 +45,13 @@ int bf_set_new(struct bf_set **set, enum bf_matcher_type *key, size_t n_comps)
     _set = malloc(sizeof(*_set));
     if (!_set)
         return -ENOMEM;
+
+    _set->name = NULL;
+    if (name) {
+        _set->name = strdup(name);
+        if (!_set->name)
+            return bf_err_r(-ENOMEM, "failed to allocate memory for set name");
+    }
 
     memcpy(&(_set)->key, key, n_comps * sizeof(enum bf_matcher_type));
     _set->n_comps = n_comps;
@@ -202,8 +210,8 @@ static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
     return 0;
 }
 
-int bf_set_new_from_raw(struct bf_set **set, const char *raw_key,
-                        const char *raw_payload)
+int bf_set_new_from_raw(struct bf_set **set, const char *name,
+                        const char *raw_key, const char *raw_payload)
 {
     bf_assert(set && raw_key && raw_payload);
 
@@ -218,7 +226,7 @@ int bf_set_new_from_raw(struct bf_set **set, const char *raw_key,
     if (r)
         return bf_err_r(r, "failed to parse set key '%s'", raw_key);
 
-    r = bf_set_new(&_set, key, n_comps);
+    r = bf_set_new(&_set, name, key, n_comps);
     if (r)
         return r;
 
@@ -255,8 +263,14 @@ int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh)
     _free_bf_set_ struct bf_set *_set = NULL;
     enum bf_matcher_type key[BF_SET_MAX_N_COMPS];
     struct bf_marsh *child = NULL;
+    const char *name = NULL;
     size_t n_comps;
     int r;
+
+    if (!(child = bf_marsh_next_child(marsh, child)))
+        return -EINVAL;
+    if (!bf_marsh_is_empty(child))
+        name = child->data;
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -266,7 +280,7 @@ int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh)
         return -EINVAL;
     memcpy(key, child->data, n_comps * sizeof(enum bf_matcher_type));
 
-    r = bf_set_new(&_set, key, n_comps);
+    r = bf_set_new(&_set, name, key, n_comps);
     if (r < 0)
         return r;
 
@@ -302,6 +316,7 @@ void bf_set_free(struct bf_set **set)
         return;
 
     bf_list_clean(&(*set)->elems);
+    freep((void *)&(*set)->name);
     freep((void *)set);
 }
 
@@ -315,6 +330,11 @@ int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
     int r;
 
     r = bf_marsh_new(&_marsh, NULL, 0);
+    if (r < 0)
+        return r;
+
+    r = bf_marsh_add_child_raw(&_marsh, set->name,
+                               set->name ? strlen(set->name) + 1 : 0);
     if (r < 0)
         return r;
 
@@ -359,6 +379,7 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     DUMP(prefix, "struct bf_set at %p", set);
     bf_dump_prefix_push(prefix);
 
+    DUMP(prefix, "name: %s", set->name ?: "<anonymous>");
     DUMP(prefix, "key: bf_matcher_type[%zu]", set->n_comps);
     bf_dump_prefix_push(prefix);
     for (size_t i = 0; i < set->n_comps; ++i) {
