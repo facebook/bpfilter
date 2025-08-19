@@ -368,9 +368,18 @@ Sets
 
 Sets defines a group of data of the same type. At runtime, the chain will check if the corresponding packet data is in the set, instead of checking against every single value from the set, which makes it much faster.
 
-In your ruleset, sets are defined as:
+There are multiple ways to define sets in your ruleset. bpfilter supports named and anonymous sets:
 
 .. code:: shell
+
+    set $NAME $KEY in {
+        $ELEMENT_0;
+        $ELEMENT_1
+    }
+
+    rule
+        $KEY in $NAME
+        [...]
 
     rule
         $KEY in { $ELEMENT_0; $ELEMENT_1 }
@@ -384,12 +393,20 @@ In your ruleset, sets are defined as:
         [...]
 
 With:
+  - ``$NAME``: name of the set, for named sets. Allows users to define a set at the beginning of the ruleset, then use it in multiple rules. Sets defined directly in a rule are anonymous, they can't be reused in a different rule. When using a named set, the key used in the rule to refer to the set must be the same as the key used to define the set.
   - ``$KEY``: the key of the same, the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])```. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component".
   - ``$ELEMENT``: elements are the data to store in the set, each component of the key should have a corresponding value in each element. Components of an element are comma-separated, elements themselves are delimited by semicolon or new line.
 
 Here is an example:
 
 .. code:: shell
+
+    set dns (ip4.saddr) in { 1.1.1.1; 1.0.0.1 }
+
+    rule
+        (ip4.saddr) in dns
+        counter
+        ACCEPT
 
     rule
         (ip4.saddr, ip4.proto) in {
