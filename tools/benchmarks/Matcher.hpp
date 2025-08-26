@@ -9,7 +9,7 @@
 #include <vector>
 
 extern "C" {
-    #include "core/matcher.h"
+    #include <bpfilter/matcher.h>
 }
 
 namespace bf {

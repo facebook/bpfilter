@@ -9,12 +9,12 @@
 #include <stdexcept>
 #include <vector>
 #include <bitset>
-#include "core/Matcher.hpp"
+#include "Matcher.hpp"
 
 extern "C" {
-    #include "core/rule.h"
-    #include "core/runtime.h"
-    #include "core/verdict.h"
+    #include <bpfilter/rule.h>
+    #include <bpfilter/runtime.h>
+    #include <bpfilter/verdict.h>
 }
 
 namespace bf {

@@ -11,8 +11,8 @@
 #include <vector>
 
 extern "C" {
-    #include "core/set.h"
-    #include "core/matcher.h"
+    #include <bpfilter/set.h>
+    #include <bpfilter/matcher.h>
 }
 
 namespace bf {
@@ -50,7 +50,7 @@ public:
     [[nodiscard]] std::unique_ptr<bf_set, deleter> get() const {
         struct bf_set *set;
 
-        int r = bf_set_new(&set, const_cast<bf_matcher_type *>(_key.data()), _key.size());
+        int r = bf_set_new(&set, NULL, const_cast<bf_matcher_type *>(_key.data()), _key.size());
         if (r != 0)
             throw std::runtime_error("failed to create a new bf_set");
 
