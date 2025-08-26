@@ -9,13 +9,13 @@
 #include <vector>
 
 extern "C" {
-    #include "core/chain.h"
-    #include "core/verdict.h"
-    #include "core/hook.h"
+    #include <bpfilter/chain.h>
+    #include <bpfilter/verdict.h>
+    #include <bpfilter/hook.h>
 }
 
-#include "core/Rule.hpp"
-#include "core/Set.hpp"
+#include "Rule.hpp"
+#include "Set.hpp"
 
 namespace bf {
 
