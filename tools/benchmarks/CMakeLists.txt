@@ -11,6 +11,10 @@ pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 add_executable(benchmark_bin EXCLUDE_FROM_ALL
     main.cpp
     benchmark.cpp benchmark.hpp
+    Matcher.hpp
+    Rule.hpp
+    Set.hpp
+    Chain.hpp
 )
 
 target_compile_options(benchmark_bin
@@ -44,10 +48,10 @@ add_custom_target(benchmark
                 --srcdir ${CMAKE_SOURCE_DIR}
                 --outfile ${CMAKE_BINARY_DIR}/benchmarks/{gitrev}.json
     COMMAND
-        ${CMAKE_CURRENT_SOURCE_DIR}/benchreport 
-            --sources ${CMAKE_SOURCE_DIR} 
-            --results ${CMAKE_BINARY_DIR}/benchmarks 
-            --template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template 
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchreport
+            --sources ${CMAKE_SOURCE_DIR}
+            --results ${CMAKE_BINARY_DIR}/benchmarks
+            --template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
             --output ${CMAKE_BINARY_DIR}/benchmarks/index.html
     COMMAND
         cp ${CMAKE_BINARY_DIR}/.benchmarks_report.d.full ${CMAKE_BINARY_DIR}/.benchmarks_report.d
