@@ -14,6 +14,7 @@
 struct bf_hookopts;
 struct bf_matcher;
 struct bf_rule;
+struct bf_set;
 
 #define _free_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 
@@ -121,6 +122,18 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
  * @return 0 on success, or a negative errno value on error.
  */
 int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule);
+
+/**
+ * @brief Insert a set into a chain.
+ *
+ * The chain will own the set and is responsible for freeing it. Once inserted,
+ * its index in the chain can be used in a rule's matcher.
+ *
+ * @param chain Chain to insert the rule into. Can't be NULL.
+ * @param set Set to insert into the chain. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set);
 
 /**
  * @brief Get the set used by a matcher.
