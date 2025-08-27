@@ -84,6 +84,13 @@ The example below will create an empty chain with a default ``ACCEPT`` policy.
         bft_e2e_test(chain, BF_VERDICT_ACCEPT, pkt_local_ip6_tcp);
     }
 
+
+Build tests
+-----------
+
+Build tests are designed to validate bpfilter integration to other projects. By including and linking libbpfilter and core module to dummy C and C++ source files, and building those files using strict compiler flags, we ensure bpfilter doesn't rely on compiler extensions or exposes non standard features.
+
+
 Integration tests
 -----------------
 

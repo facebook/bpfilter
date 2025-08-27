@@ -59,10 +59,5 @@ add_custom_target(e2e
                 --bpfilter $<TARGET_FILE:bpfilter>
                 --bfcli $<TARGET_FILE:bfcli>
                 --setuserns $<TARGET_FILE:setuserns_bin>
-    DEPENDS
-        bpfilter
-        bfcli
-        e2e_bin
-        setuserns_bin
     COMMENT "Running end-to-end tests"
 )

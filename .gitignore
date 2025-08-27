@@ -1,5 +1,5 @@
 # Usual build folder
-build/
+/build/
 # VSCode configuration folder
 .vscode
 # Python cache

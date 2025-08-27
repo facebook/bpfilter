@@ -200,12 +200,9 @@ bf_test_mock(unit_bin
         write
 )
 
-add_custom_target(test
-    COMMAND
-        $<TARGET_FILE:unit_bin>
-    DEPENDS
-        unit_bin
-    COMMENT "Running tests"
+add_custom_target(unit
+    COMMAND $<TARGET_FILE:unit_bin>
+    COMMENT "Running unit tests"
 )
 
 if (NOT ${NO_DOCS})
@@ -217,7 +214,9 @@ if (NOT ${NO_DOCS})
         set(N 1)
     endif()
 
-    add_custom_command(TARGET test
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output/tests)
+
+    add_custom_command(TARGET unit
         POST_BUILD
         COMMAND
             ${CMAKE_COMMAND}
@@ -242,6 +241,7 @@ if (NOT ${NO_DOCS})
         COMMAND
             ${LCOV_BIN}
                 --summary ${CMAKE_BINARY_DIR}/output/tests/lcov.out
+        BYPRODUCTS ${CMAKE_BINARY_DIR}/output/tests/lcov.out
         COMMENT "Generate the lcov.out summary file"
     )
 endif ()
