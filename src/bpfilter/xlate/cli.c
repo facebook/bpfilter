@@ -26,7 +26,7 @@
 
 static int _bf_cli_setup(void);
 static int _bf_cli_teardown(void);
-static int _bf_cli_request_handler(struct bf_request *request,
+static int _bf_cli_request_handler(const struct bf_request *request,
                                    struct bf_response **response);
 static int _bf_cli_marsh(struct bf_marsh **marsh);
 static int _bf_cli_unmarsh(struct bf_marsh *marsh);
@@ -583,7 +583,7 @@ int _bf_cli_chain_flush(const struct bf_request *request,
     return bf_ctx_delete_cgen(cgen, true);
 }
 
-static int _bf_cli_request_handler(struct bf_request *request,
+static int _bf_cli_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
     int r;
