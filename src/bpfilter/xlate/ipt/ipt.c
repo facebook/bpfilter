@@ -710,7 +710,7 @@ static int _bf_ipt_set_counters_handler(struct xt_counters_info *counters,
     return 0;
 }
 
-int _bf_ipt_get_info_handler(struct bf_request *request,
+int _bf_ipt_get_info_handler(const struct bf_request *request,
                              struct bf_response **response)
 {
     _cleanup_free_ struct ipt_replace *replace = NULL;
@@ -746,7 +746,7 @@ int _bf_ipt_get_info_handler(struct bf_request *request,
  * @param response
  * @return 0 on success, negative errno value on failure.
  */
-int _bf_ipt_get_entries_handler(struct bf_request *request,
+int _bf_ipt_get_entries_handler(const struct bf_request *request,
                                 struct bf_response **response)
 {
     _cleanup_free_ struct ipt_replace *replace = NULL;
