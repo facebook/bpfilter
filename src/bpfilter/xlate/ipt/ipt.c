@@ -804,7 +804,7 @@ static int _bf_ipt_teardown(void)
  * @param response
  * @return
  */
-static int _bf_ipt_request_handler(struct bf_request *request,
+static int _bf_ipt_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
     int r;
