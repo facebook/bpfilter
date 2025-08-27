@@ -96,7 +96,7 @@ The usual CMake options are allowed (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_
 A full configuration (without any part disabled) will provide the following targets:
 
 - ``core``, ``bpfilter``, ``libbpfilter``, ``bfcli``: the ``bpfilter`` binaries.
-- ``test``, ``e2e``, ``integration``: the test suits. See :doc:`tests` for more information.
+- ``test``: run all the tests. This command will run ``unit``, ``e2e`` and ``build`` targets. See :doc:`tests` for more information.
 - ``check``: run ``clang-tidy`` and ``clang-format`` against the source files.
 - ``benchmarks``: run the benchmarks on ``bpfilter``.
 

@@ -10,7 +10,7 @@ endif ()
 project(bpfilter
     VERSION ${DEFAULT_PROJECT_VERSION}
     DESCRIPTION "BPF-based packet filtering framework"
-    LANGUAGES C
+    LANGUAGES C CXX
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake")
@@ -84,10 +84,7 @@ if (NOT ${NO_DOCS})
 endif ()
 
 if (NOT ${NO_TESTS})
-    add_subdirectory(tests/harness)
-    add_subdirectory(tests/e2e)
-    add_subdirectory(tests/unit)
-    add_subdirectory(tests/integration)
+    add_subdirectory(tests)
 endif ()
 
 if (NOT ${NO_CHECKS})
