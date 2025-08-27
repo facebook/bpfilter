@@ -196,7 +196,7 @@ struct bf_matcher
     /// Total matcher size (including payload).
     size_t len;
     /// Payload to match the packet against (if any).
-    uint8_t payload[0];
+    uint8_t payload[];
 };
 
 /**
