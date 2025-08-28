@@ -20,7 +20,7 @@ int bf_response_new_raw(struct bf_response **response, size_t data_len)
     if (!*response)
         return -ENOMEM;
 
-    (*response)->type = BF_RES_SUCCESS;
+    (*response)->status = 0;
 
     return 0;
 }
@@ -37,7 +37,7 @@ int bf_response_new_success(struct bf_response **response, const char *data,
     if (!_response)
         return -ENOMEM;
 
-    _response->type = BF_RES_SUCCESS;
+    _response->status = 0;
     _response->data_len = data_len;
     bf_memcpy(_response->data, data, data_len);
 
@@ -56,8 +56,7 @@ int bf_response_new_failure(struct bf_response **response, int error)
     if (!_response)
         return -ENOMEM;
 
-    _response->type = BF_RES_FAILURE;
-    _response->error = error;
+    _response->status = error;
 
     *response = TAKE_PTR(_response);
 

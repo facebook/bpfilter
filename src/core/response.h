@@ -12,48 +12,18 @@
 #define _free_bf_response_ __attribute__((cleanup(bf_response_free)))
 
 /**
- * @enum bf_response_type
- *
- * Type of response received from the daemon.
- */
-enum bf_response_type
-{
-    BF_RES_SUCCESS,
-    BF_RES_FAILURE,
-    _BF_RES_MAX
-};
-
-/**
- * @struct bf_response
- *
- * Response received from the daemon.
- *
- * @var bf_response::type
- *  Type of the response: success or failure.
- * @var bf_response::data_len
- *  Length of the data in the response.
- * @var bf_response::data
- *  Data in the response.
- * @var bf_response::error
- *  Error code.
+ * @brief Response message sent from the daemon to the client.
  */
 struct bf_response
 {
-    enum bf_response_type type;
+    /** Response status: 0 on success, or a negative error value on failure. */
+    int status;
 
-    union
-    {
-        struct
-        {
-            size_t data_len;
-            char data[];
-        };
+    /** Number of bytes stored in `data`. */
+    size_t data_len;
 
-        struct
-        {
-            int error;
-        };
-    };
+    /** Data carried by the response. */
+    char data[];
 };
 
 /**
@@ -62,7 +32,7 @@ struct bf_response
  * Space will be allocated in the response for @p data_len bytes of data, but
  * no data will be copied, nor will the response's data be initialized.
  *
- * The response's type will be set to BF_RES_SUCCESS.
+ * The response's status will be set to 0.
  *
  * @param response Pointer to the response to allocate. Must be non-NULL.
  * @param data_len Size of the data to allocate.
@@ -120,6 +90,5 @@ static inline size_t bf_response_size(const struct bf_response *response)
 {
     bf_assert(response);
 
-    return sizeof(struct bf_response) +
-           (response->type == BF_RES_SUCCESS ? response->data_len : 0);
+    return sizeof(*response) + response->data_len;
 }

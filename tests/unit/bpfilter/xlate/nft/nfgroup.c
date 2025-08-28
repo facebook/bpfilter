@@ -134,7 +134,7 @@ Test(nfgroup, to_response)
         assert_int_equal(bf_nfgroup_new(&gp), 0);
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
         assert_non_null(res);
-        assert_int_equal(res->type, BF_RES_SUCCESS);
+        assert_int_equal(res->status, 0);
         assert_int_equal(res->data_len, done_msg_len);
     }
 
@@ -148,7 +148,7 @@ Test(nfgroup, to_response)
 
         assert_int_equal(bf_nfgroup_to_response(gp, &res), 0);
         assert_non_null(res);
-        assert_int_equal(res->type, BF_RES_SUCCESS);
+        assert_int_equal(res->status, 0);
         assert_int_equal(res->data_len, len + done_msg_len);
 
         struct nlmsghdr *last =

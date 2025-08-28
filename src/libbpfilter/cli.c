@@ -42,8 +42,8 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
-    if (response->type == BF_RES_FAILURE)
-        return response->error;
+    if (response->status != 0)
+        return response->status;
 
     if (response->data_len == 0)
         return 0;
@@ -144,7 +144,7 @@ int bf_ruleset_flush(void)
     if (r)
         return bf_err_r(r, "failed to send a ruleset flush request");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
@@ -215,7 +215,7 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
@@ -264,7 +264,7 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
@@ -298,8 +298,8 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
-    if (response->type == BF_RES_FAILURE)
-        return response->error;
+    if (response->status != 0)
+        return response->status;
 
     marsh = (struct bf_marsh *)response->data;
     if (bf_marsh_size(marsh) != response->data_len) {
@@ -377,8 +377,8 @@ int bf_chain_logs_fd(const char *name)
     if (fd < 0)
         return bf_err_r(fd, "failed to request logs FD from the daemon");
 
-    if (response->type == BF_RES_FAILURE)
-        return bf_err_r(response->error, "BF_REQ_CHAIN_LOGS failed");
+    if (response->status != 0)
+        return bf_err_r(response->status, "BF_REQ_CHAIN_LOGS failed");
 
     return TAKE_FD(fd);
 }
@@ -417,7 +417,7 @@ int bf_chain_load(struct bf_chain *chain)
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
@@ -458,7 +458,7 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
     if (r)
         return bf_err_r(r, "bf_chain_attach: failed to send request");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_chain_update(const struct bf_chain *chain)
@@ -492,7 +492,7 @@ int bf_chain_update(const struct bf_chain *chain)
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to send request");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_chain_flush(const char *name)
@@ -525,5 +525,5 @@ int bf_chain_flush(const char *name)
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
