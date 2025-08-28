@@ -33,7 +33,7 @@ int bf_nft_send(const void *data, size_t len)
     if (r < 0)
         return r;
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
@@ -59,8 +59,8 @@ int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
     if (r < 0)
         return r;
 
-    if (response->type == BF_RES_FAILURE)
-        return response->error;
+    if (response->status != 0)
+        return response->status;
 
     // The response should be a netlink message
     if (response->data_len < NLMSG_HDRLEN)

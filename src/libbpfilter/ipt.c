@@ -64,7 +64,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
     if (r < 0)
         return r;
 
-    if (response->type == BF_RES_SUCCESS) {
+    if (response->status == 0) {
         if (response->data_len != request->data_len) {
             return bf_err_r(EINVAL,
                             "bpfilter: response size is %lu, expected %lu",
@@ -74,7 +74,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
         memcpy(ipt_replace, response->data, response->data_len);
     }
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_ipt_add_counters(struct xt_counters_info *counters)
@@ -96,7 +96,7 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
     if (r < 0)
         return r;
 
-    if (response->type == BF_RES_SUCCESS) {
+    if (response->status == 0) {
         if (response->data_len != request->data_len) {
             return bf_err_r(EINVAL,
                             "bpfilter: response size is %lu, expected %lu",
@@ -106,7 +106,7 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
         memcpy(counters, response->data, response->data_len);
     }
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_ipt_get_info(struct ipt_getinfo *info)
@@ -129,7 +129,7 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
     if (r < 0)
         return r;
 
-    if (response->type == BF_RES_SUCCESS) {
+    if (response->status == 0) {
         if (response->data_len != request->data_len) {
             return bf_err_r(EINVAL,
                             "bpfilter: response size is %lu, expected %lu",
@@ -139,7 +139,7 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
         memcpy(info, response->data, response->data_len);
     }
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }
 
 int bf_ipt_get_entries(struct ipt_get_entries *entries)
@@ -162,7 +162,7 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
     if (r < 0)
         return r;
 
-    if (response->type == BF_RES_SUCCESS) {
+    if (response->status == 0) {
         if (response->data_len != request->data_len) {
             return bf_err_r(EINVAL,
                             "bpfilter: response size is %lu, expected %lu",
@@ -172,5 +172,5 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
         memcpy(entries, response->data, response->data_len);
     }
 
-    return response->type == BF_RES_FAILURE ? response->error : 0;
+    return response->status;
 }

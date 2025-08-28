@@ -185,7 +185,7 @@ int bf_nfgroup_to_response(const struct bf_nfgroup *group,
     if (r < 0)
         return r;
 
-    _resp->type = BF_RES_SUCCESS;
+    _resp->status = 0;
     _resp->data_len = size;
     payload = _resp->data;
 
