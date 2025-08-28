@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 extern const char *strerrordesc_np(int errnum);
 
