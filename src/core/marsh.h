@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/helper.h"
 
@@ -99,7 +100,8 @@ static inline bool bf_marsh_child_is_valid(const struct bf_marsh *marsh,
 
     /* Child's data_len field must be within the parent bf_marsh. This check
      * is required to safely access child->data_len. */
-    if ((void *)child + sizeof(struct bf_marsh) > bf_marsh_end(marsh))
+    if ((uintptr_t)child + sizeof(struct bf_marsh) >
+        (uintptr_t)bf_marsh_end(marsh))
         return false;
 
     // Child's data must be within the parent bf_marsh.
