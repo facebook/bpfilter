@@ -6,6 +6,7 @@
 #include "bpfilter/cgen/prog/link.h"
 
 #include <linux/bpf.h>
+#include <linux/if_link.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -62,7 +63,7 @@ int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    memcpy(&_link->name, child->data, BPF_OBJ_NAME_LEN);
+    memcpy(&_link->name, bf_marsh_data(child), BPF_OBJ_NAME_LEN);
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
@@ -156,194 +157,81 @@ void bf_link_dump(const struct bf_link *link, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-static int _bf_link_attach_xdp(struct bf_link *link, enum bf_hook hook,
-                               const struct bf_hookopts *hookopts, int prog_fd)
-{
-    union bpf_attr attr;
-    int r;
-
-    UNUSED(hook);
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.target_fd = hookopts->ifindex;
-    attr.link_create.attach_type = BPF_XDP;
-    attr.link_create.flags = BF_XDP_MODE_SKB;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    link->fd = r;
-
-    return 0;
-}
-
-static int _bf_link_attach_tc(struct bf_link *link, enum bf_hook hook,
-                              const struct bf_hookopts *hookopts, int prog_fd)
-{
-    union bpf_attr attr;
-    int r;
-
-    UNUSED(hook);
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.target_fd = hookopts->ifindex;
-    attr.link_create.attach_type = bf_hook_to_bpf_attach_type(hook);
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    link->fd = r;
-
-    return 0;
-}
-
-static int _bf_link_attach_nf(struct bf_link *link, enum bf_hook hook,
-                              const struct bf_hookopts *hookopts, int prog_fd)
-{
-    union bpf_attr attr;
-    int r;
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.attach_type = BPF_NETFILTER;
-    attr.link_create.netfilter.pf = hookopts->family;
-    attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
-    attr.link_create.netfilter.priority = hookopts->priorities[0];
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    link->fd = r;
-
-    return 0;
-}
-
-static int _bf_link_attach_cgroup(struct bf_link *link, enum bf_hook hook,
-                                  const struct bf_hookopts *hookopts,
-                                  int prog_fd)
-{
-    _cleanup_close_ int cgroup_fd = -1;
-    union bpf_attr attr;
-    int r;
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.attach_type = bf_hook_to_bpf_attach_type(hook);
-
-    cgroup_fd = open(hookopts->cgpath, O_DIRECTORY | O_RDONLY);
-    if (cgroup_fd < 0)
-        return bf_err_r(errno, "failed to open cgroup '%s'", hookopts->cgpath);
-
-    attr.link_create.target_fd = cgroup_fd;
-
-    r = bf_bpf(BPF_LINK_CREATE, &attr);
-    if (r < 0)
-        return r;
-
-    link->fd = r;
-
-    return 0;
-}
-
 int bf_link_attach(struct bf_link *link, enum bf_hook hook,
                    struct bf_hookopts **hookopts, int prog_fd)
 {
-    int r;
-
     bf_assert(link && hookopts);
+
+    _cleanup_close_ int cgroup_fd = -1;
+    struct bf_hookopts *_hookopts = *hookopts;
+    int r;
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
-        r = _bf_link_attach_xdp(link, hook, *hookopts, prog_fd);
+        r = bf_bpf_link_create(prog_fd, _hookopts->ifindex, hook, _hookopts,
+                               XDP_FLAGS_SKB_MODE);
         break;
     case BF_FLAVOR_TC:
-        r = _bf_link_attach_tc(link, hook, *hookopts, prog_fd);
+        r = bf_bpf_link_create(prog_fd, _hookopts->ifindex, hook, _hookopts, 0);
         break;
     case BF_FLAVOR_CGROUP:
-        r = _bf_link_attach_cgroup(link, hook, *hookopts, prog_fd);
+        cgroup_fd = open(_hookopts->cgpath, O_DIRECTORY | O_RDONLY);
+        if (cgroup_fd < 0) {
+            return bf_err_r(errno, "failed to open cgroup '%s'",
+                            _hookopts->cgpath);
+        }
+
+        r = bf_bpf_link_create(prog_fd, cgroup_fd, hook, _hookopts, 0);
         break;
     case BF_FLAVOR_NF:
-        r = _bf_link_attach_nf(link, hook, *hookopts, prog_fd);
+        r = bf_bpf_link_create(prog_fd, 0, hook, _hookopts, 0);
         break;
     default:
         return -ENOTSUP;
     }
 
-    if (r)
+    if (r < 0)
         return r;
 
+    link->fd = r;
     link->hookopts = TAKE_PTR(*hookopts);
 
     return 0;
 }
 
-static int _bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
-{
-    union bpf_attr attr;
-
-    UNUSED(hook);
-
-    bf_assert(link);
-
-    memset(&attr, 0, sizeof(attr));
-
-    attr.link_update.link_fd = link->fd;
-    attr.link_update.new_prog_fd = prog_fd;
-
-    return bf_bpf(BPF_LINK_UPDATE, &attr);
-}
-
 static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
                               int prog_fd)
 {
-    _cleanup_close_ int new_link_fd = -1;
-    union bpf_attr attr;
-    int priorities[2];
-
     bf_assert(link);
 
-    memset(&attr, 0, sizeof(attr));
+    _cleanup_close_ int new_link_fd = -1;
+    struct bf_hookopts opts = *link->hookopts;
 
-    attr.link_create.prog_fd = prog_fd;
-    attr.link_create.attach_type = BPF_NETFILTER;
+    opts.priorities[0] = link->hookopts->priorities[1];
+    opts.priorities[1] = link->hookopts->priorities[0];
 
-    memcpy(priorities, link->hookopts->priorities, sizeof(priorities));
-
-    attr.link_create.netfilter.pf = link->hookopts->family;
-    attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
-    attr.link_create.netfilter.priority = priorities[1];
-
-    new_link_fd = bf_bpf(BPF_LINK_CREATE, &attr);
+    new_link_fd = bf_bpf_link_create(prog_fd, 0, hook, &opts, 0);
     if (new_link_fd < 0)
         return new_link_fd;
 
     // Swap priorities, so priorities[0] is the one currently used
-    link->hookopts->priorities[0] = priorities[1];
-    link->hookopts->priorities[1] = priorities[0];
+    link->hookopts->priorities[0] = opts.priorities[0];
+    link->hookopts->priorities[1] = opts.priorities[1];
 
     return 0;
 }
 
 int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
 {
-    int r;
-
     bf_assert(link);
+
+    int r;
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
     case BF_FLAVOR_TC:
     case BF_FLAVOR_CGROUP:
-        r = _bf_link_update(link, hook, prog_fd);
+        r = bf_bpf_link_update(link->fd, prog_fd);
         break;
     case BF_FLAVOR_NF:
         r = _bf_link_update_nf(link, hook, prog_fd);
@@ -357,16 +245,11 @@ int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
 
 void bf_link_detach(struct bf_link *link)
 {
-    union bpf_attr attr;
-    int r;
-
     bf_assert(link);
 
-    memset(&attr, 0, sizeof(attr));
+    int r;
 
-    attr.link_detach.link_fd = link->fd;
-
-    r = bf_bpf(BPF_LINK_DETACH, &attr);
+    r = bf_bpf_link_detach(link->fd);
     if (r) {
         bf_warn_r(
             r,

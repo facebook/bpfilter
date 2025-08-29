@@ -392,8 +392,8 @@ static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
     /* iptables requires at least the INPUT, FORWARD, and OUTPUT chains. If
      * those chains are not defined, we created dummy ones just to fill the
      * ipt_replace structure. */
-    for (enum nf_inet_hooks hook = NF_INET_LOCAL_IN; hook <= NF_INET_LOCAL_OUT;
-         ++hook) {
+    for (enum bf_nf_inet_hooks hook = BF_NF_INET_LOCAL_IN;
+         hook <= BF_NF_INET_LOCAL_OUT; ++hook) {
         _free_bf_chain_ struct bf_chain *chain = NULL;
 
         if (ruleset[hook].cgen)
@@ -623,7 +623,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 
     bf_list_foreach (&_cur_cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-        enum nf_inet_hooks hook = bf_hook_to_nf_hook(cgen->chain->hook);
+        enum bf_nf_inet_hooks hook = bf_hook_to_nf_hook(cgen->chain->hook);
 
         if (cur_cgens[hook])
             return bf_err_r(-EEXIST,

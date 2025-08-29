@@ -6,6 +6,7 @@ pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
 
 set(core_srcs
     ${CMAKE_BINARY_DIR}/include/version.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/bpf_types.h
     ${CMAKE_CURRENT_SOURCE_DIR}/bpf.h              ${CMAKE_CURRENT_SOURCE_DIR}/bpf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/btf.h              ${CMAKE_CURRENT_SOURCE_DIR}/btf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.h            ${CMAKE_CURRENT_SOURCE_DIR}/chain.c

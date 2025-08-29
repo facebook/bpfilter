@@ -36,15 +36,15 @@ Test(hook, hook_to_bpf_attach_type)
 Test(hook, hook_to_bpf_prog_type)
 {
     for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook)
-    bf_hook_to_bpf_prog_type(hook);
+        bf_hook_to_bpf_prog_type(hook);
 }
 
 Test(hook, hook_to_nfhook_and_back)
 {
-    for (enum nf_inet_hooks nfhook = 0; nfhook < NF_INET_NUMHOOKS; ++nfhook) {
-        enum bf_hook bfhook = bf_hook_from_nf_hook(nfhook);
-        assert_int_equal(bf_hook_to_nf_hook(bfhook), nfhook);
-        assert_non_null(bf_nf_hook_to_str(nfhook));
+    for (enum bf_nf_inet_hooks hook = 0; hook < BF_NF_INET_NUMHOOKS; ++hook) {
+        enum bf_hook bfhook = bf_hook_from_nf_hook(hook);
+        assert_int_equal(bf_hook_to_nf_hook(bfhook), hook);
+        assert_non_null(bf_nf_hook_to_str(hook));
     }
 
     assert_error(bf_hook_to_nf_hook(BF_HOOK_XDP));

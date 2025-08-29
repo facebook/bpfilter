@@ -183,6 +183,7 @@ target_link_libraries(unit_bin
 bf_test_mock(unit_bin
     FUNCTIONS
         bf_bpf
+        bf_bpf_map_create
         bf_bpf_obj_get
         bf_btf_get_id
         bf_ctx_token

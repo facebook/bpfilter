@@ -58,7 +58,6 @@ static int _bf_ctx_gen_token(void)
     _cleanup_close_ int mnt_fd = -1;
     _cleanup_close_ int bpffs_fd = -1;
     _cleanup_close_ int token_fd = -1;
-    union bpf_attr _attr = {};
 
     mnt_fd = open(bf_opts_bpffs_path(), O_DIRECTORY);
     if (mnt_fd < 0)
@@ -69,9 +68,7 @@ static int _bf_ctx_gen_token(void)
         return bf_err_r(errno, "failed to get bpffs FD from '%s'",
                         bf_opts_bpffs_path());
 
-    _attr.token_create.bpffs_fd = bpffs_fd;
-
-    token_fd = bf_bpf(BPF_TOKEN_CREATE, &_attr);
+    token_fd = bf_bpf_token_create(bpffs_fd);
     if (token_fd < 0) {
         return bf_err_r(token_fd, "failed to create BPF token for '%s'",
                         bf_opts_bpffs_path());

@@ -17,13 +17,14 @@
 
 #include "bpfilter/ctx.h"
 #include "core/bpf.h"
+#include "core/btf.h"
 #include "core/dump.h"
 #include "core/helper.h"
 #include "core/logger.h"
 #include "core/marsh.h"
 
 static int _bf_map_new(struct bf_map **map, const char *name,
-                       enum bf_map_type type, enum bpf_map_type bpf_type,
+                       enum bf_map_type type, enum bf_bpf_map_type bpf_type,
                        size_t key_size, size_t value_size, size_t n_elems)
 {
     bf_assert(map && name);
@@ -57,10 +58,10 @@ static int _bf_map_new(struct bf_map **map, const char *name,
 int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
                size_t key_size, size_t value_size, size_t n_elems)
 {
-    static enum bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
-        [BF_MAP_TYPE_COUNTERS] = BPF_MAP_TYPE_ARRAY,
-        [BF_MAP_TYPE_PRINTER] = BPF_MAP_TYPE_ARRAY,
-        [BF_MAP_TYPE_LOG] = BPF_MAP_TYPE_RINGBUF,
+    static enum bf_bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
+        [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
     };
 
     if (type == BF_MAP_TYPE_SET) {
@@ -77,8 +78,8 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
                         const struct bf_set *set)
 {
     return _bf_map_new(map, name, BF_MAP_TYPE_SET,
-                       set->use_trie ? BPF_MAP_TYPE_LPM_TRIE :
-                                       BPF_MAP_TYPE_HASH,
+                       set->use_trie ? BF_BPF_MAP_TYPE_LPM_TRIE :
+                                       BF_BPF_MAP_TYPE_HASH,
                        set->elem_size, 1, bf_list_size(&set->elems));
 }
 
@@ -203,13 +204,13 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
     return type_strs[type];
 }
 
-static const char *_bf_bpf_type_to_str(enum bpf_map_type type)
+static const char *_bf_bpf_type_to_str(enum bf_bpf_map_type type)
 {
     static const char *type_strs[] = {
-        [BPF_MAP_TYPE_ARRAY] = "BPF_MAP_TYPE_ARRAY",
-        [BPF_MAP_TYPE_RINGBUF] = "BPF_MAP_TYPE_RINGBUF",
-        [BPF_MAP_TYPE_LPM_TRIE] = "BPF_MAP_TYPE_LPM_TRIE",
-        [BPF_MAP_TYPE_HASH] = "BPF_MAP_TYPE_HASH",
+        [BF_BPF_MAP_TYPE_HASH] = "BF_BPF_MAP_TYPE_HASH",
+        [BF_BPF_MAP_TYPE_ARRAY] = "BF_BPF_MAP_TYPE_ARRAY",
+        [BF_BPF_MAP_TYPE_LPM_TRIE] = "BF_BPF_MAP_TYPE_LPM_TRIE",
+        [BF_BPF_MAP_TYPE_RINGBUF] = "BF_BPF_MAP_TYPE_RINGBUF",
     };
 
     return type_strs[type] ? type_strs[type] : "<no mapping>";
@@ -242,14 +243,6 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
 }
 
 #define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
-
-struct bf_btf
-{
-    struct btf *btf;
-    uint32_t key_type_id;
-    uint32_t value_type_id;
-    int fd;
-};
 
 static void _bf_btf_free(struct bf_btf **btf);
 
@@ -289,7 +282,6 @@ static void _bf_btf_free(struct bf_btf **btf)
 static int _bf_btf_load(struct bf_btf *btf)
 {
     union bpf_attr attr = {};
-    int token_fd;
     const void *raw;
     int r;
 
@@ -299,15 +291,7 @@ static int _bf_btf_load(struct bf_btf *btf)
     if (!raw)
         return bf_err_r(errno, "failed to request BTF raw data");
 
-    attr.btf = bf_ptr_to_u64(raw);
-
-    token_fd = bf_ctx_token();
-    if (token_fd != -1) {
-        attr.btf_token_fd = token_fd;
-        attr.btf_flags |= BPF_F_TOKEN_FD;
-    }
-
-    r = bf_bpf(BPF_BTF_LOAD, &attr);
+    r = bf_bpf_btf_load(raw, bf_ctx_token());
     if (r < 0)
         return bf_err_r(r, "failed to load BTF data");
 
@@ -365,10 +349,8 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
     return TAKE_PTR(btf);
 }
 
-int bf_map_create(struct bf_map *map, uint32_t flags)
+int bf_map_create(struct bf_map *map)
 {
-    int token_fd;
-    union bpf_attr attr = {};
     _free_bf_btf_ struct bf_btf *btf = NULL;
     int r;
 
@@ -392,21 +374,6 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
             "can't create a map with BF_MAP_N_ELEMS_UNKNOWN number of elements");
     }
 
-    attr.map_type = map->bpf_type;
-    attr.key_size = map->key_size;
-    attr.value_size = map->value_size;
-    attr.max_entries = map->n_elems;
-    attr.map_flags = flags;
-
-    // NO_PREALLOC is *required* for LPM_TRIE map
-    if (map->bpf_type == BPF_MAP_TYPE_LPM_TRIE)
-        attr.map_flags |= BPF_F_NO_PREALLOC;
-
-    if ((token_fd = bf_ctx_token()) != -1) {
-        attr.map_token_fd = token_fd;
-        attr.map_flags |= BPF_F_TOKEN_FD;
-    }
-
     /** The BTF data is not mandatory to use the map, but a good addition.
      * Hence, bpfilter will try to make the BTF data available, but will
      * ignore if that fails. @ref _bf_map_make_btf is used to isolate the
@@ -415,16 +382,9 @@ int bf_map_create(struct bf_map *map, uint32_t flags)
      * There is some boilerplate for @ref bf_btf structure, it could be
      * simpler, but the current implementation ensure the BTF data is properly
      * freed on error, without preventing the BPF map to be created. */
-    btf = _bf_map_make_btf(map);
-    if (btf) {
-        attr.btf_fd = btf->fd;
-        attr.btf_key_type_id = btf->key_type_id;
-        attr.btf_value_type_id = btf->value_type_id;
-    }
-
-    (void)snprintf(attr.map_name, BPF_OBJ_NAME_LEN, "%s", map->name);
-
-    r = bf_bpf(BPF_MAP_CREATE, &attr);
+    r = bf_bpf_map_create(map->name, map->bpf_type, map->key_size,
+                          map->value_size, map->n_elems, _bf_map_make_btf(map),
+                          bf_ctx_token());
     if (r < 0)
         return bf_err_r(r, "failed to create BPF map '%s'", map->name);
 
@@ -516,14 +476,7 @@ int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
 
 int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
 {
-    union bpf_attr attr = {};
-
     bf_assert(map && key && value);
 
-    attr.map_fd = map->fd;
-    attr.key = (unsigned long long)key;
-    attr.value = (unsigned long long)value;
-    attr.flags = BPF_ANY;
-
-    return bf_bpf(BPF_MAP_UPDATE_ELEM, &attr);
+    return bf_bpf_map_update_elem(map->fd, key, value, 0);
 }

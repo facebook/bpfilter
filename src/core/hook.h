@@ -5,12 +5,10 @@
 
 #pragma once
 
-#include <linux/bpf.h>
-#include <linux/netfilter.h>
-
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "core/bpf_types.h"
 #include "core/dump.h"
 #include "core/flavor.h"
 #include "core/list.h"
@@ -47,6 +45,25 @@ enum bf_hook
 };
 
 /**
+ * @brief Netfilter hooks identifiers.
+ *
+ * This enumeration is a direct copy of `nf_inet_hooks`. `nf_inet_hooks` is part
+ * of the kernel public API, so it should never be out of sync with the kernel
+ * source. Additionally, `linux/netfilter.h` can't be included in public headers
+ * as it would prevent bpfilter from building without compiler extensions.
+ */
+enum bf_nf_inet_hooks
+{
+    BF_NF_INET_PRE_ROUTING,
+    BF_NF_INET_LOCAL_IN,
+    BF_NF_INET_FORWARD,
+    BF_NF_INET_LOCAL_OUT,
+    BF_NF_INET_POST_ROUTING,
+    BF_NF_INET_NUMHOOKS,
+    BF_NF_INET_INGRESS = BF_NF_INET_NUMHOOKS,
+};
+
+/**
  * Convert a `bf_hook` value to a string.
  *
  * @param hook The hook to convert. Must be a valid hook.
@@ -77,7 +94,7 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook);
  * @param hook The hook to convert. Must be a valid hook.
  * @return The BPF program type corresponding to `hook`.
  */
-enum bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook);
+enum bf_bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook);
 
 /**
  * Convert a `bf_hook` value to a BPF attach type.
@@ -85,31 +102,31 @@ enum bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook);
  * @param hook The hook to convert. Must be a valid hook.
  * @return The BPF attach type corresponding to `hook`.
  */
-enum bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook);
+enum bf_bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook);
 
 /**
- * Convert a `bf_hook` value to a `nf_inet_hooks` value.
+ * Convert a `bf_hook` value to a `bf_nf_inet_hooks` value.
  *
  * @param hook The hook to convert. Must be a valid Netfilter hook.
- * @return The `nf_inet_hooks` corresponding to `hook`.
+ * @return The `bf_nf_inet_hooks` corresponding to `hook`.
  */
-enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook);
+enum bf_nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook);
 
 /**
- * Convert a `nf_inet_hooks` value to a `bf_hook` value.
+ * Convert a `bf_nf_inet_hooks` value to a `bf_hook` value.
  *
- * @param hook The hook to convert. Must be a valid `nf_inet_hooks` hook.
+ * @param hook The hook to convert. Must be a valid `bf_nf_inet_hooks` hook.
  * @return The corresponding `bf_hook` value.
  */
-enum bf_hook bf_hook_from_nf_hook(enum nf_inet_hooks hook);
+enum bf_hook bf_hook_from_nf_hook(enum bf_nf_inet_hooks hook);
 
 /**
- * Convert a `nf_inet_hooks` value to a string.
+ * Convert a `bf_nf_inet_hooks` value to a string.
  *
  * @param hook The hook to convert. Must be a valid hook.
  * @return String representation of the hook.
  */
-const char *bf_nf_hook_to_str(enum nf_inet_hooks hook);
+const char *bf_nf_hook_to_str(enum bf_nf_inet_hooks hook);
 
 struct bf_hookopts
 {

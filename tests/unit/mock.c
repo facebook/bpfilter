@@ -144,7 +144,7 @@ bf_test_mock_define(int, snprintf,
     return mock_type(int);
 }
 
-bf_test_mock_define(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr))
+bf_test_mock_define(int, bf_bpf, (enum bf_bpf_cmd cmd, union bpf_attr *attr))
 {
     if (!bf_test_mock_bf_bpf_is_enabled())
         return bf_test_mock_real(bf_bpf)(cmd, attr);
@@ -164,6 +164,16 @@ bf_test_mock_define(int, bf_btf_get_id, (const char *name))
 {
     if (!bf_test_mock_bf_btf_get_id_is_enabled())
         return bf_test_mock_real(bf_btf_get_id)(name);
+
+    return mock_type(int);
+}
+
+bf_test_mock_define(int, bf_bpf_map_create, (const char *name, enum bf_bpf_map_type type,
+                      size_t key_size, size_t value_size, size_t n_elems,
+                      const struct bf_btf *btf, int token_fd))
+{
+    if (!bf_test_mock_bf_bpf_map_create_is_enabled())
+        return bf_test_mock_real(bf_bpf_map_create)(name, type, key_size, value_size, n_elems, btf, token_fd);
 
     return mock_type(int);
 }
