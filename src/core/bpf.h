@@ -5,30 +5,18 @@
 
 #pragma once
 
-#include <linux/bpf.h>
-#include <linux/if_link.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
-enum bf_xdp_attach_mode
-{
-    BF_XDP_MODE_SKB = XDP_FLAGS_SKB_MODE,
-    BF_XDP_MODE_DRV = XDP_FLAGS_DRV_MODE,
-    BF_XDP_MODE_HW = XDP_FLAGS_HW_MODE,
-};
+#include "core/bpf_types.h"
+#include "core/hook.h"
 
 #define bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 
-/**
- * BPF system call.
- *
- * @param cmd BPF command to run.
- * @param attr Attributes of the system call.
- * @return System call return value on success, or negative errno value on
- *         failure.
- */
-int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
+struct bf_btf;
+union bpf_attr;
+
+int bf_bpf(enum bf_bpf_cmd cmd, union bpf_attr *attr);
 
 /**
  * Load a BPF program.
@@ -49,10 +37,10 @@ int bf_bpf(enum bpf_cmd cmd, union bpf_attr *attr);
  *        program's file descriptor.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
-                     size_t img_len, enum bpf_attach_type attach_type,
-                     const char *log_buf, size_t log_size, int token_fd,
-                     int *fd);
+int bf_bpf_prog_load(const char *name, enum bf_bpf_prog_type prog_type,
+                     void *img, size_t img_len,
+                     enum bf_bpf_attach_type attach_type, const char *log_buf,
+                     size_t log_size, int token_fd, int *fd);
 
 /**
  * Get an element from a map.
@@ -63,16 +51,6 @@ int bf_bpf_prog_load(const char *name, unsigned int prog_type, void *img,
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value);
-
-/**
- * Update (or insert) an element in a map.
- *
- * @param fd File descriptor of the map to search in.
- * @param key Key to get the value for. Can't be NULL.
- * @param value Pointer to the value.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_bpf_map_update_elem(int fd, const void *key, void *value);
 
 /**
  * Pin a BPF object to the system.
@@ -116,5 +94,96 @@ int bf_bpf_obj_get(const char *path, int dir_fd, int *fd);
  * @return The return value of the BPF program, or a negative errno value on
  *         failure.
  */
-int bf_prog_run(int prog_fd, const void *pkt, size_t pkt_len, const void *ctx,
-                size_t ctx_len);
+int bf_bpf_prog_run(int prog_fd, const void *pkt, size_t pkt_len,
+                    const void *ctx, size_t ctx_len);
+
+/**
+ * @brief Create a new BPF token.
+ *
+ * @param bpffs_fd File descriptor of the BPF filesystem to create the token
+ *        for.
+ * @return A valid token file descriptor on success (which should be closed by
+ *         the caller), or a negative error value on failure.
+ */
+int bf_bpf_token_create(int bpffs_fd);
+
+/**
+ * @brief Load BTF data into the kernel.
+ *
+ * @param btf_data Raw BTF data to send to the kernel. Can't be NULL.
+ * @param token_fd File descriptor of the BPF token to use, or -1 if no token
+ *        should be used.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_btf_load(const void *btf_data, int token_fd);
+
+/**
+ * @brief Create a new BPF map.
+ *
+ * @param name Name of the map. Can't be NULL.
+ * @param type BPF map type, see `bf_map_type`.
+ * @param key_size Size of the key, in bytes.
+ * @param value_size Size of the map's values, in bytes.
+ * @param n_elems Number of elements in the map.
+ * @param btf BTF data, ignored if `NULL`.
+ * @param token_fd BPF token to use to create the map. Ignored if -1.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_map_create(const char *name, enum bf_bpf_map_type type,
+                      size_t key_size, size_t value_size, size_t n_elems,
+                      const struct bf_btf *btf, int token_fd);
+
+/**
+ * @brief Create or update a BPF map element.
+ *
+ * @param map_fd File descriptor of the map to update.
+ * @param key Key of the element to create or update. Can't be NULL.
+ * @param value Value to set for the element. Can't be NULL.
+ * @param flags Flags to pass to the system call. 0 if no flag.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_map_update_elem(int map_fd, const void *key, const void *value,
+                           int flags);
+
+/**
+ * @brief Create or update multiple elements in a BPF map at once.
+ *
+ * @param map_fd File descriptor of the map to update.
+ * @param keys Array of keys to insert or update in the map. Can't be NULL.
+ * @param values Array of values to insert or update in the map. Can't be NULL.
+ * @param count Number of elements in `keys` and `values`.
+ * @param flags Extra flags, passed directly to the system call. 0 if no flags.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
+                            size_t count, int flags);
+
+/**
+ * @brief Create a new BPF link.
+ *
+ * @param prog_fd File descriptor of the program to attach to the link.
+ * @param target_fd Link target. 0 if no target.
+ * @param hook Hook to attach the link to.
+ * @param opts Hook options, required for Netfilter hooks.
+ * @param flags Extra flags, passed directly to the system call. 0 if no flags.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook,
+                       const struct bf_hookopts *opts, int flags);
+
+/**
+ * @brief Update the program attached to a BPF link.
+ *
+ * @param link_fd File descriptor of the link to update.
+ * @param new_prog_fd File descriptor of the new program to attach to the link.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_link_update(int link_fd, int new_prog_fd);
+
+/**
+ * @brief Detach a BPF link.
+ *
+ * @param link_fd File descriptor of the link to detach.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_bpf_link_detach(int link_fd);

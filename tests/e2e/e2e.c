@@ -6,6 +6,7 @@
 #include "e2e.h"
 
 #include <linux/pkt_cls.h>
+#include <linux/bpf.h>
 
 #include "bpfilter.h"
 #include "opts.h"
@@ -88,7 +89,7 @@ static int _bft_e2e_test_with_counter(struct bf_chain *chain,
             break;
         }
 
-        test_ret = bf_prog_run(prog->fd, arg->pkt, arg->pkt_len,
+        test_ret = bf_bpf_prog_run(prog->fd, arg->pkt, arg->pkt_len,
                                arg->ctx_len ? &arg->ctx : NULL, arg->ctx_len);
         if (test_ret < 0) {
             bf_err_r(test_ret, "failed to run the program");

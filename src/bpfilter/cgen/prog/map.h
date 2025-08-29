@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "core/bpf_types.h"
 #include "core/dump.h"
 #include "core/set.h"
 
@@ -31,7 +32,7 @@ enum bf_map_type
 struct bf_map
 {
     enum bf_map_type type;
-    enum bpf_map_type bpf_type;
+    enum bf_bpf_map_type bpf_type;
     char name[BPF_OBJ_NAME_LEN];
     size_t key_size;
     size_t value_size;
@@ -60,8 +61,8 @@ struct bf_marsh;
  * object used to keep track of a BPF map on the system.
  *
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
- *            success, @c *map points to a valid @ref bf_map . On failure,
- *            @c *map remain unchanged.
+ *        success, @c *map points to a valid @ref bf_map . On failure,
+ *        @c *map remain unchanged.
  * @param name Name of the map. Will be used as the name of the BPF object, but
  *        also as filename when pinning the map to the system. Can't be NULL or
  *        empty.
@@ -147,11 +148,9 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix);
  * Create the BPF map.
  *
  * @param map BPF map to create. Can't be NULL.
- * @param flags Flags to use during map creation. All the flags supported by
- *              @c BPF_MAP_CREATE can be used.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_map_create(struct bf_map *map, uint32_t flags);
+int bf_map_create(struct bf_map *map);
 
 /**
  * Destroy the BPF map.

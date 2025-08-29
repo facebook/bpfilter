@@ -8,6 +8,7 @@
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
+#include <linux/in.h>
 #include <linux/ipv6.h>
 
 #include <endian.h>

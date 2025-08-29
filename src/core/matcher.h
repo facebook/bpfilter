@@ -5,9 +5,6 @@
 
 #pragma once
 
-#include <linux/in.h>
-#include <linux/in6.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -127,15 +124,15 @@ struct bf_matcher_ip6_addr
  */
 enum bf_matcher_ipv6_nh
 {
-    BF_IPV6_NH_HOP = IPPROTO_HOPOPTS,
-    BF_IPV6_NH_TCP = IPPROTO_TCP,
-    BF_IPV6_NH_UDP = IPPROTO_UDP,
-    BF_IPV6_NH_ROUTING = IPPROTO_ROUTING,
-    BF_IPV6_NH_FRAGMENT = IPPROTO_FRAGMENT,
-    BF_IPV6_NH_AH = IPPROTO_AH,
-    BF_IPV6_NH_ICMPV6 = IPPROTO_ICMPV6,
-    BF_IPV6_NH_DSTOPTS = IPPROTO_DSTOPTS,
-    BF_IPV6_NH_MH = IPPROTO_MH,
+    BF_IPV6_NH_HOP = 0,
+    BF_IPV6_NH_TCP = 6,
+    BF_IPV6_NH_UDP = 17,
+    BF_IPV6_NH_ROUTING = 43,
+    BF_IPV6_NH_FRAGMENT = 44,
+    BF_IPV6_NH_AH = 51,
+    BF_IPV6_NH_ICMPV6 = 58,
+    BF_IPV6_NH_DSTOPTS = 60,
+    BF_IPV6_NH_MH = 135,
     _BF_MATCHER_IPV6_NH_MAX,
 };
 

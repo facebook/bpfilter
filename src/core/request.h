@@ -82,10 +82,7 @@ struct bf_request
 
     union
     {
-        struct
-        {
-            int ipt_cmd;
-        };
+        int ipt_cmd;
     };
 
     size_t data_len;

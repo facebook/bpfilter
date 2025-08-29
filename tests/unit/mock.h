@@ -11,6 +11,8 @@
 #include <stddef.h>
 
 #include "harness/mock.h"
+#include "core/bpf_types.h"
+#include "core/btf.h"
 
 struct btf;
 struct nl_msg;
@@ -34,6 +36,9 @@ bf_test_mock_declare(int, vsnprintf,
                     (char *str, size_t size, const char *fmt, va_list args));
 bf_test_mock_declare(int, snprintf,
                     (char *str, size_t size, const char *fmt, ...));
-bf_test_mock_declare(int, bf_bpf, (enum bpf_cmd cmd, union bpf_attr *attr));
+bf_test_mock_declare(int, bf_bpf, (enum bf_bpf_cmd cmd, union bpf_attr *attr));
 bf_test_mock_declare(int, bf_ctx_token, (void));
 bf_test_mock_declare(int, bf_btf_get_id, (const char *name));
+bf_test_mock_declare(int, bf_bpf_map_create, (const char *name, enum bf_bpf_map_type type,
+                      size_t key_size, size_t value_size, size_t n_elems,
+                      const struct bf_btf *btf, int token_fd));

@@ -82,27 +82,23 @@ packets = [
         "name": "pkt_local_ip4",
         "family": "NFPROTO_IPV4",
         "packet": Ether(src=0x01, dst=0x02)
-        / IPv4(
-            src="127.2.10.10",
-            dst="127.2.10.11"
-        )
+        / IPv4(src="127.2.10.10", dst="127.2.10.11"),
     },
     {
         "name": "pkt_local_ip4_icmp",
         "family": "NFPROTO_IPV4",
         "packet": Ether(src=0x01, dst=0x02)
-        / IPv4(
-            src="127.2.10.10",
-            dst="127.2.10.11"
-        )
+        / IPv4(src="127.2.10.10", dst="127.2.10.11")
         / ICMP(type=8, code=2),
-    }
+    },
 ]
 
 template = """#pragma once
 
 #include "core/flavor.h"
 #include "harness/prog.h"
+
+#include <linux/netfilter.h>
 
 struct sk_buff;
 struct sock;
@@ -157,6 +153,7 @@ __attribute__((unused)) static const struct bft_prog_run_args {pkt_name}[_BF_FLA
 }};
 """
 
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -174,7 +171,10 @@ def main() -> None:
 
         strs.append(
             packet_template.format(
-                pkt_raw=", ".join(raw), pkt_name=packet["name"], len=len(raw), pkt_family=packet["family"]
+                pkt_raw=", ".join(raw),
+                pkt_name=packet["name"],
+                len=len(raw),
+                pkt_family=packet["family"],
             )
         )
 

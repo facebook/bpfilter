@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <linux/if.h>
-
 #include <sys/types.h>
 
 /**
@@ -19,6 +17,10 @@
  * now hidden in `if.c`, and `bpfilter`-specific functions have been defined to
  * provide the required functionalities.
  */
+
+#ifndef IFNAMSIZ
+#define IFNAMSIZ 16
+#endif
 
 /**
  * Local interface details.

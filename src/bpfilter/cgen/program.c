@@ -380,9 +380,9 @@ int bf_program_unmarsh(const struct bf_marsh *marsh,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return -EINVAL;
-    _program->img = bf_memdup(child->data, child->data_len);
-    _program->img_size = child->data_len / sizeof(struct bpf_insn);
-    _program->img_cap = child->data_len / sizeof(struct bpf_insn);
+    _program->img = bf_memdup(bf_marsh_data(child), bf_marsh_data_size(child));
+    _program->img_size = bf_marsh_data_size(child) / sizeof(struct bpf_insn);
+    _program->img_cap = bf_marsh_data_size(child) / sizeof(struct bpf_insn);
 
     if (bf_marsh_next_child(marsh, child))
         bf_warn("codegen marsh has more children than expected");
@@ -941,7 +941,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r < 0)
         return r;
 
-    r = bf_map_create(program->pmap, 0);
+    r = bf_map_create(program->pmap);
     if (r < 0)
         return r;
 
@@ -970,7 +970,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     if (r < 0)
         return r;
 
-    r = bf_map_create(program->cmap, 0);
+    r = bf_map_create(program->cmap);
     if (r < 0)
         return r;
 
@@ -990,7 +990,7 @@ static int _bf_program_load_log_map(struct bf_program *program)
 
     bf_assert(program);
 
-    r = bf_map_create(program->lmap, 0);
+    r = bf_map_create(program->lmap);
     if (r < 0)
         return r;
 
@@ -1021,10 +1021,9 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         struct bf_set *set = bf_list_node_get_data(set_node);
         struct bf_map *map = bf_list_node_get_data(map_node);
         size_t nelems = bf_list_size(&set->elems);
-        union bpf_attr attr = {};
         size_t idx = 0;
 
-        r = bf_map_create(map, 0);
+        r = bf_map_create(map);
         if (r < 0) {
             r = bf_err_r(r, "failed to create BPF map for set");
             goto err_destroy_maps;
@@ -1050,13 +1049,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
             ++idx;
         }
 
-        attr.batch.map_fd = map->fd;
-        attr.batch.keys = (unsigned long long)keys;
-        attr.batch.values = (unsigned long long)values;
-        attr.batch.count = nelems;
-        attr.batch.flags = BPF_ANY;
-
-        r = bf_bpf(BPF_MAP_UPDATE_BATCH, &attr);
+        r = bf_bpf_map_update_batch(map->fd, keys, values, nelems, BPF_ANY);
         if (r < 0) {
             bf_err_r(r, "failed to add set elements to the map");
             goto err_destroy_maps;

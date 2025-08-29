@@ -77,19 +77,19 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
     return flavors[hook];
 }
 
-enum bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
+enum bf_bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
 {
-    static const enum bpf_attach_type attach_types[] = {
-        [BF_HOOK_XDP] = 0,
-        [BF_HOOK_TC_INGRESS] = BPF_TCX_INGRESS,
-        [BF_HOOK_NF_PRE_ROUTING] = BPF_NETFILTER,
-        [BF_HOOK_NF_LOCAL_IN] = BPF_NETFILTER,
-        [BF_HOOK_CGROUP_INGRESS] = BPF_CGROUP_INET_INGRESS,
-        [BF_HOOK_CGROUP_EGRESS] = BPF_CGROUP_INET_EGRESS,
-        [BF_HOOK_NF_FORWARD] = BPF_NETFILTER,
-        [BF_HOOK_NF_LOCAL_OUT] = BPF_NETFILTER,
-        [BF_HOOK_NF_POST_ROUTING] = BPF_NETFILTER,
-        [BF_HOOK_TC_EGRESS] = BPF_TCX_EGRESS,
+    static const enum bf_bpf_attach_type attach_types[] = {
+        [BF_HOOK_XDP] = BF_BPF_XDP,
+        [BF_HOOK_TC_INGRESS] = BF_BPF_TCX_INGRESS,
+        [BF_HOOK_NF_PRE_ROUTING] = BF_BPF_NETFILTER,
+        [BF_HOOK_NF_LOCAL_IN] = BF_BPF_NETFILTER,
+        [BF_HOOK_CGROUP_INGRESS] = BF_BPF_CGROUP_INET_INGRESS,
+        [BF_HOOK_CGROUP_EGRESS] = BF_BPF_CGROUP_INET_EGRESS,
+        [BF_HOOK_NF_FORWARD] = BF_BPF_NETFILTER,
+        [BF_HOOK_NF_LOCAL_OUT] = BF_BPF_NETFILTER,
+        [BF_HOOK_NF_POST_ROUTING] = BF_BPF_NETFILTER,
+        [BF_HOOK_TC_EGRESS] = BF_BPF_TCX_ENGRESS,
     };
 
     static_assert(ARRAY_SIZE(attach_types) == _BF_HOOK_MAX,
@@ -98,19 +98,19 @@ enum bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
     return attach_types[hook];
 }
 
-enum bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
+enum bf_bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
 {
-    static const enum bpf_prog_type prog_types[] = {
-        [BF_HOOK_XDP] = BPF_PROG_TYPE_XDP,
-        [BF_HOOK_TC_INGRESS] = BPF_PROG_TYPE_SCHED_CLS,
-        [BF_HOOK_NF_PRE_ROUTING] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_LOCAL_IN] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_CGROUP_INGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
-        [BF_HOOK_CGROUP_EGRESS] = BPF_PROG_TYPE_CGROUP_SKB,
-        [BF_HOOK_NF_FORWARD] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_LOCAL_OUT] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_NF_POST_ROUTING] = BPF_PROG_TYPE_NETFILTER,
-        [BF_HOOK_TC_EGRESS] = BPF_PROG_TYPE_SCHED_CLS,
+    static const enum bf_bpf_prog_type prog_types[] = {
+        [BF_HOOK_XDP] = BF_BPF_PROG_TYPE_XDP,
+        [BF_HOOK_TC_INGRESS] = BF_BPF_PROG_TYPE_SCHED_CLS,
+        [BF_HOOK_NF_PRE_ROUTING] = BF_BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_LOCAL_IN] = BF_BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_CGROUP_INGRESS] = BF_BPF_PROG_TYPE_CGROUP_SKB,
+        [BF_HOOK_CGROUP_EGRESS] = BF_BPF_PROG_TYPE_CGROUP_SKB,
+        [BF_HOOK_NF_FORWARD] = BF_BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_LOCAL_OUT] = BF_BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_NF_POST_ROUTING] = BF_BPF_PROG_TYPE_NETFILTER,
+        [BF_HOOK_TC_EGRESS] = BF_BPF_PROG_TYPE_SCHED_CLS,
     };
 
     static_assert(ARRAY_SIZE(prog_types) == _BF_HOOK_MAX,
@@ -119,38 +119,38 @@ enum bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
     return prog_types[hook];
 }
 
-enum nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
+enum bf_nf_inet_hooks bf_hook_to_nf_hook(enum bf_hook hook)
 {
     switch (hook) {
     case BF_HOOK_NF_PRE_ROUTING:
-        return NF_INET_PRE_ROUTING;
+        return BF_NF_INET_PRE_ROUTING;
     case BF_HOOK_NF_LOCAL_IN:
-        return NF_INET_LOCAL_IN;
+        return BF_NF_INET_LOCAL_IN;
     case BF_HOOK_NF_FORWARD:
-        return NF_INET_FORWARD;
+        return BF_NF_INET_FORWARD;
     case BF_HOOK_NF_LOCAL_OUT:
-        return NF_INET_LOCAL_OUT;
+        return BF_NF_INET_LOCAL_OUT;
     case BF_HOOK_NF_POST_ROUTING:
-        return NF_INET_POST_ROUTING;
+        return BF_NF_INET_POST_ROUTING;
     default:
-        bf_warn("bf_hook %s (%d) is not an nf_inet_hooks value",
+        bf_warn("bf_hook %s (%d) is not an bf_nf_inet_hooks value",
                 bf_hook_to_str(hook), hook);
         return -EINVAL;
     }
 }
 
-enum bf_hook bf_hook_from_nf_hook(enum nf_inet_hooks hook)
+enum bf_hook bf_hook_from_nf_hook(enum bf_nf_inet_hooks hook)
 {
     switch (hook) {
-    case NF_INET_PRE_ROUTING:
+    case BF_NF_INET_PRE_ROUTING:
         return BF_HOOK_NF_PRE_ROUTING;
-    case NF_INET_LOCAL_IN:
+    case BF_NF_INET_LOCAL_IN:
         return BF_HOOK_NF_LOCAL_IN;
-    case NF_INET_FORWARD:
+    case BF_NF_INET_FORWARD:
         return BF_HOOK_NF_FORWARD;
-    case NF_INET_LOCAL_OUT:
+    case BF_NF_INET_LOCAL_OUT:
         return BF_HOOK_NF_LOCAL_OUT;
-    case NF_INET_POST_ROUTING:
+    case BF_NF_INET_POST_ROUTING:
         return BF_HOOK_NF_POST_ROUTING;
     default:
         bf_warn("nf_inet_hooks %s (%d) is not a bf_hook value",
@@ -159,18 +159,18 @@ enum bf_hook bf_hook_from_nf_hook(enum nf_inet_hooks hook)
     }
 }
 
-const char *bf_nf_hook_to_str(enum nf_inet_hooks hook)
+const char *bf_nf_hook_to_str(enum bf_nf_inet_hooks hook)
 {
     switch (hook) {
-    case NF_INET_PRE_ROUTING:
+    case BF_NF_INET_PRE_ROUTING:
         return "nf_prerouting";
-    case NF_INET_LOCAL_IN:
+    case BF_NF_INET_LOCAL_IN:
         return "nf_input";
-    case NF_INET_FORWARD:
+    case BF_NF_INET_FORWARD:
         return "nf_forward";
-    case NF_INET_LOCAL_OUT:
+    case BF_NF_INET_LOCAL_OUT:
         return "nf_output";
-    case NF_INET_POST_ROUTING:
+    case BF_NF_INET_POST_ROUTING:
         return "nf_postrouting";
     default:
         bf_warn("unknown nf_inet_hooks value %d", hook);
@@ -404,27 +404,27 @@ int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return bf_err_r(-EINVAL, "bf_hookopts: missing used_opts field");
-    memcpy(&_hookopts->used_opts, child->data, sizeof(_hookopts->used_opts));
+    memcpy(&_hookopts->used_opts, bf_marsh_data(child), sizeof(_hookopts->used_opts));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return bf_err_r(-EINVAL, "bf_hookopts: missing ifindex field");
-    memcpy(&_hookopts->ifindex, child->data, sizeof(_hookopts->ifindex));
+    memcpy(&_hookopts->ifindex, bf_marsh_data(child), sizeof(_hookopts->ifindex));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return bf_err_r(-EINVAL, "bf_hookopts: missing cgpath field");
-    if (child->data_len) {
-        _hookopts->cgpath = strdup(child->data);
+    if (bf_marsh_data_size(child)) {
+        _hookopts->cgpath = strdup(bf_marsh_data(child));
         if (!_hookopts->cgpath)
             return -ENOMEM;
     }
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return bf_err_r(-EINVAL, "bf_hookopts: missing family field");
-    memcpy(&_hookopts->family, child->data, sizeof(_hookopts->family));
+    memcpy(&_hookopts->family, bf_marsh_data(child), sizeof(_hookopts->family));
 
     if (!(child = bf_marsh_next_child(marsh, child)))
         return bf_err_r(-EINVAL, "bf_hookopts: missing priorities field");
-    memcpy(&_hookopts->priorities, child->data, sizeof(_hookopts->priorities));
+    memcpy(&_hookopts->priorities, bf_marsh_data(child), sizeof(_hookopts->priorities));
 
     if (bf_marsh_next_child(marsh, child))
         return bf_err_r(-E2BIG, "too many serialized fields for bf_hookopts");

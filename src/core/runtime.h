@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <linux/bpf.h>
+#include <asm/types.h>
 
 /**
  * @brief Size of the L2 header buffer.
