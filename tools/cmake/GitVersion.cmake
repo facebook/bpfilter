@@ -2,7 +2,11 @@
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
 function(get_version_from_git)
-    find_package(Git REQUIRED)
+    find_package(Git)
+    if (NOT Git_FOUND)
+        message(WARNING "Failed to find git, using default version ${DEFAULT_PROJECT_VERSION}")
+        return()
+    endif ()
 
     execute_process(
         COMMAND ${GIT_EXECUTABLE} describe --tags --always
