@@ -1,5 +1,10 @@
 # Create an XDP chain
 chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
+    set my_custom_set (ip4.saddr, ip4.proto) in {
+        192.168.1.1, tcp
+        192.168.1.1, udp
+    }
+
     rule
         meta.dport eq 22
         log internet
@@ -203,6 +208,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        (ip4.saddr, ip4.proto) in my_custom_set
         (ip4.saddr, ip4.proto) in {
             192.168.1.131, tcp
             192.168.1.132, udp
