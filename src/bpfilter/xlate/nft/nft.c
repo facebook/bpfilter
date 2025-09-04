@@ -35,7 +35,7 @@ static int _bf_nft_unmarsh(struct bf_marsh *marsh)
     return 0;
 }
 
-static int _bf_nft_request_handler(struct bf_request *request,
+static int _bf_nft_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
     UNUSED(request);
