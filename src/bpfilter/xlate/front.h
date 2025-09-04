@@ -14,8 +14,6 @@ struct bf_marsh;
 /**
  * @struct bf_front_ops
  *
- * @todo Make bf_front_ops.request_handler take a const struct bf_request.
- *
  * @var bf_front_ops::setup
  *  Setup the front.
  * @var bf_front_ops::teardown
@@ -27,7 +25,7 @@ struct bf_front_ops
 {
     int (*setup)(void);
     int (*teardown)(void);
-    int (*request_handler)(struct bf_request *request,
+    int (*request_handler)(const struct bf_request *request,
                            struct bf_response **response);
     int (*marsh)(struct bf_marsh **marsh);
     int (*unmarsh)(struct bf_marsh *marsh);
