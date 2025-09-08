@@ -394,7 +394,7 @@ There are multiple ways to define sets in your ruleset. bpfilter supports named 
 
 With:
   - ``$NAME``: name of the set, for named sets. Allows users to define a set at the beginning of the ruleset, then use it in multiple rules. Sets defined directly in a rule are anonymous, they can't be reused in a different rule. When using a named set, the key used in the rule to refer to the set must be the same as the key used to define the set.
-  - ``$KEY``: the key of the same, the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])```. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component".
+  - ``$KEY``: the set's key, which is the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])``. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component". Parentheses are required even if the key contains a single component.
   - ``$ELEMENT``: elements are the data to store in the set, each component of the key should have a corresponding value in each element. Components of an element are comma-separated, elements themselves are delimited by semicolon or new line.
 
 Here is an example:
