@@ -59,7 +59,7 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Always
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
-ForEachMacros: ['bf_list_foreach', 'bf_list_foreach_rev']
+ForEachMacros: ['bf_list_foreach', 'bf_list_foreach_rev', 'bf_rpack_array_foreach']
 IncludeBlocks: Regroup
 IncludeCategories:
   # net/if.h needs to be included BEFORE linux/if.h to avoid conflicts

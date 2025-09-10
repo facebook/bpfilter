@@ -5,7 +5,7 @@
 #
 # Disabled checks:
 # - bugprone-assignment-in-if-condition
-#   Very carefully used, but useful when reading a bf_marsh.
+#   To use very carefully.
 # - bugprone-easily-swappable-parameters
 #   Too many false positives, especially when swapable arguments are of different
 #   types (which will be flagged by the compiler).
