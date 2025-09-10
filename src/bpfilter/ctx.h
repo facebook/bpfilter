@@ -10,8 +10,8 @@
 #include "bpfilter/cgen/elfstub.h"
 #include "core/dump.h"
 #include "core/front.h"
-#include "core/hook.h"
 #include "core/list.h"
+#include "core/pack.h"
 
 /**
  * @file ctx.h
@@ -32,7 +32,6 @@
  */
 
 struct bf_cgen;
-struct bf_marsh;
 struct bf_ns;
 
 /**
@@ -62,21 +61,20 @@ void bf_ctx_teardown(bool clear);
 void bf_ctx_dump(prefix_t *prefix);
 
 /**
- * Serialize the global context.
+ * @brief Serialize the global context.
  *
- * @param marsh On succes, contains the serialized global context. Unchanged
- *        on failure. Can't be NULL. The owner owns the allocated memory.
- * @return 0 on success, or a negative errno value on failure.
+ * @param pack `bf_wpack_t` object to serialize the context into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_ctx_save(struct bf_marsh **marsh);
+int bf_ctx_save(bf_wpack_t *pack);
 
 /**
- * Deserialize the global context.
+ * @brief Deserialize the global context.
  *
- * @param marsh Serialized global context to restore. Can't be NULL.
+ * @param node Node containing the serialized context.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_load(const struct bf_marsh *marsh);
+int bf_ctx_load(bf_rpack_node_t node);
 
 /**
  * Unload and delete all the codegens, reset the context to a clean state.

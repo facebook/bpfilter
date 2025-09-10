@@ -24,8 +24,8 @@
 #include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/ns.h"
+#include "core/pack.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
@@ -120,7 +120,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
         _ctx->token_fd = TAKE_FD(token_fd);
     }
 
-    _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_marsh);
+    _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_pack);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
         r = bf_elfstub_new(&_ctx->stubs[id], id);
@@ -134,42 +134,36 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
 }
 
 /**
- * Allocate a new context and initialise it from serialised data.
+ * @brief Allocate and initialize a new context from serialized data.
  *
- * @param ctx On success, points to the newly allocated and initialised
- *        context. Can't be NULL.
- * @param marsh Serialised data to use to initialise the context.
- * @return 0 on success, or negative errno value on failure.
+ * @param ctx Context object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*ctx` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized matcher.
+ * @return 0 on success, or a negative errno value on failure.
  */
-static int _bf_ctx_new_from_marsh(struct bf_ctx **ctx,
-                                  const struct bf_marsh *marsh)
+static int _bf_ctx_new_from_pack(struct bf_ctx **ctx, bf_rpack_node_t node)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
-    struct bf_marsh *child = NULL;
-    struct bf_marsh *elem = NULL;
+    bf_rpack_node_t child, array_node;
     int r;
 
-    bf_assert(ctx && marsh);
+    bf_assert(ctx);
 
     r = _bf_ctx_new(&_ctx);
     if (r < 0)
         return r;
 
-    // Unmarsh bf_ctx.cgens
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    while ((elem = bf_marsh_next_child(child, elem))) {
+    r = bf_rpack_kv_array(node, "cgens", &child);
+    if (r)
+        return r;
+    bf_rpack_array_foreach (child, array_node) {
         _free_bf_cgen_ struct bf_cgen *cgen = NULL;
 
-        r = bf_cgen_new_from_marsh(&cgen, elem);
-        if (r < 0)
+        r = bf_list_emplace(&_ctx->cgens, bf_cgen_new_from_pack, cgen,
+                            array_node);
+        if (r)
             return r;
-
-        r = bf_list_add_tail(&_ctx->cgens, cgen);
-        if (r < 0)
-            return r;
-
-        TAKE_PTR(cgen);
     }
 
     *ctx = TAKE_PTR(_ctx);
@@ -249,49 +243,30 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
 }
 
 /**
- * Marsh a context.
+ * @brief Serialize a context.
  *
- * If the function succeeds, @p marsh will contain the marshalled context.
+ * The context is serialized as:
+ * @code
+ * {
+ *   "cgens": [
+ *     { bf_codegen },
+ *     // ...
+ *   ]
+ * }
+ * @endcode
  *
- * @ref bf_ctx only contain the codegens, so the serialized data can be
- * flattened to:
- *   - ctx marsh
- *     - list marsh
- *       - cgen marsh
- *       - ...
- *     - list marsh
- *     - ...
- *
- * @param ctx Context to marsh.
- * @param marsh Marsh'd context.
- * @return 0 on success, negative errno value on failure.
+ * @param ctx Context to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the context into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-static int _bf_ctx_marsh(const struct bf_ctx *ctx, struct bf_marsh **marsh)
+static int _bf_ctx_pack(const struct bf_ctx *ctx, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(ctx);
+    bf_assert(pack);
 
-    bf_assert(ctx && marsh);
+    bf_wpack_kv_list(pack, "cgens", &ctx->cgens);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return bf_err_r(r, "failed to create marsh for context");
-
-    {
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_list_marsh(&ctx->cgens, &child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
-            return bf_err_r(r, "failed to append codegen marsh");
-    }
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 /**
@@ -319,7 +294,7 @@ static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
                                        enum bf_front front)
 {
     _clean_bf_list_ bf_list _cgens =
-        bf_list_default(cgens->ops.free, cgens->ops.marsh);
+        bf_list_default(cgens->ops.free, cgens->ops.pack);
     int r;
 
     bf_assert(ctx && cgens);
@@ -399,30 +374,25 @@ void bf_ctx_teardown(bool clear)
     _bf_ctx_free(&_bf_global_ctx);
 }
 
-int bf_ctx_save(struct bf_marsh **marsh)
+int bf_ctx_save(bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
     int r;
 
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = _bf_ctx_marsh(_bf_global_ctx, &_marsh);
+    r = _bf_ctx_pack(_bf_global_ctx, pack);
     if (r)
         return bf_err_r(r, "failed to serialize context");
-
-    *marsh = TAKE_PTR(_marsh);
 
     return 0;
 }
 
-int bf_ctx_load(const struct bf_marsh *marsh)
+int bf_ctx_load(bf_rpack_node_t node)
 {
     _free_bf_ctx_ struct bf_ctx *ctx = NULL;
     int r;
 
-    bf_assert(marsh);
-
-    r = _bf_ctx_new_from_marsh(&ctx, marsh);
+    r = _bf_ctx_new_from_pack(&ctx, node);
     if (r)
         return bf_err_r(r, "failed to deserialize context");
 

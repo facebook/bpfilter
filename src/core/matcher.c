@@ -27,7 +27,7 @@
 #include "core/helper.h"
 #include "core/if.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 #include "core/runtime.h"
 
 #define INET4_ADDRSTRLEN 16
@@ -1089,39 +1089,34 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
     return 0;
 }
 
-int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
-                              const struct bf_marsh *marsh)
+int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
 {
-    struct bf_marsh *child = NULL;
+    _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
     enum bf_matcher_type type;
     enum bf_matcher_op op;
-    size_t payload_len;
     const void *payload;
+    size_t payload_len;
     int r;
 
     bf_assert(matcher);
-    bf_assert(marsh);
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&type, child->data, sizeof(type));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&op, child->data, sizeof(op));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&payload_len, child->data, sizeof(payload_len));
-    payload_len -= sizeof(struct bf_matcher);
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    payload = child->data;
-
-    r = bf_matcher_new(matcher, type, op, payload, payload_len);
+    r = bf_rpack_kv_enum(node, "type", &type);
     if (r)
-        return bf_err_r(r, "failed to restore bf_matcher from serialised data");
+        return bf_rpack_key_err(r, "bf_matcher.type");
+
+    r = bf_rpack_kv_enum(node, "op", &op);
+    if (r)
+        return bf_rpack_key_err(r, "bf_matcher.op");
+
+    r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
+    if (r)
+        return bf_rpack_key_err(r, "bf_matcher.payload");
+
+    r = bf_matcher_new(&_matcher, type, op, payload, payload_len);
+    if (r)
+        return bf_err_r(r, "failed to create bf_matcher from pack");
+
+    *matcher = TAKE_PTR(_matcher);
 
     return 0;
 }
@@ -1137,29 +1132,17 @@ void bf_matcher_free(struct bf_matcher **matcher)
     *matcher = NULL;
 }
 
-int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh)
+int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(matcher);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_wpack_kv_int(pack, "type", matcher->type);
+    bf_wpack_kv_int(pack, "op", matcher->op);
+    bf_wpack_kv_bin(pack, "payload", matcher->payload,
+                    matcher->len - sizeof(*matcher));
 
-    r |= bf_marsh_add_child_raw(&_marsh, &matcher->type, sizeof(matcher->type));
-    r |= bf_marsh_add_child_raw(&_marsh, &matcher->op, sizeof(matcher->op));
-    r |= bf_marsh_add_child_raw(&_marsh, &matcher->len, sizeof(matcher->len));
-    r |= bf_marsh_add_child_raw(&_marsh, matcher->payload,
-                                matcher->len - sizeof(struct bf_matcher));
-    if (r)
-        return bf_err_r(r, "failed to serialise bf_matcher object");
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)

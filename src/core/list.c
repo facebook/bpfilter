@@ -9,7 +9,6 @@
 #include <stdlib.h>
 
 #include "core/helper.h"
-#include "core/marsh.h"
 
 /**
  * Create a new list node, with the given data.
@@ -107,34 +106,31 @@ void bf_list_clean(bf_list *list)
     list->tail = NULL;
 }
 
-int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh)
+int bf_list_pack(const bf_list *list, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(list);
+    bf_assert(pack);
 
-    bf_assert(list && marsh);
+    if (!list->ops.pack)
+        return -ENOTSUP;
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_list_foreach (list, node) {
+        if (!bf_list_node_get_data(node)) {
+            bf_wpack_nil(pack);
+            continue;
+        }
 
-    if (list->ops.marsh) {
-        bf_list_foreach (list, node) {
-            _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-            r = list->ops.marsh(bf_list_node_get_data(node), &child);
-            if (r < 0)
-                return r;
-
-            r = bf_marsh_add_child_obj(&_marsh, child);
-            if (r < 0)
-                return r;
+        if (list->ops.pack == (bf_list_ops_pack)bf_list_pack) {
+            // Handle nested lists
+            bf_wpack_list(pack, bf_list_node_get_data(node));
+        } else {
+            bf_wpack_open_object(pack, NULL);
+            list->ops.pack(bf_list_node_get_data(node), pack);
+            bf_wpack_close_object(pack);
         }
     }
 
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 int bf_list_add_head(bf_list *list, void *data)

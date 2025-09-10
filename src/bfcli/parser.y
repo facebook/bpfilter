@@ -223,7 +223,7 @@ rules           : %empty { $$ = NULL; }
                 | rules rule
                 {
                     if (!$1) {
-                        if (bf_list_new(&$1, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_rule_free, .marsh = (bf_list_ops_marsh)bf_rule_marsh}}) < 0)
+                        if (bf_list_new(&$1, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_rule_free, .pack = (bf_list_ops_pack)bf_rule_pack}}) < 0)
                             bf_parse_err("failed to allocate a new bf_list for bf_rule\n");
                     }
 
@@ -263,7 +263,7 @@ matchers        : matcher
                 {
                     _free_bf_list_ bf_list *list = NULL;
 
-                    if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_matcher_free, .marsh = (bf_list_ops_marsh)bf_matcher_marsh}}) < 0)
+                    if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_matcher_free, .pack = (bf_list_ops_pack)bf_matcher_pack}}) < 0)
                         bf_parse_err("failed to allocate a new bf_list for bf_matcher\n");
 
                     if (bf_list_add_tail(list, $1) < 0)

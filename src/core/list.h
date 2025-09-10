@@ -9,15 +9,14 @@
 #include <stddef.h>
 
 #include "core/helper.h"
-
-struct bf_marsh;
+#include "core/pack.h"
 
 /* This has to be defined here, otherwise struct bf_list_node definition is
  * self-referencing... */
 typedef struct bf_list_node bf_list_node;
 
 typedef void (*bf_list_ops_free)(void **data);
-typedef int (*bf_list_ops_marsh)(const void *data, struct bf_marsh **marsh);
+typedef int (*bf_list_ops_pack)(const void *data, bf_wpack_t *pack);
 
 /**
  * @struct bf_list_ops
@@ -33,7 +32,7 @@ typedef struct
 
     /** Callback to serialize the data from a node. If NULL, the data won't be
      * serialized. */
-    bf_list_ops_marsh marsh;
+    bf_list_ops_pack pack;
 } bf_list_ops;
 
 /**
@@ -73,7 +72,7 @@ struct bf_list_node
  * @var bf_list::tail
  * 	Last element of the list, NULL if the list is empty.
  */
-typedef struct
+typedef struct bf_list
 {
     size_t len;
     bf_list_node *head;
@@ -121,25 +120,25 @@ typedef struct
  *
  * @param free_cb Callback to free the data contained in a node. If NULL, a
  *        node's data won't be freed when the list is destroyed.
- * @param marsh_cb Callback to marsh the data contained in a node. If NULL, a
- *        node's data won't be marshed when the list is marshed.
+ * @param pack_cb Callback to serialize the data contained in a node. If NULL, a
+ *        node's data won't be serialized when the list is serialized.
  * @return An initialised @ref bf_list_ops .
  */
-#define bf_list_ops_default(free_cb, marsh_cb)                                 \
+#define bf_list_ops_default(free_cb, pack_cb)                                  \
     ((bf_list_ops) {.free = (bf_list_ops_free)(free_cb),                       \
-                    .marsh = (bf_list_ops_marsh)(marsh_cb)})
+                    .pack = (bf_list_ops_pack)(pack_cb)})
 
 /**
  * Returns an initialised @ref bf_list .
  *
  * @param free_cb Callback to free the data contained in a node. If NULL, a
  *        node's data won't be freed when the list is destroyed.
- * @param marsh_cb Callback to marsh the data contained in a node. If NULL, a
- *        node's data won't be marshed when the list is marshed.
+ * @param pack_cb Callback to serialize the data contained in a node. If NULL, a
+ *        node's data won't be serialized when the list is serialized.
  * @return An initialised @ref bf_list .
  */
-#define bf_list_default(free_cb, marsh_cb)                                     \
-    ((bf_list) {.ops = bf_list_ops_default(free_cb, marsh_cb)})
+#define bf_list_default(free_cb, pack_cb)                                      \
+    ((bf_list) {.ops = bf_list_ops_default(free_cb, pack_cb)})
 
 /**
  * Returns an initialized `bf_list` from an existing list.
@@ -150,7 +149,7 @@ typedef struct
  * @return An initialised `bf_list`.
  */
 #define bf_list_default_from(list)                                             \
-    ((bf_list) {.ops = bf_list_ops_default((list).ops.free, (list).ops.marsh)})
+    ((bf_list) {.ops = bf_list_ops_default((list).ops.free, (list).ops.pack)})
 
 /**
  * Move a list.
@@ -167,7 +166,7 @@ typedef struct
     ({                                                                         \
         bf_list *__list = &(list);                                             \
         bf_list _list = *__list;                                               \
-        *__list = bf_list_default(__list->ops.free, __list->ops.marsh);        \
+        *__list = bf_list_default(__list->ops.free, __list->ops.pack);         \
         _list;                                                                 \
     })
 
@@ -177,7 +176,7 @@ typedef struct
  * @param list Pointer to the list to initialise. Must be non-NULL.
  * @param ops Operations to use to manipulate the list's data. If NULL, the
  *        list's ops are initialised to NULL: the node's data won't be free nor
- *        marshed.
+ *        serialized.
  * @return 0 on success or negative errno code on failure.
  */
 int bf_list_new(bf_list **list, const bf_list_ops *ops);
@@ -195,7 +194,7 @@ void bf_list_free(bf_list **list);
  * @param list List to initialise. Must be non-NULL.
  * @param ops Operations to use to manipulate the list's data. If NULL, the
  *        list's ops are initialised to NULL: the node's data won't be free nor
- *        marshed.
+ *        serialized.
  */
 void bf_list_init(bf_list *list, const bf_list_ops *ops);
 
@@ -210,19 +209,16 @@ void bf_list_init(bf_list *list, const bf_list_ops *ops);
 void bf_list_clean(bf_list *list);
 
 /**
- * Serialize a list.
+ * @brief Serialize a list.
  *
- * Allocate @c marsh and call @c list.ops.marsh for every node in the list. The
- * serialized node data is added to @c marsh .
- *
- * @c list.ops.marsh must be a pointer to a valid serializing function.
+ * Use `list.ops.pack` to serialize the list elements. If `list.ops.pack` is not
+ * defined, the list will still be serialized, but empty.
  *
  * @param list List to serialize. Can't be NULL.
- * @param marsh Serialized object. On success, @c *marsh points to the
- *        serialized list. On error, @c marsh is unchanged. Can't be NULL.
- * @return 0 on success, or a negative errno value on error.
+ * @param pack `bf_wpack_t` object to serialize the list into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_list_marsh(const bf_list *list, struct bf_marsh **marsh);
+int bf_list_pack(const bf_list *list, bf_wpack_t *pack);
 
 /**
  * Get the number of nodes in the list.
@@ -414,3 +410,19 @@ static inline void *bf_list_node_take_data(bf_list_node *node)
 
     return data;
 }
+
+#define bf_list_emplace(list, fn, obj, ...)                                    \
+    ({                                                                         \
+        int __r = fn(&obj, ##__VA_ARGS__);                                     \
+        if (!__r) {                                                            \
+            __r = bf_list_add_tail(list, obj);                                 \
+            if (!__r) {                                                        \
+                TAKE_PTR(obj);                                                 \
+            } else {                                                           \
+                bf_err_r(__r, "failed to insert object into bf_list");         \
+            }                                                                  \
+        } else {                                                               \
+            bf_err_r(__r, "failed to create object");                          \
+        }                                                                      \
+        __r;                                                                   \
+    })

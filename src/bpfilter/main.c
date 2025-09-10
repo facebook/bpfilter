@@ -22,8 +22,8 @@
 #include "core/helper.h"
 #include "core/io.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/ns.h"
+#include "core/pack.h"
 #include "core/request.h"
 #include "core/response.h"
 #include "version.h"
@@ -71,9 +71,10 @@ void _bf_sig_handler(int sig)
  */
 static int _bf_load(const char *path)
 {
-    _cleanup_free_ struct bf_marsh *marsh = NULL;
-    struct bf_marsh *child = NULL;
-    size_t len;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ void *data = NULL;
+    bf_rpack_node_t child, array_node;
+    size_t data_len;
     int r;
 
     bf_assert(path);
@@ -90,46 +91,37 @@ static int _bf_load(const char *path)
         return 0;
     }
 
-    r = bf_read_file(path, (void **)&marsh, &len);
+    r = bf_read_file(path, &data, &data_len);
     if (r < 0)
         return r;
 
-    if (len < sizeof(struct bf_marsh))
-        return bf_err_r(EIO, "marshalled data is invalid");
+    r = bf_rpack_new(&pack, data, data_len);
+    if (r)
+        return r;
 
-    if (bf_marsh_size(marsh) != len) {
-        return bf_err_r(
-            EINVAL, "conflicting marshalled data size: got %zu, expected %zu",
-            len, bf_marsh_size(marsh));
-    }
-
-    child = bf_marsh_next_child(marsh, child);
-    if (!child) {
-        return bf_err_r(-EINVAL,
-                        "expecting a child in main marshalled context");
-    }
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "ctx", &child);
+    if (r)
+        return r;
 
     r = bf_ctx_load(child);
     if (r < 0)
         return r;
 
-    for (int i = 0; i < _BF_FRONT_MAX; ++i) {
-        child = bf_marsh_next_child(marsh, child);
-        if (!child) {
-            bf_err(
-                "no marshalled context for %s. Skipping restoration of remaining front-specific context.",
-                bf_front_to_str(i));
-            break;
-        }
+    r = bf_rpack_kv_array(bf_rpack_root(pack), "cache", &child);
+    if (r)
+        return r;
+    bf_rpack_array_foreach (child, array_node) {
+        if (bf_rpack_is_nil(array_node))
+            continue;
 
-        r = bf_front_ops_get(i)->unmarsh(child);
+        r = bf_front_ops_get(i)->unpack(array_node);
         if (r < 0) {
             return bf_err_r(r, "failed to restore context for %s",
                             bf_front_to_str(i));
         }
     }
 
-    bf_dbg("loaded marshalled context from %s", path);
+    bf_dbg("loaded serialized context from %s", path);
 
     return 1;
 }
@@ -144,7 +136,9 @@ static int _bf_load(const char *path)
  */
 static int _bf_save(const char *path)
 {
-    _cleanup_free_ struct bf_marsh *marsh = NULL;
+    _free_bf_wpack_ bf_wpack_t *pack = NULL;
+    const void *data;
+    size_t data_len;
     int r;
 
     bf_assert(path);
@@ -156,46 +150,39 @@ static int _bf_save(const char *path)
         return 0;
     }
 
-    r = bf_marsh_new(&marsh, NULL, 0);
-    if (r < 0)
+    r = bf_wpack_new(&pack);
+    if (r)
         return r;
 
-    {
-        _cleanup_free_ struct bf_marsh *child = NULL;
+    bf_wpack_open_object(pack, "ctx");
+    r = bf_ctx_save(pack);
+    if (r)
+        return r;
+    bf_wpack_close_object(pack);
 
-        r = bf_ctx_save(&child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&marsh, child);
-        if (r < 0)
-            return r;
-    }
-
+    bf_wpack_open_array(pack, "cache");
     for (int i = 0; i < _BF_FRONT_MAX; ++i) {
-        _cleanup_free_ struct bf_marsh *child = NULL;
-
-        if (!bf_opts_is_front_enabled(i))
-            continue;
-
-        r = bf_marsh_new(&child, NULL, 0);
-        if (r < 0)
-            return r;
-
-        r = bf_front_ops_get(i)->marsh(&child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&marsh, child);
-        if (r < 0)
-            return r;
+        if (bf_opts_is_front_enabled(i)) {
+            bf_wpack_open_object(pack, NULL);
+            r = bf_front_ops_get(i)->pack(pack);
+            if (r < 0)
+                return r;
+            bf_wpack_close_object(pack);
+        } else {
+            bf_wpack_nil(pack);
+        }
     }
+    bf_wpack_close_array(pack);
 
-    r = bf_write_file(path, marsh, bf_marsh_size(marsh));
+    r = bf_wpack_get_data(pack, &data, &data_len);
+    if (r)
+        return r;
+
+    r = bf_write_file(path, data, data_len);
     if (r < 0)
         return r;
 
-    bf_dbg("saved marshalled context to %s", path);
+    bf_dbg("saved serialized context to %s", path);
 
     return 0;
 }

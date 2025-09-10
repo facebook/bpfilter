@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "core/dump.h"
+#include "core/pack.h"
 
 /**
  * @file matcher.h
@@ -27,9 +28,6 @@
  *   the IP address in the payload.
  * - A payload, which is compared to the similar value in the network packet.
  */
-
-struct bf_matcher;
-struct bf_marsh;
 
 /// Automatically destroy @ref bf_matcher objects going out of the scope.
 #define _free_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
@@ -288,15 +286,14 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
                             const char *payload);
 
 /**
- * Allocate a new matcher and initialise it from serialised data.
+ * @brief Allocate and initalize a new matcher from serialized data.
  *
  * @param matcher On success, points to the newly allocated and initialised
  *        matcher. Can't be NULL.
- * @param marsh Serialised data to use to initialise the matcher.
- * @return 0 on success, or negative errno value on failure.
+ * @param node Serialized matcher. Can't be NULL.
+ * @return 0 on success, or negative error value on failure.
  */
-int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
-                              const struct bf_marsh *marsh);
+int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node);
 
 /**
  * Deinitialise and deallocate a matcher.
@@ -306,12 +303,13 @@ int bf_matcher_new_from_marsh(struct bf_matcher **matcher,
 void bf_matcher_free(struct bf_matcher **matcher);
 
 /**
- * Serialise a matcher.
+ * @brief Serialize a matcher.
  *
- * @param matcher Matcher object to serialise. Can't be NULL.
- * @param marsh On success, contains the serialised matcher. Can't be NULL.
+ * @param matcher Matcher to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the set into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_matcher_marsh(const struct bf_matcher *matcher, struct bf_marsh **marsh);
+int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack);
 
 /**
  * Dump a matcher.

@@ -7,7 +7,7 @@
 
 #include "bpfilter/xlate/front.h"
 #include "core/helper.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 #include "core/request.h"
 #include "core/response.h"
 
@@ -21,16 +21,16 @@ static int _bf_nft_teardown(void)
     return 0;
 }
 
-static int _bf_nft_marsh(struct bf_marsh **marsh)
+static int _bf_nft_pack(bf_wpack_t *pack)
 {
-    UNUSED(marsh);
+    UNUSED(pack);
 
     return 0;
 }
 
-static int _bf_nft_unmarsh(struct bf_marsh *marsh)
+static int _bf_nft_unpack(bf_rpack_node_t node)
 {
-    UNUSED(marsh);
+    UNUSED(node);
 
     return 0;
 }
@@ -49,6 +49,6 @@ const struct bf_front_ops nft_front = {
     .setup = _bf_nft_setup,
     .teardown = _bf_nft_teardown,
     .request_handler = _bf_nft_request_handler,
-    .marsh = _bf_nft_marsh,
-    .unmarsh = _bf_nft_unmarsh,
+    .pack = _bf_nft_pack,
+    .unpack = _bf_nft_unpack,
 };

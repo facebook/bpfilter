@@ -46,6 +46,25 @@ int bf_response_new_success(struct bf_response **response, const char *data,
     return 0;
 }
 
+int bf_response_new_from_pack(struct bf_response **response, bf_wpack_t *pack)
+{
+    const void *data;
+    size_t data_len;
+    int r;
+
+    bf_assert(response);
+    bf_assert(pack);
+
+    if (!bf_wpack_is_valid(pack))
+        return -EINVAL;
+
+    r = bf_wpack_get_data(pack, &data, &data_len);
+    if (r)
+        return r;
+
+    return bf_response_new_success(response, data, data_len);
+}
+
 int bf_response_new_failure(struct bf_response **response, int error)
 {
     _free_bf_response_ struct bf_response *_response = NULL;

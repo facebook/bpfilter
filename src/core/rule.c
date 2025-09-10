@@ -13,8 +13,8 @@
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/matcher.h"
+#include "core/pack.h"
 #include "core/runtime.h"
 #include "core/verdict.h"
 
@@ -56,12 +56,56 @@ int bf_rule_new(struct bf_rule **rule)
     if (!_rule)
         return -ENOMEM;
 
-    bf_list_init(
-        &_rule->matchers,
-        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_matcher_free,
-                          .marsh = (bf_list_ops_marsh)bf_matcher_marsh}});
+    _rule->matchers = bf_list_default(bf_matcher_free, bf_matcher_pack);
 
     *rule = _rule;
+
+    return 0;
+}
+
+int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
+{
+    _free_bf_rule_ struct bf_rule *_rule = NULL;
+    bf_rpack_node_t m_nodes, m_node;
+    int r;
+
+    bf_assert(rule);
+
+    r = bf_rule_new(&_rule);
+    if (r)
+        return bf_err_r(r, "failed to create bf_rule from pack");
+
+    r = bf_rpack_kv_u32(node, "index", &_rule->index);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.index");
+
+    r = bf_rpack_kv_u8(node, "log", &_rule->log);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.log");
+
+    r = bf_rpack_kv_bool(node, "counters", &_rule->counters);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.counters");
+
+    r = bf_rpack_kv_enum(node, "verdict", &_rule->verdict);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.verdict");
+
+    r = bf_rpack_kv_array(node, "matchers", &m_nodes);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.matchers");
+    bf_rpack_array_foreach (m_nodes, m_node) {
+        _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+        r = bf_list_emplace(&_rule->matchers, bf_matcher_new_from_pack, matcher,
+                            m_node);
+        if (r) {
+            return bf_err_r(
+                r, "failed to unpack bf_matcher into bf_rule.matchers");
+        }
+    }
+
+    *rule = TAKE_PTR(_rule);
 
     return 0;
 }
@@ -79,103 +123,19 @@ void bf_rule_free(struct bf_rule **rule)
     *rule = NULL;
 }
 
-int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh)
+int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(rule);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_wpack_kv_u32(pack, "index", rule->index);
+    bf_wpack_kv_u8(pack, "log", rule->log);
+    bf_wpack_kv_bool(pack, "counters", rule->counters);
+    bf_wpack_kv_int(pack, "verdict", rule->verdict);
 
-    r = bf_marsh_add_child_raw(&_marsh, &rule->index, sizeof(rule->index));
-    if (r < 0)
-        return r;
+    bf_wpack_kv_list(pack, "matchers", &rule->matchers);
 
-    {
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_list_marsh(&rule->matchers, &child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
-            return r;
-    }
-
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->log, sizeof(rule->log));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->counters,
-                                sizeof(rule->counters));
-    r |= bf_marsh_add_child_raw(&_marsh, &rule->verdict,
-                                sizeof(enum bf_verdict));
-    if (r)
-        return bf_err_r(r, "Failed to serialize rule");
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
-}
-
-int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule)
-{
-    _free_bf_rule_ struct bf_rule *_rule = NULL;
-    struct bf_marsh *rule_elem = NULL;
-    int r;
-
-    bf_assert(marsh);
-    bf_assert(rule);
-
-    r = bf_rule_new(&_rule);
-    if (r < 0)
-        return r;
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, NULL)))
-        return -EINVAL;
-    memcpy(&_rule->index, rule_elem->data, sizeof(_rule->index));
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
-        return -EINVAL;
-
-    {
-        struct bf_marsh *matcher_elem = NULL;
-
-        while ((matcher_elem = bf_marsh_next_child(rule_elem, matcher_elem))) {
-            _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-
-            r = bf_matcher_new_from_marsh(&matcher, matcher_elem);
-            if (r)
-                return r;
-
-            r = bf_list_add_tail(&_rule->matchers, matcher);
-            if (r)
-                return r;
-
-            TAKE_PTR(matcher);
-        }
-    }
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
-        return -EINVAL;
-    memcpy(&_rule->log, rule_elem->data, sizeof(_rule->log));
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
-        return -EINVAL;
-    memcpy(&_rule->counters, rule_elem->data, sizeof(_rule->counters));
-
-    if (!(rule_elem = bf_marsh_next_child(marsh, rule_elem)))
-        return -EINVAL;
-    memcpy(&_rule->verdict, rule_elem->data, sizeof(_rule->verdict));
-
-    if (bf_marsh_next_child(marsh, rule_elem))
-        bf_warn("codegen marsh has more children than expected");
-
-    *rule = TAKE_PTR(_rule);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)

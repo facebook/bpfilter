@@ -26,9 +26,8 @@
 #include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/ns.h"
-#include "core/rule.h"
+#include "core/pack.h"
 
 static int _bf_cgen_get_chain_pindir_fd(const char *name)
 {
@@ -64,36 +63,35 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
     return 0;
 }
 
-int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
+int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    _free_bf_program_ struct bf_program *program = NULL;
-    _free_bf_chain_ struct bf_chain *chain = NULL;
-    struct bf_marsh *marsh_elem = NULL;
-    enum bf_front front;
+    bf_rpack_node_t child;
     int r;
 
     bf_assert(cgen);
-    bf_assert(marsh);
 
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    memcpy(&front, marsh_elem->data, sizeof(front));
+    _cgen = malloc(sizeof(*_cgen));
+    if (!_cgen)
+        return -ENOMEM;
 
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
+    _cgen->program = NULL;
 
-    r = bf_chain_new_from_marsh(&chain, marsh_elem);
-    if (r < 0)
-        return r;
-
-    r = bf_cgen_new(&_cgen, front, &chain);
+    r = bf_rpack_kv_enum(node, "front", &_cgen->front);
     if (r)
-        return bf_err_r(r, "failed to allocate codegen object");
+        return bf_rpack_key_err(r, "bf_cgen.front");
 
-    if (!(marsh_elem = bf_marsh_next_child(marsh, marsh_elem)))
-        return -EINVAL;
-    if (!bf_marsh_is_empty(marsh_elem)) {
+    r = bf_rpack_kv_obj(node, "chain", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.chain");
+    r = bf_chain_new_from_pack(&_cgen->chain, child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.chain");
+
+    r = bf_rpack_kv_node(node, "program", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.program");
+    if (!bf_rpack_is_nil(child)) {
         _cleanup_close_ int dir_fd = -1;
 
         if ((dir_fd = _bf_cgen_get_chain_pindir_fd(_cgen->chain->name)) < 0) {
@@ -102,14 +100,11 @@ int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh)
                             _cgen->chain->name);
         }
 
-        r = bf_program_unmarsh(marsh_elem, &_cgen->program, _cgen->chain,
-                               dir_fd);
-        if (r < 0)
+        r = bf_program_new_from_pack(&_cgen->program, _cgen->chain, dir_fd,
+                                     child);
+        if (r)
             return r;
     }
-
-    if (bf_marsh_next_child(marsh, marsh_elem))
-        bf_warn("codegen marsh has more children than expected");
 
     *cgen = TAKE_PTR(_cgen);
 
@@ -139,56 +134,26 @@ void bf_cgen_free(struct bf_cgen **cgen)
     *cgen = NULL;
 }
 
-int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh)
+int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(cgen);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return r;
+    bf_wpack_kv_enum(pack, "front", cgen->front);
 
-    r = bf_marsh_add_child_raw(&_marsh, &cgen->front, sizeof(cgen->front));
-    if (r < 0)
-        return bf_err_r(r, "failed to serialize codegen");
+    bf_wpack_open_object(pack, "chain");
+    bf_chain_pack(cgen->chain, pack);
+    bf_wpack_close_object(pack);
 
-    {
-        // Serialize cgen.chain
-        _free_bf_marsh_ struct bf_marsh *chain_elem = NULL;
-
-        r = bf_chain_marsh(cgen->chain, &chain_elem);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, chain_elem);
-        if (r < 0)
-            return r;
+    if (cgen->program) {
+        bf_wpack_open_object(pack, "program");
+        bf_program_pack(cgen->program, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "program");
     }
 
-    {
-        _free_bf_marsh_ struct bf_marsh *prog_elem = NULL;
-
-        if (cgen->program) {
-            r = bf_program_marsh(cgen->program, &prog_elem);
-            if (r < 0)
-                return r;
-        } else {
-            r = bf_marsh_new(&prog_elem, NULL, 0);
-            if (r < 0)
-                return r;
-        }
-
-        r = bf_marsh_add_child_obj(&_marsh, prog_elem);
-        if (r)
-            return r;
-    }
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)

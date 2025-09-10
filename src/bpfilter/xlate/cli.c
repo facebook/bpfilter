@@ -19,24 +19,23 @@
 #include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 #include "core/request.h"
 #include "core/response.h"
-#include "core/rule.h"
 
 static int _bf_cli_setup(void);
 static int _bf_cli_teardown(void);
 static int _bf_cli_request_handler(const struct bf_request *request,
                                    struct bf_response **response);
-static int _bf_cli_marsh(struct bf_marsh **marsh);
-static int _bf_cli_unmarsh(struct bf_marsh *marsh);
+static int _bf_cli_pack(bf_wpack_t *pack);
+static int _bf_cli_unpack(bf_rpack_node_t node);
 
 const struct bf_front_ops cli_front = {
     .setup = _bf_cli_setup,
     .teardown = _bf_cli_teardown,
     .request_handler = _bf_cli_request_handler,
-    .marsh = _bf_cli_marsh,
-    .unmarsh = _bf_cli_unmarsh,
+    .pack = _bf_cli_pack,
+    .unpack = _bf_cli_unpack,
 };
 
 static int _bf_cli_setup(void)
@@ -63,22 +62,19 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
 static int _bf_cli_ruleset_get(const struct bf_request *request,
                                struct bf_response **response)
 {
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
-    _free_bf_marsh_ struct bf_marsh *chain_marsh = NULL;
-    _free_bf_marsh_ struct bf_marsh *hookopts_marsh = NULL;
-    _free_bf_marsh_ struct bf_marsh *counters_marsh = NULL;
     _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
-    _clean_bf_list_ bf_list chains = bf_list_default(NULL, bf_chain_marsh);
-    _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, bf_hookopts_marsh);
+    _clean_bf_list_ bf_list chains = bf_list_default(NULL, bf_chain_pack);
+    _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, bf_hookopts_pack);
     _clean_bf_list_ bf_list counters =
-        bf_list_default(bf_list_free, bf_list_marsh);
+        bf_list_default(bf_list_free, bf_list_pack);
+    _free_bf_wpack_ bf_wpack_t *pack = NULL;
     int r;
 
     UNUSED(request);
 
-    r = bf_marsh_new(&marsh, NULL, 0);
-    if (r < 0)
-        return bf_err_r(r, "failed to get new marsh");
+    r = bf_wpack_new(&pack);
+    if (r)
+        return r;
 
     r = bf_ctx_get_cgens_for_front(&cgens, BF_FRONT_CLI);
     if (r < 0)
@@ -96,8 +92,8 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
         if (r)
             return bf_err_r(r, "failed to add hookopts to list");
 
-        r = bf_list_new(&cgen_counters, &bf_list_ops_default(bf_counter_free,
-                                                             bf_counter_marsh));
+        r = bf_list_new(&cgen_counters,
+                        &bf_list_ops_default(bf_counter_free, bf_counter_pack));
         if (r)
             return r;
 
@@ -112,91 +108,53 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
         TAKE_PTR(cgen_counters);
     }
 
-    // Marsh the chain list
-    r = bf_list_marsh(&chains, &chain_marsh);
-    if (r < 0)
-        return bf_err_r(r, "failed to marshal chains list");
+    bf_wpack_open_object(pack, "ruleset");
+    bf_wpack_kv_list(pack, "chains", &chains);
+    bf_wpack_kv_list(pack, "hookopts", &hookopts);
+    bf_wpack_kv_list(pack, "counters", &counters);
+    bf_wpack_close_object(pack);
 
-    r = bf_marsh_add_child_obj(&marsh, chain_marsh);
-    if (r < 0)
-        return bf_err_r(r, "failed to add chain list to marsh");
-
-    // Marsh the hookopts list
-    r = bf_marsh_new(&hookopts_marsh, NULL, 0);
-    bf_list_foreach (&hookopts, hookopts_node) {
-        struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        if (hookopts) {
-            r = bf_hookopts_marsh(bf_list_node_get_data(hookopts_node), &child);
-            if (r < 0)
-                return r;
-
-            r = bf_marsh_add_child_obj(&hookopts_marsh, child);
-            if (r < 0)
-                return r;
-        } else {
-            r = bf_marsh_add_child_raw(&hookopts_marsh, NULL, 0);
-            if (r)
-                return r;
-        }
-    }
-
-    r = bf_marsh_add_child_obj(&marsh, hookopts_marsh);
-    if (r < 0)
-        return bf_err_r(r, "failed to add chain list to marsh");
-
-    // Marsh the counters list
-    r = bf_list_marsh(&counters, &counters_marsh);
-    if (r < 0)
-        return bf_err_r(r, "failed to marshal counters list");
-
-    r = bf_marsh_add_child_obj(&marsh, counters_marsh);
-    if (r < 0)
-        return bf_err_r(r, "failed to add counters list to marsh");
-
-    return bf_response_new_success(response, (void *)marsh,
-                                   bf_marsh_size(marsh));
+    return bf_response_new_from_pack(response, pack);
 }
 
 int _bf_cli_ruleset_set(const struct bf_request *request,
                         struct bf_response **response)
 {
     _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
-    struct bf_marsh *marsh, *list_elem = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack;
+    bf_rpack_node_t child, node;
     int r;
 
     bf_assert(request && response);
 
-    // Unmarsh the list of chains
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
-
     bf_ctx_flush(BF_FRONT_CLI);
 
-    while ((list_elem = bf_marsh_next_child(marsh, list_elem))) {
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_array(bf_rpack_root(pack), "ruleset", &child);
+    if (r)
+        return r;
+    bf_rpack_array_foreach (child, node) {
         _free_bf_cgen_ struct bf_cgen *cgen = NULL;
         _free_bf_chain_ struct bf_chain *chain = NULL;
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-        struct bf_marsh *child = NULL;
+        bf_rpack_node_t child;
 
-        child = bf_marsh_next_child(list_elem, child);
-        if (!child)
-            return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
-
-        r = bf_chain_new_from_marsh(&chain, child);
+        r = bf_rpack_kv_obj(node, "chain", &child);
         if (r)
             goto err_load;
 
-        child = bf_marsh_next_child(list_elem, child);
-        if (!child)
-            return bf_err_r(-ENOENT, "expecting marsh for hook, none found");
-        if (child->data_len) {
-            r = bf_hookopts_new_from_marsh(&hookopts, child);
+        r = bf_chain_new_from_pack(&chain, child);
+        if (r)
+            goto err_load;
+
+        r = bf_rpack_kv_node(node, "hookopts", &child);
+        if (r)
+            goto err_load;
+        if (!bf_rpack_is_nil(child)) {
+            r = bf_hookopts_new_from_pack(&hookopts, child);
             if (r)
                 goto err_load;
         }
@@ -234,33 +192,33 @@ int _bf_cli_chain_set(const struct bf_request *request,
                       struct bf_response **response)
 {
     struct bf_cgen *old_cgen;
-    struct bf_marsh *marsh, *child = NULL;
     _free_bf_cgen_ struct bf_cgen *new_cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    bf_rpack_node_t root, child;
     int r;
 
     bf_assert(request && response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
-
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
-    r = bf_chain_new_from_marsh(&chain, child);
+    r = bf_rpack_new(&pack, request->data, request->data_len);
     if (r)
         return r;
 
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return bf_err_r(-ENOENT, "expecting marsh for hookopts, none found");
-    if (child->data_len) {
-        r = bf_hookopts_new_from_marsh(&hookopts, child);
+    root = bf_rpack_root(pack);
+
+    r = bf_rpack_kv_obj(root, "chain", &child);
+    if (r)
+        return r;
+    r = bf_chain_new_from_pack(&chain, child);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_node(root, "hookopts", &child);
+    if (r)
+        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_hookopts_new_from_pack(&hookopts, child);
         if (r)
             return r;
     }
@@ -294,120 +252,83 @@ int _bf_cli_chain_set(const struct bf_request *request,
 static int _bf_cli_chain_get(const struct bf_request *request,
                              struct bf_response **response)
 {
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
     _clean_bf_list_ bf_list counters =
-        bf_list_default(bf_counter_free, bf_counter_marsh);
+        bf_list_default(bf_counter_free, bf_counter_pack);
     struct bf_cgen *cgen;
-    struct bf_marsh *req_marsh, *child = NULL;
+    _cleanup_free_ char *name = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
     int r;
 
-    req_marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(req_marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&rpack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    if (!(child = bf_marsh_next_child(req_marsh, child)))
-        return -EINVAL;
-    if (child->data_len < 2)
-        return bf_err_r(-EINVAL, "_bf_cli_chain_get: chain name is empty");
-    if (child->data[child->data_len - 1]) {
-        return bf_err_r(-EINVAL,
-                        "_bf_cli_chain_get: chain name if not nul-terminated");
-    }
+    r = bf_rpack_kv_str(bf_rpack_root(rpack), "name", &name);
+    if (r)
+        return r;
 
-    cgen = bf_ctx_get_cgen(child->data);
+    cgen = bf_ctx_get_cgen(name);
     if (!cgen)
-        return bf_err_r(-ENOENT, "chain '%s' not found", req_marsh->data);
+        return bf_err_r(-ENOENT, "chain '%s' not found", name);
 
-    r = bf_marsh_new(&marsh, NULL, 0);
-    if (r < 0)
-        return bf_err_r(r, "failed to get new marsh");
+    r = bf_cgen_get_counters(cgen, &counters);
+    if (r)
+        return bf_err_r(r, "failed to request counters for '%s'", name);
 
-    {
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
+    r = bf_wpack_new(&wpack);
+    if (r)
+        return r;
 
-        r = bf_chain_marsh(cgen->chain, &child);
-        if (r)
-            return r;
-
-        r = bf_marsh_add_child_obj(&marsh, child);
-        if (r)
-            return r;
-    }
+    bf_wpack_open_object(wpack, "chain");
+    r = bf_chain_pack(cgen->chain, wpack);
+    if (r)
+        return r;
+    bf_wpack_close_object(wpack);
 
     if (cgen->program->link->hookopts) {
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_hookopts_marsh(cgen->program->link->hookopts, &child);
+        bf_wpack_open_object(wpack, "hookopts");
+        r = bf_hookopts_pack(cgen->program->link->hookopts, wpack);
         if (r)
             return r;
-
-        r = bf_marsh_add_child_obj(&marsh, child);
-        if (r < 0)
-            return r;
+        bf_wpack_close_object(wpack);
     } else {
-        r = bf_marsh_add_child_raw(&marsh, NULL, 0);
-        if (r)
-            return r;
+        bf_wpack_kv_nil(wpack, "hookopts");
     }
 
-    {
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
+    bf_wpack_kv_list(wpack, "counters", &counters);
 
-        r = bf_cgen_get_counters(cgen, &counters);
-        if (r)
-            return r;
-
-        r = bf_list_marsh(&counters, &child);
-        if (r)
-            return r;
-
-        r = bf_marsh_add_child_obj(&marsh, child);
-        if (r)
-            return r;
-    }
-
-    return bf_response_new_success(response, (void *)marsh,
-                                   bf_marsh_size(marsh));
+    return bf_response_new_from_pack(response, wpack);
 }
 
 int _bf_cli_chain_logs_fd(const struct bf_request *request,
                           struct bf_response **response)
 {
     struct bf_cgen *cgen;
-    struct bf_marsh *marsh, *child = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ char *name = NULL;
     int r;
 
     UNUSED(response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (child->data_len < 2)
-        return bf_err_r(-EINVAL, "_bf_cli_chain_logs_fd: chain name is empty");
-    if (child->data[child->data_len - 1]) {
-        return bf_err_r(
-            -EINVAL, "_bf_cli_chain_logs_fd: chain name if not nul-terminated");
-    }
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "name", &name);
+    if (r)
+        return r;
 
-    cgen = bf_ctx_get_cgen(child->data);
+    cgen = bf_ctx_get_cgen(name);
     if (!cgen)
-        return bf_err_r(-ENOENT, "failed to find chain '%s'", child->data);
+        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
     if (!cgen->program || !cgen->program->lmap->fd)
-        return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", child->data);
+        return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", name);
 
     r = bf_send_fd(request->fd, cgen->program->lmap->fd);
     if (r < 0)
-        return bf_err_r(errno, "failed to send logs FD for '%s'", child->data);
+        return bf_err_r(errno, "failed to send logs FD for '%s'", name);
 
     return 0;
 }
@@ -415,25 +336,22 @@ int _bf_cli_chain_logs_fd(const struct bf_request *request,
 int _bf_cli_chain_load(const struct bf_request *request,
                        struct bf_response **response)
 {
-    struct bf_marsh *marsh, *child = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    bf_rpack_node_t child;
     int r;
 
     bf_assert(request && response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return bf_err_r(-ENOENT, "expecting marsh for chain, none found");
-
-    r = bf_chain_new_from_marsh(&chain, child);
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "chain", &child);
+    if (r)
+        return r;
+    r = bf_chain_new_from_pack(&chain, child);
     if (r)
         return r;
 
@@ -466,33 +384,28 @@ int _bf_cli_chain_load(const struct bf_request *request,
 int _bf_cli_chain_attach(const struct bf_request *request,
                          struct bf_response **response)
 {
-    struct bf_marsh *marsh, *child = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    struct bf_cgen *cgen = NULL;
-    const char *name;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ char *name = NULL;
+    struct bf_cgen *cgen = NULL;
+    bf_rpack_node_t child;
     int r;
 
     bf_assert(request && response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (marsh->data[marsh->data_len - 1]) {
-        return bf_err_r(
-            -EINVAL, "_bf_cli_chain_attach: chain name if not nul-terminated");
-    }
-    name = child->data;
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "name", &name);
+    if (r)
+        return r;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    r = bf_hookopts_new_from_marsh(&hookopts, child);
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "hookopts", &child);
+    if (r)
+        return r;
+    r = bf_hookopts_new_from_pack(&hookopts, child);
     if (r)
         return r;
 
@@ -516,24 +429,22 @@ int _bf_cli_chain_attach(const struct bf_request *request,
 int _bf_cli_chain_update(const struct bf_request *request,
                          struct bf_response **response)
 {
-    struct bf_marsh *marsh, *child = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
     struct bf_cgen *cgen = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    bf_rpack_node_t child;
     int r;
 
     bf_assert(request && response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return -EINVAL;
-    r = bf_chain_new_from_marsh(&chain, child);
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "chain", &child);
+    if (r)
+        return r;
+    r = bf_chain_new_from_pack(&chain, child);
     if (r)
         return r;
 
@@ -555,28 +466,22 @@ int _bf_cli_chain_update(const struct bf_request *request,
 int _bf_cli_chain_flush(const struct bf_request *request,
                         struct bf_response **response)
 {
-    struct bf_marsh *marsh, *child = NULL;
     struct bf_cgen *cgen = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ char *name = NULL;
+    int r;
 
     bf_assert(request && response);
 
-    marsh = (struct bf_marsh *)request->data;
-    if (bf_marsh_size(marsh) != request->data_len) {
-        return bf_err_r(
-            -EINVAL,
-            "request payload is expected to have the same size as the marsh");
-    }
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (child->data_len < 2)
-        return bf_err_r(-EINVAL, "_bf_cli_chain_flush: chain name is empty");
-    if (child->data[child->data_len - 1]) {
-        return bf_err_r(
-            -EINVAL, "_bf_cli_chain_flush: chain name if not nul-terminated");
-    }
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "name", &name);
+    if (r)
+        return r;
 
-    cgen = bf_ctx_get_cgen(child->data);
+    cgen = bf_ctx_get_cgen(name);
     if (!cgen)
         return -ENOENT;
 
@@ -642,16 +547,16 @@ static int _bf_cli_request_handler(const struct bf_request *request,
     return r;
 }
 
-static int _bf_cli_marsh(struct bf_marsh **marsh)
+static int _bf_cli_pack(bf_wpack_t *pack)
 {
-    UNUSED(marsh);
+    UNUSED(pack);
 
     return 0;
 }
 
-static int _bf_cli_unmarsh(struct bf_marsh *marsh)
+static int _bf_cli_unpack(bf_rpack_node_t node)
 {
-    UNUSED(marsh);
+    UNUSED(node);
 
     return 0;
 }

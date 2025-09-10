@@ -11,23 +11,14 @@
 #include "core/dump.h"
 #include "core/front.h"
 #include "core/list.h"
+#include "core/pack.h"
 
 struct bf_chain;
-struct bf_marsh;
 struct bf_program;
 struct bf_ns;
 struct bf_hookopts;
 
 #define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
-
-/**
- * Convenience macro to initialize a list of @ref bf_cgen .
- *
- * @return An initialized @ref bf_list that can contain @ref bf_cgen objects.
- */
-#define bf_cgen_list()                                                         \
-    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_cgen_free,                \
-                        .marsh = (bf_list_ops_marsh)bf_cgen_marsh}})
 
 /**
  * @struct bf_cgen
@@ -62,15 +53,15 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
                 struct bf_chain **chain);
 
 /**
- * Allocate a new codegen and intialize it from serialized data.
+ * @brief Allocate and initialize a new codegen from serialized data.
  *
- * @param cgen Codegen to allocate and initialize. On success, @p *cgen will
- *        point to the new codegen object. On failure, @p *cgen is unchanged.
- *        Can't be NULL.
- * @param marsh Serialized data to use to initialize the codegen.
- * @return 0 on success, or negative errno value on error.
+ * @param cgen Codegen object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*cgen` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized codegen.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh);
+int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node);
 
 /**
  * Free a codegen.
@@ -85,15 +76,13 @@ int bf_cgen_new_from_marsh(struct bf_cgen **cgen, const struct bf_marsh *marsh);
 void bf_cgen_free(struct bf_cgen **cgen);
 
 /**
- * Serialize a @ref bf_cgen object.
+ * @brief Serialize a codegen.
  *
- * @param cgen Codegen object to serialize. Can't be NULL.
- * @param marsh Marsh object to allocate. On success, @p *marsh points to the
- *              serialized codegen object. On failure this parameter is
- *              unchanged. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
+ * @param cgen Codegen to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the codegen into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_cgen_marsh(const struct bf_cgen *cgen, struct bf_marsh **marsh);
+int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack);
 
 /**
  * @brief Set a chain.

@@ -12,14 +12,13 @@
 #include "core/dump.h"
 #include "core/list.h"
 #include "core/matcher.h"
+#include "core/pack.h"
 #include "core/runtime.h"
 #include "core/verdict.h"
 
-struct bf_marsh;
-
 /**
  * @brief Return the string representation of a `bf_pkthdr` enumeration value.
- * *
+ *
  * @param hdr `bf_pkthdr` enumeration value.
  * @return A pointer to the C-string representation of `hdr`.
  */
@@ -42,15 +41,6 @@ const char *bf_pkthdr_to_str(enum bf_pkthdr hdr);
 int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr);
 
 #define _free_bf_rule_ __attribute__((__cleanup__(bf_rule_free)))
-
-/**
- * Convenience macro to initialize a list of @ref bf_rule .
- *
- * @return An initialized @ref bf_list that can contain @ref bf_rule objects.
- */
-#define bf_rule_list()                                                         \
-    ((bf_list) {.ops = {.free = (bf_list_ops_free)bf_rule_free,                \
-                        .marsh = (bf_list_ops_marsh)bf_rule_marsh}})
 
 /**
  * @struct bf_rule
@@ -84,6 +74,17 @@ static_assert(
 int bf_rule_new(struct bf_rule **rule);
 
 /**
+ * @brief Allocate and initialize a new rule from serialized data.
+ *
+ * @param rule Rule object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*rule` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized rule. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node);
+
+/**
  * Free a rule.
  *
  * Free @p rule and set it to NULL. If @p rule is NULL, nothing is done.
@@ -93,24 +94,13 @@ int bf_rule_new(struct bf_rule **rule);
 void bf_rule_free(struct bf_rule **rule);
 
 /**
- * Marsh a rule.
+ * @brief Serialize a rule.
  *
- * @param rule Rule to marsh. Can't be NULL.
- * @param marsh Output marshalled rule. Allocated by the function, owned by
- *        the caller once the function returns. Can't be NULL.
- * @return 0 on success, negative errno value on error.
+ * @param rule Rule to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the matcher rule. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_rule_marsh(const struct bf_rule *rule, struct bf_marsh **marsh);
-
-/**
- * Unmarsh a rule.
- *
- * @param marsh Marshalled rule. Must be non NULL.
- * @param rule Unmarshalled rule. Allocated by the function, owned by the caller
- *        on success.
- * @return 0 on success, negative errno value on error.
- */
-int bf_rule_unmarsh(const struct bf_marsh *marsh, struct bf_rule **rule);
+int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack);
 
 /**
  * Dump a rule.

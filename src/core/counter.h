@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #include "core/helper.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 
 /**
  * @struct bf_counter
@@ -24,18 +24,9 @@ struct bf_counter
 {
     uint64_t packets;
     uint64_t bytes;
-} bf_packed;
+};
 
 #define _free_bf_counter_ __attribute__((__cleanup__(bf_counter_free)))
-
-/**
- * Free a @ref bf_counter structure.
- *
- * If @p counter is NULL, nothing is done.
- *
- * @param counter Counter to free. Can't be NULL.
- */
-void bf_counter_free(struct bf_counter **counter);
 
 /**
  * Create a new @ref bf_counter with the given packets and bytes.
@@ -52,26 +43,30 @@ int bf_counter_new(struct bf_counter **counter, uint64_t packets,
                    uint64_t bytes);
 
 /**
- * Marshal a @ref bf_counter into a @ref bf_marsh object.
+ * @brief Allocate and initialize a new counter from serialized data.
  *
- * The resulting marsh contains two children: @c packets and @c bytes.
- * On success, @p marsh is set to the new @ref bf_marsh, owned by the caller.
- *
- * @param counter Counter to marshal. Can't be NULL.
- * @param marsh   Output pointer for the @ref bf_marsh. Can't be NULL.
- * @return 0 on success, negative errno on error.
+ * @param counter Counter object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*counter` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized counter. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_counter_marsh(const struct bf_counter *counter, struct bf_marsh **marsh);
+int bf_counter_new_from_pack(struct bf_counter **counter, bf_rpack_node_t node);
 
 /**
- * Create a @ref bf_counter from a @ref bf_marsh.
+ * Free a @ref bf_counter structure.
  *
- * Reads two children (for @c packets and @c bytes). On success, @p counter
- * is set to the new @ref bf_counter, owned by the caller.
+ * If @p counter is NULL, nothing is done.
  *
- * @param counter Output pointer for the new @ref bf_counter. Can't be NULL.
- * @param marsh   Marsh containing the @c packets and @c bytes. Can't be NULL.
- * @return 0 on success, negative errno on error.
+ * @param counter Counter to free. Can't be NULL.
  */
-int bf_counter_new_from_marsh(struct bf_counter **counter,
-                              const struct bf_marsh *marsh);
+void bf_counter_free(struct bf_counter **counter);
+
+/**
+ * @brief Serialize a counter.
+ *
+ * @param counter Counter to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the counter into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_counter_pack(const struct bf_counter *counter, bf_wpack_t *pack);

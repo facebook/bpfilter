@@ -1,13 +1,13 @@
 libbpfilter
 ===========
 
-Public header
--------------
+Public interface
+----------------
 
-.. doxygenfile:: bpfilter.h
+.. doxygenfile:: libbpfilter/bpfilter.h
 
-Private headers
----------------
+Private interface
+-----------------
 
 Generic
 ^^^^^^^

@@ -13,9 +13,9 @@
 
 #define bfc_ruleset_default()                                                  \
     {                                                                          \
-        .chains = bf_list_default(bf_chain_free, bf_chain_marsh),              \
-        .sets = bf_list_default(bf_set_free, bf_set_marsh),                    \
-        .hookopts = bf_list_default(bf_hookopts_free, bf_hookopts_marsh),      \
+        .chains = bf_list_default(bf_chain_free, bf_chain_pack),               \
+        .sets = bf_list_default(bf_set_free, bf_set_pack),                     \
+        .hookopts = bf_list_default(bf_hookopts_free, bf_hookopts_pack),       \
     }
 
 #define _clean_bfc_ruleset_ __attribute__((__cleanup__(bfc_ruleset_clean)))

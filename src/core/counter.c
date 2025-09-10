@@ -10,7 +10,6 @@
 #include <string.h>
 
 #include "core/helper.h"
-#include "core/marsh.h"
 
 int bf_counter_new(struct bf_counter **counter, uint64_t packets,
                    uint64_t bytes)
@@ -31,25 +30,24 @@ int bf_counter_new(struct bf_counter **counter, uint64_t packets,
     return 0;
 }
 
-int bf_counter_new_from_marsh(struct bf_counter **counter,
-                              const struct bf_marsh *marsh)
+int bf_counter_new_from_pack(struct bf_counter **counter, bf_rpack_node_t node)
 {
     _free_bf_counter_ struct bf_counter *_counter = NULL;
-    struct bf_marsh *elem = NULL;
+    int r;
 
-    bf_assert(counter && marsh);
+    bf_assert(counter);
 
-    _counter = malloc(sizeof(*_counter));
-    if (!_counter)
-        return -ENOMEM;
+    r = bf_counter_new(&_counter, 0, 0);
+    if (r)
+        return r;
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_counter->packets, elem->data, sizeof(_counter->packets));
+    r = bf_rpack_kv_u64(node, "packets", &_counter->packets);
+    if (r)
+        return bf_rpack_key_err(r, "bf_counter.packets");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_counter->bytes, elem->data, sizeof(_counter->bytes));
+    r = bf_rpack_kv_u64(node, "bytes", &_counter->bytes);
+    if (r)
+        return bf_rpack_key_err(r, "bf_counter.bytes");
 
     *counter = TAKE_PTR(_counter);
 
@@ -66,28 +64,13 @@ void bf_counter_free(struct bf_counter **counter)
     freep((void *)counter);
 }
 
-int bf_counter_marsh(const struct bf_counter *counter, struct bf_marsh **marsh)
+int bf_counter_pack(const struct bf_counter *counter, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(counter);
+    bf_assert(pack);
 
-    bf_assert(counter && marsh);
+    bf_wpack_kv_u64(pack, "packets", counter->packets);
+    bf_wpack_kv_u64(pack, "bytes", counter->bytes);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &counter->packets,
-                               sizeof(counter->packets));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &counter->bytes,
-                               sizeof(counter->bytes));
-    if (r < 0)
-        return r;
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

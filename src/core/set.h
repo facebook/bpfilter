@@ -11,6 +11,7 @@
 #include "core/dump.h"
 #include "core/list.h"
 #include "core/matcher.h"
+#include "core/pack.h"
 
 /**
  * @file set.h
@@ -26,8 +27,6 @@
  * Sets are implemented as BPF hash maps, allowing for O(1) lookup for a given
  * key.
  */
-
-struct bf_marsh;
 
 #define _free_bf_set_ __attribute__((__cleanup__(bf_set_free)))
 
@@ -95,9 +94,28 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
 int bf_set_new_from_raw(struct bf_set **set, const char *name,
                         const char *raw_key, const char *raw_payload);
 
-int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh);
+/**
+ * @brief Allocate and initialize a new set from serialized data.
+ *
+ * @param set Set object to allocate and initialize from the serialized data.
+ *        The caller will own the object. On failure, `*set` is unchanged.
+ *        Can't be NULL.
+ * @param node Node containing the serialized set. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node);
+
 void bf_set_free(struct bf_set **set);
-int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh);
+
+/**
+ * @brief Serialize a set.
+ *
+ * @param set Set to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the set into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack);
+
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
 
-int bf_set_add_elem(struct bf_set *set, void *elem);
+int bf_set_add_elem(struct bf_set *set, const void *elem);
