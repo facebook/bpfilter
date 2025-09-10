@@ -366,6 +366,25 @@ static inline bool bf_streq(const char *lhs, const char *rhs)
 }
 
 /**
+ * @brief Similar to `bf_streq`, except it compares only the first `n`
+ * characters.
+ *
+ * If any of `lhs`, `rhs` is NULL, the strings are considered inequal.
+ *
+ * @param lhs First string.
+ * @param rhs Second string.
+ * @param n Number of characters to compare.
+ * @return True if both strings are equal.
+ */
+static inline bool bf_strneq(const char *lhs, const char *rhs, size_t n)
+{
+    if (!lhs || !rhs)
+        return false;
+
+    return strncmp(lhs, rhs, n);
+}
+
+/**
  * @brief Case insensitive alternative to `bf_streq`.
  */
 static inline bool bf_streq_i(const char *lhs, const char *rhs)
