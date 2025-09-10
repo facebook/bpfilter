@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "core/helper.h"
+#include "core/pack.h"
 
 #define _free_bf_response_ __attribute__((cleanup(bf_response_free)))
 
@@ -50,6 +51,8 @@ int bf_response_new_raw(struct bf_response **response, size_t data_len);
  */
 int bf_response_new_success(struct bf_response **response, const char *data,
                             size_t data_len);
+
+int bf_response_new_from_pack(struct bf_response **response, bf_wpack_t *pack);
 
 /**
  * Allocate and initialise a new failure response.

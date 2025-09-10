@@ -12,6 +12,7 @@
 #include "core/dump.h"
 #include "core/flavor.h"
 #include "core/list.h"
+#include "core/pack.h"
 
 /**
  * @file hook.h
@@ -26,8 +27,6 @@
  * the program type won't be enough, but the `bf_hookopts` information is
  * only required when the chain is attached to the hook.
  */
-
-struct bf_marsh;
 
 enum bf_hook
 {
@@ -166,15 +165,16 @@ enum bf_hookopts_type
 int bf_hookopts_new(struct bf_hookopts **hookopts);
 
 /**
- * Allocate and initialize a new `bf_hookopts` object from serialized data.
+ * @brief Allocate and initialize a new hook options object from serialized data.
  *
- * @param hookopts `bf_hookopts` object to allocate and initialize from `marsh`.
- *        On failure, this parameter is unchanged. Can't be NULL.
- * @param marsh Serialized data to read a `bf_hookopts` from. Can't be NULL.
+ * @param hookopts Hook options object to allocate and initialize from the
+ *        serialized data. The caller will own the object. On failure,
+ *        `*hookopts` is unchanged. Can't be NULL.
+ * @param node Node containing the serialized hook options. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
-                               const struct bf_marsh *marsh);
+int bf_hookopts_new_from_pack(struct bf_hookopts **hookopts,
+                              bf_rpack_node_t node);
 
 /**
  * @brief Cleanup a `bf_hookopts` object.
@@ -194,15 +194,14 @@ void bf_hookopts_clean(struct bf_hookopts *hookopts);
 void bf_hookopts_free(struct bf_hookopts **hookopts);
 
 /**
- * Serialize a `bf_hookopts` object.
+ * @brief Serialize a hook options object.
  *
- * @param hookopts `bf_hookopts` object to serialize. Can't be NULL.
- * @param marsh On success, represents the serialized `bf_hookopts` object. On
- *        failure, this parameter is unchanged. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
+ * @param hookopts Hook options to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the hook options into. Can't
+ *        be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_hookopts_marsh(const struct bf_hookopts *hookopts,
-                      struct bf_marsh **marsh);
+int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack);
 
 /**
  * Dump the content of a `bf_hookopts` object.

@@ -14,7 +14,7 @@
 #include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 #include "core/rule.h"
 #include "core/set.h"
 #include "core/verdict.h"
@@ -57,11 +57,11 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     _chain->hook = hook;
     _chain->policy = policy;
 
-    _chain->sets = bf_list_default(bf_set_free, bf_set_marsh);
+    _chain->sets = bf_list_default(bf_set_free, bf_set_pack);
     if (sets)
         _chain->sets = bf_list_move(*sets);
 
-    _chain->rules = bf_list_default(bf_rule_free, bf_rule_marsh);
+    _chain->rules = bf_list_default(bf_rule_free, bf_rule_pack);
     if (rules)
         _chain->rules = bf_list_move(*rules);
     bf_list_foreach (&_chain->rules, rule_node) {
@@ -76,75 +76,56 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     return 0;
 }
 
-int bf_chain_new_from_marsh(struct bf_chain **chain,
-                            const struct bf_marsh *marsh)
+int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
 {
     _free_bf_chain_ struct bf_chain *_chain = NULL;
-    struct bf_marsh *child = NULL;
-    struct bf_marsh *list_elem;
+    _cleanup_free_ char *name = NULL;
     enum bf_hook hook;
     enum bf_verdict policy;
-    _cleanup_free_ const char *name = NULL;
+    bf_rpack_node_t array, array_node;
+    bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
     int r;
 
-    bf_assert(chain && marsh);
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (child->data_len == 0)
-        return bf_err_r(-EINVAL, "serialized bf_chain.name is empty");
-    name = strdup(child->data);
-    if (!name)
-        return -ENOMEM;
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&hook, child->data, sizeof(hook));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&policy, child->data, sizeof(policy));
-
-    r = bf_chain_new(&_chain, name, hook, policy, NULL, NULL);
+    r = bf_rpack_kv_str(node, "name", &name);
     if (r)
-        return r;
+        return bf_rpack_key_err(r, "bf_chain.name");
 
-    // Unmarsh bf_chain.sets
-    list_elem = NULL;
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    while ((list_elem = bf_marsh_next_child(child, list_elem))) {
+    r = bf_rpack_kv_enum(node, "hook", &hook);
+    if (r)
+        return bf_rpack_key_err(r, "bf_chain.hook");
+
+    r = bf_rpack_kv_enum(node, "policy", &policy);
+    if (r)
+        return bf_rpack_key_err(r, "bf_chain.policy");
+
+    r = bf_rpack_kv_array(node, "sets", &array);
+    if (r)
+        return bf_rpack_key_err(r, "bf_chain.sets");
+    bf_rpack_array_foreach (array, array_node) {
         _free_bf_set_ struct bf_set *set = NULL;
 
-        r = bf_set_new_from_marsh(&set, list_elem);
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&_chain->sets, set);
-        if (r)
-            return r;
-
-        TAKE_PTR(set);
+        r = bf_list_emplace(&sets, bf_set_new_from_pack, set, array_node);
+        if (r) {
+            return bf_err_r(r, "failed to unpack bf_set into bf_chain.sets");
+        }
     }
 
-    // Unmarsh bf_chain.rules
-    list_elem = NULL;
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    while ((list_elem = bf_marsh_next_child(child, list_elem))) {
+    r = bf_rpack_kv_array(node, "rules", &array);
+    if (r)
+        return bf_rpack_key_err(r, "bf_chain.rules");
+    bf_rpack_array_foreach (array, array_node) {
         _free_bf_rule_ struct bf_rule *rule = NULL;
 
-        r = bf_rule_unmarsh(list_elem, &rule);
-        if (r)
-            return r;
-
-        // Using bf_chain_add_rule() will automatically update chain->flags
-        r = bf_chain_add_rule(_chain, rule);
-        if (r)
-            return r;
-
-        TAKE_PTR(rule);
+        r = bf_list_emplace(&rules, bf_rule_new_from_pack, rule, array_node);
+        if (r) {
+            return bf_err_r(r, "failed to unpack bf_rule into bf_chain.rules");
+        }
     }
+
+    r = bf_chain_new(&_chain, name, hook, policy, &sets, &rules);
+    if (r)
+        return bf_err_r(r, "failed to create bf_chain from pack");
 
     *chain = TAKE_PTR(_chain);
 
@@ -164,58 +145,19 @@ void bf_chain_free(struct bf_chain **chain)
     freep((void *)chain);
 }
 
-int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh)
+int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(chain);
+    bf_assert(pack);
 
-    bf_assert(chain && marsh);
+    bf_wpack_kv_str(pack, "name", chain->name);
+    bf_wpack_kv_enum(pack, "hook", chain->hook);
+    bf_wpack_kv_enum(pack, "policy", chain->policy);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return r;
+    bf_wpack_kv_list(pack, "sets", &chain->sets);
+    bf_wpack_kv_list(pack, "rules", &chain->rules);
 
-    r = bf_marsh_add_child_raw(&_marsh, chain->name, strlen(chain->name) + 1);
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &chain->hook, sizeof(chain->hook));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &chain->policy, sizeof(chain->policy));
-    if (r)
-        return r;
-
-    {
-        // Serialize bf_chain.sets
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_list_marsh(&chain->sets, &child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r < 0)
-            return r;
-    }
-
-    {
-        // Serialize bf_chain.rules
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_list_marsh(&chain->rules, &child);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r < 0)
-            return r;
-    }
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)

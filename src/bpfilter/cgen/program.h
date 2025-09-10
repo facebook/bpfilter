@@ -17,6 +17,7 @@
 #include "core/flavor.h"
 #include "core/helper.h"
 #include "core/list.h"
+#include "core/pack.h"
 
 #include "external/filter.h"
 
@@ -185,7 +186,6 @@
 
 struct bf_chain;
 struct bf_map;
-struct bf_marsh;
 struct bf_counter;
 struct bf_link;
 struct bf_hookopts;
@@ -240,11 +240,37 @@ struct bf_program
 #define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
+
+/**
+ * @brief Allocate and initialize a new program from serialized data.
+ *
+ * @note The new bf_program object will represent a BPF map from bpfilter's
+ * point of view, but it's not a BPF program.
+ *
+ * @param program Program object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*program` is
+ *        unchanged. Can't be NULL.
+ * @param chain Chain to restore the program for. Can't be NULL.
+ * @param dir_fd File descriptor of the directory containing the program's pins.
+ *        Must be a valid file descriptor, or -1 if the pin should not be opened.
+ * @param node Node containing the serialized program. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_program_new_from_pack(struct bf_program **program,
+                             const struct bf_chain *chain, int dir_fd,
+                             bf_rpack_node_t node);
+
 void bf_program_free(struct bf_program **program);
-int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh);
-int bf_program_unmarsh(const struct bf_marsh *marsh,
-                       struct bf_program **program,
-                       const struct bf_chain *chain, int dir_fd);
+
+/**
+ * @brief Serialize a program.
+ *
+ * @param program Program to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the program into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack);
+
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
 

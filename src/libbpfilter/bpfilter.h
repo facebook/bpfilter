@@ -24,28 +24,53 @@ struct bf_hookopts;
  */
 const char *bf_version(void);
 
-/**
- * Request the daemon to remove all the chains and rules.
- *
- * @return 0 on success, or a negative errno value on error.
- */
-int bf_ruleset_flush(void);
-
 #define bf_list void
 
 /**
- * Request the daemon to return all the chains and all of
- * the associated rules.
+ * @brief Get the ruleset from the daemon.
  *
- * @param chains List of bf_chain type to be filled.
+ * **Request payload format**
+ * The request doesn't contain data.
+ *
+ * **Response payload format**
+ * @code{.json}
+ * {
+ *   "ruleset": {
+ *     "chains": [
+ *       {  }, // bf_chain object
+ *       // ...
+ *     ],
+ *     "hookopts": [
+ *       {  }, // bf_hookopts object or nil
+ *       // ...
+ *     ],
+ *     "counters": [
+ *       [
+ *         { }, // bf_counter object
+ *         // ...
+ *       ],
+ *       // ...
+ *     ],
+ *   },
+ * }
+ * @endcode
+ *
+ * In the response, "hookopts" and "counters" contains as many entries as
+ * "chains". If a chain is not attached, the corresponding "hookopts" entry
+ * is `nil`. "counters" contains arrays of `bf_counter` object, is nested
+ * array contains as many entries as rules defined in the corresponding chain.
+ * Use the chain's rule `.counters` field to check is the corresponding
+ * `bf_counter` object contains valid data.
+ *
+ * @param chains List of `bf_chain` to be filled.
  * @param hookopts List of hook options objects.
- * @param counters List of bf_counter type to be filled.
- * @return 0 on success, or a negative errno value on error.
+ * @param counters List of `bf_counter` to be filled.
+ * @return 0 on success, or a negative error value on failure.
  */
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
 
 /**
- * Load a complete ruleset.
+ * @brief Load a ruleset.
  *
  * The daemon will flush the whole ruleset for BF_FRONT_CLI and install the
  * chains defined in the provided lists instead.
@@ -54,24 +79,58 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
  * mapped 1 to 1. If a chain shouldn't be attached, they the corresponding
  * entry in `hookopts` should be NULL.
  *
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "ruleset": [
+ *     {
+ *       "chain": { }, // bf_chain object
+ *       "hookopts": { }, // bf_hookopts object, or nil
+ *     },
+ *     // ...
+ *   ],
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
+ *
  * @param chains List of chains to define. Can't be NULL.
- * @param hookopts List of hook options to attach the chains in `chain`. Can't be
- *        NULL.
- * @return 0 on success, or a negative errno value on error.
+ * @param hookopts List of hook options to attach the chains in `chain`. Can't
+ *        be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
 int bf_ruleset_set(bf_list *chains, bf_list *hookopts);
 
 /**
- * Set a chain.
+ * @brief Remove the current ruleset.
+ *
+ * **Request payload format**
+ * The request doesn't contain data.
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
+ *
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_ruleset_flush(void);
+
+/**
+ * @brief Set a chain.
  *
  * If a chain with the same name already exist, it is detached and unloaded.
  * The new chain is loaded, and attached if hook options are defined.
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Chain marsh: contains `bf_chain` fields.
- *   - Hook marsh: contains `bf_hookopts` fields, or empty is the chain is
- *     not attached
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "chain": { }, // bf_chain object
+ *   "hookopts": { } // bf_hookopts object or nil
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
  *
  * @param chain Chain to set. Can't be NULL.
  * @param hookopts Hook options to attach the chain. If NULL, the chain is not
@@ -81,22 +140,30 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts);
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts);
 
 /**
- * Get a chain.
+ * @brief Get a chain.
  *
- * If a chain with the same name already exist, `-EEXIST` is returned.
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "name": "",
+ * }
+ * @endcode
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Marsh for the chain's name (including `\0`).
+ * **Response payload format**
+ * @code{.json}
+ * {
+ *   "chain": { }, // bf_chain object
+ *   "hookopts": { }, // bf_hookopts object or nil
+ *   "counters": [
+ *     { }, // bf_counter object
+ *     // ...
+ *   ],
+ * }
+ * @endcode
  *
- * Expects the following data:
- * - Main mash
- *   - Chain marsh: container `bf_chain` fields.
- *   - Hook options marsh: contains `bf_hookopts` fields, or empty is the chain
- *     is not attached.
- *   - List marsh: contains marshes for the counters
- *     - Counter marsh: contains `bf_counter` fields.
- *     - ...
+ * "counters" is an array of `bf_counter` objects, it contains as many entries
+ * as rules defined in the chain. Use the chain's rule `.counters` field to
+ * check is the corresponding `bf_counter` object contains valid data.
  *
  * @param name Name of the chain to look for. Can't be NULL.
  * @param chain On success, contains a pointer to the chain. The caller is
@@ -118,6 +185,16 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 /**
  * @brief Get the file descriptor of a chain's logs buffer.
  *
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "name": "",
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
+ *
  * @pre
  * - `name` is a non-NULL pointer to a C-string.
  *
@@ -128,13 +205,19 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 int bf_chain_logs_fd(const char *name);
 
 /**
- * Load a chain.
+ * @brief Load a chain.
  *
  * If a chain with the same name already exist, `-EEXIST` is returned.
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Chain marsh: contains `bf_chain` fields.
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "chain": { }, // bf_chain object
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
  *
  * @param chain Chain to load. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
@@ -142,14 +225,20 @@ int bf_chain_logs_fd(const char *name);
 int bf_chain_load(struct bf_chain *chain);
 
 /**
- * Attach a chain.
+ * @brief Attach a chain.
  *
  * If the chain doesn't exist, `-ENOENT` is returned.
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Marsh for the chain's name (including `\0`).
- *   - Hook options marsh: contains `bf_hookopts` fields.
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "name": "",
+ *   "hookopts": { }, // bf_hookopts object
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
  *
  * @param name Name of the chain to attach. Can't be NULL.
  * @param hookopts Hook options to attach the chain. Can't be NULL.
@@ -160,13 +249,19 @@ int bf_chain_load(struct bf_chain *chain);
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts);
 
 /**
- * Update an attached chain.
+ * @brief Update an attached chain.
  *
  * The chain to update must exist and be attached to a hook.
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Chain marsh: container `bf_chain` fields.
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "chain": { }, // bf_chain object
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
  *
  * @param chain Chain to update. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
@@ -176,11 +271,17 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts);
 int bf_chain_update(const struct bf_chain *chain);
 
 /**
- * Flush a chain (detach and unload).
+ * @brief Remove a chain.
  *
- * The serialized data is formatted as:
- * - Main marsh
- *   - Marsh for the chain's name (including `\0`).
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "name": "",
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
  *
  * @param name Name of the chain to flush. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:

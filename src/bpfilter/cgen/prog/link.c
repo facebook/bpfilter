@@ -21,7 +21,7 @@
 #include "core/helper.h"
 #include "core/hook.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 
 int bf_link_new(struct bf_link **link, const char *name)
 {
@@ -44,31 +44,29 @@ int bf_link_new(struct bf_link **link, const char *name)
     return 0;
 }
 
-int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
-                           const struct bf_marsh *marsh)
+int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
+                          bf_rpack_node_t node)
 {
     _free_bf_link_ struct bf_link *_link = NULL;
-    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    struct bf_marsh *child = NULL;
+    _cleanup_free_ char *name = NULL;
+    bf_rpack_node_t child;
     int r;
 
-    bf_assert(link && marsh);
+    bf_assert(link);
 
-    _link = malloc(sizeof(*_link));
-    if (!_link)
-        return -ENOMEM;
+    r = bf_rpack_kv_str(node, "name", &name);
+    if (r)
+        return bf_rpack_key_err(r, "bf_link.name");
 
-    _link->hookopts = NULL;
-    _link->fd = -1;
+    r = bf_link_new(&_link, name);
+    if (r)
+        return bf_err_r(r, "failed to create bf_link from pack");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_link->name, bf_marsh_data(child), BPF_OBJ_NAME_LEN);
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (!bf_marsh_is_empty(child)) {
-        r = bf_hookopts_new_from_marsh(&_link->hookopts, child);
+    r = bf_rpack_kv_node(node, "hookopts", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_link.hookopts");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_hookopts_new_from_pack(&_link->hookopts, child);
         if (r)
             return r;
     }
@@ -98,41 +96,22 @@ void bf_link_free(struct bf_link **link)
     freep((void *)link);
 }
 
-int bf_link_marsh(const struct bf_link *link, struct bf_marsh **marsh)
+int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
+    bf_assert(link);
+    bf_assert(pack);
 
-    bf_assert(link && marsh);
+    bf_wpack_kv_str(pack, "name", link->name);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &link->name, BPF_OBJ_NAME_LEN);
-    if (r)
-        return r;
-
-    // Serialize link.hookopts
     if (link->hookopts) {
-        _free_bf_marsh_ struct bf_marsh *hookopts_elem = NULL;
-
-        r = bf_hookopts_marsh(link->hookopts, &hookopts_elem);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, hookopts_elem);
-        if (r < 0)
-            return r;
+        bf_wpack_open_object(pack, "hookopts");
+        bf_hookopts_pack(link->hookopts, pack);
+        bf_wpack_close_object(pack);
     } else {
-        r = bf_marsh_add_child_raw(&_marsh, NULL, 0);
-        if (r)
-            return r;
+        bf_wpack_kv_nil(pack, "hookopts");
     }
 
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_link_dump(const struct bf_link *link, prefix_t *prefix)

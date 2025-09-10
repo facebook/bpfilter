@@ -8,10 +8,10 @@
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
+#include "core/pack.h"
 #include "core/verdict.h"
 
 struct bf_hookopts;
-struct bf_marsh;
 struct bf_matcher;
 struct bf_rule;
 
@@ -73,15 +73,15 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules);
 
 /**
- * Allocate and initialize a new `bf_chain` object from serialized data.
+ * @brief Allocate and initialize a new chain from serialized data.
  *
- * @param chain `bf_chain` object to allocate and initialize from `marsh`.
- *        On failure, this parameter is unchanged. Can't be NULL.
- * @param marsh Serialized data to read a `bf_chain` from. Can't be NULL.
+ * @param chain Chain object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*chain` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized chain. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_chain_new_from_marsh(struct bf_chain **chain,
-                            const struct bf_marsh *marsh);
+int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node);
 
 /**
  * Deallocate a `bf_chain` object.
@@ -92,14 +92,13 @@ int bf_chain_new_from_marsh(struct bf_chain **chain,
 void bf_chain_free(struct bf_chain **chain);
 
 /**
- * Serialize a `bf_chain` object.
+ * @brief Serialize a chain.
  *
- * @param chain `bf_chain` object to serialize. Can't be NULL.
- * @param marsh On success, represents the serialized `bf_chain` object. On
- *        failure, this parameter is unchanged. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
+ * @param chain Chain to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the chain into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_chain_marsh(const struct bf_chain *chain, struct bf_marsh **marsh);
+int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack);
 
 /**
  * Dump the content of a `bf_chain` object.

@@ -13,16 +13,7 @@
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
-
-/**
- * Convenience macro to initialize a list of @ref bf_printer_msg .
- *
- * @return An initialized @ref bf_list that can contain @ref bf_printer_msg objects.
- */
-#define bf_printer_msg_list()                                                  \
-    ((bf_list) {.ops = {.free = (bf_list_ops_free)_bf_printer_msg_free,        \
-                        .marsh = (bf_list_ops_marsh)_bf_printer_msg_marsh}})
+#include "core/pack.h"
 
 /**
  * @struct bf_printer_msg
@@ -79,41 +70,37 @@ static int _bf_printer_msg_new(struct bf_printer_msg **msg)
 }
 
 /**
- * Allocate a new printer message and initialise it from serialized
- * data.
+ * @brief Allocate and initialize a new printer message from serialized data.
  *
- * @param msg On success, points to the newly allocated and initialised
- *        printer message. Can't be NULL.
- * @param marsh Serialized data to use to initialise the printer message.
- * @return 0 on success, or negative errno value on error.
+ * @param msg Printer message object to allocate and initialize from the
+ *        serialized data. The caller will own the object. On failure, `*msg`
+ *        is unchanged. Can't be NULL.
+ * @param node Node containing the serialized message.
+ * @return 0 on success, or a negative errno value on failure.
  */
-static int _bf_printer_msg_new_from_marsh(struct bf_printer_msg **msg,
-                                          const struct bf_marsh *marsh)
+static int _bf_printer_msg_new_from_pack(struct bf_printer_msg **msg,
+                                         bf_rpack_node_t node)
 {
     _free_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
-    struct bf_marsh *child = NULL;
     int r;
 
     bf_assert(msg);
-    bf_assert(marsh);
 
     r = _bf_printer_msg_new(&_msg);
     if (r)
-        return bf_err_r(r, "failed to allocate a new bf_printer_msg object");
+        return bf_err_r(r, "failed to create bf_printer_msg from pack");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_msg->offset, child->data, sizeof(_msg->offset));
+    r = bf_rpack_kv_u64(node, "offset", &_msg->offset);
+    if (r)
+        return bf_rpack_key_err(r, "bf_printer_msg.offset");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_msg->len, child->data, sizeof(_msg->len));
+    r = bf_rpack_kv_u64(node, "len", &_msg->len);
+    if (r)
+        return bf_rpack_key_err(r, "bf_printer_msg.len");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    _msg->str = strndup(child->data, _msg->len - 1);
-    if (!_msg->str)
-        return -ENOMEM;
+    r = bf_rpack_kv_str(node, "str", (char **)&_msg->str);
+    if (r)
+        return bf_rpack_key_err(r, "bf_printer_msg.str");
 
     *msg = TAKE_PTR(_msg);
 
@@ -140,37 +127,24 @@ static void _bf_printer_msg_free(struct bf_printer_msg **msg)
 }
 
 /**
- * Serialize a printer message.
+ * @brief Serialize a printer message.
  *
- * The message's string is serialized with its trailing '/0'.
- *
- * @param msg Printer message to serialise. Can't be NULL.
- * @param marsh On success, contains the serialised printer message. Can't be
- *        NULL.
- * @return 0 on success, or negative errno value on failure.
+ * @param msg Printer message to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the printer message into.
+ *        Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-static int _bf_printer_msg_marsh(const struct bf_printer_msg *msg,
-                                 struct bf_marsh **marsh)
+static int _bf_printer_msg_pack(const struct bf_printer_msg *msg,
+                                bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(msg);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return r;
+    bf_wpack_kv_u64(pack, "offset", msg->offset);
+    bf_wpack_kv_u64(pack, "len", msg->len);
+    bf_wpack_kv_str(pack, "str", msg->str);
 
-    r |= bf_marsh_add_child_raw(&_marsh, &msg->offset, sizeof(msg->offset));
-    r |= bf_marsh_add_child_raw(&_marsh, &msg->len, sizeof(msg->len));
-    r |= bf_marsh_add_child_raw(&_marsh, msg->str, msg->len);
-    if (r)
-        return bf_err_r(r, "failed to serialize bf_printer_msg object");
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 static void _bf_printer_msg_dump(const struct bf_printer_msg *msg,
@@ -210,39 +184,38 @@ int bf_printer_new(struct bf_printer **printer)
     if (!_printer)
         return -ENOMEM;
 
-    _printer->msgs = bf_printer_msg_list();
+    _printer->msgs =
+        bf_list_default(_bf_printer_msg_free, _bf_printer_msg_pack);
 
     *printer = TAKE_PTR(_printer);
 
     return 0;
 }
 
-int bf_printer_new_from_marsh(struct bf_printer **printer,
-                              const struct bf_marsh *marsh)
+int bf_printer_new_from_pack(struct bf_printer **printer, bf_rpack_node_t node)
 {
     _free_bf_printer_ struct bf_printer *_printer = NULL;
-    struct bf_marsh *child = NULL;
+    bf_rpack_node_t child, m_node;
     int r;
 
     bf_assert(printer);
-    bf_assert(marsh);
 
     r = bf_printer_new(&_printer);
     if (r)
-        return bf_err_r(r, "failed to allocate a new bf_printer object");
+        return bf_err_r(r, "failed to create a bf_printer from pack");
 
-    while ((child = bf_marsh_next_child(marsh, child))) {
+    r = bf_rpack_kv_array(node, "msgs", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_printer.msgs");
+    bf_rpack_array_foreach (child, m_node) {
         _free_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
 
-        r = _bf_printer_msg_new_from_marsh(&msg, child);
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&_printer->msgs, msg);
-        if (r < 0)
-            return r;
-
-        TAKE_PTR(msg);
+        r = bf_list_emplace(&_printer->msgs, _bf_printer_msg_new_from_pack, msg,
+                            m_node);
+        if (r) {
+            return bf_err_r(
+                r, "failed to unpack bf_printer_msg into bf_printer.msgs");
+        }
     }
 
     *printer = TAKE_PTR(_printer);
@@ -263,11 +236,14 @@ void bf_printer_free(struct bf_printer **printer)
     *printer = NULL;
 }
 
-int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh)
+int bf_printer_pack(const struct bf_printer *printer, bf_wpack_t *pack)
 {
-    bf_assert(printer && marsh);
+    bf_assert(printer);
+    bf_assert(pack);
 
-    return bf_list_marsh(&printer->msgs, marsh);
+    bf_wpack_kv_list(pack, "msgs", &printer->msgs);
+
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)

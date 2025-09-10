@@ -17,11 +17,11 @@
 
 #include "bpfilter/ctx.h"
 #include "core/bpf.h"
+#include "core/bpf_types.h"
 #include "core/btf.h"
 #include "core/dump.h"
 #include "core/helper.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 
 static int _bf_map_new(struct bf_map **map, const char *name,
                        enum bf_map_type type, enum bf_bpf_map_type bpf_type,
@@ -83,52 +83,56 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
                        set->elem_size, 1, bf_list_size(&set->elems));
 }
 
-int bf_map_new_from_marsh(struct bf_map **map, int dir_fd,
-                          const struct bf_marsh *marsh)
+int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
 {
     _free_bf_map_ struct bf_map *_map = NULL;
-    struct bf_marsh *elem = NULL;
+    _cleanup_free_ char *name = NULL;
     int r;
 
     bf_assert(map);
-    bf_assert(marsh);
 
     _map = malloc(sizeof(*_map));
     if (!_map)
         return -ENOMEM;
 
-    _map->fd = -1;
+    r = bf_rpack_kv_str(node, "name", &name);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.name");
+    if (strlen(name) == 0)
+        return bf_err_r(-EINVAL, "map name can't be empty");
+    bf_strncpy(_map->name, BPF_OBJ_NAME_LEN, name);
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_map->type, elem->data, sizeof(_map->type));
+    r = bf_rpack_kv_enum(node, "type", &_map->type);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.type");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(_map->name, elem->data, BPF_OBJ_NAME_LEN);
+    r = bf_rpack_kv_enum(node, "bpf_type", &_map->bpf_type);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.bpf_type");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_map->bpf_type, elem->data, sizeof(_map->bpf_type));
+    r = bf_rpack_kv_u64(node, "key_size", &_map->key_size);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.key_size");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_map->key_size, elem->data, sizeof(_map->key_size));
+    r = bf_rpack_kv_u64(node, "value_size", &_map->value_size);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.value_size");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_map->value_size, elem->data, sizeof(_map->value_size));
+    r = bf_rpack_kv_u64(node, "n_elems", &_map->n_elems);
+    if (r)
+        return bf_rpack_key_err(r, "bf_map.n_elems");
+    if (_map->n_elems == 0)
+        return bf_err_r(-EINVAL, "bf_map should not have 0 elements");
 
-    if (!(elem = bf_marsh_next_child(marsh, elem)))
-        return -EINVAL;
-    memcpy(&_map->n_elems, elem->data, sizeof(_map->n_elems));
-
-    if (bf_marsh_next_child(marsh, elem))
-        return bf_err_r(-E2BIG, "too many elements in bf_map marsh");
-
-    r = bf_bpf_obj_get(_map->name, dir_fd, &_map->fd);
-    if (r < 0)
-        return bf_err_r(r, "failed to open pinned BPF map '%s'", _map->name);
+    if (dir_fd != -1) {
+        r = bf_bpf_obj_get(_map->name, dir_fd, &_map->fd);
+        if (r < 0) {
+            return bf_err_r(r, "failed to open pinned BPF map '%s'",
+                            _map->name);
+        }
+    } else {
+        _map->fd = -1;
+    }
 
     *map = TAKE_PTR(_map);
 
@@ -146,46 +150,19 @@ void bf_map_free(struct bf_map **map)
     freep((void *)map);
 }
 
-int bf_map_marsh(const struct bf_map *map, struct bf_marsh **marsh)
+int bf_map_pack(const struct bf_map *map, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(map);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_wpack_kv_str(pack, "name", map->name);
+    bf_wpack_kv_enum(pack, "type", map->type);
+    bf_wpack_kv_enum(pack, "bpf_type", map->bpf_type);
+    bf_wpack_kv_u64(pack, "key_size", map->key_size);
+    bf_wpack_kv_u64(pack, "value_size", map->value_size);
+    bf_wpack_kv_u64(pack, "n_elems", map->n_elems);
 
-    r = bf_marsh_add_child_raw(&_marsh, &map->type, sizeof(map->type));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, map->name, BPF_OBJ_NAME_LEN);
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &map->bpf_type, sizeof(map->bpf_type));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &map->key_size, sizeof(map->key_size));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &map->value_size,
-                               sizeof(map->value_size));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &map->n_elems, sizeof(map->n_elems));
-    if (r < 0)
-        return r;
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 static const char *_bf_map_type_to_str(enum bf_map_type type)

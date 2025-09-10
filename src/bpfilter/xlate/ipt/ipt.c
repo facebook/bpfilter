@@ -31,7 +31,6 @@
 #include "core/hook.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/matcher.h"
 #include "core/request.h"
 #include "core/response.h"
@@ -844,16 +843,16 @@ static int _bf_ipt_request_handler(const struct bf_request *request,
     return 0;
 }
 
-static int _bf_ipt_marsh(struct bf_marsh **marsh)
+static int _bf_ipt_pack(bf_wpack_t *pack)
 {
-    UNUSED(marsh);
+    UNUSED(pack);
 
     return 0;
 }
 
-static int _bf_ipt_unmarsh(struct bf_marsh *marsh)
+static int _bf_ipt_unpack(bf_rpack_node_t node)
 {
-    UNUSED(marsh);
+    UNUSED(node);
 
     return 0;
 }
@@ -862,6 +861,6 @@ const struct bf_front_ops ipt_front = {
     .setup = _bf_ipt_setup,
     .teardown = _bf_ipt_teardown,
     .request_handler = _bf_ipt_request_handler,
-    .marsh = _bf_ipt_marsh,
-    .unmarsh = _bf_ipt_unmarsh,
+    .pack = _bf_ipt_pack,
+    .unpack = _bf_ipt_unpack,
 };

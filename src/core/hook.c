@@ -22,7 +22,7 @@
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 
 static const char *_bf_hook_strs[] = {
     [BF_HOOK_XDP] = "BF_HOOK_XDP",
@@ -389,45 +389,76 @@ int bf_hookopts_new(struct bf_hookopts **hookopts)
     return 0;
 }
 
-int bf_hookopts_new_from_marsh(struct bf_hookopts **hookopts,
-                               const struct bf_marsh *marsh)
+int bf_hookopts_new_from_pack(struct bf_hookopts **hookopts,
+                              bf_rpack_node_t node)
 {
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
-    struct bf_marsh *child = NULL;
+    bf_rpack_node_t child;
     int r;
 
-    bf_assert(hookopts && marsh);
+    bf_assert(hookopts);
 
     r = bf_hookopts_new(&_hookopts);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to create bf_hookopts from pack");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return bf_err_r(-EINVAL, "bf_hookopts: missing used_opts field");
-    memcpy(&_hookopts->used_opts, bf_marsh_data(child), sizeof(_hookopts->used_opts));
+    r = bf_rpack_kv_node(node, "ifindex", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_hookopts.ifindex");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_rpack_int(child, &_hookopts->ifindex);
+        if (r)
+            return bf_rpack_key_err(r, "bf_hookopt.ifindex");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return bf_err_r(-EINVAL, "bf_hookopts: missing ifindex field");
-    memcpy(&_hookopts->ifindex, bf_marsh_data(child), sizeof(_hookopts->ifindex));
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return bf_err_r(-EINVAL, "bf_hookopts: missing cgpath field");
-    if (bf_marsh_data_size(child)) {
-        _hookopts->cgpath = strdup(bf_marsh_data(child));
-        if (!_hookopts->cgpath)
-            return -ENOMEM;
+        _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
     }
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return bf_err_r(-EINVAL, "bf_hookopts: missing family field");
-    memcpy(&_hookopts->family, bf_marsh_data(child), sizeof(_hookopts->family));
+    r = bf_rpack_kv_node(node, "cgpath", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_hookopts.cgpath");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_rpack_str(child, (char **)&_hookopts->cgpath);
+        if (r)
+            return bf_rpack_key_err(r, "bf_hookopts.cgpath");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return bf_err_r(-EINVAL, "bf_hookopts: missing priorities field");
-    memcpy(&_hookopts->priorities, bf_marsh_data(child), sizeof(_hookopts->priorities));
+        _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_CGPATH);
+    }
 
-    if (bf_marsh_next_child(marsh, child))
-        return bf_err_r(-E2BIG, "too many serialized fields for bf_hookopts");
+    r = bf_rpack_kv_node(node, "family", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_hookopts.family");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_rpack_uint(child, &_hookopts->family);
+        if (r)
+            return bf_rpack_key_err(r, "bf_hookopts.family");
+
+        _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_FAMILY);
+    }
+
+    r = bf_rpack_kv_node(node, "priorities", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_hookopts.priorities");
+    if (!bf_rpack_is_nil(child)) {
+        bf_rpack_node_t child, p_node;
+
+        r = bf_rpack_kv_array(node, "priorities", &child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_hookopts.priorities");
+        if (bf_rpack_array_count(child) != 2) {
+            return bf_err_r(
+                -EINVAL, "bf_hookopts.priorities pack expects only 2 values");
+        }
+
+        bf_rpack_array_foreach (child, p_node) {
+            r = bf_rpack_int(p_node, &_hookopts->priorities[i]);
+            if (r) {
+                return bf_rpack_key_err(
+                    r, "failed to unpack bf_hookopts.priorities value");
+            }
+        }
+
+        _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_PRIORITIES);
+    }
 
     *hookopts = TAKE_PTR(_hookopts);
 
@@ -450,47 +481,36 @@ void bf_hookopts_free(struct bf_hookopts **hookopts)
     freep((void *)hookopts);
 }
 
-int bf_hookopts_marsh(const struct bf_hookopts *hookopts,
-                      struct bf_marsh **marsh)
+int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r = 0;
+    bf_assert(hookopts);
+    bf_assert(pack);
 
-    bf_assert(hookopts && marsh);
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX))
+        bf_wpack_kv_int(pack, "ifindex", hookopts->ifindex);
+    else
+        bf_wpack_kv_nil(pack, "ifindex");
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r)
-        return bf_err_r(r, "failed to create a new marsh for bf_hookopts");
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_CGPATH))
+        bf_wpack_kv_str(pack, "cgpath", hookopts->cgpath);
+    else
+        bf_wpack_kv_nil(pack, "cgpath");
 
-    r = bf_marsh_add_child_raw(&_marsh, &hookopts->used_opts,
-                               sizeof(hookopts->used_opts));
-    if (r)
-        return bf_err_r(r, "failed to marsh bf_hookopts.used_opts");
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY))
+        bf_wpack_kv_uint(pack, "family", hookopts->family);
+    else
+        bf_wpack_kv_nil(pack, "family");
 
-    r = bf_marsh_add_child_raw(&_marsh, &hookopts->ifindex,
-                               sizeof(hookopts->ifindex));
-    if (r)
-        return bf_err_r(r, "failed to marsh bf_hookopts.ifindex");
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_PRIORITIES)) {
+        bf_wpack_open_array(pack, "priorities");
+        bf_wpack_int(pack, hookopts->priorities[0]);
+        bf_wpack_int(pack, hookopts->priorities[1]);
+        bf_wpack_close_array(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "priorities");
+    }
 
-    r = bf_marsh_add_child_raw(&_marsh, hookopts->cgpath,
-                               hookopts->cgpath ? strlen(hookopts->cgpath) + 1 :
-                                                  0);
-    if (r)
-        return bf_err_r(r, "failed to marsh bf_hookopts.cgpath");
-
-    r = bf_marsh_add_child_raw(&_marsh, &hookopts->family,
-                               sizeof(hookopts->family));
-    if (r)
-        return bf_err_r(r, "failed to marsh bf_hookopts.family");
-
-    r = bf_marsh_add_child_raw(&_marsh, hookopts->priorities,
-                               sizeof(hookopts->priorities));
-    if (r)
-        return bf_err_r(r, "failed to marsh bf_hookopts.priorities");
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_hookopts_dump(const struct bf_hookopts *hookopts, prefix_t *prefix)

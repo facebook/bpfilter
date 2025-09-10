@@ -50,8 +50,8 @@
 #include "core/io.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
 #include "core/matcher.h"
+#include "core/pack.h"
 #include "core/rule.h"
 #include "core/set.h"
 #include "core/verdict.h"
@@ -127,7 +127,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     if (r < 0)
         return bf_err_r(r, "failed to create the log bf_map object");
 
-    _program->sets = bf_map_list();
+    _program->sets = bf_list_default(bf_map_free, bf_map_pack);
     bf_list_foreach (&chain->sets, set_node) {
         struct bf_set *set = bf_list_node_get_data(set_node);
         _free_bf_map_ struct bf_map *map = NULL;
@@ -153,6 +153,100 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 
     bf_list_init(&_program->fixups,
                  (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
+
+    *program = TAKE_PTR(_program);
+
+    return 0;
+}
+
+int bf_program_new_from_pack(struct bf_program **program,
+                             const struct bf_chain *chain, int dir_fd,
+                             bf_rpack_node_t node)
+{
+    _free_bf_program_ struct bf_program *_program = NULL;
+    _free_bf_link_ struct bf_link *link = NULL;
+    const void *img;
+    size_t img_len;
+    bf_rpack_node_t child, array_node;
+    int r;
+
+    bf_assert(program);
+    bf_assert(chain);
+
+    r = bf_program_new(&_program, chain);
+    if (r < 0)
+        return r;
+
+    bf_map_free(&_program->cmap);
+    r = bf_rpack_kv_obj(node, "cmap", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.cmap");
+    r = bf_map_new_from_pack(&_program->cmap, dir_fd, child);
+    if (r)
+        return r;
+
+    bf_map_free(&_program->pmap);
+    r = bf_rpack_kv_obj(node, "pmap", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.pmap");
+    r = bf_map_new_from_pack(&_program->pmap, dir_fd, child);
+    if (r)
+        return r;
+
+    bf_map_free(&_program->lmap);
+    r = bf_rpack_kv_obj(node, "lmap", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.lmap");
+    r = bf_map_new_from_pack(&_program->lmap, dir_fd, child);
+    if (r)
+        return r;
+
+    bf_list_clean(&_program->sets);
+    _program->sets = bf_list_default(bf_map_free, bf_map_pack);
+    r = bf_rpack_kv_array(node, "sets", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.sets");
+    bf_rpack_array_foreach (child, array_node) {
+        _free_bf_map_ struct bf_map *map = NULL;
+
+        r = bf_list_emplace(&_program->sets, bf_map_new_from_pack, map, dir_fd,
+                            array_node);
+        if (r)
+            return bf_err_r(r, "failed to unpack bf_map into bf_program.sets");
+    }
+
+    /* Try to restore the link: on success, replace the program's link with the
+     * restored on. If -ENOENT is returned, the link doesn't exist, meaning the
+     * program is not attached. Otherwise, return an error. */
+    r = bf_rpack_kv_obj(node, "link", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.link");
+    r = bf_link_new_from_pack(&link, dir_fd, child);
+    if (!r)
+        bf_swap(_program->link, link);
+    else if (r != -ENOENT)
+        return bf_err_r(r, "failed to restore bf_program.link");
+
+    bf_printer_free(&_program->printer);
+    r = bf_rpack_kv_obj(node, "printer", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.printer");
+    r = bf_printer_new_from_pack(&_program->printer, child);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_bin(node, "img", &img, &img_len);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.img");
+    _program->img = bf_memdup(img, img_len);
+    if (!_program->img)
+        return bf_rpack_key_err(-ENOMEM, "bf_program.img");
+    _program->img_size = img_len / sizeof(struct bpf_insn);
+    _program->img_cap = _program->img_size;
+
+    r = bf_bpf_obj_get(_program->prog_name, dir_fd, &_program->runtime.prog_fd);
+    if (r < 0)
+        return bf_err_r(r, "failed to restore bf_program.fd");
 
     *program = TAKE_PTR(_program);
 
@@ -185,215 +279,37 @@ void bf_program_free(struct bf_program **program)
     *program = NULL;
 }
 
-int bf_program_marsh(const struct bf_program *program, struct bf_marsh **marsh)
+int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
 {
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    int r;
-
     bf_assert(program);
-    bf_assert(marsh);
+    bf_assert(pack);
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_wpack_open_object(pack, "cmap");
+    bf_map_pack(program->cmap, pack);
+    bf_wpack_close_object(pack);
 
-    {
-        // Serialize bf_program.counters
-        _free_bf_marsh_ struct bf_marsh *counters_elem = NULL;
+    bf_wpack_open_object(pack, "pmap");
+    bf_map_pack(program->pmap, pack);
+    bf_wpack_close_object(pack);
 
-        r = bf_map_marsh(program->cmap, &counters_elem);
-        if (r < 0)
-            return r;
+    bf_wpack_open_object(pack, "lmap");
+    bf_map_pack(program->lmap, pack);
+    bf_wpack_close_object(pack);
 
-        r = bf_marsh_add_child_obj(&_marsh, counters_elem);
-        if (r < 0)
-            return r;
-    }
+    bf_wpack_kv_list(pack, "sets", &program->sets);
 
-    {
-        // Serialize bf_program.pmap
-        _free_bf_marsh_ struct bf_marsh *pmap_elem = NULL;
+    bf_wpack_open_object(pack, "link");
+    bf_link_pack(program->link, pack);
+    bf_wpack_close_object(pack);
 
-        r = bf_map_marsh(program->pmap, &pmap_elem);
-        if (r < 0)
-            return r;
+    bf_wpack_open_object(pack, "printer");
+    bf_printer_pack(program->printer, pack);
+    bf_wpack_close_object(pack);
 
-        r = bf_marsh_add_child_obj(&_marsh, pmap_elem);
-        if (r < 0)
-            return r;
-    }
+    bf_wpack_kv_bin(pack, "img", program->img,
+                    program->img_size * sizeof(struct bpf_insn));
 
-    {
-        // Serialize bf_program.lmap
-        _free_bf_marsh_ struct bf_marsh *lmap_elem = NULL;
-
-        r = bf_map_marsh(program->lmap, &lmap_elem);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, lmap_elem);
-        if (r < 0)
-            return r;
-    }
-
-    {
-        // Serialize bf_program.sets
-        _free_bf_marsh_ struct bf_marsh *sets_elem = NULL;
-
-        r = bf_list_marsh(&program->sets, &sets_elem);
-        if (r < 0)
-            return r;
-
-        r = bf_marsh_add_child_obj(&_marsh, sets_elem);
-        if (r < 0) {
-            return bf_err_r(
-                r,
-                "failed to insert serialized sets into bf_program serialized data");
-        }
-    }
-
-    {
-        // Serialize bf_program.links
-        _free_bf_marsh_ struct bf_marsh *links_elem = NULL;
-
-        r = bf_link_marsh(program->link, &links_elem);
-        if (r)
-            return bf_err_r(r, "failed to serialize bf_program.link");
-
-        r = bf_marsh_add_child_obj(&_marsh, links_elem);
-        if (r) {
-            return bf_err_r(
-                r,
-                "failed to insert serialized link into bf_program serialized data");
-        }
-    }
-
-    {
-        // Serialise bf_program.printer
-        _free_bf_marsh_ struct bf_marsh *child = NULL;
-
-        r = bf_printer_marsh(program->printer, &child);
-        if (r)
-            return bf_err_r(r, "failed to marsh bf_printer object");
-
-        r = bf_marsh_add_child_obj(&_marsh, child);
-        if (r)
-            return bf_err_r(r, "failed to append object to marsh");
-    }
-
-    r |= bf_marsh_add_child_raw(&_marsh, program->img,
-                                program->img_size * sizeof(struct bpf_insn));
-    if (r)
-        return bf_err_r(r, "Failed to serialize program");
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
-}
-
-int bf_program_unmarsh(const struct bf_marsh *marsh,
-                       struct bf_program **program,
-                       const struct bf_chain *chain, int dir_fd)
-{
-    _free_bf_program_ struct bf_program *_program = NULL;
-    _free_bf_link_ struct bf_link *link = NULL;
-    struct bf_marsh *child = NULL;
-    int r;
-
-    bf_assert(marsh && program);
-
-    r = bf_program_new(&_program, chain);
-    if (r < 0)
-        return r;
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    bf_map_free(&_program->cmap);
-    r = bf_map_new_from_marsh(&_program->cmap, dir_fd, child);
-    if (r < 0)
-        return r;
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    bf_map_free(&_program->pmap);
-    r = bf_map_new_from_marsh(&_program->pmap, dir_fd, child);
-    if (r < 0)
-        return r;
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    bf_map_free(&_program->lmap);
-    r = bf_map_new_from_marsh(&_program->lmap, dir_fd, child);
-    if (r < 0)
-        return r;
-
-    /** @todo Avoid creating and filling the list in @ref bf_program_new before
-     * trashing it all here. Eventually, this function will be replaced with
-     * @c bf_program_new_from_marsh and this issue could be solved by **not**
-     * relying on @ref bf_program_new to allocate an initialize @p _program . */
-    bf_list_clean(&_program->sets);
-    _program->sets = bf_map_list();
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    {
-        // Unmarsh bf_program.sets
-        struct bf_marsh *set_elem = NULL;
-
-        while ((set_elem = bf_marsh_next_child(child, set_elem))) {
-            _free_bf_map_ struct bf_map *map = NULL;
-
-            r = bf_map_new_from_marsh(&map, dir_fd, set_elem);
-            if (r < 0)
-                return r;
-
-            r = bf_list_add_tail(&_program->sets, map);
-            if (r < 0)
-                return r;
-
-            TAKE_PTR(map);
-        }
-    }
-
-    // Unmarsh bf_program.links
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-
-    /* Try to restore the link: on success, replace the program's link with the
-     * restored on. If -ENOENT is returned, the link doesn't exist, meaning the
-     * program is not attached. Otherwise, return an error. */
-    r = bf_link_new_from_marsh(&link, dir_fd, child);
-    if (!r)
-        bf_swap(_program->link, link);
-    else if (r != -ENOENT)
-        return bf_err_r(r, "failed to restore bf_program.link");
-
-    // Unmarsh bf_program.printer
-    child = bf_marsh_next_child(marsh, child);
-    if (!child)
-        return bf_err_r(-EINVAL, "failed to find valid child");
-
-    bf_printer_free(&_program->printer);
-    r = bf_printer_new_from_marsh(&_program->printer, child);
-    if (r)
-        return bf_err_r(r, "failed to restore bf_printer object");
-
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    _program->img = bf_memdup(bf_marsh_data(child), bf_marsh_data_size(child));
-    _program->img_size = bf_marsh_data_size(child) / sizeof(struct bpf_insn);
-    _program->img_cap = bf_marsh_data_size(child) / sizeof(struct bpf_insn);
-
-    if (bf_marsh_next_child(marsh, child))
-        bf_warn("codegen marsh has more children than expected");
-
-    r = bf_bpf_obj_get(_program->prog_name, dir_fd, &_program->runtime.prog_fd);
-    if (r < 0)
-        return bf_err_r(r, "failed to get prog fd");
-
-    *program = TAKE_PTR(_program);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)

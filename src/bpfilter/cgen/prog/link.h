@@ -10,8 +10,7 @@
 #include "core/dump.h"
 #include "core/hook.h"
 #include "core/list.h"
-
-struct bf_marsh;
+#include "core/pack.h"
 
 /**
  * BPF link object.
@@ -47,19 +46,17 @@ struct bf_link
 int bf_link_new(struct bf_link **link, const char *name);
 
 /**
- * Allocate and initialize a new `bf_link` object from serialized data.
+ * @brief Allocate and initialize a new link from serialized data.
  *
- * @param link `bf_link` object to allocate and initialize from `marsh`.
- *        On failure, this parameter is unchanged. Can't be NULL.
- * @param dir_fd File descriptor of the directory to open the pinned link from.
- *        BPF link objects are always pinned relative to a directory, if
- *        `dir_fd` is `-1`, `bf_link_new_from_marsh` assumes the link hasn't
- *        been pinned.
- * @param marsh Serialized data to read a `bf_link` from. Can't be NULL.
+ * @param link `bf_link` object to allocate and initialize from serialized data.
+ *        On failure, `*link` is unchanged. Can't be NULL.
+ * @param dir_fd File descriptor of the directory containing the link's pin.
+ *        Must be a valid file descriptor, or -1 if the pin should not be opened.
+ * @param node Node containing the serialized link. Can't be NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
-                           const struct bf_marsh *marsh);
+int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
+                          bf_rpack_node_t node);
 
 /**
  * Deallocate a `bf_link` object.
@@ -74,14 +71,13 @@ int bf_link_new_from_marsh(struct bf_link **link, int dir_fd,
 void bf_link_free(struct bf_link **link);
 
 /**
- * Serialize a `bf_link` object.
+ * @brief Serialize a link.
  *
- * @param link `bf_link` object to serialize. Can't be NULL.
- * @param marsh On success, represents the serialized `bf_link` object. On
- *        failure, this parameter is unchanged. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
+ * @param link Link to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the link into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_link_marsh(const struct bf_link *link, struct bf_marsh **marsh);
+int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack);
 
 /**
  * Dump the content of a `bf_link` object.

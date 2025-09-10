@@ -15,7 +15,7 @@
 #include "core/helper.h"
 #include "core/list.h"
 #include "core/logger.h"
-#include "core/marsh.h"
+#include "core/pack.h"
 
 /// Mask value of matcher types supporting LPM trie maps.
 #define _BF_SET_USE_TRIE_MASK                                                  \
@@ -222,6 +222,9 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
     size_t n_comps;
     int r;
 
+    bf_assert(raw_key);
+    bf_assert(raw_payload);
+
     r = _bf_set_parse_key(raw_key, key, &n_comps);
     if (r)
         return bf_err_r(r, "failed to parse set key '%s'", raw_key);
@@ -256,51 +259,67 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
     return 0;
 }
 
-int bf_set_new_from_marsh(struct bf_set **set, const struct bf_marsh *marsh)
+int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
 {
-    bf_assert(set && marsh);
-
     _free_bf_set_ struct bf_set *_set = NULL;
+    _cleanup_free_ char *name = NULL;
+    bf_rpack_node_t child, comp_node, elem_node;
+    size_t n_comps = 0;
     enum bf_matcher_type key[BF_SET_MAX_N_COMPS];
-    struct bf_marsh *child = NULL;
-    const char *name = NULL;
-    size_t n_comps;
     int r;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    if (!bf_marsh_is_empty(child))
-        name = child->data;
+    bf_assert(set);
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&n_comps, child->data, sizeof(n_comps));
+    r = bf_rpack_kv_node(node, "name", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_set.name");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_rpack_str(child, &name);
+        if (r)
+            return bf_err_r(r, "failed to read set name from bf_set.name pack");
+    }
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(key, child->data, n_comps * sizeof(enum bf_matcher_type));
+    r = bf_rpack_kv_array(node, "key", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_set.key");
+    bf_rpack_array_foreach (child, comp_node) {
+        ++n_comps;
+        if (n_comps > BF_SET_MAX_N_COMPS) {
+            return bf_err_r(
+                -E2BIG,
+                "bf_set.key in pack contains %lu key components, only %d allowed",
+                n_comps, BF_SET_MAX_N_COMPS);
+        }
+
+        r = bf_rpack_enum(comp_node, &key[i]);
+        if (r)
+            return bf_rpack_key_err(r, "bf_set.key");
+    }
 
     r = bf_set_new(&_set, name, key, n_comps);
-    if (r < 0)
-        return r;
+    if (r)
+        return bf_err_r(r, "failed to create bf_set from pack");
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    memcpy(&_set->elem_size, child->data, sizeof(_set->elem_size));
+    r = bf_rpack_kv_array(node, "elements", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_set.elements");
+    bf_rpack_array_foreach (child, elem_node) {
+        const void *elem;
+        size_t elem_len;
 
-    if (!(child = bf_marsh_next_child(marsh, child)))
-        return -EINVAL;
-    for (size_t i = 0; i < child->data_len / _set->elem_size; ++i) {
-        _cleanup_free_ void *elem = malloc(_set->elem_size);
-        if (!elem)
-            return -ENOMEM;
+        r = bf_rpack_bin(elem_node, &elem, &elem_len);
+        if (r)
+            return bf_rpack_key_err(r, "bf_set.elements");
 
-        memcpy(elem, child->data + (i * _set->elem_size), _set->elem_size);
-        r = bf_list_add_tail(&_set->elems, elem);
-        if (r < 0)
-            return r;
+        if (elem_len != _set->elem_size) {
+            return bf_err_r(-EINVAL,
+                            "bf_set pack element is %lu bytes, it must be %lu",
+                            elem_len, _set->elem_size);
+        }
 
-        TAKE_PTR(elem);
+        r = bf_set_add_elem(_set, elem);
+        if (r)
+            return bf_err_r(r, "failed to insert element to bf_set");
     }
 
     *set = TAKE_PTR(_set);
@@ -320,56 +339,27 @@ void bf_set_free(struct bf_set **set)
     freep((void *)set);
 }
 
-int bf_set_marsh(const struct bf_set *set, struct bf_marsh **marsh)
+int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
 {
-    bf_assert(set && marsh);
+    bf_assert(set);
+    bf_assert(pack);
 
-    _free_bf_marsh_ struct bf_marsh *_marsh = NULL;
-    _cleanup_free_ uint8_t *data = NULL;
-    size_t elem_idx = 0;
-    int r;
+    if (set->name)
+        bf_wpack_kv_str(pack, "name", set->name);
+    else
+        bf_wpack_kv_nil(pack, "name");
 
-    r = bf_marsh_new(&_marsh, NULL, 0);
-    if (r < 0)
-        return r;
+    bf_wpack_open_array(pack, "key");
+    for (size_t i = 0; i < set->n_comps; ++i)
+        bf_wpack_enum(pack, set->key[i]);
+    bf_wpack_close_array(pack);
 
-    r = bf_marsh_add_child_raw(&_marsh, set->name,
-                               set->name ? strlen(set->name) + 1 : 0);
-    if (r < 0)
-        return r;
+    bf_wpack_open_array(pack, "elements");
+    bf_list_foreach (&set->elems, elem_node)
+        bf_wpack_bin(pack, bf_list_node_get_data(elem_node), set->elem_size);
+    bf_wpack_close_array(pack);
 
-    r = bf_marsh_add_child_raw(&_marsh, &set->n_comps, sizeof(set->n_comps));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, set->key,
-                               set->n_comps * sizeof(enum bf_matcher_type));
-    if (r < 0)
-        return r;
-
-    r = bf_marsh_add_child_raw(&_marsh, &set->elem_size,
-                               sizeof(set->elem_size));
-    if (r < 0)
-        return r;
-
-    data = malloc(set->elem_size * bf_list_size(&set->elems));
-    if (!data)
-        return bf_err_r(r, "failed to allocate memory for the set's content");
-
-    bf_list_foreach (&set->elems, elem_node) {
-        memcpy(data + (elem_idx * set->elem_size),
-               bf_list_node_get_data(elem_node), set->elem_size);
-        ++elem_idx;
-    }
-
-    r = bf_marsh_add_child_raw(&_marsh, data,
-                               set->elem_size * bf_list_size(&set->elems));
-    if (r < 0)
-        return r;
-
-    *marsh = TAKE_PTR(_marsh);
-
-    return 0;
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
@@ -409,7 +399,7 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-int bf_set_add_elem(struct bf_set *set, void *elem)
+int bf_set_add_elem(struct bf_set *set, const void *elem)
 {
     bf_assert(set && elem);
 

@@ -11,6 +11,7 @@
 
 #include "bpfilter/ctx.h"
 #include "core/dump.h"
+#include "core/pack.h"
 
 /**
  * @file printer.h
@@ -46,7 +47,6 @@
  * <https://lore.kernel.org/bpf/20190409210910.32048-2-daniel@iogearbox.net>.
  */
 
-struct bf_marsh;
 struct bf_printer;
 struct bf_printer_msg;
 
@@ -102,15 +102,15 @@ struct bf_printer_msg;
 int bf_printer_new(struct bf_printer **printer);
 
 /**
- * Allocate a new printer context and intialise it from serialised data.
+ * @brief Allocate and initialize a new printer from serialized data.
  *
- * @param printer On success, points to the newly allocated and initialised
- *        printer context. Can't be NULL.
- * @param marsh Serialised data to use to initialise the printer message.
- * @return 0 on success, or negative errno value on error.
+ * @param printer Printer object to allocate and initialize from the serialized
+ *        data. The caller will own the object. On failure, `*printer` is
+ *        unchanged. Can't be NULL.
+ * @param node Node containing the serialized printer.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_printer_new_from_marsh(struct bf_printer **printer,
-                              const struct bf_marsh *marsh);
+int bf_printer_new_from_pack(struct bf_printer **printer, bf_rpack_node_t node);
 
 /**
  * Deinitialise and deallocate a printer context.
@@ -120,14 +120,13 @@ int bf_printer_new_from_marsh(struct bf_printer **printer,
 void bf_printer_free(struct bf_printer **printer);
 
 /**
- * Serialise a printer context.
+ * @brief Serialize a printer.
  *
- * @param printer Printer context to serialise. Can't be NULL.
- * @param marsh On success, contains the serialised printer context. Can't be
- *        NULL.
- * @return 0 on success, or negative errno value on failure.
+ * @param printer Printer to serialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to serialize the printer into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_printer_marsh(const struct bf_printer *printer, struct bf_marsh **marsh);
+int bf_printer_pack(const struct bf_printer *printer, bf_wpack_t *pack);
 
 /**
  * Dump the content of the printer structure.

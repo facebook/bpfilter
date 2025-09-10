@@ -6,10 +6,10 @@
 #pragma once
 
 #include "core/front.h"
+#include "core/pack.h"
 
 struct bf_request;
 struct bf_response;
-struct bf_marsh;
 
 /**
  * @struct bf_front_ops
@@ -27,8 +27,8 @@ struct bf_front_ops
     int (*teardown)(void);
     int (*request_handler)(const struct bf_request *request,
                            struct bf_response **response);
-    int (*marsh)(struct bf_marsh **marsh);
-    int (*unmarsh)(struct bf_marsh *marsh);
+    int (*pack)(bf_wpack_t *pack);
+    int (*unpack)(bf_rpack_node_t node);
 };
 
 /**

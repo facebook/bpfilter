@@ -9,6 +9,7 @@
 
 #include "core/front.h"
 #include "core/helper.h"
+#include "core/pack.h"
 
 struct bf_ns;
 
@@ -99,6 +100,8 @@ struct bf_request
  */
 int bf_request_new(struct bf_request **request, const void *data,
                    size_t data_len);
+
+int bf_request_new_from_pack(struct bf_request **request, bf_wpack_t *pack);
 
 /**
  * Free a request.
