@@ -23,18 +23,22 @@ set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/marsh.h            ${CMAKE_CURRENT_SOURCE_DIR}/marsh.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.h          ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns.h               ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pack.h             ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
     ${CMAKE_CURRENT_SOURCE_DIR}/request.h          ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.h         ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.h             ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
     ${CMAKE_CURRENT_SOURCE_DIR}/set.h              ${CMAKE_CURRENT_SOURCE_DIR}/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.h          ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
+    ${CMAKE_SOURCE_DIR}/src/external/mpack.h             ${CMAKE_SOURCE_DIR}/src/external/mpack.c
 )
 
 add_library(core
     OBJECT
         ${core_srcs}
 )
+
+target_compile_definitions(core PRIVATE MPACK_STDLIB)
 
 target_include_directories(core
     PUBLIC
