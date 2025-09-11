@@ -401,6 +401,7 @@ Sources::Sources(::std::string path):
 
 Sources::~Sources()
 {
+    git_repository_free(repo_);
     git_libgit2_shutdown();
 }
 
