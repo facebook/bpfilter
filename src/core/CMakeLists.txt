@@ -20,7 +20,6 @@ set(core_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/io.h               ${CMAKE_CURRENT_SOURCE_DIR}/io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/list.h             ${CMAKE_CURRENT_SOURCE_DIR}/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.h           ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/marsh.h            ${CMAKE_CURRENT_SOURCE_DIR}/marsh.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.h          ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns.h               ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.h             ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
