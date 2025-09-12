@@ -129,7 +129,8 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
 
     bf_ctx_flush(BF_FRONT_CLI);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -163,7 +164,8 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
         if (r)
             goto err_load;
 
-        r = bf_cgen_set(cgen, request->ns, hookopts ? &hookopts : NULL);
+        r = bf_cgen_set(cgen, bf_request_ns(request),
+                        hookopts ? &hookopts : NULL);
         if (r) {
             bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
             goto err_load;
@@ -201,7 +203,8 @@ int _bf_cli_chain_set(const struct bf_request *request,
 
     bf_assert(request && response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -234,7 +237,8 @@ int _bf_cli_chain_set(const struct bf_request *request,
         (void)bf_ctx_delete_cgen(old_cgen, true);
     }
 
-    r = bf_cgen_set(new_cgen, request->ns, hookopts ? &hookopts : NULL);
+    r = bf_cgen_set(new_cgen, bf_request_ns(request),
+                    hookopts ? &hookopts : NULL);
     if (r)
         return r;
 
@@ -260,7 +264,8 @@ static int _bf_cli_chain_get(const struct bf_request *request,
     _free_bf_rpack_ bf_rpack_t *rpack = NULL;
     int r;
 
-    r = bf_rpack_new(&rpack, request->data, request->data_len);
+    r = bf_rpack_new(&rpack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -311,7 +316,8 @@ int _bf_cli_chain_prog_fd(const struct bf_request *request,
 
     UNUSED(response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -326,7 +332,7 @@ int _bf_cli_chain_prog_fd(const struct bf_request *request,
     if (!cgen->program || cgen->program->runtime.prog_fd == -1)
         return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
 
-    r = bf_send_fd(request->fd, cgen->program->runtime.prog_fd);
+    r = bf_send_fd(bf_request_fd(request), cgen->program->runtime.prog_fd);
     if (r < 0)
         return bf_err_r(errno, "failed to send prog FD for '%s'", name);
 
@@ -343,7 +349,8 @@ int _bf_cli_chain_logs_fd(const struct bf_request *request,
 
     UNUSED(response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -358,7 +365,7 @@ int _bf_cli_chain_logs_fd(const struct bf_request *request,
     if (!cgen->program || !cgen->program->lmap->fd)
         return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", name);
 
-    r = bf_send_fd(request->fd, cgen->program->lmap->fd);
+    r = bf_send_fd(bf_request_fd(request), cgen->program->lmap->fd);
     if (r < 0)
         return bf_err_r(errno, "failed to send logs FD for '%s'", name);
 
@@ -376,7 +383,8 @@ int _bf_cli_chain_load(const struct bf_request *request,
 
     bf_assert(request && response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -426,7 +434,8 @@ int _bf_cli_chain_attach(const struct bf_request *request,
 
     bf_assert(request && response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -451,7 +460,7 @@ int _bf_cli_chain_attach(const struct bf_request *request,
     if (r)
         return bf_err_r(r, "failed to validate hook options");
 
-    r = bf_cgen_attach(cgen, request->ns, &hookopts);
+    r = bf_cgen_attach(cgen, bf_request_ns(request), &hookopts);
     if (r)
         return bf_err_r(r, "failed to attach codegen to hook");
 
@@ -469,7 +478,8 @@ int _bf_cli_chain_update(const struct bf_request *request,
 
     bf_assert(request && response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -505,7 +515,8 @@ int _bf_cli_chain_flush(const struct bf_request *request,
 
     bf_assert(request && response);
 
-    r = bf_rpack_new(&pack, request->data, request->data_len);
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
     if (r)
         return r;
 
@@ -528,7 +539,7 @@ static int _bf_cli_request_handler(const struct bf_request *request,
     bf_assert(request);
     bf_assert(response);
 
-    switch (request->cmd) {
+    switch (bf_request_cmd(request)) {
     case BF_REQ_RULESET_FLUSH:
         r = _bf_cli_ruleset_flush(request, response);
         break;
@@ -564,7 +575,7 @@ static int _bf_cli_request_handler(const struct bf_request *request,
         break;
     default:
         r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
-                     request->cmd);
+                     bf_request_cmd(request));
         break;
     }
 

@@ -23,17 +23,15 @@ int bf_nft_send(const void *data, size_t len)
     if (!data || !len)
         return -EINVAL;
 
-    r = bf_request_new(&request, data, len);
+    r = bf_request_new(&request, BF_FRONT_NFT, 0, data, len);
     if (r < 0)
         return r;
-
-    request->front = BF_FRONT_NFT;
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
@@ -49,33 +47,32 @@ int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
     if (req_len != req->nlmsg_len)
         return -EINVAL;
 
-    r = bf_request_new(&request, req, req_len);
+    r = bf_request_new(&request, BF_FRONT_NFT, 0, req, req_len);
     if (r < 0)
         return r;
-
-    request->front = BF_FRONT_NFT;
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    if (response->status != 0)
-        return response->status;
+    if (bf_response_status(response) != 0)
+        return bf_response_status(response);
 
     // The response should be a netlink message
-    if (response->data_len < NLMSG_HDRLEN)
+    if (bf_response_data_len(response) < NLMSG_HDRLEN)
         return -EMSGSIZE;
 
-    if (((struct nlmsghdr *)response->data)->nlmsg_len != response->data_len)
+    if (((const struct nlmsghdr *)bf_response_data(response))->nlmsg_len !=
+        bf_response_data_len(response))
         return -EMSGSIZE;
 
-    if (response->data_len > *res_len) {
-        *res_len = response->data_len;
+    if (bf_response_data_len(response) > *res_len) {
+        *res_len = bf_response_data_len(response);
         return -EMSGSIZE;
     }
 
-    memcpy(res, response->data, response->data_len);
-    *res_len = response->data_len;
+    memcpy(res, bf_response_data(response), bf_response_data_len(response));
+    *res_len = bf_response_data_len(response);
 
     return 0;
 }

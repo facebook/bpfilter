@@ -149,7 +149,7 @@ static void ipt_dump_target(const struct ipt_entry_target *target,
     bf_dump_prefix_pop(prefix);
 }
 
-void bf_ipt_dump_replace(struct ipt_replace *ipt, prefix_t *prefix)
+void bf_ipt_dump_replace(const struct ipt_replace *ipt, prefix_t *prefix)
 {
     int i;
     uint32_t offset;

@@ -18,11 +18,11 @@ static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
                                             const struct bf_matcher *matcher,
                                             const size_t offset)
 {
-    const uint8_t value = matcher->payload[0];
+    const uint8_t value = *(uint8_t *)bf_matcher_payload(matcher);
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6, offset));
 
-    switch (matcher->op) {
+    switch (bf_matcher_op(matcher)) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(program,
                                  BPF_JMP_IMM(BPF_JNE, BPF_REG_1, value, 0));
@@ -33,7 +33,8 @@ static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(matcher->op), matcher->op);
+                        bf_matcher_op_to_str(bf_matcher_op(matcher)),
+                        bf_matcher_op(matcher));
     }
 
     return 0;
@@ -42,7 +43,7 @@ static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
 static int _bf_matcher_generate_icmp6_fields(struct bf_program *program,
                                              const struct bf_matcher *matcher)
 {
-    size_t offset = matcher->type == BF_MATCHER_ICMPV6_TYPE ?
+    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_ICMPV6_TYPE ?
                         offsetof(struct icmp6hdr, icmp6_type) :
                         offsetof(struct icmp6hdr, icmp6_code);
 
@@ -57,7 +58,7 @@ static int _bf_matcher_generate_icmp6_fields(struct bf_program *program,
 static int _bf_matcher_generate_icmp4_fields(struct bf_program *program,
                                              const struct bf_matcher *matcher)
 {
-    size_t offset = matcher->type == BF_MATCHER_ICMP_TYPE ?
+    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_ICMP_TYPE ?
                         offsetof(struct icmphdr, type) :
                         offsetof(struct icmphdr, code);
 
@@ -74,7 +75,7 @@ int bf_matcher_generate_icmp(struct bf_program *program,
 {
     int r;
 
-    switch (matcher->type) {
+    switch (bf_matcher_type(matcher)) {
     case BF_MATCHER_ICMP_TYPE:
     case BF_MATCHER_ICMP_CODE:
         r = _bf_matcher_generate_icmp4_fields(program, matcher);
@@ -84,7 +85,8 @@ int bf_matcher_generate_icmp(struct bf_program *program,
         r = _bf_matcher_generate_icmp6_fields(program, matcher);
         break;
     default:
-        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d",
+                        bf_matcher_type(matcher));
     };
 
     return r;

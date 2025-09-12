@@ -250,8 +250,12 @@ bf_list *bft_list_get(size_t n_elems, size_t elem_size)
 
     if (elem_size < sizeof(struct bft_list_dummy_data)) {
         elem_size = sizeof(struct bft_list_dummy_data);
+<<<<<<< HEAD
         bf_warn("dummy bf_list element size if too small, using %lu",
                 elem_size);
+=======
+        bf_warn("dummy bf_list element size if too small, using %lu", elem_size);
+>>>>>>> 182c102 (request/response)
     }
 
     r = bf_list_new(&list, &ops);

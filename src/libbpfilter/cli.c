@@ -30,21 +30,19 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     bf_rpack_node_t root, node, child;
     int r;
 
-    r = bf_request_new(&request, NULL, 0);
+    r = bf_request_new(&request, BF_FRONT_CLI, BF_REQ_RULESET_GET, NULL, 0);
     if (r < 0)
         return bf_err_r(r, "failed to init request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_RULESET_GET;
 
     r = bf_send(request, &response);
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
-    if (response->status != 0)
-        return response->status;
+    if (bf_response_status(response) != 0)
+        return bf_response_status(response);
 
-    r = bf_rpack_new(&pack, (void *)response->data, response->data_len);
+    r = bf_rpack_new(&pack, bf_response_data(response),
+                     bf_response_data_len(response));
     if (r)
         return r;
 
@@ -159,18 +157,16 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     }
     bf_wpack_close_array(pack);
 
-    r = bf_request_new_from_pack(&request, pack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_RULESET_SET,
+                                 pack);
     if (r)
         return bf_err_r(r, "failed to create request for chain");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_RULESET_SET;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_ruleset_flush(void)
@@ -179,18 +175,15 @@ int bf_ruleset_flush(void)
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    r = bf_request_new(&request, NULL, 0);
+    r = bf_request_new(&request, BF_FRONT_CLI, BF_REQ_RULESET_FLUSH, NULL, 0);
     if (r)
         return bf_err_r(r, "failed to create a ruleset flush request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_RULESET_FLUSH;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "failed to send a ruleset flush request");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
@@ -220,18 +213,16 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
         bf_wpack_kv_nil(pack, "hookopts");
     }
 
-    r = bf_request_new_from_pack(&request, pack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_SET,
+                                 pack);
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to create request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_SET;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
@@ -255,21 +246,20 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     if (!bf_wpack_is_valid(wpack))
         return -EINVAL;
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_GET,
+                                 wpack);
     if (r < 0)
         return bf_err_r(r, "failed to init request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_GET;
 
     r = bf_send(request, &response);
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
-    if (response->status != 0)
-        return response->status;
+    if (bf_response_status(response) != 0)
+        return bf_response_status(response);
 
-    r = bf_rpack_new(&rpack, (void *)response->data, response->data_len);
+    r = bf_rpack_new(&rpack, bf_response_data(response),
+                     bf_response_data_len(response));
     if (r)
         return r;
 
@@ -327,19 +317,18 @@ int bf_chain_prog_fd(const char *name)
     if (!bf_wpack_is_valid(wpack))
         return -EINVAL;
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_PROG_FD,
+                                 wpack);
     if (r < 0)
         return bf_err_r(r, "failed to init request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_PROG_FD;
 
     fd = bf_send_with_fd(request, &response);
     if (fd < 0)
         return bf_err_r(fd, "failed to request prog FD from the daemon");
 
-    if (response->status != 0)
-        return bf_err_r(response->status, "BF_REQ_CHAIN_PROG_FD failed");
+    if (bf_response_status(response) != 0)
+        return bf_err_r(bf_response_status(response),
+                        "BF_REQ_CHAIN_PROG_FD failed");
 
     return TAKE_FD(fd);
 }
@@ -363,19 +352,18 @@ int bf_chain_logs_fd(const char *name)
     if (!bf_wpack_is_valid(wpack))
         return -EINVAL;
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_LOGS_FD,
+                                 wpack);
     if (r < 0)
         return bf_err_r(r, "failed to init request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_LOGS_FD;
 
     fd = bf_send_with_fd(request, &response);
     if (fd < 0)
         return bf_err_r(fd, "failed to request logs FD from the daemon");
 
-    if (response->status != 0)
-        return bf_err_r(response->status, "BF_REQ_CHAIN_LOGS failed");
+    if (bf_response_status(response) != 0)
+        return bf_err_r(bf_response_status(response),
+                        "BF_REQ_CHAIN_LOGS failed");
 
     return TAKE_FD(fd);
 }
@@ -397,18 +385,16 @@ int bf_chain_load(struct bf_chain *chain)
         return r;
     bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_LOAD,
+                                 wpack);
     if (r)
         return bf_err_r(r, "bf_chain_load: failed to create a new request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_LOAD;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
@@ -429,18 +415,16 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
         return r;
     bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_ATTACH,
+                                 wpack);
     if (r)
         return bf_err_r(r, "bf_chain_attach: failed to create a new request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_ATTACH;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "bf_chain_attach: failed to send request");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_chain_update(const struct bf_chain *chain)
@@ -460,18 +444,16 @@ int bf_chain_update(const struct bf_chain *chain)
         return r;
     bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_UPDATE,
+                                 wpack);
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to create a new request");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_UPDATE;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to send request");
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_chain_flush(const char *name)
@@ -487,16 +469,14 @@ int bf_chain_flush(const char *name)
 
     bf_wpack_kv_str(wpack, "name", name);
 
-    r = bf_request_new_from_pack(&request, wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_FLUSH,
+                                 wpack);
     if (r)
         return bf_err_r(r, "failed to create request for chain");
-
-    request->front = BF_FRONT_CLI;
-    request->cmd = BF_REQ_CHAIN_FLUSH;
 
     r = bf_send(request, &response);
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
-    return response->status;
+    return bf_response_status(response);
 }

@@ -28,8 +28,8 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
 {
     bf_assert(program && matcher);
 
-    uint32_t *addr = (uint32_t *)&matcher->payload;
-    size_t offset = matcher->type == BF_MATCHER_IP4_SADDR ?
+    uint32_t *addr = (uint32_t *)bf_matcher_payload(matcher);
+    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_IP4_SADDR ?
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
@@ -37,8 +37,9 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
     EMIT(program, BPF_MOV32_IMM(BPF_REG_2, *addr));
 
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BPF_REG_1, BPF_REG_2, 0));
+        program,
+        BPF_JMP_REG(bf_matcher_op(matcher) == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                    BPF_REG_1, BPF_REG_2, 0));
 
     return 0;
 }
@@ -48,13 +49,14 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
 {
     bf_assert(program && matcher);
 
-    uint8_t proto = *(uint8_t *)&matcher->payload;
+    uint8_t proto = *(uint8_t *)bf_matcher_payload(matcher);
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6,
                               offsetof(struct iphdr, protocol)));
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BPF_REG_1, proto, 0));
+        program,
+        BPF_JMP_IMM(bf_matcher_op(matcher) == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                    BPF_REG_1, proto, 0));
 
     return 0;
 }
@@ -76,8 +78,9 @@ static int _bf_matcher_generate_ip4_net(struct bf_program *program,
     bf_assert(program && matcher);
 
     uint32_t mask;
-    struct bf_ip4_lpm_key *addr = (struct bf_ip4_lpm_key *)&matcher->payload;
-    size_t offset = matcher->type == BF_MATCHER_IP4_SNET ?
+    struct bf_ip4_lpm_key *addr =
+        (struct bf_ip4_lpm_key *)bf_matcher_payload(matcher);
+    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_IP4_SNET ?
                         offsetof(struct iphdr, saddr) :
                         offsetof(struct iphdr, daddr);
 
@@ -93,8 +96,9 @@ static int _bf_matcher_generate_ip4_net(struct bf_program *program,
     }
 
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_REG(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BPF_REG_1, BPF_REG_2, 0));
+        program,
+        BPF_JMP_REG(bf_matcher_op(matcher) == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                    BPF_REG_1, BPF_REG_2, 0));
 
     return 0;
 }
@@ -112,7 +116,7 @@ int bf_matcher_generate_ip4(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
 
-    switch (matcher->type) {
+    switch (bf_matcher_type(matcher)) {
     case BF_MATCHER_IP4_SADDR:
     case BF_MATCHER_IP4_DADDR:
         r = _bf_matcher_generate_ip4_addr(program, matcher);
@@ -125,7 +129,8 @@ int bf_matcher_generate_ip4(struct bf_program *program,
         r = _bf_matcher_generate_ip4_net(program, matcher);
         break;
     default:
-        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d",
+                        bf_matcher_type(matcher));
     };
 
     if (r)

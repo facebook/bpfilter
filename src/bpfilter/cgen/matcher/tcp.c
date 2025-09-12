@@ -24,14 +24,14 @@
 static int _bf_matcher_generate_tcp_port(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
-    uint16_t *port = (uint16_t *)&matcher->payload;
-    size_t offset = matcher->type == BF_MATCHER_TCP_SPORT ?
+    uint16_t *port = (uint16_t *)bf_matcher_payload(matcher);
+    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_TCP_SPORT ?
                         offsetof(struct tcphdr, source) :
                         offsetof(struct tcphdr, dest);
 
     EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, offset));
 
-    switch (matcher->op) {
+    switch (bf_matcher_op(matcher)) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(
             program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, htobe16(*port), 0));
@@ -53,7 +53,8 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(matcher->op), matcher->op);
+                        bf_matcher_op_to_str(bf_matcher_op(matcher)),
+                        bf_matcher_op(matcher));
     }
 
     return 0;
@@ -62,11 +63,11 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
 static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
-    uint8_t flags = *(uint8_t *)matcher->payload;
+    uint8_t flags = *(uint8_t *)bf_matcher_payload(matcher);
 
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6, 13));
 
-    switch (matcher->op) {
+    switch (bf_matcher_op(matcher)) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(program,
                                  BPF_JMP_IMM(BPF_JNE, BPF_REG_1, flags, 0));
@@ -87,7 +88,7 @@ static int _bf_matcher_generate_tcp_flags(struct bf_program *program,
         break;
     default:
         return bf_err_r(-EINVAL, "unsupported matcher for tcp.flags: %s",
-                        bf_matcher_op_to_str(matcher->op));
+                        bf_matcher_op_to_str(bf_matcher_op(matcher)));
     }
 
     return 0;
@@ -103,7 +104,7 @@ int bf_matcher_generate_tcp(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
 
-    switch (matcher->type) {
+    switch (bf_matcher_type(matcher)) {
     case BF_MATCHER_TCP_SPORT:
     case BF_MATCHER_TCP_DPORT:
         r = _bf_matcher_generate_tcp_port(program, matcher);
@@ -112,7 +113,8 @@ int bf_matcher_generate_tcp(struct bf_program *program,
         r = _bf_matcher_generate_tcp_flags(program, matcher);
         break;
     default:
-        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d",
+                        bf_matcher_type(matcher));
     };
 
     return r;

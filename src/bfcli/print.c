@@ -187,10 +187,10 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         (void)fprintf(stdout, "    rule\n");
         bf_list_foreach (&rule->matchers, matcher_node) {
             struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-            const struct bf_matcher_ops *ops =
-                bf_matcher_get_ops(matcher->type, matcher->op);
+            const struct bf_matcher_ops *ops = bf_matcher_get_ops(
+                bf_matcher_type(matcher), bf_matcher_op(matcher));
 
-            if (matcher->type == BF_MATCHER_SET) {
+            if (bf_matcher_type(matcher) == BF_MATCHER_SET) {
                 struct bf_set *set =
                     bf_chain_get_set_for_matcher(chain, matcher);
 
@@ -232,15 +232,15 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                 }
             } else {
                 (void)fprintf(stdout, "        %s",
-                              bf_matcher_type_to_str(matcher->type));
+                              bf_matcher_type_to_str(bf_matcher_type(matcher)));
                 (void)fprintf(stdout, " %s ",
-                              bf_matcher_op_to_str(matcher->op));
+                              bf_matcher_op_to_str(bf_matcher_op(matcher)));
 
                 if (ops) {
-                    ops->print(matcher->payload);
+                    ops->print(bf_matcher_payload(matcher));
                 } else {
-                    bf_dump_hex_local(matcher->payload,
-                                      matcher->len - sizeof(struct bf_matcher));
+                    bf_dump_hex_local(bf_matcher_payload(matcher),
+                                      bf_matcher_payload_len(matcher));
                 }
             }
 
