@@ -74,22 +74,29 @@ static int _bft_e2e_test_with_counter(struct bf_chain *chain,
         return bf_err_r(r, "failed to start the bpfilter daemon");
 
     for (enum bf_flavor flavor = 0; flavor < _BF_FLAVOR_MAX; ++flavor) {
-        _free_bf_test_prog_ struct bf_test_prog *prog = NULL;
         const struct bft_prog_run_args *arg = &args[flavor];
         _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
         _free_bf_chain_ struct bf_chain *_0 = NULL;
         _free_bf_hookopts_ struct bf_hookopts *_1 = NULL;
+        _cleanup_close_ int fd = -1;
         int test_ret;
 
         chain->hook = _bf_tests_meta[flavor].hook;
-        prog = bf_test_prog_get(chain);
-        if (!prog) {
-            bf_err("failed to get the test program");
+        r = bf_chain_load(chain);
+        if (r) {
+            bf_info("failed to load test chain");
             daemon_failure = true;
             break;
         }
 
-        test_ret = bf_bpf_prog_run(prog->fd, arg->pkt, arg->pkt_len,
+        fd = bf_chain_prog_fd(chain->name);
+        if (fd < 0) {
+            bf_info("failed to get the test chain program FD");
+            daemon_failure = true;
+            break;
+        }
+
+        test_ret = bf_bpf_prog_run(fd, arg->pkt, arg->pkt_len,
                                arg->ctx_len ? &arg->ctx : NULL, arg->ctx_len);
         if (test_ret < 0) {
             bf_err_r(test_ret, "failed to run the program");
