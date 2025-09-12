@@ -142,6 +142,8 @@ add_custom_command(
 	COMMENT "Generate the benchmarks summary"
 )
 
+# covreport should not depend on lcov.out: it should generate a coverage report
+# if it exists, or skip the report generation if it doesn't.
 add_custom_command(
 	COMMAND
 		${CMAKE_CURRENT_SOURCE_DIR}/covreport
@@ -151,7 +153,6 @@ add_custom_command(
 	DEPENDS
 		${CMAKE_CURRENT_SOURCE_DIR}/covreport
 		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-		${CMAKE_BINARY_DIR}/output/tests/lcov.out
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
 	COMMENT "Generate the coverage report"
 )
