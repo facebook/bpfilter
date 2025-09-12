@@ -63,28 +63,26 @@ Test(cgen, create_delete_no_malloc)
     assert_error(bf_cgen_new(&cgen, BF_FRONT_CLI, &chain));
 }
 
-Test(cgen, marsh_unmarsh_assert)
-{
-    expect_assert_failure(bf_cgen_new_from_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_cgen_new_from_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_cgen_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_cgen_marsh(NOT_NULL, NULL));
-}
-
-Test(cgen, marsh_unmarsh)
+Test(cgen, pack_unpack)
 {
     _free_bf_cgen_ struct bf_cgen *cgen0 = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen1 = NULL;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
 
-    /* Create a codegen without any program, other bf_program_unmarsh()
-     * will try to open the pinned BPF objects.
-     */
-    cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT);
+    expect_assert_failure(bf_cgen_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_cgen_pack(NOT_NULL, NULL));
 
-    assert_success(bf_cgen_marsh(cgen0, &marsh));
-    assert_success(bf_cgen_new_from_marsh(&cgen1, marsh));
-    assert_non_null(cgen1);
+    assert_non_null(cgen0 = bf_test_cgen(BF_FRONT_CLI, BF_HOOK_XDP, BF_VERDICT_ACCEPT));
+
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_cgen_pack(cgen0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_cgen_new_from_pack(&cgen1, bf_rpack_root(rpack)));
 }
 
 Test(cgen, invalid_chain_policy)

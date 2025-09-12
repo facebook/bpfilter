@@ -46,25 +46,27 @@ Test(map, create_delete)
     bf_map_free(&map2);
 }
 
-Test(map, marsh_unmarsh_assert)
-{
-    expect_assert_failure(bf_map_new_from_marsh(NULL, 0, NOT_NULL));
-    expect_assert_failure(bf_map_new_from_marsh(NOT_NULL, 0, NULL));
-    expect_assert_failure(bf_map_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_map_marsh(NOT_NULL, NULL));
-}
-
-Test(map, marsh_unmarsh)
+Test(map, pack_unpack)
 {
     _free_bf_map_ struct bf_map *map0 = NULL;
     _free_bf_map_ struct bf_map *map1 = NULL;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
     _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(bf_bpf_obj_get, 0);
+
+    expect_assert_failure(bf_map_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_map_pack(NOT_NULL, NULL));
 
     assert_success(bf_map_new(&map0, "012345", BF_MAP_TYPE_LOG, 1, 2, 3));
 
-    assert_success(bf_map_marsh(map0, &marsh));
-    assert_success(bf_map_new_from_marsh(&map1, 0, marsh));
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_map_pack(map0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_map_new_from_pack(&map1, 0, bf_rpack_root(rpack)));
 
     // Ensure we won't try to close a garbage FD
     map1->fd = -1;

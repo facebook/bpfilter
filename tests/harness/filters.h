@@ -143,3 +143,21 @@ struct bf_rule *bf_rule_get(uint8_t log, bool counters, enum bf_verdict verdict,
 struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
                                    struct bf_set **sets,
                                    struct bf_rule **rules);
+
+struct bft_list_dummy_data
+{
+    size_t id;
+    size_t len;
+    uint8_t padding[];
+};
+
+typedef bool (*bft_list_eq_cb)(const void *lhs, const void *rhs);
+
+int bft_list_dummy_data_new_from_pack(struct bft_list_dummy_data **data,
+                                      bf_rpack_node_t node);
+int bft_list_dummy_data_pack(struct bft_list_dummy_data *data,
+                             bf_wpack_t *pack);
+bool bft_list_dummy_data_compare(const struct bft_list_dummy_data *lhs,
+                                 const struct bft_list_dummy_data *rhs);
+bf_list *bft_list_get(size_t n_elems, size_t elem_size);
+bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb);

@@ -47,53 +47,31 @@ Test(matcher, new_and_free)
     }
 }
 
-Test(matcher, marsh_unmarsh)
+Test(matcher, pack_unpack)
 {
+    _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
+    _free_bf_matcher_ struct bf_matcher *matcher1 = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
     uint8_t payload[] = {0, 1, 2, 3, 4, 5, 6, 7};
+    const void *data;
+    size_t data_len;
 
-    expect_assert_failure(bf_matcher_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_matcher_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_matcher_new_from_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_matcher_new_from_marsh(NOT_NULL, NULL));
+    expect_assert_failure(bf_matcher_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_matcher_pack(NOT_NULL, NULL));
 
-    // All good
-    {
-        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _free_bf_matcher_ struct bf_matcher *matcher1 = NULL;
-        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    assert_success(bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
 
-        assert_int_equal(
-            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
-        assert_success(bf_matcher_marsh(matcher0, &marsh));
-        assert_success(bf_matcher_new_from_marsh(&matcher1, marsh));
-    }
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_matcher_pack(matcher0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
 
-    // Failed serialisation
-    {
-        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_matcher_new_from_pack(&matcher1, bf_rpack_root(rpack)));
 
-        assert_int_equal(
-            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
-
-        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
-        assert_error(bf_matcher_marsh(matcher0, &marsh));
-    }
-
-    // Failed deserialisation
-    {
-        _free_bf_matcher_ struct bf_matcher *matcher0 = NULL;
-        _free_bf_marsh_ struct bf_marsh *marsh = NULL;
-        // No cleanup, it's not supposed to be allocated
-        struct bf_matcher *matcher1 = NULL;
-
-        assert_int_equal(
-            0, bf_matcher_new(&matcher0, 1, 2, payload, sizeof(payload)));
-        assert_success(bf_matcher_marsh(matcher0, &marsh));
-
-        _clean_bf_test_mock_ bf_test_mock _ = bf_test_mock_get(malloc, NULL);
-        assert_error(bf_matcher_new_from_marsh(&matcher1, marsh));
-    }
+    assert_int_equal(matcher0->type, matcher1->type);
+    assert_int_equal(matcher0->op, matcher1->op);
+    assert_int_equal(matcher0->len, matcher1->len);
 }
 
 Test(matcher, matcher_type_to_str_to_matcher_type)

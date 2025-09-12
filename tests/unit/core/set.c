@@ -134,19 +134,20 @@ Test(set, new_from_raw)
     bf_set_free(&set);
 }
 
-Test(set, marsh_and_unmarsh)
+Test(set, pack_unpack)
 {
-    _free_bf_set_ struct bf_set *in = NULL;
-    _free_bf_set_ struct bf_set *out = NULL;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_set_ struct bf_set *set0 = NULL;
+    _free_bf_set_ struct bf_set *set1 = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
 
-    expect_assert_failure(bf_set_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_set_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_set_new_from_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_set_new_from_marsh(NULL, NOT_NULL));
+    expect_assert_failure(bf_set_pack(NOT_NULL, NULL));
+    expect_assert_failure(bf_set_pack(NULL, NOT_NULL));
 
     // Create a non-empty set
-    assert_success(bf_set_new_from_raw(&in, NULL,
+    assert_success(bf_set_new_from_raw(&set0, NULL,
         "(ip4.proto, ip4.saddr, ip4.daddr)",
         "{"
             "tcp, 192.168.1.1, 192.168.1.10\n"
@@ -155,25 +156,27 @@ Test(set, marsh_and_unmarsh)
         "}"
     ));
 
-    // Marsh and unmarsh
-    assert_success(bf_set_marsh(in, &marsh));
-    assert_success(bf_set_new_from_marsh(&out, marsh));
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_set_pack(set0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
 
-    // Compare in and out
-    assert_int_equal(in->n_comps, out->n_comps);
-    assert_memory_equal(in->key, out->key, in->n_comps * sizeof(enum bf_matcher_type));
-    assert_int_equal(in->elem_size, out->elem_size);
-    assert_int_equal(in->use_trie, out->use_trie);
-    assert_int_equal(bf_list_size(&in->elems), bf_list_size(&out->elems));
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_set_new_from_pack(&set1, bf_rpack_root(rpack)));;
 
-    for (size_t i = 0; i < bf_list_size(&in->elems); ++i) {
-        void *in_data = bf_list_get_at(&in->elems, i);
-        void *out_data = bf_list_get_at(&out->elems, i);
+    assert_int_equal(set0->n_comps, set1->n_comps);
+    assert_memory_equal(set0->key, set1->key, set0->n_comps * sizeof(enum bf_matcher_type));
+    assert_int_equal(set0->elem_size, set1->elem_size);
+    assert_int_equal(set0->use_trie, set1->use_trie);
+    assert_int_equal(bf_list_size(&set0->elems), bf_list_size(&set1->elems));
 
-        assert_non_null(in_data);
-        assert_non_null(out_data);
+    for (size_t i = 0; i < bf_list_size(&set0->elems); ++i) {
+        void *set0_data = bf_list_get_at(&set0->elems, i);
+        void *set1_data = bf_list_get_at(&set1->elems, i);
 
-        assert_memory_equal(in_data, out_data, in->elem_size);
+        assert_non_null(set0_data);
+        assert_non_null(set1_data);
+
+        assert_memory_equal(set0_data, set1_data, set0->elem_size);
     }
 }
 

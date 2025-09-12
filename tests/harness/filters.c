@@ -24,8 +24,29 @@
 struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    _clean_bf_list_ bf_list raw_options = bf_list_default(freep, NULL);
     va_list args;
     int r;
+
+    va_start(args, raw_opt);
+    do {
+        _cleanup_free_ char *copy = strdup(raw_opt);
+        if (!copy) {
+            bf_err("failed to copy test hook option '%s'", raw_opt);
+            va_end(args);
+            return NULL;
+        }
+
+        r = bf_list_add_tail(&raw_options, copy);
+        if (r) {
+            bf_err("failed to insert raw option '%s' in list", raw_opt);
+            va_end(args);
+            return NULL;
+        }
+
+        TAKE_PTR(copy);
+    } while ((raw_opt = va_arg(args, const char *)));
+    va_end(args);
 
     r = bf_hookopts_new(&hookopts);
     if (r) {
@@ -33,17 +54,11 @@ struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
         return NULL;
     }
 
-    va_start(args, raw_opt);
-    do {
-        r = bf_hookopts_parse_opt(hookopts, raw_opt);
-        if (r) {
-            bf_err_r(r, "failed to parse hookopts option");
-            va_end(args);
-            return NULL;
-        }
-    } while ((raw_opt = va_arg(args, const char *)));
-
-    va_end(args);
+    r = bf_hookopts_parse_opts(hookopts, &raw_options);
+    if (r) {
+        bf_err("failed to parse test hook options");
+        return NULL;
+    }
 
     return TAKE_PTR(hookopts);
 }
@@ -127,8 +142,9 @@ struct bf_chain *bf_test_chain_get(enum bf_hook hook, enum bf_verdict policy,
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _clean_bf_list_ bf_list sets_list =
-        bf_list_default(bf_set_free, bf_set_marsh);
-    _clean_bf_list_ bf_list rules_list = bf_rule_list();
+        bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules_list =
+        bf_list_default(bf_rule_free, bf_rule_pack);
     int r;
 
     while (sets && *sets) {
@@ -166,4 +182,121 @@ err_free_arrays:
         bf_rule_free(rules++);
 
     return NULL;
+}
+
+int bft_list_dummy_data_new_from_pack(struct bft_list_dummy_data **data,
+                                      bf_rpack_node_t node)
+{
+    _cleanup_free_ struct bft_list_dummy_data *_data = NULL;
+    size_t id;
+    size_t len;
+    const void *padding;
+    size_t padding_len;
+    int r;
+
+    r = bf_rpack_kv_u64(node, "id", &id);
+    if (r)
+        return bf_rpack_key_err(r, "bft_list_dummy_data.id");
+
+    r = bf_rpack_kv_u64(node, "len", &len);
+    if (r)
+        return bf_rpack_key_err(r, "bft_list_dummy_data.len");
+
+    r = bf_rpack_kv_bin(node, "padding", &padding, &padding_len);
+    if (r)
+        return bf_rpack_key_err(r, "bft_list_dummy_data.padding");
+
+    if (len != (sizeof(struct bft_list_dummy_data) + padding_len)) {
+        return bf_err_r(-EINVAL,
+                        "invalid serialized length for bft_list_dummy_data");
+    }
+
+    _data = malloc(len);
+    if (!_data) {
+        return bf_err_r(-ENOMEM,
+                        "failed to allocate a bft_list_dummy_data object");
+    }
+
+    _data->id = id;
+    _data->len = len;
+    memcpy(_data->padding, padding, padding_len);
+
+    *data = TAKE_PTR(_data);
+
+    return 0;
+}
+
+int bft_list_dummy_data_pack(struct bft_list_dummy_data *data, bf_wpack_t *pack)
+{
+    bf_wpack_kv_u64(pack, "id", data->id);
+    bf_wpack_kv_u64(pack, "len", data->len);
+    bf_wpack_kv_bin(pack, "padding", data->padding, data->len - sizeof(*data));
+
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
+}
+
+bool bft_list_dummy_data_compare(const struct bft_list_dummy_data *lhs,
+                                 const struct bft_list_dummy_data *rhs)
+{
+    return lhs->id == rhs->id && lhs->len == rhs->len &&
+           0 == memcmp(lhs->padding, rhs->padding, lhs->len - sizeof(*lhs));
+}
+
+bf_list *bft_list_get(size_t n_elems, size_t elem_size)
+{
+    _free_bf_list_ bf_list *list = NULL;
+    bf_list_ops ops = bf_list_ops_default(freep, bft_list_dummy_data_pack);
+    int r;
+
+    if (elem_size < sizeof(struct bft_list_dummy_data)) {
+        elem_size = sizeof(struct bft_list_dummy_data);
+        bf_warn("dummy bf_list element size if too small, using %lu",
+                elem_size);
+    }
+
+    r = bf_list_new(&list, &ops);
+    if (r) {
+        bf_err("failed to create a dummy bf_list object");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n_elems; ++i) {
+        _cleanup_free_ struct bft_list_dummy_data *elem = NULL;
+
+        elem = malloc(elem_size);
+        if (!elem) {
+            bf_err("failed to allocate a element for dummy bf_list object");
+            return NULL;
+        }
+
+        elem->id = i;
+        elem->len = elem_size;
+
+        r = bf_list_add_tail(list, elem);
+        if (r) {
+            bf_err("failed to insert element into dummy bf_list object");
+            return NULL;
+        }
+
+        TAKE_PTR(elem);
+    }
+
+    return TAKE_PTR(list);
+}
+
+bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb)
+{
+    if (bf_list_size(lhs) != bf_list_size(rhs))
+        return false;
+
+    for (const bf_list_node *lhs_node = bf_list_get_head(lhs),
+                            *rhs_node = bf_list_get_head(rhs);
+         lhs_node && rhs_node; lhs_node = bf_list_node_next(lhs_node),
+                            rhs_node = bf_list_node_next(rhs_node)) {
+        if (!cb(bf_list_node_get_data(lhs_node),
+                bf_list_node_get_data(rhs_node)))
+            return false;
+    }
+
+    return true;
 }

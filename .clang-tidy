@@ -103,7 +103,7 @@ CheckOptions:
   # specific prefix (.e.g _BF). Other idenfitiers defined by GCC are allowed,
   # such as _start, _end...
   - key: bugprone-reserved-identifier.AllowedIdentifiers
-    value: "^(_)+(start|stop|bf|bfc|BF|BFC|GNU)_[a-zA-Z0-9_]+$"
+    value: "^(_)+(start|stop|bf|bfc|bft|BF|BFC|GNU)_[a-zA-Z0-9_]+$"
   - key: misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value: true
   # Unless a *statement* takes 1 line, it should be in braces

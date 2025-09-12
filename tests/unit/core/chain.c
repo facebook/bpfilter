@@ -38,16 +38,26 @@ Test(chain, new_free)
     }
 }
 
-Test(chain, marsh_unmarsh)
+Test(chain, pack_unpack)
 {
     _free_bf_chain_ struct bf_chain *chain0 = NULL;
     _free_bf_chain_ struct bf_chain *chain1 = NULL;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+
+    expect_assert_failure(bf_chain_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_chain_pack(NOT_NULL, NULL));
 
     assert_non_null(chain0 = bf_test_chain_get(0, 0, NULL, bft_fake_rules));
 
-    assert_success(bf_chain_marsh(chain0, &marsh));
-    assert_success(bf_chain_new_from_marsh(&chain1, marsh));
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_chain_pack(chain0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_chain_new_from_pack(&chain1, bf_rpack_root(rpack)));
 
     assert_int_equal(bf_list_size(&chain0->rules), bf_list_size(&chain1->rules));
     assert_int_equal(bf_list_size(&chain0->sets), bf_list_size(&chain1->sets));
