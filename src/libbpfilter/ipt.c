@@ -53,28 +53,27 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
 
     bf_assert(ipt_replace);
 
-    r = bf_request_new(&request, ipt_replace, bf_ipt_replace_size(ipt_replace));
+    r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_RULESET_SET, ipt_replace,
+                       bf_ipt_replace_size(ipt_replace));
     if (r < 0)
         return r;
-
-    request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_RULESET_SET;
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    if (response->status == 0) {
-        if (response->data_len != request->data_len) {
-            return bf_err_r(EINVAL,
-                            "bpfilter: response size is %lu, expected %lu",
-                            response->data_len, request->data_len);
+    if (bf_response_status(response) == 0) {
+        if (bf_response_data_len(response) != bf_request_data_len(request)) {
+            return bf_err_r(
+                EINVAL, "bpfilter: response size is %lu, expected %lu",
+                bf_response_data_len(response), bf_request_data_len(request));
         }
 
-        memcpy(ipt_replace, response->data, response->data_len);
+        memcpy(ipt_replace, bf_response_data(response),
+               bf_response_data_len(response));
     }
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_ipt_add_counters(struct xt_counters_info *counters)
@@ -85,28 +84,27 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
 
     bf_assert(counters);
 
-    r = bf_request_new(&request, counters, bf_xt_counters_info_size(counters));
+    r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_COUNTERS_SET, counters,
+                       bf_xt_counters_info_size(counters));
     if (r < 0)
         return r;
-
-    request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_COUNTERS_SET;
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    if (response->status == 0) {
-        if (response->data_len != request->data_len) {
-            return bf_err_r(EINVAL,
-                            "bpfilter: response size is %lu, expected %lu",
-                            response->data_len, request->data_len);
+    if (bf_response_status(response) == 0) {
+        if (bf_response_data_len(response) != bf_request_data_len(request)) {
+            return bf_err_r(
+                EINVAL, "bpfilter: response size is %lu, expected %lu",
+                bf_response_data_len(response), bf_request_data_len(request));
         }
 
-        memcpy(counters, response->data, response->data_len);
+        memcpy(counters, bf_response_data(response),
+               bf_response_data_len(response));
     }
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_ipt_get_info(struct ipt_getinfo *info)
@@ -117,29 +115,29 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
 
     bf_assert(info);
 
-    r = bf_request_new(&request, info, sizeof(*info));
+    r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_CUSTOM, info,
+                       sizeof(*info));
     if (r < 0)
         return r;
 
-    request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_CUSTOM;
-    request->ipt_cmd = IPT_SO_GET_INFO;
+    bf_request_set_ipt_cmd(request, IPT_SO_GET_INFO);
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    if (response->status == 0) {
-        if (response->data_len != request->data_len) {
-            return bf_err_r(EINVAL,
-                            "bpfilter: response size is %lu, expected %lu",
-                            response->data_len, request->data_len);
+    if (bf_response_status(response) == 0) {
+        if (bf_response_data_len(response) != bf_request_data_len(request)) {
+            return bf_err_r(
+                EINVAL, "bpfilter: response size is %lu, expected %lu",
+                bf_response_data_len(response), bf_request_data_len(request));
         }
 
-        memcpy(info, response->data, response->data_len);
+        memcpy(info, bf_response_data(response),
+               bf_response_data_len(response));
     }
 
-    return response->status;
+    return bf_response_status(response);
 }
 
 int bf_ipt_get_entries(struct ipt_get_entries *entries)
@@ -150,27 +148,27 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
 
     bf_assert(entries);
 
-    r = bf_request_new(&request, entries, bf_ipt_get_entries_size(entries));
+    r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_CUSTOM, entries,
+                       bf_ipt_get_entries_size(entries));
     if (r < 0)
         return r;
 
-    request->front = BF_FRONT_IPT;
-    request->cmd = BF_REQ_CUSTOM;
-    request->ipt_cmd = IPT_SO_GET_ENTRIES;
+    bf_request_set_ipt_cmd(request, IPT_SO_GET_ENTRIES);
 
     r = bf_send(request, &response);
     if (r < 0)
         return r;
 
-    if (response->status == 0) {
-        if (response->data_len != request->data_len) {
-            return bf_err_r(EINVAL,
-                            "bpfilter: response size is %lu, expected %lu",
-                            response->data_len, request->data_len);
+    if (bf_response_status(response) == 0) {
+        if (bf_response_data_len(response) != bf_request_data_len(request)) {
+            return bf_err_r(
+                EINVAL, "bpfilter: response size is %lu, expected %lu",
+                bf_response_data_len(response), bf_request_data_len(request));
         }
 
-        memcpy(entries, response->data, response->data_len);
+        memcpy(entries, bf_response_data(response),
+               bf_response_data_len(response));
     }
 
-    return response->status;
+    return bf_response_status(response);
 }

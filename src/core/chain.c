@@ -29,7 +29,7 @@ static void _bf_chain_update_features(struct bf_chain *chain,
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-        if (matcher->type == BF_MATCHER_IP6_NEXTHDR) {
+        if (bf_matcher_type(matcher) == BF_MATCHER_IP6_NEXTHDR) {
             chain->flags |= BF_FLAG(BF_CHAIN_STORE_NEXTHDR);
             break;
         }
@@ -213,10 +213,10 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
 
     uint32_t set_id;
 
-    if (matcher->type != BF_MATCHER_SET)
+    if (bf_matcher_type(matcher) != BF_MATCHER_SET)
         return NULL;
 
-    set_id = *(uint32_t *)matcher->payload;
+    set_id = *(uint32_t *)bf_matcher_payload(matcher);
 
     return bf_list_get_at(&chain->sets, set_id);
 }

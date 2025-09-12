@@ -24,7 +24,7 @@ static int _bf_matcher_generate_set_trie(struct bf_program *program,
 
     if (!set) {
         return bf_err_r(-ENOENT, "set #%u not found in %s",
-                        *(uint32_t *)matcher->payload,
+                        *(uint32_t *)bf_matcher_payload(matcher),
                         program->runtime.chain->name);
     }
 
@@ -65,7 +65,8 @@ static int _bf_matcher_generate_set_trie(struct bf_program *program,
                         bf_matcher_type_to_str(type), type);
     }
 
-    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, *(uint32_t *)matcher->payload);
+    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1,
+                           *(uint32_t *)bf_matcher_payload(matcher));
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(4)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
@@ -87,7 +88,7 @@ int bf_matcher_generate_set(struct bf_program *program,
 
     if (!set) {
         return bf_err_r(-ENOENT, "set #%u not found in %s",
-                        *(uint32_t *)matcher->payload,
+                        *(uint32_t *)bf_matcher_payload(matcher),
                         program->runtime.chain->name);
     }
 
@@ -132,7 +133,8 @@ int bf_matcher_generate_set(struct bf_program *program,
         offset += meta->hdr_payload_size;
     }
 
-    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1, *(uint32_t *)matcher->payload);
+    EMIT_LOAD_SET_FD_FIXUP(program, BPF_REG_1,
+                           *(uint32_t *)bf_matcher_payload(matcher));
     EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));

@@ -503,7 +503,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-        switch (matcher->type) {
+        switch (bf_matcher_type(matcher)) {
         case BF_MATCHER_META_IFACE:
         case BF_MATCHER_META_L3_PROTO:
         case BF_MATCHER_META_L4_PROTO:
@@ -559,7 +559,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
                 return r;
             break;
         default:
-            return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
+            return bf_err_r(-EINVAL, "unknown matcher type %d",
+                            bf_matcher_type(matcher));
         };
     }
 

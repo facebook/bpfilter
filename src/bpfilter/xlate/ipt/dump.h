@@ -15,4 +15,4 @@ struct ipt_replace;
  * @param ipt iptable's ipt_replace structure. Must be non-NULL.
  * @param prefix Prefix to print on each line.
  */
-void bf_ipt_dump_replace(struct ipt_replace *ipt, prefix_t *prefix);
+void bf_ipt_dump_replace(const struct ipt_replace *ipt, prefix_t *prefix);

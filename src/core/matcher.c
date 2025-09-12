@@ -39,6 +39,24 @@
 extern int inet_pton(int, const char *, void *);
 extern const char *inet_ntop(int, const void *, char *, socklen_t);
 
+/**
+ * Matcher definition.
+ *
+ * Matchers are criterias to match the packet against. A set of matcher defines
+ * what a rule should match on.
+ */
+struct bf_matcher
+{
+    /// Matcher type.
+    enum bf_matcher_type type;
+    /// Comparison operator.
+    enum bf_matcher_op op;
+    /// Total matcher size (including payload).
+    size_t len;
+    /// Payload to match the packet against (if any).
+    uint8_t payload[];
+};
+
 int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
                     void *payload, const char *raw_payload)
 {
@@ -1164,6 +1182,36 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
+}
+
+enum bf_matcher_type bf_matcher_type(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+    return matcher->type;
+}
+
+enum bf_matcher_op bf_matcher_op(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+    return matcher->op;
+}
+
+const void *bf_matcher_payload(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+    return matcher->payload;
+}
+
+size_t bf_matcher_payload_len(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+    return matcher->len - sizeof(*matcher);
+}
+
+size_t bf_matcher_len(const struct bf_matcher *matcher)
+{
+    bf_assert(matcher);
+    return matcher->len;
 }
 
 static const char *_bf_matcher_type_strs[] = {

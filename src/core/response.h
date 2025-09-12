@@ -12,20 +12,8 @@
 
 #define _free_bf_response_ __attribute__((cleanup(bf_response_free)))
 
-/**
- * @brief Response message sent from the daemon to the client.
- */
-struct bf_response
-{
-    /** Response status: 0 on success, or a negative error value on failure. */
-    int status;
-
-    /** Number of bytes stored in `data`. */
-    size_t data_len;
-
-    /** Data carried by the response. */
-    char data[];
-};
+struct bf_dynbuf;
+struct bf_response;
 
 /**
  * Allocate a response without copying data.
@@ -52,6 +40,8 @@ int bf_response_new_raw(struct bf_response **response, size_t data_len);
 int bf_response_new_success(struct bf_response **response, const char *data,
                             size_t data_len);
 
+int bf_response_new_from_dynbuf(struct bf_response **response,
+                                struct bf_dynbuf *dynbuf);
 int bf_response_new_from_pack(struct bf_response **response, bf_wpack_t *pack);
 
 /**
@@ -83,15 +73,14 @@ void bf_response_free(struct bf_response **response);
  */
 int bf_response_copy(struct bf_response **dest, const struct bf_response *src);
 
+int bf_response_status(const struct bf_response *response);
+const void *bf_response_data(const struct bf_response *response);
+size_t bf_response_data_len(const struct bf_response *response);
+
 /**
  * Get the total size of the response: request structure and data (if any).
  *
  * @param response Response to get the size of. Can't be NULL.
  * @return Total size of the response.
  */
-static inline size_t bf_response_size(const struct bf_response *response)
-{
-    bf_assert(response);
-
-    return sizeof(*response) + response->data_len;
-}
+size_t bf_response_size(const struct bf_response *response);

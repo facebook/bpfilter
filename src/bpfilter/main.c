@@ -297,7 +297,7 @@ static int _bf_clean(void)
 /**
  * Process a request.
  *
- * The handler corresponding to @p request->front will be called (if any).
+ * The handler corresponding to @p bf_request_front(request) will be called (if any).
  * If the handler returns 0, @p response is expected to be filled, and ready
  * to be returned to the client.
  * If the handler returns a negative error code, @p response is filled by @ref
@@ -320,29 +320,31 @@ static int _bf_process_request(struct bf_request *request,
 
     bf_assert(request && response);
 
-    if (request->front < 0 || request->front >= _BF_FRONT_MAX) {
+    if (bf_request_front(request) < 0 ||
+        bf_request_front(request) >= _BF_FRONT_MAX) {
         bf_warn("received a request from front %d, unknown front, ignoring",
-                request->front);
+                bf_request_front(request));
         return bf_response_new_failure(response, -EINVAL);
     }
 
-    if (request->cmd < 0 || request->cmd >= _BF_REQ_CMD_MAX) {
+    if (bf_request_cmd(request) < 0 ||
+        bf_request_cmd(request) >= _BF_REQ_CMD_MAX) {
         bf_warn("received a request with command %d, unknown command, ignoring",
-                request->cmd);
+                bf_request_cmd(request));
         return bf_response_new_failure(response, -EINVAL);
     }
 
-    if (!bf_opts_is_front_enabled(request->front)) {
+    if (!bf_opts_is_front_enabled(bf_request_front(request))) {
         bf_warn("received a request from %s, but front is disabled, ignoring",
-                bf_front_to_str(request->front));
+                bf_front_to_str(bf_request_front(request)));
         return bf_response_new_failure(response, -ENOTSUP);
     }
 
     bf_info("processing request %s from %s",
-            bf_request_cmd_to_str(request->cmd),
-            bf_front_to_str(request->front));
+            bf_request_cmd_to_str(bf_request_cmd(request)),
+            bf_front_to_str(bf_request_front(request)));
 
-    ops = bf_front_ops_get(request->front);
+    ops = bf_front_ops_get(bf_request_front(request));
     r = ops->request_handler(request, response);
     if (r) {
         /* We failed to process the request, so we need to generate an
@@ -351,13 +353,14 @@ static int _bf_process_request(struct bf_request *request,
         r = bf_response_new_failure(response, r);
     }
 
-    if (!bf_opts_transient() && (request->cmd == BF_REQ_RULESET_FLUSH ||
-                                 request->cmd == BF_REQ_RULESET_SET ||
-                                 request->cmd == BF_REQ_CHAIN_SET ||
-                                 request->cmd == BF_REQ_CHAIN_LOAD ||
-                                 request->cmd == BF_REQ_CHAIN_ATTACH ||
-                                 request->cmd == BF_REQ_CHAIN_UPDATE ||
-                                 request->cmd == BF_REQ_CHAIN_FLUSH))
+    if (!bf_opts_transient() &&
+        (bf_request_cmd(request) == BF_REQ_RULESET_FLUSH ||
+         bf_request_cmd(request) == BF_REQ_RULESET_SET ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_SET ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_LOAD ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_ATTACH ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_UPDATE ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_FLUSH))
         r = _bf_save(ctx_path);
 
     return r;
@@ -448,8 +451,8 @@ static int _bf_run(void)
         if (r < 0)
             return bf_err_r(r, "failed to receive request");
 
-        request->ns = &ns;
-        request->fd = client_fd;
+        bf_request_set_ns(request, &ns);
+        bf_request_set_fd(request, client_fd);
 
         r = _bf_process_request(request, &response);
         if (r) {

@@ -266,34 +266,34 @@ static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
 static int _bf_rule_to_ipt_entry(const struct bf_rule *rule,
                                  struct ipt_entry *entry)
 {
-    struct bf_matcher_ip4_addr *addr;
+    const struct bf_matcher_ip4_addr *addr;
 
     bf_assert(entry && rule);
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-        switch (matcher->type) {
+        switch (bf_matcher_type(matcher)) {
         case BF_MATCHER_IP4_SADDR:
-            if (matcher->op == BF_MATCHER_NE)
+            if (bf_matcher_op(matcher) == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_SRCIP;
-            addr = (void *)&matcher->payload;
+            addr = bf_matcher_payload(matcher);
             entry->ip.src.s_addr = addr->addr;
             entry->ip.smsk.s_addr = addr->mask;
             break;
         case BF_MATCHER_IP4_DADDR:
-            if (matcher->op == BF_MATCHER_NE)
+            if (bf_matcher_op(matcher) == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_DSTIP;
-            addr = (void *)&matcher->payload;
+            addr = bf_matcher_payload(matcher);
             entry->ip.dst.s_addr = addr->addr;
             entry->ip.dmsk.s_addr = addr->mask;
             break;
         case BF_MATCHER_IP4_PROTO:
-            entry->ip.proto = *(uint8_t *)&matcher->payload;
+            entry->ip.proto = *(uint8_t *)bf_matcher_payload(matcher);
             break;
         default:
             return bf_err_r(-ENOTSUP, "unsupported matcher %s for BF_FRONT_IPT",
-                            bf_matcher_type_to_str(matcher->type));
+                            bf_matcher_type_to_str(bf_matcher_type(matcher)));
         }
     }
 
@@ -559,7 +559,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
  * @return 0 on success, negative error code on failure.
  */
 static int
-_bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
+_bf_ipt_xlate_ruleset_set(const struct ipt_replace *ipt,
                           struct bf_chain *(*chains)[NF_INET_NUMHOOKS])
 {
     int r;
@@ -598,7 +598,7 @@ _bf_ipt_xlate_ruleset_set(struct ipt_replace *ipt,
  */
 static int _bf_ipt_ruleset_set(const struct bf_request *req)
 {
-    struct ipt_replace *replace;
+    const struct ipt_replace *replace;
     struct bf_chain *chains[NF_INET_NUMHOOKS] = {};
     bf_list _cur_cgens = bf_list_default(NULL, NULL);
     struct bf_cgen *cur_cgens[NF_INET_NUMHOOKS] = {};
@@ -606,8 +606,8 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 
     bf_assert(req);
 
-    replace = (struct ipt_replace *)req->data;
-    if (bf_ipt_replace_size(replace) != req->data_len)
+    replace = bf_request_data(req);
+    if (bf_ipt_replace_size(replace) != bf_request_data_len(req))
         return -EINVAL;
 
     bf_ipt_dump_replace(replace, EMPTY_PREFIX);
@@ -656,7 +656,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
             if (r)
                 return r;
 
-            r = bf_cgen_attach(cgen, req->ns, &hookopts);
+            r = bf_cgen_attach(cgen, bf_request_ns(req), &hookopts);
             if (r) {
                 bf_err(
                     "failed to load a program for iptables hook %d, skipping",
@@ -699,7 +699,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
  * @param len Length of the counters structure.
  * @return 0 on success, negative error code on failure.
  */
-static int _bf_ipt_set_counters_handler(struct xt_counters_info *counters,
+static int _bf_ipt_set_counters_handler(const struct xt_counters_info *counters,
                                         size_t len)
 {
     bf_assert(counters);
@@ -713,11 +713,16 @@ int _bf_ipt_get_info_handler(const struct bf_request *request,
                              struct bf_response **response)
 {
     _cleanup_free_ struct ipt_replace *replace = NULL;
-    struct ipt_getinfo *info = (struct ipt_getinfo *)request->data;
+    _cleanup_free_ struct ipt_getinfo *info = NULL;
     int r;
 
     bf_assert(request);
-    bf_assert(sizeof(*info) == request->data_len);
+    bf_assert(sizeof(*info) == bf_request_data_len(request));
+
+    info = bf_memdup(bf_request_data(request), bf_request_data_len(request));
+    if (!info) {
+        return -ENOMEM;
+    }
 
     if (!bf_streq(info->name, "filter")) {
         return bf_err_r(-EINVAL, "can't process IPT_SO_GET_INFO for table %s",
@@ -749,13 +754,15 @@ int _bf_ipt_get_entries_handler(const struct bf_request *request,
                                 struct bf_response **response)
 {
     _cleanup_free_ struct ipt_replace *replace = NULL;
-    struct ipt_get_entries *entries;
+    _cleanup_free_ struct ipt_get_entries *entries = NULL;
     int r;
 
     bf_assert(request);
     bf_assert(response);
 
-    entries = (struct ipt_get_entries *)request->data;
+    entries = bf_memdup(bf_request_data(request), bf_request_data_len(request));
+    if (!entries)
+        return -ENOMEM;
 
     if (!bf_streq(entries->name, "filter")) {
         return bf_err_r(-EINVAL, "can't process IPT_SO_GET_INFO for table %s",
@@ -808,24 +815,24 @@ static int _bf_ipt_request_handler(const struct bf_request *request,
 {
     int r;
 
-    switch (request->cmd) {
+    switch (bf_request_cmd(request)) {
     case BF_REQ_RULESET_SET:
         r = _bf_ipt_ruleset_set(request);
         if (r < 0)
             return r;
 
-        return bf_response_new_success(response, request->data,
-                                       request->data_len);
+        return bf_response_new_success(response, bf_request_data(request),
+                                       bf_request_data_len(request));
     case BF_REQ_COUNTERS_SET:
-        r = _bf_ipt_set_counters_handler(
-            (struct xt_counters_info *)request->data, request->data_len);
+        r = _bf_ipt_set_counters_handler(bf_request_data(request),
+                                         bf_request_data_len(request));
         if (r < 0)
             return r;
 
-        return bf_response_new_success(response, request->data,
-                                       request->data_len);
+        return bf_response_new_success(response, bf_request_data(request),
+                                       bf_request_data_len(request));
     case BF_REQ_CUSTOM:
-        switch (request->ipt_cmd) {
+        switch (bf_request_ipt_cmd(request)) {
         case IPT_SO_GET_INFO:
             return _bf_ipt_get_info_handler(request, response);
         case IPT_SO_GET_ENTRIES:
@@ -833,11 +840,11 @@ static int _bf_ipt_request_handler(const struct bf_request *request,
         default:
             return bf_warn_r(-ENOTSUP,
                              "unsupported custom ipt request type: %d",
-                             request->ipt_cmd);
+                             bf_request_ipt_cmd(request));
         };
     default:
         return bf_warn_r(-ENOTSUP, "unsupported ipt request type: %d",
-                         request->cmd);
+                         bf_request_ipt_cmd(request));
     };
 
     return 0;

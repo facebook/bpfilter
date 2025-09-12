@@ -32,6 +32,8 @@
 /// Automatically destroy @ref bf_matcher objects going out of the scope.
 #define _free_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
 
+struct bf_matcher;
+
 /**
  * Matcher type.
  *
@@ -177,24 +179,6 @@ enum bf_matcher_op
 };
 
 /**
- * Matcher definition.
- *
- * Matchers are criterias to match the packet against. A set of matcher defines
- * what a rule should match on.
- */
-struct bf_matcher
-{
-    /// Matcher type.
-    enum bf_matcher_type type;
-    /// Comparison operator.
-    enum bf_matcher_op op;
-    /// Total matcher size (including payload).
-    size_t len;
-    /// Payload to match the packet against (if any).
-    uint8_t payload[];
-};
-
-/**
  * @brief TCP/IP layer a matcher is applied to.
  */
 enum bf_matcher_layer
@@ -318,6 +302,12 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack);
  * @param prefix Prefix for each printed line.
  */
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix);
+
+enum bf_matcher_type bf_matcher_type(const struct bf_matcher *matcher);
+enum bf_matcher_op bf_matcher_op(const struct bf_matcher *matcher);
+const void *bf_matcher_payload(const struct bf_matcher *matcher);
+size_t bf_matcher_payload_len(const struct bf_matcher *matcher);
+size_t bf_matcher_len(const struct bf_matcher *matcher);
 
 /**
  * @brief Get meta structure for a given matcher type.

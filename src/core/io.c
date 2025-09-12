@@ -16,186 +16,170 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "core/dynbuf.h"
 #include "core/helper.h"
 #include "core/logger.h"
 #include "core/request.h"
 #include "core/response.h"
 
 #define BF_PERM_755 (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
+#define BF_MSG_BUF_SIZE 1024U
 
-static ssize_t _bf_recv_in_buff(int fd, void *buf, size_t buf_len)
+static int _bf_recv_in_buff(int fd, struct bf_dynbuf *buf)
 {
-    ssize_t bytes_read = 0;
-    ssize_t r;
+    size_t remaining = 1;
 
     bf_assert(buf);
 
-    do {
-        /// @todo Add a timeout to the socket to prevent blocking forever.
-        r = read(fd, buf + bytes_read, buf_len - bytes_read);
-        if (r < 0) {
-            (void)fprintf(stderr, "can't read from the socket: %s\n",
-                          bf_strerror(errno));
-            return -errno;
+    while (remaining > 0) {
+        ssize_t r;
+        uint8_t tmpbuf[BF_MSG_BUF_SIZE];
+
+        bf_info("receiving a message");
+        struct iovec iov[2] = {
+            {
+                .iov_base = &remaining,
+                .iov_len = sizeof(remaining),
+            },
+            {
+                .iov_base = tmpbuf,
+                .iov_len = BF_MSG_BUF_SIZE,
+            },
+        };
+
+        struct msghdr msg = {
+            .msg_iov = iov,
+            .msg_iovlen = ARRAY_SIZE(iov),
+            .msg_name = NULL,
+            .msg_namelen = 0,
+            .msg_control = NULL,
+            .msg_controllen = 0,
+        };
+
+        r = recvmsg(fd, &msg, 0);
+        if (r < 0)
+            return bf_err_r(-errno, "failed to receive data");
+        if ((size_t)r < sizeof(remaining))
+            return bf_err_r(-EIO, "received partial data");
+
+        r = bf_dynbuf_write(buf, tmpbuf, r - sizeof(remaining));
+        if (r) {
+            return bf_err_r((int)r,
+                            "failed to write received data to dynamic buffer");
         }
-
-        bytes_read += r;
-    } while (r && (size_t)bytes_read != buf_len);
-
-    return bytes_read;
-}
-
-static ssize_t _bf_send_from_buff(int fd, void *buf, size_t buf_len)
-{
-    ssize_t bytes_sent = 0;
-    ssize_t r;
-
-    bf_assert(buf);
-
-    while ((size_t)bytes_sent < buf_len) {
-        r = write(fd, buf + bytes_sent, buf_len - bytes_sent);
-        if (r < 0) {
-            (void)fprintf(stderr, "can't write to socket: %s\n",
-                          bf_strerror(errno));
-            return -errno;
-        }
-
-        bytes_sent += r;
     }
 
-    return bytes_sent;
+    return 0;
+}
+
+static int _bf_send_from_buff(int fd, void *buf, size_t buf_len)
+{
+    size_t sent = 0;
+
+    bf_assert(buf);
+
+    while (buf_len > 0) {
+        size_t send_size = bf_min(BF_MSG_BUF_SIZE, buf_len);
+        ssize_t r;
+        size_t rem = buf_len - send_size;
+
+        bf_info("sending a message");
+
+        struct iovec iov[2] = {
+            {
+                .iov_base = &rem,
+                .iov_len = sizeof(buf_len),
+            },
+            {
+                .iov_base = buf + sent,
+                .iov_len = send_size,
+            },
+        };
+        bf_info("  -> remaining: %lu", buf_len);
+        bf_info("  -> sending: %lu", send_size);
+
+        struct msghdr msg = {
+            .msg_iov = iov,
+            .msg_iovlen = ARRAY_SIZE(iov),
+            .msg_name = NULL,
+            .msg_namelen = 0,
+            .msg_control = NULL,
+            .msg_controllen = 0,
+        };
+
+        r = sendmsg(fd, &msg, MSG_NOSIGNAL);
+        bf_info("  -> return value: %ld (sent %ld)", r,
+                send_size + sizeof(buf_len));
+        if (r < 0)
+            return bf_err_r(-errno, "failed to send data from buff");
+        if ((size_t)r != send_size + sizeof(buf_len))
+            return bf_err_r(-EIO, "sent partial data");
+
+        sent += (size_t)r - sizeof(buf_len);
+        buf_len -= (size_t)r - sizeof(buf_len);
+    }
+
+    return 0;
 }
 
 int bf_send_request(int fd, const struct bf_request *request)
 {
-    ssize_t r;
+    int r;
 
     bf_assert(request);
 
     r = _bf_send_from_buff(fd, (void *)request, bf_request_size(request));
-    if (r < 0) {
-        (void)fprintf(stderr, "Failed to send request: %s\n",
-                      bf_strerror(errno));
-        return -errno;
-    }
-
-    if ((size_t)r != bf_request_size(request)) {
-        (void)fprintf(stderr,
-                      "Failed to send request: %lu bytes sent, %ld expected\n",
-                      (size_t)r, bf_request_size(request));
-        return -EIO;
-    }
+    if (r < 0)
+        return bf_err_r(r, "failed to send request");
 
     return 0;
 }
 
 int bf_recv_request(int fd, struct bf_request **request)
 {
-    struct bf_request req;
-    _free_bf_request_ struct bf_request *_request = NULL;
-    ssize_t r;
+    _clean_bf_dynbuf_ struct bf_dynbuf dynbuf = bf_dynbuf_default();
+    int r;
 
     bf_assert(request);
 
-    r = _bf_recv_in_buff(fd, &req, sizeof(req));
-    if (r < 0)
-        return (int)r;
+    r = _bf_recv_in_buff(fd, &dynbuf);
+    if (r)
+        return bf_err_r(r, "failed to receive request");
 
-    if ((size_t)r != sizeof(req)) {
-        (void)fprintf(stderr,
-                      "failed to read request: %lu bytes read, %lu expected\n",
-                      (size_t)r, sizeof(req));
-        return -EIO;
-    }
-
-    _request = malloc(bf_request_size(&req));
-    if (!_request) {
-        (void)fprintf(stderr, "failed to allocate request: %s\n",
-                      bf_strerror(errno));
-        return -errno;
-    }
-
-    memcpy(_request, &req, sizeof(req));
-
-    r = _bf_recv_in_buff(fd, _request->data, _request->data_len);
-    if (r < 0)
-        return (int)r;
-
-    if ((size_t)r != _request->data_len) {
-        (void)fprintf(stderr,
-                      "failed to read request: %lu bytes read, %lu expected\n",
-                      (size_t)r, _request->data_len);
-        return -EIO;
-    }
-
-    *request = TAKE_PTR(_request);
+    r = bf_request_new_from_dynbuf(request, &dynbuf);
+    if (r)
+        return bf_err_r((int)r, "failed to create request from buffer");
 
     return 0;
 }
 
 int bf_send_response(int fd, struct bf_response *response)
 {
-    ssize_t r;
+    int r;
 
     bf_assert(response);
 
     r = _bf_send_from_buff(fd, (void *)response, bf_response_size(response));
-    if (r < 0) {
-        (void)fprintf(stderr, "Failed to send response: %s\n",
-                      bf_strerror(errno));
-        return -errno;
-    }
-
-    if ((size_t)r != bf_response_size(response)) {
-        (void)fprintf(stderr,
-                      "Failed to send response: %lu bytes sent, %ld expected\n",
-                      r, bf_response_size(response));
-        return -EIO;
-    }
+    if (r < 0)
+        return bf_err_r(r, "failed to send response");
 
     return 0;
 }
 
 int bf_recv_response(int fd, struct bf_response **response)
 {
-    struct bf_response res;
-    _free_bf_response_ struct bf_response *_response = NULL;
-    ssize_t r;
+    _clean_bf_dynbuf_ struct bf_dynbuf dynbuf = bf_dynbuf_default();
+    int r;
 
     bf_assert(response);
 
-    r = _bf_recv_in_buff(fd, &res, sizeof(res));
-    if (r < 0)
-        return -errno;
+    r = _bf_recv_in_buff(fd, &dynbuf);
+    if (r)
+        return bf_err_r((int)r, "failed to receive response");
 
-    if ((size_t)r != sizeof(res)) {
-        (void)fprintf(stderr,
-                      "failed to read response: %lu bytes read, %lu expected\n",
-                      (size_t)r, sizeof(res));
-        return -EIO;
-    }
-
-    _response = malloc(bf_response_size(&res));
-    if (!_response) {
-        (void)fprintf(stderr, "failed to allocate response: %s\n",
-                      bf_strerror(errno));
-        return -errno;
-    }
-
-    memcpy(_response, &res, sizeof(res));
-
-    r = _bf_recv_in_buff(fd, _response->data, _response->data_len);
-    if (r < 0)
-        return (int)r;
-
-    if (_response->status == 0 && (size_t)r != _response->data_len) {
-        (void)fprintf(stderr,
-                      "failed to read response: %lu bytes read, %lu expected\n",
-                      (size_t)r, _response->data_len);
-        return -EIO;
-    }
-
-    *response = TAKE_PTR(_response);
+    r = bf_response_new_from_dynbuf(response, &dynbuf);
+    if (r)
+        return bf_err_r((int)r, "failed to create response from buffer");
 
     return 0;
 }

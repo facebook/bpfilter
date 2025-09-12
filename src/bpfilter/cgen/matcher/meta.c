@@ -29,8 +29,8 @@ static int _bf_matcher_generate_meta_iface(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(ifindex)));
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(BPF_JNE, BPF_REG_1, *(uint32_t *)&matcher->payload, 0));
+        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1,
+                             *(uint32_t *)bf_matcher_payload(matcher), 0));
 
     return 0;
 }
@@ -39,8 +39,9 @@ static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
                                               const struct bf_matcher *matcher)
 {
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_7,
-                             htobe16(*(uint16_t *)&matcher->payload), 0));
+        program,
+        BPF_JMP_IMM(BPF_JNE, BPF_REG_7,
+                    htobe16(*(uint16_t *)bf_matcher_payload(matcher)), 0));
 
     return 0;
 }
@@ -49,8 +50,9 @@ static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
                                               const struct bf_matcher *matcher)
 {
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(matcher->op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
-                             BPF_REG_8, *(uint8_t *)&matcher->payload, 0));
+        program,
+        BPF_JMP_IMM(bf_matcher_op(matcher) == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ,
+                    BPF_REG_8, *(uint8_t *)bf_matcher_payload(matcher), 0));
 
     return 0;
 }
@@ -59,7 +61,7 @@ static int
 _bf_matcher_generate_meta_probability(struct bf_program *program,
                                       const struct bf_matcher *matcher)
 {
-    uint8_t proba = *(uint8_t *)matcher->payload;
+    uint8_t proba = *(uint8_t *)bf_matcher_payload(matcher);
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_prandom_u32));
     EMIT_FIXUP_JMP_NEXT_RULE(
@@ -73,7 +75,7 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
     _clean_bf_swich_ struct bf_swich swich;
-    uint16_t *port = (uint16_t *)&matcher->payload;
+    uint16_t *port = (uint16_t *)bf_matcher_payload(matcher);
     int r;
 
     // Load L4 header address into r6
@@ -82,16 +84,18 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
 
     // Get the packet's port into r1
     swich = bf_swich_get(program, BPF_REG_8);
-    EMIT_SWICH_OPTION(&swich, IPPROTO_TCP,
-                      BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
-                                  matcher->type == BF_MATCHER_META_SPORT ?
-                                      offsetof(struct tcphdr, source) :
-                                      offsetof(struct tcphdr, dest)));
-    EMIT_SWICH_OPTION(&swich, IPPROTO_UDP,
-                      BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
-                                  matcher->type == BF_MATCHER_META_SPORT ?
-                                      offsetof(struct udphdr, source) :
-                                      offsetof(struct udphdr, dest)));
+    EMIT_SWICH_OPTION(
+        &swich, IPPROTO_TCP,
+        BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
+                    bf_matcher_type(matcher) == BF_MATCHER_META_SPORT ?
+                        offsetof(struct tcphdr, source) :
+                        offsetof(struct tcphdr, dest)));
+    EMIT_SWICH_OPTION(
+        &swich, IPPROTO_UDP,
+        BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
+                    bf_matcher_type(matcher) == BF_MATCHER_META_SPORT ?
+                        offsetof(struct udphdr, source) :
+                        offsetof(struct udphdr, dest)));
     EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_1, 0));
 
     r = bf_swich_generate(&swich);
@@ -101,7 +105,7 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
     // If r1 == 0: no TCP nor UDP header found, jump to the next rule
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0));
 
-    switch (matcher->op) {
+    switch (bf_matcher_op(matcher)) {
     case BF_MATCHER_EQ:
         EMIT_FIXUP_JMP_NEXT_RULE(
             program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, htobe16(*port), 0));
@@ -123,7 +127,8 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(matcher->op), matcher->op);
+                        bf_matcher_op_to_str(bf_matcher_op(matcher)),
+                        bf_matcher_op(matcher));
     }
 
     return 0;
@@ -134,7 +139,7 @@ int bf_matcher_generate_meta(struct bf_program *program,
 {
     int r;
 
-    switch (matcher->type) {
+    switch (bf_matcher_type(matcher)) {
     case BF_MATCHER_META_IFACE:
         r = _bf_matcher_generate_meta_iface(program, matcher);
         break;
@@ -152,7 +157,8 @@ int bf_matcher_generate_meta(struct bf_program *program,
         r = _bf_matcher_generate_meta_port(program, matcher);
         break;
     default:
-        return bf_err_r(-EINVAL, "unknown matcher type %d", matcher->type);
+        return bf_err_r(-EINVAL, "unknown matcher type %d",
+                        bf_matcher_type(matcher));
     };
 
     if (r)
