@@ -308,6 +308,42 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     return 0;
 }
 
+int bf_chain_prog_fd(const char *name)
+{
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _cleanup_close_ int fd = -1;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    int r;
+
+    if (!name)
+        return -EINVAL;
+
+    r = bf_wpack_new(&wpack);
+    if (r)
+        return r;
+
+    bf_wpack_kv_str(wpack, "name", name);
+    if (!bf_wpack_is_valid(wpack))
+        return -EINVAL;
+
+    r = bf_request_new_from_pack(&request, wpack);
+    if (r < 0)
+        return bf_err_r(r, "failed to init request");
+
+    request->front = BF_FRONT_CLI;
+    request->cmd = BF_REQ_CHAIN_PROG_FD;
+
+    fd = bf_send_with_fd(request, &response);
+    if (fd < 0)
+        return bf_err_r(fd, "failed to request prog FD from the daemon");
+
+    if (response->status != 0)
+        return bf_err_r(response->status, "BF_REQ_CHAIN_PROG_FD failed");
+
+    return TAKE_FD(fd);
+}
+
 int bf_chain_logs_fd(const char *name)
 {
     _free_bf_request_ struct bf_request *request = NULL;

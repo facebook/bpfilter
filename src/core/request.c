@@ -88,6 +88,7 @@ const char *bf_request_cmd_to_str(enum bf_request_cmd cmd)
         [BF_REQ_CHAIN_LOAD] = "BF_REQ_CHAIN_LOAD",
         [BF_REQ_CHAIN_ATTACH] = "BF_REQ_CHAIN_ATTACH",
         [BF_REQ_CHAIN_UPDATE] = "BF_REQ_CHAIN_UPDATE",
+        [BF_REQ_CHAIN_PROG_FD] = "BF_REQ_CHAIN_PROG_FD",
         [BF_REQ_CHAIN_LOGS_FD] = "BF_REQ_CHAIN_LOGS_FD",
         [BF_REQ_CHAIN_FLUSH] = "BF_REQ_CHAIN_FLUSH",
         [BF_REQ_COUNTERS_SET] = "BF_REQ_COUNTERS_SET",
