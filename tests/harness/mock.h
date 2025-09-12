@@ -44,7 +44,7 @@
  * @endcode
  *
  * This module also defines convenience function to simulate a runtime
- * environment such as creating a temporary file to marsh the daemon into.
+ * environment such as creating a temporary file to serialize the daemon into.
  */
 
 #define _free_tmp_file_ __attribute__((cleanup(bf_test_filepath_free)))

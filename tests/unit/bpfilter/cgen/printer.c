@@ -7,6 +7,7 @@
 
 #include "fake.h"
 #include "harness/test.h"
+#include "harness/filters.h"
 #include "mock.h"
 
 Test(printer, msg_lifetime)
@@ -44,33 +45,6 @@ Test(printer, msg_lifetime)
     }
 }
 
-Test(printer, msg_marsh_unmarsh)
-{
-    expect_assert_failure(_bf_printer_msg_new_from_marsh(NULL, NOT_NULL));
-    expect_assert_failure(_bf_printer_msg_new_from_marsh(NOT_NULL, NULL));
-    expect_assert_failure(_bf_printer_msg_new_from_marsh(NULL, NULL));
-    expect_assert_failure(_bf_printer_msg_marsh(NULL, NOT_NULL));
-    expect_assert_failure(_bf_printer_msg_marsh(NOT_NULL, NULL));
-    expect_assert_failure(_bf_printer_msg_marsh(NULL, NULL));
-
-    _free_bf_printer_msg_ struct bf_printer_msg *msg0 = NULL;
-    _free_bf_printer_msg_ struct bf_printer_msg *msg1 = NULL;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
-
-    assert_int_equal(_bf_printer_msg_new(&msg0), 0);
-    msg0->offset = 17;
-    msg0->len = 6;
-    msg0->str = strdup("hello");
-    assert_ptr_not_equal(msg0->str, NULL);
-
-    assert_int_equal(_bf_printer_msg_marsh(msg0, &marsh), 0);
-    assert_int_equal(_bf_printer_msg_new_from_marsh(&msg1, marsh), 0);
-
-    assert_int_equal(bf_printer_msg_offset(msg0), bf_printer_msg_offset(msg1));
-    assert_int_equal(bf_printer_msg_len(msg0), bf_printer_msg_len(msg1));
-    assert_string_equal(msg0->str, msg1->str);
-}
-
 Test(printer, printer_lifetime)
 {
     expect_assert_failure(bf_printer_new(NULL));
@@ -106,44 +80,69 @@ Test(printer, printer_lifetime)
     }
 }
 
-Test(printer, printer_marsh_unmarsh)
-{
-    expect_assert_failure(bf_printer_new_from_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_printer_new_from_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_printer_new_from_marsh(NULL, NULL));
-    expect_assert_failure(bf_printer_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_printer_marsh(NOT_NULL, NULL));
-    expect_assert_failure(bf_printer_marsh(NULL, NULL));
-    expect_assert_failure(_bf_printer_total_size(NULL));
-    expect_assert_failure(bf_printer_add_msg(NULL, NOT_NULL));
-    expect_assert_failure(bf_printer_add_msg(NOT_NULL, NULL));
-    expect_assert_failure(bf_printer_add_msg(NULL, NULL));
+static const char *_bft_printer_test_messages[] = {
+    "C'est au pays des paresseux",
+    "Que Bébé dort le mieux.",
+    "Tu n'as plus qu'à fermer les yeux.",
+    "Quel endroit merveilleux !",
+    "Minarono",
+    "Murano",
+    "Gribouille",
+    "Beleuse",
+};
 
+static struct bf_printer *_bft_printer_get(size_t n_messages)
+{
+    _free_bf_printer_ struct bf_printer *printer = NULL;
+    int r;
+
+    r = bf_printer_new(&printer);
+    if (r) {
+        bf_err("failed to create a dummy bf_printer object");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < n_messages; ++i) {
+        const struct bf_printer_msg *msg = bf_printer_add_msg(printer, _bft_printer_test_messages[i % ARRAY_SIZE(_bft_printer_test_messages)]);
+        if (!msg) {
+            bf_err("failed to insert test message into dummy bf_printer object");
+            return NULL;
+        }
+    }
+
+    return TAKE_PTR(printer);
+}
+
+static bool _bft_printer_msg_eq(const struct bf_printer_msg *lhs, const struct bf_printer_msg *rhs)
+{
+    return lhs->offset == rhs->offset && lhs->len == rhs->len && bf_streq(lhs->str, rhs->str);
+}
+
+static bool _bft_printer_eq(const struct bf_printer *lhs, const struct bf_printer *rhs)
+{
+    return bft_list_eq(&lhs->msgs, &rhs->msgs, (bft_list_eq_cb)_bft_printer_msg_eq);
+}
+
+Test(printer, pack_unpack)
+{
     _free_bf_printer_ struct bf_printer *printer0 = NULL;
     _free_bf_printer_ struct bf_printer *printer1 = NULL;
-    const struct bf_printer_msg *msg0;
-    const struct bf_printer_msg *msg1;
-    const struct bf_printer_msg *msg2;
-    _free_bf_marsh_ struct bf_marsh *marsh = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
 
-    // Insert messages into the printer, and ensure inserting 2 times the
-    // same message will only create 1 message.
-    assert_int_equal(bf_printer_new(&printer0), 0);
-    msg0 = bf_printer_add_msg(printer0, "hello");
-    assert_ptr_not_equal(msg0, NULL);
-    msg1 = bf_printer_add_msg(printer0, "world");
-    assert_ptr_not_equal(msg1, NULL);
-    assert_ptr_not_equal(msg0, msg1);
-    msg2 = bf_printer_add_msg(printer0, "world");
-    assert_ptr_equal(msg1, msg2);
+    expect_assert_failure(bf_printer_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_printer_pack(NOT_NULL, NULL));
 
-    // Total size if 6 ("hello\0") + 6 ("world\0")
-    assert_int_equal(_bf_printer_total_size(printer0), 12);
+    assert_non_null(printer0 = _bft_printer_get(10));
 
-    // Serialise and deserialise the printer
-    assert_int_equal(bf_printer_marsh(printer0, &marsh), 0);
-    assert_int_equal(bf_printer_new_from_marsh(&printer1, marsh), 0);
+    assert_success(bf_wpack_new(&wpack));
+    assert_success(bf_printer_pack(printer0, wpack));
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
 
-    assert_int_equal(_bf_printer_total_size(printer0),
-                     _bf_printer_total_size(printer1));
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_printer_new_from_pack(&printer1, bf_rpack_root(rpack)));
+
+    assert_true(_bft_printer_eq(printer0, printer1));
 }

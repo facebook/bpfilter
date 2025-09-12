@@ -6,13 +6,8 @@
 #include "core/list.c"
 
 #include "harness/test.h"
+#include "harness/filters.h"
 #include "mock.h"
-
-static int dummy_marsh(const void *data, struct bf_marsh **marsh)
-{
-    assert_success(bf_marsh_new(marsh, data, sizeof(int)));
-    return 0;
-}
 
 static int _dummy_filler(bf_list *l, void *data,
                          int (*add)(bf_list *l, void *data))
@@ -176,50 +171,35 @@ Test(list, init_and_clean)
     }
 }
 
-Test(list, serialize_deserialize_assert)
+Test(list, pack_unpack)
 {
-    expect_assert_failure(bf_list_marsh(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_marsh(NOT_NULL, NULL));
-}
-
-Test(list, serialize_deserialize)
-{
-    // bf_list_marsh() will be tested with actual data by the various
-    // xxx_marsh() functions.
-
     _free_bf_list_ bf_list *l0 = NULL;
-    _free_bf_list_ bf_list *l1 = NULL;
-    _free_bf_list_ bf_list *l2 = NULL;
-    _free_bf_marsh_ struct bf_marsh *m0 = NULL;
-    _free_bf_marsh_ struct bf_marsh *m1 = NULL;
-    _free_bf_marsh_ struct bf_marsh *m2 = NULL;
-    struct bf_marsh *child = NULL;
-    bf_list_ops free_ops = bf_list_ops_default(freep, dummy_marsh);
-    bf_list_ops free_nomarsh_ops = bf_list_ops_default(freep, NULL);
+    _clean_bf_list_ bf_list l1 = bf_list_default(freep, bft_list_dummy_data_pack);
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    bf_rpack_node_t list_node, list_elem_node;
+    const void *data;
+    size_t data_len;
 
-    // Empty list: marsh allocated but no child
-    new_and_fill(&l0, 0, &free_ops, dummy_filler_head);
-    assert_success(bf_list_marsh(l0, &m0));
-    assert_null(bf_marsh_next_child(m0, NULL));
+    expect_assert_failure(bf_list_pack(NULL, NOT_NULL));
+    expect_assert_failure(bf_list_pack(NOT_NULL, NULL));
 
-    // Non-empty list: marsh contains childs, which contain integers
-    new_and_fill(&l1, 10, &free_ops, dummy_filler_tail);
-    assert_success(bf_list_marsh(l1, &m1));
+    assert_non_null(l0 = bft_list_get(10, 50));
 
-    for (int i = 1; i < 11; ++i) {
-        child = bf_marsh_next_child(m1, child);
-        assert_non_null(child);
+    assert_success(bf_wpack_new(&wpack));
+    bf_wpack_open_array(wpack, "list");
+    assert_success(bf_list_pack(l0, wpack));
+    bf_wpack_close_array(wpack);
+    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
 
-        assert_int_equal(child->data_len, sizeof(int));
-        assert_int_equal(i, *(int *)child->data);
+    assert_success(bf_rpack_new(&rpack, data, data_len));
+    assert_success(bf_rpack_kv_array(bf_rpack_root(rpack), "list", &list_node));
+    bf_rpack_array_foreach (list_node, list_elem_node) {
+        _cleanup_free_ struct bft_list_dummy_data *data = NULL;
+        assert_success(bf_list_emplace(&l1, bft_list_dummy_data_new_from_pack, data, list_elem_node));
     }
 
-    assert_null(bf_marsh_next_child(m1, child));
-
-    // Non-empty list: no marsh callback
-    new_and_fill(&l2, 10, &free_nomarsh_ops, dummy_filler_tail);
-    assert_success(bf_list_marsh(l2, &m2));
-    assert_null(bf_marsh_next_child(m2, NULL));
+    assert_true(bft_list_eq(l0, &l1, (bft_list_eq_cb)bft_list_dummy_data_compare));
 }
 
 Test(list, fill_from_head_and_check)

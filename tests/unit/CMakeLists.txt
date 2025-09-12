@@ -96,7 +96,6 @@ set(bf_test_srcs
     core/helper.c
     core/hook.c
     core/list.c
-    core/marsh.c
     core/matcher.c
     core/rule.c
     core/set.c
