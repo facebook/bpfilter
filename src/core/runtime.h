@@ -5,6 +5,11 @@
 
 #pragma once
 
+// _Static_assert doesn't exist in C++
+#ifndef __cplusplus
+#define static_assert _Static_assert
+#endif
+
 #include <asm/types.h>
 
 /**
@@ -14,8 +19,8 @@
  * Ethernet header, aligned to 8 bytes.
  */
 #define BF_L2_SLICE_LEN 16
-_Static_assert(BF_L2_SLICE_LEN % 8 == 0,
-               "BF_L2_SLICE_LEN should be aligned to 8 bytes");
+static_assert(BF_L2_SLICE_LEN % 8 == 0,
+              "BF_L2_SLICE_LEN should be aligned to 8 bytes");
 
 /**
  * @brief Size of the L3 header buffer.
@@ -26,8 +31,8 @@ _Static_assert(BF_L2_SLICE_LEN % 8 == 0,
  * - IPv6: 40 bytes (ignoring the extension headers)
  */
 #define BF_L3_SLICE_LEN 40
-_Static_assert(BF_L3_SLICE_LEN % 8 == 0,
-               "BF_L3_SLICE_LEN should be aligned to 8 bytes");
+static_assert(BF_L3_SLICE_LEN % 8 == 0,
+              "BF_L3_SLICE_LEN should be aligned to 8 bytes");
 
 /**
  * @brief Size of the L4 header buffer.
@@ -40,8 +45,8 @@ _Static_assert(BF_L3_SLICE_LEN % 8 == 0,
  * - ICMPV6: 4 bytes (ignoring the body)
  */
 #define BF_L4_SLICE_LEN 24
-_Static_assert(BF_L4_SLICE_LEN % 8 == 0,
-               "BF_L4_SLICE_LEN should be aligned to 8 bytes");
+static_assert(BF_L4_SLICE_LEN % 8 == 0,
+              "BF_L4_SLICE_LEN should be aligned to 8 bytes");
 
 /**
  * @brief Types of network packet headers.
