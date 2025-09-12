@@ -183,6 +183,34 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 #undef bf_list
 
 /**
+ * @brief Get the file descriptor of a chain's program.
+ *
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "name": "",
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
+ *
+ * @warning Do not use this function. `bf_chain_prog_fd` is designed to simplify
+ * end-to-end tests of the generated programs, to validate bytecode generation.
+ * It should be considered unstable, and manipulating the BPF program directly
+ * could cause issues with bpfilter itself. Eventually, this API will be
+ * disabled for non-tests use cases.
+ *
+ * @pre
+ * - `name` is a non-NULL pointer to a C-string.
+ *
+ * @param name Name of the chain to get the program from.
+ * @return File descriptor of the chain's program, or a negative error value
+ *         on failure. The caller owns the file descriptor.
+ */
+int bf_chain_prog_fd(const char *name);
+
+/**
  * @brief Get the file descriptor of a chain's logs buffer.
  *
  * **Request payload format**

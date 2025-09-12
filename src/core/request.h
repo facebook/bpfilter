@@ -39,6 +39,7 @@ enum bf_request_cmd
 
     BF_REQ_CHAIN_SET,
     BF_REQ_CHAIN_GET,
+    BF_REQ_CHAIN_PROG_FD,
     BF_REQ_CHAIN_LOGS_FD,
     BF_REQ_CHAIN_LOAD,
     BF_REQ_CHAIN_ATTACH,

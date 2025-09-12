@@ -301,6 +301,38 @@ static int _bf_cli_chain_get(const struct bf_request *request,
     return bf_response_new_from_pack(response, wpack);
 }
 
+int _bf_cli_chain_prog_fd(const struct bf_request *request,
+                          struct bf_response **response)
+{
+    struct bf_cgen *cgen;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ char *name = NULL;
+    int r;
+
+    UNUSED(response);
+
+    r = bf_rpack_new(&pack, request->data, request->data_len);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "name", &name);
+    if (r)
+        return r;
+
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
+
+    if (!cgen->program || cgen->program->runtime.prog_fd == -1)
+        return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
+
+    r = bf_send_fd(request->fd, cgen->program->runtime.prog_fd);
+    if (r < 0)
+        return bf_err_r(errno, "failed to send prog FD for '%s'", name);
+
+    return 0;
+}
+
 int _bf_cli_chain_logs_fd(const struct bf_request *request,
                           struct bf_response **response)
 {
@@ -511,6 +543,9 @@ static int _bf_cli_request_handler(const struct bf_request *request,
         break;
     case BF_REQ_CHAIN_GET:
         r = _bf_cli_chain_get(request, response);
+        break;
+    case BF_REQ_CHAIN_PROG_FD:
+        r = _bf_cli_chain_prog_fd(request, response);
         break;
     case BF_REQ_CHAIN_LOGS_FD:
         r = _bf_cli_chain_logs_fd(request, response);
