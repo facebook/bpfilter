@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/cgroup.h"
+#include "cgen/cgroup.h"
 
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
@@ -12,17 +12,17 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/stub.h"
-#include "bpfilter/cgen/swich.h"
-#include "core/btf.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/verdict.h"
-#include "linux/bpf.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/cgen.h"
+#include "cgen/program.h"
+#include "cgen/stub.h"
+#include "cgen/swich.h"
+#include "filter.h"
+#include "linux/bpf.h"
 
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);

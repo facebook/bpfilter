@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bfcli/print.h"
+#include "print.h"
 
 #include <linux/icmp.h>
 #include <linux/icmpv6.h>
@@ -22,17 +22,17 @@
 #include <sys/socket.h>
 #include <time.h>
 
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/matcher.h"
-#include "core/rule.h"
-#include "core/runtime.h"
-#include "core/set.h"
-#include "core/verdict.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/runtime.h>
+#include <bpfilter/set.h>
+#include <bpfilter/verdict.h>
 
 struct bfc_chain_opts;
 
@@ -188,9 +188,9 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         bf_list_foreach (&rule->matchers, matcher_node) {
             struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
             const struct bf_matcher_ops *ops = bf_matcher_get_ops(
-                bf_matcher_type(matcher), bf_matcher_op(matcher));
+                bf_matcher_get_type(matcher), bf_matcher_get_op(matcher));
 
-            if (bf_matcher_type(matcher) == BF_MATCHER_SET) {
+            if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
                 struct bf_set *set =
                     bf_chain_get_set_for_matcher(chain, matcher);
 
@@ -231,10 +231,11 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                     (void)fprintf(stdout, "        }");
                 }
             } else {
-                (void)fprintf(stdout, "        %s",
-                              bf_matcher_type_to_str(bf_matcher_type(matcher)));
+                (void)fprintf(
+                    stdout, "        %s",
+                    bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
                 (void)fprintf(stdout, " %s ",
-                              bf_matcher_op_to_str(bf_matcher_op(matcher)));
+                              bf_matcher_op_to_str(bf_matcher_get_op(matcher)));
 
                 if (ops) {
                     ops->print(bf_matcher_payload(matcher));

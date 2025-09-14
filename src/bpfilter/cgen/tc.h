@@ -5,6 +5,6 @@
 
 #pragma once
 
-#include "core/flavor.h"
+#include <bpfilter/flavor.h>
 
 extern const struct bf_flavor_ops bf_flavor_ops_tc;

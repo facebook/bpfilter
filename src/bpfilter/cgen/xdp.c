@@ -9,13 +9,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/stub.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/verdict.h"
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/program.h"
+#include "cgen/stub.h"
+#include "filter.h"
 
 /**
  * Generate XDP program prologue.

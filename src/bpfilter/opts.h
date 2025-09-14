@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#include "core/front.h"
+#include <bpfilter/front.h>
 
 enum bf_verbose
 {

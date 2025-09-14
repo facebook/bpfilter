@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "version.h"
+#include "bpfilter/version.h"
 
 const char *bf_version(void)
 {

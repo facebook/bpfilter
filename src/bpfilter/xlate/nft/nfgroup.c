@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/xlate/nft/nfgroup.h"
+#include "xlate/nft/nfgroup.h"
 
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netlink.h>
@@ -16,10 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bpfilter/xlate/nft/nfmsg.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/response.h"
+#include "xlate/nft/nfmsg.h"
+#include <bpfilter/helper.h>
+#include <bpfilter/list.h>
+#include <bpfilter/response.h>
 
 struct bf_nfgroup
 {

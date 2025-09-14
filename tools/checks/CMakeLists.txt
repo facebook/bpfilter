@@ -27,10 +27,10 @@ foreach (stub ${bf_elfstubs})
     set(HDR_DECL "${HDR_DECL}{ .elf = ${filename}, .len = ${filename}_len, },")
 endforeach ()
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/cgen)
 configure_file(
     ${CMAKE_SOURCE_DIR}/tools/cmake/rawstubs.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
+    ${CMAKE_CURRENT_BINARY_DIR}/include/cgen/rawstubs.h
     @ONLY
 )
 

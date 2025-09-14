@@ -8,8 +8,8 @@
 
 #include <stdbool.h>
 
-#include "core/list.h"
-#include "core/runtime.h"
+#include <bpfilter/list.h>
+#include <bpfilter/runtime.h>
 
 struct bf_chain;
 struct bf_hookopts;

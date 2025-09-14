@@ -4,15 +4,16 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bfcli/helper.h"
+#include "helper.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <sys/stat.h>
 
-#include "bfcli/lexer.h"
-#include "bfcli/parser.h"
-#include "core/logger.h"
+#include <bpfilter/logger.h>
+
+#include "lexer.h"
+#include "parser.h"
 
 // To speed up parsing very large rulesets, we can increase YY_READ_BUF_SIZE
 int yy_read_buf_size;

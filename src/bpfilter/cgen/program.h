@@ -8,18 +8,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/elfstub.h"
-#include "bpfilter/cgen/fixup.h"
-#include "bpfilter/cgen/printer.h"
-#include "bpfilter/cgen/runtime.h"
-#include "core/chain.h"
-#include "core/dump.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/pack.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/list.h>
+#include <bpfilter/pack.h>
 
-#include "external/filter.h"
+#include "cgen/elfstub.h"
+#include "cgen/fixup.h"
+#include "cgen/printer.h"
+#include "cgen/runtime.h"
+#include "filter.h"
 
 /**
  * @file program.h

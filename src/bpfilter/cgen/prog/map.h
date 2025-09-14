@@ -10,10 +10,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/bpf_types.h"
-#include "core/dump.h"
-#include "core/pack.h"
-#include "core/set.h"
+#include <bpfilter/bpf_types.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/set.h>
 
 enum bf_map_type
 {

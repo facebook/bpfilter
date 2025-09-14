@@ -3,11 +3,11 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/runtime.h"
-#include "core/chain.h"
-#include "core/logger.h"
-#include "core/matcher.h"
-#include "core/runtime.h"
+#include "cgen/runtime.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/logger.h"
+#include "bpfilter/matcher.h"
+#include "bpfilter/runtime.h"
 #include "e2e.h"
 #include "harness/filters.h"
 #include "harness/test.h"

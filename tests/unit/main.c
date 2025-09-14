@@ -6,12 +6,12 @@
 #include <argp.h>
 #include <stdio.h>
 
-#include "core/list.h"
+#include "bpfilter/list.h"
 #include "bpfilter/opts.h"
 #include "harness/test.h"
 #include "harness/test.h"
-#include "core/helper.h"
-#include "core/helper.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/helper.h"
 #include "harness/test.h"
 
 #define _free_bf_test_opts_ __attribute__((cleanup(_bf_test_opts_free)))

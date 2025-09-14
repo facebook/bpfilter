@@ -22,9 +22,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "core/dump.h"
-#include "core/helper.h"
-#include "core/list.h"
+#include "bpfilter/dump.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/list.h"
 
 struct CMUnitTest;
 

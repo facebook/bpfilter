@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/daemon.h"
+#include "daemon.h"
 
 #include <errno.h>
 #include <signal.h>
@@ -16,9 +16,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "core/helper.h"
-#include "core/logger.h"
-#include "harness/process.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
+#include "process.h"
 
 #define _BF_DAEMON_START_TIMEOUT 5
 #define _BF_DAEMON_START_SLEEP 100000

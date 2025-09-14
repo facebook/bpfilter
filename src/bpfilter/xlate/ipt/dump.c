@@ -13,9 +13,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "bpfilter/xlate/ipt/helpers.h"
-#include "core/dump.h"
-#include "core/helper.h"
+#include <bpfilter/dump.h>
+#include <bpfilter/helper.h>
+
+#include "xlate/ipt/helpers.h"
 
 /**
  * Map each hook to its name as a string.

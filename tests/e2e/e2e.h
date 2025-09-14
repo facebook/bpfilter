@@ -8,9 +8,9 @@
 #include <limits.h>
 #include <stddef.h>
 
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/verdict.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/counter.h"
+#include "bpfilter/verdict.h"
 #include "packets.h"
 
 #define BFT_NO_PKTS SIZE_MAX

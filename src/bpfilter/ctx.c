@@ -11,21 +11,22 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/elfstub.h"
-#include "bpfilter/opts.h"
-#include "core/bpf.h"
-#include "core/btf.h"
-#include "core/chain.h"
-#include "core/dump.h"
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/io.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/ns.h"
-#include "core/pack.h"
+#include <bpfilter/bpf.h>
+#include <bpfilter/btf.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/io.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/ns.h>
+#include <bpfilter/pack.h>
+
+#include "cgen/cgen.h"
+#include "cgen/elfstub.h"
+#include "opts.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 

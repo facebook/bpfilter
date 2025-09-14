@@ -14,10 +14,10 @@
 
    developers/build
    developers/style
-   developers/tests
+   developers/modules/index
    developers/packets_processing
    developers/generation
-   developers/modules/index
+   developers/tests
 
 .. toctree::
    :hidden:

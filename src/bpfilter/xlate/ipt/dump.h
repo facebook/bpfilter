@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "core/dump.h"
+#include <bpfilter/dump.h>
 
 struct ipt_replace;
 

@@ -29,7 +29,7 @@ add_executable(e2e_bin EXCLUDE_FROM_ALL
 target_include_directories(e2e_bin
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src/libbpfilter
+        ${CMAKE_SOURCE_DIR}/src/bpfilter
 )
 
 target_link_libraries(e2e_bin
@@ -45,7 +45,7 @@ add_executable(setuserns_bin EXCLUDE_FROM_ALL
 target_link_libraries(setuserns_bin
     PRIVATE
         bf_global_flags
-        core
+        libbpfilter
 )
 
 add_custom_target(e2e

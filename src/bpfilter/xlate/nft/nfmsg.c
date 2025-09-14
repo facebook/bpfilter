@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/xlate/nft/nfmsg.h"
+#include "xlate/nft/nfmsg.h"
 
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nfnetlink.h>
@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
-#include "core/helper.h"
-#include "core/logger.h"
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 
 struct bf_nfmsg
 {

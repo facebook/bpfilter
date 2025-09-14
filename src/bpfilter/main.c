@@ -13,20 +13,21 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "bpfilter/ctx.h"
-#include "bpfilter/opts.h"
-#include "bpfilter/xlate/front.h"
-#include "core/btf.h"
-#include "core/dump.h"
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/io.h"
-#include "core/logger.h"
-#include "core/ns.h"
-#include "core/pack.h"
-#include "core/request.h"
-#include "core/response.h"
-#include "version.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/io.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/ns.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/request.h>
+#include <bpfilter/response.h>
+#include <bpfilter/version.h>
+
+#include "ctx.h"
+#include "opts.h"
+#include "xlate/front.h"
 
 /**
  * Global flag to indicate whether the daemon should stop.

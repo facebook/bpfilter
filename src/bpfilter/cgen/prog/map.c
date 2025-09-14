@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/prog/map.h"
+#include "cgen/prog/map.h"
 
 #include <linux/bpf.h>
 
@@ -15,13 +15,14 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bpfilter/ctx.h"
-#include "core/bpf.h"
-#include "core/bpf_types.h"
-#include "core/btf.h"
-#include "core/dump.h"
-#include "core/helper.h"
-#include "core/logger.h"
+#include <bpfilter/bpf.h>
+#include <bpfilter/bpf_types.h>
+#include <bpfilter/btf.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
+
+#include "ctx.h"
 
 static int _bf_map_new(struct bf_map **map, const char *name,
                        enum bf_map_type type, enum bf_bpf_map_type bpf_type,

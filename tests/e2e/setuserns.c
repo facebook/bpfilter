@@ -18,8 +18,8 @@
 #include <fcntl.h>
 #include <sys/mount.h>
 
-#include "core/helper.h"
-#include "core/logger.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
 
 #define CMD_LEN 64
 static char cmd[CMD_LEN];

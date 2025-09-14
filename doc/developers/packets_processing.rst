@@ -4,11 +4,12 @@ Packets processing
 Runtime
 -------
 
-.. doxygenfile:: bpfilter/cgen/runtime.h
+.. doxygenfile:: cgen/runtime.h
 
-.. doxygenfile:: core/runtime.h
+.. doxygenfile:: bpfilter/runtime.h
+
 
 Matchers
 --------
 
-.. doxygenfile:: matcher.h
+.. doxygenfile:: bpfilter/matcher.h

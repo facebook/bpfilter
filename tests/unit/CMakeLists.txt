@@ -89,17 +89,17 @@ include(ElfStubs)
 enable_testing()
 
 set(bf_test_srcs
-    core/btf.c
-    core/chain.c
-    core/flavor.c
-    core/front.c
-    core/helper.c
-    core/hook.c
-    core/list.c
-    core/matcher.c
-    core/rule.c
-    core/set.c
-    core/verdict.c
+    libbpfilter/btf.c
+    libbpfilter/chain.c
+    libbpfilter/flavor.c
+    libbpfilter/front.c
+    libbpfilter/helper.c
+    libbpfilter/hook.c
+    libbpfilter/list.c
+    libbpfilter/matcher.c
+    libbpfilter/rule.c
+    libbpfilter/set.c
+    libbpfilter/verdict.c
     bpfilter/opts.c
     bpfilter/cgen/cgen.c
     bpfilter/cgen/jmp.c
@@ -111,9 +111,8 @@ set(bf_test_srcs
     bpfilter/xlate/nft/nft.c
 )
 
-get_target_property(core_srcs core SOURCES)
+get_target_property(libbpfilter_srcs libbpfilter SOURCES)
 get_target_property(bpfilter_srcs bpfilter SOURCES)
-get_target_property(lib_srcs libbpfilter SOURCES)
 
 list(REMOVE_ITEM bpfilter_srcs ${CMAKE_SOURCE_DIR}/src/bpfilter/main.c)
 
@@ -125,9 +124,8 @@ add_executable(unit_bin EXCLUDE_FROM_ALL
 
     ${bf_test_srcs}
 
-    ${core_srcs}
+    ${libbpfilter_srcs}
     ${bpfilter_srcs}
-    ${lib_srcs}
 )
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/bpfilter/cgen)
@@ -146,12 +144,11 @@ bf_test_configure_non_build_srcs(unit_bin
     TESTS
         ${bf_test_srcs}
     SOURCES
-        ${core_srcs}
+        ${libbpfilter_srcs}
         ${bpfilter_srcs}
-        ${lib_srcs}
 )
 
-set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${lib_srcs}
+set_source_files_properties(${bf_test_srcs} ${core_srcs} ${bpfilter_srcs} ${libbpfilter_srcs}
     PROPERTIES
         COMPILE_OPTIONS "-ftest-coverage;-fprofile-arcs;-fprofile-abs-path"
 )
@@ -164,9 +161,12 @@ target_compile_options(unit_bin
 
 target_include_directories(unit_bin
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/src         # First look for headers in src/
-        ${CMAKE_CURRENT_SOURCE_DIR}     # Then use overrides in tests/units
-        ${CMAKE_BINARY_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src/libbpfilter/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/bpfilter
+        ${CMAKE_SOURCE_DIR}/src/external/include
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_BINARY_DIR}/src/bpfilter/include
         ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
@@ -235,7 +235,8 @@ if (NOT ${NO_DOCS})
                 --ignore-errors unused
                 --parallel ${N}
                 --quiet
-                "${CMAKE_SOURCE_DIR}/src/\\*"
+                "${CMAKE_SOURCE_DIR}/src/libbpfilter\\*"
+                "${CMAKE_SOURCE_DIR}/src/bpfilter\\*"
         COMMAND
             ${LCOV_BIN}
                 --summary ${CMAKE_BINARY_DIR}/output/tests/lcov.out

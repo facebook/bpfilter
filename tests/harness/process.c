@@ -5,7 +5,7 @@
 
 #define _GNU_SOURCE // NOLINT: required for F_SETPIPE_SZ
 
-#include "harness/process.h"
+#include "process.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -17,8 +17,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "core/helper.h"
-#include "core/logger.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
 
 int bf_test_process_init(struct bf_test_process *process, const char *cmd,
                          char **args, size_t nargs)

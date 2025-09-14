@@ -3,17 +3,17 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/test.h"
+#include "test.h"
 
 #include <errno.h>
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "core/dump.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/logger.h"
+#include "bpfilter/dump.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/list.h"
+#include "bpfilter/logger.h"
 
 void bf_test_dump(const bf_test *test, prefix_t *prefix)
 {

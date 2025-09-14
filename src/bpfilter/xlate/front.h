@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "core/front.h"
-#include "core/pack.h"
+#include <bpfilter/front.h>
+#include <bpfilter/pack.h>
 
 struct bf_request;
 struct bf_response;

@@ -11,8 +11,8 @@
 #include <stddef.h>
 
 #include "harness/mock.h"
-#include "core/bpf_types.h"
-#include "core/btf.h"
+#include "bpfilter/bpf_types.h"
+#include "bpfilter/btf.h"
 
 struct btf;
 struct nl_msg;

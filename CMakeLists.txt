@@ -68,16 +68,9 @@ target_link_options(bf_global_flags
         $<$<CONFIG:debug>:-fsanitize=address -fsanitize=undefined>
 )
 
-configure_file(
-    ${CMAKE_SOURCE_DIR}/src/version.h.in
-    ${CMAKE_BINARY_DIR}/include/version.h
-    @ONLY
-)
-
-add_subdirectory(src/core)
-add_subdirectory(src/bpfilter)
 add_subdirectory(src/libbpfilter)
 add_subdirectory(src/bfcli)
+add_subdirectory(src/bpfilter)
 
 if (NOT ${NO_DOCS})
     add_subdirectory(doc)

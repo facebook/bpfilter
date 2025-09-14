@@ -3,13 +3,14 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bfcli/opts.h"
+#include "opts.h"
 
 #include <argp.h>
 
-#include "bfcli/chain.h"
-#include "bfcli/ruleset.h"
-#include "core/helper.h"
+#include <bpfilter/helper.h>
+
+#include "chain.h"
+#include "ruleset.h"
 
 /**
  * @brief Create a section header in the documentation.

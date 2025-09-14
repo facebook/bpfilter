@@ -28,7 +28,7 @@ target_link_libraries(benchmark_bin
         PkgConfig::bpf
         PkgConfig::git2
         benchmark::benchmark
-        core
+        libbpfilter
 )
 
 add_custom_target(benchmark

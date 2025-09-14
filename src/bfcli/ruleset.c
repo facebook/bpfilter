@@ -4,12 +4,13 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bfcli/ruleset.h"
+#include "ruleset.h"
 
-#include "bfcli/helper.h"
-#include "bfcli/opts.h"
-#include "bfcli/print.h"
-#include "libbpfilter/bpfilter.h"
+#include <bpfilter/bpfilter.h>
+
+#include "helper.h"
+#include "opts.h"
+#include "print.h"
 
 void bfc_ruleset_clean(struct bfc_ruleset *ruleset)
 {

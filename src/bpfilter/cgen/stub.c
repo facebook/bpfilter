@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/stub.h"
+#include "cgen/stub.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -20,18 +20,18 @@
 #include <endian.h>
 #include <stddef.h>
 
-#include "bpfilter/cgen/elfstub.h"
-#include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/printer.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/swich.h"
-#include "bpfilter/opts.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/matcher.h"
-#include "core/verdict.h"
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/elfstub.h"
+#include "cgen/jmp.h"
+#include "cgen/printer.h"
+#include "cgen/program.h"
+#include "cgen/swich.h"
+#include "filter.h"
+#include "opts.h"
 
 #define _BF_LOW_EH_BITMASK 0x1801800000000801ULL
 

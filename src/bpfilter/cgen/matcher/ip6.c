@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/matcher/ip6.h"
+#include "cgen/matcher/ip6.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -16,12 +16,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/program.h"
-#include "core/logger.h"
-#include "core/matcher.h"
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
 
-#include "external/filter.h"
+#include "cgen/jmp.h"
+#include "cgen/program.h"
+#include "filter.h"
 
 #define _bf_make32(a, b, c, d)                                                 \
     (((uint32_t)(a) << 24) | ((uint32_t)(b) << 16) | ((uint32_t)(c) << 8) |    \
@@ -39,14 +39,14 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
 {
     struct bf_jmpctx j0, j1;
     uint8_t *addr = (uint8_t *)bf_matcher_payload(matcher);
-    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_IP6_SADDR ?
+    size_t offset = bf_matcher_get_type(matcher) == BF_MATCHER_IP6_SADDR ?
                         offsetof(struct ipv6hdr, saddr) :
                         offsetof(struct ipv6hdr, daddr);
 
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_6, offset));
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_6, offset + 8));
 
-    if (bf_matcher_op(matcher) == BF_MATCHER_EQ) {
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_EQ) {
         /* If we want to match an IP, both addr[0] and addr[1]
          * must match the packet, otherwise we jump to the next rule. */
         EMIT(program, BPF_MOV32_IMM(BPF_REG_3, _bf_make32(addr[7], addr[6],
@@ -130,7 +130,7 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
     uint8_t mask[16];
     struct bf_jmpctx j0, j1;
     const struct bf_ip6_lpm_key *addr = bf_matcher_payload(matcher);
-    size_t offset = bf_matcher_type(matcher) == BF_MATCHER_IP6_SNET ?
+    size_t offset = bf_matcher_get_type(matcher) == BF_MATCHER_IP6_SNET ?
                         offsetof(struct ipv6hdr, saddr) :
                         offsetof(struct ipv6hdr, daddr);
 
@@ -157,7 +157,7 @@ static int _bf_matcher_generate_ip6_net(struct bf_program *program,
         EMIT(program, BPF_ALU64_REG(BPF_AND, BPF_REG_2, BPF_REG_3));
     }
 
-    if (bf_matcher_op(matcher) == BF_MATCHER_EQ) {
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_EQ) {
         /* If we want to match an IP, both addr->data[0] and addr->data[1]
          * must match the packet, otherwise we jump to the next rule. */
         EMIT(program,
@@ -254,8 +254,8 @@ static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
     const uint8_t ehdr = *(uint8_t *)bf_matcher_payload(matcher);
     uint8_t eh_mask;
 
-    if ((bf_matcher_op(matcher) != BF_MATCHER_EQ) &&
-        (bf_matcher_op(matcher) != BF_MATCHER_NE))
+    if ((bf_matcher_get_op(matcher) != BF_MATCHER_EQ) &&
+        (bf_matcher_get_op(matcher) != BF_MATCHER_NE))
         return -EINVAL;
 
     switch (ehdr) {
@@ -275,18 +275,18 @@ static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
                                   BF_PROG_CTX_OFF(ipv6_eh)));
         EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program,
-            BPF_JMP_IMM((bf_matcher_op(matcher) == BF_MATCHER_EQ) ? BPF_JEQ :
-                                                                    BPF_JNE,
-                        BPF_REG_1, 0, 0));
+            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
+                                     BPF_JEQ :
+                                     BPF_JNE,
+                                 BPF_REG_1, 0, 0));
         break;
     default:
         /* check l4 protocols using BPF_REG_8 */
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program,
-            BPF_JMP_IMM((bf_matcher_op(matcher) == BF_MATCHER_EQ) ? BPF_JNE :
-                                                                    BPF_JEQ,
-                        BPF_REG_8, ehdr, 0));
+            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
+                                     BPF_JNE :
+                                     BPF_JEQ,
+                                 BPF_REG_8, ehdr, 0));
         break;
     }
 
@@ -304,7 +304,7 @@ int bf_matcher_generate_ip6(struct bf_program *program,
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l3_hdr)));
 
-    switch (bf_matcher_type(matcher)) {
+    switch (bf_matcher_get_type(matcher)) {
     case BF_MATCHER_IP6_SADDR:
     case BF_MATCHER_IP6_DADDR:
         r = _bf_matcher_generate_ip6_addr(program, matcher);
@@ -318,7 +318,7 @@ int bf_matcher_generate_ip6(struct bf_program *program,
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",
-                        bf_matcher_type(matcher));
+                        bf_matcher_get_type(matcher));
     };
 
     return r;

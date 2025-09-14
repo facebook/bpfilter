@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/cgen.h"
+#include "cgen/cgen.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -12,22 +12,23 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "bpfilter/cgen/dump.h"
-#include "bpfilter/cgen/prog/link.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/ctx.h"
-#include "bpfilter/opts.h"
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/dump.h"
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/io.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/ns.h"
-#include "core/pack.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/io.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/ns.h>
+#include <bpfilter/pack.h>
+
+#include "cgen/dump.h"
+#include "cgen/prog/link.h"
+#include "cgen/program.h"
+#include "ctx.h"
+#include "opts.h"
 
 static int _bf_cgen_get_chain_pindir_fd(const char *name)
 {

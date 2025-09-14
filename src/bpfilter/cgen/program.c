@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/program.h"
+#include "cgen/program.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -19,44 +19,44 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bpfilter/cgen/cgroup.h"
-#include "bpfilter/cgen/dump.h"
-#include "bpfilter/cgen/fixup.h"
-#include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/matcher/icmp.h"
-#include "bpfilter/cgen/matcher/ip4.h"
-#include "bpfilter/cgen/matcher/ip6.h"
-#include "bpfilter/cgen/matcher/meta.h"
-#include "bpfilter/cgen/matcher/set.h"
-#include "bpfilter/cgen/matcher/tcp.h"
-#include "bpfilter/cgen/matcher/udp.h"
-#include "bpfilter/cgen/nf.h"
-#include "bpfilter/cgen/printer.h"
-#include "bpfilter/cgen/prog/link.h"
-#include "bpfilter/cgen/prog/map.h"
-#include "bpfilter/cgen/stub.h"
-#include "bpfilter/cgen/tc.h"
-#include "bpfilter/cgen/xdp.h"
-#include "bpfilter/ctx.h"
-#include "bpfilter/opts.h"
-#include "core/bpf.h"
-#include "core/btf.h"
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/dump.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/io.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/matcher.h"
-#include "core/pack.h"
-#include "core/rule.h"
-#include "core/set.h"
-#include "core/verdict.h"
+#include <bpfilter/bpf.h>
+#include <bpfilter/btf.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/io.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/set.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/cgroup.h"
+#include "cgen/dump.h"
+#include "cgen/fixup.h"
+#include "cgen/jmp.h"
+#include "cgen/matcher/icmp.h"
+#include "cgen/matcher/ip4.h"
+#include "cgen/matcher/ip6.h"
+#include "cgen/matcher/meta.h"
+#include "cgen/matcher/set.h"
+#include "cgen/matcher/tcp.h"
+#include "cgen/matcher/udp.h"
+#include "cgen/nf.h"
+#include "cgen/printer.h"
+#include "cgen/prog/link.h"
+#include "cgen/prog/map.h"
+#include "cgen/stub.h"
+#include "cgen/tc.h"
+#include "cgen/xdp.h"
+#include "ctx.h"
+#include "filter.h"
+#include "opts.h"
 
 #define _BF_LOG_BUF_SIZE                                                       \
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
@@ -503,7 +503,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-        switch (bf_matcher_type(matcher)) {
+        switch (bf_matcher_get_type(matcher)) {
         case BF_MATCHER_META_IFACE:
         case BF_MATCHER_META_L3_PROTO:
         case BF_MATCHER_META_L4_PROTO:
@@ -560,7 +560,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
             break;
         default:
             return bf_err_r(-EINVAL, "unknown matcher type %d",
-                            bf_matcher_type(matcher));
+                            bf_matcher_get_type(matcher));
         };
     }
 

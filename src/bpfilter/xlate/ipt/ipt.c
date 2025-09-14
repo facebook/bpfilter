@@ -16,26 +16,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/ctx.h"
-#include "bpfilter/opts.h"
-#include "bpfilter/xlate/front.h"
-#include "bpfilter/xlate/ipt/dump.h"
-#include "bpfilter/xlate/ipt/helpers.h"
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/dump.h"
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/matcher.h"
-#include "core/request.h"
-#include "core/response.h"
-#include "core/rule.h"
-#include "core/verdict.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/request.h>
+#include <bpfilter/response.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/verdict.h>
+
+#include "cgen/cgen.h"
+#include "cgen/program.h"
+#include "ctx.h"
+#include "opts.h"
+#include "xlate/front.h"
+#include "xlate/ipt/dump.h"
+#include "xlate/ipt/helpers.h"
 
 /**
  * @file ipt.c
@@ -273,16 +274,16 @@ static int _bf_rule_to_ipt_entry(const struct bf_rule *rule,
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-        switch (bf_matcher_type(matcher)) {
+        switch (bf_matcher_get_type(matcher)) {
         case BF_MATCHER_IP4_SADDR:
-            if (bf_matcher_op(matcher) == BF_MATCHER_NE)
+            if (bf_matcher_get_op(matcher) == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_SRCIP;
             addr = bf_matcher_payload(matcher);
             entry->ip.src.s_addr = addr->addr;
             entry->ip.smsk.s_addr = addr->mask;
             break;
         case BF_MATCHER_IP4_DADDR:
-            if (bf_matcher_op(matcher) == BF_MATCHER_NE)
+            if (bf_matcher_get_op(matcher) == BF_MATCHER_NE)
                 entry->ip.invflags |= IPT_INV_DSTIP;
             addr = bf_matcher_payload(matcher);
             entry->ip.dst.s_addr = addr->addr;
@@ -292,8 +293,9 @@ static int _bf_rule_to_ipt_entry(const struct bf_rule *rule,
             entry->ip.proto = *(uint8_t *)bf_matcher_payload(matcher);
             break;
         default:
-            return bf_err_r(-ENOTSUP, "unsupported matcher %s for BF_FRONT_IPT",
-                            bf_matcher_type_to_str(bf_matcher_type(matcher)));
+            return bf_err_r(
+                -ENOTSUP, "unsupported matcher %s for BF_FRONT_IPT",
+                bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
         }
     }
 
