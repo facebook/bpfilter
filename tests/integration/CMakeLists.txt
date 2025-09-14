@@ -54,7 +54,7 @@ ExternalProject_Add(iptables
         COMMAND
             ${CMAKE_COMMAND} -E env
                 bpfilter_LIBS=-Wl,-rpath=${CMAKE_BINARY_DIR}/output/lib\ -L${CMAKE_BINARY_DIR}/output/lib\ -lbpfilter\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
-                bpfilter_CFLAGS=-I${CMAKE_BINARY_DIR}/output/include\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
+                bpfilter_CFLAGS=-I${CMAKE_SOURCE_DIR}/src/libbpfilter/include\ -I${CMAKE_BINARY_DIR}/build/libbpfilter/include\ $<$<CONFIG:Debug>:-fsanitize=address\ -fsanitize=undefined>
                 ./configure
                     --enable-bpfilter
                     --disable-ipv6
