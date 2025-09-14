@@ -197,6 +197,9 @@ static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
     link->hookopts->priorities[0] = opts.priorities[0];
     link->hookopts->priorities[1] = opts.priorities[1];
 
+    closep(&link->fd);
+    link->fd = TAKE_FD(new_link_fd);
+
     return 0;
 }
 

@@ -92,6 +92,7 @@ void bf_link_dump(const struct bf_link *link, prefix_t *prefix);
  *
  * @todo Automatically use the most appropriate XDP mode based on the driver's
  * capabilities.
+ * @todo Validate `hookopts` before attaching the link.
  *
  * @param link `bf_link` object to use to attach the program. Can't be NULL.
  * @param hook Hook to attach the program to.
