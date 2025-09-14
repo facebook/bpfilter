@@ -211,13 +211,11 @@ int bf_bpf_map_create(const char *name, enum bf_bpf_map_type type,
         attr.map_flags |= BPF_F_NO_PREALLOC;
 
     if (token_fd != -1) {
-        bf_info("With BPF token");
         attr.map_token_fd = token_fd;
         attr.map_flags |= BPF_F_TOKEN_FD;
     };
 
     if (btf) {
-        bf_info("With BTF data");
         attr.btf_fd = btf->fd;
         attr.btf_key_type_id = btf->key_type_id;
         attr.btf_value_type_id = btf->value_type_id;
