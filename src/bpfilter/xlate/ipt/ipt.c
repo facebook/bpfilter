@@ -599,7 +599,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 {
     const struct ipt_replace *replace;
     struct bf_chain *chains[NF_INET_NUMHOOKS] = {};
-    bf_list _cur_cgens = bf_list_default(NULL, NULL);
+    _clean_bf_list_ bf_list _cur_cgens = bf_list_default(NULL, NULL);
     struct bf_cgen *cur_cgens[NF_INET_NUMHOOKS] = {};
     int r;
 
