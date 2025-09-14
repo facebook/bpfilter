@@ -153,7 +153,6 @@ static int _bf_verdict_to_ipt_target(enum bf_verdict verdict,
 
     bf_assert(ipt_tgt);
 
-    bf_info("target for verdict %d", verdict);
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
         std_tgt->verdict = -2;
