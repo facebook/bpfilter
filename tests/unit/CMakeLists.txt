@@ -109,8 +109,6 @@ set(bf_test_srcs
     bpfilter/cgen/swich.c
     bpfilter/ctx.c
     bpfilter/xlate/nft/nft.c
-    bpfilter/xlate/nft/nfmsg.c
-    bpfilter/xlate/nft/nfgroup.c
 )
 
 get_target_property(core_srcs core SOURCES)
