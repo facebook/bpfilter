@@ -60,6 +60,7 @@ int bf_ns_init(struct bf_ns *ns, pid_t pid)
 
     bf_assert(ns);
 
+    /// @todo What if ``/proc`` is not readable?
     (void)snprintf(ns_dir_path, NS_DIR_PATH_LEN, "/proc/%d/ns", pid);
     dirfd = open(ns_dir_path, O_DIRECTORY, O_RDONLY);
     if (dirfd < 0)

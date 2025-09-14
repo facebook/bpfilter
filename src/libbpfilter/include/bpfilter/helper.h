@@ -278,6 +278,9 @@ static inline void freep(void *ptr)
  * If the call to `close` fails, a warning is printed, and the file descriptor
  * is assumed to be already closed.
  *
+ * @todo Ensure file descriptors are always initialized to -1, and closed using
+ * ``closep``.
+ *
  * @param fd File descriptor to close. Can't be NULL.
  */
 void closep(int *fd);

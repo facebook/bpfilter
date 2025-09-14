@@ -35,7 +35,7 @@
 
 **bpfilter** combines three components: a CLI that allows users to define filtering rules in human-readable text, a daemon that converts these rules into efficient BPF programs, and a library that facilitates seamless communication between applications and the filtering subsystem.
 
-Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.io/usage/index.html), the [developer documentation](https://bpfilter.io/developers/build.html), or watch our latest [public talk](https://www.youtube.com/watch?v=fzaPEm4PXn0)!
+Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.io/usage/index.html), the [developer documentation](https://bpfilter.io/developers/build.html), our [contributing guide](https://bpfilter.io/developers/contributing.html), or watch our latest [public talk](https://www.youtube.com/watch?v=fzaPEm4PXn0)!
 
 ## Quick start
 

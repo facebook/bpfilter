@@ -819,6 +819,7 @@ int bf_program_generate(struct bf_program *program)
         return r;
 
     // Call the update counters function
+    /// @todo Allow chains to have no counters at all.
     EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
     EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);

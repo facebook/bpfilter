@@ -44,6 +44,9 @@ extern const char *inet_ntop(int, const void *, char *, socklen_t);
  *
  * Matchers are criterias to match the packet against. A set of matcher defines
  * what a rule should match on.
+ *
+ * @todo `bf_matcher`'s payload should be a union of all the possible payload
+ * types.
  */
 struct bf_matcher
 {

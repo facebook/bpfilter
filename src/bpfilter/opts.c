@@ -58,7 +58,10 @@ static struct bf_options
     /** If true, bpfilter won't load or save its state to the filesystem, and
      * all the loaded BPF programs will be unloaded before shuting down. Hence,
      * as long as bpfilter is running, filtering rules will be applied. When
-     * bpfilter is stopped, everything is cleaned up. */
+     * bpfilter is stopped, everything is cleaned up.
+     *
+     * @todo Validate the daemon's behaviour when switch to and from
+     * ``--transient``. */
     bool transient;
 
     /** Pass a token to BPF system calls, obtained from bpffs. */

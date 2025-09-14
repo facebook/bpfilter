@@ -13,6 +13,7 @@
    :caption: Developers
 
    developers/build
+   developers/contributing
    developers/style
    developers/modules/index
    developers/packets_processing

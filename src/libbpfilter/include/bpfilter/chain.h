@@ -114,6 +114,8 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
  * The chain will own the rule and is responsible for freeing it. The rule's
  * index will automatically be updated.
  *
+ * @todo Rules without any matcher should be rejected.
+ *
  * @param chain Chain to insert the rule into. Can't be NULL.
  * @param rule Rule to insert into the chain. Can't be NULL.
  * @return 0 on success, or a negative errno value on error.

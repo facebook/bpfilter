@@ -170,6 +170,9 @@ int bf_swich_set_default(struct bf_swich *swich, const struct bpf_insn *insns,
  * The BPF program doesn't contain any of the instructions of the @ref bf_swich
  * until this function is called.
  *
+ * @todo If no ``default`` case is defined, the switch should jump after the
+ * last case.
+ *
  * @param swich @ref bf_swich object to generate the bytecode for. Can't be
  *        NULL.
  * @return 0 on success, or negative errno value on failure.

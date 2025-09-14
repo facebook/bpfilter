@@ -77,8 +77,8 @@
  * - `size_t` values are serialied as `uint64_t`: for similar reasons to he
  *   enumerations.
  *
- * @todo Only allow `bf_wpack_kv_TYPE` functions to write into objects.
- * @todo Only allow `bf_wpack_TYPE` functions to write into arrays.
+ * @todo `bf_wpack_kv_TYPE` functions should only write into objects.
+ * @todo `bf_wpack_TYPE` functions should only write into arrays.
  */
 
 struct bf_wpack;
