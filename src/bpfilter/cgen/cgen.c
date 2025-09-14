@@ -380,13 +380,15 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
         return r;
     }
 
+    // We updated the old link, we need to store it in the new program
+    bf_swap(new_prog->link, old_prog->link);
+
     if (bf_opts_persist()) {
         r = bf_program_pin(new_prog, pindir_fd);
         if (r)
             bf_warn_r(r, "failed to pin new prog, ignoring");
     }
 
-    bf_swap(old_prog->link, new_prog->link);
     bf_swap(cgen->program, new_prog);
 
     bf_chain_free(&cgen->chain);
