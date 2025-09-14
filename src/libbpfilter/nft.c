@@ -9,10 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "core/front.h"
-#include "core/request.h"
-#include "core/response.h"
-#include "libbpfilter/generic.h"
+#include "bpfilter/front.h"
+#include "bpfilter/generic.h"
+#include "bpfilter/request.h"
+#include "bpfilter/response.h"
 
 int bf_nft_send(const void *data, size_t len)
 {

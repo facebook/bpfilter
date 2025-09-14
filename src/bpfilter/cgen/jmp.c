@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/jmp.h"
+#include "cgen/jmp.h"
 
 #include <linux/bpf.h>
 
@@ -11,8 +11,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/program.h"
-#include "core/logger.h"
+#include <bpfilter/logger.h>
+
+#include "cgen/program.h"
 
 void bf_jmpctx_cleanup(struct bf_jmpctx *ctx)
 {

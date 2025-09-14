@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/prog/map.c"
+#include "cgen/prog/map.c"
 
 #include "fake.h"
 #include "harness/test.h"

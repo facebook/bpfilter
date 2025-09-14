@@ -3,13 +3,14 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/matcher/set.h"
+#include "cgen/matcher/set.h"
 
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/stub.h"
-#include "core/chain.h"
-#include "core/matcher.h"
-#include "core/set.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/set.h>
+
+#include "cgen/program.h"
+#include "cgen/stub.h"
 
 static int _bf_matcher_generate_set_trie(struct bf_program *program,
                                          const struct bf_matcher *matcher)

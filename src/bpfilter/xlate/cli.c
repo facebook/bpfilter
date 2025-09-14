@@ -5,23 +5,24 @@
 
 #include <errno.h>
 
-#include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/prog/link.h"
-#include "bpfilter/cgen/prog/map.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/ctx.h"
-#include "bpfilter/xlate/front.h"
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/io.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/pack.h"
-#include "core/request.h"
-#include "core/response.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/io.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/request.h>
+#include <bpfilter/response.h>
+
+#include "cgen/cgen.h"
+#include "cgen/prog/link.h"
+#include "cgen/prog/map.h"
+#include "cgen/program.h"
+#include "ctx.h"
+#include "xlate/front.h"
 
 static int _bf_cli_setup(void);
 static int _bf_cli_teardown(void);

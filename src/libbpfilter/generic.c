@@ -3,16 +3,16 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "libbpfilter/generic.h"
+#include "bpfilter/generic.h"
 
 #include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "core/helper.h"
-#include "core/io.h"
-#include "core/logger.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/io.h"
+#include "bpfilter/logger.h"
 
 int bf_send(const struct bf_request *request, struct bf_response **response)
 {

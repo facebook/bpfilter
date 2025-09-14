@@ -7,7 +7,7 @@
 
 #include <linux/bpf.h>
 
-#include "core/runtime.h"
+#include <bpfilter/runtime.h>
 
 /**
  * @file runtime.h

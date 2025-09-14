@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/tc.h"
+#include "cgen/tc.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -12,15 +12,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "bpfilter/cgen/cgen.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/stub.h"
-#include "core/btf.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/verdict.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/cgen.h"
+#include "cgen/program.h"
+#include "cgen/stub.h"
+#include "filter.h"
 
 static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 {

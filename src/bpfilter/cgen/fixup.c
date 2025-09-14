@@ -8,8 +8,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "core/dump.h"
-#include "core/helper.h"
+#include <bpfilter/dump.h>
+#include <bpfilter/helper.h>
 
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
                  size_t insn_offset, const union bf_fixup_attr *attr)

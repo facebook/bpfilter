@@ -11,17 +11,24 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 extensions = ["breathe", "linuxdoc.rstFlatTable"]
-breathe_projects = {
-    "@PROJECT_NAME@": "@CMAKE_CURRENT_BINARY_DIR@/xml"
-}
+breathe_projects = {"@PROJECT_NAME@": "@CMAKE_CURRENT_BINARY_DIR@/xml"}
 breathe_default_project = "@PROJECT_NAME@"
 breathe_default_members = ("members", "private-members", "undoc-members")
-breathe_domain_by_extension = {
-    "h": "c",
-    "c": "c"
-}
+breathe_domain_by_extension = {"h": "c", "c": "c"}
 
-breathe_show_define_initializer = False # Avoid showing badly formatted functions-like macros code.
+c_extra_keywords = [
+    "alignas",
+    "alignof",
+    "bool",
+    "complex",
+    "imaginary",
+    "noreturn",
+    "thread_local",
+]
+
+breathe_show_define_initializer = (
+    False  # Avoid showing badly formatted functions-like macros code.
+)
 breathe_show_enumvalue_initializer = True
 breathe_show_include = True
 breathe_implementation_filename_extensions = [".c"]

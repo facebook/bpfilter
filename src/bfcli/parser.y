@@ -9,8 +9,9 @@
     #include <stdlib.h>
     #include <stdbool.h>
 
-    #include "core/list.h"
-    #include "bfcli/ruleset.h"
+    #include <bpfilter/list.h>
+
+    #include "ruleset.h"
 
     extern int yylex();
     extern int yyparse();
@@ -24,15 +25,16 @@
     #include <linux/in6.h>
     #include <linux/if_ether.h>
     #include <limits.h>
-    #include "bfcli/helper.h"
-    #include "bpfilter/cgen/runtime.h"
-    #include "core/verdict.h"
-    #include "core/hook.h"
-    #include "core/matcher.h"
-    #include "core/list.h"
-    #include "core/rule.h"
-    #include "core/chain.h"
-    #include "core/runtime.h"
+
+    #include <bpfilter/verdict.h>
+    #include <bpfilter/hook.h>
+    #include <bpfilter/matcher.h>
+    #include <bpfilter/list.h>
+    #include <bpfilter/rule.h>
+    #include <bpfilter/chain.h>
+    #include <bpfilter/runtime.h>
+
+    #include "helper.h"
 
     extern int inet_pton(int af, const char *restrict src, void *restrict dst);
 

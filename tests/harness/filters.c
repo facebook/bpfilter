@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/filters.h"
+#include "filters.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -11,15 +11,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core/chain.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/matcher.h"
-#include "core/rule.h"
-#include "core/set.h"
-#include "core/verdict.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/hook.h"
+#include "bpfilter/list.h"
+#include "bpfilter/logger.h"
+#include "bpfilter/matcher.h"
+#include "bpfilter/rule.h"
+#include "bpfilter/set.h"
+#include "bpfilter/verdict.h"
 
 struct bf_hookopts *bft_hookopts_get(const char *raw_opt, ...)
 {
@@ -250,12 +250,8 @@ bf_list *bft_list_get(size_t n_elems, size_t elem_size)
 
     if (elem_size < sizeof(struct bft_list_dummy_data)) {
         elem_size = sizeof(struct bft_list_dummy_data);
-<<<<<<< HEAD
         bf_warn("dummy bf_list element size if too small, using %lu",
                 elem_size);
-=======
-        bf_warn("dummy bf_list element size if too small, using %lu", elem_size);
->>>>>>> 182c102 (request/response)
     }
 
     r = bf_list_new(&list, &ops);

@@ -4,7 +4,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bfcli/chain.h"
+#include "chain.h"
 
 #include <argp.h>
 #include <bpf/bpf.h>
@@ -17,17 +17,18 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "bfcli/helper.h"
-#include "bfcli/opts.h"
-#include "bfcli/print.h"
-#include "bfcli/ruleset.h"
-#include "core/chain.h"
-#include "core/counter.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "libbpfilter/bpfilter.h"
+#include <bpfilter/bpfilter.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+
+#include "helper.h"
+#include "opts.h"
+#include "print.h"
+#include "ruleset.h"
 
 #define BF_RB_POLL_TIMEOUT 1000
 

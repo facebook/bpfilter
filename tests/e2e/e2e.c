@@ -8,12 +8,12 @@
 #include <linux/pkt_cls.h>
 #include <linux/bpf.h>
 
-#include "bpfilter.h"
+#include "bpfilter/bpfilter.h"
 #include "opts.h"
-#include "core/bpf.h"
-#include "core/chain.h"
-#include "core/flavor.h"
-#include "core/logger.h"
+#include "bpfilter/bpf.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/flavor.h"
+#include "bpfilter/logger.h"
 #include "harness/daemon.h"
 #include "harness/test.h"
 

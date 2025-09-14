@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "core/chain.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/set.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/set.h>
 
 #define bfc_ruleset_default()                                                  \
     {                                                                          \

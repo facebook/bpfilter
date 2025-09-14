@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include "core/list.h"
-
 struct bfc_ruleset;
 
 int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset);

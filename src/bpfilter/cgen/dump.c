@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/dump.h"
+#include "cgen/dump.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -13,13 +13,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "bpfilter/cgen/program.h"
-#include "core/btf.h"
-#include "core/dump.h"
-#include "core/helper.h"
-#include "core/logger.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 
-#include "external/disasm.h"
+#include "cgen/program.h"
+#include "disasm.h"
 
 #define SYM_MAX_NAME 256
 

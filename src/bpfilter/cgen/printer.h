@@ -9,9 +9,10 @@
 
 #include <stddef.h>
 
-#include "bpfilter/ctx.h"
-#include "core/dump.h"
-#include "core/pack.h"
+#include <bpfilter/dump.h>
+#include <bpfilter/pack.h>
+
+#include "ctx.h"
 
 /**
  * @file printer.h

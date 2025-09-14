@@ -5,11 +5,12 @@
 
 #include <errno.h>
 
-#include "bpfilter/xlate/front.h"
-#include "core/helper.h"
-#include "core/pack.h"
-#include "core/request.h"
-#include "core/response.h"
+#include <bpfilter/helper.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/request.h>
+#include <bpfilter/response.h>
+
+#include "xlate/front.h"
 
 static int _bf_nft_setup(void)
 {

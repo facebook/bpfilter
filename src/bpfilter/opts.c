@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/opts.h"
+#include "opts.h"
 
 #include <argp.h>
 #include <errno.h>
@@ -13,9 +13,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/logger.h"
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 
 #define BF_DEFAULT_BPFFS_PATH "/sys/fs/bpf"
 

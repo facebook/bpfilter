@@ -3,17 +3,17 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/printer.h"
+#include "cgen/printer.h"
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "core/dump.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "core/pack.h"
+#include <bpfilter/dump.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/pack.h>
 
 /**
  * @struct bf_printer_msg

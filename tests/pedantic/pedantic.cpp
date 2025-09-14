@@ -1,26 +1,31 @@
 extern "C" {
-    #include "core/dump.h"
-    #include "core/front.h"
-    #include "core/verdict.h"
-    #include "core/flavor.h"
-    #include "core/ns.h"
-    #include "core/btf.h"
-    #include "core/bpf.h"
-    #include "core/logger.h"
-    #include "core/counter.h"
-    #include "core/hook.h"
-    #include "core/list.h"
-    #include "core/response.h"
-    #include "core/if.h"
-    #include "core/io.h"
-    #include "core/request.h"
-    #include "core/rule.h"
-    #include "core/chain.h"
-    #include "core/helper.h"
-    #include "core/matcher.h"
-    #include "core/runtime.h"
-    #include "core/set.h"
-    #include "libbpfilter/bpfilter.h"
+#include <bpfilter/bpf.h>
+#include <bpfilter/bpfilter.h>
+#include <bpfilter/bpf_types.h>
+#include <bpfilter/btf.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/dynbuf.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/front.h>
+#include <bpfilter/generic.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/if.h>
+#include <bpfilter/io.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/ns.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/request.h>
+#include <bpfilter/response.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/runtime.h>
+#include <bpfilter/set.h>
+#include <bpfilter/verdict.h>
+#include <bpfilter/version.h>
 }
 
 int main()

@@ -9,7 +9,7 @@
 
 #include <argp.h>
 
-#include "core/helper.h"
+#include "bpfilter/helper.h"
 
 static struct
 {

@@ -7,10 +7,11 @@
     #include <stdio.h>
     #include <stdbool.h>
 
-    #include "bfcli/parser.h"
-    #include "core/verdict.h"
-    #include "core/hook.h"
-    #include "core/matcher.h"
+    #include <bpfilter/verdict.h>
+    #include <bpfilter/hook.h>
+    #include <bpfilter/matcher.h>
+
+    #include "parser.h"
 
     extern int yy_read_buf_size;
 %}

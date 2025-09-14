@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/program.c"
+#include "cgen/program.c"
 
 #include "fake.h"
 #include "harness/test.h"

@@ -14,7 +14,6 @@ configure_file(
 
 add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
-    ${CMAKE_BINARY_DIR}/include/version.h
     ${CMAKE_CURRENT_SOURCE_DIR}/opts.h                   ${CMAKE_CURRENT_SOURCE_DIR}/opts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup.c
@@ -50,15 +49,14 @@ add_executable(bpfilter
     # ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfmsg.h        ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nfmsg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/xlate/nft/nft.c
 
-    ${CMAKE_SOURCE_DIR}/src/external/disasm.h            ${CMAKE_SOURCE_DIR}/src/external/disasm.c
-    ${CMAKE_SOURCE_DIR}/src/external/murmur3.h           ${CMAKE_SOURCE_DIR}/src/external/murmur3.c
+    ${CMAKE_SOURCE_DIR}/src/external/include/disasm.h   ${CMAKE_SOURCE_DIR}/src/external/disasm.c
 )
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/cgen)
 bf_target_add_elfstubs(bpfilter
     DIR ${CMAKE_CURRENT_SOURCE_DIR}/bpf
     SYM_PREFIX "_bf_rawstubs_"
-    DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter/cgen/rawstubs.h
+    DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/cgen/rawstubs.h
     STUBS
         "parse_ipv6_eh"
         "parse_ipv6_nh"
@@ -72,16 +70,16 @@ target_compile_definitions(bpfilter
 )
 
 target_include_directories(bpfilter
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_BINARY_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src/external/include
 )
 
 target_link_libraries(bpfilter
     PRIVATE
         bf_global_flags
-        core
+        libbpfilter
         PkgConfig::nl
 )
 

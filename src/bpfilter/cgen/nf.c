@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/nf.h"
+#include "cgen/nf.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -15,17 +15,17 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
-#include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/program.h"
-#include "bpfilter/cgen/stub.h"
-#include "bpfilter/cgen/swich.h"
-#include "core/btf.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/verdict.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/verdict.h>
 
-#include "external/filter.h"
+#include "cgen/jmp.h"
+#include "cgen/program.h"
+#include "cgen/stub.h"
+#include "cgen/swich.h"
+#include "filter.h"
 
 #define BF_NF_PRIO_EVEN 2
 #define BF_NF_PRIO_ODD 1

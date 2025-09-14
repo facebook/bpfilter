@@ -7,10 +7,10 @@
 
 #include <linux/bpf.h>
 
-#include "core/dump.h"
-#include "core/hook.h"
-#include "core/list.h"
-#include "core/pack.h"
+#include <bpfilter/dump.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/pack.h>
 
 /**
  * BPF link object.

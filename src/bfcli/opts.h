@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "core/hook.h"
+#include <bpfilter/hook.h>
 
 /**
  * @file opts.h

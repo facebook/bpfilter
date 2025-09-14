@@ -68,8 +68,10 @@ IncludeCategories:
   - Regex: '^<linux/'
     Priority: 2
   - Regex: '^"external/.*'
-    Priority: 5
+    Priority: 6
   - Regex: '^"'
+    Priority: 5
+  - Regex: '^<bpfilter/.*'
     Priority: 4
   - Regex: '.*'
     Priority: 3

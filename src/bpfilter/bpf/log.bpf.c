@@ -8,7 +8,7 @@
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
-#include "bpfilter/cgen/runtime.h"
+#include "cgen/runtime.h"
 
 __u8 bf_log(struct bf_runtime *ctx, __u32 rule_idx, __u8 headers,
             __u16 l3_proto, __u8 l4_proto)

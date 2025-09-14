@@ -10,7 +10,7 @@
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
-#include "bpfilter/cgen/runtime.h"
+#include "cgen/runtime.h"
 
 struct bf_counter
 {

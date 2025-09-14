@@ -3,10 +3,10 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/xlate/front.h"
+#include "xlate/front.h"
 
-#include "core/front.h"
-#include "core/helper.h"
+#include <bpfilter/front.h>
+#include <bpfilter/helper.h>
 
 extern const struct bf_front_ops ipt_front;
 extern const struct bf_front_ops nft_front;

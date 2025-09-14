@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/prog/link.h"
+#include "cgen/prog/link.h"
 
 #include <linux/bpf.h>
 #include <linux/if_link.h>
@@ -15,13 +15,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "core/bpf.h"
-#include "core/dump.h"
-#include "core/flavor.h"
-#include "core/helper.h"
-#include "core/hook.h"
-#include "core/logger.h"
-#include "core/pack.h"
+#include <bpfilter/bpf.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/pack.h>
 
 int bf_link_new(struct bf_link **link, const char *name)
 {

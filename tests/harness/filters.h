@@ -8,12 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/chain.h"
-#include "core/hook.h"
-#include "core/matcher.h"
-#include "core/rule.h"
-#include "core/set.h"
-#include "core/verdict.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/hook.h"
+#include "bpfilter/matcher.h"
+#include "bpfilter/rule.h"
+#include "bpfilter/set.h"
+#include "bpfilter/verdict.h"
 
 /**
  * @file filters.h

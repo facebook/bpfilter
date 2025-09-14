@@ -11,12 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "core/front.h"
-#include "core/helper.h"
-#include "core/logger.h"
-#include "core/request.h"
-#include "core/response.h"
-#include "libbpfilter/generic.h"
+#include "bpfilter/front.h"
+#include "bpfilter/generic.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
+#include "bpfilter/request.h"
+#include "bpfilter/response.h"
 
 /**
  * Get size of an ipt_get_entries structure.

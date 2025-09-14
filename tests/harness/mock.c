@@ -3,14 +3,14 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/mock.h"
+#include "mock.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "core/helper.h"
-#include "core/logger.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
 
 static const char *_bf_readable_file_content = "Hello, world!";
 

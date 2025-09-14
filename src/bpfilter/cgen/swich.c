@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/swich.h"
+#include "cgen/swich.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -14,13 +14,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bpfilter/cgen/jmp.h"
-#include "bpfilter/cgen/program.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/logger.h"
+#include <bpfilter/helper.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
 
-#include "external/filter.h"
+#include "cgen/jmp.h"
+#include "cgen/program.h"
+#include "filter.h"
 
 /// Cleanup attribute for a @ref bf_swich_option variable.
 #define _free_bf_swich_option_ __attribute__((cleanup(_bf_swich_option_free)))

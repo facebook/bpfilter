@@ -7,11 +7,11 @@
 
 #include <stdint.h>
 
-#include "core/counter.h"
-#include "core/dump.h"
-#include "core/front.h"
-#include "core/list.h"
-#include "core/pack.h"
+#include <bpfilter/counter.h>
+#include <bpfilter/dump.h>
+#include <bpfilter/front.h>
+#include <bpfilter/list.h>
+#include <bpfilter/pack.h>
 
 struct bf_chain;
 struct bf_program;

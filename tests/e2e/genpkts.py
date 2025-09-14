@@ -95,7 +95,7 @@ packets = [
 
 template = """#pragma once
 
-#include "core/flavor.h"
+#include "bpfilter/flavor.h"
 #include "harness/prog.h"
 
 #include <linux/netfilter.h>

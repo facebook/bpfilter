@@ -17,14 +17,17 @@ add_library(harness EXCLUDE_FROM_ALL
 )
 
 target_include_directories(harness
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC
         ${CMAKE_SOURCE_DIR}/tests
+        ${CMAKE_SOURCE_DIR}/external/include
 )
 
 target_link_libraries(harness
     PUBLIC
         bf_global_flags
-        core
+        libbpfilter
         PkgConfig::bpf
         PkgConfig::cmocka
         PkgConfig::nl

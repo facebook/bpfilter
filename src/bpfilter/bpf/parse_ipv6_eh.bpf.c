@@ -10,7 +10,7 @@
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
-#include "bpfilter/cgen/runtime.h"
+#include "cgen/runtime.h"
 
 #define BF_IPV6_EXT_MAX_CHAIN 6
 

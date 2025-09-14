@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "harness/prog.h"
+#include "prog.h"
 
 #include <linux/bpf.h>
 
@@ -13,11 +13,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "core/chain.h"
-#include "core/helper.h"
-#include "core/list.h"
-#include "core/logger.h"
-#include "libbpfilter/bpfilter.h"
+#include "bpfilter/bpfilter.h"
+#include "bpfilter/chain.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/list.h"
+#include "bpfilter/logger.h"
 
 struct bf_test_prog *bf_test_prog_get(struct bf_chain *chain)
 {

@@ -3,17 +3,18 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/cgen/elfstub.h"
+#include "cgen/elfstub.h"
 
 #include <linux/bpf.h>
 
 #include <elf.h>
 #include <errno.h>
 
-#include "bpfilter/cgen/rawstubs.h"
-#include "core/btf.h"
-#include "core/helper.h"
-#include "core/logger.h"
+#include <bpfilter/btf.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
+
+#include "cgen/rawstubs.h"
 
 static_assert(ARRAY_SIZE(_bf_rawstubs) == _BF_ELFSTUB_MAX,
               "_bf_rawstubs doesn't contain as many entries as bf_elfstub_id");

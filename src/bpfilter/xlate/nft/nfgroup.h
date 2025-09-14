@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/list.h"
+#include <bpfilter/list.h>
 
 struct nlmsghdr;
 struct bf_nfgroup;
