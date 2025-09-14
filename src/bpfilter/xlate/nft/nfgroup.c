@@ -16,10 +16,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "xlate/nft/nfmsg.h"
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
 #include <bpfilter/response.h>
+
+#include "xlate/nft/nfmsg.h"
 
 struct bf_nfgroup
 {
