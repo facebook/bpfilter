@@ -127,6 +127,10 @@ enum bf_hook bf_hook_from_nf_hook(enum bf_nf_inet_hooks hook);
  */
 const char *bf_nf_hook_to_str(enum bf_nf_inet_hooks hook);
 
+/**
+ * @todo Create dedicated function to set the various options, otherwise one
+ * could set an option but not update `used_opts`.
+ */
 struct bf_hookopts
 {
     // Options

@@ -90,6 +90,9 @@
  * by @c iptables .
  */
 
+#define BF_IPT_PRIO_0 1000
+#define BF_IPT_PRIO_1 1001
+
 /**
  * Get size of an ipt_replace structure.
  *
@@ -654,6 +657,12 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
             r = bf_hookopts_new(&hookopts);
             if (r)
                 return r;
+
+            hookopts->family = PF_INET;
+            hookopts->priorities[0] = BF_IPT_PRIO_0;
+            hookopts->priorities[1] = BF_IPT_PRIO_1;
+            hookopts->used_opts |=
+                BF_FLAGS(BF_HOOKOPTS_FAMILY, BF_HOOKOPTS_PRIORITIES);
 
             r = bf_cgen_attach(cgen, bf_request_ns(req), &hookopts);
             if (r) {
