@@ -271,7 +271,7 @@ static int _bf_btf_load(struct bf_btf *btf)
 
     r = bf_bpf_btf_load(raw, bf_ctx_token());
     if (r < 0)
-        return bf_err_r(r, "failed to load BTF data");
+        return r;
 
     btf->fd = r;
 
@@ -320,7 +320,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
 
     r = _bf_btf_load(btf);
     if (r) {
-        bf_err_r(r, "failed to load BTF data");
+        bf_warn_r(r, "failed to load BTF data for %s, ignoring", map->name);
         return NULL;
     }
 
