@@ -207,7 +207,9 @@ struct bf_program
     /// List of set maps
     bf_list sets;
 
-    /// Link objects attaching the program to a hook.
+    /** Link objects attaching the program to a hook.
+     * @todo A ``bf_program`` should not have any link until the program is
+     * attached. */
     struct bf_link *link;
 
     /* Bytecode */

@@ -14,7 +14,7 @@ NUM_PROC_THREADS        = 0
 #---------------------------------------------------------------------------
 EXTRACT_ALL             = YES
 EXTRACT_STATIC          = YES
-GENERATE_TODOLIST       = NO
+GENERATE_TODOLIST       = YES
 GENERATE_TESTLIST       = YES
 GENERATE_BUGLIST        = YES
 GENERATE_DEPRECATEDLIST = YES

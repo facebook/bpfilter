@@ -202,8 +202,6 @@ static int _bf_save(const char *path)
  *
  * Updated context is saved back to disk.
  *
- * @todo Should the runtime context be saved unconditionally?
- *
  * @return 0 on success, negative error code on failure.
  */
 static int _bf_init(int argc, char *argv[])
@@ -415,6 +413,7 @@ static int _bf_run(void)
 
     bf_info("waiting for requests...");
 
+    /// @todo Failure to process a request should not stop the daemon!
     while (!_bf_stop_received) {
         _cleanup_close_ int client_fd = -1;
         _free_bf_request_ struct bf_request *request = NULL;

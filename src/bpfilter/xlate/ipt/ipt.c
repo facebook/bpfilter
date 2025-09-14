@@ -592,9 +592,6 @@ _bf_ipt_xlate_ruleset_set(const struct ipt_replace *ipt,
 /**
  * Modify existing iptables rules.
  *
- * @todo If processing for any codegen fails, all codegens should be unloaded
- * and/or discarded.
- *
  * @param req The request sent to bpfilter. Can't be NULL.
  * @return 0 on success, negative error code on failure.
  */
@@ -798,20 +795,6 @@ static int _bf_ipt_teardown(void)
     return 0;
 }
 
-/**
- * @todo Wouldn't it be better to have a separate handler for each request type?
- *  In which case struct bf_front_ops would contain a handler for each request
- *  type, and the front would handle custom (BF_REQ_CUSTOM) requests itself.
- * @todo Document that request and responses are not const: they will be free
- *  by the daemon once the front is done with them. Hence, the front is free
- *  to modify the requests content.
- * @todo Check bf_assertions: a malformed request could cause the daemon to
- * crash.
- *
- * @param request
- * @param response
- * @return
- */
 static int _bf_ipt_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {

@@ -51,6 +51,8 @@ struct bf_request
     };
 
     size_t data_len;
+
+    /// @todo Return a user-readable error message if the request fails.
     char data[];
 };
 

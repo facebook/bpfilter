@@ -23,6 +23,8 @@
 #include "cgen/swich.h"
 #include "filter.h"
 
+/** @todo Add support for input and output interface filtering based on the
+ * program's hook. */
 static int _bf_matcher_generate_meta_iface(struct bf_program *program,
                                            const struct bf_matcher *matcher)
 {

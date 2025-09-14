@@ -55,6 +55,7 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/iptables.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/nftables.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/generation.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/packets_processing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
