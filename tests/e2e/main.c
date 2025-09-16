@@ -193,6 +193,39 @@ Test(meta, l4_proto)
     bft_e2e_test(nomatch_ne, BF_VERDICT_ACCEPT, pkt_remote_ip6_eh_tcp);
 }
 
+Test(meta, probability)
+{
+    _free_bf_chain_ struct bf_chain *always_drop = bf_test_chain_get(
+        BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                0, false, BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
+                                   (uint8_t[]) { 100 },
+                                   1),
+                    NULL,
+                }),
+            NULL,
+        });
+    bft_e2e_test(always_drop, BF_VERDICT_DROP, pkt_local_ip6_hop);
+
+    _free_bf_chain_ struct bf_chain *never_drop = bf_test_chain_get(
+        BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
+        (struct bf_rule *[]) {
+            bf_rule_get(
+                0, false, BF_VERDICT_DROP,
+                (struct bf_matcher *[]) {
+                    bf_matcher_get(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
+                                   (uint8_t[]) { 0 },
+                                   1),
+                    NULL,
+                }),
+            NULL,
+        });
+    bft_e2e_test(never_drop, BF_VERDICT_ACCEPT, pkt_local_ip6_hop);
+}
+
 Test(ip4, proto)
 {
     _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(
