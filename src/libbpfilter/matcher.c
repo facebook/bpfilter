@@ -16,6 +16,7 @@
 #include <linux/udp.h>
 
 #include <ctype.h>
+#include <endian.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -194,7 +195,7 @@ int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
 
     port = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && port <= UINT16_MAX) {
-        *(uint16_t *)payload = (uint16_t)port;
+        *(uint16_t *)payload = htobe16((uint16_t)port);
         return 0;
     }
 
@@ -208,7 +209,7 @@ void _bf_print_l4_port(const void *payload)
 {
     bf_assert(payload);
 
-    (void)fprintf(stdout, "%" PRIu16, *(uint16_t *)payload);
+    (void)fprintf(stdout, "%" PRIu16, (uint16_t)be16toh(*(uint16_t *)payload));
 }
 
 #define BF_PORT_RANGE_MAX_LEN 16 // 65535-65535, with nul char, round to **2
@@ -890,6 +891,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
                                    _bf_print_l4_port_range),
@@ -906,6 +909,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
@@ -942,6 +947,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
                                    _bf_print_l4_port_range),
@@ -958,6 +965,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,

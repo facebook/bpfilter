@@ -75,15 +75,15 @@ enum bf_matcher_type
     BF_MATCHER_IP6_DNET,
     /// Matches IPv6 next header
     BF_MATCHER_IP6_NEXTHDR,
-    /// Matches against the TCP source port
+    /// Matches against the TCP source port. Stored as big-endian.
     BF_MATCHER_TCP_SPORT,
-    /// Matches against the TCP destination port
+    /// Matches against the TCP destination port. Stored as big-endian.
     BF_MATCHER_TCP_DPORT,
     /// Matchers against the TCP flags
     BF_MATCHER_TCP_FLAGS,
-    /// Matches against the UDP source port
+    /// Matches against the UDP source port. Stored as big-endian.
     BF_MATCHER_UDP_SPORT,
-    /// Matches against the UDP destination port
+    /// Matches against the UDP destination port. Stored as big-endian.
     BF_MATCHER_UDP_DPORT,
     /// Matches against the ICMP type
     BF_MATCHER_ICMP_TYPE,

@@ -33,12 +33,12 @@ static int _bf_matcher_generate_tcp_port(struct bf_program *program,
 
     switch (bf_matcher_get_op(matcher)) {
     case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, htobe16(*port), 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, *port, 0));
         break;
     case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, htobe16(*port), 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, *port, 0));
         break;
     case BF_MATCHER_RANGE:
         /* Convert the big-endian value stored in the packet into a
