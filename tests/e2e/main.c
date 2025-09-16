@@ -2114,7 +2114,7 @@ Test(ipv6, extension_headers)
                 BF_VERDICT_DROP,
                 (struct bf_matcher *[]) {
                     bf_matcher_get(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
-                        (uint8_t[]) { 0xb7, 0x7a },
+                        (uint8_t[]) { 0x7a, 0xb7 },
                         2
                     ),
                     NULL,

@@ -131,6 +131,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         tcp.sport not 0
         tcp.sport not 17
         tcp.sport not 65535
+        (tcp.sport) in {16;124;6463}
         tcp.sport range 0-65535
         tcp.sport range 17-31
         tcp.dport eq 0
@@ -139,6 +140,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         tcp.dport not 0
         tcp.dport not 17
         tcp.dport not 65535
+        (tcp.dport) in {16;124;6463}
         tcp.dport range 0-65535
         tcp.dport range 17-31
         counter
@@ -163,6 +165,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         udp.sport not 0
         udp.sport not 17
         udp.sport not 65535
+        (udp.sport) in {16;124;6463}
         udp.sport range 0-65535
         udp.sport range 17-31
         udp.dport eq 0
@@ -171,6 +174,7 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         udp.dport not 0
         udp.dport not 17
         udp.dport not 65535
+        (udp.dport) in {16;124;6463}
         udp.dport range 0-65535
         udp.dport range 17-31
         counter

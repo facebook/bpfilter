@@ -608,21 +608,25 @@ TCP
       - Operator
       - Payload
       - Notes
-    * - :rspan:`2` Source port
-      - :rspan:`2` ``tcp.sport``
+    * - :rspan:`3` Source port
+      - :rspan:`3` ``tcp.sport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
     * - ``not``
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`2` Destination port
-      - :rspan:`2` ``tcp.dport``
+    * - :rspan:`3` Destination port
+      - :rspan:`3` ``tcp.dport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
     * - ``not``
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
@@ -658,21 +662,25 @@ UDP
       - Operator
       - Payload
       - Notes
-    * - :rspan:`2` Source port
-      - :rspan:`2` ``udp.sport``
+    * - :rspan:`3` Source port
+      - :rspan:`3` ``udp.sport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
     * - ``not``
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`2` Destination port
-      - :rspan:`2` ``udp.dport``
+    * - :rspan:`3` Destination port
+      - :rspan:`3` ``udp.dport``
       - ``eq``
       - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
     * - ``not``
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
