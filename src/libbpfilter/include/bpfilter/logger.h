@@ -51,10 +51,17 @@ enum bf_log_level
     _BF_LOG_MAX,
 };
 
+#ifdef BUILD_TYPE_DEBUG
+#define logger_prefix_fmt "%s%-7s[%s]%s: "
+#define logger_prefix_args(level, color)                                       \
+    bf_logger_get_color((color), BF_STYLE_BOLD), bf_log_level_to_str(level),   \
+        __func__, bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET)
+#else
 #define logger_prefix_fmt "%s%-7s%s: "
 #define logger_prefix_args(level, color)                                       \
     bf_logger_get_color((color), BF_STYLE_BOLD), bf_log_level_to_str(level),   \
         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET)
+#endif
 
 /**
  * Log an error message to stderr.
