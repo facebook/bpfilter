@@ -56,7 +56,7 @@ add_library(bf_global_flags INTERFACE)
 target_compile_options(bf_global_flags
     INTERFACE
         -std=gnu17 -Wall -Wextra -fPIC
-        $<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined>
+	$<$<CONFIG:debug>:-O0 -g3 -ggdb -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -DBUILD_TYPE_DEBUG>
         $<$<CONFIG:release>:-O2>
 )
 target_include_directories(bf_global_flags
