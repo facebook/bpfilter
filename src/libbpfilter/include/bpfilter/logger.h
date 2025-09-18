@@ -51,6 +51,11 @@ enum bf_log_level
     _BF_LOG_MAX,
 };
 
+#define logger_prefix_fmt "%s%-7s%s: "
+#define logger_prefix_args(level, color)                                       \
+    bf_logger_get_color((color), BF_STYLE_BOLD), bf_log_level_to_str(level),   \
+        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET)
+
 /**
  * Log an error message to stderr.
  *
@@ -63,11 +68,8 @@ enum bf_log_level
  */
 #define _bf_log_impl(level, color, fmt, ...)                                   \
     if (level >= bf_log_get_level()) {                                         \
-        (void)fprintf(stderr, "%s%-7s%s: " fmt "\n",                           \
-                      bf_logger_get_color((color), BF_STYLE_BOLD),             \
-                      bf_log_level_to_str(level),                              \
-                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),     \
-                      ##__VA_ARGS__);                                          \
+        (void)fprintf(stderr, logger_prefix_fmt fmt "\n",                      \
+                      logger_prefix_args(level, color), ##__VA_ARGS__);        \
     }
 
 #define bf_abort(fmt, ...)                                                     \
@@ -113,11 +115,9 @@ enum bf_log_level
 #define _bf_log_code_impl(level, color, code, fmt, ...)                        \
     ({                                                                         \
         if ((level) >= bf_log_get_level()) {                                   \
-            (void)fprintf(stderr, "%s%-7s%s: " fmt ": %s\n",                   \
-                          bf_logger_get_color((color), BF_STYLE_BOLD),         \
-                          bf_log_level_to_str(level),                          \
-                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), \
-                          ##__VA_ARGS__, bf_strerror(code));                   \
+            (void)fprintf(stderr, logger_prefix_fmt fmt ": %s\n",              \
+                          logger_prefix_args(level, color), ##__VA_ARGS__,     \
+                          bf_strerror(code));                                  \
         }                                                                      \
         -abs(code);                                                            \
     })
@@ -146,10 +146,8 @@ enum bf_log_level
  */
 #define _bf_log_v_impl(level, color, fmt, vargs)                               \
     if ((level) >= bf_log_get_level()) {                                       \
-        (void)fprintf(                                                         \
-            stderr, "%s%-7s%s: ", bf_logger_get_color((color), BF_STYLE_BOLD), \
-            bf_log_level_to_str(level),                                        \
-            bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));              \
+        (void)fprintf(stderr, logger_prefix_fmt,                               \
+                      logger_prefix_args(level, color));                       \
         (void)vfprintf(stderr, (fmt), (vargs));                                \
         (void)fprintf(stderr, "\n");                                           \
     }
