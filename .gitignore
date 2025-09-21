@@ -1,10 +1,12 @@
 # Usual build folder
 /build/
-# VSCode configuration folder
+
+# IDE configuration folder
+.zed
 .vscode
-# Python cache
+
+# Cache folders and artifacts
 *.pyc
 __pycache__
-# clangd cache
 .cache
 .clangd
