@@ -130,8 +130,6 @@ static int _bf_load(const char *path)
 /**
  * Save bpfilter's runtime context to disk.
  *
- * Marshel the daemon's runtime context and save it to @p path.
- *
  * @param path Path to the context file.
  * @return 0 on success, negative error code on failure.
  */
