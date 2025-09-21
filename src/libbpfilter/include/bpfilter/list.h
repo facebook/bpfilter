@@ -11,6 +11,15 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
 
+/**
+ * @file list.h
+ *
+ * @todo Create `bf_list_push` function.
+ * @todo `bf_list_add_XXX` functions should probably steal the pointer of the
+ * data they receive, to be more consistent with other functions, and avoid
+ * `TAKE_PTR()` after `bf_list_add_tail()`.
+ */
+
 /* This has to be defined here, otherwise struct bf_list_node definition is
  * self-referencing... */
 typedef struct bf_list_node bf_list_node;

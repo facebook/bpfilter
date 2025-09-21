@@ -27,6 +27,11 @@
  *   want the matcher to match when the IPv4 destination address is equal to
  *   the IP address in the payload.
  * - A payload, which is compared to the similar value in the network packet.
+ *
+ * @todo The matcher type/op/payload size combination should be validated.
+ * @todo Use a union value instead of an opaque value for matcher payload. All
+ * supported payloads have a fixed, well-known size. We should leverage
+ * the type system to avoid writing/reading raw bytes.
  */
 
 /// Automatically destroy @ref bf_matcher objects going out of the scope.

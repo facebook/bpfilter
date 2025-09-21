@@ -241,6 +241,13 @@ struct bf_program
 
 #define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
+/**
+ * @brief Allocate and initialize a new `bf_program` object.
+ *
+ * @param program `bf_program` object to allocate and initialize. Can't be NULL.
+ * @param chain Chain the program is generated from. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
 
 /**
@@ -248,6 +255,9 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
  *
  * @note The new bf_program object will represent a BPF map from bpfilter's
  * point of view, but it's not a BPF program.
+ *
+ * @todo `bf_program` should be recreated from the current system state by
+ * using `BF_OBJ_INFO_BF_FD`, and not serialized.
  *
  * @param program Program object to allocate and initialize from the serialized
  *        data. The caller will own the object. On failure, `*program` is

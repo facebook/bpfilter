@@ -94,6 +94,10 @@ int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack);
  * Generate and load a new chain. Attach the chain if `hookopts` is not NULL. It
  * is assumed that no chain with the same name exist.
  *
+ * @todo `bf_cgen` should not store a `bf_program` object pointer, it should
+ * create a new program during generation, use it, then discard it. The program
+ * is not needed once loaded, it should be considered as a temporary artifact.
+ *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
  * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
  * @param hookopts Hook options.

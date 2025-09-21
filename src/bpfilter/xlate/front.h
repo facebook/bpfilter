@@ -14,20 +14,25 @@ struct bf_response;
 /**
  * @struct bf_front_ops
  *
- * @var bf_front_ops::setup
- *  Setup the front.
- * @var bf_front_ops::teardown
- *  Teardown the front.
- * @var bf_front_ops::request_handler
- *  Handle a request.
+ * @todo Front should not implement a callback if it's not needed. E.g.
+ * `BF_FRONT_CLI` defines empty `pack` and `unpack` callbacks.
  */
 struct bf_front_ops
 {
+    /// Initialize the front.
     int (*setup)(void);
+
+    /// Teardown the front and free resources.
     int (*teardown)(void);
+
+    /// Handle an incoming request.
     int (*request_handler)(const struct bf_request *request,
                            struct bf_response **response);
+
+    /// Serialize the front's data to restore it later.
     int (*pack)(bf_wpack_t *pack);
+
+    /// Restore the front's data from serialized data.
     int (*unpack)(bf_rpack_node_t node);
 };
 
