@@ -80,13 +80,13 @@ configure_file(
 )
 
 add_library(libbpfilter
-    STATIC
+    SHARED
         ${libbpfilter_srcs}
 )
 
 target_compile_definitions(libbpfilter
     PRIVATE
-        # MPack should use the C standard library API
+        # MPack should use the C standard library API
         MPACK_STDLIB
 )
 
