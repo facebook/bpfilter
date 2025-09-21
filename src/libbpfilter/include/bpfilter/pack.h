@@ -93,7 +93,7 @@ typedef struct bf_list bf_list;
 /**
  * @brief Allocate and initialize a new `bf_wpack_t` object.
  *
- * @param pack `bf_wpack_t` object to allocate an initialize. Can't be NULL.
+ * @param pack `bf_wpack_t` object to allocate and initialize. Can't be NULL.
  * @return 0 on sucess, or a negative error value on failure.
  */
 int bf_wpack_new(bf_wpack_t **pack);
