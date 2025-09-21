@@ -159,6 +159,8 @@ static int _bf_save(const char *path)
         return r;
     bf_wpack_close_object(pack);
 
+    /** @todo Front packing should be name-based to avoid relying on the
+     * enumeration order. */
     bf_wpack_open_array(pack, "cache");
     for (int i = 0; i < _BF_FRONT_MAX; ++i) {
         if (bf_opts_is_front_enabled(i)) {

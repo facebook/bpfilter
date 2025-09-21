@@ -79,6 +79,10 @@
  *
  * @todo `bf_wpack_kv_TYPE` functions should only write into objects.
  * @todo `bf_wpack_TYPE` functions should only write into arrays.
+ * @todo Create dedicated functions to pack and unpack a `size_t` and `ssize_t`.
+ * @todo Functions that write to the pack object should be more verbose: even
+ * if they don't return an error code, they should log a warning when a packing
+ * operation fails.
  */
 
 struct bf_wpack;

@@ -171,6 +171,8 @@ int bf_hookopts_new(struct bf_hookopts **hookopts);
 /**
  * @brief Allocate and initialize a new hook options object from serialized data.
  *
+ * @todo Validate the hook options once restored.
+ *
  * @param hookopts Hook options object to allocate and initialize from the
  *        serialized data. The caller will own the object. On failure,
  *        `*hookopts` is unchanged. Can't be NULL.
