@@ -413,7 +413,6 @@ static int _bf_run(void)
 
     bf_info("waiting for requests...");
 
-    /// @todo Failure to process a request should not stop the daemon!
     while (!_bf_stop_received) {
         _cleanup_close_ int client_fd = -1;
         _free_bf_request_ struct bf_request *request = NULL;
@@ -427,42 +426,45 @@ static int _bf_run(void)
                 continue;
             }
 
-            return bf_err_r(errno, "failed to accept connection");
+            bf_err_r(errno, "failed to accept connection, ignoring");
+            continue;
         }
 
         // NOLINTNEXTLINE: SOL_SOCKET and SO_PEERCRED can't be directly included
         r = getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &peer_cred,
                        &peer_cred_len);
         if (r) {
-            bf_warn_r(
-                errno,
-                "failed to read the client's credentials, ignoring request");
+            bf_err_r(errno,
+                     "failed to read the client's credentials, ignoring");
             continue;
         }
 
         r = bf_ns_init(&ns, peer_cred.pid);
         if (r) {
-            bf_warn_r(
-                r, "failed to open the client's namespaces, ignoring request");
+            bf_err_r(r, "failed to open the client's namespaces, ignoring");
             continue;
         }
 
         r = bf_recv_request(client_fd, &request);
-        if (r < 0)
-            return bf_err_r(r, "failed to receive request");
+        if (r) {
+            bf_err_r(r, "failed to receive request, ignoring");
+            continue;
+        }
 
         bf_request_set_ns(request, &ns);
         bf_request_set_fd(request, client_fd);
 
         r = _bf_process_request(request, &response);
         if (r) {
-            bf_err("failed to process request");
+            bf_err_r(r, "failed to process request, ignoring");
             continue;
         }
 
         r = bf_send_response(client_fd, response);
-        if (r < 0)
-            return bf_err_r(r, "failed to send response");
+        if (r) {
+            bf_err_r(r, "failed to send response, ignoring");
+            continue;
+        }
     }
 
     return 0;
