@@ -11,6 +11,14 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         counter
         ACCEPT
     rule
+        meta.dport eq 22
+        counter
+        log internet
+        ACCEPT
+    rule
+        meta.dport eq 22
+        ACCEPT
+    rule
         meta.iface eq lo
         meta.iface eq 1
         counter

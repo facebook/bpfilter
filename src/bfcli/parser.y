@@ -53,6 +53,17 @@
         yyerror(ruleset, fmt, ##__VA_ARGS__);                                  \
         YYABORT;                                                               \
     })
+
+    enum bf_rule_meta_comp {
+        BF_RULE_META_LOG        = 1 << 0,
+        BF_RULE_META_COUNTER    = 1 << 1,
+    };
+
+    struct bf_rule_meta {
+        uint8_t log;
+        bool counter;
+        uint8_t comps;
+    };
 }
 
 %define parse.error detailed
@@ -71,6 +82,7 @@
     struct bf_chain *chain;
     enum bf_matcher_op matcher_op;
     struct bf_hookopts *hookopts;
+    struct bf_rule_meta rule_meta;
 }
 
 // Tokens
@@ -113,6 +125,8 @@
 %type <list> rules
 %destructor { bf_list_free(&$$); } rules
 
+%type <rule_meta> rule_meta_comp
+%type <rule_meta> rule_meta
 %type <rule> rule
 %destructor { bf_rule_free(&$$); } rule
 
@@ -236,16 +250,18 @@ rules           : %empty { $$ = NULL; }
                     $$ = TAKE_PTR($1);
                 }
                 ;
-rule            : RULE matchers log counter verdict
+rule            : RULE matchers rule_meta verdict
                 {
                     _free_bf_rule_ struct bf_rule *rule = NULL;
 
                     if (bf_rule_new(&rule) < 0)
                         bf_parse_err("failed to create a new bf_rule\n");
 
-                    rule->log = $3;
-                    rule->counters = $4;
-                    rule->verdict = $5;
+                    if ($3.comps & BF_RULE_META_LOG)
+                        rule->log = $3.log;
+                    if ($3.comps & BF_RULE_META_COUNTER)
+                        rule->counters = $3.counter;
+                    rule->verdict = $4;
 
                     bf_list_foreach ($2, matcher_node) {
                         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -260,6 +276,41 @@ rule            : RULE matchers log counter verdict
                     $$ = TAKE_PTR(rule);
                 }
                 ;
+
+rule_meta_comp  : %empty { $$ = (struct bf_rule_meta){}; }
+                | log
+                {
+                    $$ = (struct bf_rule_meta){
+                        .log = $1,
+                        .comps = BF_RULE_META_LOG,
+                    };
+                }
+                | counter
+                {
+                    $$ = (struct bf_rule_meta){
+                        .counter = $1,
+                        .comps = BF_RULE_META_COUNTER,
+                    };
+                }
+
+rule_meta       : %empty { $$ = (struct bf_rule_meta){}; }
+                | rule_meta rule_meta_comp {
+                    if ($2.comps & BF_RULE_META_LOG) {
+                        if ($1.comps & BF_RULE_META_LOG)
+                            bf_parse_err("duplicate keyword \"log\" in rule");
+                        $1.comps |= BF_RULE_META_LOG;
+                        $1.log = $2.log;
+                    }
+
+                    if ($2.comps & BF_RULE_META_COUNTER) {
+                        if ($1.comps & BF_RULE_META_COUNTER)
+                            bf_parse_err("duplicate keyword \"counter\" in rule");
+                        $1.comps |= BF_RULE_META_COUNTER;
+                        $1.counter = $2.counter;
+                    }
+
+                    $$ = $1;
+                }
 
 matchers        : matcher
                 {
