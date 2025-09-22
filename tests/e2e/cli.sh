@@ -784,6 +784,25 @@ suite_daemon_pin_updated_chain() {
 }
 without_daemon suite_daemon_pin_updated_chain
 
+suite_rule_meta_order() {
+    log "[SUITE] cli: allow out of order log, counter"
+    expect_failure "duplicate keyword counter" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter counter DROP\"
+    expect_failure "duplicate keyword log" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter log link log link DROP\"
+    expect_success "none of log, counter" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp DROP\"
+    expect_success "only log" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link DROP\"
+    expect_success "only counter" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter DROP\"
+    expect_success "use log then counter" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link counter DROP\"
+    expect_success "use counter then log" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain order BF_HOOK_XDP ACCEPT rule ip4.proto icmp counter log link DROP\"
+}
+with_daemon suite_rule_meta_order
+
 suite_log() {
     log "[SUITE] cli: log"
     expect_failure "invalid log action" \
