@@ -23,22 +23,38 @@ struct bf_program;
 /**
  * @enum bf_flavor
  *
- * Define a valid BPF flavor type for bpfilter.
- *
- * @var bf_flavor::BF_FLAVOR_TC
- *  TC flavor.
- * @var bf_flavor::BF_FLAVOR_NF
- *  For BPF_PROG_TYPE_NETFILTER programs. Expects a struct bpf_nf_ctx argument.
+ * Define the BPF program flavours available to bpfilter.
  */
 enum bf_flavor
 {
+    /**
+     * BPF TC programs, attached directly to an interface:
+     * - Input: `struct __sk_buff`
+     * - Headers available: from L2
+     * - Return code: 2 to drop, 0 to accept
+     */
     BF_FLAVOR_TC,
+
+    /**
+     * BPF_NETFILTER programs, can be attached to any Netfilter hook available:
+     * - Input: `struct bpf_nf_ctx`
+     * - Headers available: from L3
+     * - Return code: 0 to drop, 1 to accept
+     */
     BF_FLAVOR_NF,
+
+    /**
+     * XDP BPF programs, attached directly to an interface:
+     * - Input: `struct xdp_md`
+     * - Headers available: from L2
+     * - Return code: 1 to drop, 2 to accept
+     */
     BF_FLAVOR_XDP,
 
-    /** cgroup BPF programs are a middle ground between TC and BPF_NETFILTER
+    /**
+     * cgroup BPF programs are a middle ground between TC and BPF_NETFILTER
      * programs:
-     * - Input: <tt>struct __sk_buff</tt>
+     * - Input: `struct __sk_buff`
      * - Headers available: from L3
      * - Return code: 0 to drop, 1 to accept
      */
