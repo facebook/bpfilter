@@ -348,12 +348,14 @@ Rules are defined such as:
         [$SET...]
         [log link,internet,transport]
         [counter]
+        [mark $MARK]
         $VERDICT
 
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
   - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required.
   - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
+  - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP`` or ``CONTINUE``.
     - ``ACCEPT``: forward the packet to the kernel
     - ``DROP``: discard the packet.
@@ -494,6 +496,12 @@ Meta
       - ``eq``
       - ``$PROBABILITY``
       - ``$PROBABILITY`` is a valid decimal percentage value (i.e., within [0%, 100%]).
+    * - :rspan:`1` Mark
+      - :rspan:`1` ``meta.mark``
+      - ``eq``
+      - :rspan:`1` ``$MARK``
+      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value.
+    * - ``not``
 
 IPv4
 ####

@@ -16,6 +16,8 @@
 #include <bpfilter/runtime.h>
 #include <bpfilter/verdict.h>
 
+#define BF_RULE_MARK_MASK (0x00000000ffffffffULL)
+
 /**
  * @brief Return the string representation of a `bf_pkthdr` enumeration value.
  *
@@ -55,6 +57,12 @@ struct bf_rule
     uint32_t index;
     bf_list matchers;
     uint8_t log;
+
+    /** Mark to set to the packet's `sk_buff`. Only support for some hooks.
+     * The leftmost 32 bits are set to 1 if a mark is defined, or 0 otherwise.
+     * See `bf_rule_mark_is_set`. */
+    uint64_t mark;
+
     bool counters;
     enum bf_verdict verdict;
 };
@@ -125,3 +133,24 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
 int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
                         enum bf_matcher_op op, const void *payload,
                         size_t payload_len);
+
+static inline void bf_rule_mark_set(struct bf_rule *rule, uint32_t mark)
+{
+    bf_assert(rule);
+
+    rule->mark = ~BF_RULE_MARK_MASK | mark;
+}
+
+static inline uint32_t bf_rule_mark_get(const struct bf_rule *rule)
+{
+    bf_assert(rule);
+
+    return rule->mark & BF_RULE_MARK_MASK;
+}
+
+static inline bool bf_rule_mark_is_set(const struct bf_rule *rule)
+{
+    bf_assert(rule);
+
+    return rule->mark >> 32;
+}

@@ -510,6 +510,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_META_PROBABILITY:
         case BF_MATCHER_META_SPORT:
         case BF_MATCHER_META_DPORT:
+        case BF_MATCHER_META_MARK:
             r = bf_matcher_generate_meta(program, matcher);
             if (r)
                 return r;
@@ -562,6 +563,21 @@ static int _bf_program_generate_rule(struct bf_program *program,
             return bf_err_r(-EINVAL, "unknown matcher type %d",
                             bf_matcher_get_type(matcher));
         };
+    }
+
+    if (bf_rule_mark_is_set(rule)) {
+        if (!program->runtime.ops->gen_inline_set_mark) {
+            return bf_err_r(-ENOTSUP, "set mark is not supported by %s",
+                            program->runtime.chain->name);
+        }
+
+        r = program->runtime.ops->gen_inline_set_mark(program,
+                                                      bf_rule_mark_get(rule));
+        if (r) {
+            return bf_err_r(r,
+                            "failed to generate bytecode to set mark for '%s'",
+                            program->runtime.chain->name);
+        }
     }
 
     if (rule->log) {

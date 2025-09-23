@@ -54,15 +54,18 @@
         YYABORT;                                                               \
     })
 
-    enum bf_rule_meta_comp {
-        BF_RULE_META_LOG        = 1 << 0,
-        BF_RULE_META_COUNTER    = 1 << 1,
+    enum bf_rule_option_flag {
+        BF_RULE_OPTION_LOG      = 1 << 0,
+        BF_RULE_OPTION_COUNTER  = 1 << 1,
+        BF_RULE_OPTION_MARK     = 1 << 2,
     };
 
-    struct bf_rule_meta {
+    struct bf_rule_options {
+        uint8_t flags;
+
         uint8_t log;
         bool counter;
-        uint8_t comps;
+        uint32_t mark;
     };
 }
 
@@ -72,6 +75,7 @@
 %union {
     bool bval;
     uint8_t u8;
+    uint32_t u32;
     char *sval;
     enum bf_verdict verdict;
     enum bf_hook hook;
@@ -82,14 +86,14 @@
     struct bf_chain *chain;
     enum bf_matcher_op matcher_op;
     struct bf_hookopts *hookopts;
-    struct bf_rule_meta rule_meta;
+    struct bf_rule_options rule_options;
 }
 
 // Tokens
 %token CHAIN
 %token RULE
 %token SET
-%token LOG COUNTER
+%token LOG COUNTER MARK
 %token <sval> LOG_HEADERS
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
@@ -101,6 +105,7 @@
 // Grammar types
 %type <u8> log
 %type <bval> counter
+%type <u32> mark
 %destructor { freep(&$$); } <sval>
 
 %type <hook> hook
@@ -125,8 +130,8 @@
 %type <list> rules
 %destructor { bf_list_free(&$$); } rules
 
-%type <rule_meta> rule_meta_comp
-%type <rule_meta> rule_meta
+%type <rule_options> rule_option
+%type <rule_options> rule_options
 %type <rule> rule
 %destructor { bf_rule_free(&$$); } rule
 
@@ -151,6 +156,9 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
 
                     if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
+
+                    if (!bf_chain_validate(chain))
+                        bf_parse_err("chain '%s' is invalid", chain->name);
 
                     if (hookopts) {
                         r = bf_hookopts_validate(hookopts, chain->hook);
@@ -250,17 +258,19 @@ rules           : %empty { $$ = NULL; }
                     $$ = TAKE_PTR($1);
                 }
                 ;
-rule            : RULE matchers rule_meta verdict
+rule            : RULE matchers rule_options verdict
                 {
                     _free_bf_rule_ struct bf_rule *rule = NULL;
 
                     if (bf_rule_new(&rule) < 0)
                         bf_parse_err("failed to create a new bf_rule\n");
 
-                    if ($3.comps & BF_RULE_META_LOG)
-                        rule->log = $3.log;
-                    if ($3.comps & BF_RULE_META_COUNTER)
-                        rule->counters = $3.counter;
+                    rule->log = $3.flags & BF_RULE_OPTION_LOG ? $3.log : 0;
+                    rule->counters = $3.flags & BF_RULE_OPTION_COUNTER ? $3.counter : false;
+
+                    if ($3.flags & BF_RULE_OPTION_MARK)
+                        bf_rule_mark_set(rule, $3.mark);
+
                     rule->verdict = $4;
 
                     bf_list_foreach ($2, matcher_node) {
@@ -277,36 +287,50 @@ rule            : RULE matchers rule_meta verdict
                 }
                 ;
 
-rule_meta_comp  : %empty { $$ = (struct bf_rule_meta){}; }
+rule_option     : %empty { $$ = (struct bf_rule_options){}; }
                 | log
                 {
-                    $$ = (struct bf_rule_meta){
+                    $$ = (struct bf_rule_options){
                         .log = $1,
-                        .comps = BF_RULE_META_LOG,
+                        .flags = BF_RULE_OPTION_LOG,
                     };
                 }
                 | counter
                 {
-                    $$ = (struct bf_rule_meta){
+                    $$ = (struct bf_rule_options){
                         .counter = $1,
-                        .comps = BF_RULE_META_COUNTER,
+                        .flags = BF_RULE_OPTION_COUNTER,
+                    };
+                }
+                | mark
+                {
+                    $$ = (struct bf_rule_options){
+                        .mark = $1,
+                        .flags = BF_RULE_OPTION_MARK,
                     };
                 }
 
-rule_meta       : %empty { $$ = (struct bf_rule_meta){}; }
-                | rule_meta rule_meta_comp {
-                    if ($2.comps & BF_RULE_META_LOG) {
-                        if ($1.comps & BF_RULE_META_LOG)
+rule_options    : %empty { $$ = (struct bf_rule_options){}; }
+                | rule_options rule_option {
+                    if ($2.flags & BF_RULE_OPTION_LOG) {
+                        if ($1.flags & BF_RULE_OPTION_LOG)
                             bf_parse_err("duplicate keyword \"log\" in rule");
-                        $1.comps |= BF_RULE_META_LOG;
+                        $1.flags |= BF_RULE_OPTION_LOG;
                         $1.log = $2.log;
                     }
 
-                    if ($2.comps & BF_RULE_META_COUNTER) {
-                        if ($1.comps & BF_RULE_META_COUNTER)
+                    if ($2.flags & BF_RULE_OPTION_COUNTER) {
+                        if ($1.flags & BF_RULE_OPTION_COUNTER)
                             bf_parse_err("duplicate keyword \"counter\" in rule");
-                        $1.comps |= BF_RULE_META_COUNTER;
+                        $1.flags |= BF_RULE_OPTION_COUNTER;
                         $1.counter = $2.counter;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_MARK) {
+                        if ($1.flags & BF_RULE_OPTION_MARK)
+                            bf_parse_err("duplicate keyword \"mark\" in rule");
+                        $1.flags |= BF_RULE_OPTION_MARK;
+                        $1.mark = $2.mark;
                     }
 
                     $$ = $1;
@@ -465,4 +489,22 @@ log             : %empty    { $$ = 0; }
 counter         : %empty    { $$ = false; }
                 | COUNTER   { $$ = true; }
                 ;
+
+mark            : MARK STRING
+                {
+                    _cleanup_free_ const char *raw_mark = $2;
+                    long long mark;
+                    char *endptr;
+
+                    mark = strtoll(raw_mark, &endptr, 0);
+                    if (*endptr)
+                        bf_parse_err("mark value '%s' can't be parsed as a positive integer", raw_mark);
+                    if (mark < 0)
+                        bf_parse_err("mark should be positive, not '%s'", raw_mark);
+                    if (mark > UINT32_MAX)
+                        bf_parse_err("mark should be at most 0x%x", UINT32_MAX);
+
+                    $$ = (uint32_t)mark;
+                }
+
 %%

@@ -82,6 +82,14 @@ static int _bft_e2e_test_with_counter(struct bf_chain *chain,
         int test_ret;
 
         chain->hook = _bf_tests_meta[flavor].hook;
+        
+        /* Skip the test for the current hook if the change doesn't validate.
+         * The chain should be valid, but we run the test for every hook, so
+         * if one of the features use is incompatible with the current hook
+         * the validate fails. */
+        if (!bf_chain_validate(chain))
+            continue;
+        
         r = bf_chain_load(chain);
         if (r) {
             bf_info("failed to load test chain");

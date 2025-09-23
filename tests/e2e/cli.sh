@@ -820,6 +820,28 @@ suite_log() {
 }
 with_daemon suite_log
 
+suite_mark() {
+    log "[SUITE] cli: mark"
+    expect_failure "incompatible chain (XDP)" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_XDP ACCEPT rule ip4.proto icmp mark 0x16 DROP\"
+    expect_failure "incompatible chain (Netfilter)" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp mark 0x16 DROP\"
+    expect_failure "missing mark value" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark DROP\"
+    expect_failure "invalid mark value (can't parse)" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark 0x14aw DROP\"
+    expect_failure "invalid mark value (negative value)" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark -3 DROP\"
+    expect_failure "invalid mark value (value too big)" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark 0xffffffffff DROP\"
+
+    expect_success "valid decimal value" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark 14 DROP\"
+    expect_success "valid hexadecimal value" \
+        ${FROM_NS} ${BFCLI} chain set --from-str \"chain xdp_mark BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp mark 0x14 DROP\"
+}
+with_daemon suite_mark
+
 suite_matcher_set() {
     log "[SUITE] matcher: set"
     expect_matcher_ok "(ip4.saddr, icmp.code) in {192.168.1.1,41; 192.168.1.1,42}"
@@ -1082,6 +1104,26 @@ suite_matcher_meta() {
     expect_matcher_nok "meta.probability eq 1000%"
     expect_matcher_nok "meta.probability eq 15.5%"
     expect_matcher_nok "meta.probability eq teapot"
+
+    # Do not use expect_matcher_ok/nok as meta.mark is not compatible with XDP
+    log "[SUITE] matcher: meta.mark eq"
+    expect_success "valid matcher 'meta.mark eq 0'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 0 counter DROP\"
+    expect_success "valid matcher 'meta.mark eq 15'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 15 counter DROP\"
+    expect_success "valid matcher 'meta.mark eq 0x00'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 0x00 counter DROP\"
+    expect_success "valid matcher 'meta.mark eq 0xffffffff'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 0xffffffff counter DROP\"
+
+    expect_failure "invalid matcher 'meta.mark eq -1'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq -1 counter DROP\"
+    expect_failure "invalid matcher 'meta.mark eq 0xffffffffff'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 0xffffffffff counter DROP\"
+    expect_failure "invalid matcher 'meta.mark eq 1qw'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq 1qw counter DROP\"
+    expect_failure "invalid matcher 'meta.mark eq qw'" \
+        ${FROM_NS} ${BFCLI} ruleset set --from-str \"chain xdp BF_HOOK_TC_INGRESS ACCEPT rule meta.mark eq qw counter DROP\"
 }
 with_daemon suite_matcher_meta
 

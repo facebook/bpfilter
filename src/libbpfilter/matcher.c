@@ -300,6 +300,43 @@ void _bf_print_probability(const void *payload)
     (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)payload);
 }
 
+static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
+                          void *payload, const char *raw_payload)
+{
+    long long mark;
+    char *endptr;
+
+    UNUSED(type);
+    UNUSED(op);
+
+    bf_assert(payload);
+    bf_assert(raw_payload);
+
+    mark = strtoll(raw_payload, &endptr, 0);
+    if (*endptr) {
+        return bf_err_r(-EINVAL,
+                        "mark value '%s' can't be parsed as a positive integer",
+                        raw_payload);
+    }
+    if (mark < 0) {
+        return bf_err_r(-EINVAL, "mark should be positive, not '%s'",
+                        raw_payload);
+    }
+    if (mark > UINT32_MAX)
+        return bf_err_r(-EINVAL, "mark should be at most 0x%x", UINT32_MAX);
+
+    *(uint32_t *)payload = (uint32_t)mark;
+
+    return 0;
+}
+
+void _bf_print_mark(const void *payload)
+{
+    bf_assert(payload);
+
+    (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
+}
+
 static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
@@ -717,6 +754,17 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_probability,
                                    _bf_print_probability),
+                },
+        },
+    [BF_MATCHER_META_MARK] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_mark, _bf_print_mark),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
+                                   _bf_parse_mark, _bf_print_mark),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
@@ -1233,6 +1281,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_META_PROBABILITY] = "meta.probability",
     [BF_MATCHER_META_SPORT] = "meta.sport",
     [BF_MATCHER_META_DPORT] = "meta.dport",
+    [BF_MATCHER_META_MARK] = "meta.mark",
     [BF_MATCHER_IP4_SADDR] = "ip4.saddr",
     [BF_MATCHER_IP4_SNET] = "ip4.snet",
     [BF_MATCHER_IP4_DADDR] = "ip4.daddr",
