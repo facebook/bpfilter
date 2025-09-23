@@ -93,6 +93,41 @@ Test(counters, packet_size)
                               bft_counter_p(0, 1, pkt_local_ip4[0].pkt_len));
 }
 
+Test(mark, set_mark_then_read)
+{
+    _free_bf_rule_ struct bf_rule *rule_mark = 
+        bf_rule_get(0, true, BF_VERDICT_CONTINUE, (struct bf_matcher *[]) {
+            bf_matcher_get(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                (uint8_t[]) {
+                    127, 2, 10, 10
+                },
+                4),
+            NULL,
+        });
+    bf_rule_mark_set(rule_mark, 0xff);
+
+    _free_bf_rule_ struct bf_rule *rule_match = 
+        bf_rule_get(0, true, BF_VERDICT_ACCEPT, (struct bf_matcher *[]) {
+            bf_matcher_get(BF_MATCHER_META_MARK, BF_MATCHER_EQ,
+                (uint32_t[]) {
+                    0xff
+                },
+                4),
+            NULL,
+        });
+
+    _free_bf_chain_ struct bf_chain *chain = bf_test_chain_get(
+        BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
+        (struct bf_rule *[]) {
+            TAKE_PTR(rule_mark),
+            TAKE_PTR(rule_match),
+            NULL,
+         });
+
+    bft_e2e_test_with_counter(chain, BF_VERDICT_ACCEPT, pkt_local_ip4,
+                              bft_counter_p(1, 1, pkt_local_ip4[0].pkt_len));
+}
+
 Test(meta, l4_proto)
 {
     _free_bf_chain_ struct bf_chain *match_eq = bf_test_chain_get(

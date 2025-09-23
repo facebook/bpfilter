@@ -60,6 +60,8 @@ enum bf_matcher_type
     BF_MATCHER_META_SPORT,
     /// Matches the destination port for UDP and TCP packets.
     BF_MATCHER_META_DPORT,
+    /// Matches a specific `sk_buff->mark` value.
+    BF_MATCHER_META_MARK,
     /// Matches IPv4 source address.
     BF_MATCHER_IP4_SADDR,
     /// Matches IPv4 source network.

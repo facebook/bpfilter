@@ -40,6 +40,12 @@ enum bf_chain_flags
     /** A rule will filter on IPv6 nexthdr field. */
     BF_CHAIN_STORE_NEXTHDR,
 
+    /** A rule sets the sk_buff mark value. */
+    BF_CHAIN_SET_MARK,
+
+    /** A rule reads the sk_buff mark value. */
+    BF_CHAIN_GET_MARK,
+
     _BF_CHAIN_FLAGS_MAX,
 };
 
@@ -99,6 +105,18 @@ void bf_chain_free(struct bf_chain **chain);
  * @return 0 on success, or a negative error value on failure.
  */
 int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack);
+
+/**
+ * @brief Validate a chain.
+ *
+ * Ensure the chain, rules, and matchers are compatible with each other. E.g.
+ * XDP doesn't provide support for `sk_buff->mark`. A chain should be validated
+ * before the bytecode is generated.
+ *
+ * @param chain Chain to validate. Can't be NULL.
+ * @return True if the chain is valid, false otherwise.
+ */
+bool bf_chain_validate(struct bf_chain *chain);
 
 /**
  * Dump the content of a `bf_chain` object.

@@ -8,10 +8,12 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
     rule
         meta.dport eq 22
         log internet
+        mark 0xff
         counter
         ACCEPT
     rule
         meta.dport eq 22
+        mark 17
         counter
         log internet
         ACCEPT
@@ -61,6 +63,11 @@ chain myxdpprog BF_HOOK_XDP{ifindex=2} ACCEPT
         meta.probability eq 0%
         meta.probability eq 50%
         meta.probability eq 100%
+        counter
+        ACCEPT
+    rule
+        meta.mark eq 15
+        meta.mark eq 0x115
         counter
         ACCEPT
     rule

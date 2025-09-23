@@ -102,6 +102,28 @@ static int _bf_cgroup_gen_inline_epilogue(struct bf_program *program)
     return 0;
 }
 
+static int _bf_cgroup_gen_inline_set_mark(struct bf_program *program,
+                                          uint32_t mark)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, mark));
+    EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_1, BPF_REG_2,
+                              offsetof(struct __sk_buff, mark)));
+
+    return 0;
+}
+
+static int _bf_cgroup_gen_inline_get_mark(struct bf_program *program, int reg)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_W, reg, BPF_REG_1, offsetof(struct __sk_buff, mark)));
+
+    return 0;
+}
+
 /**
  * Convert a standard verdict into a return value.
  *
@@ -125,5 +147,7 @@ static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
 const struct bf_flavor_ops bf_flavor_ops_cgroup = {
     .gen_inline_prologue = _bf_cgroup_gen_inline_prologue,
     .gen_inline_epilogue = _bf_cgroup_gen_inline_epilogue,
+    .gen_inline_set_mark = _bf_cgroup_gen_inline_set_mark,
+    .gen_inline_get_mark = _bf_cgroup_gen_inline_get_mark,
     .get_verdict = _bf_cgroup_get_verdict,
 };

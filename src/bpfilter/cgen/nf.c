@@ -124,6 +124,20 @@ static int _bf_nf_gen_inline_epilogue(struct bf_program *program)
     return 0;
 }
 
+static int _bf_nf_gen_inline_get_mark(struct bf_program *program, int reg)
+{
+    int offset;
+
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
+    EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_2, 0x140));
+
+    return 0;
+}
+
 /**
  * Convert a standard verdict into a return value.
  *
@@ -147,5 +161,6 @@ static int _bf_nf_get_verdict(enum bf_verdict verdict)
 const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_prologue = _bf_nf_gen_inline_prologue,
     .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
+    .gen_inline_get_mark = _bf_nf_gen_inline_get_mark,
     .get_verdict = _bf_nf_get_verdict,
 };

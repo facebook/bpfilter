@@ -22,9 +22,11 @@
 
 %s STATE_HOOK_OPTS
 %s STATE_LOG_OPTS
+%s STATE_MARK_OPTS
 %s STATE_MATCHER_SET
 %s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
+%s STATE_MATCHER_META_MARK
 %s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
 %s STATE_MATCHER_IPV4_ADDR
@@ -60,6 +62,15 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
 }
     /* Verdicts */
 (ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
+
+    /* Mark */
+mark            { BEGIN(STATE_MARK_OPTS); return MARK; }
+<STATE_MARK_OPTS>{
+    {int} {
+        yylval.sval = strdup(yytext);
+        return STRING;
+    }
+}
 
     /* Logs */
 log             { BEGIN(STATE_LOG_OPTS); return LOG; }
@@ -118,6 +129,15 @@ meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytex
 <STATE_MATCHER_META_PROBA>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}% {
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+meta\.mark          { BEGIN(STATE_MATCHER_META_MARK); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_MARK>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int} {
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
     }
