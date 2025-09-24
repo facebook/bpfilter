@@ -709,8 +709,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 static int _bf_ipt_set_counters_handler(const struct xt_counters_info *counters,
                                         size_t len)
 {
-    bf_assert(counters);
-
+    UNUSED(counters);
     UNUSED(len);
 
     return 0;
