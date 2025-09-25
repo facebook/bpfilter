@@ -51,18 +51,10 @@ enum bf_log_level
     _BF_LOG_MAX,
 };
 
-#ifdef NDEBUG
 #define _bf_logger_prefix_fmt "%s%-7s%s: "
 #define _bf_logger_prefix_fmt_args(level, color)                               \
     bf_logger_get_color((color), BF_STYLE_BOLD), bf_log_level_to_str(level),   \
         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET)
-#else
-#define _bf_logger_prefix_fmt "%s%-7s[%s:%d]%s: "
-#define _bf_logger_prefix_fmt_args(level, color)                               \
-    bf_logger_get_color((color), BF_STYLE_BOLD), bf_log_level_to_str(level),   \
-        __func__, __LINE__,                                                    \
-        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET)
-#endif
 
 /**
  * Log an error message to stderr.
