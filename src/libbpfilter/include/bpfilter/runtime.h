@@ -80,6 +80,9 @@ enum bf_pkthdr
  *
  * The structure is published into a log buffer by the chain, when a hit rule
  * has a `log` action defined.
+ *
+ * Except for the raw packet headers (`l2hdr`, `l3hdr`, and `l4hdr`), all the
+ * values are stored in host byteorder.
  */
 struct bf_log
 {

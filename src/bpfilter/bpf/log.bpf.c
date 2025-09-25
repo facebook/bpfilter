@@ -5,6 +5,7 @@
 
 #include <linux/bpf.h>
 
+#include <bpf/bpf_endian.h>
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
@@ -27,7 +28,7 @@ __u8 bf_log(struct bf_runtime *ctx, __u32 rule_idx, __u8 headers,
     log->pkt_size = ctx->pkt_size;
     log->req_headers = headers;
     log->headers = 0;
-    log->l3_proto = l3_proto;
+    log->l3_proto = bpf_ntohs(l3_proto);
     log->l4_proto = l4_proto;
 
     if (headers & (1 << BF_PKTHDR_LINK) && ctx->l2_hdr &&
