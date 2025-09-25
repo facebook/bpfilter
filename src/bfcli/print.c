@@ -390,7 +390,7 @@ static void _bf_chain_log_l3(const struct bf_log *log)
         return;
     }
 
-    switch (be16toh(log->l3_proto)) {
+    switch (log->l3_proto) {
     case ETH_P_IP:
         iphdr = (struct iphdr *)&log->l3hdr[0];
 
@@ -445,7 +445,7 @@ static void _bf_chain_log_l3(const struct bf_log *log)
 
     default:
         (void)fprintf(stdout, "  Internet  : <unknown protocol 0x%04x>\n",
-                      be16toh(log->l3_proto));
+                      log->l3_proto);
     }
 }
 
