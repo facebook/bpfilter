@@ -133,7 +133,9 @@ static int _bf_nf_gen_inline_get_mark(struct bf_program *program, int reg)
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
-    EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_2, 0x140));
+    if ((offset = bf_btf_get_field_off("sk_buff", "mark")) < 0)
+        return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_2, offset));
 
     return 0;
 }
