@@ -103,9 +103,6 @@
 %token <sval> RAW_PAYLOAD
 
 // Grammar types
-%type <u8> log
-%type <bval> counter
-%type <u32> mark
 %destructor { freep(&$$); } <sval>
 
 %type <hook> hook
@@ -287,25 +284,53 @@ rule            : RULE matchers rule_options verdict
                 }
                 ;
 
-rule_option     : %empty { $$ = (struct bf_rule_options){}; }
-                | log
+rule_option     : LOG LOG_HEADERS
                 {
+                    _cleanup_free_ char *in = $2;
+                    char *tmp = in;
+                    char *saveptr;
+                    char *token;
+                    uint8_t log;
+
+                    while ((token = strtok_r(tmp, ",", &saveptr))) {
+                        enum bf_pkthdr header;
+
+                        if (bf_pkthdr_from_str(token, &header) < 0)
+                            bf_parse_err("unknown packet header '%s'", token);
+
+                        log |= BF_FLAG(header);
+
+                        tmp = NULL;
+                    }
+
                     $$ = (struct bf_rule_options){
-                        .log = $1,
+                        .log = log,
                         .flags = BF_RULE_OPTION_LOG,
                     };
                 }
-                | counter
+                | COUNTER
                 {
                     $$ = (struct bf_rule_options){
-                        .counter = $1,
+                        .counter = true,
                         .flags = BF_RULE_OPTION_COUNTER,
                     };
                 }
-                | mark
+                | MARK STRING
                 {
+                    _cleanup_free_ const char *raw_mark = $2;
+                    long long mark;
+                    char *endptr;
+
+                    mark = strtoll(raw_mark, &endptr, 0);
+                    if (*endptr)
+                        bf_parse_err("mark value '%s' can't be parsed as a positive integer", raw_mark);
+                    if (mark < 0)
+                        bf_parse_err("mark should be positive, not '%s'", raw_mark);
+                    if (mark > UINT32_MAX)
+                        bf_parse_err("mark should be at most 0x%x", UINT32_MAX);
+
                     $$ = (struct bf_rule_options){
-                        .mark = $1,
+                        .mark = (uint32_t)mark,
                         .flags = BF_RULE_OPTION_MARK,
                     };
                 }
@@ -462,49 +487,5 @@ matcher_op      : %empty { $$ = BF_MATCHER_EQ; }
                     $$ = op;
                 }
                 ;
-
-log             : %empty    { $$ = 0; }
-                | LOG LOG_HEADERS
-                {
-                    _cleanup_free_ char *in = $2;
-                    char *tmp = in;
-                    char *saveptr;
-                    char *token;
-
-                    $$ = 0;
-
-                    while ((token = strtok_r(tmp, ",", &saveptr))) {
-                        enum bf_pkthdr header;
-
-                        if (bf_pkthdr_from_str(token, &header) < 0)
-                            bf_parse_err("unknown packet header '%s'", token);
-
-                        $$ |= BF_FLAG(header);
-
-                        tmp = NULL;
-                    }
-                }
-                ;
-
-counter         : %empty    { $$ = false; }
-                | COUNTER   { $$ = true; }
-                ;
-
-mark            : MARK STRING
-                {
-                    _cleanup_free_ const char *raw_mark = $2;
-                    long long mark;
-                    char *endptr;
-
-                    mark = strtoll(raw_mark, &endptr, 0);
-                    if (*endptr)
-                        bf_parse_err("mark value '%s' can't be parsed as a positive integer", raw_mark);
-                    if (mark < 0)
-                        bf_parse_err("mark should be positive, not '%s'", raw_mark);
-                    if (mark > UINT32_MAX)
-                        bf_parse_err("mark should be at most 0x%x", UINT32_MAX);
-
-                    $$ = (uint32_t)mark;
-                }
 
 %%
