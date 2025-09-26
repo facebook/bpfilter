@@ -59,5 +59,6 @@ add_custom_target(e2e
                 --bpfilter $<TARGET_FILE:bpfilter>
                 --bfcli $<TARGET_FILE:bfcli>
                 --setuserns $<TARGET_FILE:setuserns_bin>
+                --rulesets-dir ${CMAKE_CURRENT_SOURCE_DIR}/rulesets
     COMMENT "Running end-to-end tests"
 )
