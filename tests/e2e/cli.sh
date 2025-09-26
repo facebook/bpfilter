@@ -28,6 +28,7 @@ BFCLI=
 _BPFILTER= # bpfilter binary path
 BPFILTER= # bpfilter command to use in tests (includes the required options)
 SETUSERNS=
+RULESETS_DIR=
 
 # Colors
 BLUE='\033[0;34m'
@@ -55,11 +56,12 @@ log() {
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  --bfcli PATH      Path to bfcli executable"
-    echo "  --bpfilter PATH   Path to bpfilter executable"
-    echo "  --setuserns PATH  Path to the tool used to setup the user namespace"
-    echo "  --early-exit      Exit immediately on first test failure"
-    echo "  -h, --help        Display this help message and exit"
+    echo "  --bfcli PATH        Path to bfcli executable"
+    echo "  --bpfilter PATH     Path to bpfilter executable"
+    echo "  --setuserns PATH    Path to the tool used to setup the user namespace"
+    echo "  --rulesets-dir PATH Path to the directory containing the test rulesets"
+    echo "  --early-exit        Exit immediately on first test failure"
+    echo "  -h, --help          Display this help message and exit"
     exit 1
 }
 
@@ -88,6 +90,14 @@ while [[ $# -gt 0 ]]; do
                 usage
             fi
             SETUSERNS=$(realpath $2)
+            shift 2
+            ;;
+        --rulesets-dir)
+            if [[ -z "$2" || "$2" == --* ]]; then
+                echo "Error: --rulesets-dir requires a path argument."
+                usage
+            fi
+            RULESETS_DIR=$(realpath $2)
             shift 2
             ;;
         --early-exit)
@@ -182,6 +192,7 @@ setup() {
     log "${BLUE}    bfcli: ${BFCLI}"
     log "${BLUE}    bpfilter: ${_BPFILTER}"
     log "${BLUE}    setuserns: ${SETUSERNS}"
+    log "${BLUE}    rulesets-dir: ${RULESETS_DIR}"
 }
 
 cleanup() {
@@ -1873,6 +1884,14 @@ suite_matcher_icmpv6() {
 }
 with_daemon suite_matcher_icmpv6
 
+suite_generate_for_each_hook() {
+    log "[SUITE] cli: generate a chain for each hook"
+    for file in "$RULESETS_DIR"/*.bf; do
+        expect_success "generate chain for $(basename $file .bf)" \
+            ${FROM_NS} ${BFCLI} chain set --from-file ${file}
+    done
+}
+with_daemon suite_generate_for_each_hook
 
 ################################################################################
 #
