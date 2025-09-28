@@ -398,3 +398,41 @@ Test(list, node_take_data)
         }
     }
 }
+
+Test(list, push_to_list)
+{
+    bf_list list;
+    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+
+    int dummy_int = 1;
+    _cleanup_free_ int *dummy_int_ptr = NULL;
+    _cleanup_free_ void *dummy_void_ptr_ptr = malloc(sizeof(void*));
+
+    bf_list_init(&list, &free_ops);
+    expect_assert_failure(bf_list_push(NULL, NULL));
+    expect_assert_failure(bf_list_push(NULL, &dummy_void_ptr_ptr));
+    expect_assert_failure(bf_list_push(NOT_NULL, NULL));
+
+    dummy_int_ptr = malloc(sizeof(dummy_int));
+    *dummy_int_ptr = dummy_int;
+
+    bf_list_push(&list, (void **)&dummy_int_ptr);
+    assert_int_equal(*(int *)bf_list_node_get_data(list.tail), dummy_int);
+    assert_ptr_equal(list.head, list.tail);
+    assert_null(dummy_int_ptr);
+    assert_int_equal(bf_list_size(&list), 1);
+
+    dummy_int = 2;
+    dummy_int_ptr = malloc(sizeof(dummy_int));
+    *dummy_int_ptr = dummy_int;
+
+    bf_list_push(&list, (void **)&dummy_int_ptr);
+    assert_int_equal(*(int *)bf_list_node_get_data(list.tail), dummy_int);
+    assert_ptr_equal(list.head->next, list.tail);
+    assert_ptr_equal(list.tail->prev, list.head);
+    assert_null(dummy_int_ptr);
+    assert_int_equal(bf_list_size(&list), 2);
+    assert_null(list.tail->next);
+
+    bf_list_clean(&list);
+}
