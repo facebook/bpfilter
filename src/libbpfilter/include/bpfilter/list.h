@@ -14,7 +14,6 @@
 /**
  * @file list.h
  *
- * @todo Create `bf_list_push` function.
  * @todo `bf_list_add_XXX` functions should probably steal the pointer of the
  * data they receive, to be more consistent with other functions, and avoid
  * `TAKE_PTR()` after `bf_list_add_tail()`.
@@ -285,6 +284,15 @@ static inline bool bf_list_is_tail(const bf_list *list,
 
     return node == list->tail;
 }
+
+/**
+ * @brief Push a new node at the end of the list and steal the data pointer.
+ *
+ * @param list List to push node to. Must be initialised and non-NULL.
+ * @param data Data to be pushed. Must be non-NULL.
+ * @return 0 on success or negative errno code on failure.
+ */
+int bf_list_push(bf_list *list, void **data);
 
 /**
  * Add data at the beginning of the list.

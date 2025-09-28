@@ -133,6 +133,21 @@ int bf_list_pack(const bf_list *list, bf_wpack_t *pack)
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
+int bf_list_push(bf_list *list, void **data)
+{
+    int r;
+
+    bf_assert(data);
+
+    r = bf_list_add_tail(list, *data);
+    if (r < 0)
+        return r;
+
+    TAKE_PTR(*data);
+
+    return 0;
+}
+
 int bf_list_add_head(bf_list *list, void *data)
 {
     bf_list_node *node = NULL;
