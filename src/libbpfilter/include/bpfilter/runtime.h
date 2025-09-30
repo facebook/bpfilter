@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define bf_aligned(x) __attribute__((aligned(x)))
+
 // _Static_assert doesn't exist in C++
 #ifndef __cplusplus
 #define static_assert _Static_assert
@@ -89,17 +91,11 @@ struct bf_log
     /** Timestamp of the packet processing. */
     __u64 ts;
 
-    /** ID of the rule triggering the log. */
-    __u32 rule_id;
-
     /** Total size of the packet, including the payload. */
     __u64 pkt_size;
 
-    /** User-request headers, as defined in the rule. */
-    __u8 req_headers:4;
-
-    /** Logged headers, as not all hooks can access all headers. */
-    __u8 headers:4;
+    /** ID of the rule triggering the log. */
+    __u32 rule_id;
 
     /** Layer 3 (internet) protocol identifier. */
     __u16 l3_proto;
@@ -107,14 +103,20 @@ struct bf_log
     /** Layer 4 (transport) protocol identifier. */
     __u8 l4_proto;
 
+    /** User-request headers, as defined in the rule. */
+    __u8 req_headers:4;
+
+    /** Logged headers, as not all hooks can access all headers. */
+    __u8 headers:4;
+
     /** Layer 2 header. */
-    __u8 l2hdr[BF_L2_SLICE_LEN];
+    bf_aligned(8) __u8 l2hdr[BF_L2_SLICE_LEN];
 
     /** Layer 3 header. */
-    __u8 l3hdr[BF_L3_SLICE_LEN];
+    bf_aligned(8) __u8 l3hdr[BF_L3_SLICE_LEN];
 
     /** Layer 4 header. */
-    __u8 l4hdr[BF_L4_SLICE_LEN];
+    bf_aligned(8) __u8 l4hdr[BF_L4_SLICE_LEN];
 };
 
 struct bf_ip4_lpm_key

@@ -42,8 +42,6 @@
     (-(int)sizeof(struct bf_runtime) +                                         \
      (int)offsetof(struct bf_runtime, scratch) + (index))
 
-#define bf_aligned(x) __attribute__((aligned(x)))
-
 /**
  * @brief Runtime stack layout for the generated BPF programs.
  *
