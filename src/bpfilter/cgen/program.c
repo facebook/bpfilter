@@ -118,6 +118,11 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     if (r < 0)
         return bf_err_r(r, "failed to create the counters bf_map object");
 
+    r = bf_map_new(&_program->rmap, "ratelimit_map", BF_MAP_TYPE_RATELIMIT,
+                   sizeof(uint32_t), sizeof(struct bf_counter), 1);
+    if (r < 0)
+        return bf_err_r(r, "failed to create the ratelimit bf_map object");
+
     r = bf_map_new(&_program->pmap, "printer_map", BF_MAP_TYPE_PRINTER,
                    sizeof(uint32_t), BF_MAP_VALUE_SIZE_UNKNOWN, 1);
     if (r < 0)
@@ -183,6 +188,14 @@ int bf_program_new_from_pack(struct bf_program **program,
     if (r)
         return bf_rpack_key_err(r, "bf_program.cmap");
     r = bf_map_new_from_pack(&_program->cmap, dir_fd, child);
+    if (r)
+        return r;
+
+    bf_map_free(&_program->rmap);
+    r = bf_rpack_kv_obj(node, "rmap", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_program.rmap");
+    r = bf_map_new_from_pack(&_program->rmap, dir_fd, child);
     if (r)
         return r;
 
@@ -270,6 +283,7 @@ void bf_program_free(struct bf_program **program)
     closep(&(*program)->runtime.prog_fd);
 
     bf_map_free(&(*program)->cmap);
+    bf_map_free(&(*program)->rmap);
     bf_map_free(&(*program)->pmap);
     bf_map_free(&(*program)->lmap);
     bf_list_clean(&(*program)->sets);
@@ -287,6 +301,10 @@ int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
 
     bf_wpack_open_object(pack, "cmap");
     bf_map_pack(program->cmap, pack);
+    bf_wpack_close_object(pack);
+
+    bf_wpack_open_object(pack, "rmap");
+    bf_map_pack(program->rmap, pack);
     bf_wpack_close_object(pack);
 
     bf_wpack_open_object(pack, "pmap");
@@ -327,6 +345,11 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     DUMP(prefix, "cmap: struct bf_map *");
     bf_dump_prefix_push(prefix);
     bf_map_dump(program->cmap, bf_dump_prefix_last(prefix));
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "rmap: struct bf_map *");
+    bf_dump_prefix_push(prefix);
+    bf_map_dump(program->rmap, bf_dump_prefix_last(prefix));
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "pmap: struct bf_map *");
@@ -454,6 +477,10 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
             value = program->cmap->fd;
+            break;
+        case BF_FIXUP_TYPE_RATELIMIT_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = program->rmap->fd;
             break;
         case BF_FIXUP_TYPE_PRINTER_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
@@ -913,6 +940,26 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     return 0;
 }
 
+static int _bf_program_load_ratelimit_map(struct bf_program *program)
+{
+    _cleanup_close_ int _fd = -1;
+    int r;
+
+    bf_assert(program);
+
+    r = bf_map_create(program->rmap);
+    if (r < 0)
+        return r;
+
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_RATELIMIT_MAP_FD);
+    if (r < 0) {
+        bf_map_destroy(program->rmap);
+        return bf_err_r(r, "failed to fixup ratelimit map FD");
+    }
+
+    return 0;
+}
+
 static int _bf_program_load_counters_map(struct bf_program *program)
 {
     _cleanup_close_ int _fd = -1;
@@ -1041,6 +1088,10 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return r;
 
+    r = _bf_program_load_ratelimit_map(prog);
+    if (r)
+        return r;
+
     r = _bf_program_load_printer_map(prog);
     if (r)
         return r;
@@ -1104,6 +1155,7 @@ void bf_program_unload(struct bf_program *prog)
     closep(&prog->runtime.prog_fd);
     bf_link_detach(prog->link);
     bf_map_destroy(prog->cmap);
+    bf_map_destroy(prog->rmap);
     bf_map_destroy(prog->pmap);
     bf_map_destroy(prog->lmap);
     bf_list_foreach (&prog->sets, map_node)
@@ -1155,6 +1207,12 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
         goto err_unpin_all;
     }
 
+    r = bf_map_pin(prog->rmap, dir_fd);
+    if (r) {
+        bf_err_r(r, "failed to pin BPF ratelimit map for '%s'", name);
+        goto err_unpin_all;
+    }
+
     r = bf_map_pin(prog->pmap, dir_fd);
     if (r) {
         bf_err_r(r, "failed to pin BPF printer map for '%s'", name);
@@ -1196,6 +1254,7 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
     assert(prog);
 
     bf_map_unpin(prog->cmap, dir_fd);
+    bf_map_unpin(prog->rmap, dir_fd);
     bf_map_unpin(prog->pmap, dir_fd);
     bf_map_unpin(prog->lmap, dir_fd);
 
