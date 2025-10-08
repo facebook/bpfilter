@@ -626,6 +626,11 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
     }
 
+    // TODO: the logic goes here
+    if (rule->ratelimit) {
+        // We probably should do something here, but the EMIT are scarry
+    }
+
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
