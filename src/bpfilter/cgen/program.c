@@ -36,8 +36,11 @@
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
+#include "bpf/bpf_helpers.h"
+#include "bpfilter/ratelimit.h"
 #include "cgen/cgroup.h"
 #include "cgen/dump.h"
+#include "cgen/elfstub.h"
 #include "cgen/fixup.h"
 #include "cgen/jmp.h"
 #include "cgen/matcher/icmp.h"
@@ -119,7 +122,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         return bf_err_r(r, "failed to create the counters bf_map object");
 
     r = bf_map_new(&_program->rmap, "ratelimit_map", BF_MAP_TYPE_RATELIMIT,
-                   sizeof(uint32_t), sizeof(struct bf_counter), 1);
+                   sizeof(uint32_t), sizeof(struct bf_ratelimit), 1);
     if (r < 0)
         return bf_err_r(r, "failed to create the ratelimit bf_map object");
 
@@ -632,6 +635,21 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);
         EMIT(program, BPF_MOV32_IMM(BPF_REG_3, rule->index));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
+    }
+
+    if (rule->ratelimit) {
+        EMIT_LOAD_RATELIMIT_FD_FIXUP(program, BPF_REG_1);
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_2, rule->index));
+        EMIT(program, BPF_MOV32_IMM(BPF_REG_3, rule->ratelimit));
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_RATELIMIT);
+
+        _clean_bf_jmpctx_ struct bf_jmpctx ctx =
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+
+        EMIT(program,
+             BPF_MOV64_IMM(BPF_REG_0,
+                           program->runtime.ops->get_verdict(BF_VERDICT_DROP)));
+        EMIT(program, BPF_EXIT_INSN());
     }
 
     switch (rule->verdict) {

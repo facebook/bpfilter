@@ -108,7 +108,8 @@ log             { BEGIN(STATE_LOG_OPTS); return LOG; }
     /* Rate limit  */
 ratelimit       { BEGIN(STATE_RATELIMIT_OPTS); return RATELIMIT; }
 <STATE_RATELIMIT_OPTS>{
-    [0-9]+ {
+    /* -?[0-9]+(\.[0-9]+)*\/[a-zA-z]+ { */     /* ex: -13.99/abc */
+    -?[0-9]+\/[a-zA-z]+ {                        /* ex: 13/abcd */
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RATELIMIT_VAL;

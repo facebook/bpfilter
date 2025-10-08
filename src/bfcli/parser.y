@@ -58,8 +58,8 @@
     enum bf_rule_option_flag {
         BF_RULE_OPTION_LOG        = 1 << 0,
         BF_RULE_OPTION_COUNTER    = 1 << 1,
-        BF_RULE_OPTION_RATELIMIT  = 1 << 2,
-        BF_RULE_OPTION_MARK       = 1 << 3,
+        BF_RULE_OPTION_MARK       = 1 << 2,
+        BF_RULE_OPTION_RATELIMIT  = 1 << 3,
     };
 
     struct bf_rule_options {
@@ -359,9 +359,21 @@ rule_option     : LOG LOG_HEADERS
                 {
                     _cleanup_free_ char *in = $2;
                     char *tmp = in;
-                    uint32_t limit = atoi(tmp);
+                    char *saveptr;
 
-                    printf("Got %d\n", limit);
+                    if (tmp[0] == '-')
+                        bf_parse_err("ratelimit should be positive");
+
+                    errno = 0;
+                    uint32_t limit = strtoul(strtok_r(tmp, "/", &saveptr), NULL, 0);
+                    if (errno != 0)
+                        bf_parse_err("ratelimit value is too large");
+
+                    $$ = (struct bf_rule_options){
+                        .ratelimit = limit,
+                        .flags = BF_RULE_OPTION_RATELIMIT,
+                    };
+
                     $$ = (struct bf_rule_options){
                         .ratelimit = limit,
                         .flags = BF_RULE_OPTION_RATELIMIT,
@@ -401,6 +413,13 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                             bf_parse_err("duplicate keyword \"counter\" in rule");
                         $1.flags |= BF_RULE_OPTION_COUNTER;
                         $1.counter = $2.counter;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_RATELIMIT) {
+                        if ($1.flags & BF_RULE_OPTION_RATELIMIT)
+                            bf_parse_err("duplicate keyword \"ratelimit\" in rule");
+                        $1.flags |= BF_RULE_OPTION_RATELIMIT;
+                        $1.ratelimit = $2.ratelimit;
                     }
 
                     if ($2.flags & BF_RULE_OPTION_MARK) {

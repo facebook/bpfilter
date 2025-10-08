@@ -11,7 +11,8 @@
 
 #include "bpfilter/helper.h"
 
-int bf_ratelimit_new(struct bf_ratelimit **ratelimit, int64_t limit)
+int bf_ratelimit_new(struct bf_ratelimit **ratelimit, uint64_t current,
+                     uint64_t last_time)
 {
     _cleanup_free_ struct bf_ratelimit *_ratelimit = NULL;
 
@@ -21,7 +22,8 @@ int bf_ratelimit_new(struct bf_ratelimit **ratelimit, int64_t limit)
     if (!_ratelimit)
         return -ENOMEM;
 
-    _ratelimit->limit = limit;
+    _ratelimit->current = current;
+    _ratelimit->last_time = last_time;
 
     *ratelimit = TAKE_PTR(_ratelimit);
 
@@ -36,13 +38,17 @@ int bf_ratelimit_new_from_pack(struct bf_ratelimit **ratelimit,
 
     bf_assert(ratelimit);
 
-    r = bf_ratelimit_new(&_ratelimit, 0);
+    r = bf_ratelimit_new(&_ratelimit, 0, 0);
     if (r)
         return r;
 
-    r = bf_rpack_kv_u64(node, "bytes", &_ratelimit->limit);
+    r = bf_rpack_kv_u64(node, "current", &_ratelimit->current);
     if (r)
-        return bf_rpack_key_err(r, "bf_ratelimit.bytes");
+        return bf_rpack_key_err(r, "bf_ratelimit.current");
+
+    r = bf_rpack_kv_u64(node, "last_time", &_ratelimit->last_time);
+    if (r)
+        return bf_rpack_key_err(r, "bf_ratelimit.last_time");
 
     *ratelimit = TAKE_PTR(_ratelimit);
 
@@ -64,7 +70,8 @@ int bf_ratelimit_pack(const struct bf_ratelimit *ratelimit, bf_wpack_t *pack)
     bf_assert(ratelimit);
     bf_assert(pack);
 
-    bf_wpack_kv_u64(pack, "bytes", ratelimit->limit);
+    bf_wpack_kv_u64(pack, "current", ratelimit->current);
+    bf_wpack_kv_u64(pack, "last_time", ratelimit->last_time);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

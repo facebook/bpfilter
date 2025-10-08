@@ -89,6 +89,10 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.counters");
 
+    r = bf_rpack_kv_u32(node, "ratelimit", &_rule->ratelimit);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.ratelimit");
+
     r = bf_rpack_kv_u64(node, "mark", &_rule->mark);
     if (r)
         return bf_rpack_key_err(r, "bf_rule.mark");
@@ -150,6 +154,7 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
     bf_wpack_kv_u32(pack, "index", rule->index);
     bf_wpack_kv_u8(pack, "log", rule->log);
     bf_wpack_kv_bool(pack, "counters", rule->counters);
+    bf_wpack_kv_u32(pack, "ratelimit", rule->ratelimit);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);
     bf_wpack_kv_u32(pack, "redirect_ifindex", rule->redirect_ifindex);
@@ -186,6 +191,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 
     DUMP(prefix, "log: %02x", rule->log);
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
+    DUMP(prefix, "ratelimit: 0x%" PRIx32, rule->ratelimit);
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
     DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
     if (bf_rule_has_redirect(rule)) {
