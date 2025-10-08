@@ -22,6 +22,7 @@
 
 %s STATE_HOOK_OPTS
 %s STATE_LOG_OPTS
+%s STATE_RATELIMIT_OPTS
 %s STATE_MARK_OPTS
 %s STATE_REDIRECT_IFACE
 %s STATE_REDIRECT_DIR
@@ -101,6 +102,16 @@ log             { BEGIN(STATE_LOG_OPTS); return LOG; }
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return LOG_HEADERS;
+    }
+}
+
+    /* Rate limit  */
+ratelimit       { BEGIN(STATE_RATELIMIT_OPTS); return RATELIMIT; }
+<STATE_RATELIMIT_OPTS>{
+    [0-9]+ {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RATELIMIT_VAL;
     }
 }
 
