@@ -57,6 +57,7 @@ struct bf_rule
     uint32_t index;
     bf_list matchers;
     uint8_t log;
+    uint32_t ratelimit;
 
     /** Mark to set to the packet's `sk_buff`. Only support for some hooks.
      * The leftmost 32 bits are set to 1 if a mark is defined, or 0 otherwise.
