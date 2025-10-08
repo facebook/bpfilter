@@ -135,6 +135,9 @@ enum bf_elfstub_id
      */
     BF_ELFSTUB_LOG,
 
+    // Return 0 on ACCEPT, 1 on DROP
+    BF_ELFSTUB_RATELIMIT,
+
     _BF_ELFSTUB_MAX,
 };
 

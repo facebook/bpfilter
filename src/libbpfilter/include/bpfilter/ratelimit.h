@@ -14,12 +14,15 @@
  *
  * Rate limit assigned to each rule
  *
- * @var bf_ratelimit::limit
- *  Number of times the rule can be matched before starting to drop packets.
+ * @var bf_ratelimit::current
+ *  Packets allowed to pass in the current unit of time.
+ * @var bf_ratelimit::last_time
+ *  Timestamp of the last packet. 
  */
 struct bf_ratelimit
 {
-    uint64_t limit;
+    uint64_t current;
+    uint64_t last_time;
 };
 
 #define _free_bf_ratelimit_ __attribute__((__cleanup__(bf_ratelimit_free)))
@@ -31,10 +34,12 @@ struct bf_ratelimit
  * owned by the caller.
  *
  * @param ratelimit Output pointer for the new @ref bf_ratelimit. Can't be NULL.
- * @param limit Number of matches allowed.
+ * @param current Packets allowed to pass in the current unit of time.
+ * @param last_time Timestamp of the last packet. 
  * @return 0 on success, negative errno on error.
  */
-int bf_ratelimit_new(struct bf_ratelimit **ratelimit, int64_t limit);
+int bf_ratelimit_new(struct bf_ratelimit **ratelimit, uint64_t current,
+                     uint64_t last_time);
 
 /**
  * @brief Allocate and initialize a new ratelimit from serialized data.
