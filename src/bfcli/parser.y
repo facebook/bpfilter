@@ -57,8 +57,8 @@
     enum bf_rule_option_flag {
         BF_RULE_OPTION_LOG        = 1 << 0,
         BF_RULE_OPTION_COUNTER    = 1 << 1,
-        BF_RULE_OPTION_RATELIMIT  = 1 << 2,
-        BF_RULE_OPTION_MARK       = 1 << 3,
+        BF_RULE_OPTION_MARK       = 1 << 2,
+        BF_RULE_OPTION_RATELIMIT  = 1 << 3,
     };
 
     struct bf_rule_options {
@@ -325,7 +325,6 @@ rule_option     : LOG LOG_HEADERS
                     char *tmp = in;
                     uint32_t limit = atoi(tmp);
 
-                    printf("Got %d\n", limit);
                     $$ = (struct bf_rule_options){
                         .ratelimit = limit,
                         .flags = BF_RULE_OPTION_RATELIMIT,
