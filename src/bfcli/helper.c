@@ -26,7 +26,7 @@ static int _bf_compute_lexer_buf_size(size_t len)
     int val = _BF_LEX_MIN_BUF_POW;
 
     if (len) {
-        val = (int)sizeof(len) * 8 - __builtin_clzl(len);
+        val = ((int)sizeof(len) * 8) - __builtin_clzl(len);
         val = bf_min(bf_max(val - 3, _BF_LEX_MIN_BUF_POW), _BF_LEX_MAX_BUF_POW);
     }
 

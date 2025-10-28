@@ -492,7 +492,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
     // Total number of rules, chain policies, and error entry
     _replace->num_entries = nrules + 1;
     _replace->num_counters = nrules + 1;
-    _replace->size = nrules * rule_size + err_size;
+    _replace->size = (nrules * rule_size) + err_size;
 
     entry = (struct ipt_entry *)(_replace + 1);
     strncpy(_replace->name, "filter", XT_TABLE_MAXNAMELEN);
@@ -511,7 +511,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
         _replace->valid_hooks |= BF_FLAG(hook);
         _replace->hook_entry[hook] = next_chain_off;
         _replace->underflow[hook] =
-            next_chain_off + bf_list_size(&chain->rules) * rule_size;
+            next_chain_off + (bf_list_size(&chain->rules) * rule_size);
 
         bf_list_foreach (&chain->rules, rule_node) {
             struct bf_rule *rule = bf_list_node_get_data(rule_node);
