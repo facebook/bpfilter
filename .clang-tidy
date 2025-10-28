@@ -48,6 +48,8 @@
 #   No benefit.
 # - performance-no-int-to-ptr
 #   No benefit.
+# - portability-avoid-pragma-once
+#   Allow usage of `#pragma once`.
 # - readability-enum-initial-value
 #   clang-tidy complains because the X_MAX value of the enums is not defined
 #   explicitly, while other are. We prefer to do it this way.
@@ -88,6 +90,7 @@ Checks: >
   performance-*,
     -performance-no-int-to-ptr,
   portability-*,
+    -portability-avoid-pragma-once,
   readability-*,
     -readability-enum-initial-value,
     -readability-function-cognitive-complexity,

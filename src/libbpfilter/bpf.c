@@ -18,7 +18,7 @@
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
 
-#if defined(__i386__)
+#ifdef __i386__
 #define _BF_NR_bpf 357
 #elif defined(__x86_64__)
 #define _BF_NR_bpf 321
