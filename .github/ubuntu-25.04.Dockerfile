@@ -1,4 +1,4 @@
-FROM ubuntu:24.10
+FROM ubuntu:25.04
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
     autoconf \
@@ -32,7 +32,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-git \
     python3-pip \
     python3-scapy \
-    python3-setuptools \
     python3-sphinx \
     sed \
     xxd && \
