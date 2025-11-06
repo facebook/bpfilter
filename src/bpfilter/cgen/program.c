@@ -38,6 +38,7 @@
 
 #include "cgen/cgroup.h"
 #include "cgen/dump.h"
+#include "cgen/elfstub.h"
 #include "cgen/fixup.h"
 #include "cgen/jmp.h"
 #include "cgen/matcher/icmp.h"
@@ -626,9 +627,9 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
     }
 
-    // TODO: the logic goes here
     if (rule->ratelimit) {
-        // We probably should do something here, but the EMIT are scarry
+        // TODO: pass args to elfstub function
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_RATELIMIT);
     }
 
     switch (rule->verdict) {

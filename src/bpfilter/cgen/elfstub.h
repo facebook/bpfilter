@@ -135,6 +135,8 @@ enum bf_elfstub_id
      */
     BF_ELFSTUB_LOG,
 
+    BF_ELFSTUB_RATELIMIT,
+
     _BF_ELFSTUB_MAX,
 };
 
