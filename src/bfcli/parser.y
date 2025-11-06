@@ -323,7 +323,13 @@ rule_option     : LOG LOG_HEADERS
                 {
                     _cleanup_free_ char *in = $2;
                     char *tmp = in;
-                    uint32_t limit = atoi(tmp);
+                    char *saveptr;
+
+                    uint32_t limit = atoi(strtok_r(tmp, "/", &saveptr));
+                    char* time = strtok_r(NULL, "", &saveptr);
+
+                    printf("limit %d\n", limit);
+                    printf("time %s\n", time);
 
                     $$ = (struct bf_rule_options){
                         .ratelimit = limit,
@@ -364,6 +370,13 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                             bf_parse_err("duplicate keyword \"counter\" in rule");
                         $1.flags |= BF_RULE_OPTION_COUNTER;
                         $1.counter = $2.counter;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_RATELIMIT) {
+                        if ($1.flags & BF_RULE_OPTION_RATELIMIT)
+                            bf_parse_err("duplicate keyword \"ratelimit\" in rule");
+                        $1.flags |= BF_RULE_OPTION_RATELIMIT;
+                        $1.ratelimit = $2.ratelimit;
                     }
 
                     if ($2.flags & BF_RULE_OPTION_MARK) {
