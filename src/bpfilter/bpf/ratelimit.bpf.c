@@ -4,9 +4,7 @@
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
-#include "cgen/runtime.h"
-
-__u8 bf_ratelimit(struct bf_runtime *ctx)
+__u8 bf_ratelimit(void)
 {
     bpf_printk("Ratelimit got triggered");
     return 0;
