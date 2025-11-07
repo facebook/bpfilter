@@ -44,6 +44,7 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
     static const char *str[] = {
         [BF_FIXUP_TYPE_JMP_NEXT_RULE] = "BF_FIXUP_TYPE_JMP_NEXT_RULE",
         [BF_FIXUP_TYPE_COUNTERS_MAP_FD] = "BF_FIXUP_TYPE_COUNTERS_MAP_FD",
+        [BF_FIXUP_TYPE_RATELIMIT_MAP_FD] = "BF_FIXUP_TYPE_RATELIMIT_MAP_FD",
         [BF_FIXUP_TYPE_PRINTER_MAP_FD] = "BF_FIXUP_TYPE_PRINTER_MAP_FD",
         [BF_FIXUP_TYPE_SET_MAP_FD] = "BF_FIXUP_TYPE_SET_MAP_FD",
         [BF_FIXUP_ELFSTUB_CALL] = "BF_FIXUP_ELFSTUB_CALL",
@@ -70,6 +71,7 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
     switch (fixup->type) {
     case BF_FIXUP_TYPE_JMP_NEXT_RULE:
     case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
+    case BF_FIXUP_TYPE_RATELIMIT_MAP_FD:
     case BF_FIXUP_TYPE_PRINTER_MAP_FD:
         // No specific value to dump
         break;
