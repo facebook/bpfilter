@@ -325,11 +325,20 @@ rule_option     : LOG LOG_HEADERS
                     char *tmp = in;
                     char *saveptr;
 
-                    uint32_t limit = atoi(strtok_r(tmp, "/", &saveptr));
+                    if (tmp[0] == '-')
+                        bf_parse_err("ratelimit should be positive");
+
+                    errno = 0;
+                    uint32_t limit = strtoul(strtok_r(tmp, "/", &saveptr), NULL, 0);
+                    if (errno != 0)
+                        bf_parse_err("ratelimit value is too large");
+
                     char* time = strtok_r(NULL, "", &saveptr);
 
-                    printf("limit %d\n", limit);
-                    printf("time %s\n", time);
+                    $$ = (struct bf_rule_options){
+                        .ratelimit = limit,
+                        .flags = BF_RULE_OPTION_RATELIMIT,
+                    };
 
                     $$ = (struct bf_rule_options){
                         .ratelimit = limit,
