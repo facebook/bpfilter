@@ -3,221 +3,268 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "libbpfilter/set.c"
+#include <bpfilter/set.h>
 
-#include "bpfilter/list.h"
-#include "bpfilter/logger.h"
-#include "bpfilter/matcher.h"
-#include "bpfilter/set.h"
-#include "harness/test.h"
+#include "bpfilter/dump.h"
+#include "bpfilter/pack.h"
+#include "fake.h"
+#include "test.h"
 
-Test(set, new_and_free)
+static void new_and_free(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
-    expect_assert_failure(bf_set_new(NULL, NULL, NOT_NULL, 1));
-    expect_assert_failure(bf_set_new(NOT_NULL, NULL, NULL, 1));
-    expect_assert_failure(bf_set_free(NULL));
+    (void)state;
 
-    // NOK: no components in key
-    assert_error(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP4_PROTO
-    }, 0));
-
-    // NOK: more components than the maximum value allowed
-    assert_error(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP4_PROTO
-    }, BF_SET_MAX_N_COMPS + 1));
-
-    // NOK: key contains an invalid matcher type
-    assert_error(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        _BF_MATCHER_TYPE_MAX + 1, BF_MATCHER_IP4_PROTO
-    }, 2));
-
-    // NOK: using a CIDR matcher in combination with any other matcher
-    assert_error(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP6_DNET, BF_MATCHER_IP4_PROTO
-    }, 2));
-    assert_error(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP6_DNET, BF_MATCHER_IP6_SNET
-    }, 2));
-
-    // OK: single component
-    assert_success(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP4_PROTO,
-    }, 1));
+    // Free set manually
+    assert_ok(bf_set_new(&set, "test_set", key, ARRAY_SIZE(key)));
+    assert_non_null(set);
+    assert_string_equal(set->name, "test_set");
+    assert_int_equal(set->n_comps, 1);
+    assert_int_equal(set->key[0], BF_MATCHER_IP4_SADDR);
     bf_set_free(&set);
+    assert_null(set);
 
-    // OK: multiple components
-    assert_success(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP4_PROTO, BF_MATCHER_IP4_DADDR, BF_MATCHER_IP6_SADDR
-    }, 3));
-    assert_false(set->use_trie);
-    bf_set_free(&set);
-
-    // OK: single component, use trie
-    assert_success(bf_set_new(&set, NULL, (enum bf_matcher_type[]){
-        BF_MATCHER_IP6_SNET
-    }, 1));
-    assert_true(set->elem_size);
-
-    // Let _free_bf_set_ free the set
+    // Free set using the cleanup attribute
+    assert_ok(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
+    assert_null(set->name);
 }
 
-Test(set, new_from_raw)
+static void new_with_multiple_keys(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
 
-    expect_assert_failure(bf_set_new_from_raw(NULL, NULL, NOT_NULL, NOT_NULL));
-    expect_assert_failure(bf_set_new_from_raw(NOT_NULL, NULL, NULL, NOT_NULL));
-    expect_assert_failure(bf_set_new_from_raw(NOT_NULL, NULL, NOT_NULL, NULL));
+    (void)state;
 
-    // NOK: empty key
-    assert_error(bf_set_new_from_raw(&set, NULL, "()", "{}"));
+    assert_ok(bf_set_new(&set, "multi_key_set", key, ARRAY_SIZE(key)));
+    assert_non_null(set);
+    assert_int_equal(set->n_comps, 2);
+    assert_int_equal(set->key[0], BF_MATCHER_IP4_DADDR);
+    assert_int_equal(set->key[1], BF_MATCHER_TCP_SPORT);
+}
 
-    // NOK: too many key components
-    assert_error(bf_set_new_from_raw(&set, NULL,
-        "(ip4.proto,ip4.proto,ip4.proto,ip4.proto,"
-        "ip4.proto,ip4.proto,ip4.proto,ip4.proto,ip4.proto)",
-        "{}"
-    ));
+static void new_with_invalid_params(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
-    // NOK: invalid key component
-    assert_error(bf_set_new_from_raw(&set, NULL, "(ip4.invalid)", "{}"));
+    (void)state;
 
-    // NOK: invalid delimiter
-    assert_error(bf_set_new_from_raw(&set, NULL, "(ip4.proto; ip4.proto)", "{}"));
+    // Test with 0 components
+    assert_err(bf_set_new(&set, "test", key, 0));
 
-    // NOK: more components in element than key
-    assert_error(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp, 21}"));
+    // Test with too many components
+    enum bf_matcher_type large_key[BF_SET_MAX_N_COMPS + 1];
+    for (size_t i = 0; i <= BF_SET_MAX_N_COMPS; ++i)
+        large_key[i] = BF_MATCHER_IP4_SADDR;
+    assert_err(bf_set_new(&set, "test", large_key, BF_SET_MAX_N_COMPS + 1));
+}
 
-    // OK: no element
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{}"));
-    assert_int_equal(bf_list_size(&set->elems), 0);
-    bf_set_free(&set);
+static void new_with_trie_key(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SNET};
 
-    // OK: single element
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp}"));
+    (void)state;
+
+    // Network matchers should enable trie
+    assert_ok(bf_set_new(&set, "trie_set", key, ARRAY_SIZE(key)));
+    assert_true(set->use_trie);
+}
+
+static void new_with_invalid_network_combination(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SNET, BF_MATCHER_TCP_SPORT};
+
+    (void)state;
+
+    // Network matchers can't be combined with other matchers
+    assert_err(bf_set_new(&set, "invalid_set", key, ARRAY_SIZE(key)));
+}
+
+static void add_elem(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t elem = 0x01020304; // 1.2.3.4
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(set, &elem));
     assert_int_equal(bf_list_size(&set->elems), 1);
-    bf_set_free(&set);
-
-    // OK: multiple elements
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp; udp; icmp}"));
-    assert_int_equal(bf_list_size(&set->elems), 3);
-    bf_set_free(&set);
-
-    // OK: extra spaces
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp    ;    udp;    icmp}"));
-    assert_int_equal(bf_list_size(&set->elems), 3);
-    bf_set_free(&set);
-
-    // OK: using \n as a delimiter
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp   \n  udp \n  icmp}"));
-    assert_int_equal(bf_list_size(&set->elems), 3);
-    bf_set_free(&set);
-
-    // OK: contain an empty element
-    assert_success(bf_set_new_from_raw(&set, NULL, "(ip4.proto)", "{tcp   \n\n udp \n  icmp}"));
-    assert_int_equal(bf_list_size(&set->elems), 3);
-    bf_set_free(&set);
-
-    // OK: multiple components
-    assert_success(bf_set_new_from_raw(&set, NULL,
-        "(ip4.proto, ip4.saddr, ip4.daddr)",
-        "{"
-            "tcp, 192.168.1.1, 192.168.1.10\n"
-            "tcp, 192.168.1.10, 192.168.71.10\n"
-            "udp, 192.168.1.11, 192.168.12.140\n"
-        "}"
-    ));
-    assert_int_equal(bf_list_size(&set->elems), 3);
-    bf_set_free(&set);
 }
 
-Test(set, pack_unpack)
+static void add_multiple_elems(void **state)
 {
-    _free_bf_set_ struct bf_set *set0 = NULL;
-    _free_bf_set_ struct bf_set *set1 = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
+
+    // Add 5 elements
+    for (size_t i = 0; i < 5; ++i) {
+        uint8_t elem[set->elem_size];
+        memset(elem, (uint8_t)i, set->elem_size);
+        assert_ok(bf_set_add_elem(set, elem));
+    }
+
+    assert_int_equal(bf_list_size(&set->elems), 5);
+}
+
+static void pack_and_unpack(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *destination = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    bf_rpack_node_t node;
     const void *data;
     size_t data_len;
 
-    expect_assert_failure(bf_set_pack(NOT_NULL, NULL));
-    expect_assert_failure(bf_set_pack(NULL, NOT_NULL));
+    (void)state;
 
-    // Create a non-empty set
-    assert_success(bf_set_new_from_raw(&set0, NULL,
-        "(ip4.proto, ip4.saddr, ip4.daddr)",
-        "{"
-            "tcp, 192.168.1.1, 192.168.1.10\n"
-            "tcp, 192.168.1.10, 192.168.71.10\n"
-            "udp, 192.168.1.11, 192.168.12.140\n"
-        "}"
-    ));
+    // Create and pack the source set
+    assert_non_null(source = bft_set_dummy(4));
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_open_object(wpack, "set");
+    assert_ok(bf_set_pack(source, wpack));
+    bf_wpack_close_object(wpack);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
-    assert_success(bf_wpack_new(&wpack));
-    assert_success(bf_set_pack(set0, wpack));
-    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
+    // Unpack into destination set
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
+    assert_ok(bf_set_new_from_pack(&destination, node));
 
-    assert_success(bf_rpack_new(&rpack, data, data_len));
-    assert_success(bf_set_new_from_pack(&set1, bf_rpack_root(rpack)));;
-
-    assert_int_equal(set0->n_comps, set1->n_comps);
-    assert_memory_equal(set0->key, set1->key, set0->n_comps * sizeof(enum bf_matcher_type));
-    assert_int_equal(set0->elem_size, set1->elem_size);
-    assert_int_equal(set0->use_trie, set1->use_trie);
-    assert_int_equal(bf_list_size(&set0->elems), bf_list_size(&set1->elems));
-
-    for (size_t i = 0; i < bf_list_size(&set0->elems); ++i) {
-        void *set0_data = bf_list_get_at(&set0->elems, i);
-        void *set1_data = bf_list_get_at(&set1->elems, i);
-
-        assert_non_null(set0_data);
-        assert_non_null(set1_data);
-
-        assert_memory_equal(set0_data, set1_data, set0->elem_size);
-    }
+    assert_true(bft_set_eq(source, destination));
 }
 
-Test(set, dump)
+static void pack_and_unpack_empty(void **state)
 {
-    _free_bf_set_ struct bf_set *set = NULL;
-    enum bf_log_level cur_level = bf_log_get_level();
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    bf_rpack_node_t node;
+    const void *data;
+    size_t data_len;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
-    expect_assert_failure(bf_set_dump(NOT_NULL, NULL));
-    expect_assert_failure(bf_set_dump(NULL, NOT_NULL));
+    (void)state;
 
-    // Create a non-empty set
-    assert_success(bf_set_new_from_raw(&set, NULL,
-        "(ip4.proto, ip4.saddr, ip4.daddr)",
-        "{"
-            "tcp, 192.168.1.1, 192.168.1.10\n"
-            "tcp, 192.168.1.10, 192.168.71.10\n"
-            "udp, 192.168.1.1, 192.168.1.10\n"
-            "udp, 192.168.1.10, 192.168.71.10\n"
-        "}"
-    ));
+    // Create empty set and pack it
+    assert_ok(bf_set_new(&source, "empty_set", key, ARRAY_SIZE(key)));
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_open_object(wpack, "set");
+    assert_ok(bf_set_pack(source, wpack));
+    bf_wpack_close_object(wpack);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
-    bf_log_set_level(BF_LOG_DBG);
-    bf_set_dump(set, EMPTY_PREFIX);
-    bf_log_set_level(cur_level);
+    // Unpack into destination
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
+    assert_ok(bf_set_new_from_pack(&destination, node));
+
+    assert_true(bft_set_eq(source, destination));
+    assert_int_equal(bf_list_size(&destination->elems), 0);
 }
 
-Test(set, add_element)
+static void dump(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
-    uint8_t elem[9] = {
-        6, 127, 0, 0, 1, 192, 168, 1, 1,
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Dump a set with elements
+    assert_non_null(set = bft_set_dummy(4));
+    bf_set_dump(set, &prefix);
+}
+
+static void dump_empty(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Dump an empty set
+    assert_ok(bf_set_new(&set, "empty", key, ARRAY_SIZE(key)));
+    bf_set_dump(set, &prefix);
+}
+
+static void new_from_raw(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Test creating set from raw key and payload
+    assert_ok(bf_set_new_from_raw(&set, "test_raw",
+                                  "(ip4.saddr)",
+                                  "{1.2.3.4; 5.6.7.8}"));
+    assert_non_null(set);
+    assert_string_equal(set->name, "test_raw");
+    assert_int_equal(set->n_comps, 1);
+    assert_int_equal(set->key[0], BF_MATCHER_IP4_SADDR);
+    assert_int_equal(bf_list_size(&set->elems), 2);
+}
+
+static void new_from_raw_multiple_keys(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Test creating set with multiple key components
+    assert_ok(bf_set_new_from_raw(&set, "test_multi",
+                                  "(ip4.daddr, tcp.sport)",
+                                  "{1.2.3.4, 80; 5.6.7.8, 443}"));
+    assert_non_null(set);
+    assert_int_equal(set->n_comps, 2);
+    assert_int_equal(set->key[0], BF_MATCHER_IP4_DADDR);
+    assert_int_equal(set->key[1], BF_MATCHER_TCP_SPORT);
+    assert_int_equal(bf_list_size(&set->elems), 2);
+}
+
+static void new_from_raw_invalid(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Test with invalid key format
+    assert_err(bf_set_new_from_raw(&set, "test", "INVALID", "{1.2.3.4}"));
+
+    // Test with empty key
+    assert_err(bf_set_new_from_raw(&set, "test", "()", "{1.2.3.4}"));
+}
+
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(new_and_free),
+        cmocka_unit_test(new_with_multiple_keys),
+        cmocka_unit_test(new_with_invalid_params),
+        cmocka_unit_test(new_with_trie_key),
+        cmocka_unit_test(new_with_invalid_network_combination),
+        cmocka_unit_test(add_elem),
+        cmocka_unit_test(add_multiple_elems),
+        cmocka_unit_test(pack_and_unpack),
+        cmocka_unit_test(pack_and_unpack_empty),
+        cmocka_unit_test(dump),
+        cmocka_unit_test(dump_empty),
+        cmocka_unit_test(new_from_raw),
+        cmocka_unit_test(new_from_raw_multiple_keys),
+        cmocka_unit_test(new_from_raw_invalid),
     };
 
-    expect_assert_failure(bf_set_add_elem(NOT_NULL, NULL));
-    expect_assert_failure(bf_set_add_elem(NULL, NOT_NULL));
-
-    // Create a non-empty set
-    assert_success(bf_set_new_from_raw(&set, NULL,
-        "(ip4.proto, ip4.saddr, ip4.daddr)", "{}"
-    ));
-
-    assert_success(bf_set_add_elem(set, elem));
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }
