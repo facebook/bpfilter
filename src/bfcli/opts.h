@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include <bpfilter/hook.h>
 
 /**
@@ -68,6 +70,8 @@ struct bfc_opts
     const char *from_file;
     const char *name;
     struct bf_hookopts hookopts;
+
+    bool dry_run;
 };
 
 struct bfc_opts_cmd

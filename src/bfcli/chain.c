@@ -98,9 +98,13 @@ int bfc_chain_set(const struct bfc_opts *opts)
     if (r)
         return r;
 
-    r = bf_chain_set(chain, hookopts);
-    if (r)
-        return bf_err_r(r, "unknown error");
+    if (!opts->dry_run) {
+        r = bf_chain_set(chain, hookopts);
+        if (r)
+            return bf_err_r(r, "unknown error");
+    } else {
+        bf_info("--dry-run used, chain not set");
+    }
 
     return 0;
 }
@@ -188,9 +192,13 @@ int bfc_chain_load(const struct bfc_opts *opts)
     if (hookopts)
         bf_warn("Hook options are ignored when loading a chain");
 
-    r = bf_chain_load(chain);
-    if (r)
-        return bf_err_r(r, "unknown error");
+    if (!opts->dry_run) {
+        r = bf_chain_load(chain);
+        if (r)
+            return bf_err_r(r, "unknown error");
+    } else {
+        bf_info("--dry-run used, chain not loaded");
+    }
 
     return 0;
 }
@@ -228,14 +236,18 @@ int bfc_chain_update(const struct bfc_opts *opts)
 
     if (hookopts)
         bf_warn("Hook options are ignored when updating a chain");
-
-    r = bf_chain_update(chain);
-    if (r == -ENOENT)
-        return bf_err_r(r, "chain '%s' not found", opts->name);
-    if (r == -ENOLINK)
-        return bf_err_r(r, "chain '%s' is not attached to a hook", opts->name);
-    if (r)
-        return bf_err_r(r, "unknown error");
+    if (!opts->dry_run) {
+        r = bf_chain_update(chain);
+        if (r == -ENOENT)
+            return bf_err_r(r, "chain '%s' not found", opts->name);
+        if (r == -ENOLINK)
+            return bf_err_r(r, "chain '%s' is not attached to a hook",
+                            opts->name);
+        if (r)
+            return bf_err_r(r, "unknown error");
+    } else {
+        bf_info("--dry-run used, chain not updated");
+    }
 
     return r;
 }
