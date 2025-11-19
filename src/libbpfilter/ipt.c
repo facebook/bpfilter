@@ -12,8 +12,8 @@
 #include <string.h>
 
 #include "bpfilter/front.h"
-#include "bpfilter/generic.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/io.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/request.h"
 #include "bpfilter/response.h"
@@ -47,6 +47,7 @@
 
 int bf_ipt_replace(struct ipt_replace *ipt_replace)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -58,7 +59,11 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
     if (r < 0)
         return r;
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 
@@ -78,6 +83,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
 
 int bf_ipt_add_counters(struct xt_counters_info *counters)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -89,7 +95,11 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
     if (r < 0)
         return r;
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 
@@ -109,6 +119,7 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
 
 int bf_ipt_get_info(struct ipt_getinfo *info)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -122,7 +133,11 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
 
     bf_request_set_ipt_cmd(request, IPT_SO_GET_INFO);
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 
@@ -142,6 +157,7 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
 
 int bf_ipt_get_entries(struct ipt_get_entries *entries)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -155,7 +171,11 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
 
     bf_request_set_ipt_cmd(request, IPT_SO_GET_ENTRIES);
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 

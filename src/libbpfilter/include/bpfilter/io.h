@@ -16,14 +16,34 @@ struct bf_request;
 struct bf_response;
 
 /**
- * Send a request to the given file descriptor.
+ * @brief Connect to the bpfilter daemon and return the socket.
  *
- * @param fd File descriptor to send the request to. Must be a valid file
- *        descriptor.
- * @param request Request to send. Can't be NULL.
- * @return 0 on success, negative error code on failure.
+ * @return A file descriptor to communicate with the daemon on success, or a
+ *         negative error value on failure.
  */
-int bf_send_request(int fd, const struct bf_request *request);
+int bf_connect_to_daemon(void);
+
+/**
+ * @brief Send a request to the daemon, receive a response. Can receive an extra
+ * file descriptor.
+ *
+ * Communicate back and forth with the daemon (send a request, receive a
+ * response). Some responses include a file descriptor.
+ *
+ * @pre
+ * - `request` is a valid, non-NULL request
+ * - `response != NULL`
+ *
+ * @param fd File descriptor of the socket to send the data over.
+ * @param request Request to send to the daemon.
+ * @param response Response received from the daemon, allocated by
+ *        `bf_send()`.
+ * @param recv_fd File descriptor sent by the daemon. If NULL, no file
+ *        descriptor is expected.
+ * @return 0 on success, negative error value on failure.
+ */
+int bf_send(int fd, const struct bf_request *request,
+            struct bf_response **response, int *recv_fd);
 
 /**
  * Received a request from the file descriptor.
@@ -47,15 +67,13 @@ int bf_recv_request(int fd, struct bf_request **request);
 int bf_send_response(int fd, struct bf_response *response);
 
 /**
- * Received a response from the file descriptor.
+ * @brief Send a file descriptor over a Unix Domain Socket.
  *
- * @param fd File descriptor to receive the response from. Must be a valid file
- *        descriptor.
- * @param response Response to receive. Can't be NULL. Will be allocated by the
- *        function.
- * @return 0 on success, negative error code on failure.
+ * @param sock_fd File descriptor of a Unix Domain Socket, used to send `fd`.
+ * @param fd File descriptor to send.
+ * @return 0, or a negative error value on failure.
  */
-int bf_recv_response(int fd, struct bf_response **response);
+int bf_send_fd(int sock_fd, int fd);
 
 /**
  * Ensure @p dir exists and can be read/writen by the current process.
@@ -113,21 +131,3 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive);
  *         descriptor.
  */
 int bf_acquire_lock(const char *path);
-
-/**
- * @brief Send a file descriptor over a Unix Domain Socket.
- *
- * @param sock_fd File descriptor of a Unix Domain Socket, used to send `fd`.
- * @param fd File descriptor to send.
- * @return 0, or a negative error value on failure.
- */
-int bf_send_fd(int sock_fd, int fd);
-
-/**
- * @brief Receive a file descriptor over a Unix Domain Socket.
- *
- * @param sock_fd Socket file descriptor to receive the file descriptor through.
- * @return A file descriptor, or a negative error value on failure. The caller
- *         owns the file descriptor.
- */
-int bf_recv_fd(int sock_fd);

@@ -10,12 +10,13 @@
 #include <string.h>
 
 #include "bpfilter/front.h"
-#include "bpfilter/generic.h"
+#include "bpfilter/io.h"
 #include "bpfilter/request.h"
 #include "bpfilter/response.h"
 
 int bf_nft_send(const void *data, size_t len)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -27,7 +28,11 @@ int bf_nft_send(const void *data, size_t len)
     if (r < 0)
         return r;
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 
@@ -37,6 +42,7 @@ int bf_nft_send(const void *data, size_t len)
 int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
                     struct nlmsghdr *res, size_t *res_len)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -51,7 +57,11 @@ int bf_nft_sendrecv(const struct nlmsghdr *req, size_t req_len,
     if (r < 0)
         return r;
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return r;
 
