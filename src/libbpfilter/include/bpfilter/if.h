@@ -18,21 +18,6 @@
  * provide the required functionalities.
  */
 
-#ifndef IFNAMSIZ
-#define IFNAMSIZ 16
-#endif
-
-/**
- * Local interface details.
- */
-struct bf_if_iface
-{
-    /// Index of the interface on the system.
-    unsigned int index;
-    /// Name of the interface.
-    char name[IFNAMSIZ];
-};
-
 /**
  * Get an interface index from its name.
  *
@@ -54,13 +39,3 @@ int bf_if_index_from_name(const char *name);
  *         if the interface name is not found.
  */
 const char *bf_if_name_from_index(int index);
-
-/**
- * Get the index and name of all the interfaces on the host.
- *
- * @param ifaces Array of @ref bf_if_iface structures. The array will be
- *        allocated by the function and the caller is responsible for freeing it.
- * @return On success, return the number of interfaces contained in @p ifaces .
- *         On failure, return a negative errno value.
- */
-ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces);
