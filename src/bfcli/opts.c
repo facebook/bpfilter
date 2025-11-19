@@ -93,6 +93,7 @@ enum bfc_opts_option_id
     BFC_OPT_CHAIN_FROM_FILE,
     BFC_OPT_CHAIN_NAME,
     BFC_OPT_CHAIN_HOOK_OPTS,
+    BFC_OPT_DRY_RUN,
     _BFC_OPT_MAX,
 };
 
@@ -101,8 +102,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli ruleset set",
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_SET,
-        .valid_opts =
-            BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
+        .valid_opts = BF_FLAGS(BFC_OPT_RULESET_FROM_STR,
+                               BFC_OPT_RULESET_FROM_FILE, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
         .doc =
@@ -129,7 +130,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_SET,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
-                               BFC_OPT_CHAIN_NAME),
+                               BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc =
@@ -167,7 +168,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOAD,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
-                               BFC_OPT_CHAIN_NAME),
+                               BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc =
@@ -194,7 +195,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_UPDATE,
         .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
-                               BFC_OPT_CHAIN_NAME),
+                               BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
         .doc = "Update a chain\vAtomically update chain --name with the new "
@@ -291,6 +292,15 @@ static void _bfc_opts_chain_hook_opts_cb(struct argp_state *state,
         argp_error(state, "failed to parse hook option '%s'", arg);
 };
 
+static void _bfc_opts_dry_run(struct argp_state *state, const char *arg,
+                              struct bfc_opts *opts)
+{
+    (void)state;
+    (void)arg;
+
+    opts->dry_run = true;
+};
+
 struct bfc_opts_opt
 {
     enum bfc_opts_option_id id;
@@ -353,6 +363,14 @@ struct bfc_opts_opt
         .arg = "HOOKOPT=VALUE",
         .doc = "Hook option to attach the chain",
         .parser = _bfc_opts_chain_hook_opts_cb,
+    },
+    {
+        .id = BFC_OPT_DRY_RUN,
+        .key = 'd',
+        .name = "dry-run",
+        .arg = NULL,
+        .doc = "dry-run",
+        .parser = _bfc_opts_dry_run,
     },
 };
 

@@ -18,6 +18,7 @@ Chains with valid hook options defined are attached to their hook. Chains withou
 **Options**
   - ``--from-str RULESET``: read and apply the ruleset defining from the command line.
   - ``--from-file FILE``: read ``FILE`` and apply the ruleset contained in it.
+  - ``--dry-run``: parse and validate the ruleset, but do not apply it.
 
 ``--from-str`` and ``--from-file`` are mutually exclusive.
 
@@ -76,6 +77,7 @@ If you want to update an existing chain without downtime, use ``bfcli chain upda
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
   - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**
 
@@ -157,6 +159,7 @@ If a chain with the same name already exist, it won't be replaced. See ``bfcli c
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
   - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**
 
@@ -211,6 +214,7 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
   - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**
 

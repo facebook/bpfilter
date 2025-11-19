@@ -33,9 +33,13 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
     if (r)
         return bf_err_r(r, "failed to parse ruleset");
 
-    r = bf_ruleset_set(&ruleset.chains, &ruleset.hookopts);
-    if (r)
-        bf_err_r(r, "failed to set ruleset");
+    if (!opts->dry_run) {
+        r = bf_ruleset_set(&ruleset.chains, &ruleset.hookopts);
+        if (r)
+            bf_err_r(r, "failed to set ruleset");
+    } else {
+        bf_info("--dry-run used, ruleset not applied");
+    }
 
     return r;
 }
