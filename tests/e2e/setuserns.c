@@ -3,20 +3,19 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <linux/mount.h>
+
 #include <argp.h>
+#include <asm/unistd.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <asm/unistd.h>
-#include <unistd.h>
-#include <errno.h>
 #include <string.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <errno.h>
 #include <unistd.h>
-#include <linux/mount.h>
-#include <fcntl.h>
-#include <sys/mount.h>
 
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
@@ -30,7 +29,8 @@ struct st_opts
     const char *bpffs_mount_path;
 };
 
-static error_t st_opts_parser(int key, const char *arg, struct argp_state *state)
+static error_t st_opts_parser(int key, const char *arg,
+                              struct argp_state *state)
 {
     struct st_opts *opts = state->input;
 
@@ -63,16 +63,19 @@ int send_fd(int sock_fd, int fd)
 {
     struct msghdr msg = {};
     struct cmsghdr *cmsg;
-    int fds[1] = { fd };
+    int fds[1] = {fd};
     char iobuf[1];
     struct iovec io = {
         .iov_base = iobuf,
         .iov_len = sizeof(iobuf),
     };
-    union {
+
+    union
+    {
         char buf[CMSG_SPACE(sizeof(fds))];
         struct cmsghdr align;
     } u;
+
     int r;
 
     msg.msg_iov = &io;
@@ -89,7 +92,8 @@ int send_fd(int sock_fd, int fd)
     if (r < 0)
         return bf_err_r(errno, "send_fd: failed to send message");
     if (r != 1)
-        return bf_err_r(-EINVAL, "send_fd: unexpected amount of data sent (%d)", r);
+        return bf_err_r(-EINVAL, "send_fd: unexpected amount of data sent (%d)",
+                        r);
 
     return 0;
 }
@@ -104,10 +108,13 @@ int recv_fd(int sock_fd)
         .iov_base = iobuf,
         .iov_len = sizeof(iobuf),
     };
-    union {
+
+    union
+    {
         char buf[CMSG_SPACE(sizeof(fds))];
         struct cmsghdr align;
     } u;
+
     int r;
 
     msg.msg_iov = &io;
@@ -119,7 +126,8 @@ int recv_fd(int sock_fd)
     if (r < 0)
         return bf_err_r(errno, "recv_fd: failed to receive message");
     if (r != 1)
-        return bf_err_r(r, "recv_fd: unexpected amount of data received (%d)", r);
+        return bf_err_r(r, "recv_fd: unexpected amount of data received (%d)",
+                        r);
 
     cmsg = CMSG_FIRSTHDR(&msg);
     if (!cmsg)
@@ -156,7 +164,8 @@ int do_in(const struct st_opts *opts)
 
     r = connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
     if (r < 0)
-        return bf_err_r(errno, "do_in: failed to connect to socket at %s", opts->socket_path);
+        return bf_err_r(errno, "do_in: failed to connect to socket at %s",
+                        opts->socket_path);
 
     /**
      * Configure bpffs to allow for BPF tokens
@@ -173,7 +182,8 @@ int do_in(const struct st_opts *opts)
     if (mount_fd < 0)
         return bf_err_r(mount_fd, "do_in: failed to receive mount fd");
 
-    r = move_mount(mount_fd, "", AT_FDCWD, opts->bpffs_mount_path, MOVE_MOUNT_F_EMPTY_PATH);
+    r = move_mount(mount_fd, "", AT_FDCWD, opts->bpffs_mount_path,
+                   MOVE_MOUNT_F_EMPTY_PATH);
     if (r)
         return bf_err_r(errno, "failed to move mount");
 
@@ -201,7 +211,8 @@ int do_out(const struct st_opts *opts)
 
     r = bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
     if (r < 0)
-        return bf_err_r(errno, "do_out: failed to bind socket to %s", opts->socket_path);
+        return bf_err_r(errno, "do_out: failed to bind socket to %s",
+                        opts->socket_path);
 
     r = listen(sock_fd, 1);
     if (r)
@@ -255,18 +266,18 @@ int do_out(const struct st_opts *opts)
 int main(int argc, char *argv[])
 {
     static struct argp_option options[] = {
-        {"socket", 's', "SOCKET_PATH", 0, "Path to the socket to use to communicate", 0},
-        {"bpffs-mount-path", 'b', "BPFFS_MOUNT_PATH", 0, "Path to mount the bpffs with delegated attributes. Defaults to /sys/fs/bpf.", 0},
+        {"socket", 's', "SOCKET_PATH", 0,
+         "Path to the socket to use to communicate", 0},
+        {"bpffs-mount-path", 'b', "BPFFS_MOUNT_PATH", 0,
+         "Path to mount the bpffs with delegated attributes. Defaults to /sys/fs/bpf.",
+         0},
         {0},
     };
 
     const char *command;
     struct st_opts opts = {};
     struct argp argp = {
-        options, (argp_parser_t)st_opts_parser,
-        NULL,    NULL,
-        0,       NULL,
-        NULL,
+        options, (argp_parser_t)st_opts_parser, NULL, NULL, 0, NULL, NULL,
     };
     int r;
 

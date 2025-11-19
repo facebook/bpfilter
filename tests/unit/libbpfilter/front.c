@@ -3,19 +3,23 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "libbpfilter/front.c"
+#include <bpfilter/front.h>
 
-#include "harness/test.h"
-#include "mock.h"
+#include "test.h"
 
-Test(shared_front, front_to_str_assert_failure)
+static void to_str(void **state)
 {
-    expect_assert_failure(bf_front_to_str(-1));
-    expect_assert_failure(bf_front_to_str(_BF_FRONT_MAX));
+    (void)state;
+
+    assert_enum_to_str(enum bf_front, bf_front_to_str, BF_FRONT_IPT,
+                       _BF_FRONT_MAX);
 }
 
-Test(hook, can_get_str_from_front)
+int main(void)
 {
-    for (int i = 0; i < _BF_FRONT_MAX; ++i)
-        assert_non_null(bf_front_to_str(i));
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(to_str),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

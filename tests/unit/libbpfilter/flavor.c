@@ -3,13 +3,23 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "libbpfilter/flavor.c"
+#include <bpfilter/flavor.h>
 
-#include "harness/test.h"
-#include "mock.h"
+#include "test.h"
 
-Test(flavor, flavor_to_str)
+static void to_str(void **state)
 {
-    for (int i = 0; i < _BF_FLAVOR_MAX; ++i)
-        assert_non_null(bf_flavor_to_str(i));
+    (void)state;
+
+    assert_enum_to_str(enum bf_flavor, bf_flavor_to_str, BF_FLAVOR_TC,
+                       _BF_FLAVOR_MAX);
+}
+
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(to_str),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

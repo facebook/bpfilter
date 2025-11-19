@@ -2,342 +2,287 @@
 /*
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
-
+#define _XOPEN_SOURCE 700
 #include "test.h"
 
-#include <errno.h>
-#include <regex.h>
-#include <stdlib.h>
-#include <string.h>
+#include <ftw.h>
+#include <sys/socket.h>
 
-#include "bpfilter/dump.h"
-#include "bpfilter/helper.h"
+#include <bpfilter/chain.h>
+#include <bpfilter/counter.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/set.h>
+#include <bpfilter/helper.h>
+
 #include "bpfilter/list.h"
-#include "bpfilter/logger.h"
 
-void bf_test_dump(const bf_test *test, prefix_t *prefix)
+int btf_setup_redirect_streams(void **state)
 {
-    bf_assert(test && prefix);
-
-    DUMP(prefix, "bf_test at %p", test);
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "group_name: %s", test->group_name);
-    DUMP(prefix, "test_name: %s", test->test_name);
-    DUMP(bf_dump_prefix_last(prefix), "cb: %p", test->cb);
-    bf_dump_prefix_pop(prefix);
+    bf_log_set_level(BF_LOG_DBG);
+    return bft_streams_new((struct bft_streams **)state);
 }
 
-static void bf_noop_free(void **data)
+int bft_teardown_redirect_streams(void **state)
 {
-    UNUSED(data);
-}
-
-int bf_test_group_new(bf_test_group **group, const char *name)
-{
-    _free_bf_test_group_ bf_test_group *_group = NULL;
-
-    bf_assert(group && name);
-
-    _group = calloc(1, sizeof(*_group));
-    if (!_group)
-        return -ENOMEM;
-
-    _group->name = strdup(name);
-    if (!_group->name)
-        return -ENOMEM;
-
-    bf_list_init(&_group->tests,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_noop_free}});
-
-    *group = TAKE_PTR(_group);
-
+    bf_log_set_level(BF_LOG_INFO);
+    bft_stream_free((struct bft_streams **)state);
     return 0;
 }
 
-void bf_test_group_free(bf_test_group **group)
+#define _free_bft_streams_ __attribute__((cleanup(bft_stream_free)))
+
+int bft_streams_new(struct bft_streams **streams)
 {
-    bf_assert(group);
-
-    if (!*group)
-        return;
-
-    freep((void *)&(*group)->name);
-    freep((void *)&(*group)->cmtests);
-    bf_list_clean(&(*group)->tests);
-    freep((void *)group);
-}
-
-void bf_test_group_dump(const bf_test_group *group, prefix_t *prefix)
-{
-    bf_assert(group && prefix);
-
-    DUMP(prefix, "bf_test_group at %p", group);
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "name: %s", group->name);
-
-    DUMP(prefix, "tests: bf_list<bf_test>[%lu]", bf_list_size(&group->tests));
-    bf_dump_prefix_push(prefix);
-    bf_list_foreach (&group->tests, test_node) {
-        bf_test *test = bf_list_node_get_data(test_node);
-
-        if (bf_list_is_tail(&group->tests, test_node))
-            bf_dump_prefix_last(prefix);
-
-        bf_test_dump(test, prefix);
-    }
-    bf_dump_prefix_pop(prefix);
-
-    DUMP(bf_dump_prefix_last(prefix), "cmtests: (struct CMUnitTest *)%p",
-         group->cmtests);
-    bf_dump_prefix_pop(prefix);
-}
-
-int bf_test_group_make_cmtests(bf_test_group *group)
-{
-    size_t index = 0;
-
-    bf_assert(group);
-
-    group->cmtests =
-        calloc(bf_list_size(&group->tests), sizeof(struct CMUnitTest));
-    if (!group->cmtests)
-        return -ENOMEM;
-
-    bf_list_foreach (&group->tests, test_node) {
-        bf_test *test = bf_list_node_get_data(test_node);
-
-        group->cmtests[index++] = (struct CMUnitTest) {
-            .name = test->test_name,
-            .test_func = test->cb,
-        };
-    }
-
-    return 0;
-}
-
-int bf_test_suite_new(bf_test_suite **suite)
-{
-    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
-
-    bf_assert(suite);
-
-    _suite = calloc(1, sizeof(*_suite));
-    if (!_suite)
-        return -ENOMEM;
-
-    bf_list_init(
-        &_suite->groups,
-        (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_test_group_free}});
-
-    *suite = TAKE_PTR(_suite);
-
-    return 0;
-}
-
-void bf_test_suite_free(bf_test_suite **suite)
-{
-    bf_assert(suite);
-
-    if (!*suite)
-        return;
-
-    bf_list_clean(&(*suite)->groups);
-    freep((void *)suite);
-}
-
-void bf_test_suite_dump(const bf_test_suite *suite, prefix_t *prefix)
-{
-    bf_assert(suite && prefix);
-
-    DUMP(prefix, "bf_test_suite at %p", suite);
-    bf_dump_prefix_push(prefix);
-    DUMP(bf_dump_prefix_last(prefix), "groups: bf_list<bf_group>[%lu]",
-         bf_list_size(&suite->groups));
-    bf_dump_prefix_push(prefix);
-    bf_list_foreach (&suite->groups, group_node) {
-        bf_test_group *group = bf_list_node_get_data(group_node);
-
-        if (bf_list_is_tail(&suite->groups, group_node))
-            bf_dump_prefix_last(prefix);
-
-        bf_test_group_dump(group, prefix);
-    }
-    bf_dump_prefix_pop(prefix);
-    bf_dump_prefix_pop(prefix);
-}
-
-bf_test_group *bf_test_suite_get_group(bf_test_suite *suite,
-                                       const char *group_name)
-{
-    bf_assert(suite && group_name);
-
-    bf_list_foreach (&suite->groups, group_node) {
-        bf_test_group *group = bf_list_node_get_data(group_node);
-        if (bf_streq(group->name, group_name))
-            return group;
-    }
-
-    return NULL;
-}
-
-int bf_test_suite_add_test(bf_test_suite *suite, const char *group_name,
-                           bf_test *test)
-
-{
-    bf_test_group *group;
+    _free_bft_streams_ struct bft_streams *_streams = NULL;
     int r;
 
-    bf_assert(suite && group_name && test);
+    assert(streams);
 
-    group = bf_test_suite_get_group(suite, group_name);
-    if (!group) {
-        _free_bf_test_group_ bf_test_group *new_group = NULL;
-
-        r = bf_test_group_new(&new_group, group_name);
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&suite->groups, new_group);
-        if (r)
-            return r;
-
-        group = TAKE_PTR(new_group);
-    }
-
-    r = bf_list_add_tail(&group->tests, test);
-    if (r)
-        return r;
-
-    return 0;
-}
-
-int bf_test_discover_test_suite(bf_test_suite **suite, bf_test *tests,
-                                void *sentinel)
-{
-    _free_bf_list_ bf_list *symbols = NULL;
-    _free_bf_test_suite_ bf_test_suite *_suite = NULL;
-    bf_test *test;
-    int r;
-
-    bf_assert(suite);
-
-    r = bf_test_suite_new(&_suite);
-    if (r < 0)
-        return bf_err_r(r, "failed to create a bf_test_suite object");
-
-    for (test = tests; test < (bf_test *)sentinel; ++test) {
-        r = bf_test_suite_add_test(_suite, test->group_name, test);
-        if (r)
-            return r;
-    }
-
-    bf_list_foreach (&_suite->groups, group_node) {
-        bf_test_group *group = bf_list_node_get_data(group_node);
-
-        r = bf_test_group_make_cmtests(group);
-        if (r) {
-            bf_warn_r(r, "failed to make CMocka unit test for group '%s'",
-                      group->name);
-            continue;
-        }
-    }
-
-    *suite = TAKE_PTR(_suite);
-
-    return 0;
-}
-
-static void _bf_test_filter_regex_free(regex_t **regex)
-{
-    bf_assert(regex);
-
-    if (!*regex)
-        return;
-
-    regfree(*regex);
-    freep((void *)regex);
-}
-
-int bf_test_filter_new(bf_test_filter **filter)
-{
-    bf_assert(filter);
-
-    *filter = malloc(sizeof(bf_test_filter));
-    if (!*filter)
+    _streams = calloc(1, sizeof(*_streams));
+    if (!_streams)
         return -ENOMEM;
 
-    bf_list_init(&(*filter)->patterns,
-                 (bf_list_ops[]) {
-                     {.free = (bf_list_ops_free)_bf_test_filter_regex_free}});
+    _streams->old_stdout = stdout;
+    _streams->old_stderr = stderr;
+
+    _streams->new_stdout =
+        open_memstream(&_streams->stdout_buf, &_streams->stdout_len);
+    if (!_streams->new_stdout) {
+        (void)fprintf(_streams->old_stderr,
+                      "failed to open new stdout stream\n");
+        return -EINVAL;
+    }
+
+    _streams->new_stderr =
+        open_memstream(&_streams->stderr_buf, &_streams->stderr_len);
+    if (!_streams->new_stderr) {
+        (void)fprintf(_streams->old_stderr,
+                      "failed to open new stderr stream\n");
+        return -EINVAL;
+    }
+
+    stdout = _streams->new_stdout;
+    stderr = _streams->new_stderr;
+
+    *streams = TAKE_PTR(_streams);
 
     return 0;
 }
 
-void bf_test_filter_free(bf_test_filter **filter)
+void bft_stream_free(struct bft_streams **streams)
 {
-    bf_assert(filter);
-
-    if (!*filter)
-        return;
-
-    bf_list_clean(&(*filter)->patterns);
-    freep((void *)filter);
-}
-
-int bf_test_filter_add_pattern(bf_test_filter *filter, const char *pattern)
-{
-    _cleanup_free_ regex_t *regex = NULL;
-    char errbuf[128];
+    struct bft_streams *_streams;
     int r;
 
-    regex = malloc(sizeof(*regex));
-    if (!regex)
+    assert(streams);
+
+    _streams = *streams;
+    if (!_streams)
+        return;
+
+    stdout = _streams->old_stdout;
+    stderr = _streams->old_stderr;
+
+    (void)fclose(_streams->new_stdout);
+    (void)fclose(_streams->new_stderr);
+
+    freep((void *)&_streams->stdout_buf);
+    freep((void *)&_streams->stderr_buf);
+    freep((void *)streams);
+}
+
+int btf_setup_create_sockets(void **state)
+{
+    return bft_sockets_new((struct bft_sockets **)state);
+}
+
+int bft_teardown_close_sockets(void **state)
+{
+    bft_sockets_free((struct bft_sockets **)state);
+    return 0;
+}
+
+#define _free_bft_sockets_ __attribute__((cleanup(bft_sockets_free)))
+
+int bft_sockets_new(struct bft_sockets **sockets)
+{
+    _free_bft_sockets_ struct bft_sockets *_sockets = NULL;
+    int pair[2];
+    int r;
+
+    assert(sockets);
+
+    _sockets = malloc(sizeof(*_sockets));
+    if (!_sockets)
         return -ENOMEM;
 
-    r = regcomp(regex, pattern, 0);
+    r = socketpair(AF_UNIX, SOCK_STREAM, 0, pair);
     if (r) {
-        regerror(r, regex, errbuf, sizeof(errbuf));
-        return bf_err_r(-EINVAL, "failed to compile regex '%s': %s", pattern,
-                        errbuf);
+        (void)fprintf(stderr, "failed to create socket pair: %d\n", errno);
+        return -errno;
     }
 
-    r = bf_list_add_tail(&filter->patterns, regex);
-    if (r)
-        return bf_err_r(r, "failed to add regex to the patterns list");
+    _sockets->client_fd = pair[0];
+    _sockets->server_fd = pair[1];
 
-    TAKE_PTR(regex);
+    *sockets = TAKE_PTR(_sockets);
 
     return 0;
 }
 
-bool bf_test_filter_matches(bf_test_filter *filter, const char *str)
+void bft_sockets_free(struct bft_sockets **sockets)
 {
-    char errbuf[128];
+    struct bft_sockets *_sockets;
+
+    assert(sockets);
+
+    _sockets = *sockets;
+    if (!_sockets)
+        return;
+
+    closep(&_sockets->client_fd);
+    closep(&_sockets->server_fd);
+    freep((void *)sockets);
+}
+
+int btf_setup_create_tmpdir(void **state)
+{
+    return bft_tmpdir_new((struct bft_tmpdir **)state);
+}
+
+int bft_teardown_close_tmpdir(void **state)
+{
+    bft_tmpdir_free((struct bft_tmpdir **)state);
+    return 0;
+}
+
+#define _free_bft_tmpdir_ __attribute__((cleanup(bft_tmpdir_free)))
+
+int bft_tmpdir_new(struct bft_tmpdir **tmpdir)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *_tmpdir = NULL;
     int r;
 
-    bf_assert(filter);
+    _tmpdir = malloc(sizeof(*_tmpdir));
+    if (!_tmpdir)
+        return -ENOMEM;
 
-    // If the patterns list is empty: everything is allowed
-    if (bf_list_is_empty(&filter->patterns))
+    strncpy(_tmpdir->template, "/tmp/bft.XXXXXX", sizeof(_tmpdir->template));
+
+    _tmpdir->dir_path = mkdtemp(_tmpdir->template);
+    if (!_tmpdir)
+        return -errno;
+
+    *tmpdir = TAKE_PTR(_tmpdir);
+
+    return 0;
+}
+
+static int _bft_unlink_cb(const char *fpath, const struct stat *sb,
+                          int typeflag, struct FTW *ftwbuf)
+{
+    (void)sb;
+    (void)typeflag;
+    (void)ftwbuf;
+
+    return remove(fpath);
+}
+
+void bft_tmpdir_free(struct bft_tmpdir **tmpdir)
+{
+    struct bft_tmpdir *_tmpdir;
+
+    assert(tmpdir);
+
+    _tmpdir = *tmpdir;
+    if (!_tmpdir)
+        return;
+
+    nftw(_tmpdir->dir_path, _bft_unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+    freep((void *)tmpdir);
+}
+
+bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb)
+{
+    if (bf_list_size(lhs) != bf_list_size(rhs))
+        return false;
+
+    if (!cb)
         return true;
 
-    bf_list_foreach (&filter->patterns, pattern_node) {
-        regex_t *regex = bf_list_node_get_data(pattern_node);
-
-        r = regexec(regex, str, 0, NULL, 0);
-        if (r != REG_NOMATCH) {
-            // If we match, return true.
-            // If an error is returned (which is not REG_NOMATCH), log it and
-            // assume the pattern matched.
-            if (r) {
-                regerror(r, regex, errbuf, sizeof(errbuf));
-                bf_warn(
-                    "failed to match '%s' against a regex, assuming pattern is allowed: %s",
-                    str, errbuf);
-            }
-            return true;
-        }
+    for (const bf_list_node *lhs_node = bf_list_get_head(lhs),
+                            *rhs_node = bf_list_get_head(rhs);
+         lhs_node && rhs_node; lhs_node = bf_list_node_next(lhs_node),
+                            rhs_node = bf_list_node_next(rhs_node)) {
+        if (!cb(bf_list_node_get_data(lhs_node),
+                bf_list_node_get_data(rhs_node)))
+            return false;
     }
 
-    return false;
+    return true;
+}
+
+bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs)
+{
+    return lhs->packets == rhs->packets && lhs->bytes == rhs->bytes;
+}
+
+bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
+{
+    const struct bf_list_node *n0, *n1;
+
+    if (bf_list_size(&lhs->elems) != bf_list_size(&rhs->elems))
+        return false;
+
+    if (lhs->elem_size != rhs->elem_size)
+        return false;
+
+    n0 = bf_list_get_head(&lhs->elems);
+    n1 = bf_list_get_head(&rhs->elems);
+    for (; n0 || n1; n0 = bf_list_node_next(n0), n1 = bf_list_node_next(n1)) {
+        if (0 != memcmp(bf_list_node_get_data(n0), bf_list_node_get_data(n1), lhs->elem_size))
+            return false;
+    }
+
+    return bf_streq(lhs->name, rhs->name) && lhs->n_comps == rhs->n_comps && 0 == memcmp(lhs->key, rhs->key, sizeof(enum bf_matcher_type) * lhs->n_comps) && lhs->use_trie == rhs->use_trie;
+}
+
+bool bft_chain_equal(const struct bf_chain *chain0,
+                     const struct bf_chain *chain1)
+{
+    if (!bf_streq(chain0->name, chain1->name))
+        return false;
+
+    if (chain0->flags != chain1->flags)
+        return false;
+
+    return bf_streq(chain0->name, chain1->name) &&
+           chain0->flags == chain1->flags && chain0->hook == chain1->hook &&
+           chain0->policy == chain1->policy &&
+           bft_list_eq(&chain0->rules, &chain1->rules,
+                       (bft_list_eq_cb)bft_rule_equal) &&
+           bft_list_eq(&chain0->sets, &chain1->sets,
+                       (bft_list_eq_cb)bft_set_eq);
+}
+
+bool bft_rule_equal(const struct bf_rule *rule0, const struct bf_rule *rule1)
+{
+    return rule0->index == rule1->index && rule0->log == rule1->log &&
+           rule0->mark == rule1->mark && rule0->counters == rule1->counters &&
+           rule0->verdict == rule1->verdict &&
+           bft_list_eq(&rule0->matchers, &rule1->matchers,
+                       (bft_list_eq_cb)bft_matcher_equal);
+}
+
+bool bft_matcher_equal(const struct bf_matcher *matcher0,
+                       const struct bf_matcher *matcher1)
+{
+    return bf_matcher_get_type(matcher0) == bf_matcher_get_type(matcher1) &&
+           bf_matcher_get_op(matcher0) == bf_matcher_get_op(matcher1) &&
+           bf_matcher_payload_len(matcher0) ==
+               bf_matcher_payload_len(matcher1) &&
+           0 == memcmp(bf_matcher_payload(matcher0),
+                       bf_matcher_payload(matcher1),
+                       bf_matcher_payload_len(matcher0));
 }

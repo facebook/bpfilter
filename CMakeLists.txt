@@ -77,10 +77,6 @@ if (NOT ${NO_TESTS})
     add_subdirectory(tests)
 endif ()
 
-if (NOT ${NO_CHECKS})
-    add_subdirectory(tools/checks)
-endif ()
-
 if (NOT ${NO_BENCHMARKS})
     add_subdirectory(tools/benchmarks)
 endif ()

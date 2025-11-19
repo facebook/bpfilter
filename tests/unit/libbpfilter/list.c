@@ -3,436 +3,291 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "libbpfilter/list.c"
+#include <bpfilter/list.h>
 
-#include "harness/test.h"
-#include "harness/filters.h"
-#include "mock.h"
+#include "fake.h"
+#include "test.h"
 
-static int _dummy_filler(bf_list *l, void *data,
-                         int (*add)(bf_list *l, void *data))
+static void new_and_free(void **state)
 {
-    _cleanup_free_ int *_data = NULL;
-    int r;
-
-    _data = malloc(sizeof(*_data));
-    if (!_data)
-        return -ENOMEM;
-
-    *_data = *(int *)data;
-
-    r = add(l, _data);
-    if (r < 0)
-        return r;
-
-    TAKE_PTR(_data);
-
-    return 0;
-}
-
-static int dummy_filler_head(bf_list *l, void *data)
-{
-    return _dummy_filler(l, data, bf_list_add_head);
-}
-
-static int dummy_filler_tail(bf_list *l, void *data)
-{
-    return _dummy_filler(l, data, bf_list_add_tail);
-}
-
-static void new_and_fill(bf_list **l, size_t count, const bf_list_ops *ops,
-                         int (*filler)(bf_list *l, void *data))
-{
-    assert_success(bf_list_new(l, ops));
-
-    for (size_t i = 1; i <= count; ++i)
-        assert_success(filler(*l, &i));
-
-    assert_int_equal(count, bf_list_size(*l));
-}
-
-static void init_and_fill(bf_list *l, size_t count, const bf_list_ops *ops,
-                          int (*filler)(bf_list *l, void *data))
-{
-    bf_list_init(l, ops);
-
-    for (size_t i = 1; i <= count; ++i)
-        assert_success(filler(l, &i));
-
-    assert_int_equal(count, bf_list_size(l));
-}
-
-Test(list, new_and_free)
-{
-    bf_list *l = NULL;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-
-    expect_assert_failure(bf_list_new(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_free(NULL));
-    expect_assert_failure(bf_list_add_head(NULL, NOT_NULL));
+    (void)state;
 
     {
-        // With noop operators
-        assert_success(bf_list_new(&l, NULL));
-        assert_int_equal(0, l->len);
-        assert_null(l->head);
-        assert_null(l->tail);
+        // Allocate and free, no operators
 
-        bf_list_free(&l);
-        assert_null(l);
+        bf_list *list;
 
-        new_and_fill(&l, 3, NULL, bf_list_add_head);
-        assert_int_equal(3, l->len);
-        assert_non_null(l->head);
-        assert_non_null(l->tail);
-
-        bf_list_free(&l);
-        assert_null(l);
+        assert_int_equal(0, bf_list_new(&list, NULL));
+        bf_list_free(&list);
+        assert_null(list);
     }
 
     {
-        // With dummy operators which allocate memory
-        bf_list_new(&l, &free_ops);
-        assert_int_equal(0, l->len);
-        assert_null(l->head);
-        assert_null(l->tail);
+        // Allocate and free, custom operators, empty
 
-        bf_list_free(&l);
-        assert_null(l);
+        bf_list *list;
+        bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
 
-        new_and_fill(&l, 3, &free_ops, dummy_filler_head);
-        assert_int_equal(3, l->len);
-        assert_non_null(l->head);
-        assert_non_null(l->tail);
+        assert_int_equal(0, bf_list_new(&list, &free_ops));
+        bf_list_free(&list);
+        assert_null(list);
+    }
 
-        bf_list_free(&l);
-        assert_null(l);
+    {
+        // Allocate and free, custom operators, non-empty
+
+        bf_list *list;
+
+        assert_non_null(list = bft_list_dummy(10, bf_list_add_head));
+        assert_int_equal(bf_list_size(list), 10);
+        bf_list_free(&list);
+        assert_null(list);
+    }
+
+    {
+        // Allocate and auto free, custom operators, non-empty
+
+        _free_bf_list_ bf_list *list = NULL;
+
+        assert_non_null(list = bft_list_dummy(10, bf_list_add_head));
+        assert_int_equal(bf_list_size(list), 10);
     }
 }
 
-Test(list, init_and_clean)
+static void init_and_clean(void **state)
 {
-    bf_list l;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-
-    expect_assert_failure(bf_list_init(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_clean(NULL));
-
-    {
-        // Automatically cleanup
-        _clean_bf_list_ bf_list list;
-        init_and_fill(&list, 3, &free_ops, dummy_filler_head);
-    }
-
-    {
-        // With noop operators
-        bf_list_init(&l, NULL);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-
-        bf_list_clean(&l);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-
-        init_and_fill(&l, 3, NULL, bf_list_add_head);
-        assert_int_equal(3, l.len);
-        assert_non_null(l.head);
-        assert_non_null(l.tail);
-
-        bf_list_clean(&l);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-    }
-
-    {
-        // With dummy operators which allocate memory
-        bf_list_init(&l, &free_ops);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-
-        bf_list_clean(&l);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-
-        init_and_fill(&l, 3, &free_ops, dummy_filler_head);
-        assert_int_equal(3, l.len);
-        assert_non_null(l.head);
-        assert_non_null(l.tail);
-
-        bf_list_clean(&l);
-        assert_int_equal(0, l.len);
-        assert_null(l.head);
-        assert_null(l.tail);
-    }
+    (void)state;
 }
 
-Test(list, pack_unpack)
+static void pack_and_unpack(void **state)
 {
-    _free_bf_list_ bf_list *l0 = NULL;
-    _clean_bf_list_ bf_list l1 = bf_list_default(freep, bft_list_dummy_data_pack);
+    _free_bf_list_ bf_list *source = NULL;
+    _clean_bf_list_ bf_list destination;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     _free_bf_rpack_ bf_rpack_t *rpack = NULL;
     bf_rpack_node_t list_node, list_elem_node;
     const void *data;
     size_t data_len;
 
-    expect_assert_failure(bf_list_pack(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_pack(NOT_NULL, NULL));
+    (void)state;
 
-    assert_non_null(l0 = bft_list_get(10, 50));
+    assert_non_null(source = bft_list_dummy(10, bf_list_add_head));
+    destination = bf_list_default_from(*source);
 
-    assert_success(bf_wpack_new(&wpack));
+    // Pack the source list
+    assert_ok(bf_wpack_new(&wpack));
     bf_wpack_open_array(wpack, "list");
-    assert_success(bf_list_pack(l0, wpack));
+    assert_ok(bf_list_pack(source, wpack));
     bf_wpack_close_array(wpack);
-    assert_success(bf_wpack_get_data(wpack, &data, &data_len));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
-    assert_success(bf_rpack_new(&rpack, data, data_len));
-    assert_success(bf_rpack_kv_array(bf_rpack_root(rpack), "list", &list_node));
+    // Unpack in the destination list
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_rpack_kv_array(bf_rpack_root(rpack), "list", &list_node));
     bf_rpack_array_foreach (list_node, list_elem_node) {
-        _cleanup_free_ struct bft_list_dummy_data *data = NULL;
-        assert_success(bf_list_emplace(&l1, bft_list_dummy_data_new_from_pack, data, list_elem_node));
+        _cleanup_free_ size_t *value = NULL;
+
+        assert_non_null(value = malloc(sizeof(*value)));
+        assert_ok(bf_rpack_kv_u64(list_elem_node, "size_t", value));
+
+        assert_ok(bf_list_push(&destination, (void **)&value));
     }
 
-    assert_true(bft_list_eq(l0, &l1, (bft_list_eq_cb)bft_list_dummy_data_compare));
+    assert_true(
+        bft_list_eq(source, &destination, (bft_list_eq_cb)bft_list_dummy_eq));
 }
 
-Test(list, fill_from_head_and_check)
+static void move(void **state)
 {
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-    bf_list list;
-    size_t i;
+    _clean_bf_list_ bf_list destination;
+    _free_bf_list_ bf_list *source = NULL;
+    _free_bf_list_ bf_list *reference = NULL;
 
-    expect_assert_failure(bf_list_size(NULL));
-    expect_assert_failure(bf_list_get_head(NULL));
-    expect_assert_failure(bf_list_node_get_data(NULL));
+    (void)state;
 
-    bf_list_init(&list, &free_ops);
+    assert_non_null(source = bft_list_dummy(10, bf_list_add_head));
+    assert_non_null(reference = bft_list_dummy(10, bf_list_add_head));
 
-    assert_null(bf_list_get_head(&list));
-
-    // Fill list at head with values from 1 to 10, expecting:
-    // 10 -> 9 -> ... -> 2 -> 1
-    init_and_fill(&list, 10, &free_ops, dummy_filler_head);
-
-    // Validate content of the list
-    i = bf_list_size(&list);
-
-    bf_list_foreach (&list, it) {
-        assert_non_null(it);
-        assert_int_equal(i, *(int *)bf_list_node_get_data(it));
-        --i;
-    }
-
-    i = 1;
-
-    bf_list_foreach_rev (&list, it) {
-        assert_non_null(it);
-        assert_int_equal(i, *(int *)bf_list_node_get_data(it));
-        ++i;
-    }
-
-    bf_list_clean(&list);
+    destination = bf_list_move(*source);
+    assert_true(bft_list_eq(reference, &destination,
+                            (bft_list_eq_cb)bft_list_dummy_eq));
 }
 
-Test(list, iterate_and_remove)
+static void head_and_tail(void **state)
 {
-    bf_list l;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+    _free_bf_list_ bf_list *list = NULL;
 
-    init_and_fill(&l, 10, &free_ops, dummy_filler_head);
+    (void)state;
 
-    bf_list_foreach (&l, node)
-        bf_list_delete(&l, node);
+    assert_non_null(list = bft_list_dummy(10, bf_list_add_head));
+    assert_int_equal(bf_list_size(list), 10);
+    assert_false(bf_list_is_empty(list));
 
-    assert_int_equal(0, bf_list_size(&l));
-    assert_null(l.head);
-    assert_null(l.tail);
+    // Check head
+    assert_false(bf_list_is_head(list, list->tail));
+    assert_false(bf_list_is_head(list, list->head->next));
+    assert_true(bf_list_is_head(list, list->head));
+    assert_ptr_not_equal(bf_list_get_head(list), list->tail);
+    assert_ptr_not_equal(bf_list_get_head(list), list->head->next);
+    assert_ptr_equal(bf_list_get_head(list), list->head);
 
-    bf_list_clean(&l);
-
-    bf_list_foreach_rev (&l, node)
-        bf_list_delete(&l, node);
-
-    assert_int_equal(0, bf_list_size(&l));
-    assert_null(l.head);
-    assert_null(l.tail);
-
-    bf_list_clean(&l);
+    // Check tail
+    assert_false(bf_list_is_tail(list, list->head));
+    assert_false(bf_list_is_tail(list, list->tail->prev));
+    assert_true(bf_list_is_tail(list, list->tail));
+    assert_ptr_not_equal(bf_list_get_tail(list), list->head);
+    assert_ptr_not_equal(bf_list_get_tail(list), list->tail->prev);
+    assert_ptr_equal(bf_list_get_tail(list), list->tail);
 }
 
-Test(list, get_at)
+static void iterate(void **state)
 {
-    bf_list l;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+    _free_bf_list_ bf_list *list = NULL;
 
-    expect_assert_failure(bf_list_get_at(NULL, 1));
+    (void)state;
 
-    // Fill the list with values from 1 to 10
-    init_and_fill(&l, 10, &free_ops, dummy_filler_tail);
-
-    // Index 0 contains value 1 and so on
-    assert_int_equal(1, *(int *)bf_list_get_at(&l, 0));
-    assert_int_equal(5, *(int *)bf_list_get_at(&l, 4));
-    assert_int_equal(10, *(int *)bf_list_get_at(&l, 9));
-
-    // Index 20 is out of the list
-    assert_null(bf_list_get_at(&l, 20));
-
-    bf_list_clean(&l);
-}
-
-Test(list, fill_from_tail_and_check)
-{
-    bf_list list;
-    size_t i;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-
-    expect_assert_failure(bf_list_add_tail(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_get_tail(NULL));
-
-    bf_list_init(&list, &free_ops);
-
-    assert_null(bf_list_get_head(&list));
-
-    // Fill list at tail with values from 1 to 10, expecting:
-    // 1 -> 2 -> ... -> 9 -> 10
-    init_and_fill(&list, 10, &free_ops, dummy_filler_tail);
-
-    // Validate content of the list
-    i = 1;
-
-    bf_list_foreach (&list, it) {
-        assert_non_null(it);
-        assert_int_equal(i, *(int *)bf_list_node_get_data(it));
-        ++i;
-    }
-
-    i = bf_list_size(&list);
-
-    bf_list_foreach_rev (&list, it) {
-        assert_non_null(it);
-        assert_int_equal(i, *(int *)bf_list_node_get_data(it));
-        --i;
-    }
-
-    bf_list_clean(&list);
-}
-
-Test(list, is_tail)
-{
-    bf_list l;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-
-    expect_assert_failure(bf_list_is_tail(NULL, NOT_NULL));
-    expect_assert_failure(bf_list_is_tail(NOT_NULL, NULL));
-
-    init_and_fill(&l, 10, &free_ops, dummy_filler_head);
-
-    assert_true(bf_list_is_tail(&l, bf_list_get_tail(&l)));
-    assert_false(bf_list_is_tail(&l, bf_list_get_head(&l)));
-
-    bf_list_clean(&l);
-}
-
-Test(list, prev_next_node_access)
-{
-    expect_assert_failure(bf_list_node_next(NULL));
-    expect_assert_failure(bf_list_node_prev(NULL));
+    assert_non_null(list = bft_list_dummy(10, bf_list_add_tail));
 
     {
-        _free_bf_list_ bf_list *l = NULL;
+        // Forward
+        size_t i = 0;
+        const bf_list_node *node0 = bf_list_get_head(list);
 
-        new_and_fill(&l, 0, NULL, bf_list_add_head);
+        assert_ptr_equal(node0, list->head);
 
-        assert_null(bf_list_get_head(l));
-        assert_null(bf_list_get_tail(l));
+        bf_list_foreach (list, node1) {
+            assert_ptr_equal(node0, node1);
+            assert_int_equal(i, *(size_t *)bf_list_node_get_data(node0));
+            node0 = bf_list_node_next(node0);
+            ++i;
+        }
     }
 
     {
-        _free_bf_list_ bf_list *l = NULL;
+        // Backward
+        size_t i = bf_list_size(list) - 1;
+        const bf_list_node *node0 = bf_list_get_tail(list);
 
-        new_and_fill(&l, 1, NULL, bf_list_add_head);
+        assert_ptr_equal(node0, list->tail);
 
-        assert_ptr_equal(bf_list_get_head(l), bf_list_get_tail(l));
-        assert_null(bf_list_node_next(bf_list_get_tail(l)));
-        assert_null(bf_list_node_prev(bf_list_get_head(l)));
-    }
-
-    {
-        _free_bf_list_ bf_list *l = NULL;
-
-        new_and_fill(&l, 2, NULL, bf_list_add_head);
-
-        assert_ptr_not_equal(bf_list_get_head(l), bf_list_get_tail(l));
-        assert_ptr_equal(bf_list_node_next(bf_list_get_head(l)),
-                         bf_list_get_tail(l));
-        assert_ptr_equal(bf_list_node_prev(bf_list_get_tail(l)),
-                         bf_list_get_head(l));
-    }
-}
-
-Test(list, node_take_data)
-{
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
-
-    {
-        _free_bf_list_ bf_list *l = NULL;
-
-        new_and_fill(&l, 5, &free_ops, dummy_filler_tail);
-
-        bf_list_foreach (l, node) {
-            assert_non_null(node);
-            assert_non_null(node->data);
-
-            void *data = bf_list_node_take_data(node);
-            assert_non_null(data);
-            assert_null(node->data);
-
-            free(data);
+        bf_list_foreach_rev (list, node1) {
+            assert_ptr_equal(node0, node1);
+            assert_int_equal(i, *(size_t *)bf_list_node_get_data(node0));
+            node0 = bf_list_node_prev(node0);
+            --i;
         }
     }
 }
 
-Test(list, push_to_list)
+static void insert(void **state)
 {
-    bf_list list;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+    (void)state;
 
-    int dummy_int = 1;
-    _cleanup_free_ int *dummy_int_ptr = NULL;
-    _cleanup_free_ void *dummy_void_ptr_ptr = malloc(sizeof(void*));
+    {
+        // Insert at tail
+        _free_bf_list_ bf_list *list = NULL;
+        _free_bf_list_ bf_list *reference = NULL;
 
-    bf_list_init(&list, &free_ops);
-    expect_assert_failure(bf_list_push(NULL, NULL));
-    expect_assert_failure(bf_list_push(NULL, &dummy_void_ptr_ptr));
-    expect_assert_failure(bf_list_push(NOT_NULL, NULL));
+        assert_non_null(list = bft_list_dummy(0, NULL));
+        assert_non_null(reference = bft_list_dummy(10, bf_list_add_tail));
 
-    dummy_int_ptr = malloc(sizeof(dummy_int));
-    *dummy_int_ptr = dummy_int;
+        for (size_t i = 0; i < bf_list_size(reference); ++i) {
+            _cleanup_free_ size_t *value = NULL;
 
-    bf_list_push(&list, (void **)&dummy_int_ptr);
-    assert_int_equal(*(int *)bf_list_node_get_data(list.tail), dummy_int);
-    assert_ptr_equal(list.head, list.tail);
-    assert_null(dummy_int_ptr);
-    assert_int_equal(bf_list_size(&list), 1);
+            assert_non_null(value = malloc(sizeof(*value)));
+            *value = i;
 
-    dummy_int = 2;
-    dummy_int_ptr = malloc(sizeof(dummy_int));
-    *dummy_int_ptr = dummy_int;
+            assert_ok(bf_list_add_tail(list, value));
+            TAKE_PTR(value);
+        }
 
-    bf_list_push(&list, (void **)&dummy_int_ptr);
-    assert_int_equal(*(int *)bf_list_node_get_data(list.tail), dummy_int);
-    assert_ptr_equal(list.head->next, list.tail);
-    assert_ptr_equal(list.tail->prev, list.head);
-    assert_null(dummy_int_ptr);
-    assert_int_equal(bf_list_size(&list), 2);
-    assert_null(list.tail->next);
+        assert_true(
+            bft_list_eq(list, reference, (bft_list_eq_cb)bft_list_dummy_eq));
+    }
 
-    bf_list_clean(&list);
+    {
+        // Push
+        _free_bf_list_ bf_list *list = NULL;
+        _free_bf_list_ bf_list *reference = NULL;
+
+        assert_non_null(list = bft_list_dummy(0, NULL));
+        assert_non_null(reference = bft_list_dummy(10, bf_list_add_tail));
+
+        for (size_t i = 0; i < bf_list_size(reference); ++i) {
+            _cleanup_free_ size_t *value = NULL;
+
+            assert_non_null(value = malloc(sizeof(*value)));
+            *value = i;
+
+            assert_ok(bf_list_push(list, (void **)&value));
+        }
+
+        assert_true(
+            bft_list_eq(list, reference, (bft_list_eq_cb)bft_list_dummy_eq));
+    }
+
+    {
+        // Insert at head
+        _free_bf_list_ bf_list *list = NULL;
+        _free_bf_list_ bf_list *reference = NULL;
+
+        assert_non_null(list = bft_list_dummy(0, NULL));
+        assert_non_null(reference = bft_list_dummy(10, bf_list_add_head));
+
+        for (size_t i = 0; i < bf_list_size(reference); ++i) {
+            _cleanup_free_ size_t *value = NULL;
+
+            assert_non_null(value = malloc(sizeof(*value)));
+            *value = i;
+
+            assert_ok(bf_list_add_head(list, value));
+            TAKE_PTR(value);
+        }
+
+        assert_true(
+            bft_list_eq(list, reference, (bft_list_eq_cb)bft_list_dummy_eq));
+    }
+}
+
+static void delete(void **state)
+{
+    _free_bf_list_ bf_list *list = NULL;
+    _free_bf_list_ bf_list *reference = NULL;
+
+    (void)state;
+
+    assert_non_null(list = bft_list_dummy(10, bf_list_add_tail));
+    assert_non_null(reference = bft_list_dummy(0, NULL));
+
+    // Build the reference list
+    for (size_t i = 1; i < bf_list_size(list) - 1; ++i) {
+        _cleanup_free_ size_t *value = NULL;
+
+        assert_non_null(value = malloc(sizeof(*value)));
+        *value = i;
+
+        assert_ok(bf_list_push(reference, (void *)&value));
+    }
+
+    // Validate bf_list_get_at for indexes outside of the list
+    assert_null(bf_list_get_at(list, bf_list_size(list)));
+
+    // Remove nodes starting from tail so we don't mess up the indexes
+    bf_list_delete(list, list->head);
+    bf_list_delete(list, list->tail);
+
+    assert_true(
+        bft_list_eq(list, reference, (bft_list_eq_cb)bft_list_dummy_eq));
+}
+
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(new_and_free),    cmocka_unit_test(init_and_clean),
+        cmocka_unit_test(pack_and_unpack), cmocka_unit_test(move),
+        cmocka_unit_test(head_and_tail),   cmocka_unit_test(iterate),
+        cmocka_unit_test(insert),          cmocka_unit_test(delete),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

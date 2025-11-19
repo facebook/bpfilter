@@ -5,17 +5,25 @@
 
 #pragma once
 
-#include <linux/bpf.h>
+// clang-format off
+#include <stdarg.h> // NOLINT: required by cmocka.h
+#include <stddef.h> // NOLINT: required by cmocka.h
+#include <stdint.h> // NOLINT: required by cmocka.h
+#include <setjmp.h> // NOLINT: required by cmocka.h
+#include <cmocka.h> // NOLINT: required by cmocka.h
+// clang-format on
 
-#include <fcntl.h>
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <unistd.h>
 
 /**
  * @file mock.h
+ *
+ * Mock functions are used to wrap a system call or an external library function
+ * in order to simplify the test of a libbpfilter function, or prevent it from
+ * modifying the underlying system.
+ *
+ * ## Technicalities
+
  *
  * Mock functions from `bpfilter` or from the standard library. Mocking function
  * allows the tester to call a stub and force the function to return a
@@ -45,70 +53,66 @@
  *
  * This module also defines convenience function to simulate a runtime
  * environment such as creating a temporary file to serialize the daemon into.
+
+
+MOCKING IS ONLY TO MOCK, not to trigger different code path during testing
+-> KISS
+
+
  */
 
-#define _free_tmp_file_ __attribute__((cleanup(bf_test_filepath_free)))
+struct btf;
 
-char *bf_test_filepath_new_rw(void);
-void bf_test_filepath_free(char **path);
+#include <stdio.h>
 
-#define _clean_bf_test_mock_ __attribute__((cleanup(bf_test_mock_clean)))
+#include <bpfilter/helper.h>
 
-#define bf_test_mock_declare(ret, x, args)                                     \
-    void bf_test_mock_##x##_enable(void);                                      \
-    void bf_test_mock_##x##_disable(void);                                     \
-    bool bf_test_mock_##x##_is_enabled(void);                                  \
-    ret __wrap_##x args;
+#define _clean_bft_mock_ __attribute__((cleanup(bft_mock_clean)))
 
-#define bf_test_mock_get(name, retval)                                         \
+#define bft_mock_declare(fn)                                                   \
+    void bft_mock_##fn##_enable(void);                                         \
+    void bft_mock_##fn##_disable(void);                                        \
+    bool bft_mock_##fn##_is_enabled(void);
+
+#define bft_mock_get(name)                                                     \
     ({                                                                         \
-        bf_test_mock_##name##_enable();                                        \
-        will_return(__wrap_##name, retval);                                    \
-        (bf_test_mock) {.disable = bf_test_mock_##name##_disable,              \
-                        .wrap_name = BF_STR(__wrap_##name)};                   \
+        bft_mock_##name##_enable();                                            \
+        (bft_mock) {.disable = bft_mock_##name##_disable,                      \
+                    .wrap_name = BF_STR(__wrap_##name)};                       \
     })
 
-#define bf_test_mock_empty(name)                                               \
-    ({                                                                         \
-        bf_test_mock_##name##_enable();                                        \
-        (bf_test_mock) {                                                       \
-            .disable = bf_test_mock_##name##_disable,                          \
-            .wrap_name = BF_STR(__wrap_##name),                                \
-        };                                                                     \
-    })
-
-#define bf_test_mock_will_return(mock, value)                                  \
-    _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), 1)
-
-#define bf_test_mock_will_return_always(mock, value)                           \
-    _will_return((mock).wrap_name, __FILE__, __LINE__, ((uintmax_t)(value)), -1)
-
-#define bf_test_mock_real(mock) __real_##mock
-#define bf_test_mock_define(ret, x, args)                                      \
-    bool __bf_test_mock_##x##_on = false;                                      \
+#define bft_mock_real(mock) __real_##mock
+#define bft_mock_define(x)                                                     \
+    static bool _bft_mock_##x##_on = false;                                    \
                                                                                \
-    void bf_test_mock_##x##_enable(void)                                       \
+    void bft_mock_##x##_enable(void)                                           \
     {                                                                          \
-        __bf_test_mock_##x##_on = true;                                        \
+        _bft_mock_##x##_on = true;                                             \
     }                                                                          \
                                                                                \
-    void bf_test_mock_##x##_disable(void)                                      \
+    void bft_mock_##x##_disable(void)                                          \
     {                                                                          \
-        __bf_test_mock_##x##_on = false;                                       \
+        _bft_mock_##x##_on = false;                                            \
     }                                                                          \
                                                                                \
-    bool bf_test_mock_##x##_is_enabled(void)                                   \
+    bool bft_mock_##x##_is_enabled(void)                                       \
     {                                                                          \
-        return __bf_test_mock_##x##_on;                                        \
-    }                                                                          \
-                                                                               \
-    extern ret __real_##x args;                                                \
-    ret __wrap_##x args
+        return _bft_mock_##x##_on;                                             \
+    }
 
 typedef struct
 {
     void (*disable)(void);
     const char *wrap_name;
-} bf_test_mock;
+} bft_mock;
 
-void bf_test_mock_clean(bf_test_mock *mock);
+void bft_mock_clean(bft_mock *mock);
+
+bft_mock_declare(btf__load_vmlinux_btf);
+bft_mock_declare(isatty);
+bft_mock_declare(setns);
+bft_mock_declare(syscall);
+
+// Syscall mock helpers
+void bft_mock_syscall_set_retval(long retval);
+long bft_mock_syscall_get_retval(void);
