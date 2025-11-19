@@ -28,14 +28,15 @@ static_assert_enum_mapping(_bf_pkthdr_strs, _BF_PKTHDR_MAX);
 
 const char *bf_pkthdr_to_str(enum bf_pkthdr hdr)
 {
-    bf_assert(hdr < _BF_PKTHDR_MAX);
+    if (hdr < 0 || hdr >= _BF_PKTHDR_MAX)
+        return "<bf_pkthdr unknown>";
 
     return _bf_pkthdr_strs[hdr];
 }
 
 int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr)
 {
-    bf_assert(str);
+    bf_assert(hdr);
 
     for (int i = 0; i < _BF_PKTHDR_MAX; ++i) {
         if (bf_streq_i(str, _bf_pkthdr_strs[i])) {
