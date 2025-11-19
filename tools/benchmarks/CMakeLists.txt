@@ -35,15 +35,25 @@ add_custom_target(benchmark
     COMMAND
         ${CMAKE_COMMAND}
             -E make_directory
-            ${CMAKE_BINARY_DIR}/output/benchmarks
+            ${CMAKE_BINARY_DIR}/benchmarks
     COMMAND
         ${CMAKE_SOURCE_DIR}/tools/asroot
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
                 --daemon $<TARGET_FILE:bpfilter>
                 --srcdir ${CMAKE_SOURCE_DIR}
-                --outfile ${CMAKE_BINARY_DIR}/output/benchmarks/{gitrev}.json
-    DEPENDS benchmark_bin bfcli bpfilter
+                --outfile ${CMAKE_BINARY_DIR}/benchmarks/{gitrev}.json
+    COMMAND
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchreport 
+            --sources ${CMAKE_SOURCE_DIR} 
+            --results ${CMAKE_BINARY_DIR}/benchmarks 
+            --template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template 
+            --output ${CMAKE_BINARY_DIR}/benchmarks/index.html
+    COMMAND
+        cp ${CMAKE_BINARY_DIR}/.benchmarks_report.d.full ${CMAKE_BINARY_DIR}/.benchmarks_report.d
+    BYPRODUCTS
+        ${CMAKE_BINARY_DIR}/benchmarks/index.html
+    DEPENDS benchmark_bin bfcli bpfilter benchreport benchmarks.html.template
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
     COMMENT "Running benchmarks"
