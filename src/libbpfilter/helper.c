@@ -134,11 +134,19 @@ char *bf_rtrim(char *str)
     bf_assert(str);
 
     char *back = str + strlen(str);
+
+    if (back == str)
+        return str;
+
     do {
         --back;
     } while (back > str && isspace(*back));
 
-    *(back + 1) = '\0';
+    if (back == str && isspace(*back))
+        *back = '\0';
+    else
+        *(back + 1) = '\0';
+
     return str;
 }
 
