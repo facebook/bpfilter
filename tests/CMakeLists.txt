@@ -7,7 +7,7 @@ add_subdirectory(e2e)
 add_subdirectory(integration)
 add_subdirectory(check)
 
-if (${ENABLE_COVERAGE})
+if (${WITH_COVERAGE})
     include(ProcessorCount)
 
     find_program(LCOV_BIN lcov REQUIRED)
