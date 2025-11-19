@@ -9,16 +9,16 @@
 
 const char *bf_front_to_str(enum bf_front front)
 {
-    bf_assert(front >= 0 && front < _BF_FRONT_MAX);
-
     static const char * const names[] = {
         [BF_FRONT_IPT] = "BF_FRONT_IPT",
         [BF_FRONT_NFT] = "BF_FRONT_NFT",
         [BF_FRONT_CLI] = "BF_FRONT_CLI",
     };
-
     static_assert(ARRAY_SIZE(names) == _BF_FRONT_MAX,
                   "missing fronts in bf_front_to_str()");
+
+    if (front < 0 || front >= _BF_FRONT_MAX)
+        return "<bf_front unknown>";
 
     return names[front];
 }
