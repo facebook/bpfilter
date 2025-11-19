@@ -12,12 +12,9 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 
 #include "bpfilter/helper.h"
-#include "bpfilter/logger.h"
 
 static char _bf_if_name[IFNAMSIZ];
 
@@ -43,49 +40,4 @@ const char *bf_if_name_from_index(int index)
         return NULL;
 
     return _bf_if_name;
-}
-
-ssize_t bf_if_get_ifaces(struct bf_if_iface **ifaces)
-{
-    _cleanup_free_ struct bf_if_iface *_ifaces = NULL;
-    struct if_nameindex *if_ni, *it;
-    ssize_t n_ifaces = 0;
-    size_t i = 0;
-
-    bf_assert(ifaces);
-
-    if_ni = if_nameindex();
-    if (!if_ni)
-        return bf_err_r(errno, "failed to fetch interfaces details");
-
-    // Gather the number of interfaces to allocate the memory.
-    for (it = if_ni; it->if_index != 0 || it->if_name != NULL; ++it)
-        ++n_ifaces;
-
-    if (n_ifaces == 0)
-        return 0;
-
-    _ifaces = malloc(n_ifaces * sizeof(*_ifaces));
-    if (!_ifaces) {
-        if_freenameindex(if_ni);
-        return bf_err_r(-ENOMEM,
-                        "failed to allocate memory for interfaces buffer");
-    }
-
-    for (it = if_ni; it->if_index != 0 || it->if_name != NULL; ++it) {
-        _ifaces[i].index = it->if_index;
-
-        if (it->if_index)
-            strncpy(_ifaces[i].name, it->if_name, IF_NAMESIZE);
-        else
-            bf_warn("interface %d has no name", it->if_index);
-
-        ++i;
-    }
-
-    *ifaces = TAKE_PTR(_ifaces);
-
-    if_freenameindex(if_ni);
-
-    return n_ifaces;
 }
