@@ -95,7 +95,7 @@ Checks: >
     -readability-enum-initial-value,
     -readability-function-cognitive-complexity,
     -readability-isolate-declaration,
-    -readability-suspicious-call-argument
+    -readability-suspicious-call-argument,
 
 WarningsAsErrors: "*"
 FormatStyle: none
