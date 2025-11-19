@@ -7,23 +7,22 @@
 	The documentation is generated using:
 	- Doxygen: parse the source files for Doxygen comments and generate XML
 	  files containing the technical documentation.
-	- Breathe: Sphinx plugin to print Doxygen documentation from a Sphinx
-	  project.
-	- Sphinx: documentation generate. Creates a documentation website from
-	  the technical documentation provided by Breathe and the documentation
-	  files under the "doc" directory.
+	- Breathe: Sphinx plugin to easily integrate Doxygen documentation into
+	  a Sphinx website.
+	- Sphinx: generate the documentation website based on source files in
+	  reStructuredText format and Doxygen/Breathe technical documentation.
 
-	Usage of GLOB_RECURSE is not recommended because if a new source file is
-	added to the project, there is no CMakeLists.txt file to update. If no
-	CMakeLists.txt is updated, CMake doesn't know it needs to refresh the
-	computed sources list. This is not an issue here, as the source file will
-	be added to src/CMakeLists.txt anyway (no GLOB_RECURSE used there). Using
-	GLOB_RECURSE prevents developers from forgetting about adding it to the
-	documentation's dependencies.
+	Source files on which Doxygen depends uses `GLOB_RECURSE`, which is usually
+	frowned upon: source files will be discovered during CMake's generation
+	step, so new files will be ignored until CMake runs, which can be confusing.
+	However, those source files are manually added to their respective
+	CMakeLists.txt, requiring developers to run CMake anyway. Using
+	`GLOB_RECURSE` here ensures that the source files don't need to be added
+	to multiple CMakeLists.txt, making our lives easier.
 
 	Warnings emitted by Doxygen during the XML generation or Sphinx during the
 	HTML generation will be treated as errors. Those warnings are useful as
-	they usually refer to an invalid Doxygen tax, it's a quick fix that helps
+	they usually refer to an invalid Doxygen syntax, it's a quick fix that helps
 	to increase the documentation's quality.
 
 	Doxygen's configuration file is version-specific. The approach taken here is
@@ -31,12 +30,43 @@
 	then include this default version in the project's Doxyfile and override
 	relevant settings.
 
-	Logs printed on the standard output for the commands defined below are
-	suppressed to catch actual issues more easily.
+
+	## About the benchmarks and coverage reports
+
+	The benchmarks and coverage reports are generated from the benchmarks and
+	coverage results, into `html/external/$TYPE`. Both custom commands behave
+	similarly; the coverage report is described below as an example.
+
+	The main documentation generation will create an empty placeholder report,
+	because if no coverage data is available, no real coverage report will be
+	generated. However, the main documentation generation target doesn't depend
+	on the coverage report, as we don't want to regenerate the complete
+	documentation if only the coverage report must be updated (we generate the
+	main documentation from scratch every time, because Sphinx doesn't properly
+	handle incremental builds).
+
+	Hence, we need to generate the coverage report **if** coverage data is
+	available, while keeping the placeholder report if we try to generate
+	the report with no coverage data available (weak dependency).
+
+	To achieve these requirements (which also apply to the benchmarks report),
+	CMake's DEPFILE option is used for the coverage report generation: by
+	default, the dependency file only depends on the main documentation's
+	`index.html`. When the coverage data is gathered, the dependency file
+	is updated to include the generated coverage report's `index.html`.
+	Because of this new dependency, generating the documentation (`make doc`)
+	will copy the HTML report into the documentation tree.
+
+	This complex mechanism ensures:
+	- genhtml is looked for and used only when the coverage data is gathered
+	  from the build directory, not from the documentation's CMakeLists.txt.
+	- The coverage report is copied into the documentation tree only if
+	  it has been updated (`make coverage` was run).
+	- A default coverage report placeholder is used if no coverage report
+	  has been generated yet.
 #]]
 
 find_package(Doxygen REQUIRED)
-find_program(GENHTML_BIN genhtml REQUIRED)
 find_program(SPHINX_BIN sphinx-build REQUIRED)
 
 file(GLOB_RECURSE bf_srcs
@@ -111,13 +141,6 @@ add_custom_command(
 			${CMAKE_CURRENT_SOURCE_DIR}
 			${CMAKE_CURRENT_BINARY_DIR}/html
 			${doc_srcs}
-	# Update the modification time of the documentation's index, so the
-	# benchmark report will be generated (as external/benchmarks/index.html is
-	# now out-of-date).
-	COMMAND
-		${CMAKE_COMMAND}
-			-E touch
-			${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
 	DEPENDS
 		${CMAKE_CURRENT_BINARY_DIR}/conf.py
 		${CMAKE_CURRENT_BINARY_DIR}/xml/index.xml
@@ -127,38 +150,67 @@ add_custom_command(
 	COMMENT "Generating the documentation"
 )
 
-add_custom_command(
-	COMMAND
-		${CMAKE_CURRENT_SOURCE_DIR}/benchreport
-			--sources ${CMAKE_SOURCE_DIR}
-			--results ${CMAKE_BINARY_DIR}/output/benchmarks
-			--template ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
-			--output ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
-	DEPENDS
-		${CMAKE_CURRENT_SOURCE_DIR}/benchreport
-		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-		${CMAKE_CURRENT_SOURCE_DIR}/benchmarks.html.template
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
-	COMMENT "Generate the benchmarks summary"
+file(WRITE ${CMAKE_BINARY_DIR}/.benchmarks_report.d
+    "${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html: \
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html"
 )
 
-# covreport should not depend on lcov.out: it should generate a coverage report
-# if it exists, or skip the report generation if it doesn't.
+file(WRITE ${CMAKE_BINARY_DIR}/.benchmarks_report.d.full
+    "${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html: \
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html \
+		${CMAKE_BINARY_DIR}/benchmarks/index.html"
+)
+
 add_custom_command(
 	COMMAND
-		${CMAKE_CURRENT_SOURCE_DIR}/covreport
-			--genhtml ${GENHTML_BIN}
-			--tracefile ${CMAKE_BINARY_DIR}/output/tests/lcov.out
-			--output ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage
-	DEPENDS
-		${CMAKE_CURRENT_SOURCE_DIR}/covreport
-		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
+		bash -c "if [ -f ${CMAKE_BINARY_DIR}/benchmarks/index.html ]; then \
+			${CMAKE_COMMAND} \
+				-E copy_if_different \
+				${CMAKE_BINARY_DIR}/benchmarks/index.html \
+				${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html; \
+		fi"
+	COMMAND
+		${CMAKE_COMMAND}
+			-E touch
+			${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
+	DEPFILE ${CMAKE_BINARY_DIR}/.benchmarks_report.d
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
+	COMMENT "Generate the benchmarks summary"
+	VERBATIM
+)
+
+file(WRITE ${CMAKE_BINARY_DIR}/.coverage_report.d
+    "${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html: \
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html"
+)
+
+file(WRITE ${CMAKE_BINARY_DIR}/.coverage_report.d.full
+    "${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html: \
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html \
+		${CMAKE_BINARY_DIR}/coverage/index.html"
+)
+
+add_custom_command(
+	COMMAND
+		bash -c "if [ -d ${CMAKE_BINARY_DIR}/coverage ]; then \
+			${CMAKE_COMMAND} \
+				-E copy_directory_if_different \
+				${CMAKE_BINARY_DIR}/coverage \
+				${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage; \
+		fi"
+	COMMAND
+		${CMAKE_COMMAND}
+			-E touch
+			${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
+	DEPFILE ${CMAKE_BINARY_DIR}/.coverage_report.d
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
 	COMMENT "Generate the coverage report"
+	VERBATIM
 )
 
 add_custom_target(doc
 	DEPENDS
+		${CMAKE_CURRENT_BINARY_DIR}/html/index.html
 		${CMAKE_CURRENT_BINARY_DIR}/html/external/benchmarks/index.html
 		${CMAKE_CURRENT_BINARY_DIR}/html/external/coverage/index.html
 )
