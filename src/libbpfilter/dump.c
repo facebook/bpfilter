@@ -14,8 +14,13 @@
 
 void bf_dump_prefix_push(prefix_t *prefix)
 {
-    char *_prefix = *prefix;
-    size_t len = strlen(_prefix);
+    char *_prefix;
+    size_t len;
+
+    assert(prefix);
+
+    _prefix = *prefix;
+    len = strlen(_prefix);
 
     if (len) {
         /* If the prefix string is not empty, then we need to either
@@ -33,8 +38,13 @@ void bf_dump_prefix_push(prefix_t *prefix)
 
 prefix_t *bf_dump_prefix_last(prefix_t *prefix)
 {
-    char *_prefix = *prefix;
-    size_t len = strlen(_prefix);
+    char *_prefix;
+    size_t len;
+
+    assert(prefix);
+
+    _prefix = *prefix;
+    len = strlen(_prefix);
 
     if (len)
         strncpy(&_prefix[len - 4], "`-- ", BF_DUMP_TOKEN_LEN);
@@ -44,8 +54,13 @@ prefix_t *bf_dump_prefix_last(prefix_t *prefix)
 
 void bf_dump_prefix_pop(prefix_t *prefix)
 {
-    char *_prefix = *prefix;
-    size_t len = strlen(_prefix);
+    char *_prefix;
+    size_t len;
+
+    assert(prefix);
+
+    _prefix = *prefix;
+    len = strlen(_prefix);
 
     if (!len)
         return;
@@ -62,6 +77,9 @@ void bf_dump_hex(prefix_t *prefix, const void *data, size_t len)
     // 5 characters per byte (0x%02x) + 1 for the null terminator.
     char buf[(BF_DUMP_HEXDUMP_LEN * BF_DUMP_TOKEN_LEN) + 1];
     const void *end = data + len;
+
+    assert(prefix);
+    assert(data);
 
     while (data < end) {
         char *line = buf;
