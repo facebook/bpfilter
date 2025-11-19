@@ -14,6 +14,7 @@
 #include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include "bpfilter/dynbuf.h"
@@ -115,7 +116,15 @@ static int _bf_send_from_buff(int fd, void *buf, size_t buf_len)
     return 0;
 }
 
-int bf_send_request(int fd, const struct bf_request *request)
+/**
+ * Send a request to the given file descriptor.
+ *
+ * @param fd File descriptor to send the request to. Must be a valid file
+ *        descriptor.
+ * @param request Request to send. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_send_request(int fd, const struct bf_request *request)
 {
     int r;
 
@@ -159,7 +168,16 @@ int bf_send_response(int fd, struct bf_response *response)
     return 0;
 }
 
-int bf_recv_response(int fd, struct bf_response **response)
+/**
+ * Received a response from the file descriptor.
+ *
+ * @param fd File descriptor to receive the response from. Must be a valid file
+ *        descriptor.
+ * @param response Response to receive. Can't be NULL. Will be allocated by the
+ *        function.
+ * @return 0 on success, negative error code on failure.
+ */
+static int _bf_recv_response(int fd, struct bf_response **response)
 {
     _clean_bf_dynbuf_ struct bf_dynbuf dynbuf = bf_dynbuf_default();
     int r;
@@ -340,7 +358,14 @@ int bf_send_fd(int sock_fd, int fd)
     return 0;
 }
 
-int bf_recv_fd(int sock_fd)
+/**
+ * @brief Receive a file descriptor over a Unix Domain Socket.
+ *
+ * @param sock_fd Socket file descriptor to receive the file descriptor through.
+ * @return A file descriptor, or a negative error value on failure. The caller
+ *         owns the file descriptor.
+ */
+static int _bf_recv_fd(int sock_fd)
 {
     int fd;
     char dummy;
@@ -370,4 +395,55 @@ int bf_recv_fd(int sock_fd)
     memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
 
     return fd;
+}
+
+int bf_connect_to_daemon(void)
+{
+    _cleanup_close_ int fd = -1;
+    struct sockaddr_un addr = {};
+    int r;
+
+    fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+        return bf_err_r(errno, "bpfilter: can't create socket");
+
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, BF_SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+    r = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+    if (r < 0)
+        return bf_err_r(errno, "bpfilter: failed to connect to socket");
+
+    return TAKE_FD(fd);
+}
+
+int bf_send(int fd, const struct bf_request *request,
+            struct bf_response **response, int *recv_fd)
+{
+    _cleanup_close_ int _recv_fd = -1;
+    int r;
+
+    bf_assert(request);
+    bf_assert(response);
+
+    r = _bf_send_request(fd, request);
+    if (r < 0)
+        return bf_err_r(r, "bpfilter: failed to send request to the daemon");
+
+    if (recv_fd) {
+        _recv_fd = _bf_recv_fd(fd);
+        if (_recv_fd < 0)
+            return bf_err_r(_recv_fd, "failed to receive file descriptor");
+    }
+
+    r = _bf_recv_response(fd, response);
+    if (r < 0) {
+        return bf_err_r(r,
+                        "bpfilter: failed to receive response from the daemon");
+    }
+
+    if (recv_fd)
+        *recv_fd = TAKE_FD(_recv_fd);
+
+    return 0;
 }

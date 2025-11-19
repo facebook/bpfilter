@@ -9,7 +9,6 @@
 #include "bpfilter/chain.h"
 #include "bpfilter/counter.h"
 #include "bpfilter/front.h"
-#include "bpfilter/generic.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/hook.h"
 #include "bpfilter/io.h"
@@ -21,6 +20,7 @@
 
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
@@ -34,7 +34,11 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     if (r < 0)
         return bf_err_r(r, "failed to init request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
@@ -117,6 +121,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 
 int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_wpack_ bf_wpack_t *pack = NULL;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
@@ -162,7 +167,11 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     if (r)
         return bf_err_r(r, "failed to create request for chain");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
@@ -171,6 +180,7 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
 
 int bf_ruleset_flush(void)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
@@ -179,7 +189,11 @@ int bf_ruleset_flush(void)
     if (r)
         return bf_err_r(r, "failed to create a ruleset flush request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "failed to send a ruleset flush request");
 
@@ -188,6 +202,7 @@ int bf_ruleset_flush(void)
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_wpack_ bf_wpack_t *pack = NULL;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
@@ -218,7 +233,11 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to create request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
@@ -228,6 +247,7 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 int bf_chain_get(const char *name, struct bf_chain **chain,
                  struct bf_hookopts **hookopts, bf_list *counters)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_chain_ struct bf_chain *_chain = NULL;
@@ -251,7 +271,11 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     if (r < 0)
         return bf_err_r(r, "failed to init request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r < 0)
         return bf_err_r(r, "failed to send a ruleset get request");
 
@@ -300,9 +324,10 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 
 int bf_chain_prog_fd(const char *name)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
-    _cleanup_close_ int fd = -1;
+    _cleanup_close_ int prog_fd = -1;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     int r;
 
@@ -322,22 +347,27 @@ int bf_chain_prog_fd(const char *name)
     if (r < 0)
         return bf_err_r(r, "failed to init request");
 
-    fd = bf_send_with_fd(request, &response);
+    fd = bf_connect_to_daemon();
     if (fd < 0)
-        return bf_err_r(fd, "failed to request prog FD from the daemon");
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, &prog_fd);
+    if (r)
+        return bf_err_r(r, "failed to request prog FD from the daemon");
 
     if (bf_response_status(response) != 0)
         return bf_err_r(bf_response_status(response),
                         "BF_REQ_CHAIN_PROG_FD failed");
 
-    return TAKE_FD(fd);
+    return TAKE_FD(prog_fd);
 }
 
 int bf_chain_logs_fd(const char *name)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
-    _cleanup_close_ int fd = -1;
+    _cleanup_close_ int logs_fd = -1;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     int r;
 
@@ -357,19 +387,24 @@ int bf_chain_logs_fd(const char *name)
     if (r < 0)
         return bf_err_r(r, "failed to init request");
 
-    fd = bf_send_with_fd(request, &response);
+    fd = bf_connect_to_daemon();
     if (fd < 0)
-        return bf_err_r(fd, "failed to request logs FD from the daemon");
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, &logs_fd);
+    if (r)
+        return bf_err_r(r, "failed to request logs FD from the daemon");
 
     if (bf_response_status(response) != 0)
         return bf_err_r(bf_response_status(response),
                         "BF_REQ_CHAIN_LOGS failed");
 
-    return TAKE_FD(fd);
+    return TAKE_FD(logs_fd);
 }
 
 int bf_chain_load(struct bf_chain *chain)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -390,7 +425,11 @@ int bf_chain_load(struct bf_chain *chain)
     if (r)
         return bf_err_r(r, "bf_chain_load: failed to create a new request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "bf_chain_set: failed to send request");
 
@@ -399,6 +438,7 @@ int bf_chain_load(struct bf_chain *chain)
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -420,7 +460,11 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
     if (r)
         return bf_err_r(r, "bf_chain_attach: failed to create a new request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "bf_chain_attach: failed to send request");
 
@@ -429,6 +473,7 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 
 int bf_chain_update(const struct bf_chain *chain)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -449,7 +494,11 @@ int bf_chain_update(const struct bf_chain *chain)
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to create a new request");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to send request");
 
@@ -458,6 +507,7 @@ int bf_chain_update(const struct bf_chain *chain)
 
 int bf_chain_flush(const char *name)
 {
+    _cleanup_close_ int fd = -1;
     _free_bf_request_ struct bf_request *request = NULL;
     _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -474,7 +524,11 @@ int bf_chain_flush(const char *name)
     if (r)
         return bf_err_r(r, "failed to create request for chain");
 
-    r = bf_send(request, &response);
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "failed to send chain to the daemon");
 
