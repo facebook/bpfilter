@@ -86,20 +86,6 @@ jobs:
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
-  check:
-    needs: create-images
-    timeout-minutes: 5
-    runs-on: [ "ubuntu-24.04" ]
-    container: ghcr.io/facebook/bpfilter:fedora-43-x64
-    name: "Check"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` check
-
   test:
     needs: create-images
     timeout-minutes: 5
@@ -120,16 +106,26 @@ jobs:
         uses: actions/cache@v4
         if: matrix.host.arch == 'x64'
         with:
-          path: build/output/tests
+          path: build/coverage
           key: tests-results-${{ github.run_id }}
       - name: Mount bpffs
         run: mount bpffs /sys/fs/bpf -t bpf
       - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
+      - name: Build tests
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test_bin
+      - name: ewef
+        run: sudo ls
       - name: Run unit tests
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L unit --verbose
       - name: Run end-to-end tests
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
+      - name: Run integration tests
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
+      - name: Run checks
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
+      - name: Generate the coverage report
+        run: make -C $GITHUB_WORKSPACE/build coverage
 
   benchmark:
     needs: create-images
@@ -155,7 +151,7 @@ jobs:
         if: matrix.host.arch == 'x64'
         uses: actions/cache@v4
         with:
-          path: build/output/benchmarks
+          path: build/benchmarks
           key: benchmarks-results-${{ github.run_id }}
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
@@ -193,25 +189,25 @@ jobs:
       - name: Restore the cached tests results
         uses: actions/cache@v4
         with:
-          path: build/output/tests
+          path: build/coverage
           key: tests-results-${{ github.run_id }}
       - name: Restore the cached benchmarks results
         uses: actions/cache@v4
         with:
-          path: build/output/benchmarks
+          path: build/benchmarks
           key: benchmarks-results-${{ github.run_id }}
       - name: Push benchmarks
         if: github.ref == 'refs/heads/main'
         run: |
           git -C bpfilter-benchmark-results config --local user.email "qde@naccy.de"
           git -C bpfilter-benchmark-results config --local user.name "Quentin Deslandes"
-          cp $GITHUB_WORKSPACE/build/output/benchmarks/* bpfilter-benchmark-results
+          cp $GITHUB_WORKSPACE/build/benchmarks/* bpfilter-benchmark-results
           git -C bpfilter-benchmark-results add -A
           git -C bpfilter-benchmark-results commit -m"Adding results for ${{ github.sha }}"
           git -C bpfilter-benchmark-results push
       - name: Restore previous benchmark results
         run: |
-          cp bpfilter-benchmark-results/*.json $GITHUB_WORKSPACE/build/output/benchmarks/
+          cp bpfilter-benchmark-results/*.json $GITHUB_WORKSPACE/build/benchmarks/
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - name: Fix permissions
