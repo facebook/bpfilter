@@ -26,7 +26,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
-    _free_bf_rpack_ bf_rpack_t *pack;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
     bf_rpack_node_t root, node, child;
     int r;
 
