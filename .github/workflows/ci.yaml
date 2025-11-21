@@ -128,6 +128,8 @@ jobs:
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
       - name: Build tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` test_bin
+      - name: ewef
+        run: sudo ls
       - name: Run unit tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L unit --verbose
       - name: Run end-to-end tests
