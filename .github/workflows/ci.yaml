@@ -98,7 +98,7 @@ jobs:
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Build
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` check
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
 
   test:
     needs: create-images
@@ -125,11 +125,15 @@ jobs:
       - name: Mount bpffs
         run: mount bpffs /sys/fs/bpf -t bpf
       - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
+      - name: Build tests
+        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test_bin
       - name: Run unit tests
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` test
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L unit --verbose
       - name: Run end-to-end tests
-        run: make -C $GITHUB_WORKSPACE/build -j `nproc` e2e
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
+      - name: Run integration tests
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
 
   benchmark:
     needs: create-images
