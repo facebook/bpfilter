@@ -264,7 +264,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         }
 
         if (bf_rule_mark_is_set(rule))
-            (void)fprintf(stdout, "        mark 0x%x\n", bf_rule_mark_get(rule));
+            (void)fprintf(stdout, "        mark 0x%x\n",
+                          bf_rule_mark_get(rule));
 
         if (rule->counters) {
             counter = bf_list_node_get_data(counter_node);
