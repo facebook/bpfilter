@@ -6,7 +6,7 @@
 SUDO=''
 if [ "$(id -u)" -ne 0 ]
 then
-    SUDO='sudo -E'
+    SUDO='sudo -E PATH="$PATH"'
 fi
 
-$SUDO PATH="$PATH" "$@"
+$SUDO "$@"
