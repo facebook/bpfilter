@@ -120,7 +120,7 @@ jobs:
         uses: actions/cache@v4
         if: matrix.host.arch == 'x64'
         with:
-          path: build/output/tests
+          path: build/coverage
           key: tests-results-${{ github.run_id }}
       - name: Mount bpffs
         run: mount bpffs /sys/fs/bpf -t bpf
@@ -136,6 +136,8 @@ jobs:
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
       - name: Run integration tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
+      - name: Generate the coverage report
+        run: make -C $GITHUB_WORKSPACE/build coverage
 
   benchmark:
     needs: create-images
@@ -199,7 +201,7 @@ jobs:
       - name: Restore the cached tests results
         uses: actions/cache@v4
         with:
-          path: build/output/tests
+          path: build/coverage
           key: tests-results-${{ github.run_id }}
       - name: Restore the cached benchmarks results
         uses: actions/cache@v4
