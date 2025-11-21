@@ -86,20 +86,6 @@ jobs:
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
-  check:
-    needs: create-images
-    timeout-minutes: 5
-    runs-on: [ "ubuntu-24.04" ]
-    container: ghcr.io/facebook/bpfilter:fedora-43-x64
-    name: "Check"
-    steps:
-      - name: Checkout bpfilter
-        uses: actions/checkout@v2
-      - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
-      - name: Build
-        run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
-
   test:
     needs: create-images
     timeout-minutes: 5
@@ -136,6 +122,8 @@ jobs:
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
       - name: Run integration tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
+      - name: Run checks
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
       - name: Generate the coverage report
         run: make -C $GITHUB_WORKSPACE/build coverage
 
