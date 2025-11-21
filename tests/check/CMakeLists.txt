@@ -24,6 +24,10 @@ add_test(NAME "check.lint"
             ${bf_srcs}
 )
 
+add_custom_target(lint
+    COMMAND ctest --test-dir ${CMAKE_BINARY_DIR} -R "check.lint" --output-on-failure --verbose
+)
+
 add_test(NAME "check.iwyu"
     COMMAND
         /usr/bin/iwyu_tool.py

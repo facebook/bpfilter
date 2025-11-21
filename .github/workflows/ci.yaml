@@ -161,7 +161,7 @@ jobs:
         if: matrix.host.arch == 'x64'
         uses: actions/cache@v4
         with:
-          path: build/output/benchmarks
+          path: build/benchmarks
           key: benchmarks-results-${{ github.run_id }}
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` benchmark
@@ -204,20 +204,20 @@ jobs:
       - name: Restore the cached benchmarks results
         uses: actions/cache@v4
         with:
-          path: build/output/benchmarks
+          path: build/benchmarks
           key: benchmarks-results-${{ github.run_id }}
       - name: Push benchmarks
         if: github.ref == 'refs/heads/main'
         run: |
           git -C bpfilter-benchmark-results config --local user.email "qde@naccy.de"
           git -C bpfilter-benchmark-results config --local user.name "Quentin Deslandes"
-          cp $GITHUB_WORKSPACE/build/output/benchmarks/* bpfilter-benchmark-results
+          cp $GITHUB_WORKSPACE/build/benchmarks/* bpfilter-benchmark-results
           git -C bpfilter-benchmark-results add -A
           git -C bpfilter-benchmark-results commit -m"Adding results for ${{ github.sha }}"
           git -C bpfilter-benchmark-results push
       - name: Restore previous benchmark results
         run: |
-          cp bpfilter-benchmark-results/*.json $GITHUB_WORKSPACE/build/output/benchmarks/
+          cp bpfilter-benchmark-results/*.json $GITHUB_WORKSPACE/build/benchmarks/
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - name: Fix permissions
