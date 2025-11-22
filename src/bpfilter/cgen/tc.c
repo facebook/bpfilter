@@ -95,6 +95,13 @@ static int _bf_tc_gen_inline_get_mark(struct bf_program *program, int reg)
     return 0;
 }
 
+static int _bf_tc_gen_inline_get_skb(struct bf_program *program, int reg)
+{
+    EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+
+    return 0;
+}
+
 /**
  * Convert a standard verdict into a return value.
  *
@@ -120,5 +127,6 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_epilogue = _bf_tc_gen_inline_epilogue,
     .gen_inline_set_mark = _bf_tc_gen_inline_set_mark,
     .gen_inline_get_mark = _bf_tc_gen_inline_get_mark,
+    .gen_inline_get_skb = _bf_tc_gen_inline_get_skb,
     .get_verdict = _bf_tc_get_verdict,
 };

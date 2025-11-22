@@ -506,6 +506,15 @@ Meta
       - :rspan:`1` ``$MARK``
       - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` hook.
     * - ``not``
+    * - :rspan:`2` Flow hash
+      - :rspan:`2` ``meta.flow_hash``
+      - ``eq``
+      - :rspan:`1` ``$HASH``
+      - :rspan:`1` ``$HASH`` must be a decimal or hexadecimal 32-bits integer. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
+    * - ``not``
+    * - ``range``
+      - ``$START-$END``
+      - ``$START`` and ``$END`` must be decimal or hexadecimal 32-bits integers, with ``$START <= $END``. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
 
 IPv4
 ####

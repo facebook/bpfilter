@@ -26,6 +26,7 @@
 
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/hook.h"
 #include "bpfilter/if.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
@@ -60,6 +61,104 @@ struct bf_matcher
     /// Payload to match the packet against (if any).
     uint8_t payload[];
 };
+
+int _bf_parse_int(enum bf_matcher_type type, enum bf_matcher_op op,
+                  void *payload, const char *raw_payload)
+{
+    bf_assert(payload && raw_payload);
+
+    unsigned long value;
+    char *endptr;
+
+    value = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && value <= UINT32_MAX) {
+        *(uint32_t *)payload = htobe32((uint32_t)value);
+        return 0;
+    }
+
+    value = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && value <= UINT32_MAX) {
+        *(uint32_t *)payload = htobe32((uint32_t)value);
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a valid 32 bits integer value in decimal or hexadecimal notation, not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_int(const void *payload)
+{
+    bf_assert(payload);
+
+    (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
+}
+
+#define BF_INT_RANGE_MAX_LEN 32 /* 4294967295-4294967295 */
+
+int _bf_parse_int_range(enum bf_matcher_type type, enum bf_matcher_op op,
+                        void *payload, const char *raw_payload)
+{
+    bf_assert(payload && raw_payload);
+
+    uint32_t *range = (uint32_t *)payload;
+    unsigned long value;
+    char buf[BF_INT_RANGE_MAX_LEN];
+    char *first;
+    char *second;
+    char *endptr;
+
+    bf_strncpy(buf, BF_INT_RANGE_MAX_LEN, raw_payload);
+
+    if (!isdigit(*raw_payload))
+        goto err;
+
+    first = strtok_r(buf, "-", &second);
+    if (!first)
+        goto err;
+
+    if (!*second)
+        goto err;
+
+    value = strtoul(first, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || value > UINT32_MAX) {
+        value = strtoul(first, &endptr, BF_BASE_16);
+        if (*endptr != '\0' || value > UINT32_MAX)
+            goto err;
+    }
+    range[0] = (uint32_t)value;
+
+    value = strtoul(second, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || value > UINT32_MAX) {
+        value = strtoul(second, &endptr, BF_BASE_16);
+        if (*endptr != '\0' || value > UINT32_MAX)
+            goto err;
+    }
+    range[1] = (uint32_t)value;
+
+    if (range[1] < range[0])
+        goto err;
+
+    return 0;
+
+err:
+    bf_err(
+        "\"%s %s\" expects two positive decimal and hexadecimal integers as `$START-$END`, with `$START <= $END`, not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+
+    return -EINVAL;
+}
+
+void _bf_print_int_range(const void *payload)
+{
+    bf_assert(payload);
+
+    uint32_t *range = (uint32_t *)payload;
+
+    (void)fprintf(stdout, "0x%" PRIx32 "-0x%" PRIx32, range[0], range[1]);
+}
 
 int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
                     void *payload, const char *raw_payload)
@@ -768,6 +867,23 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_mark, _bf_print_mark),
                 },
         },
+    [BF_MATCHER_META_FLOW_HASH] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .unsupported_hooks = BF_FLAGS(
+                BF_HOOK_XDP, BF_HOOK_CGROUP_INGRESS, BF_HOOK_CGROUP_EGRESS,
+                BF_HOOK_NF_FORWARD, BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
+                BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_int, _bf_print_int),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
+                                   _bf_parse_int, _bf_print_int),
+                    BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint32_t),
+                                   _bf_parse_int_range, _bf_print_int_range),
+                },
+        },
     [BF_MATCHER_IP4_SADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
@@ -1283,6 +1399,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_META_SPORT] = "meta.sport",
     [BF_MATCHER_META_DPORT] = "meta.dport",
     [BF_MATCHER_META_MARK] = "meta.mark",
+    [BF_MATCHER_META_FLOW_HASH] = "meta.flow_hash",
     [BF_MATCHER_IP4_SADDR] = "ip4.saddr",
     [BF_MATCHER_IP4_SNET] = "ip4.snet",
     [BF_MATCHER_IP4_DADDR] = "ip4.daddr",

@@ -70,6 +70,23 @@ chain tc_ingress BF_HOOK_TC_INGRESS ACCEPT
         counter
         ACCEPT
     rule
+        meta.flow_hash eq 0
+        meta.flow_hash eq 4294967295
+        meta.flow_hash eq 0x00
+        meta.flow_hash eq 0xffffffff
+        meta.flow_hash not 0
+        meta.flow_hash not 4294967295
+        meta.flow_hash not 0x00
+        meta.flow_hash not 0xffffffff
+        meta.flow_hash range 0-0
+        meta.flow_hash range 0-4294967295
+        meta.flow_hash range 1-4294967294
+        meta.flow_hash range 0x00-0x00
+        meta.flow_hash range 0x00-0xffffffff
+        meta.flow_hash range 0x01-0xfffffffe
+        counter
+        ACCEPT
+    rule
         ip4.saddr eq 1.1.1.1
         ip4.saddr not 1.1.1.1
         counter
