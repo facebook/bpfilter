@@ -154,9 +154,6 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
                     if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
 
-                    if (!bf_chain_validate(chain))
-                        bf_parse_err("chain '%s' is invalid", chain->name);
-
                     if (hookopts) {
                         r = bf_hookopts_validate(hookopts, chain->hook);
                         if (r)

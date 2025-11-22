@@ -19,25 +19,51 @@
 #include "bpfilter/set.h"
 #include "bpfilter/verdict.h"
 
-static void _bf_chain_update_features(struct bf_chain *chain,
-                                      const struct bf_rule *rule)
+int _bf_chain_check_rule(struct bf_chain *chain, const struct bf_rule *rule)
 {
     bf_assert(rule);
 
     if (rule->log)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
 
-    if (bf_rule_mark_is_set(rule))
-        chain->flags |= BF_FLAG(BF_CHAIN_SET_MARK);
+    if (bf_rule_mark_is_set(rule) &&
+        (chain->hook == BF_HOOK_XDP || chain->hook == BF_HOOK_NF_PRE_ROUTING ||
+         chain->hook == BF_HOOK_NF_POST_ROUTING ||
+         chain->hook == BF_HOOK_NF_FORWARD ||
+         chain->hook == BF_HOOK_NF_LOCAL_IN ||
+         chain->hook == BF_HOOK_NF_LOCAL_OUT)) {
+        return bf_err_r(-EINVAL,
+                        "XDP and Netfilter chains can't set packet mark");
+    }
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+        const struct bf_matcher_meta *meta;
+
+        // Track if the chain uses IPv6 nexthdr matcher.
         if (bf_matcher_get_type(matcher) == BF_MATCHER_IP6_NEXTHDR)
             chain->flags |= BF_FLAG(BF_CHAIN_STORE_NEXTHDR);
 
-        if (bf_matcher_get_type(matcher) == BF_MATCHER_META_MARK)
-            chain->flags |= BF_FLAG(BF_CHAIN_GET_MARK);
+        // Set matchers are compatible with all hooks.
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
+            continue;
+
+        // Ensure the matcher is compatible with the chain's hook.
+        meta = bf_matcher_get_meta(bf_matcher_get_type(matcher));
+        if (!meta) {
+            return bf_err_r(-EINVAL, "unknown matcher type %d in rule",
+                            bf_matcher_get_type(matcher));
+        }
+
+        if (meta->unsupported_hooks & BF_FLAG(chain->hook)) {
+            return bf_err_r(
+                -ENOTSUP, "matcher %s is not compatible with %s",
+                bf_matcher_type_to_str(bf_matcher_get_type(matcher)),
+                bf_hook_to_str(chain->hook));
+        }
     }
+
+    return 0;
 }
 
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
@@ -45,6 +71,7 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
 {
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     size_t ridx = 0;
+    int r;
 
     bf_assert(chain && name);
     bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
@@ -72,7 +99,9 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
 
         rule->index = ridx++;
-        _bf_chain_update_features(_chain, rule);
+        r = _bf_chain_check_rule(_chain, rule);
+        if (r)
+            return r;
     }
 
     *chain = TAKE_PTR(_chain);
@@ -202,10 +231,14 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
 
 int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
+    int r;
+
     bf_assert(chain && rule);
 
     rule->index = bf_list_size(&chain->rules);
-    _bf_chain_update_features(chain, rule);
+    r = _bf_chain_check_rule(chain, rule);
+    if (r)
+        return r;
 
     return bf_list_add_tail(&chain->rules, rule);
 }
@@ -223,27 +256,4 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
     set_id = *(uint32_t *)bf_matcher_payload(matcher);
 
     return bf_list_get_at(&chain->sets, set_id);
-}
-
-bool bf_chain_validate(struct bf_chain *chain)
-{
-    bf_assert(chain);
-
-    if (chain->flags & BF_FLAG(BF_CHAIN_SET_MARK) &&
-        (chain->hook == BF_HOOK_XDP || chain->hook == BF_HOOK_NF_PRE_ROUTING ||
-         chain->hook == BF_HOOK_NF_POST_ROUTING ||
-         chain->hook == BF_HOOK_NF_FORWARD ||
-         chain->hook == BF_HOOK_NF_LOCAL_IN ||
-         chain->hook == BF_HOOK_NF_LOCAL_OUT)) {
-        bf_err("XDP and Netfilter chains can't set packet mark");
-        return false;
-    }
-
-    if (chain->flags & BF_FLAG(BF_CHAIN_GET_MARK) &&
-        chain->hook == BF_HOOK_XDP) {
-        bf_err("XDP chains can't read packet mark");
-        return false;
-    }
-
-    return true;
 }

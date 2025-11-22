@@ -226,6 +226,9 @@ struct bf_matcher_meta
     /** Offset of the payload in the packet header. */
     size_t hdr_payload_offset;
 
+    /** Bitmask of unsupported hooks for this matcher. */
+    uint16_t unsupported_hooks;
+
     /** Operator-specific parameters to process the user-specific data.
      * Undefined operators are considered unsupported. */
     struct bf_matcher_ops
