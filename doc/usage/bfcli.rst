@@ -504,7 +504,7 @@ Meta
       - :rspan:`1` ``meta.mark``
       - ``eq``
       - :rspan:`1` ``$MARK``
-      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value.
+      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` hook.
     * - ``not``
 
 IPv4

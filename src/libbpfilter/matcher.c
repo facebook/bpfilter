@@ -759,6 +759,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_MARK] =
         {
             .layer = BF_MATCHER_NO_LAYER,
+            .unsupported_hooks = BF_FLAGS(BF_HOOK_XDP),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),

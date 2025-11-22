@@ -60,9 +60,6 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
     (*cgen)->front = front;
     (*cgen)->program = NULL;
     (*cgen)->chain = NULL;
-
-    if (!bf_chain_validate(*chain))
-        return bf_err_r(-EINVAL, "chain '%s' is invalid", (*chain)->name);
     (*cgen)->chain = TAKE_PTR(*chain);
 
     return 0;
@@ -89,12 +86,10 @@ int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
     r = bf_rpack_kv_obj(node, "chain", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_cgen.chain");
+
     r = bf_chain_new_from_pack(&_cgen->chain, child);
     if (r)
         return bf_rpack_key_err(r, "bf_cgen.chain");
-
-    if (!bf_chain_validate(_cgen->chain))
-        return bf_err_r(-EINVAL, "chain '%s' is invalid", _cgen->chain->name);
 
     r = bf_rpack_kv_node(node, "program", &child);
     if (r)
