@@ -3,10 +3,9 @@
 # Run a command as root: if the current user is root, run the command directly,
 # otherwise prefix it with sudo.
 
-SUDO=''
 if [ "$(id -u)" -ne 0 ]
 then
-    SUDO='sudo -E PATH="$PATH"'
+    sudo PATH="$PATH" "$@"
+else
+    "$@"
 fi
-
-$SUDO "$@"
