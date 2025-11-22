@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+set -eux
+set -o pipefail
+
+. "$(dirname "$0")"/../e2e_test_util.sh
+
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet eq 2001:db8::/32 counter DROP"
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet eq 2001:db8:85a3::/48 counter DROP"
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip6.dnet eq fe80::/10 counter DROP"

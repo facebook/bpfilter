@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+set -eux
+set -o pipefail
+
+. "$(dirname "$0")"/../e2e_test_util.sh
+
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.probability eq 0% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.probability eq 50% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.probability eq 100% counter DROP"
