@@ -511,6 +511,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_META_SPORT:
         case BF_MATCHER_META_DPORT:
         case BF_MATCHER_META_MARK:
+        case BF_MATCHER_META_FLOW_HASH:
             r = bf_matcher_generate_meta(program, matcher);
             if (r)
                 return r;

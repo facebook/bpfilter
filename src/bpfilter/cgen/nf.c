@@ -140,6 +140,17 @@ static int _bf_nf_gen_inline_get_mark(struct bf_program *program, int reg)
     return 0;
 }
 
+static int _bf_nf_gen_inline_get_skb(struct bf_program *program, int reg)
+{
+    int offset;
+
+    EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+        return offset;
+
+    return 0;
+}
+
 /**
  * Convert a standard verdict into a return value.
  *
@@ -164,5 +175,6 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_prologue = _bf_nf_gen_inline_prologue,
     .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
     .gen_inline_get_mark = _bf_nf_gen_inline_get_mark,
+    .gen_inline_get_skb = _bf_nf_gen_inline_get_skb,
     .get_verdict = _bf_nf_get_verdict,
 };

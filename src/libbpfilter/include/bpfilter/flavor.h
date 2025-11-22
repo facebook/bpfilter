@@ -92,6 +92,7 @@ struct bf_flavor_ops
 
     int (*gen_inline_set_mark)(struct bf_program *program, uint32_t mark);
     int (*gen_inline_get_mark)(struct bf_program *program, int reg);
+    int (*gen_inline_get_skb)(struct bf_program *program, int reg);
 
     /**
      * Generates a flavor-specific return code corresponding to the verdict.

@@ -166,6 +166,42 @@ static int _bf_matcher_generate_meta_mark(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_meta_flow_hash(struct bf_program *program,
+                                               const struct bf_matcher *matcher)
+{
+    uint32_t *hash = (uint32_t *)bf_matcher_payload(matcher);
+    int r;
+
+    r = program->runtime.ops->gen_inline_get_skb(program, BPF_REG_1);
+    if (r)
+        return bf_err_r(r, "failed to get inline skb");
+
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_hash_recalc));
+
+    switch (bf_matcher_get_op(matcher)) {
+    case BF_MATCHER_EQ:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_0, hash[0], 0));
+        break;
+    case BF_MATCHER_NE:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, hash[0], 0));
+        break;
+    case BF_MATCHER_RANGE:
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JLT, BPF_REG_0, hash[0], 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_0, hash[1], 0));
+        break;
+    default:
+        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
+                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
+                        bf_matcher_get_op(matcher));
+    }
+
+    return 0;
+}
+
 int bf_matcher_generate_meta(struct bf_program *program,
                              const struct bf_matcher *matcher)
 {
@@ -190,6 +226,9 @@ int bf_matcher_generate_meta(struct bf_program *program,
         break;
     case BF_MATCHER_META_MARK:
         r = _bf_matcher_generate_meta_mark(program, matcher);
+        break;
+    case BF_MATCHER_META_FLOW_HASH:
+        r = _bf_matcher_generate_meta_flow_hash(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",
