@@ -66,6 +66,9 @@ static void dump(void **state)
 
     (void)state;
 
+    assert_non_null(chain0);
+    assert_non_null(chain1);
+
     bf_chain_dump(chain0, EMPTY_PREFIX);
     bf_chain_dump(chain1, EMPTY_PREFIX);
 }
