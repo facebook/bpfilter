@@ -78,7 +78,6 @@ endif ()
 
 if (NOT ${NO_TESTS})
     set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
-    add_custom_target(test_bin)
     enable_testing()
     add_subdirectory(tests)
 endif ()

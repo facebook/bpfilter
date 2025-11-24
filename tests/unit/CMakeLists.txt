@@ -38,7 +38,7 @@ function(bf_add_c_test GROUP SOURCE)
             cmocka
     )
 
-    add_dependencies(test_bin ${target_name})
+    add_dependencies(unit_bin ${target_name})
     target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
     add_test(NAME ${target_name}
@@ -59,6 +59,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "debug")
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 endif()
+
+add_custom_target(unit_bin
+    DEPENDS libbpfilter
+    COMMENT "Building unit test binaries"
+)
+
+add_custom_target(unit
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L unit
+    DEPENDS unit_bin
+    COMMENT "Running unit tests"
+)
 
 bf_add_c_test(unit libbpfilter/bpf.c)
 bf_add_c_test(unit libbpfilter/btf.c)

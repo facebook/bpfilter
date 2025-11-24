@@ -7,6 +7,11 @@ add_subdirectory(e2e)
 add_subdirectory(integration)
 add_subdirectory(check)
 
+add_custom_target(test_bin
+    DEPENDS unit_bin e2e_bin
+    COMMENT "Building all test binaries"
+)
+
 if (${WITH_COVERAGE})
     include(ProcessorCount)
 
