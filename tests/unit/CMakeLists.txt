@@ -45,8 +45,20 @@ function(bf_add_c_test GROUP SOURCE)
         COMMAND $<TARGET_FILE:${target_name}>
     )
 
+    set_tests_properties(${target_name} PROPERTIES
+        ENVIRONMENT "LD_PRELOAD=${ASAN_LIB_PATH}:$<TARGET_FILE:mock>"
+    )
     set_tests_properties(${target_name} PROPERTIES LABELS "${GROUP}")
 endfunction()
+
+# In debug builds, we need to preload the ASan library for the tests to run, before the mock library.
+if(CMAKE_BUILD_TYPE STREQUAL "debug")
+    execute_process(
+        COMMAND sh -c "ldconfig -p | awk '/libasan\\.so\\.[0-9]+ /{print $NF; exit}'"
+        OUTPUT_VARIABLE ASAN_LIB_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
 
 bf_add_c_test(unit libbpfilter/bpf.c)
 bf_add_c_test(unit libbpfilter/btf.c)
