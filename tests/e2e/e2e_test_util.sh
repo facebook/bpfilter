@@ -4,7 +4,6 @@ set -e
 
 WORKDIR=$(mktemp -d)
 BF_OUTPUT_FILE=${WORKDIR}/bf.log
-BPFILTER_BPFFS_PATH=/tmp/bpffs
 BPFILTER_PID=
 SETUSERNS_SOCKET_PATH=${WORKDIR}/setuserns.sock
 
@@ -52,7 +51,7 @@ make_sandbox() {
     bash -c "sudo bpftool btf dump file /sys/kernel/btf/vmlinux format c | grep -q \"__s32 prog_token_fd;\"" && HAS_TOKEN_SUPPORT=1 || HAS_TOKEN_SUPPORT=0
 
     # Create the namespaces mount points
-    mkdir ${WORKDIR}/ns
+    mkdir ${WORKDIR}/{ns,bpf}
     mount --bind ${WORKDIR}/ns ${WORKDIR}/ns
     mount --make-private ${WORKDIR}/ns
 
@@ -76,11 +75,10 @@ make_sandbox() {
             -r /bin/bash -c "
                 set -e
                 mount -t tmpfs tmpfs /run
-                mkdir -p ${BPFILTER_BPFFS_PATH}
-                ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH} --bpffs-mount-path ${BPFILTER_BPFFS_PATH}
+                ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH} --bpffs-mount-path ${WORKDIR}/bpf
         " &
 
-        BPFILTER="${_BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${BPFILTER_BPFFS_PATH}"
+        BPFILTER="${_BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${WORKDIR}/bpf"
         wait $SETUSERNS_PID
     else
         unshare --net=/var/run/netns/${NETNS_NAME} &
@@ -131,11 +129,16 @@ destroy_sandbox() {
 
     # If BPF token is not supported, user and mnt namespaces are not mounted
     if [ "${HAS_TOKEN_SUPPORT:-1}" -eq 1 ]; then
+        umount ${WORKDIR}/bpf || true
         umount ${WORKDIR}/ns/user || true
         umount ${WORKDIR}/ns/mnt || true
     fi
 
     umount ${WORKDIR}/ns || true
+
+    rm -rf ${WORKDIR} || true
+
+    IN_SANDBOX=0
 }
 
 start_bpfilter() {
@@ -161,12 +164,32 @@ start_bpfilter() {
 }
 
 stop_bpfilter() {
+    local skip_cleanup=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --skip-cleanup)
+                skip_cleanup=1
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
     echo "Stop bpfilter"
 
     if [ -n "$BPFILTER_PID" ]; then
+        if [ "$skip_cleanup" -eq 0 ] && [ "${HAS_TOKEN_SUPPORT:-1}" -ne 1 ]; then
+            bfcli ruleset flush || true
+        fi
+
         kill $BPFILTER_PID 2>/dev/null || true
         wait $BPFILTER_PID || true
     fi
+
+    WITH_DAEMON=0
 }
 
 cleanup() {

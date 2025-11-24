@@ -7,6 +7,6 @@ set -o pipefail
 
 make_sandbox
 
-${FROM_NS} mkdir /run/bpfilter
+${FROM_NS} mkdir -p /run/bpfilter
 ${FROM_NS} touch /run/bpfilter/daemon.sock
 ${FROM_NS} ${WITH_TIMEOUT} ${BPFILTER}
