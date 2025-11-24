@@ -3,13 +3,12 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #define _GNU_SOURCE
 #include <dlfcn.h>
+#include <errno.h>
 #include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "mock.h"
 
