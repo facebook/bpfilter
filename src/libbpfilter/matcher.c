@@ -72,13 +72,13 @@ int _bf_parse_int(enum bf_matcher_type type, enum bf_matcher_op op,
 
     value = strtoul(raw_payload, &endptr, BF_BASE_10);
     if (*endptr == '\0' && value <= UINT32_MAX) {
-        *(uint32_t *)payload = htobe32((uint32_t)value);
+        *(uint32_t *)payload = (uint32_t)value;
         return 0;
     }
 
     value = strtoul(raw_payload, &endptr, BF_BASE_16);
     if (*endptr == '\0' && value <= UINT32_MAX) {
-        *(uint32_t *)payload = htobe32((uint32_t)value);
+        *(uint32_t *)payload = (uint32_t)value;
         return 0;
     }
 
