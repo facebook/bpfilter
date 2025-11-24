@@ -26,8 +26,6 @@ function(bf_add_e2e_test GROUP SOURCE)
 
     set(target_name "${GROUP}.${target_suffix}")
 
-    add_dependencies(test_bin bpfilter bfcli setuserns)
-
     if (ARG_ROOT)
         set(AS_ROOT ${CMAKE_SOURCE_DIR}/tools/asroot)
     endif ()
@@ -42,6 +40,17 @@ function(bf_add_e2e_test GROUP SOURCE)
         ENVIRONMENT "PATH=${CMAKE_BINARY_DIR}/output/sbin:${CMAKE_CURRENT_SOURCE_DIR}:$ENV{PATH}"
     )
 endfunction()
+
+add_custom_target(e2e_bin
+    DEPENDS setuserns libbpfilter bfcli bpfilter
+    COMMENT "Building end-to-end test binaries"
+)
+
+add_custom_target(e2e
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L e2e
+    DEPENDS e2e_bin
+    COMMENT "Running end-to-end tests"
+)
 
 bf_add_e2e_test(e2e cli/chain_attach.sh ROOT)
 bf_add_e2e_test(e2e cli/chain_load.sh ROOT)

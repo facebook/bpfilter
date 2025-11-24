@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-add_dependencies(test_bin libbpfilter)
 get_target_property(lib_gen_inc_dir libbpfilter BINARY_DIR)
 
 add_test(NAME "integration.pedantic.c"
@@ -20,4 +19,10 @@ add_test(NAME "integration.pedantic.cpp"
 set_tests_properties("integration.pedantic.cpp" PROPERTIES
     LABELS "integration"
     ENVIRONMENT "ROOT_DIR=${CMAKE_SOURCE_DIR};BUILD_DIR=${CMAKE_BINARY_DIR};GEN_INC_DIR=${lib_gen_inc_dir}/include"
+)
+
+add_custom_target(integration
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L integration
+    DEPENDS libbpfilter
+    COMMENT "Running integration tests"
 )

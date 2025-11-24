@@ -55,3 +55,8 @@ add_custom_target(fixstyle
             ${bf_srcs}
     COMMENT "Fixing style for all the source files"
 )
+
+add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L check
+    COMMENT "Running check tests"
+)
