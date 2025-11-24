@@ -3,17 +3,16 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #include <errno.h>
+#include <linux/bpf.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
-
-#define _GNU_SOURCE
-#include <dlfcn.h>
-#include <unistd.h>
 #include <sys/syscall.h>
-#include <linux/bpf.h>
+#include <unistd.h>
 
 #include "mock.h"
 

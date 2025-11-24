@@ -1,9 +1,8 @@
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#define _GNU_SOURCE
-#include <dlfcn.h>
 #include <unistd.h>
 
 #include "mock.h"
