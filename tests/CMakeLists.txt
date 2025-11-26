@@ -51,6 +51,7 @@ if (${WITH_COVERAGE})
 			${GENHTML_BIN}
 				--output-directory ${CMAKE_BINARY_DIR}/coverage
                 --branch-coverage
+                --css-file ${CMAKE_CURRENT_SOURCE_DIR}/coverage.css
 				${CMAKE_BINARY_DIR}/coverage.lcov > /dev/null;
         COMMAND
             cp ${CMAKE_BINARY_DIR}/.coverage_report.d.full ${CMAKE_BINARY_DIR}/.coverage_report.d
