@@ -1,0 +1,791 @@
+/* Modern LCOV Coverage Report Styles
+   Matching the bfbencher benchmark results design */
+
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #8b5cf6;
+    --accent: #06b6d4;
+    --success: #10b981;
+    --success-bg: #d1fae5;
+    --warning: #f59e0b;
+    --warning-bg: #fef3c7;
+    --danger: #ef4444;
+    --danger-bg: #fee2e2;
+    --neutral-50: #fafafa;
+    --neutral-100: #f4f4f5;
+    --neutral-200: #e4e4e7;
+    --neutral-300: #d4d4d8;
+    --neutral-400: #a1a1aa;
+    --neutral-500: #71717a;
+    --neutral-600: #52525b;
+    --neutral-700: #3f3f46;
+    --neutral-800: #27272a;
+    --neutral-900: #18181b;
+    --card-bg: #ffffff;
+    --body-bg: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0fdfa 100%);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Base styles */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--body-bg);
+    color: var(--neutral-800);
+    line-height: 1.6;
+    margin: 0;
+    padding: 2rem;
+    min-height: 100vh;
+}
+
+/* Links */
+a:link {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+a:visited {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--secondary);
+    text-decoration: underline;
+}
+
+a:active {
+    color: var(--accent);
+}
+
+/* Main title */
+td.title {
+    text-align: center;
+    padding: 2.5rem 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.75rem;
+    font-style: normal;
+    font-weight: 700;
+    color: var(--neutral-800);
+    letter-spacing: -0.025em;
+}
+
+/* Sub table header */
+td.subTableHeader {
+    text-align: center;
+    padding: 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--neutral-700);
+    background: var(--neutral-100);
+    border-radius: var(--radius-sm);
+}
+
+/* Header items */
+td.headerItem {
+    text-align: right;
+    padding: 0.5rem 1rem 0.5rem 0;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--neutral-600);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+td.headerValue {
+    text-align: left;
+    color: var(--neutral-800);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Header coverage table */
+td.headerCovTableHead {
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--neutral-600);
+    white-space: nowrap;
+    background: var(--neutral-100);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+td.headerCovTableEntry {
+    text-align: right;
+    color: var(--neutral-700);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--neutral-100);
+}
+
+/* Coverage level indicators - Header */
+td.headerCovTableEntryHi {
+    text-align: right;
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--success-bg);
+    border-radius: var(--radius-sm);
+}
+
+td.headerCovTableEntryMed {
+    text-align: right;
+    color: var(--warning);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--warning-bg);
+    border-radius: var(--radius-sm);
+}
+
+td.headerCovTableEntryLo {
+    text-align: right;
+    color: var(--danger);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--danger-bg);
+    border-radius: var(--radius-sm);
+}
+
+/* Ruler */
+td.ruler {
+    background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    height: 3px;
+    padding: 0;
+}
+
+td.ruler img {
+    display: none;
+}
+
+/* Version info */
+td.versionInfo {
+    text-align: center;
+    padding: 1rem 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    color: var(--neutral-400);
+}
+
+td.versionInfo a {
+    color: var(--neutral-500);
+}
+
+/* Table heading */
+td.tableHead {
+    text-align: center;
+    color: #ffffff;
+    background-color: var(--primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    padding: 0.875rem 1rem;
+}
+
+span.tableHeadSort {
+    padding-left: 0.5rem;
+    opacity: 0.7;
+}
+
+span.tableHeadSort img {
+    filter: brightness(0) invert(1);
+}
+
+/* File/Directory entries */
+td.coverFile {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    color: var(--primary);
+    background-color: var(--card-bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverFile a {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+td.coverFile a:hover {
+    color: var(--secondary);
+}
+
+/* Coverage bar */
+td.coverBar {
+    padding: 0.75rem 1rem;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverBar table {
+    width: 100%;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+td.coverBarOutline {
+    background-color: var(--neutral-200);
+    line-height: 0;
+    font-size: 0;
+}
+
+td.coverBarOutline img {
+    height: 8px !important;
+    vertical-align: top;
+}
+
+td.coverBarOutline img:first-child {
+    border-radius: 9999px 0 0 9999px;
+}
+
+td.coverBarOutline img:last-child {
+    border-radius: 0 9999px 9999px 0;
+}
+
+td.coverBarOutline img:only-child {
+    border-radius: 9999px;
+}
+
+/* Coverage percentages */
+td.coverPerHi {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--success-bg);
+    color: var(--success);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverPerMed {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--warning-bg);
+    color: var(--warning);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverPerLo {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+/* Coverage numbers */
+td.coverNumDflt {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--card-bg);
+    color: var(--neutral-600);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverNumHi {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--success-bg);
+    color: var(--success);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverNumMed {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--warning-bg);
+    color: var(--warning);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+td.coverNumLo {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+/* Owner variants (slightly lighter) */
+td.overallOwner {
+    text-align: center;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--neutral-100);
+    padding: 0.75rem 1rem;
+}
+
+td.ownerName {
+    text-align: right;
+    font-style: italic;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--neutral-50);
+    padding: 0.75rem 1rem;
+}
+
+td.owner_coverBar {
+    padding: 0.75rem 1rem;
+    background-color: var(--neutral-50);
+}
+
+td.owner_coverPerHi,
+td.owner_coverNumHi {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: #ecfdf5;
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+td.owner_coverPerMed,
+td.owner_coverNumMed {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: #fffbeb;
+    color: var(--warning);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+td.owner_coverPerLo,
+td.owner_coverNumLo {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: #fef2f2;
+    color: var(--danger);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+td.ownerTla {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    background-color: var(--neutral-50);
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-style: italic;
+}
+
+/* Source code view */
+pre.source {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    white-space: pre;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow-x: auto;
+}
+
+pre.sourceHeading {
+    white-space: pre;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: var(--neutral-100);
+    color: var(--neutral-600);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+span.lineNum {
+    background-color: var(--neutral-100);
+    color: var(--neutral-500);
+    padding: 0 0.75rem;
+    margin-right: 0.5rem;
+    border-right: 1px solid var(--neutral-200);
+    display: inline-block;
+    min-width: 4rem;
+    text-align: right;
+}
+
+/* Function coverage */
+td.coverFn {
+    text-align: left;
+    padding: 0.5rem 1rem;
+    color: var(--primary);
+    background-color: var(--card-bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--neutral-100);
+}
+
+td.coverFnLo {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--neutral-100);
+}
+
+td.coverFnHi {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: var(--card-bg);
+    color: var(--success);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--neutral-100);
+}
+
+td.coverFnAlias {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    color: var(--neutral-500);
+    background-color: var(--neutral-50);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+td.coverFnAliasLo {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: #fef2f2;
+    color: var(--danger);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+}
+
+td.coverFnAliasHi {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: var(--card-bg);
+    color: var(--success);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+}
+
+/* Detail links */
+a.detail:link,
+a.detail:visited {
+    color: var(--neutral-400);
+    font-size: 0.75rem;
+}
+
+a.detail:hover {
+    color: var(--primary);
+}
+
+a.detail:active {
+    color: var(--secondary);
+}
+
+/* Test descriptions */
+dt {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--neutral-800);
+}
+
+td.testName {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: var(--neutral-50);
+    font-family: 'Inter', sans-serif;
+}
+
+td.testPer,
+td.testNum {
+    text-align: right;
+    padding: 0.5rem 1rem;
+    background-color: var(--neutral-50);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+td.testDescription {
+    padding: 1rem 1.5rem;
+    background-color: var(--neutral-50);
+    border-radius: var(--radius-sm);
+}
+
+/* Legend */
+td.headerValueLeg {
+    text-align: left;
+    color: var(--neutral-600);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    padding-top: 0.5rem;
+}
+
+td.headerValueLegL {
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+td.headerValueLegM {
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--warning-bg);
+    color: var(--warning);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+td.headerValueLegH {
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--success-bg);
+    color: var(--success);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+span.coverLegendCov {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--neutral-100);
+    color: var(--neutral-700);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+}
+
+span.coverLegendNoCov {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+}
+
+span.coverLegendCovLo {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--danger-bg);
+    border-radius: var(--radius-sm);
+}
+
+span.coverLegendCovMed {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--warning-bg);
+    border-radius: var(--radius-sm);
+}
+
+span.coverLegendCovHi {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--success-bg);
+    border-radius: var(--radius-sm);
+}
+
+/* Branch links */
+a.branchTla:link,
+a.branchTla:visited {
+    color: var(--neutral-800);
+}
+
+/* TLA (Three Letter Acronym) coverage categories */
+/* Uncovered code - danger colors */
+td.tlaUNC, td.tlaBgUNC,
+td.tlaLBC, td.tlaBgLBC,
+td.tlaUIC, td.tlaBgUIC,
+td.tlaUBC, td.tlaBgUBC {
+    background-color: var(--danger-bg);
+}
+
+span.tlaUNC, span.tlaBgUNC,
+span.tlaLBC, span.tlaBgLBC,
+span.tlaUIC, span.tlaBgUIC,
+span.tlaUBC, span.tlaBgUBC {
+    background-color: var(--danger-bg);
+}
+
+a.tlaBgUNC, a.tlaBgLBC, a.tlaBgUIC, a.tlaBgUBC {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+}
+
+td.headerCovTableHeadUNC,
+td.headerCovTableHeadLBC,
+td.headerCovTableHeadUIC,
+td.headerCovTableHeadUBC {
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    background-color: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* Covered code - blue/neutral colors */
+td.tlaGBC, td.tlaBgGBC,
+td.tlaGIC, td.tlaBgGIC,
+td.tlaGNC, td.tlaBgGNC,
+td.tlaCBC, td.tlaBgCBC {
+    background-color: #e0e7ff;
+}
+
+span.tlaGBC, span.tlaBgGBC,
+span.tlaGIC, span.tlaBgGIC,
+span.tlaGNC, span.tlaBgGNC,
+span.tlaCBC, span.tlaBgCBC {
+    background-color: #e0e7ff;
+}
+
+a.tlaBgGBC, a.tlaBgGIC, a.tlaBgGNC, a.tlaBgCBC {
+    background-color: #e0e7ff;
+    color: var(--primary);
+}
+
+td.headerCovTableHeadGBC,
+td.headerCovTableHeadGIC,
+td.headerCovTableHeadGNC,
+td.headerCovTableHeadCBC {
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    background-color: #e0e7ff;
+    color: var(--primary);
+}
+
+/* Excluded/Deleted code - white/neutral */
+td.tlaEUB, td.tlaBgEUB,
+td.tlaECB, td.tlaBgECB,
+td.tlaDUB, td.tlaBgDUB,
+td.tlaDCB, td.tlaBgDCB {
+    background-color: var(--neutral-50);
+}
+
+span.tlaEUB, span.tlaBgEUB,
+span.tlaECB, span.tlaBgECB,
+span.tlaDUB, span.tlaBgDUB,
+span.tlaDCB, span.tlaBgDCB {
+    background-color: var(--neutral-50);
+}
+
+a.tlaBgEUB, a.tlaBgECB, a.tlaBgDUB, a.tlaBgDCB {
+    background-color: var(--neutral-50);
+    color: var(--neutral-500);
+}
+
+td.headerCovTableHeadEUB,
+td.headerCovTableHeadECB,
+td.headerCovTableHeadDUB,
+td.headerCovTableHeadDCB {
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    background-color: var(--neutral-100);
+    color: var(--neutral-500);
+}
+
+/* Missed bins indicator */
+span.missBins {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Main table styling */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+center {
+    display: block;
+    margin: 1.5rem auto;
+    text-align: left;
+    max-width: 1400px;
+}
+
+center > table {
+    width: 100% !important;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+/* Hide old pixel spacer images */
+img[src*="glass.png"] {
+    display: none;
+}
+
+/* All body tables should have consistent width */
+body > table {
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Google Fonts import - Add this via link tag in HTML or use system fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
