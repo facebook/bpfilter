@@ -219,24 +219,15 @@ struct bf_program
     size_t img_cap;
     bf_list fixups;
 
-    /** Runtime data used to interact with the program and cache information.
-     * This data is not serialized. */
-    struct
-    {
-        /** File descriptor of the program. */
-        int prog_fd;
+    /** File descriptor of the program. */
+    int prog_fd;
 
-        /** File descriptor of the directory to pin the program into. Unused
-         * in transient mode. */
-        int pindir_fd;
+    /** Hook-specific ops to use to generate the program. */
+    const struct bf_flavor_ops *ops;
 
-        /** Hook-specific ops to use to generate the program. */
-        const struct bf_flavor_ops *ops;
-
-        /** Chain the program is generated from. This is a non-owning pointer:
-         * the @ref bf_program doesn't have to manage its lifetime. */
-        const struct bf_chain *chain;
-    } runtime;
+    /** Chain the program is generated from. This is a non-owning pointer:
+     * the @ref bf_program doesn't have to manage its lifetime. */
+    const struct bf_chain *chain;
 };
 
 #define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))

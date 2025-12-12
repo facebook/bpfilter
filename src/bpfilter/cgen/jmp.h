@@ -22,8 +22,7 @@
  *          bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 0));
  *
  *      EMIT(program,
- *          BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
- *              BF_VERDICT_ACCEPT)));
+ *           BPF_MOV64_IMM(BPF_REG_0, program->ops->get_verdict(BF_VERDICT_ACCEPT)));
  *      EMIT(program, BPF_EXIT_INSN());
  *  }
  * @endcode

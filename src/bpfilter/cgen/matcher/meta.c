@@ -144,7 +144,7 @@ static int _bf_matcher_generate_meta_mark(struct bf_program *program,
     uint32_t mark = *(uint32_t *)bf_matcher_payload(matcher);
     int r;
 
-    r = program->runtime.ops->gen_inline_get_mark(program, BPF_REG_1);
+    r = program->ops->gen_inline_get_mark(program, BPF_REG_1);
     if (r)
         return bf_err_r(r, "failed to get inline mark");
 
@@ -172,7 +172,7 @@ static int _bf_matcher_generate_meta_flow_hash(struct bf_program *program,
     uint32_t *hash = (uint32_t *)bf_matcher_payload(matcher);
     int r;
 
-    r = program->runtime.ops->gen_inline_get_skb(program, BPF_REG_1);
+    r = program->ops->gen_inline_get_skb(program, BPF_REG_1);
     if (r)
         return bf_err_r(r, "failed to get inline skb");
 

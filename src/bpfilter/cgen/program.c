@@ -106,9 +106,9 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         return -ENOMEM;
 
     _program->flavor = bf_hook_to_flavor(chain->hook);
-    _program->runtime.prog_fd = -1;
-    _program->runtime.ops = bf_flavor_ops_get(_program->flavor);
-    _program->runtime.chain = chain;
+    _program->prog_fd = -1;
+    _program->ops = bf_flavor_ops_get(_program->flavor);
+    _program->chain = chain;
 
     (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s", "bf_prog");
 
@@ -244,7 +244,7 @@ int bf_program_new_from_pack(struct bf_program **program,
     _program->img_size = img_len / sizeof(struct bpf_insn);
     _program->img_cap = _program->img_size;
 
-    r = bf_bpf_obj_get(_program->prog_name, dir_fd, &_program->runtime.prog_fd);
+    r = bf_bpf_obj_get(_program->prog_name, dir_fd, &_program->prog_fd);
     if (r < 0)
         return bf_err_r(r, "failed to restore bf_program.fd");
 
@@ -266,7 +266,7 @@ void bf_program_free(struct bf_program **program)
      * bf_program_unload() has been called). Otherwise, bf_program_unload()
      * won't be called, but the programs are pinned, so they can be closed
      * safely. */
-    closep(&(*program)->runtime.prog_fd);
+    closep(&(*program)->prog_fd);
 
     bf_map_free(&(*program)->cmap);
     bf_map_free(&(*program)->pmap);
@@ -379,8 +379,8 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     DUMP(bf_dump_prefix_last(prefix), "runtime: <anonymous>");
     bf_dump_prefix_push(prefix);
-    DUMP(prefix, "prog_fd: %d", program->runtime.prog_fd);
-    DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->runtime.ops);
+    DUMP(prefix, "prog_fd: %d", program->prog_fd);
+    DUMP(bf_dump_prefix_last(prefix), "ops: %p", program->ops);
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
@@ -567,17 +567,16 @@ static int _bf_program_generate_rule(struct bf_program *program,
     }
 
     if (bf_rule_mark_is_set(rule)) {
-        if (!program->runtime.ops->gen_inline_set_mark) {
+        if (!program->ops->gen_inline_set_mark) {
             return bf_err_r(-ENOTSUP, "set mark is not supported by %s",
-                            program->runtime.chain->name);
+                            program->chain->name);
         }
 
-        r = program->runtime.ops->gen_inline_set_mark(program,
-                                                      bf_rule_mark_get(rule));
+        r = program->ops->gen_inline_set_mark(program, bf_rule_mark_get(rule));
         if (r) {
             return bf_err_r(r,
                             "failed to generate bytecode to set mark for '%s'",
-                            program->runtime.chain->name);
+                            program->chain->name);
         }
     }
 
@@ -603,9 +602,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
-        EMIT(program,
-             BPF_MOV64_IMM(BPF_REG_0,
-                           program->runtime.ops->get_verdict(rule->verdict)));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0,
+                                    program->ops->get_verdict(rule->verdict)));
         EMIT(program, BPF_EXIT_INSN());
         break;
     case BF_VERDICT_CONTINUE:
@@ -796,7 +794,7 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
 
 int bf_program_generate(struct bf_program *program)
 {
-    const struct bf_chain *chain = program->runtime.chain;
+    const struct bf_chain *chain = program->chain;
     int r;
 
     // Save the program's argument into the context.
@@ -808,19 +806,19 @@ int bf_program_generate(struct bf_program *program)
     EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
 
     // If at least one rule logs the matched packets, populate ctx->log_map
-    if (program->runtime.chain->flags & BF_FLAG(BF_CHAIN_LOG)) {
+    if (chain->flags & BF_FLAG(BF_CHAIN_LOG)) {
         EMIT_LOAD_LOG_FD_FIXUP(program, BPF_REG_2);
         EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_2,
                                   BF_PROG_CTX_OFF(log_map)));
     }
 
     // Zeroing IPv6 extension headers
-    if (program->runtime.chain->flags & BF_FLAG(BF_CHAIN_STORE_NEXTHDR)) {
+    if (chain->flags & BF_FLAG(BF_CHAIN_STORE_NEXTHDR)) {
         EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_7,
                                   BF_PROG_CTX_OFF(ipv6_eh)));
     }
 
-    r = program->runtime.ops->gen_inline_prologue(program);
+    r = program->ops->gen_inline_prologue(program);
     if (r)
         return r;
 
@@ -831,7 +829,7 @@ int bf_program_generate(struct bf_program *program)
             return r;
     }
 
-    r = program->runtime.ops->gen_inline_epilogue(program);
+    r = program->ops->gen_inline_epilogue(program);
     if (r)
         return r;
 
@@ -844,8 +842,8 @@ int bf_program_generate(struct bf_program *program)
          BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
     EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
-                                               chain->policy)));
+    EMIT(program,
+         BPF_MOV64_IMM(BPF_REG_0, program->ops->get_verdict(chain->policy)));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_generate_elfstubs(program);
@@ -901,7 +899,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     bf_assert(program);
 
     r = bf_map_set_n_elems(program->cmap,
-                           bf_list_size(&program->runtime.chain->rules) + 2);
+                           bf_list_size(&program->chain->rules) + 2);
     if (r < 0)
         return r;
 
@@ -946,7 +944,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 
     bf_assert(new_prog);
 
-    set_node = bf_list_get_head(&new_prog->runtime.chain->sets);
+    set_node = bf_list_get_head(&new_prog->chain->sets);
     map_node = bf_list_get_head(&new_prog->sets);
 
     // Fill the bf_map with the sets content
@@ -1041,10 +1039,9 @@ int bf_program_load(struct bf_program *prog)
         bf_program_dump_bytecode(prog);
 
     r = bf_bpf_prog_load(
-        prog->prog_name, bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
-        prog->img, prog->img_size,
-        bf_hook_to_bpf_attach_type(prog->runtime.chain->hook), log_buf,
-        log_buf ? _BF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->runtime.prog_fd);
+        prog->prog_name, bf_hook_to_bpf_prog_type(prog->chain->hook), prog->img,
+        prog->img_size, bf_hook_to_bpf_attach_type(prog->chain->hook), log_buf,
+        log_buf ? _BF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->prog_fd);
     if (r) {
         return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
                         prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
@@ -1059,8 +1056,7 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
 
     bf_assert(prog && hookopts);
 
-    r = bf_link_attach(prog->link, prog->runtime.chain->hook, hookopts,
-                       prog->runtime.prog_fd);
+    r = bf_link_attach(prog->link, prog->chain->hook, hookopts, prog->prog_fd);
     if (r) {
         return bf_err_r(r, "failed to attach bf_link for %s program",
                         bf_flavor_to_str(prog->flavor));
@@ -1080,7 +1076,7 @@ void bf_program_unload(struct bf_program *prog)
 {
     bf_assert(prog);
 
-    closep(&prog->runtime.prog_fd);
+    closep(&prog->prog_fd);
     bf_link_detach(prog->link);
     bf_map_destroy(prog->cmap);
     bf_map_destroy(prog->pmap);
@@ -1120,9 +1116,9 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
 
     bf_assert(prog);
 
-    name = prog->runtime.chain->name;
+    name = prog->chain->name;
 
-    r = bf_bpf_obj_pin(prog->prog_name, prog->runtime.prog_fd, dir_fd);
+    r = bf_bpf_obj_pin(prog->prog_name, prog->prog_fd, dir_fd);
     if (r) {
         bf_err_r(r, "failed to pin BPF program for '%s'", name);
         goto err_unpin_all;
@@ -1188,10 +1184,10 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
 
 size_t bf_program_chain_counter_idx(const struct bf_program *program)
 {
-    return bf_list_size(&program->runtime.chain->rules);
+    return bf_list_size(&program->chain->rules);
 }
 
 size_t bf_program_error_counter_idx(const struct bf_program *program)
 {
-    return bf_list_size(&program->runtime.chain->rules) + 1;
+    return bf_list_size(&program->chain->rules) + 1;
 }

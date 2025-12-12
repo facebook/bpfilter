@@ -334,10 +334,10 @@ int _bf_cli_chain_prog_fd(const struct bf_request *request,
     if (!cgen)
         return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
-    if (!cgen->program || cgen->program->runtime.prog_fd == -1)
+    if (!cgen->program || cgen->program->prog_fd == -1)
         return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
 
-    r = bf_send_fd(bf_request_fd(request), cgen->program->runtime.prog_fd);
+    r = bf_send_fd(bf_request_fd(request), cgen->program->prog_fd);
     if (r < 0)
         return bf_err_r(errno, "failed to send prog FD for '%s'", name);
 

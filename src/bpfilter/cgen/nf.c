@@ -50,7 +50,7 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
-    if (_bf_nf_hook_is_ingress(program->runtime.chain->hook)) {
+    if (_bf_nf_hook_is_ingress(program->chain->hook)) {
         if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, offset));
