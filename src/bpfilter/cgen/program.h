@@ -184,6 +184,27 @@
             return __r;                                                        \
     })
 
+/**
+ * Emit BPF instructions to print a log message.
+ *
+ * This function will insert mulitple instruction into the BPF program to load
+ * a given log message from a BPF map into a register, store its size, and
+ * call @c bpf_trace_printk() to print the message.
+ *
+ * @warning As every @c EMIT_* macro, @c EMIT_PRINT() will call @c return if
+ * an error occurs. Hence, it must be used within a function that returns an
+ * integer.
+ *
+ * @param program Program to emit the instructions to. Must not be NULL.
+ * @param fmt Log message to print.
+ */
+#define EMIT_PRINT(program, fmt)                                               \
+    ({                                                                         \
+        int __r = bf_program_emit_log((program), (fmt));                       \
+        if (__r)                                                               \
+            return __r;                                                        \
+    })
+
 struct bf_chain;
 struct bf_map;
 struct bf_counter;
@@ -192,7 +213,6 @@ struct bf_hookopts;
 
 struct bf_program
 {
-    char prog_name[BPF_OBJ_NAME_LEN];
     enum bf_flavor flavor;
 
     /// Log messages printer
@@ -284,6 +304,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           const union bf_fixup_attr *attr);
 int bf_program_emit_fixup_elfstub(struct bf_program *program,
                                   enum bf_elfstub_id id);
+int bf_program_emit_log(struct bf_program *program, const char *fmt);
 int bf_program_generate(struct bf_program *program);
 
 /**

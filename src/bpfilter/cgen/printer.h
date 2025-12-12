@@ -54,47 +54,6 @@ struct bf_printer_msg;
 #define _free_bf_printer_ __attribute__((__cleanup__(bf_printer_free)))
 
 /**
- * Emit BPF instructions to print a log message.
- *
- * This function will insert mulitple instruction into the BPF program to load
- * a given log message from a BPF map into a register, store its size, and
- * call @c bpf_trace_printk() to print the message.
- *
- * @warning As every @c EMIT_* macro, @c EMIT_PRINT() will call @c return if
- * an error occurs. Hence, it must be used within a function that returns an
- * integer.
- *
- * @param program Program to emit the instructions to. Must not be NULL.
- * @param msg Log message to print.
- */
-#define EMIT_PRINT(program, msg)                                               \
-    ({                                                                         \
-        int __r;                                                               \
-        const struct bf_printer_msg *__msg =                                   \
-            bf_printer_add_msg((program)->printer, (msg));                     \
-        struct bpf_insn __ld_insn[2] = {                                       \
-            BPF_LD_MAP_FD(BPF_REG_1, 0),                                       \
-        };                                                                     \
-        __ld_insn[0].src_reg = BPF_PSEUDO_MAP_VALUE;                           \
-        __ld_insn[1].imm = bf_printer_msg_offset(__msg);                       \
-        __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_PRINTER_MAP_FD,   \
-                                    __ld_insn[0], NULL);                       \
-        if (__r < 0)                                                           \
-            return __r;                                                        \
-        __r = bf_program_emit((program), __ld_insn[1]);                        \
-        if (__r < 0)                                                           \
-            return __r;                                                        \
-        __r = bf_program_emit(                                                 \
-            (program), BPF_MOV64_IMM(BPF_REG_2, bf_printer_msg_len(__msg)));   \
-        if (__r < 0)                                                           \
-            return __r;                                                        \
-        __r =                                                                  \
-            bf_program_emit((program), BPF_EMIT_CALL(BPF_FUNC_trace_printk));  \
-        if (__r < 0)                                                           \
-            return __r;                                                        \
-    })
-
-/**
  * Allocate and initialise a new printer context.
  *
  * @param printer On success, contains a valid printer context.
