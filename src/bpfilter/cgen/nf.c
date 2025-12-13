@@ -25,7 +25,8 @@
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 #define BF_NF_PRIO_EVEN 2
 #define BF_NF_PRIO_ODD 1

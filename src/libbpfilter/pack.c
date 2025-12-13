@@ -8,7 +8,8 @@
 #include "bpfilter/helper.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"
-#include "mpack.h"
+
+#include "external/mpack.h"
 
 struct bf_wpack
 {
@@ -651,7 +652,6 @@ int bf_rpack_kv_obj(bf_rpack_node_t node, const char *key,
     if (r)
         return r;
 
-        bf_info("%d", mpack_node_type(MP_NODE(_child)));
     if (mpack_node_type(MP_NODE(_child)) != mpack_type_map)
         return -EDOM;
 

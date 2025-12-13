@@ -5,6 +5,7 @@
 
 #include "cgen/cgroup.h"
 
+#include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 
@@ -21,8 +22,8 @@
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
-#include "filter.h"
-#include "linux/bpf.h"
+
+#include "external/filter.h"
 
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);

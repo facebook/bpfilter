@@ -5,7 +5,7 @@
 
 #include <linux/bpf.h>
 
-#include "disasm.h"
+#include "external/disasm.h"
 
 /*******************************************************************************
  * Missing types and definitions

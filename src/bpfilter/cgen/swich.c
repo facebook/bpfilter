@@ -20,7 +20,8 @@
 
 #include "cgen/jmp.h"
 #include "cgen/program.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 /// Cleanup attribute for a @ref bf_swich_option variable.
 #define _free_bf_swich_option_ __attribute__((cleanup(_bf_swich_option_free)))

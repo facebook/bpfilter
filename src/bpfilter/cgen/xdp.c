@@ -15,7 +15,8 @@
 
 #include "cgen/program.h"
 #include "cgen/stub.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 /**
  * Generate XDP program prologue.

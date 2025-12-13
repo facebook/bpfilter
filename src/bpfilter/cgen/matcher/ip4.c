@@ -21,7 +21,8 @@
 #include <bpfilter/runtime.h>
 
 #include "cgen/program.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
                                          const struct bf_matcher *matcher)

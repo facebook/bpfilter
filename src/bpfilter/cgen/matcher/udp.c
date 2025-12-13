@@ -19,7 +19,8 @@
 #include <bpfilter/matcher.h>
 
 #include "cgen/program.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_udp_port(struct bf_program *program,
                                          const struct bf_matcher *matcher)

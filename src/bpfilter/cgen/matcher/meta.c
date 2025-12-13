@@ -21,7 +21,8 @@
 
 #include "cgen/program.h"
 #include "cgen/swich.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 /** @todo Add support for input and output interface filtering based on the
  * program's hook. */

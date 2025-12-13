@@ -55,8 +55,9 @@
 #include "cgen/tc.h"
 #include "cgen/xdp.h"
 #include "ctx.h"
-#include "filter.h"
 #include "opts.h"
+
+#include "external/filter.h"
 
 #define _BF_LOG_BUF_SIZE                                                       \
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
@@ -914,9 +915,10 @@ static int _bf_program_load_printer_map(struct bf_program *program)
 
     bf_assert(program);
 
-    if (program->pmap){
+    if (program->pmap) {
         return bf_err_r(-EEXIST,
-                        "printer map already exists in the bf_program");}
+                        "printer map already exists in the bf_program");
+    }
 
     r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
     if (r)
@@ -951,7 +953,8 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     bf_assert(program);
 
     r = bf_map_new(&program->cmap, "counters_map", BF_MAP_TYPE_COUNTERS,
-                   sizeof(uint32_t), sizeof(struct bf_counter), bf_list_size(&program->chain->rules) + 2);
+                   sizeof(uint32_t), sizeof(struct bf_counter),
+                   bf_list_size(&program->chain->rules) + 2);
     if (r < 0)
         return bf_err_r(r, "failed to create the counters bf_map object");
 

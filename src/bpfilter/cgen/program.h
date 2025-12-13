@@ -19,7 +19,8 @@
 #include "cgen/fixup.h"
 #include "cgen/printer.h"
 #include "cgen/runtime.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 /**
  * @file program.h

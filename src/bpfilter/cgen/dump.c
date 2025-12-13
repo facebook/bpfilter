@@ -19,7 +19,8 @@
 #include <bpfilter/logger.h>
 
 #include "cgen/program.h"
-#include "disasm.h"
+
+#include "external/disasm.h"
 
 #define SYM_MAX_NAME 256
 

@@ -20,7 +20,8 @@
 #include "cgen/cgen.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
-#include "filter.h"
+
+#include "external/filter.h"
 
 static int _bf_tc_gen_inline_prologue(struct bf_program *program)
 {

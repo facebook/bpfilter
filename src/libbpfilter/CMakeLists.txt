@@ -61,7 +61,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/version.c
 
     # External
-    ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h
+    ${CMAKE_SOURCE_DIR}/src/external/include/external/mpack.h
     ${CMAKE_SOURCE_DIR}/src/external/mpack.c
 )
 

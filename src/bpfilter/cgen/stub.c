@@ -30,8 +30,9 @@
 #include "cgen/printer.h"
 #include "cgen/program.h"
 #include "cgen/swich.h"
-#include "filter.h"
 #include "opts.h"
+
+#include "external/filter.h"
 
 #define _BF_LOW_EH_BITMASK 0x1801800000000801ULL
 
