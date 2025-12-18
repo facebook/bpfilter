@@ -56,7 +56,7 @@ struct bf_program;
  */
 #define bf_jmpctx_get(program, insn)                                           \
     ({                                                                         \
-        size_t __idx = (program)->img_size;                                    \
+        size_t __idx = bf_program_ninsns(program);                             \
         int __r = bf_program_emit((program), (insn));                          \
         if (__r < 0)                                                           \
             return __r;                                                        \

@@ -105,10 +105,11 @@ void bf_program_dump_bytecode(const struct bf_program *program)
 
     bf_dump_prefix_push(&prefix);
 
-    bf_dbg("Bytecode for program at %p, %lu insn:", program, program->img_size);
+    bf_dbg("Bytecode for program at %p, %lu insn:", program,
+           bf_program_ninsns(program));
 
-    for (size_t i = 0; i < program->img_size; ++i) {
-        if (i == program->img_size - 1)
+    for (size_t i = 0; i < bf_program_ninsns(program); ++i) {
+        if (i == bf_program_ninsns(program) - 1)
             bf_dump_prefix_last(&prefix);
 
         if (double_insn) {
@@ -117,10 +118,11 @@ void bf_program_dump_bytecode(const struct bf_program *program)
             continue;
         }
 
-        print_bpf_insn(&callbacks, &program->img[i], true);
+        print_bpf_insn(&callbacks, &bf_program_insns(program)[i], true);
         ++bfdd.idx;
 
-        double_insn = program->img[i].code == (BPF_LD | BPF_IMM | BPF_DW);
+        double_insn =
+            bf_program_insns(program)[i].code == (BPF_LD | BPF_IMM | BPF_DW);
     }
 
     // Force flush, otherwise output on stderr might appear.

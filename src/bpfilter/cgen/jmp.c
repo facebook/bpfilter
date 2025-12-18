@@ -18,8 +18,9 @@
 void bf_jmpctx_cleanup(struct bf_jmpctx *ctx)
 {
     if (ctx->program) {
-        struct bpf_insn *insn = &ctx->program->img[ctx->insn_idx];
-        size_t off = ctx->program->img_size - ctx->insn_idx - 1U;
+        struct bpf_insn *insn =
+            &bf_program_insns(ctx->program)[ctx->insn_idx];
+        size_t off = bf_program_ninsns(ctx->program) - ctx->insn_idx - 1U;
 
         if (off > SHRT_MAX)
             bf_warn("jump offset overflow: %ld", off);

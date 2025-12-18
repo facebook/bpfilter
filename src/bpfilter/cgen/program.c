@@ -62,7 +62,6 @@
 
 #define _BF_LOG_BUF_SIZE                                                       \
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
-#define _BF_PROGRAM_DEFAULT_IMG_SIZE (1 << 6)
 #define _BF_LOG_MAP_N_ENTRIES 1000
 #define _BF_LOG_MAP_SIZE                                                       \
     _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
@@ -108,6 +107,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     _program->flavor = bf_hook_to_flavor(chain->hook);
     _program->ops = bf_flavor_ops_get(_program->flavor);
     _program->chain = chain;
+    _program->img = bf_dynbuf_default();
     _program->fixups = bf_list_default(bf_fixup_free, NULL);
 
     r = bf_handle_new(&_program->handle);
@@ -125,7 +125,7 @@ void bf_program_free(struct bf_program **program)
         return;
 
     bf_list_clean(&(*program)->fixups);
-    freep((void *)&(*program)->img);
+    bf_dynbuf_clean(&(*program)->img);
     bf_handle_free(&(*program)->handle);
     bf_printer_free(&(*program)->printer);
 
@@ -150,9 +150,7 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
         DUMP(prefix, "printer: (struct bf_printer *)NULL");
     }
 
-    DUMP(prefix, "img: %p", program->img);
-    DUMP(prefix, "img_size: %lu", program->img_size);
-    DUMP(prefix, "img_cap: %lu", program->img_cap);
+    DUMP(prefix, "img: %lu instructions", bf_program_ninsns(program));
 
     DUMP(prefix, "fixups: bf_list<struct bf_fixup>[%lu]",
          bf_list_size(&program->fixups));
@@ -174,26 +172,6 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-int bf_program_grow_img(struct bf_program *program)
-{
-    size_t new_cap = _BF_PROGRAM_DEFAULT_IMG_SIZE;
-    int r;
-
-    bf_assert(program);
-
-    if (program->img)
-        new_cap = _bf_round_next_power_of_2(program->img_cap << 1);
-
-    r = bf_realloc((void **)&program->img, new_cap * sizeof(struct bpf_insn));
-    if (r < 0) {
-        return bf_err_r(r, "failed to grow program img from %lu to %lu insn",
-                        program->img_cap, new_cap);
-    }
-
-    program->img_cap = new_cap;
-
-    return 0;
-}
 
 static void _bf_program_fixup_insn(struct bpf_insn *insn,
                                    enum bf_fixup_insn type, int32_t value)
@@ -227,7 +205,7 @@ static int _bf_program_fixup(struct bf_program *program,
         int32_t value;
         size_t offset;
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
-        struct bpf_insn *insn = &program->img[fixup->insn];
+        struct bpf_insn *insn = &bf_program_insns(program)[fixup->insn];
         struct bf_map *map;
 
         if (type != fixup->type)
@@ -236,7 +214,7 @@ static int _bf_program_fixup(struct bf_program *program,
         switch (type) {
         case BF_FIXUP_TYPE_JMP_NEXT_RULE:
             insn_type = BF_FIXUP_INSN_OFF;
-            value = (int)(program->img_size - fixup->insn - 1U);
+            value = (int)(bf_program_ninsns(program) - fixup->insn - 1U);
             break;
         case BF_FIXUP_TYPE_COUNTERS_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
@@ -420,7 +398,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
 
     bf_list_foreach (&program->fixups, fixup_node) {
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
-        size_t off = program->img_size;
+        size_t off = bf_program_ninsns(program);
 
         if (fixup->type != BF_FIXUP_ELFSTUB_CALL)
             continue;
@@ -437,7 +415,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
                             fixup->attr.elfstub_id);
         }
 
-        start_at = program->img_size;
+        start_at = bf_program_ninsns(program);
 
         for (size_t i = 0; i < elfstub->ninsns; ++i) {
             r = bf_program_emit(program, elfstub->insns[i]);
@@ -468,8 +446,8 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
             ld_insn[0].src_reg = BPF_PSEUDO_MAP_VALUE;
             ld_insn[1].imm = (int)bf_printer_msg_offset(msg);
 
-            program->img[insn_idx] = ld_insn[0];
-            program->img[insn_idx + 1] = ld_insn[1];
+            bf_program_insns(program)[insn_idx] = ld_insn[0];
+            bf_program_insns(program)[insn_idx + 1] = ld_insn[1];
 
             r = bf_fixup_new(&fixup, BF_FIXUP_TYPE_PRINTER_MAP_FD, insn_idx,
                              NULL);
@@ -491,19 +469,9 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
 
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
 {
-    int r;
-
     bf_assert(program);
 
-    if (program->img_size == program->img_cap) {
-        r = bf_program_grow_img(program);
-        if (r)
-            return r;
-    }
-
-    program->img[program->img_size++] = insn;
-
-    return 0;
+    return bf_dynbuf_write(&program->img, &insn, sizeof(insn));
 }
 
 int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
@@ -534,13 +502,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 
     bf_assert(program);
 
-    if (program->img_size == program->img_cap) {
-        r = bf_program_grow_img(program);
-        if (r)
-            return r;
-    }
-
-    r = bf_fixup_new(&fixup, type, program->img_size, attr);
+    r = bf_fixup_new(&fixup, type, bf_program_ninsns(program), attr);
     if (r)
         return r;
 
@@ -550,10 +512,6 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 
     TAKE_PTR(fixup);
 
-    /* This call could fail and return an error, in which case it is not
-     * properly handled. However, this shouldn't be an issue as we previously
-     * test whether enough room is available in cgen.img, which is currently
-     * the only reason for EMIT() to fail. */
     EMIT(program, insn);
 
     return 0;
@@ -567,13 +525,8 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
 
     bf_assert(program);
 
-    if (program->img_size == program->img_cap) {
-        r = bf_program_grow_img(program);
-        if (r)
-            return r;
-    }
-
-    r = bf_fixup_new(&fixup, BF_FIXUP_ELFSTUB_CALL, program->img_size, NULL);
+    r = bf_fixup_new(&fixup, BF_FIXUP_ELFSTUB_CALL, bf_program_ninsns(program),
+                     NULL);
     if (r)
         return r;
 
@@ -888,7 +841,7 @@ static int _bf_program_load(struct bf_program *prog)
     _cleanup_free_ char *log_buf = NULL;
     int r;
 
-    bf_assert(prog && prog->img);
+    assert(prog);
 
     r = _bf_program_load_sets_maps(prog);
     if (r)
@@ -918,12 +871,15 @@ static int _bf_program_load(struct bf_program *prog)
         bf_program_dump_bytecode(prog);
 
     r = bf_bpf_prog_load(
-        BF_PROG_NAME, bf_hook_to_bpf_prog_type(prog->chain->hook), prog->img,
-        prog->img_size, bf_hook_to_bpf_attach_type(prog->chain->hook), log_buf,
+        BF_PROG_NAME, bf_hook_to_bpf_prog_type(prog->chain->hook),
+        bf_program_insns(prog), bf_program_ninsns(prog),
+        bf_hook_to_bpf_attach_type(prog->chain->hook), log_buf,
         log_buf ? _BF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->handle->prog_fd);
     if (r) {
-        return bf_err_r(r, "failed to load bf_program (%lu bytes):\n%s\nerrno:",
-                        prog->img_size, log_buf ? log_buf : "<NO LOG BUFFER>");
+        return bf_err_r(r,
+                        "failed to load bf_program (%lu insns):\n%s\nerrno:",
+                        bf_program_ninsns(prog),
+                        log_buf ? log_buf : "<NO LOG BUFFER>");
     }
 
     bf_program_dump(prog, EMPTY_PREFIX);

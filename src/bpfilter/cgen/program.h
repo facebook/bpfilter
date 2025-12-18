@@ -10,6 +10,7 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/dynbuf.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
@@ -220,9 +221,7 @@ struct bf_program
 
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
-    struct bpf_insn *img;
-    size_t img_size;
-    size_t img_cap;
+    struct bf_dynbuf img;
     bf_list fixups;
 
     /** Hook-specific ops to use to generate the program. */
@@ -238,6 +237,24 @@ struct bf_program
 #define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))
 
 /**
+ * Get the BPF instructions array from a program.
+ *
+ * @param program Program to get the instructions from.
+ * @return Pointer to the BPF instructions array.
+ */
+#define bf_program_insns(program)                                              \
+    ((struct bpf_insn *)(program)->img.data)
+
+/**
+ * Get the number of BPF instructions in a program.
+ *
+ * @param program Program to get the instruction count from.
+ * @return Number of BPF instructions.
+ */
+#define bf_program_ninsns(program)                                             \
+    ((program)->img.len / sizeof(struct bpf_insn))
+
+/**
  * @brief Allocate and initialize a new `bf_program` object.
  *
  * @param program `bf_program` object to allocate and initialize. Can't be NULL.
@@ -249,7 +266,6 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
 void bf_program_free(struct bf_program **program);
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
-int bf_program_grow_img(struct bf_program *program);
 
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn);
 int bf_program_emit_kfunc_call(struct bf_program *program, const char *name);
