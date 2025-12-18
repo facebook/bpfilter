@@ -207,9 +207,8 @@
     })
 
 struct bf_chain;
-struct bf_map;
 struct bf_counter;
-struct bf_link;
+struct bf_handle;
 struct bf_hookopts;
 
 struct bf_program
@@ -219,20 +218,6 @@ struct bf_program
     /// Log messages printer
     struct bf_printer *printer;
 
-    /// Counters map
-    struct bf_map *cmap;
-    /// Printer map
-    struct bf_map *pmap;
-    /// Log map
-    struct bf_map *lmap;
-    /// List of set maps
-    bf_list sets;
-
-    /** Link objects attaching the program to a hook.
-     * @todo A ``bf_program`` should not have any link until the program is
-     * attached. */
-    struct bf_link *link;
-
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
     struct bpf_insn *img;
@@ -240,15 +225,14 @@ struct bf_program
     size_t img_cap;
     bf_list fixups;
 
-    /** File descriptor of the program. */
-    int prog_fd;
-
     /** Hook-specific ops to use to generate the program. */
     const struct bf_flavor_ops *ops;
 
     /** Chain the program is generated from. This is a non-owning pointer:
      * the @ref bf_program doesn't have to manage its lifetime. */
     const struct bf_chain *chain;
+
+    struct bf_handle *handle;
 };
 
 #define _free_bf_program_ __attribute__((__cleanup__(bf_program_free)))
