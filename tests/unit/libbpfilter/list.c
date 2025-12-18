@@ -90,7 +90,7 @@ static void pack_and_unpack(void **state)
         assert_non_null(value = malloc(sizeof(*value)));
         assert_ok(bf_rpack_kv_u64(list_elem_node, "size_t", value));
 
-        assert_ok(bf_list_push(&destination, (void **)&value));
+        assert_ok(bf_list_push(&destination, &value));
     }
 
     assert_true(
@@ -197,8 +197,7 @@ static void insert(void **state)
             assert_non_null(value = malloc(sizeof(*value)));
             *value = i;
 
-            assert_ok(bf_list_add_tail(list, value));
-            TAKE_PTR(value);
+            assert_ok(bf_list_push(list, &value));
         }
 
         assert_true(
@@ -219,7 +218,7 @@ static void insert(void **state)
             assert_non_null(value = malloc(sizeof(*value)));
             *value = i;
 
-            assert_ok(bf_list_push(list, (void **)&value));
+            assert_ok(bf_list_push(list, &value));
         }
 
         assert_true(
@@ -266,7 +265,7 @@ static void delete(void **state)
         assert_non_null(value = malloc(sizeof(*value)));
         *value = i;
 
-        assert_ok(bf_list_push(reference, (void *)&value));
+        assert_ok(bf_list_push(reference, &value));
     }
 
     // Validate bf_list_get_at for indexes outside of the list

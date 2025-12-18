@@ -657,9 +657,9 @@ static void hookopts_parse_opts_list(void **state)
 
     // Create list of options
     assert_ok(bf_list_new(&opts, &free_ops));
-    assert_ok(bf_list_push(opts, (void **)&opt1));
-    assert_ok(bf_list_push(opts, (void **)&opt2));
-    assert_ok(bf_list_push(opts, (void **)&opt3));
+    assert_ok(bf_list_push(opts, &opt1));
+    assert_ok(bf_list_push(opts, &opt2));
+    assert_ok(bf_list_push(opts, &opt3));
 
     // Parse all options from list
     assert_ok(bf_hookopts_new(&hookopts));

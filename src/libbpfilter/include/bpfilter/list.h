@@ -289,10 +289,16 @@ static inline bool bf_list_is_tail(const bf_list *list,
  * @brief Push a new node at the end of the list and steal the data pointer.
  *
  * @param list List to push node to. Must be initialised and non-NULL.
- * @param data Data to be pushed. Must be non-NULL.
+ * @param data Pointer to the data pointer to be pushed. Must be non-NULL.
  * @return 0 on success or negative errno code on failure.
  */
-int bf_list_push(bf_list *list, void **data);
+#define bf_list_push(list, data)                                               \
+    ({                                                                         \
+        int r = bf_list_add_tail(list, *(data));                               \
+        if (!r)                                                                \
+            TAKE_PTR(*(data));                                                 \
+        r;                                                                     \
+    })
 
 /**
  * Add data at the beginning of the list.

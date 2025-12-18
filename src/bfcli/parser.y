@@ -164,9 +164,8 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
                         bf_parse_err("failed to add chain into bf_list\n");
                     $$ = TAKE_PTR(chain);
 
-                    if (bf_list_add_tail(&ruleset->hookopts, hookopts))
+                    if (bf_list_push(&ruleset->hookopts, &hookopts))
                         bf_parse_err("failed to insert hookopts to list of hookopts");
-                    TAKE_PTR(hookopts);
                 }
 
 verdict         : VERDICT
@@ -230,10 +229,8 @@ set             : SET STRING SET_TYPE matcher_op SET_RAW_PAYLOAD
                     if (r)
                         bf_parse_err("failed to create new set");
 
-                    if (bf_list_add_tail(&ruleset->sets, set) < 0)
+                    if (bf_list_push(&ruleset->sets, &set) < 0)
                         bf_parse_err("failed to insert rule into bf_list\n");
-
-                    TAKE_PTR(set);
                 }
                 ;
 
@@ -245,10 +242,9 @@ rules           : %empty { $$ = NULL; }
                             bf_parse_err("failed to allocate a new bf_list for bf_rule\n");
                     }
 
-                    if (bf_list_add_tail($1, $2) < 0)
+                    if (bf_list_push($1, &$2) < 0)
                         bf_parse_err("failed to insert rule into bf_list\n");
 
-                    TAKE_PTR($2);
                     $$ = TAKE_PTR($1);
                 }
                 ;
@@ -365,18 +361,16 @@ matchers        : matcher
                     if (bf_list_new(&list, (bf_list_ops[]){{.free = (bf_list_ops_free)bf_matcher_free, .pack = (bf_list_ops_pack)bf_matcher_pack}}) < 0)
                         bf_parse_err("failed to allocate a new bf_list for bf_matcher\n");
 
-                    if (bf_list_add_tail(list, $1) < 0)
+                    if (bf_list_push(list, &$1) < 0)
                         bf_parse_err("failed to insert matcher into bf_list\n");
 
-                    TAKE_PTR($1);
                     $$ = TAKE_PTR(list);
                 }
                 | matchers matcher
                 {
-                    if (bf_list_add_tail($1, $2) < 0)
+                    if (bf_list_push($1, &$2) < 0)
                         bf_parse_err("failed to insert matcher into bf_list\n");
 
-                    TAKE_PTR($2);
                     $$ = TAKE_PTR($1);
                 }
                 ;
@@ -409,11 +403,9 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                     if (r)
                         bf_parse_err("failed to create new set");
 
-                     r = bf_list_add_tail(&ruleset->sets, set);
+                     r = bf_list_push(&ruleset->sets, &set);
                      if (r < 0)
                         bf_parse_err("failed to add new set to the ruleset");
-
-                     TAKE_PTR(set);
 
                     r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
                     if (r)

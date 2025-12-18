@@ -119,11 +119,11 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_list_push(&chain->sets, &set0);
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set1);
+            r = bf_list_push(&chain->sets, &set1);
             if (r)
                 return NULL;
 
@@ -159,7 +159,7 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_list_push(&chain->sets, &set0);
             if (r)
                 return NULL;
 
@@ -197,7 +197,7 @@ struct bf_rule *bft_rule_dummy(size_t n_matchers)
         if (!matcher)
             return NULL;
 
-        r = bf_list_push(&rule->matchers, (void **)&matcher);
+        r = bf_list_push(&rule->matchers, &matcher);
         if (r)
             return NULL;
     }

@@ -202,10 +202,9 @@ static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
                         raw_elem);
     }
 
-    r = bf_list_add_tail(&set->elems, elem);
+    r = bf_list_push(&set->elems, &elem);
     if (r)
         return bf_err_r(r, "failed to insert element into set");
-    TAKE_PTR(elem);
 
     return 0;
 }
@@ -412,11 +411,9 @@ int bf_set_add_elem(struct bf_set *set, const void *elem)
 
     memcpy(_elem, elem, set->elem_size);
 
-    r = bf_list_add_tail(&set->elems, _elem);
+    r = bf_list_push(&set->elems, &_elem);
     if (r < 0)
         return r;
-
-    TAKE_PTR(_elem);
 
     return 0;
 }

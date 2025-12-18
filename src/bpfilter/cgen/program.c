@@ -805,7 +805,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         if (r)
             return bf_err_r(r, "failed to add set elements to the map");
 
-        r = bf_list_push(&sets, (void **)&map);
+        r = bf_list_push(&sets, &map);
         if (r)
             return bf_err_r(r, "failed to add set map to the program");
 
