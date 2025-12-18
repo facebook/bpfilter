@@ -80,7 +80,8 @@ void bf_handle_unload(struct bf_handle *handle);
  *        Can't be NULL.
  * @return 0 on success, or negative error value on failure.
  */
-int bf_handle_attach(struct bf_handle *handle, enum bf_hook hook, struct bf_hookopts **hookopts);
+int bf_handle_attach(struct bf_handle *handle, enum bf_hook hook,
+                     struct bf_hookopts **hookopts);
 
 /**
  * @brief Detach the program from the kernel.

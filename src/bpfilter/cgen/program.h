@@ -246,38 +246,7 @@ struct bf_program
  */
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
 
-/**
- * @brief Allocate and initialize a new program from serialized data.
- *
- * @note The new bf_program object will represent a BPF map from bpfilter's
- * point of view, but it's not a BPF program.
- *
- * @todo `bf_program` should be recreated from the current system state by
- * using `BF_OBJ_INFO_BF_FD`, and not serialized.
- *
- * @param program Program object to allocate and initialize from the serialized
- *        data. The caller will own the object. On failure, `*program` is
- *        unchanged. Can't be NULL.
- * @param chain Chain to restore the program for. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the program's pins.
- *        Must be a valid file descriptor, or -1 if the pin should not be opened.
- * @param node Node containing the serialized program. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_program_new_from_pack(struct bf_program **program,
-                             const struct bf_chain *chain, int dir_fd,
-                             bf_rpack_node_t node);
-
 void bf_program_free(struct bf_program **program);
-
-/**
- * @brief Serialize a program.
- *
- * @param program Program to serialize. Can't be NULL.
- * @param pack `bf_wpack_t` object to serialize the program into. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack);
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
@@ -290,29 +259,20 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 int bf_program_emit_fixup_elfstub(struct bf_program *program,
                                   enum bf_elfstub_id id);
 int bf_program_emit_log(struct bf_program *program, const char *fmt);
-int bf_program_generate(struct bf_program *program);
 
 /**
- * Load the BPF program into the kernel.
+ * @brief Materialize a program from a chain.
  *
- * Prior to loading the BPF program, multiple BPF maps are created to store
- * the counters, the debug strings, and the sets. If the program can't be
- * loaded, all the maps are destroyed.
+ * This function will generate and load a BPF program based on the given
+ * chain. On success, `handle` is an allocated `bf_handle` structure containing
+ * all the created BPF objects.
  *
- * Once the loading succeeds, the program and the maps are pinned to the
- * filesystem, unless the daemon is in transient mode. If the BPF objects can't
- * be pinned, the program is unloaded and the maps destroyed.
- *
- * @param prog Program to load into the kernel. Can't be NULL and must contain
- *        instructions.
- * @return 0 on success, or negative errno value on failure.
+ * @param chain Chain to generate the program from. Can't be NULL.
+ * @param handle Handle to store the created BPF objects into. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
  */
-int bf_program_load(struct bf_program *prog);
-
-int bf_program_get_counter(const struct bf_program *program,
-                           uint32_t counter_idx, struct bf_counter *counter);
-int bf_program_set_counters(struct bf_program *program,
-                            const struct bf_counter *counters);
+int bf_program_materialize(const struct bf_chain *chain,
+                           struct bf_handle **handle);
 
 size_t bf_program_chain_counter_idx(const struct bf_program *program);
 size_t bf_program_error_counter_idx(const struct bf_program *program);

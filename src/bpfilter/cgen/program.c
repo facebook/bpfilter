@@ -119,53 +119,6 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     return 0;
 }
 
-int bf_program_new_from_pack(struct bf_program **program,
-                             const struct bf_chain *chain, int dir_fd,
-                             bf_rpack_node_t node)
-{
-    _free_bf_program_ struct bf_program *_program = NULL;
-    const void *img;
-    size_t img_len;
-    bf_rpack_node_t child;
-    int r;
-
-    bf_assert(program);
-    bf_assert(chain);
-
-    r = bf_program_new(&_program, chain);
-    if (r < 0)
-        return r;
-
-    r = bf_rpack_kv_node(node, "printer", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.printer");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_printer_new_from_pack(&_program->printer, child);
-        if (r)
-            return r;
-    }
-
-    r = bf_rpack_kv_bin(node, "img", &img, &img_len);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.img");
-    _program->img = bf_memdup(img, img_len);
-    if (!_program->img)
-        return bf_rpack_key_err(-ENOMEM, "bf_program.img");
-    _program->img_size = img_len / sizeof(struct bpf_insn);
-    _program->img_cap = _program->img_size;
-
-    r = bf_rpack_kv_obj(node, "handle", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.handle");
-    r = bf_handle_new_from_pack(&_program->handle, dir_fd, child);
-    if (r)
-        return r;
-
-    *program = TAKE_PTR(_program);
-
-    return 0;
-}
-
 void bf_program_free(struct bf_program **program)
 {
     if (!*program)
@@ -177,29 +130,6 @@ void bf_program_free(struct bf_program **program)
     bf_printer_free(&(*program)->printer);
 
     freep((void *)program);
-}
-
-int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
-{
-    bf_assert(program);
-    bf_assert(pack);
-
-    if (program->printer) {
-        bf_wpack_open_object(pack, "printer");
-        bf_printer_pack(program->printer, pack);
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "printer");
-    }
-
-    bf_wpack_kv_bin(pack, "img", program->img,
-                    program->img_size * sizeof(struct bpf_insn));
-
-    bf_wpack_open_object(pack, "handle");
-    bf_handle_pack(program->handle, pack);
-    bf_wpack_close_object(pack);
-
-    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
@@ -705,7 +635,7 @@ int bf_program_emit_log(struct bf_program *program, const char *fmt)
     return 0;
 }
 
-int bf_program_generate(struct bf_program *program)
+static int _bf_program_generate(struct bf_program *program)
 {
     const struct bf_chain *chain = program->chain;
     int r;
@@ -938,7 +868,22 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     return 0;
 }
 
-int bf_program_load(struct bf_program *prog)
+/**
+ * @brief Load the BPF program into the kernel.
+ *
+ * Prior to loading the BPF program, multiple BPF maps are created to store
+ * the counters, the debug strings, and the sets. If the program can't be
+ * loaded, all the maps are destroyed.
+ *
+ * Once the loading succeeds, the program and the maps are pinned to the
+ * filesystem, unless the daemon is in transient mode. If the BPF objects can't
+ * be pinned, the program is unloaded and the maps destroyed.
+ *
+ * @param prog Program to load into the kernel. Can't be NULL and must contain
+ *        instructions.
+ * @return 0 on success, or negative error value on failure.
+ */
+static int _bf_program_load(struct bf_program *prog)
 {
     _cleanup_free_ char *log_buf = NULL;
     int r;
@@ -986,21 +931,28 @@ int bf_program_load(struct bf_program *prog)
     return r;
 }
 
-int bf_program_get_counter(const struct bf_program *program,
-                           uint32_t counter_idx, struct bf_counter *counter)
+int bf_program_materialize(const struct bf_chain *chain,
+                           struct bf_handle **handle)
 {
+    _free_bf_program_ struct bf_program *program = NULL;
     int r;
 
-    assert(program);
-    assert(counter);
+    bf_assert(chain);
+    bf_assert(handle);
 
-    if (!program->handle->counters)
-        return bf_err_r(-ENOENT, "counters map not found in bf_program");
+    r = bf_program_new(&program, chain);
+    if (r)
+        return r;
 
-    r = bf_bpf_map_lookup_elem(program->handle->counters->fd, &counter_idx,
-                               counter);
-    if (r < 0)
-        return bf_err_r(errno, "failed to lookup counters map");
+    r = _bf_program_generate(program);
+    if (r)
+        return r;
+
+    r = _bf_program_load(program);
+    if (r)
+        return r;
+
+    *handle = TAKE_PTR(program->handle);
 
     return 0;
 }

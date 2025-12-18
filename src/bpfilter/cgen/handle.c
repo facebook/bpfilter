@@ -323,7 +323,8 @@ void bf_handle_unload(struct bf_handle *handle)
         bf_map_destroy(bf_list_node_get_data(map_node));
 }
 
-int bf_handle_attach(struct bf_handle *handle, enum bf_hook hook, struct bf_hookopts **hookopts)
+int bf_handle_attach(struct bf_handle *handle, enum bf_hook hook,
+                     struct bf_hookopts **hookopts)
 {
     int r;
 
