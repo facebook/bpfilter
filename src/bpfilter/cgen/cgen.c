@@ -241,7 +241,7 @@ int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
         if (r)
             return bf_err_r(r, "failed to switch to the client's namespaces");
 
-        r = bf_program_attach(prog, hookopts);
+        r = bf_handle_attach(prog->handle, cgen->chain->hook, hookopts);
         if (r < 0)
             return bf_err_r(r, "failed to load and attach the chain");
 
@@ -250,7 +250,7 @@ int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
     }
 
     if (bf_opts_persist()) {
-        r = bf_program_pin(prog, pindir_fd);
+        r = bf_handle_pin(prog->handle, pindir_fd);
         if (r)
             return r;
     }
@@ -287,7 +287,7 @@ int bf_cgen_load(struct bf_cgen *cgen)
         return bf_err_r(r, "failed to load the chain");
 
     if (bf_opts_persist()) {
-        r = bf_program_pin(prog, pindir_fd);
+        r = bf_handle_pin(prog->handle, pindir_fd);
         if (r)
             return r;
     }
@@ -322,7 +322,7 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
     if (r)
         return bf_err_r(r, "failed to switch to the client's namespaces");
 
-    r = bf_program_attach(cgen->program, hookopts);
+    r = bf_handle_attach(cgen->program->handle, cgen->chain->hook, hookopts);
     if (r < 0)
         return bf_err_r(r, "failed to attach chain '%s'", cgen->chain->name);
 
@@ -332,7 +332,7 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
     if (bf_opts_persist()) {
         r = bf_link_pin(cgen->program->handle->link, pindir_fd);
         if (r) {
-            bf_program_detach(cgen->program);
+            bf_handle_detach(cgen->program->handle);
             return r;
         }
     }
@@ -372,13 +372,13 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
         return bf_err_r(r, "failed to load new program");
 
     if (bf_opts_persist())
-        bf_program_unpin(old_prog, pindir_fd);
+        bf_handle_unpin(old_prog->handle, pindir_fd);
 
     r = bf_link_update(old_prog->handle->link, cgen->chain->hook,
                        new_prog->handle->prog_fd);
     if (r) {
         bf_err_r(r, "failed to update bf_link object with new program");
-        if (bf_opts_persist() && bf_program_pin(old_prog, pindir_fd) < 0)
+        if (bf_opts_persist() && bf_handle_pin(old_prog->handle, pindir_fd) < 0)
             bf_err("failed to repin old program, ignoring");
         return r;
     }
@@ -387,7 +387,7 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
     bf_swap(new_prog->handle->link, old_prog->handle->link);
 
     if (bf_opts_persist()) {
-        r = bf_program_pin(new_prog, pindir_fd);
+        r = bf_handle_pin(new_prog->handle, pindir_fd);
         if (r)
             bf_warn_r(r, "failed to pin new prog, ignoring");
     }
@@ -404,7 +404,7 @@ void bf_cgen_detach(struct bf_cgen *cgen)
 {
     bf_assert(cgen);
 
-    bf_program_detach(cgen->program);
+    bf_handle_detach(cgen->program->handle);
 }
 
 void bf_cgen_unload(struct bf_cgen *cgen)
@@ -421,8 +421,8 @@ void bf_cgen_unload(struct bf_cgen *cgen)
     }
 
     // The chain's pin directory will be removed in bf_cgen_free()
-    bf_program_unpin(cgen->program, chain_fd);
-    bf_program_unload(cgen->program);
+    bf_handle_unpin(cgen->program->handle, chain_fd);
+    bf_handle_unload(cgen->program->handle);
 }
 
 int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)

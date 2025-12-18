@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <bpfilter/bpf.h>
 #include <bpfilter/helper.h>
@@ -108,7 +109,7 @@ void bf_handle_free(struct bf_handle **handle)
 
     /* Close the file descriptors if they are still open. If --transient is
      * used, then the file descriptors are already closed (as
-     * bf_program_unload() has been called). Otherwise, bf_program_unload()
+     * bf_handle_unload() has been called). Otherwise, bf_handle_unload()
      * won't be called, but the programs are pinned, so they can be closed
      * safely. */
     closep(&(*handle)->prog_fd);
@@ -225,4 +226,127 @@ void bf_handle_dump(const struct bf_handle *handle, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
+}
+
+int bf_handle_pin(struct bf_handle *handle, int dir_fd)
+{
+    int r;
+
+    assert(handle);
+
+    r = bf_bpf_obj_pin(BF_PROG_NAME, handle->prog_fd, dir_fd);
+    if (r) {
+        bf_handle_unpin(handle, dir_fd);
+        return bf_err_r(r, "failed to pin BPF program");
+    }
+
+    if (handle->link) {
+        r = bf_link_pin(handle->link, dir_fd);
+        if (r) {
+            bf_handle_unpin(handle, dir_fd);
+            return bf_err_r(r, "failed to pin BPF link");
+        }
+    }
+
+    if (handle->counters) {
+        r = bf_map_pin(handle->counters, dir_fd);
+        if (r) {
+            bf_handle_unpin(handle, dir_fd);
+            return bf_err_r(r, "failed to pin BPF counters map");
+        }
+    }
+
+    if (handle->messages) {
+        r = bf_map_pin(handle->messages, dir_fd);
+        if (r) {
+            bf_handle_unpin(handle, dir_fd);
+            return bf_err_r(r, "failed to pin BPF printer map");
+        }
+    }
+
+    if (handle->logs) {
+        r = bf_map_pin(handle->logs, dir_fd);
+        if (r) {
+            bf_handle_unpin(handle, dir_fd);
+            return bf_err_r(r, "failed to pin BPF log map");
+        }
+    }
+
+    bf_list_foreach (&handle->sets, set_node) {
+        r = bf_map_pin(bf_list_node_get_data(set_node), dir_fd);
+        if (r) {
+            bf_handle_unpin(handle, dir_fd);
+            return bf_err_r(r, "failed to pin BPF set map");
+        }
+    }
+
+    return 0;
+}
+
+void bf_handle_unpin(struct bf_handle *handle, int dir_fd)
+{
+    assert(handle);
+
+    unlinkat(dir_fd, BF_PROG_NAME, 0);
+
+    if (handle->link)
+        bf_link_unpin(handle->link, dir_fd);
+
+    if (handle->counters)
+        bf_map_unpin(handle->counters, dir_fd);
+    if (handle->messages)
+        bf_map_unpin(handle->messages, dir_fd);
+    if (handle->logs)
+        bf_map_unpin(handle->logs, dir_fd);
+
+    bf_list_foreach (&handle->sets, set_node)
+        bf_map_unpin(bf_list_node_get_data(set_node), dir_fd);
+}
+
+void bf_handle_unload(struct bf_handle *handle)
+{
+    assert(handle);
+
+    closep(&handle->prog_fd);
+
+    if (handle->link)
+        bf_link_detach(handle->link);
+
+    if (handle->counters)
+        bf_map_destroy(handle->counters);
+    if (handle->messages)
+        bf_map_destroy(handle->messages);
+    if (handle->logs)
+        bf_map_destroy(handle->logs);
+
+    bf_list_foreach (&handle->sets, map_node)
+        bf_map_destroy(bf_list_node_get_data(map_node));
+}
+
+int bf_handle_attach(struct bf_handle *handle, enum bf_hook hook, struct bf_hookopts **hookopts)
+{
+    int r;
+
+    assert(handle);
+    assert(hookopts);
+
+    r = bf_link_new(&handle->link, "bf_link");
+    if (r)
+        return bf_err_r(r, "failed to create bf_link for program");
+
+    r = bf_link_attach(handle->link, hook, hookopts, handle->prog_fd);
+    if (r)
+        return bf_err_r(r, "failed to attach bf_link for program");
+
+    return r;
+}
+
+void bf_handle_detach(struct bf_handle *handle)
+{
+    assert(handle);
+
+    if (!handle->link)
+        return;
+
+    bf_link_detach(handle->link);
 }
