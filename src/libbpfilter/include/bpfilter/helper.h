@@ -379,7 +379,7 @@ static inline bool bf_strneq(const char *lhs, const char *rhs, size_t n)
     if (!lhs || !rhs)
         return false;
 
-    return strncmp(lhs, rhs, n);
+    return strncmp(lhs, rhs, n) == 0;
 }
 
 /**

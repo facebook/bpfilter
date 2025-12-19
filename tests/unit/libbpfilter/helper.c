@@ -43,6 +43,33 @@ static void string_copy(void **state)
     assert_err(bf_strncpy(lhs, strlen(rhs), rhs));
 }
 
+static void string_equal_n(void **state)
+{
+    (void)state;
+
+    // Equal strings
+    assert_true(bf_strneq("hello", "hello", 5));
+    assert_true(bf_strneq("hello", "hello", 10));
+
+    // Different strings
+    assert_false(bf_strneq("hello", "world", 5));
+    assert_false(bf_strneq("hello", "hella", 5));
+
+    // Partial match with n limit
+    assert_true(bf_strneq("hello", "help", 3));
+    assert_false(bf_strneq("hello", "help", 4));
+
+    // Empty strings
+    assert_true(bf_strneq("", "", 0));
+    assert_true(bf_strneq("", "", 1));
+    assert_true(bf_strneq("hello", "world", 0));
+
+    // NULL parameters
+    assert_false(bf_strneq(NULL, "hello", 5));
+    assert_false(bf_strneq("hello", NULL, 5));
+    assert_false(bf_strneq(NULL, NULL, 5));
+}
+
 static void realloc_mem(void **state)
 {
     _cleanup_free_ uint32_t *mem0 = NULL;
@@ -361,6 +388,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(close_fd),
         cmocka_unit_test(string_copy),
+        cmocka_unit_test(string_equal_n),
         cmocka_unit_test(realloc_mem),
         cmocka_unit_test(trim_left),
         cmocka_unit_test(trim_right),
