@@ -14,7 +14,7 @@
 
 void bfc_ruleset_clean(struct bfc_ruleset *ruleset)
 {
-    bf_assert(ruleset);
+    assert(ruleset);
 
     bf_list_clean(&ruleset->chains);
     bf_list_clean(&ruleset->hookopts);

@@ -25,7 +25,8 @@
 int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
                size_t n_comps)
 {
-    bf_assert(set && key);
+    assert(set);
+    assert(key);
 
     _free_bf_set_ struct bf_set *_set = NULL;
     uint32_t mask = 0;
@@ -97,7 +98,9 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
 static int _bf_set_parse_key(const char *raw_key, enum bf_matcher_type *key,
                              size_t *n_comps)
 {
-    bf_assert(raw_key && key && n_comps);
+    assert(raw_key);
+    assert(key);
+    assert(n_comps);
 
     _cleanup_free_ char *_raw_key = NULL;
     char *tmp, *saveptr, *token;
@@ -146,7 +149,8 @@ static int _bf_set_parse_key(const char *raw_key, enum bf_matcher_type *key,
  */
 static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
 {
-    bf_assert(set && raw_elem);
+    assert(set);
+    assert(raw_elem);
 
     _cleanup_free_ void *elem = NULL;
     _cleanup_free_ char *_raw_elem = NULL;
@@ -212,8 +216,6 @@ static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
 int bf_set_new_from_raw(struct bf_set **set, const char *name,
                         const char *raw_key, const char *raw_payload)
 {
-    bf_assert(set && raw_key && raw_payload);
-
     _free_bf_set_ struct bf_set *_set = NULL;
     _cleanup_free_ char *_raw_payload = NULL;
     enum bf_matcher_type key[BF_SET_MAX_N_COMPS];
@@ -221,8 +223,8 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
     size_t n_comps;
     int r;
 
-    bf_assert(raw_key);
-    bf_assert(raw_payload);
+    assert(raw_key);
+    assert(raw_payload);
 
     r = _bf_set_parse_key(raw_key, key, &n_comps);
     if (r)
@@ -267,7 +269,7 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
     enum bf_matcher_type key[BF_SET_MAX_N_COMPS];
     int r;
 
-    bf_assert(set);
+    assert(set);
 
     r = bf_rpack_kv_node(node, "name", &child);
     if (r)
@@ -328,7 +330,7 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
 
 void bf_set_free(struct bf_set **set)
 {
-    bf_assert(set);
+    assert(set);
 
     if (!*set)
         return;
@@ -340,8 +342,8 @@ void bf_set_free(struct bf_set **set)
 
 int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
 {
-    bf_assert(set);
-    bf_assert(pack);
+    assert(set);
+    assert(pack);
 
     if (set->name)
         bf_wpack_kv_str(pack, "name", set->name);
@@ -363,7 +365,8 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
 
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
 {
-    bf_assert(set && prefix);
+    assert(set);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_set at %p", set);
     bf_dump_prefix_push(prefix);
@@ -400,7 +403,8 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
 
 int bf_set_add_elem(struct bf_set *set, const void *elem)
 {
-    bf_assert(set && elem);
+    assert(set);
+    assert(elem);
 
     _cleanup_free_ void *_elem = NULL;
     int r;

@@ -37,7 +37,7 @@ int bf_btf_get_id(const char *name)
 {
     int id;
 
-    bf_assert(name);
+    assert(name);
 
     id = btf__find_by_name(_bf_btf, name);
     if (id < 0)
@@ -116,7 +116,7 @@ static ssize_t _bf_btf_offset_in_compound(uint32_t compound_id,
     const struct btf_type *compound_type, *member_type;
     const struct btf_member *member;
 
-    bf_assert(field_name);
+    assert(field_name);
 
     compound_type = btf__type_by_id(_bf_btf, compound_id);
     if (!compound_type)
@@ -188,8 +188,8 @@ int bf_btf_get_field_off(const char *struct_name, const char *field_name)
     int id;
     ssize_t offset;
 
-    bf_assert(struct_name);
-    bf_assert(field_name);
+    assert(struct_name);
+    assert(field_name);
 
     id = _bf_btf_get_compound_type_id(struct_name);
     if (id < 0)

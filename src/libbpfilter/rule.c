@@ -36,7 +36,7 @@ const char *bf_pkthdr_to_str(enum bf_pkthdr hdr)
 
 int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr)
 {
-    bf_assert(hdr);
+    assert(hdr);
 
     for (int i = 0; i < _BF_PKTHDR_MAX; ++i) {
         if (bf_streq_i(str, _bf_pkthdr_strs[i])) {
@@ -52,7 +52,7 @@ int bf_rule_new(struct bf_rule **rule)
 {
     struct bf_rule *_rule;
 
-    bf_assert(rule);
+    assert(rule);
 
     _rule = calloc(1, sizeof(*_rule));
     if (!_rule)
@@ -71,7 +71,7 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     bf_rpack_node_t m_nodes, m_node;
     int r;
 
-    bf_assert(rule);
+    assert(rule);
 
     r = bf_rule_new(&_rule);
     if (r)
@@ -118,7 +118,7 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
 
 void bf_rule_free(struct bf_rule **rule)
 {
-    bf_assert(rule);
+    assert(rule);
 
     if (!*rule)
         return;
@@ -131,8 +131,8 @@ void bf_rule_free(struct bf_rule **rule)
 
 int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
 {
-    bf_assert(rule);
-    bf_assert(pack);
+    assert(rule);
+    assert(pack);
 
     bf_wpack_kv_u32(pack, "index", rule->index);
     bf_wpack_kv_u8(pack, "log", rule->log);
@@ -147,8 +147,8 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
 
 void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 {
-    bf_assert(rule);
-    bf_assert(prefix);
+    assert(rule);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_rule at %p", rule);
 
@@ -185,7 +185,7 @@ int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
     int r;
 
-    bf_assert(rule);
+    assert(rule);
 
     r = bf_matcher_new(&matcher, type, op, payload, payload_len);
     if (r)

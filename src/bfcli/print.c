@@ -69,7 +69,7 @@ static void bf_dump_hex_local(const void *data, size_t len)
     // 5 characters per byte (0x%02x) + 1 for the null terminator.
     char buf[(BF_DUMP_HEXDUMP_LEN * BF_DUMP_TOKEN_LEN) + 1];
 
-    bf_assert(data);
+    assert(data);
 
     while (data < end) {
         char *line = buf;
@@ -87,7 +87,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     bf_list_node *counter_node, *policy_counter_node, *err_counter_node;
     bool need_comma = false;
 
-    bf_assert(chain && counters);
+    assert(chain);
+    assert(counters);
 
     if (bf_list_size(counters) != bf_list_size(&chain->rules) + 2) {
         bf_err(
@@ -284,7 +285,9 @@ int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters)
     struct bf_list_node *hookopts_node;
     struct bf_list_node *counter_node;
 
-    bf_assert(chains && hookopts && counters);
+    assert(chains);
+    assert(hookopts);
+    assert(counters);
 
     if (bf_list_size(chains) != bf_list_size(hookopts))
         return -EINVAL;

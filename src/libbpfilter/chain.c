@@ -21,7 +21,7 @@
 
 int _bf_chain_check_rule(struct bf_chain *chain, const struct bf_rule *rule)
 {
-    bf_assert(rule);
+    assert(rule);
 
     if (rule->log)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
@@ -73,8 +73,11 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     size_t ridx = 0;
     int r;
 
-    bf_assert(chain && name);
-    bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
+    assert(chain);
+    assert(name);
+
+    if (policy >= _BF_TERMINAL_VERDICT_MAX)
+        return bf_err_r(-EINVAL, "invalid chain policy %d", policy);
 
     _chain = malloc(sizeof(*_chain));
     if (!_chain)
@@ -167,7 +170,7 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
 
 void bf_chain_free(struct bf_chain **chain)
 {
-    bf_assert(chain);
+    assert(chain);
 
     if (!*chain)
         return;
@@ -180,8 +183,8 @@ void bf_chain_free(struct bf_chain **chain)
 
 int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)
 {
-    bf_assert(chain);
-    bf_assert(pack);
+    assert(chain);
+    assert(pack);
 
     bf_wpack_kv_str(pack, "name", chain->name);
     bf_wpack_kv_enum(pack, "hook", chain->hook);
@@ -195,7 +198,8 @@ int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)
 
 void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
 {
-    bf_assert(chain && prefix);
+    assert(chain);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_chain at %p", chain);
     bf_dump_prefix_push(prefix);
@@ -233,7 +237,8 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
     int r;
 
-    bf_assert(chain && rule);
+    assert(chain);
+    assert(rule);
 
     rule->index = bf_list_size(&chain->rules);
     r = _bf_chain_check_rule(chain, rule);
@@ -246,7 +251,8 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
 struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
                                             const struct bf_matcher *matcher)
 {
-    bf_assert(chain && matcher);
+    assert(chain);
+    assert(matcher);
 
     uint32_t set_id;
 

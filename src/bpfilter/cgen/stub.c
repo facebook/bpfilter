@@ -48,7 +48,8 @@
 static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
                                     const char *kfunc)
 {
-    bf_assert(program && kfunc);
+    assert(program);
+    assert(kfunc);
 
     // Call bpf_dynptr_from_xxx()
     if (arg_reg != BPF_REG_1)
@@ -84,21 +85,21 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
 
 int bf_stub_make_ctx_xdp_dynptr(struct bf_program *program, int md_reg)
 {
-    bf_assert(program);
+    assert(program);
 
     return _bf_stub_make_ctx_dynptr(program, md_reg, "bpf_dynptr_from_xdp");
 }
 
 int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, int skb_reg)
 {
-    bf_assert(program);
+    assert(program);
 
     return _bf_stub_make_ctx_dynptr(program, skb_reg, "bpf_dynptr_from_skb");
 }
 
 int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 {
-    bf_assert(program);
+    assert(program);
 
     // Call bpf_dynptr_slice()
     EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
@@ -154,7 +155,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
     _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     /* Store the size of the L3 protocol header in r4, depending on the protocol
      * ID stored in r7. If the protocol is not supported, we store 0 into r7
@@ -308,7 +309,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     /* Parse the L4 protocol and handle unuspported protocol, similarly to
      * bf_stub_parse_l3_hdr() above. */
@@ -374,7 +375,8 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
 int bf_stub_rule_check_protocol(struct bf_program *program,
                                 const struct bf_matcher_meta *meta)
 {
-    bf_assert(program && meta);
+    assert(program);
+    assert(meta);
 
     switch (meta->layer) {
     case BF_MATCHER_LAYER_3:
@@ -397,7 +399,8 @@ int bf_stub_rule_check_protocol(struct bf_program *program,
 int bf_stub_load_header(struct bf_program *program,
                         const struct bf_matcher_meta *meta, int reg)
 {
-    bf_assert(program && meta);
+    assert(program);
+    assert(meta);
 
     switch (meta->layer) {
     case BF_MATCHER_LAYER_3:
@@ -420,7 +423,8 @@ int bf_stub_load_header(struct bf_program *program,
 int bf_stub_stx_payload(struct bf_program *program,
                         const struct bf_matcher_meta *meta, size_t offset)
 {
-    bf_assert(program && meta);
+    assert(program);
+    assert(meta);
 
     size_t remaining_size = meta->hdr_payload_size;
     size_t src_offset = 0;

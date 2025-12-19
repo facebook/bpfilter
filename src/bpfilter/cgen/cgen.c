@@ -38,7 +38,7 @@ static int _bf_cgen_get_chain_pindir_fd(const char *name)
     _cleanup_close_ int bf_fd = -1;
     _cleanup_close_ int chain_fd = -1;
 
-    bf_assert(name);
+    assert(name);
 
     bf_fd = bf_ctx_get_pindir_fd();
     if (bf_fd < 0)
@@ -54,7 +54,9 @@ static int _bf_cgen_get_chain_pindir_fd(const char *name)
 int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
                 struct bf_chain **chain)
 {
-    bf_assert(cgen && chain && *chain);
+    assert(cgen);
+    assert(chain);
+    assert(*chain);
 
     *cgen = malloc(sizeof(struct bf_cgen));
     if (!*cgen)
@@ -117,7 +119,7 @@ void bf_cgen_free(struct bf_cgen **cgen)
 {
     _cleanup_close_ int pin_fd = -1;
 
-    bf_assert(cgen);
+    assert(cgen);
 
     if (!*cgen)
         return;
@@ -138,8 +140,8 @@ void bf_cgen_free(struct bf_cgen **cgen)
 
 int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack)
 {
-    bf_assert(cgen);
-    bf_assert(pack);
+    assert(cgen);
+    assert(pack);
 
     bf_wpack_kv_enum(pack, "front", cgen->front);
 
@@ -160,8 +162,8 @@ int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack)
 
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
 {
-    bf_assert(cgen);
-    bf_assert(prefix);
+    assert(cgen);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_cgen at %p", cgen);
 
@@ -371,7 +373,7 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 
 void bf_cgen_detach(struct bf_cgen *cgen)
 {
-    bf_assert(cgen);
+    assert(cgen);
 
     bf_handle_detach(cgen->handle);
 }
@@ -380,7 +382,7 @@ void bf_cgen_unload(struct bf_cgen *cgen)
 {
     _cleanup_close_ int chain_fd = -1;
 
-    bf_assert(cgen);
+    assert(cgen);
 
     chain_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
     if (chain_fd < 0) {
@@ -399,7 +401,8 @@ int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
     bf_list _counters = bf_list_default_from(*counters);
     int r;
 
-    bf_assert(cgen && counters);
+    assert(cgen);
+    assert(counters);
 
     /* Iterate over all the rules, then the policy counter (size(rules)) and
      * the errors counters (sizeof(rules) + 1)*/

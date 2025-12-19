@@ -10,7 +10,7 @@
 #   Too many false positives, especially when swapable arguments are of different
 #   types (which will be flagged by the compiler).
 # - cert-dcl03-c
-#   We use bf_assert(0) for impossible default in switch...case.
+#   We use assert(0) for impossible default in switch...case.
 # - cert-dcl37-c
 #   Handled by bugprone-reserved-identifier.AllowedIdentifiers.
 # - cert-dcl51-cpp
@@ -41,7 +41,7 @@
 # - misc-redundant-expression
 #   Macros having the same values can't be or'd without a warning.
 # - misc-static-assert
-#   We use bf_assert(0) for impossible default in switch...case.
+#   We use assert(0) for impossible default in switch...case.
 # - modernize-macro-to-enum
 #   No benefit.
 # - modernize-use-trailing-return-type

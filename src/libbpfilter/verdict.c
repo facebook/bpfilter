@@ -28,7 +28,7 @@ const char *bf_verdict_to_str(enum bf_verdict verdict)
 
 int bf_verdict_from_str(const char *str, enum bf_verdict *verdict)
 {
-    bf_assert(verdict);
+    assert(verdict);
 
     for (size_t i = 0; i < _BF_VERDICT_MAX; ++i) {
         if (bf_streq(_bf_verdict_strs[i], str)) {

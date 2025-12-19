@@ -116,7 +116,7 @@ static int _bf_matcher_generate_ip6_addr(struct bf_program *program,
 
 static void _bf_ip6_prefix_to_mask(uint32_t prefixlen, uint8_t *mask)
 {
-    bf_assert(mask);
+    assert(mask);
 
     memset(mask, 0x00, 16);
 

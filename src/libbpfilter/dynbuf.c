@@ -22,7 +22,7 @@ static inline size_t _bf_round_next_power_of_2(size_t value)
 
 void bf_dynbuf_clean(struct bf_dynbuf *buf)
 {
-    bf_assert(buf);
+    assert(buf);
 
     buf->len = 0;
     buf->rem = 0;
@@ -34,7 +34,7 @@ static int _bf_dynbuf_grow(struct bf_dynbuf *buf, size_t req_cap)
     size_t new_cap;
     int r;
 
-    bf_assert(buf);
+    assert(buf);
 
     if (req_cap == 0)
         return 0;
@@ -53,8 +53,8 @@ int bf_dynbuf_write(struct bf_dynbuf *buf, const void *data, size_t data_len)
 {
     int r;
 
-    bf_assert(buf);
-    bf_assert(data);
+    assert(buf);
+    assert(data);
 
     if (buf->rem < data_len) {
         r = _bf_dynbuf_grow(buf, data_len);
@@ -71,7 +71,7 @@ int bf_dynbuf_write(struct bf_dynbuf *buf, const void *data, size_t data_len)
 
 void *bf_dynbuf_take(struct bf_dynbuf *buf)
 {
-    bf_assert(buf);
+    assert(buf);
 
     buf->len = 0;
     buf->rem = 0;

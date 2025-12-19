@@ -9,6 +9,7 @@
 #include <linux/bpf_common.h>
 #include <linux/limits.h>
 
+#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -98,7 +99,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     _free_bf_program_ struct bf_program *_program = NULL;
     int r;
 
-    bf_assert(program && chain);
+    assert(program);
+    assert(chain);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
@@ -134,8 +136,8 @@ void bf_program_free(struct bf_program **program)
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 {
-    bf_assert(program);
-    bf_assert(prefix);
+    assert(program);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_program at %p", program);
 
@@ -172,33 +174,35 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-
-static void _bf_program_fixup_insn(struct bpf_insn *insn,
-                                   enum bf_fixup_insn type, int32_t value)
+static int _bf_program_fixup_insn(struct bpf_insn *insn,
+                                  enum bf_fixup_insn type, int32_t value)
 {
     switch (type) {
     case BF_FIXUP_INSN_OFF:
-        bf_assert(!insn->off);
-        bf_assert(value < SHRT_MAX);
+        if (insn->off || value >= SHRT_MAX)
+            return -EINVAL;
         insn->off = (int16_t)value;
         break;
     case BF_FIXUP_INSN_IMM:
-        bf_assert(!insn->imm);
+        if (insn->imm)
+            return -EINVAL;
         insn->imm = value;
         break;
     default:
-        bf_abort(
-            "unsupported fixup instruction type, this should not happen: %d",
-            type);
-        break;
+        return bf_err_r(-EINVAL, "unsupported fixup instruction type: %d",
+                        type);
     }
+
+    return 0;
 }
 
 static int _bf_program_fixup(struct bf_program *program,
                              enum bf_fixup_type type)
 {
-    bf_assert(program);
-    bf_assert(type >= 0 && type < _BF_FIXUP_TYPE_MAX);
+    int r;
+
+    assert(program);
+    assert(0 <= type && type < _BF_FIXUP_TYPE_MAX);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         enum bf_fixup_insn insn_type = _BF_FIXUP_INSN_MAX;
@@ -246,12 +250,15 @@ static int _bf_program_fixup(struct bf_program *program,
             value = (int32_t)offset;
             break;
         default:
-            bf_abort("unsupported fixup type, this should not happen: %d",
-                     type);
-            break;
+            return bf_err_r(
+                -EINVAL, "unsupported fixup type, this should not happen: %d",
+                type);
         }
 
-        _bf_program_fixup_insn(insn, insn_type, value);
+        r = _bf_program_fixup_insn(insn, insn_type, value);
+        if (r)
+            return r;
+
         bf_list_delete(&program->fixups, fixup_node);
     }
 
@@ -263,8 +270,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
 {
     int r;
 
-    bf_assert(program);
-    bf_assert(rule);
+    assert(program);
+    assert(rule);
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -394,7 +401,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
     size_t start_at;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
@@ -469,7 +476,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
 
 int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
 {
-    bf_assert(program);
+    assert(program);
 
     return bf_dynbuf_write(&program->img, &insn, sizeof(insn));
 }
@@ -478,8 +485,8 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
 {
     int r;
 
-    bf_assert(program);
-    bf_assert(name);
+    assert(program);
+    assert(name);
 
     r = bf_btf_get_id(name);
     if (r < 0)
@@ -500,7 +507,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_fixup_new(&fixup, type, bf_program_ninsns(program), attr);
     if (r)
@@ -523,7 +530,7 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
     _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_fixup_new(&fixup, BF_FIXUP_ELFSTUB_CALL, bf_program_ninsns(program),
                      NULL);
@@ -661,7 +668,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     uint32_t key = 0;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->handle->messages) {
         return bf_err_r(-EEXIST,
@@ -699,7 +706,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     _free_bf_map_ struct bf_map *counters = NULL;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->handle->counters) {
         return bf_err_r(-EEXIST,
@@ -731,7 +738,7 @@ static int _bf_program_load_log_map(struct bf_program *program)
     _cleanup_close_ int _fd = -1;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->handle->logs)
         return bf_err_r(-EEXIST, "log map already exists for the bf_program");
@@ -759,7 +766,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     size_t set_idx = 0;
     int r;
 
-    bf_assert(new_prog);
+    assert(new_prog);
 
     if (!bf_list_is_empty(&new_prog->handle->sets))
         return bf_err_r(-EEXIST, "sets maps already exists for the bf_program");
@@ -876,8 +883,7 @@ static int _bf_program_load(struct bf_program *prog)
         bf_hook_to_bpf_attach_type(prog->chain->hook), log_buf,
         log_buf ? _BF_LOG_BUF_SIZE : 0, bf_ctx_token(), &prog->handle->prog_fd);
     if (r) {
-        return bf_err_r(r,
-                        "failed to load bf_program (%lu insns):\n%s\nerrno:",
+        return bf_err_r(r, "failed to load bf_program (%lu insns):\n%s\nerrno:",
                         bf_program_ninsns(prog),
                         log_buf ? log_buf : "<NO LOG BUFFER>");
     }
@@ -893,8 +899,8 @@ int bf_program_materialize(const struct bf_chain *chain,
     _free_bf_program_ struct bf_program *program = NULL;
     int r;
 
-    bf_assert(chain);
-    bf_assert(handle);
+    assert(chain);
+    assert(handle);
 
     r = bf_program_new(&program, chain);
     if (r)

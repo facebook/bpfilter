@@ -58,7 +58,7 @@ static int _bf_printer_msg_new(struct bf_printer_msg **msg)
 {
     _free_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
 
-    bf_assert(msg);
+    assert(msg);
 
     _msg = calloc(1, sizeof(*_msg));
     if (!_msg)
@@ -84,7 +84,7 @@ static int _bf_printer_msg_new_from_pack(struct bf_printer_msg **msg,
     _free_bf_printer_msg_ struct bf_printer_msg *_msg = NULL;
     int r;
 
-    bf_assert(msg);
+    assert(msg);
 
     r = _bf_printer_msg_new(&_msg);
     if (r)
@@ -114,7 +114,7 @@ static int _bf_printer_msg_new_from_pack(struct bf_printer_msg **msg,
  */
 static void _bf_printer_msg_free(struct bf_printer_msg **msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     if (!*msg)
         return;
@@ -137,8 +137,8 @@ static void _bf_printer_msg_free(struct bf_printer_msg **msg)
 static int _bf_printer_msg_pack(const struct bf_printer_msg *msg,
                                 bf_wpack_t *pack)
 {
-    bf_assert(msg);
-    bf_assert(pack);
+    assert(msg);
+    assert(pack);
 
     bf_wpack_kv_u64(pack, "offset", msg->offset);
     bf_wpack_kv_u64(pack, "len", msg->len);
@@ -150,8 +150,8 @@ static int _bf_printer_msg_pack(const struct bf_printer_msg *msg,
 static void _bf_printer_msg_dump(const struct bf_printer_msg *msg,
                                  prefix_t *prefix)
 {
-    bf_assert(msg);
-    bf_assert(prefix);
+    assert(msg);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_printer_msg at %p", msg);
 
@@ -164,13 +164,13 @@ static void _bf_printer_msg_dump(const struct bf_printer_msg *msg,
 
 size_t bf_printer_msg_offset(const struct bf_printer_msg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
     return msg->offset;
 }
 
 size_t bf_printer_msg_len(const struct bf_printer_msg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
     return msg->len;
 }
 
@@ -178,7 +178,7 @@ int bf_printer_new(struct bf_printer **printer)
 {
     _free_bf_printer_ struct bf_printer *_printer = NULL;
 
-    bf_assert(printer);
+    assert(printer);
 
     _printer = malloc(sizeof(*_printer));
     if (!_printer)
@@ -198,7 +198,7 @@ int bf_printer_new_from_pack(struct bf_printer **printer, bf_rpack_node_t node)
     bf_rpack_node_t child, m_node;
     int r;
 
-    bf_assert(printer);
+    assert(printer);
 
     r = bf_printer_new(&_printer);
     if (r)
@@ -225,7 +225,7 @@ int bf_printer_new_from_pack(struct bf_printer **printer, bf_rpack_node_t node)
 
 void bf_printer_free(struct bf_printer **printer)
 {
-    bf_assert(printer);
+    assert(printer);
 
     if (!*printer)
         return;
@@ -238,8 +238,8 @@ void bf_printer_free(struct bf_printer **printer)
 
 int bf_printer_pack(const struct bf_printer *printer, bf_wpack_t *pack)
 {
-    bf_assert(printer);
-    bf_assert(pack);
+    assert(printer);
+    assert(pack);
 
     bf_wpack_kv_list(pack, "msgs", &printer->msgs);
 
@@ -248,8 +248,8 @@ int bf_printer_pack(const struct bf_printer *printer, bf_wpack_t *pack)
 
 void bf_printer_dump(const struct bf_printer *printer, prefix_t *prefix)
 {
-    bf_assert(printer);
-    bf_assert(prefix);
+    assert(printer);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_printer at %p", printer);
 
@@ -281,7 +281,7 @@ static size_t _bf_printer_total_size(const struct bf_printer *printer)
     bf_list_node *last_msg_node;
     struct bf_printer_msg *last_msg;
 
-    bf_assert(printer);
+    assert(printer);
 
     if (!(last_msg_node = bf_list_get_tail(&printer->msgs)))
         return 0;
@@ -297,8 +297,8 @@ const struct bf_printer_msg *bf_printer_add_msg(struct bf_printer *printer,
     _free_bf_printer_msg_ struct bf_printer_msg *msg = NULL;
     int r;
 
-    bf_assert(printer);
-    bf_assert(str);
+    assert(printer);
+    assert(str);
 
     // Check if an identical message is already stored in the context.
     bf_list_foreach (&printer->msgs, msg_node) {
@@ -338,9 +338,9 @@ int bf_printer_assemble(const struct bf_printer *printer, void **str,
     _cleanup_free_ char *_str = NULL;
     size_t _str_len;
 
-    bf_assert(printer);
-    bf_assert(str);
-    bf_assert(str_len);
+    assert(printer);
+    assert(str);
+    assert(str_len);
 
     _str_len = _bf_printer_total_size(printer);
 

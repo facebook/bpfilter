@@ -40,8 +40,6 @@ static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
 
 enum bf_verbose bf_verbose_from_str(const char *str)
 {
-    bf_assert(str);
-
     for (enum bf_verbose verbose = 0; verbose < _BF_VERBOSE_MAX; ++verbose) {
         if (bf_streq(_bf_verbose_strs[verbose], str))
             return verbose;

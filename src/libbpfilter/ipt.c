@@ -52,7 +52,7 @@ int bf_ipt_replace(struct ipt_replace *ipt_replace)
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    bf_assert(ipt_replace);
+    assert(ipt_replace);
 
     r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_RULESET_SET, ipt_replace,
                        bf_ipt_replace_size(ipt_replace));
@@ -88,7 +88,7 @@ int bf_ipt_add_counters(struct xt_counters_info *counters)
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    bf_assert(counters);
+    assert(counters);
 
     r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_COUNTERS_SET, counters,
                        bf_xt_counters_info_size(counters));
@@ -124,7 +124,7 @@ int bf_ipt_get_info(struct ipt_getinfo *info)
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    bf_assert(info);
+    assert(info);
 
     r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_CUSTOM, info,
                        sizeof(*info));
@@ -162,7 +162,7 @@ int bf_ipt_get_entries(struct ipt_get_entries *entries)
     _free_bf_response_ struct bf_response *response = NULL;
     int r;
 
-    bf_assert(entries);
+    assert(entries);
 
     r = bf_request_new(&request, BF_FRONT_IPT, BF_REQ_CUSTOM, entries,
                        bf_ipt_get_entries_size(entries));

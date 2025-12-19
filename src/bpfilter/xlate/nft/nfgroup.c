@@ -28,7 +28,7 @@ struct bf_nfgroup
 
 int bf_nfgroup_new(struct bf_nfgroup **group)
 {
-    bf_assert(group);
+    assert(group);
 
     _free_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
 
@@ -48,15 +48,17 @@ int bf_nfgroup_new(struct bf_nfgroup **group)
 int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
                                size_t length)
 {
-    bf_assert(group);
-    bf_assert(nlh);
-    bf_assert(length < INT_MAX);
-    /* nlmsg_ok() takes an int. length should not be larger than INT_MAX, but
-     * we check anyway to be safe. */
-
     _free_bf_nfgroup_ struct bf_nfgroup *_group = NULL;
     int len = (int)length;
     int r;
+
+    assert(group);
+    assert(nlh);
+
+    /* nlmsg_ok() takes an int. length should not be larger than INT_MAX, but
+     * we check anyway to be safe. */
+    if (length >= INT_MAX)
+        return bf_err_r(-EINVAL, "length exceeds INT_MAX");
 
     r = bf_nfgroup_new(&_group);
     if (r < 0)
@@ -92,7 +94,7 @@ int bf_nfgroup_new_from_stream(struct bf_nfgroup **group, struct nlmsghdr *nlh,
 
 void bf_nfgroup_free(struct bf_nfgroup **group)
 {
-    bf_assert(group);
+    assert(group);
 
     if (!*group)
         return;
@@ -104,14 +106,14 @@ void bf_nfgroup_free(struct bf_nfgroup **group)
 
 const bf_list *bf_nfgroup_messages(const struct bf_nfgroup *group)
 {
-    bf_assert(group);
+    assert(group);
 
     return &group->messages;
 }
 
 size_t bf_nfgroup_size(const struct bf_nfgroup *group)
 {
-    bf_assert(group);
+    assert(group);
 
     size_t size = 0;
 
@@ -123,15 +125,15 @@ size_t bf_nfgroup_size(const struct bf_nfgroup *group)
 
 bool bf_nfgroup_is_empty(const struct bf_nfgroup *group)
 {
-    bf_assert(group);
+    assert(group);
 
     return bf_list_is_empty(&group->messages);
 }
 
 int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg)
 {
-    bf_assert(group);
-    bf_assert(msg);
+    assert(group);
+    assert(msg);
 
     return bf_list_add_tail(&group->messages, msg);
 }
@@ -139,7 +141,7 @@ int bf_nfgroup_add_message(struct bf_nfgroup *group, struct bf_nfmsg *msg)
 int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
                                uint16_t command, uint16_t seqnr)
 {
-    bf_assert(group);
+    assert(group);
 
     _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     int r;
@@ -163,8 +165,8 @@ int bf_nfgroup_add_new_message(struct bf_nfgroup *group, struct bf_nfmsg **msg,
 int bf_nfgroup_to_response(const struct bf_nfgroup *group,
                            struct bf_response **resp)
 {
-    bf_assert(group);
-    bf_assert(resp);
+    assert(group);
+    assert(resp);
 
     _free_bf_response_ struct bf_response *_resp = NULL;
     _free_bf_nfmsg_ struct bf_nfmsg *done = NULL;

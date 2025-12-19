@@ -18,8 +18,7 @@
 void bf_jmpctx_cleanup(struct bf_jmpctx *ctx)
 {
     if (ctx->program) {
-        struct bpf_insn *insn =
-            &bf_program_insns(ctx->program)[ctx->insn_idx];
+        struct bpf_insn *insn = &bf_program_insns(ctx->program)[ctx->insn_idx];
         size_t off = bf_program_ninsns(ctx->program) - ctx->insn_idx - 1U;
 
         if (off > SHRT_MAX)

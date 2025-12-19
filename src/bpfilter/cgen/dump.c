@@ -101,7 +101,7 @@ void bf_program_dump_bytecode(const struct bf_program *program)
     };
     bool double_insn = false;
 
-    bf_assert(program);
+    assert(program);
 
     bf_dump_prefix_push(&prefix);
 

@@ -242,8 +242,7 @@ struct bf_program
  * @param program Program to get the instructions from.
  * @return Pointer to the BPF instructions array.
  */
-#define bf_program_insns(program)                                              \
-    ((struct bpf_insn *)(program)->img.data)
+#define bf_program_insns(program) ((struct bpf_insn *)(program)->img.data)
 
 /**
  * Get the number of BPF instructions in a program.

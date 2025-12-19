@@ -30,7 +30,9 @@ int bf_link_new(struct bf_link **link, const char *name)
 
     assert(link);
     assert(name);
-    assert(name[0] != '\0');
+
+    if (name[0] == '\0')
+        return bf_err_r(-EINVAL, "invalid empty link name");
 
     _link = malloc(sizeof(*_link));
     if (!_link)
@@ -106,8 +108,8 @@ void bf_link_free(struct bf_link **link)
 
 int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack)
 {
-    bf_assert(link);
-    bf_assert(pack);
+    assert(link);
+    assert(pack);
 
     bf_wpack_kv_str(pack, "name", link->name);
 
@@ -252,7 +254,7 @@ static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
 
 int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
 {
-    bf_assert(link);
+    assert(link);
 
     int r;
 
@@ -274,7 +276,7 @@ int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
 
 void bf_link_detach(struct bf_link *link)
 {
-    bf_assert(link);
+    assert(link);
 
     int r;
 
@@ -303,8 +305,7 @@ int bf_link_pin(struct bf_link *link, int dir_fd)
 {
     int r;
 
-    bf_assert(link);
-    bf_assert(dir_fd > 0);
+    assert(link);
 
     r = bf_bpf_obj_pin("bf_link", link->fd, dir_fd);
     if (r)
@@ -326,7 +327,6 @@ void bf_link_unpin(struct bf_link *link, int dir_fd)
     int r;
 
     assert(link);
-    assert(dir_fd > 0);
 
     (void)link;
 

@@ -120,10 +120,6 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))
 
-#ifndef bf_assert
-#define bf_assert(x) assert(x)
-#endif
-
 #define bf_static_assert(expr, msg) _Static_assert((expr), msg)
 
 #define BF_STR(s) _BF_STR(s)
@@ -330,8 +326,7 @@ static inline void *bf_memdup(const void *src, size_t len)
  */
 static inline void *bf_memcpy(void *dst, const void *src, size_t len)
 {
-    bf_assert(dst);
-    bf_assert(src ? 1 : len == 0);
+    assert(dst);
 
     if (!src || !len)
         return dst;

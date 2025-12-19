@@ -91,8 +91,6 @@ const char *bf_log_level_to_str(enum bf_log_level level)
 
 enum bf_log_level bf_log_level_from_str(const char *str)
 {
-    bf_assert(str);
-
     for (enum bf_log_level level = 0; level < _BF_LOG_MAX; ++level) {
         if (bf_streq(_bf_log_level_strs[level], str))
             return level;

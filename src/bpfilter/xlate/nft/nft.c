@@ -41,7 +41,7 @@ static int _bf_nft_request_handler(const struct bf_request *request,
 {
     UNUSED(request);
 
-    bf_assert(response);
+    assert(response);
 
     return bf_response_new_failure(response, -ENOTSUP);
 }
