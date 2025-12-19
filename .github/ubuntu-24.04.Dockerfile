@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-scapy \
     python3-sphinx \
     sed \
+    shellcheck \
     xxd && \
     rm -rf /var/lib/apt/lists/*
 

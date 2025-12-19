@@ -12,5 +12,5 @@ start_bpfilter
 stop_bpfilter --skip-cleanup
 
 start_bpfilter
-    ${FROM_NS} bfcli chain attach --name test_chain --option ifindex=${NS_IFINDEX}
+    ${FROM_NS} bfcli chain attach --name test_chain --option "ifindex=${NS_IFINDEX}"
 stop_bpfilter

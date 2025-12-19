@@ -41,6 +41,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         python3-scapy \
         python3-sphinx \
         sed \
+        ShellCheck \
         xxd
 
     # Ubuntu 24.04+
@@ -78,6 +79,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         python3-scapy \
         python3-sphinx \
         sed \
+        shellcheck \
         xxd
 
 You can then use CMake to generate the build system:

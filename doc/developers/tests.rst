@@ -111,7 +111,11 @@ Integration tests are designed to ensure that ``libbpfilter`` and the core ``bpf
 Check tests
 -----------
 
-Check tests leverage the ``clang-tidy`` and ``clang-format``` tools to ensure code quality and style consistency across the codebase. They help identify potential issues early in the development process. Any warning or error reported by these tools will cause the check tests to fail.
+Check tests leverage the ``clang-tidy``, ``clang-format``, and ``shellcheck`` tools to ensure code quality and style consistency across the codebase. They help identify potential issues early in the development process. Any warning or error reported by these tools will cause the check tests to fail.
+
+- ``clang-tidy``: static analyzer for C/C++ code.
+- ``clang-format``: code formatter for C/C++ code.
+- ``shellcheck``: static analyzer for shell scripts.
 
 
 Harness

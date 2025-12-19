@@ -33,5 +33,6 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     python3-scapy \
     python3-sphinx \
     sed \
+    ShellCheck \
     xxd && \
     dnf clean all -y

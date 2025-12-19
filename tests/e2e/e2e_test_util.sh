@@ -7,10 +7,9 @@ BF_OUTPUT_FILE=${WORKDIR}/bf.log
 BPFILTER_PID=
 SETUSERNS_SOCKET_PATH=${WORKDIR}/setuserns.sock
 
-IN_SANBOX=0
+IN_SANDBOX=0
 WITH_DAEMON=0
 HAS_TOKEN_SUPPORT=0
-TEST_PATH=
 FROM_NS=
 
 # Network settings
@@ -40,7 +39,7 @@ RULESETS_DIR=.
 make_sandbox() {
     echo "Create the sandbox"
 
-    IN_SANBOX=1
+    IN_SANDBOX=1
 
     # Disable selinux if available, not all distros enforce setlinux
     if command -v setenforce &> /dev/null; then
@@ -51,24 +50,24 @@ make_sandbox() {
     bash -c "sudo bpftool btf dump file /sys/kernel/btf/vmlinux format c | grep -q \"__s32 prog_token_fd;\"" && HAS_TOKEN_SUPPORT=1 || HAS_TOKEN_SUPPORT=0
 
     # Create the namespaces mount points
-    mkdir ${WORKDIR}/{ns,bpf}
-    mount --bind ${WORKDIR}/ns ${WORKDIR}/ns
-    mount --make-private ${WORKDIR}/ns
+    mkdir "${WORKDIR}"/{ns,bpf}
+    mount --bind "${WORKDIR}/ns" "${WORKDIR}/ns"
+    mount --make-private "${WORKDIR}/ns"
 
-    touch ${WORKDIR}/ns/{user,mnt}
+    touch "${WORKDIR}"/ns/{user,mnt}
 
     # Create the netns to be used by unshare
-    ip netns add ${NETNS_NAME}
+    ip netns add "${NETNS_NAME}"
 
     # Create the user and mount namespaces, mount a new /run to have the bpfilter socket
-    if [ $HAS_TOKEN_SUPPORT -eq 1 ]; then
-        ${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
+    if [ "$HAS_TOKEN_SUPPORT" -eq 1 ]; then
+        "${SETUSERNS}" out --socket "${SETUSERNS_SOCKET_PATH}" &
         SETUSERNS_PID=$!
 
         unshare \
-            --user=${WORKDIR}/ns/user \
-            --mount=${WORKDIR}/ns/mnt \
-            --net=/var/run/netns/${NETNS_NAME} \
+            --user="${WORKDIR}/ns/user" \
+            --mount="${WORKDIR}/ns/mnt" \
+            --net="/var/run/netns/${NETNS_NAME}" \
             --keep-caps \
             --map-groups=all \
             --map-users=all \
@@ -79,9 +78,9 @@ make_sandbox() {
         " &
 
         BPFILTER="${_BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${WORKDIR}/bpf"
-        wait $SETUSERNS_PID
+        wait "$SETUSERNS_PID"
     else
-        unshare --net=/var/run/netns/${NETNS_NAME} &
+        unshare --net="/var/run/netns/${NETNS_NAME}" &
         BPFILTER="${_BPFILTER} --verbose debug"
     fi
 
@@ -92,21 +91,21 @@ make_sandbox() {
     fi
 
     # Create the veth
-    ip link add ${VETH_HOST} type veth peer name ${VETH_NS}
-    ip link set ${VETH_NS} netns ${NETNS_NAME}
+    ip link add "${VETH_HOST}" type veth peer name "${VETH_NS}"
+    ip link set "${VETH_NS}" netns "${NETNS_NAME}"
 
     # Set IP addresses
-    ip addr add ${HOST_IP} dev ${VETH_HOST}
-    ip netns exec ${NETNS_NAME} ip addr add ${NS_IP} dev ${VETH_NS}
+    ip addr add "${HOST_IP}" dev "${VETH_HOST}"
+    ip netns exec "${NETNS_NAME}" ip addr add "${NS_IP}" dev "${VETH_NS}"
 
     # Bring everything up
-    ip link set ${VETH_HOST} up
-    ip netns exec ${NETNS_NAME} ip link set ${VETH_NS} up
-    ip netns exec ${NETNS_NAME} ip link set lo up
+    ip link set "${VETH_HOST}" up
+    ip netns exec "${NETNS_NAME}" ip link set "${VETH_NS}" up
+    ip netns exec "${NETNS_NAME}" ip link set lo up
 
     # Log environment details
-    HOST_IFINDEX=$(ip -o link show ${VETH_HOST} | awk '{print $1}' | cut -d: -f1)
-    NS_IFINDEX=$(ip netns exec ${NETNS_NAME} ip -o link show ${VETH_NS} | awk '{print $1}' | cut -d: -f1)
+    HOST_IFINDEX=$(ip -o link show "${VETH_HOST}" | awk '{print $1}' | cut -d: -f1)
+    NS_IFINDEX=$(ip netns exec "${NETNS_NAME}" ip -o link show "${VETH_NS}" | awk '{print $1}' | cut -d: -f1)
 
     echo "End-to-end test configuration:"
     echo "  Workdir: ${WORKDIR}"
@@ -124,19 +123,19 @@ destroy_sandbox() {
     echo "Cleanup the sandbox"
 
     # netns should be unmounted AND deleted
-    umount /var/run/netns/${NETNS_NAME} || true
-    ip netns delete ${NETNS_NAME} || true
+    umount "/var/run/netns/${NETNS_NAME}" || true
+    ip netns delete "${NETNS_NAME}" || true
 
     # If BPF token is not supported, user and mnt namespaces are not mounted
     if [ "${HAS_TOKEN_SUPPORT:-1}" -eq 1 ]; then
-        umount ${WORKDIR}/bpf || true
-        umount ${WORKDIR}/ns/user || true
-        umount ${WORKDIR}/ns/mnt || true
+        umount "${WORKDIR}/bpf" || true
+        umount "${WORKDIR}/ns/user" || true
+        umount "${WORKDIR}/ns/mnt" || true
     fi
 
-    umount ${WORKDIR}/ns || true
+    umount "${WORKDIR}/ns" || true
 
-    rm -rf ${WORKDIR} || true
+    rm -rf "${WORKDIR}" || true
 
     IN_SANDBOX=0
 }
@@ -145,14 +144,16 @@ start_bpfilter() {
     echo "Start bpfilter"
 
     local timeout=2
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     local end_time=$((start_time + timeout))
 
-    ${FROM_NS} ${BPFILTER} > ${BF_OUTPUT_FILE} 2>&1 &
+    # shellcheck disable=SC2086 # Word splitting is intentional for command variables
+    ${FROM_NS} ${BPFILTER} > "${BF_OUTPUT_FILE}" 2>&1 &
     BPFILTER_PID=$!
 
     # Wait for the daemon to listen to the requests
-    while [ $(date +%s) -lt $end_time ]; do
+    while [ "$(date +%s)" -lt "$end_time" ]; do
         if grep -q "waiting for requests" "${BF_OUTPUT_FILE}"; then
             WITH_DAEMON=1
             return 0
@@ -163,6 +164,7 @@ start_bpfilter() {
     return 1
 }
 
+# shellcheck disable=SC2120 # Function accepts optional arguments
 stop_bpfilter() {
     local skip_cleanup=0
 
@@ -185,8 +187,8 @@ stop_bpfilter() {
             bfcli ruleset flush || true
         fi
 
-        kill $BPFILTER_PID 2>/dev/null || true
-        wait $BPFILTER_PID || true
+        kill "$BPFILTER_PID" 2>/dev/null || true
+        wait "$BPFILTER_PID" || true
     fi
 
     WITH_DAEMON=0
@@ -196,17 +198,18 @@ cleanup() {
     echo "cleanup() called with exit value $1"
 
     if [ "$WITH_DAEMON" -ne 0 ]; then
+        # shellcheck disable=SC2119 # Function accepts optional arguments
         stop_bpfilter
 
         echo "========== bpfilter output =========="
         cat "$BF_OUTPUT_FILE" || true
     fi
 
-    if [ "$IN_SANBOX" -ne 0 ]; then
+    if [ "$IN_SANDBOX" -ne 0 ]; then
         destroy_sandbox
     fi
 
-    exit $1
+    exit "$1"
 }
 
 # Set trap to ensure cleanup happens
@@ -220,4 +223,5 @@ trap 'cleanup 1' INT TERM
 #
 ################################################################################
 
+# shellcheck disable=SC2034 # Used by test scripts
 WITH_TIMEOUT="timeout --signal INT --preserve-status .5"

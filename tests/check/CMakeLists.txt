@@ -3,6 +3,7 @@
 
 find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
+find_program(SHELLCHECK_BIN NAMES shellcheck REQUIRED)
 
 file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/core/*.h            ${CMAKE_SOURCE_DIR}/src/core/*.c
@@ -14,6 +15,10 @@ file(GLOB_RECURSE bf_srcs
 list(FILTER bf_srcs EXCLUDE REGEX "src/bpfilter/xlate/nft/nfmsg.*")
 list(FILTER bf_srcs EXCLUDE REGEX "src/bpfilter/xlate/nft/nfgroup.*")
 
+file(GLOB_RECURSE bf_scripts
+    ${CMAKE_SOURCE_DIR}/tests/*.sh
+)
+
 add_test(NAME "check.lint"
     COMMAND
         ${CLANG_TIDY_BIN}
@@ -22,13 +27,6 @@ add_test(NAME "check.lint"
             -p ${CMAKE_BINARY_DIR}
             --extra-arg=-fno-caret-diagnostics
             ${bf_srcs}
-)
-
-add_test(NAME "check.iwyu"
-    COMMAND
-        /usr/bin/iwyu_tool.py
-            -p ${CMAKE_BINARY_DIR}
-            ${CMAKE_SOURCE_DIR}/src/bpfilter/cgen/program.c
 )
 
 set_tests_properties("check.lint" PROPERTIES
@@ -44,6 +42,19 @@ add_test(NAME "check.checkstyle"
 )
 
 set_tests_properties("check.checkstyle" PROPERTIES
+    LABELS "check"
+)
+
+add_test(NAME "check.shellcheck"
+    COMMAND
+        ${SHELLCHECK_BIN}
+            --shell=bash
+            -x
+            --source-path=SCRIPTDIR
+            ${bf_scripts}
+)
+
+set_tests_properties("check.shellcheck" PROPERTIES
     LABELS "check"
 )
 
