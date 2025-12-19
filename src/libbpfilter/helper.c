@@ -70,6 +70,7 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     _cleanup_free_ void *_buf = NULL;
     size_t _len;
     ssize_t r;
+    off_t off;
 
     assert(path);
     assert(buf);
@@ -79,8 +80,13 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     if (fd < 0)
         return bf_err_r(errno, "failed to open %s", path);
 
-    _len = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
+    off = lseek(fd, 0, SEEK_END);
+    if (off < 0)
+        return bf_err_r(errno, "failed to seek to end of %s", path);
+    _len = (size_t)off;
+
+    if (lseek(fd, 0, SEEK_SET) < 0)
+        return bf_err_r(errno, "failed to seek to start of %s", path);
 
     _buf = malloc(_len);
     if (!_buf)
