@@ -7,11 +7,11 @@
 
 #include <linux/btf.h>
 
+#include <assert.h>
 #include <bpf/btf.h>
-#include <errno.h>
 #include <limits.h>
 #include <stddef.h>
-#include <stdlib.h>
+#include <sys/types.h>
 
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"

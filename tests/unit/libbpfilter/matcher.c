@@ -6,10 +6,11 @@
 #include <bpfilter/matcher.h>
 
 #include <arpa/inet.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/pack.h"
-#include "fake.h"
 #include "test.h"
 
 static void new_and_free(void **state)

@@ -5,15 +5,9 @@
 
 #pragma once
 
-// clang-format off
-#include <stdarg.h> // NOLINT: required by cmocka.h
-#include <stddef.h> // NOLINT: required by cmocka.h
-#include <stdint.h> // NOLINT: required by cmocka.h
-#include <setjmp.h> // NOLINT: required by cmocka.h
-#include <cmocka.h> // NOLINT: required by cmocka.h
-// clang-format on
-
 #include <stdbool.h>
+
+#include <bpfilter/helper.h>
 
 /**
  * @file mock.h
@@ -60,12 +54,6 @@ MOCKING IS ONLY TO MOCK, not to trigger different code path during testing
 
 
  */
-
-struct btf;
-
-#include <stdio.h>
-
-#include <bpfilter/helper.h>
 
 #define _clean_bft_mock_ __attribute__((cleanup(bft_mock_clean)))
 

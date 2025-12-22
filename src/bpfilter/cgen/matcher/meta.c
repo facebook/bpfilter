@@ -6,7 +6,6 @@
 #include "cgen/matcher/meta.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/in.h> // NOLINT
 #include <linux/tcp.h>
 #include <linux/udp.h>
@@ -16,10 +15,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bpfilter/flavor.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/swich.h"
 
 #include "external/filter.h"

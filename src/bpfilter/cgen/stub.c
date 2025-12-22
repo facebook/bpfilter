@@ -6,7 +6,6 @@
 #include "cgen/stub.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/icmp.h>
 #include <linux/icmpv6.h>
 #include <linux/if_ether.h>
@@ -17,18 +16,22 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
+#include <assert.h>
 #include <endian.h>
 #include <stddef.h>
+#include <stdint.h>
 
+#include <bpfilter/chain.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/elfstub.h"
 #include "cgen/jmp.h"
-#include "cgen/printer.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/swich.h"
 #include "opts.h"
 

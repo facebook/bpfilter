@@ -5,19 +5,15 @@
 
 #pragma once
 
-#include <stdint.h>
-
-#include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/front.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
 struct bf_chain;
-struct bf_handle;
-struct bf_program;
-struct bf_ns;
+struct bf_counter;
 struct bf_hookopts;
+struct bf_ns;
 
 #define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 

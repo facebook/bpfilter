@@ -5,13 +5,13 @@
 
 #include "bpfilter/request.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "bpfilter/dynbuf.h"
+#include "bpfilter/front.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/pack.h"
 

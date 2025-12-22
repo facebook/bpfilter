@@ -5,7 +5,14 @@
 
 #include <bpfilter/set.h>
 
+#include <stdint.h>
+#include <string.h>
+
+
 #include "bpfilter/dump.h"
+#include "bpfilter/helper.h"
+#include "bpfilter/list.h"
+#include "bpfilter/matcher.h"
 #include "bpfilter/pack.h"
 #include "fake.h"
 #include "test.h"

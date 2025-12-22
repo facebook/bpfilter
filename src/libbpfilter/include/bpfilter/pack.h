@@ -85,10 +85,7 @@
  * operation fails.
  */
 
-struct bf_wpack;
 typedef struct bf_wpack bf_wpack_t;
-
-struct bf_list;
 typedef struct bf_list bf_list;
 
 /// @brief Cleanup attribute for dynamically allocated `bf_wpack_t` objects.
@@ -261,7 +258,6 @@ void bf_wpack_open_array(bf_wpack_t *pack, const char *key);
  */
 void bf_wpack_close_array(bf_wpack_t *pack);
 
-struct bf_rpack;
 typedef struct bf_rpack bf_rpack_t;
 
 /**

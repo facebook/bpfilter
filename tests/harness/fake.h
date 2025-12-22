@@ -5,10 +5,12 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 
 #include <bpfilter/list.h>
+
+#include "bpfilter/pack.h"
 
 typedef bool (*bft_list_eq_cb)(const void *, const void *);
 typedef int (*bft_list_dummy_inserter)(bf_list *, void *);

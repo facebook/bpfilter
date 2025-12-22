@@ -6,16 +6,14 @@
 #include <linux/mount.h>
 
 #include <argp.h>
-#include <asm/unistd.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/un.h>
-#include <unistd.h>
 
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"

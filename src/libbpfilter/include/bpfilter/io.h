@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <sys/types.h>
 
 #define BF_RUNTIME_DIR "/run/bpfilter"
 #define BF_SOCKET_PATH BF_RUNTIME_DIR "/daemon.sock"

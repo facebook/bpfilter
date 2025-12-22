@@ -5,13 +5,13 @@
 
 #include "bpfilter/response.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "bpfilter/dynbuf.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/pack.h"
 
 /**
  * @brief Response message sent from the daemon to the client.

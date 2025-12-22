@@ -6,6 +6,10 @@
 #include <bpfilter/dynbuf.h>
 #include <bpfilter/helper.h>
 
+#include <stddef.h>
+#include <stdint.h>
+
+
 #include "test.h"
 
 #define BFT_DYNBUF_WRITE_REPEAT 1 << 16

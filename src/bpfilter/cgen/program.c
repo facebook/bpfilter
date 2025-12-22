@@ -6,33 +6,27 @@
 #include "cgen/program.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
-#include <linux/limits.h>
 
-#include <asm-generic/errno-base.h>
-#include <errno.h>
-#include <fcntl.h>
+#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <bpfilter/bpf.h>
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/dynbuf.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/io.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
-#include <bpfilter/pack.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
@@ -41,7 +35,6 @@
 #include "cgen/dump.h"
 #include "cgen/fixup.h"
 #include "cgen/handle.h"
-#include "cgen/jmp.h"
 #include "cgen/matcher/icmp.h"
 #include "cgen/matcher/ip4.h"
 #include "cgen/matcher/ip6.h"
@@ -51,9 +44,8 @@
 #include "cgen/matcher/udp.h"
 #include "cgen/nf.h"
 #include "cgen/printer.h"
-#include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
-#include "cgen/stub.h"
+#include "cgen/runtime.h"
 #include "cgen/tc.h"
 #include "cgen/xdp.h"
 #include "ctx.h"

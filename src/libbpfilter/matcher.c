@@ -17,12 +17,12 @@
 
 #include <ctype.h>
 #include <endian.h>
-#include <errno.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"

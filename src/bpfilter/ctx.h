@@ -33,7 +33,6 @@
  */
 
 struct bf_cgen;
-struct bf_ns;
 
 /**
  * Initialise the global context.

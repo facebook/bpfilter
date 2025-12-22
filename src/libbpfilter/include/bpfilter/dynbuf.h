@@ -7,8 +7,6 @@
 
 #include <stddef.h>
 
-struct bf_dynbuf;
-
 #define _clean_bf_dynbuf_ __attribute__((cleanup(bf_dynbuf_clean)))
 
 struct bf_dynbuf

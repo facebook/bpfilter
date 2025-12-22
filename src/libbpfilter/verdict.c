@@ -5,7 +5,7 @@
 
 #include "bpfilter/verdict.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stddef.h>
 
 #include "bpfilter/helper.h"

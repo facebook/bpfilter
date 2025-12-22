@@ -4,13 +4,13 @@
  */
 
 #include <bpfilter/bpfilter.h>
-
-#include <errno.h>
-
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
+
+#include <errno.h>
+#include <stdbool.h>
 
 #include "fake.h"
 #include "test.h"

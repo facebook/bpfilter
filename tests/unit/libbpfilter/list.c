@@ -5,6 +5,11 @@
 
 #include <bpfilter/list.h>
 
+#include <stddef.h>
+#include <stdlib.h>
+
+#include "bpfilter/helper.h"
+#include "bpfilter/pack.h"
 #include "fake.h"
 #include "test.h"
 

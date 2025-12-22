@@ -3,17 +3,25 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
+#include "cgen/matcher/icmp.h"
+
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/icmp.h>
 #include <linux/icmpv6.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 
 #include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
+#include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
 #include "cgen/program.h"
+#include "cgen/runtime.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
                                             const struct bf_matcher *matcher,

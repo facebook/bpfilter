@@ -8,13 +8,12 @@
 #include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
-#include <errno.h>
+#include <assert.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
@@ -25,6 +24,7 @@
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/pack.h>
 #include <bpfilter/request.h>
 #include <bpfilter/response.h>
 #include <bpfilter/rule.h>
@@ -32,12 +32,13 @@
 
 #include "bpfilter/runtime.h"
 #include "cgen/cgen.h"
-#include "cgen/program.h"
 #include "ctx.h"
-#include "opts.h"
 #include "xlate/front.h"
 #include "xlate/ipt/dump.h"
 #include "xlate/ipt/helpers.h"
+
+struct bf_request;
+struct bf_response;
 
 /**
  * @file ipt.c

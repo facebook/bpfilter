@@ -15,7 +15,6 @@
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
@@ -32,7 +31,7 @@
 #include <git2/types.h>
 #include <initializer_list>
 #include <iostream> // NOLINT
-#include <numeric>
+#include <iterator>
 #include <optional>
 #include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>

@@ -5,11 +5,9 @@
 
 #include <bpfilter/bpfilter.h>
 
+#include <errno.h>
 #include <linux/netlink.h>
 
-#include <errno.h>
-
-#include "fake.h"
 #include "test.h"
 
 static void nft_send(void **state)

@@ -5,17 +5,23 @@
 #define _XOPEN_SOURCE 700
 #include "test.h"
 
+#include <assert.h>
 #include <ftw.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
-#include <bpfilter/helper.h>
 
 #include "bpfilter/list.h"
+#include "bpfilter/logger.h"
+
+struct bf_matcher;
 
 int btf_setup_redirect_streams(void **state)
 {

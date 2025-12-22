@@ -69,8 +69,6 @@
  * able to add the strings to its own map.
  */
 
-struct bpf_insn;
-
 /**
  * @brief Identifiers for the ELF stubs.
  *

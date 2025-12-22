@@ -5,10 +5,6 @@
 
 #include "bpfilter/logger.h"
 
-#include <errno.h>
-#include <string.h>
-
-#include "fake.h"
 #include "mock.h"
 #include "test.h"
 

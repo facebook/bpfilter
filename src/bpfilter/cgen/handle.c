@@ -5,13 +5,17 @@
 
 #include "cgen/handle.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include <bpfilter/bpf.h>
+#include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
 #include <bpfilter/list.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/pack.h>
 
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"

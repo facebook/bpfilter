@@ -5,23 +5,22 @@
 
 #pragma once
 
+#include <linux/bpf.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
-#include <bpfilter/chain.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/dynbuf.h>
 #include <bpfilter/flavor.h>
-#include <bpfilter/helper.h>
 #include <bpfilter/list.h>
-#include <bpfilter/pack.h>
 
 #include "cgen/elfstub.h"
 #include "cgen/fixup.h"
-#include "cgen/printer.h"
-#include "cgen/runtime.h"
 
 #include "external/filter.h"
+
+struct bf_chain;
 
 /**
  * @file program.h
@@ -207,10 +206,7 @@
             return __r;                                                        \
     })
 
-struct bf_chain;
-struct bf_counter;
 struct bf_handle;
-struct bf_hookopts;
 
 struct bf_program
 {

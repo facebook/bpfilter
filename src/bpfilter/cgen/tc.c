@@ -6,9 +6,9 @@
 #include "cgen/tc.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/pkt_cls.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -17,8 +17,8 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/cgen.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
 
 #include "external/filter.h"

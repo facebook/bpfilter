@@ -9,14 +9,15 @@
 #include <linux/icmpv6.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
-#include <errno.h>
+#include <assert.h>
+#include <endian.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -33,8 +34,6 @@
 #include <bpfilter/runtime.h>
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
-
-struct bfc_chain_opts;
 
 #define INET6_ADDRSTRLEN 46
 

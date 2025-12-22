@@ -5,9 +5,12 @@
 
 #include "bpfilter/logger.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include "bpfilter/helper.h"
 
 /// If true, log messages will be printed in colors.
 static bool _bf_can_print_color = false;

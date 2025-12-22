@@ -5,7 +5,6 @@
 
 #define _GNU_SOURCE
 #include <dlfcn.h>
-#include <errno.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>

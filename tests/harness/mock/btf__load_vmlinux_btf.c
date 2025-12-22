@@ -6,8 +6,6 @@
 
 #include "mock.h"
 
-struct btf;
-
 struct btf *btf__load_vmlinux_btf(void)
 {
     static struct btf *(*real)(void) = NULL;

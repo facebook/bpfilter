@@ -7,15 +7,16 @@
 
 #include <linux/bpf.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "bpfilter/bpf_types.h"
 #include "bpfilter/btf.h"
-#include "bpfilter/helper.h"
+#include "bpfilter/hook.h"
 #include "bpfilter/logger.h"
 
 #ifdef __i386__

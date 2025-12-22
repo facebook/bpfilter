@@ -5,10 +5,10 @@
 
 #include "bpfilter/list.h"
 
-#include <errno.h>
 #include <stdlib.h>
 
 #include "bpfilter/helper.h"
+#include "bpfilter/pack.h"
 
 /**
  * Create a new list node, with the given data.

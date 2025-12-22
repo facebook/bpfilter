@@ -7,7 +7,6 @@
 
 #include <limits.h>
 
-#include "fake.h"
 #include "test.h"
 
 static void name_and_index(void **state)

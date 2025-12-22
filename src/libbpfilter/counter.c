@@ -4,12 +4,12 @@
  */
 #include "bpfilter/counter.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "bpfilter/helper.h"
+#include "bpfilter/pack.h"
 
 int bf_counter_new(struct bf_counter **counter, uint64_t packets,
                    uint64_t bytes)

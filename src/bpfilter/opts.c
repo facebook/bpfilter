@@ -6,12 +6,10 @@
 #include "opts.h"
 
 #include <argp.h>
-#include <errno.h>
-#include <limits.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #include <bpfilter/front.h>
 #include <bpfilter/helper.h>

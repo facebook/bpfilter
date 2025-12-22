@@ -6,9 +6,8 @@
 #pragma once
 
 #include <assert.h>
-#include <errno.h>
+#include <errno.h> // IWYU pragma: export
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>

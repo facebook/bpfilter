@@ -13,7 +13,8 @@
 #include <bpfilter/bpf_types.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/pack.h>
-#include <bpfilter/set.h>
+
+struct bf_set;
 
 enum bf_map_type
 {

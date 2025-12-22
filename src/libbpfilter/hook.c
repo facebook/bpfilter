@@ -5,18 +5,15 @@
 
 #include "bpfilter/hook.h"
 
-#include <linux/bpf.h>
-#include <linux/netfilter.h>
-
-#include <errno.h>
+#include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 
+#include "bpfilter/bpf_types.h"
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"

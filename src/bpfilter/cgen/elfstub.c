@@ -7,11 +7,15 @@
 
 #include <linux/bpf.h>
 
+#include <assert.h>
 #include <elf.h>
-#include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <bpfilter/btf.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 
 #include "cgen/rawstubs.h"

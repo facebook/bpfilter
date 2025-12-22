@@ -7,10 +7,8 @@
 
 #include <linux/bpf.h>
 
+#include <assert.h>
 #include <bpf/btf.h>
-#include <errno.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -20,7 +18,10 @@
 #include <bpfilter/btf.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
+#include <bpfilter/pack.h>
+#include <bpfilter/set.h>
 
 #include "ctx.h"
 

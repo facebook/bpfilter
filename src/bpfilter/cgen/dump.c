@@ -6,8 +6,8 @@
 #include "cgen/dump.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,7 +15,6 @@
 
 #include <bpfilter/btf.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 
 #include "cgen/program.h"

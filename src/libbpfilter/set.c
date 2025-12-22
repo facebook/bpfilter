@@ -5,16 +5,16 @@
 
 #include "bpfilter/set.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"
+#include "bpfilter/matcher.h"
 #include "bpfilter/pack.h"
 
 /// Mask value of matcher types supporting LPM trie maps.

@@ -5,6 +5,10 @@
 
 #include "bpfilter/pack.h"
 
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "bpfilter/helper.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"

@@ -4,16 +4,16 @@
  */
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 
+#include <assert.h>
 #include <stddef.h>
-#include <stdint.h>
 
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
 
 #include "external/filter.h"

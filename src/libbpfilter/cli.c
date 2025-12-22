@@ -3,7 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <errno.h>
 #include <string.h>
 
 #include "bpfilter/chain.h"

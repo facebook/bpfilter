@@ -5,11 +5,9 @@
 
 #include "cgen/cgen.h"
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 
 #include <bpfilter/bpf.h>
@@ -25,7 +23,6 @@
 #include <bpfilter/ns.h>
 #include <bpfilter/pack.h>
 
-#include "cgen/dump.h"
 #include "cgen/handle.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"

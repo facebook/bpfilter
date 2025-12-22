@@ -6,7 +6,15 @@
 
 #include "ruleset.h"
 
+#include <assert.h>
+#include <stddef.h>
+
 #include <bpfilter/bpfilter.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/list.h>
+#include <bpfilter/logger.h>
 
 #include "helper.h"
 #include "opts.h"

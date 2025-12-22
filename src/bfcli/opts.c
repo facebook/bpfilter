@@ -6,8 +6,12 @@
 #include "opts.h"
 
 #include <argp.h>
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
 
 #include "chain.h"
 #include "ruleset.h"

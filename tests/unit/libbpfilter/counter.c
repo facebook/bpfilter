@@ -3,12 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <limits.h>
-
 #include <bpfilter/counter.h>
 
 #include "bpfilter/pack.h"
-#include "fake.h"
 #include "test.h"
 
 #define BFT_COUNTER_PKTS 4

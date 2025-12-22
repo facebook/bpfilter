@@ -3,9 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <limits.h>
-
 #include <bpfilter/btf.h>
+
+#include <limits.h>
 
 #include "mock.h"
 #include "test.h"

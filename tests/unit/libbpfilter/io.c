@@ -5,15 +5,21 @@
 
 #include "bpfilter/io.h"
 
-#include <fcntl.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include <bpfilter/request.h>
 #include <bpfilter/response.h>
 
+#include <fcntl.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include "bpfilter/front.h"
+#include "bpfilter/helper.h"
 #include "fake.h"
 #include "test.h"
 

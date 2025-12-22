@@ -5,12 +5,23 @@
 
 #include "cgen/matcher/set.h"
 
+#include <linux/bpf.h>
+
+#include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include <bpfilter/chain.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/set.h>
 
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
+
+#include "external/filter.h"
 
 static int _bf_matcher_generate_set_trie(struct bf_program *program,
                                          const struct bf_matcher *matcher)

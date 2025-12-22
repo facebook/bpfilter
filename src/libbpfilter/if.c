@@ -10,11 +10,10 @@
 
 #include "bpfilter/if.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#include <sys/types.h>
-
-#include "bpfilter/helper.h"
+#include <stddef.h>
 
 static char _bf_if_name[IFNAMSIZ];
 

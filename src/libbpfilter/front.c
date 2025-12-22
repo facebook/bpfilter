@@ -5,6 +5,8 @@
 
 #include "bpfilter/front.h"
 
+#include <assert.h>
+
 #include "bpfilter/helper.h"
 
 const char *bf_front_to_str(enum bf_front front)

@@ -1,4 +1,3 @@
-
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
@@ -6,16 +5,8 @@
 
 #include "chain.h"
 
-#include <argp.h>
-#include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-#include <endian.h>
-#include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/epoll.h>
-#include <time.h>
-#include <unistd.h>
 
 #include <bpfilter/bpfilter.h>
 #include <bpfilter/chain.h>

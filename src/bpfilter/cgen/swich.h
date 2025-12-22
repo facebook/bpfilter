@@ -5,13 +5,13 @@
 
 #pragma once
 
-#include <linux/bpf.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
+
+struct bpf_insn;
 
 /**
  * @file swich.h

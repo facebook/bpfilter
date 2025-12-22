@@ -6,9 +6,8 @@
 #include "cgen/swich.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 
-#include <errno.h>
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>

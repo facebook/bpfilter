@@ -11,7 +11,9 @@
 #include <bpfilter/dynbuf.h>
 #include <bpfilter/pack.h>
 
-#include "fake.h"
+#include <stddef.h>
+
+
 #include "test.h"
 
 static void new_raw(void **state)

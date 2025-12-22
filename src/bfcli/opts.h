@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <bpfilter/hook.h>
 
@@ -51,8 +52,6 @@ enum bfc_action
     BFC_ACTION_FLUSH,
     _BFC_ACTION_MAX,
 };
-
-struct bfc_opts_cmd;
 
 /**
  * @brief Command line options configured for bfcli

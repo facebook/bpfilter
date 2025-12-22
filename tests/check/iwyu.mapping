@@ -1,0 +1,27 @@
+# IWYU mapping file for bpfilter
+# See: https://github.com/include-what-you-use/include-what-you-use/blob/master/docs/IWYUMappings.md
+
+[
+  # Map errno codes to errno.h (not asm-generic/errno-base.h)
+  { include: [ "\"asm-generic/errno-base.h\"", private, "<errno.h>", public ] },
+  { include: [ "\"asm-generic/errno.h\"", private, "<errno.h>", public ] },
+  { include: [ "<asm-generic/errno-base.h>", private, "<errno.h>", public ] },
+  { include: [ "<asm-generic/errno.h>", private, "<errno.h>", public ] },
+
+  # Map socket constants to sys/socket.h
+  { include: [ "\"asm-generic/socket.h\"", private, "<sys/socket.h>", public ] },
+  { include: [ "<asm-generic/socket.h>", private, "<sys/socket.h>", public ] },
+
+  # Map BPF types to linux/bpf.h
+  { include: [ "\"linux/bpf_common.h\"", private, "<linux/bpf.h>", public ] },
+  { include: [ "<linux/bpf_common.h>", private, "<linux/bpf.h>", public ] },
+
+  # cgen/runtime.h re-exports bpfilter/runtime.h for daemon files
+  { include: [ "\"bpfilter/runtime.h\"", public, "\"cgen/runtime.h\"", public ] },
+
+  # test.h provides cmocka.h and its dependencies for unit tests
+  { include: [ "<cmocka.h>", public, "\"test.h\"", public ] },
+  { include: [ "<setjmp.h>", public, "\"test.h\"", public ] },
+  { include: [ "<stdarg.h>", public, "\"test.h\"", public ] },
+  { include: [ "<stddef.h>", public, "\"test.h\"", public ] },
+]

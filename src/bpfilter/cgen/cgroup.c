@@ -6,9 +6,9 @@
 #include "cgen/cgroup.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/socket.h>
@@ -18,8 +18,8 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/cgen.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
 

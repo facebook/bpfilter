@@ -8,20 +8,24 @@
 // clang-format off
 #include <stdarg.h> // NOLINT: required by cmocka.h
 #include <stddef.h> // NOLINT: required by cmocka.h
-#include <stdint.h> // NOLINT: required by cmocka.h
 #include <setjmp.h> // NOLINT: required by cmocka.h
 #include <cmocka.h> // NOLINT: required by cmocka.h
 // clang-format on
 
-#include <linux/kcmp.h>
-
+#include <linux/kcmp.h> // IWYU pragma: keep
+#include <stdbool.h>
+#include <stdio.h>
 #include <sys/syscall.h>
-#include <unistd.h>
+#include <unistd.h> // IWYU pragma: keep
 
+#include "bpfilter/list.h"
 #include "fake.h"
 
-struct bf_set;
+struct bf_chain;
 struct bf_counter;
+struct bf_matcher;
+struct bf_rule;
+struct bf_set;
 
 #define assert_ok(expr) assert_true((expr) == 0)
 #define assert_err(expr) assert_true((expr) < 0)

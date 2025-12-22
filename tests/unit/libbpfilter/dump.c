@@ -5,7 +5,11 @@
 
 #include <bpfilter/dump.h>
 
-#include "fake.h"
+#include <stddef.h>
+#include <stdint.h>
+
+
+#include "bpfilter/helper.h"
 #include "test.h"
 
 static void push_pop_last(void **state)

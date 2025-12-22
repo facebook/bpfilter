@@ -5,10 +5,11 @@
 
 #include "bpfilter/pack.h"
 
-#include <errno.h>
-#include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#include "fake.h"
+#include "bpfilter/helper.h"
 #include "test.h"
 
 static void wpack_new_free(void **state)

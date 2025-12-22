@@ -6,7 +6,7 @@
 #define _GNU_SOURCE
 
 #include <argp.h>
-#include <errno.h>
+#include <assert.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -28,6 +28,9 @@
 #include "ctx.h"
 #include "opts.h"
 #include "xlate/front.h"
+
+struct bf_request;
+struct bf_response;
 
 /**
  * Global flag to indicate whether the daemon should stop.

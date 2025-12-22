@@ -8,9 +8,8 @@
 #include <linux/bpf.h>
 #include <linux/if_link.h>
 
-#include <errno.h>
+#include <assert.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>

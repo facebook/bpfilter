@@ -6,11 +6,9 @@
 #include "cgen/matcher/tcp.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/in.h> // NOLINT
 #include <linux/tcp.h>
 
-#include <endian.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -19,6 +17,7 @@
 #include <bpfilter/matcher.h>
 
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 
 #include "external/filter.h"
 

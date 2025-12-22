@@ -3,7 +3,9 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include <errno.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
@@ -21,9 +23,11 @@
 #include "cgen/handle.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
-#include "cgen/program.h"
 #include "ctx.h"
 #include "xlate/front.h"
+
+struct bf_request;
+struct bf_response;
 
 static int _bf_cli_setup(void);
 static int _bf_cli_teardown(void);

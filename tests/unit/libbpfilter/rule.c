@@ -5,7 +5,12 @@
 
 #include <bpfilter/rule.h>
 
+#include <stddef.h>
+
+
+#include "bpfilter/dump.h"
 #include "bpfilter/list.h"
+#include "bpfilter/matcher.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/runtime.h"
 #include "fake.h"

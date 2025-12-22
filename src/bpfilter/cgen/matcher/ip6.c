@@ -6,21 +6,24 @@
 #include "cgen/matcher/ip6.h"
 
 #include <linux/bpf.h>
-#include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 #include <linux/ipv6.h>
 
+#include <assert.h>
 #include <endian.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
 #include "cgen/jmp.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 
 #include "external/filter.h"
 

@@ -7,10 +7,10 @@
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 #include <bpfilter/rule.h>
-#include <bpfilter/runtime.h>
-#include <bpfilter/set.h>
 
-#include "bpfilter/matcher.h"
+#include <stdbool.h>
+
+#include "bpfilter/dump.h"
 #include "fake.h"
 #include "test.h"
 

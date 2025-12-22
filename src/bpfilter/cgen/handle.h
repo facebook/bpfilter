@@ -14,10 +14,6 @@
 
 #define BF_PROG_NAME "bf_prog"
 
-struct bf_hookopts;
-struct bf_link;
-struct bf_map;
-
 struct bf_handle
 {
     int prog_fd;

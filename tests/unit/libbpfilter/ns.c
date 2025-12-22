@@ -3,16 +3,10 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <fcntl.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include <bpfilter/ns.h>
 
-#include "bpfilter/io.h"
-#include "fake.h"
+#include <unistd.h>
+
 #include "mock.h"
 #include "test.h"
 

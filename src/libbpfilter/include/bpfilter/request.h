@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <bpfilter/front.h>
-#include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
 
 struct bf_dynbuf;

@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 /**
  * @file ns.h

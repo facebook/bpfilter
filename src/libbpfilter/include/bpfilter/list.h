@@ -5,10 +5,12 @@
 
 #pragma once
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 #include <bpfilter/pack.h>
 
 /**

@@ -37,8 +37,6 @@
  * will skip the instructions defined in the scope and continue.
  */
 
-struct bf_program;
-
 /**
  * Cleanup attribute for a @ref bf_jmpctx variable.
  */

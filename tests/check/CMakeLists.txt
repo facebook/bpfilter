@@ -4,6 +4,7 @@
 find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
 find_program(SHELLCHECK_BIN NAMES shellcheck REQUIRED)
+find_program(IWYU_TOOL_BIN NAMES iwyu_tool.py REQUIRED)
 
 file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/core/*.h            ${CMAKE_SOURCE_DIR}/src/core/*.c
@@ -55,6 +56,22 @@ add_test(NAME "check.shellcheck"
 )
 
 set_tests_properties("check.shellcheck" PROPERTIES
+    LABELS "check"
+)
+
+add_test(NAME "check.iwyu"
+    COMMAND
+        ${IWYU_TOOL_BIN}
+            -p ${CMAKE_BINARY_DIR}
+            -e ${CMAKE_SOURCE_DIR}/src/external
+            -e ${CMAKE_BINARY_DIR}/src/bfcli/generated
+            --
+            -Xiwyu --error
+            -Xiwyu --no_comments
+            -Xiwyu --mapping_file=${CMAKE_SOURCE_DIR}/tests/check/iwyu.mapping
+)
+
+set_tests_properties("check.iwyu" PROPERTIES
     LABELS "check"
 )
 

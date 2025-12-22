@@ -5,6 +5,8 @@
 
 #include "bpfilter/flavor.h"
 
+#include <assert.h>
+
 #include "bpfilter/helper.h"
 
 const char *bf_flavor_to_str(enum bf_flavor flavor)

@@ -1,4 +1,3 @@
-
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
@@ -6,13 +5,11 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 #include <bpfilter/list.h>
-#include <bpfilter/runtime.h>
 
 struct bf_chain;
 struct bf_hookopts;
+struct bf_log;
 
 /**
  * Print a single chain.

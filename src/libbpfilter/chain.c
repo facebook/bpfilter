@@ -5,7 +5,7 @@
 
 #include "bpfilter/chain.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +14,7 @@
 #include "bpfilter/hook.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"
+#include "bpfilter/matcher.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/rule.h"
 #include "bpfilter/set.h"

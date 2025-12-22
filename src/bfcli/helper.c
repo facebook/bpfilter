@@ -6,10 +6,11 @@
 
 #include "helper.h"
 
-#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 
+#include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 
 #include "lexer.h"

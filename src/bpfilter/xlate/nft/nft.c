@@ -3,14 +3,16 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include <errno.h>
+#include <assert.h>
 
 #include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
-#include <bpfilter/request.h>
 #include <bpfilter/response.h>
 
 #include "xlate/front.h"
+
+struct bf_request;
+struct bf_response;
 
 static int _bf_nft_setup(void)
 {

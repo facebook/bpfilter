@@ -23,6 +23,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         gcc-c++ \
         git-core \
         google-benchmark-devel \
+        iwyu \
         iproute \
         iputils \
         jq \
@@ -60,6 +61,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         git \
         iproute2 \
         iputils-ping \
+        iwyu \
         lcov \
         libbenchmark-dev \
         libbpf-dev \

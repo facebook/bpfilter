@@ -4,7 +4,6 @@
  */
 
 #include <array>
-#include <cerrno>
 #include <cstdint>
 #include <cstring>
 #include <format> // NOLINT: used by the logging macros
@@ -13,6 +12,7 @@
 #include <iostream> // NOLINT: used by the logging macros
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <sys/types.h> // NOLINT: for pid_t
 #include <vector>

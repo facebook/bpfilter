@@ -6,12 +6,11 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>
-#include <linux/bpf.h>
+#include <linux/bpf.h> // IWYU pragma: keep
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdatomic.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "mock.h"

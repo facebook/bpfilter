@@ -5,7 +5,11 @@
 
 #include <bpfilter/helper.h>
 
-#include "fake.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "test.h"
 
 static void close_fd(void **state)

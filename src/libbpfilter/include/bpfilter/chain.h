@@ -5,13 +5,14 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include <bpfilter/dump.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 #include <bpfilter/verdict.h>
 
-struct bf_hookopts;
 struct bf_matcher;
 struct bf_rule;
 

@@ -5,8 +5,10 @@
 
 #include "bpfilter/dynbuf.h"
 
+#include <assert.h>
+#include <string.h>
+
 #include "bpfilter/helper.h"
-#include "bpfilter/logger.h"
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {

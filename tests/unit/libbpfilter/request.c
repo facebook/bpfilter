@@ -5,13 +5,15 @@
 
 #include "bpfilter/request.h"
 
-#include <errno.h>
 #include <string.h>
 
 #include <bpfilter/dynbuf.h>
 #include <bpfilter/pack.h>
 
-#include "fake.h"
+#include <stddef.h>
+
+
+#include "bpfilter/front.h"
 #include "test.h"
 
 static void new_request(void **state)

@@ -5,12 +5,15 @@
 
 #include <bpfilter/hook.h>
 
+#include <string.h>
 #include <sys/socket.h>
 
+#include "bpfilter/bpf_types.h"
 #include "bpfilter/dump.h"
+#include "bpfilter/flavor.h"
+#include "bpfilter/helper.h"
 #include "bpfilter/list.h"
 #include "bpfilter/pack.h"
-#include "fake.h"
 #include "test.h"
 
 static void hook_to_str(void **state)

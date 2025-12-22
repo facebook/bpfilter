@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 
-#include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
 
 #define _free_bf_response_ __attribute__((cleanup(bf_response_free)))

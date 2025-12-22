@@ -6,9 +6,7 @@
 #include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdio.h>
+#include <assert.h>
 #include <string.h>
 
 #include "bpfilter/front.h"

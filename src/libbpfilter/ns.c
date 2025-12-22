@@ -7,12 +7,11 @@
 
 #include "bpfilter/ns.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <sched.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"

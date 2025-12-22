@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdint.h>
 
 #include <bpfilter/bpf_types.h>
 #include <bpfilter/hook.h>

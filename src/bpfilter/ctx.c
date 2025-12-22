@@ -5,7 +5,7 @@
 
 #include "ctx.h"
 
-#include <errno.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -17,7 +17,6 @@
 #include <bpfilter/dump.h>
 #include <bpfilter/front.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/hook.h>
 #include <bpfilter/io.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>

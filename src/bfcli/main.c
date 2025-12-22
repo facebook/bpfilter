@@ -4,29 +4,16 @@
  */
 
 #include <argp.h>
-#include <errno.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include <bpfilter/bpfilter.h>
-#include <bpfilter/chain.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/hook.h>
-#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/request.h>
-#include <bpfilter/response.h>
-#include <bpfilter/set.h>
 #include <bpfilter/version.h>
 
-#include "chain.h"
-#include "helper.h"
 #include "opts.h"
-#include "print.h"
-#include "ruleset.h"
+
+struct bfc_ruleset;
 
 static void _bfc_print_version(FILE *stream, struct argp_state *state)
 {

@@ -7,10 +7,8 @@
 
 #include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
-
 #include <string.h>
 
-#include "fake.h"
 #include "test.h"
 
 static void ipt_replace(void **state)

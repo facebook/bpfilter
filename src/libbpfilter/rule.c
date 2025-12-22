@@ -5,10 +5,8 @@
 
 #include "bpfilter/rule.h"
 
-#include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"

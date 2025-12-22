@@ -5,21 +5,22 @@
 
 #include "fake.h"
 
-#include <errno.h>
-#include <limits.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/random.h>
-#include <unistd.h>
+#include <sys/types.h>
 
 #include <bpfilter/chain.h>
-#include <bpfilter/counter.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
+
 #include "bpfilter/hook.h"
+#include "bpfilter/runtime.h"
 
 static int _bft_list_dummy_pack(const void *data, bf_wpack_t *pack)
 {

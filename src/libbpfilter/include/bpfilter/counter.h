@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
 
 /**

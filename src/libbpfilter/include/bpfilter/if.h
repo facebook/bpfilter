@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <sys/types.h>
-
 /**
  * @file if.h
  *

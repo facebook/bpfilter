@@ -5,6 +5,8 @@
 
 #include "xlate/front.h"
 
+#include <assert.h>
+
 #include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 
