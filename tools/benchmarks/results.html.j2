@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark Results</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --neutral-50: #fafafa;
+            --neutral-100: #f4f4f5;
+            --neutral-200: #e4e4e7;
+            --neutral-300: #d4d4d8;
+            --neutral-400: #a1a1aa;
+            --neutral-500: #71717a;
+            --neutral-600: #52525b;
+            --neutral-700: #3f3f46;
+            --neutral-800: #27272a;
+            --neutral-900: #18181b;
+            --card-bg: #ffffff;
+            --body-bg: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0fdfa 100%);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--body-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            color: var(--neutral-800);
+            line-height: 1.6;
+        }
+
+        .container-fluid {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .page-header {
+            text-align: center;
+            padding: 2rem 0 1rem;
+        }
+
+        .page-header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .page-header .subtitle {
+            color: var(--neutral-500);
+            font-size: 0.95rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--neutral-200);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            color: white;
+        }
+
+        .stats-bar .stat-item {
+            padding: 0.75rem 1.5rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stats-bar .stat-item:last-child {
+            border-right: none;
+        }
+
+        .stats-bar .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .stats-bar .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--neutral-200);
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--neutral-800);
+            margin: 0;
+        }
+
+        .section-header .badge {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--neutral-200);
+        }
+
+        .table {
+            margin: 0;
+            font-size: 0.85rem;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            background: var(--neutral-50);
+            color: var(--neutral-700);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.875rem 0.75rem;
+            border-bottom: 2px solid var(--neutral-200);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .table thead tr:first-child th {
+            border-top: none;
+        }
+
+        .table tbody {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .table tbody td {
+            padding: 0.75rem;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--neutral-100);
+            transition: background-color 0.15s ease;
+        }
+
+        .table tbody tr:hover td {
+            background: var(--neutral-50);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) td {
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd):hover td {
+            background: var(--neutral-50);
+        }
+
+        /* Value Indicators */
+        .text-success {
+            color: var(--success) !important;
+            font-weight: 500;
+        }
+
+        .text-danger {
+            color: var(--danger) !important;
+            font-weight: 500;
+        }
+
+        .text-warning {
+            color: var(--warning) !important;
+            font-weight: 500;
+        }
+
+        /* Muted Values */
+        .text-muted {
+            color: var(--neutral-400) !important;
+        }
+
+        .missing {
+            opacity: 0.5;
+        }
+
+        .missing [data-bs-toggle="tooltip"] {
+            cursor: help;
+            text-decoration: underline dotted var(--neutral-400);
+        }
+
+        /* Charts Section */
+        #charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .chart-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card .chart-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--neutral-200);
+            background: var(--neutral-50);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+
+        .chart-card .chart-header h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--neutral-700);
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .chart-card canvas {
+            padding: 1rem;
+        }
+
+        /* Font Utilities */
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+
+        .fs-7 {
+            font-size: 0.85rem;
+        }
+
+        .fs-8 {
+            font-size: 0.7rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            #charts {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .stats-bar .row {
+                flex-direction: column;
+            }
+
+            .stats-bar .stat-item {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                text-align: center;
+            }
+
+            .table {
+                font-size: 0.75rem;
+            }
+
+            .table thead th,
+            .table tbody td {
+                padding: 0.5rem;
+            }
+
+            #charts {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Tooltip Customization */
+        .tooltip-inner {
+            background-color: var(--neutral-800);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .tooltip.bs-tooltip-top .tooltip-arrow::before {
+            border-top-color: var(--neutral-800);
+        }
+
+        /* Scrollbar */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+            background: var(--neutral-100);
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: var(--neutral-300);
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: var(--neutral-400);
+        }
+
+        /* Sortable Headers */
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 1.5rem !important;
+            transition: background-color 0.15s ease;
+        }
+
+        .sortable:hover {
+            background: var(--neutral-100);
+        }
+
+        .sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 0.5rem;
+            bottom: 0.875rem;
+            opacity: 0.3;
+            font-size: 0.7rem;
+        }
+
+        .sortable.sort-asc::after {
+            content: '↑';
+            opacity: 0.8;
+            color: var(--primary);
+        }
+
+        .sortable.sort-desc::after {
+            content: '↓';
+            opacity: 0.8;
+            color: var(--primary);
+        }
+
+        /* Benchmark Link */
+        .benchmark-link {
+            color: var(--neutral-800);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .benchmark-link:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* Description Box */
+        .description-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(6, 182, 212, 0.04) 100%);
+            border: 1px solid var(--neutral-200);
+            border-left: 3px solid var(--primary);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            padding: 1rem 1.25rem;
+            max-width: 80ch;
+            margin: 0 auto;
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: var(--neutral-600);
+        }
+
+        .description-box strong {
+            color: var(--neutral-700);
+            font-weight: 600;
+        }
+
+        .description-box em {
+            font-style: italic;
+            color: var(--neutral-700);
+        }
+
+        .description-box .text-success,
+        .description-box .text-danger {
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-4">
+        <!-- Header -->
+        <header class="page-header">
+            <h1>Performance benchmark results</h1>
+            <p class="subtitle">Tracking performance across commits</p>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="card stats-bar mb-4">
+            <div class="card-body py-0">
+                <div class="row align-items-center justify-content-center">
+                    <div class="col-auto stat-item text-center">
+                        <div class="stat-label">Commit range</div>
+                        <div class="stat-value">{{ first_commit_sha[:7] }}..{{ last_commit_sha[:7] }}</div>
+                    </div>
+                    <div class="col-auto stat-item text-center">
+                        <div class="stat-label">Host</div>
+                        <div class="stat-value">{{ hostname }}</div>
+                    </div>
+                    <div class="col-auto stat-item text-center">
+                        <div class="stat-label">Commits</div>
+                        <div class="stat-value">{{ n_commits }}</div>
+                    </div>
+                    <div class="col-auto stat-item text-center">
+                        <div class="stat-label">Results</div>
+                        <div class="stat-value">{{ n_results }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmark Table Section -->
+        <section class="mb-5">
+            <div class="card">
+                <div class="card-body">
+                    <div class="section-header">
+                        <h2>Benchmark metrics</h2>
+                        <span class="badge">{{ history.sorted_benchmarks() | length }} benchmarks</span>
+                    </div>
+
+                    <div class="description-box mb-4">
+                        Each row shows performance data for a single benchmark. <strong>Runtime</strong> is the CPU time
+                        measured for the most recent commit, and <strong>Instructions</strong> is the BPF instruction count
+                        of the generated program. The <strong>Δ</strong> (delta) columns show the percentage change compared
+                        to the mean of the previous <em>N</em> commits (e.g., "5 commits" compares against the average of
+                        commits 2-6). Only statistically significant changes (z-score &gt; 2.5) are colored:
+                        <span class="text-success">green</span> for improvements (faster or fewer instructions),
+                        <span class="text-danger">red</span> for regressions. Uncolored values indicate changes within
+                        normal variance. Click a benchmark name to jump to its historical chart below.
+                    </div>
+
+                    {%- from "summary.html.j2" import render_table -%}
+                    <div class="table-container">
+                        {{ render_table(rows, terms, none, "bootstrap", true, ureg, none, get_class) }}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section>
+            <div class="section-header">
+                <h2>Performance trends</h2>
+                <span class="badge">Historical data</span>
+            </div>
+            <div id="charts"></div>
+        </section>
+    </div>
+
+    <script>
+        function restripeTable() {
+            const visibleRows = document.querySelectorAll('tbody tr');
+            visibleRows.forEach((row, index) => {
+                row.classList.remove('table-stripe-odd', 'table-stripe-even');
+                if (index % 2 === 0) {
+                    row.classList.add('table-stripe-odd');
+                } else {
+                    row.classList.add('table-stripe-even');
+                }
+            });
+        }
+
+        let currentSort = { column: null, direction: null }; // direction: null, 'asc', 'desc'
+        let originalRowOrder = [];
+
+        // Store original row order on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const tbody = document.querySelector('#benchmark-table tbody');
+            originalRowOrder = Array.from(tbody.querySelectorAll('tr'));
+        });
+
+        function sortTable(column) {
+            const table = document.getElementById('benchmark-table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const headers = table.querySelectorAll('th.sortable');
+
+            // Determine sort direction: null -> asc -> desc -> null
+            if (currentSort.column === column) {
+                if (currentSort.direction === 'asc') {
+                    currentSort.direction = 'desc';
+                } else if (currentSort.direction === 'desc') {
+                    currentSort.direction = null;
+                    currentSort.column = null;
+                } else {
+                    currentSort.direction = 'asc';
+                }
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            // Update header classes
+            headers.forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                if (header.dataset.sort === currentSort.column && currentSort.direction) {
+                    header.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            // If no sort direction, restore original order
+            if (!currentSort.direction) {
+                originalRowOrder.forEach(row => tbody.appendChild(row));
+                restripeTable();
+                return;
+            }
+
+            // Sort rows
+            rows.sort((a, b) => {
+                let aVal, bVal;
+
+                if (column === 'name') {
+                    aVal = a.dataset.name.toLowerCase();
+                    bVal = b.dataset.name.toLowerCase();
+                    return currentSort.direction === 'asc'
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                } else if (column === 'runtime') {
+                    aVal = parseFloat(a.dataset.runtime) || 0;
+                    bVal = parseFloat(b.dataset.runtime) || 0;
+                } else if (column === 'instructions') {
+                    aVal = parseFloat(a.dataset.instructions) || 0;
+                    bVal = parseFloat(b.dataset.instructions) || 0;
+                }
+
+                if (currentSort.direction === 'asc') {
+                    return aVal - bVal;
+                } else {
+                    return bVal - aVal;
+                }
+            });
+
+            // Re-append rows in sorted order
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Re-stripe the table
+            restripeTable();
+        }
+
+        function generateChart(id, label, name, commits, runtimeData, instructionData, commitSubjects) {
+            const container = document.getElementById('charts');
+
+            container.insertAdjacentHTML("beforeend",
+                `<div id="${id}" class="card chart-card">
+                    <div class="chart-header">
+                        <h4>${label}</h4>
+                    </div>
+                    <canvas id="${id}-canvas"></canvas>
+                </div>`
+            );
+
+            const runtimeMin = Math.min(...runtimeData);
+            const runtimeMax = Math.max(...runtimeData);
+            const runtimeCenter = (runtimeMin + runtimeMax) / 2;
+
+            let chartOptions = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    family: "'JetBrains Mono', monospace",
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(24, 24, 27, 0.95)',
+                            titleFont: {
+                                family: "'JetBrains Mono', monospace",
+                                size: 12
+                            },
+                            bodyFont: {
+                                family: "'JetBrains Mono', monospace",
+                                size: 11
+                            },
+                            padding: 12,
+                            cornerRadius: 8,
+                            displayColors: true,
+                            boxPadding: 6,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    const idx = tooltipItems[0].dataIndex;
+                                    const hash = commits[idx];
+                                    const subject = commitSubjects && commitSubjects[idx] ? commitSubjects[idx] : '';
+                                    return subject ? `${hash}: ${subject}` : hash;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                font: {
+                                    family: "'JetBrains Mono', monospace",
+                                    size: 10
+                                },
+                                color: '#71717a'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y0: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Runtime (ns)',
+                                font: {
+                                    family: "'JetBrains Mono', monospace",
+                                    size: 11
+                                },
+                                color: '#71717a'
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'JetBrains Mono', monospace",
+                                    size: 10
+                                },
+                                color: '#71717a'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            min: 0,
+                            max: runtimeMax + runtimeCenter * 0.25
+                        }
+                    }
+                },
+                data: {
+                    labels: commits,
+                    datasets: [
+                        {
+                            label: 'Runtime (ns)',
+                            data: runtimeData,
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderColor: 'rgba(239, 68, 68, 0.8)',
+                            fill: true,
+                            yAxisID: 'y0',
+                            tension: 0.3,
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 1
+                        }
+                    ]
+                }
+            };
+
+            if (instructionData != null) {
+                const instructionMax = Math.max(...instructionData);
+
+                chartOptions.options.scales.y1 = {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    min: 0,
+                    title: {
+                        display: true,
+                        text: 'Instructions',
+                        font: {
+                            family: "'JetBrains Mono', monospace",
+                            size: 11
+                        },
+                        color: '#71717a'
+                    },
+                    ticks: {
+                        font: {
+                            family: "'JetBrains Mono', monospace",
+                            size: 10
+                        },
+                        color: '#71717a',
+                        callback: function(value) {
+                            if (value >= 1000000) {
+                                return (value / 1000000).toFixed(1) + 'M';
+                            }
+                            if (value >= 1000) {
+                                return (value / 1000).toFixed(1) + 'K';
+                            }
+                            return value.toFixed(0);
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                };
+
+                chartOptions.data.datasets.push({
+                    label: 'Instructions',
+                    data: instructionData,
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderColor: 'rgba(6, 182, 212, 0.8)',
+                    fill: true,
+                    yAxisID: 'y1',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: 'rgba(6, 182, 212, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1
+                });
+            }
+
+            new Chart(document.getElementById(id + '-canvas').getContext('2d'), chartOptions);
+        }
+
+        // Create each chart
+        {% for benchmark in history.sorted_benchmarks() -%}
+        generateChart("chart-{{ benchmark.name }}", "{{ benchmark.label }}", "{{ benchmark.name }}", {{ benchmark.short_commits_sha }}, {{ benchmark.times }}, {{ benchmark.nInsns | default("null", true) }}, {{ benchmark.commit_subjects | tojson }})
+        {% endfor %}
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Initialize tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+        });
+    </script>
+</body>
+
+</html>
