@@ -1,0 +1,179 @@
+{#
+  Modular benchmark table template.
+
+  Can be used standalone for CI summary reports or included in the full report.
+
+  Parameters for render_table macro:
+    - rows: list of BenchmarkRow objects
+    - terms: list of term values (e.g., [5] or [5, 15])
+    - stats: Stats object with n_successes, n_failures, n_cache_hits (optional)
+    - style: "inline" for CI comments (inline styles) or "bootstrap" for full report
+    - show_mean: whether to show mean columns (default: false for summary, true for full report)
+    - ureg: pint unit registry (required when show_mean is true)
+    - format_delta: function returning formatted delta string for a TermStats object (for inline style)
+    - get_class: function returning CSS class string for a TermStats object (for bootstrap style)
+#}
+
+{%- macro render_table(rows, terms, stats=none, style="inline", show_mean=false, ureg=none, format_delta=none, get_class=none, title="Benchmark metrics") -%}
+{%- if style == "bootstrap" -%}
+{{ _render_bootstrap_table(rows, terms, show_mean, ureg, get_class) }}
+{%- else -%}
+{{ _render_inline_table(rows, terms, stats, format_delta, title) }}
+{%- endif -%}
+{%- endmacro -%}
+
+{# Internal macro for inline-styled tables (CI comments) #}
+{%- macro _render_inline_table(rows, terms, stats, format_delta, title) -%}
+<h2>{{ title }}</h2>
+{%- if rows | length == 0 %}
+<p style="background: #f0fff4; border-left: 3px solid #38a169; padding: 12px 16px; margin: 16px 0;">
+<strong>No significant performance changes detected.</strong><br>
+All benchmarks are within normal variance compared to the baseline.
+</p>
+{%- else %}
+<p style="color: #57606a; font-size: 14px; margin-bottom: 16px;">
+This table shows only <strong>statistically significant</strong> performance changes (z-score &gt; 2.5).
+The <strong>Δ</strong> columns show the percentage change compared to the mean of the previous <em>N</em> commits.
+<span style="color: #1a7f37;">Green</span> indicates improvements (faster or fewer instructions),
+<span style="color: #cf222e;">red</span> indicates regressions.
+</p>
+<table width="100%">
+<thead>
+<tr>
+<th rowspan="2" style="white-space: nowrap;">Benchmark</th>
+<th rowspan="2" align="right" style="white-space: nowrap;">Runtime</th>
+<th rowspan="2" align="right" style="white-space: nowrap;">Instructions</th>
+{%- for term in terms %}
+<th colspan="2" align="center">{{ term }} commits</th>
+{%- endfor %}
+</tr>
+<tr>
+{%- for _ in terms %}
+<th align="right">&#916; Runtime</th>
+<th align="right">&#916; Insn</th>
+{%- endfor %}
+</tr>
+</thead>
+<tbody>
+{%- for row in rows %}
+<tr>
+<td style="white-space: nowrap;"><code>{{ row.label }}</code></td>
+<td align="right" style="white-space: nowrap;">{{ row.time_str }}</td>
+<td align="right" style="white-space: nowrap;">{{ row.insn_str or "—" }}</td>
+{%- for term in terms %}
+{%- set term_data = row.terms.get(term, {}) %}
+{%- set time_stats = term_data.get("time") %}
+{%- set insn_stats = term_data.get("nInsn") %}
+{%- if time_stats %}
+<td align="right" style="white-space: nowrap;">{{ format_delta(time_stats) }}</td>
+{%- else %}
+<td align="right" style="white-space: nowrap;">—</td>
+{%- endif %}
+{%- if insn_stats %}
+<td align="right" style="white-space: nowrap;">{{ format_delta(insn_stats) }}</td>
+{%- else %}
+<td align="right" style="white-space: nowrap;">—</td>
+{%- endif %}
+{%- endfor %}
+</tr>
+{%- endfor %}
+</tbody>
+</table>
+{%- endif %}
+{%- if stats %}
+<p><strong>Results:</strong> {{ stats.n_successes }} succeeded, {{ stats.n_failures }} failed ({{ stats.n_cache_hits }} from cache)</p>
+{%- endif %}
+{%- endmacro -%}
+
+{# Internal macro for Bootstrap-styled tables (full report) #}
+{%- macro _render_bootstrap_table(rows, terms, show_mean, ureg, get_class) -%}
+<table id="benchmark-table" class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th rowspan="{{ 3 if show_mean else 2 }}" class="sortable" data-sort="name" onclick="sortTable('name')">Benchmark</th>
+            <th rowspan="{{ 3 if show_mean else 2 }}" class="text-end sortable" data-sort="runtime" onclick="sortTable('runtime')">Runtime</th>
+            <th rowspan="{{ 3 if show_mean else 2 }}" class="text-end sortable" data-sort="instructions" onclick="sortTable('instructions')">Instructions</th>
+            {%- for term in terms -%}
+            <th colspan="{{ 4 if show_mean else 2 }}" class="text-center">{{ term }} commits</th>
+            {%- endfor -%}
+        </tr>
+        {%- if show_mean %}
+        <tr>
+            {%- for _ in terms -%}
+            <th colspan="2" class="text-center">Runtime</th>
+            <th colspan="2" class="text-center">Insn</th>
+            {%- endfor -%}
+        </tr>
+        <tr>
+            {%- for _ in terms -%}
+            <th class="text-end">Mean</th>
+            <th class="text-end">&#916;</th>
+            <th class="text-end">Mean</th>
+            <th class="text-end">&#916;</th>
+            {%- endfor -%}
+        </tr>
+        {%- else %}
+        <tr>
+            {%- for _ in terms -%}
+            <th class="text-end">&#916; Runtime</th>
+            <th class="text-end">&#916; Insn</th>
+            {%- endfor -%}
+        </tr>
+        {%- endif %}
+    </thead>
+    <tbody class="table-group-divider">
+        {%- for row in rows %}
+        <tr data-name="{{ row.label }}" data-runtime="{{ row.runtime_ns | default(0) }}" data-instructions="{{ row.insn_count | default(0) }}">
+            <td class="fw-medium"><a href="#chart-{{ row.name }}" class="benchmark-link">{{ row.label }}</a></td>
+            <td class="text-end">{{ row.time_str }}</td>
+            {%- if row.insn_str %}
+            <td class="text-end">{{ row.insn_str }}</td>
+            {%- else %}
+            <td class="missing text-end"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="No instruction data for this benchmark">—</span></td>
+            {%- endif %}
+
+            {%- for term in terms %}
+            {%- set term_data = row.terms.get(term, {}) %}
+            {%- set time_stats = term_data.get("time") %}
+            {%- set insn_stats = term_data.get("nInsn") %}
+            {%- if time_stats %}
+            {%- if show_mean %}
+            <td class="text-end">{{ '{:.2f~}'.format((time_stats.mean * ureg.nanosecond).to_compact()) }} <span class="text-muted fs-8">(±{{ '{:.2f}'.format(time_stats.noise * 100) }}%)</span></td>
+            {%- endif %}
+            <td class="text-end {{ get_class(time_stats) }}">{{ '{:+.2f}'.format(time_stats.pct_change) }}%</td>
+            {%- if insn_stats %}
+            {%- if show_mean %}
+            <td class="text-end">{{ '{:.0f}'.format(insn_stats.mean) }} <span class="text-muted fs-8">(±{{ '{:.2f}'.format(insn_stats.noise * 100) }}%)</span></td>
+            {%- endif %}
+            <td class="text-end {{ get_class(insn_stats) }}">{{ '{:+.2f}'.format(insn_stats.pct_change) }}%</td>
+            {%- else %}
+            {%- if show_mean %}
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="No instruction data">—</span></td>
+            {%- endif %}
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="No instruction data">—</span></td>
+            {%- endif %}
+            {%- else %}
+            {%- if show_mean %}
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            {%- else %}
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            <td class="text-end missing"><span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Insufficient data">—</span></td>
+            {%- endif %}
+            {%- endif %}
+            {%- endfor %}
+        </tr>
+        {%- endfor %}
+    </tbody>
+</table>
+{%- endmacro -%}
+
+{#
+  Standalone rendering for CI summary reports.
+  When this template is rendered directly, use the inline style.
+#}
+{%- if rows is defined -%}
+{{ render_table(rows, terms, stats, "inline", false, none, format_delta, none) }}
+{%- endif -%}
