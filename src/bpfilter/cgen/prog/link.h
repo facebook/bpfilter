@@ -28,6 +28,10 @@ struct bf_link
     /** File descriptor of the link, only valid once the link object has been
      * created. */
     int fd;
+
+    /** File descriptor of the extra BPF link object, used to attach Netfilter
+     * programs to inet6 path. */
+    int fd_extra;
 };
 
 #define _free_bf_link_ __attribute__((__cleanup__(bf_link_free)))

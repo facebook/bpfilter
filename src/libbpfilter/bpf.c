@@ -261,8 +261,8 @@ int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
     return bf_bpf(BF_BPF_MAP_UPDATE_BATCH, &attr);
 }
 
-int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook,
-                       const struct bf_hookopts *opts, int flags)
+int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook, int flags,
+                       uint32_t family, int32_t priority)
 {
     enum bf_bpf_attach_type attach_type;
     union bpf_attr attr;
@@ -277,12 +277,9 @@ int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook,
     attr.link_create.flags = flags;
 
     if (attach_type == BF_BPF_NETFILTER) {
-        if (!opts)
-            return -EINVAL;
-
-        attr.link_create.netfilter.pf = opts->family;
+        attr.link_create.netfilter.pf = family;
         attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
-        attr.link_create.netfilter.priority = opts->priorities[0];
+        attr.link_create.netfilter.priority = priority;
     }
 
     return bf_bpf(BF_BPF_LINK_CREATE, &attr);

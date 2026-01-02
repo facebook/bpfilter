@@ -411,14 +411,13 @@ static void bpf_link_create_success(void **state)
     (void)mock;
 
     bft_mock_syscall_set_retval(50);
-    // Non-netfilter hook doesn't require opts
-    r = bf_bpf_link_create(10, 5, BF_HOOK_XDP, NULL, 0);
+    // Non-netfilter hook doesn't require family/priority
+    r = bf_bpf_link_create(10, 5, BF_HOOK_XDP, 0, 0, 0);
     assert_int_equal(r, 50);
 }
 
 static void bpf_link_create_netfilter(void **state)
 {
-    struct bf_hookopts opts = {0};
     int r;
 
     (void)state;
@@ -426,23 +425,10 @@ static void bpf_link_create_netfilter(void **state)
     _clean_bft_mock_ bft_mock mock = bft_mock_get(syscall);
     (void)mock;
 
-    opts.family = 2; // AF_INET
-    opts.priorities[0] = 100;
-
     bft_mock_syscall_set_retval(51);
-    r = bf_bpf_link_create(10, 0, BF_HOOK_NF_PRE_ROUTING, &opts, 0);
+    // Netfilter hook with family=2 (AF_INET) and priority=100
+    r = bf_bpf_link_create(10, 0, BF_HOOK_NF_PRE_ROUTING, 0, 2, 100);
     assert_int_equal(r, 51);
-}
-
-static void bpf_link_create_netfilter_no_opts(void **state)
-{
-    int r;
-
-    (void)state;
-
-    // Netfilter hook requires opts
-    r = bf_bpf_link_create(10, 0, BF_HOOK_NF_PRE_ROUTING, NULL, 0);
-    assert_int_equal(r, -EINVAL);
 }
 
 static void bpf_link_update_success(void **state)
@@ -530,7 +516,6 @@ int main(void)
         cmocka_unit_test(bpf_map_update_batch_success),
         cmocka_unit_test(bpf_link_create_success),
         cmocka_unit_test(bpf_link_create_netfilter),
-        cmocka_unit_test(bpf_link_create_netfilter_no_opts),
         cmocka_unit_test(bpf_link_update_success),
         cmocka_unit_test(bpf_link_update_failure),
         cmocka_unit_test(bpf_link_detach_success),

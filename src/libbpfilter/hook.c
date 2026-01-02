@@ -238,14 +238,14 @@ static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
 {
     bf_assert(hookopts && raw_opt);
 
-    if (bf_streq("inet4", raw_opt))
-        hookopts->family = PF_INET;
-    else if (bf_streq("inet6", raw_opt))
-        hookopts->family = PF_INET6;
-    else
-        return bf_err_r(-ENOTSUP, "unknown netfilter family '%s'", raw_opt);
+    (void)hookopts;
 
-    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_FAMILY);
+    if (bf_streq("inet4", raw_opt) || bf_streq("inet6", raw_opt)) {
+        bf_warn(
+            "family= hook option is deprecated for Netfilter chains, bpfilter will automatically filter on both the IPv4 and IPv6 families");
+    } else {
+        return bf_err_r(-ENOTSUP, "unknown netfilter family '%s'", raw_opt);
+    }
 
     return 0;
 }
@@ -255,7 +255,9 @@ static void _bf_hookopts_family_dump(const struct bf_hookopts *hookopts,
 {
     bf_assert(hookopts && prefix);
 
-    DUMP(prefix, "family: %s", hookopts->family == PF_INET ? "inet4" : "inet6");
+    (void)hookopts;
+
+    DUMP(prefix, "family: <deprecated>");
 }
 
 static int _bf_hookopts_priorities_parse(struct bf_hookopts *hookopts,
@@ -342,9 +344,11 @@ static struct bf_hookopts_ops
                             .supported_by = 0,
                             .parse = _bf_hookopts_cgpath_parse,
                             .dump = _bf_hookopts_cgpath_dump},
+    /** @deprecated Hook option `family=` is deprecated for Netfilter chains.
+     * bpfilter will automatically filter on both the IPv4 and IPv6 families. */
     [BF_HOOKOPTS_FAMILY] = {.name = "family",
                             .type = BF_HOOKOPTS_FAMILY,
-                            .required_by = BF_FLAGS(BF_FLAVOR_NF),
+                            .required_by = 0,
                             .supported_by = 0,
                             .parse = _bf_hookopts_family_parse,
                             .dump = _bf_hookopts_family_dump},
