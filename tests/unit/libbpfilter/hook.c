@@ -253,19 +253,16 @@ static void hookopts_parse_family(void **state)
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         assert_ok(bf_hookopts_new(&hookopts));
 
-        // Test inet4
+        // Test inet4 - family is deprecated, so it's accepted but not set
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
-        assert_int_equal(hookopts->family, PF_INET);
-        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY));
     }
 
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         assert_ok(bf_hookopts_new(&hookopts));
 
-        // Test inet6
+        // Test inet6 - family is deprecated, so it's accepted but not set
         assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
-        assert_int_equal(hookopts->family, PF_INET6);
     }
 
     {
@@ -668,13 +665,11 @@ static void hookopts_parse_opts_list(void **state)
     assert_ok(bf_hookopts_new(&hookopts));
     assert_ok(bf_hookopts_parse_opts(hookopts, opts));
 
-    // Verify all options were parsed
+    // Verify all options were parsed (family is deprecated so not set)
     assert_int_equal(hookopts->ifindex, 42);
-    assert_int_equal(hookopts->family, PF_INET);
     assert_int_equal(hookopts->priorities[0], 100);
     assert_int_equal(hookopts->priorities[1], 200);
     assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
-    assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY));
     assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_PRIORITIES));
 }
 

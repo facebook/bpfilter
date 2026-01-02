@@ -108,9 +108,9 @@ Print a chain.
 .. code:: shell
 
     $ # Create a Netfilter chain and print it
-    $ sudo bfcli chain set --from-str "chain my_input_chain BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT"
+    $ sudo bfcli chain set --from-str "chain my_input_chain BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT"
     $ sudo bfcli chain get --name my_input_chain
-      chain my_input_chain BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT
+      chain my_input_chain BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT
           counters policy 1161 packets 149423 bytes; error 0 packets 0 bytes
 
 ``chain logs``
@@ -331,9 +331,9 @@ With:
      - N/A
      - Path to the cgroup to attach to.
    * - ``family=$FAMILY``
-     - ``BF_HOOK_NF_*``
      - N/A
-     - Netfilter hook version to attach the chain to: ``inet4`` for IPv4 or ``inet6`` for IPv6. Rules that are incompatible with the hook version will be ignored.
+     - N/A
+     - Deprecated, bpfilter will automatically attach Netfilter chains to both IPv4 and IPv6 families.
    * - ``priorities=$INT1-$INT2``
      - ``BF_HOOK_NF_*``
      - N/A
