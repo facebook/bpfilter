@@ -73,8 +73,11 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     size_t ridx = 0;
     int r;
 
-    bf_assert(chain && name);
-    bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
+    assert(chain && name);
+    if (hook >= _BF_HOOK_MAX)
+        return bf_err_r(-EINVAL, "unknown hook type");
+    if (policy >= _BF_TERMINAL_VERDICT_MAX)
+        return bf_err_r(-EINVAL, "unknown policy type");
 
     _chain = malloc(sizeof(*_chain));
     if (!_chain)
@@ -124,11 +127,11 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_chain.name");
 
-    r = bf_rpack_kv_enum(node, "hook", &hook);
+    r = bf_rpack_kv_enum(node, "hook", &hook, 0, _BF_HOOK_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_chain.hook");
 
-    r = bf_rpack_kv_enum(node, "policy", &policy);
+    r = bf_rpack_kv_enum(node, "policy", &policy, 0, _BF_TERMINAL_VERDICT_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_chain.policy");
 

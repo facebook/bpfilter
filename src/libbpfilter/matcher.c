@@ -1295,11 +1295,11 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
 
     bf_assert(matcher);
 
-    r = bf_rpack_kv_enum(node, "type", &type);
+    r = bf_rpack_kv_enum(node, "type", &type, 0, _BF_MATCHER_TYPE_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.type");
 
-    r = bf_rpack_kv_enum(node, "op", &op);
+    r = bf_rpack_kv_enum(node, "op", &op, 0, _BF_MATCHER_OP_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.op");
 

@@ -103,11 +103,11 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
         return bf_err_r(-EINVAL, "map name can't be empty");
     bf_strncpy(_map->name, BPF_OBJ_NAME_LEN, name);
 
-    r = bf_rpack_kv_enum(node, "type", &_map->type);
+    r = bf_rpack_kv_enum(node, "type", &_map->type, 0, _BF_MAP_TYPE_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_map.type");
 
-    r = bf_rpack_kv_enum(node, "bpf_type", &_map->bpf_type);
+    r = bf_rpack_kv_enum(node, "bpf_type", &_map->bpf_type, 0, __MAX_BPF_MAP_TYPE);
     if (r)
         return bf_rpack_key_err(r, "bf_map.bpf_type");
 
