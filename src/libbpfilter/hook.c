@@ -41,6 +41,11 @@ static_assert(ARRAY_SIZE(_bf_hook_strs) == _BF_HOOK_MAX,
 
 const char *bf_hook_to_str(enum bf_hook hook)
 {
+    if (hook < 0 || hook >= _BF_HOOK_MAX) {
+        bf_warn("invalid hook value %d", hook);
+        return "(invalid)";
+    }
+
     return _bf_hook_strs[hook];
 }
 
@@ -74,6 +79,11 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
     static_assert(ARRAY_SIZE(flavors) == _BF_HOOK_MAX,
                   "missing entries in bf_flavor array");
 
+    if (hook < 0 || hook >= _BF_HOOK_MAX) {
+        bf_warn("invalid hook value %d", hook);
+        return -EINVAL;
+    }
+
     return flavors[hook];
 }
 
@@ -95,6 +105,11 @@ enum bf_bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
     static_assert(ARRAY_SIZE(attach_types) == _BF_HOOK_MAX,
                   "missing entries in bpf_attach_type array");
 
+    if (hook < 0 || hook >= _BF_HOOK_MAX) {
+        bf_warn("invalid hook value %d", hook);
+        return -EINVAL;
+    }
+
     return attach_types[hook];
 }
 
@@ -115,6 +130,11 @@ enum bf_bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
 
     static_assert(ARRAY_SIZE(prog_types) == _BF_HOOK_MAX,
                   "missing entries in bpf_prog_type array");
+
+    if (hook < 0 || hook >= _BF_HOOK_MAX) {
+        bf_warn("invalid hook value %d", hook);
+        return -EINVAL;
+    }
 
     return prog_types[hook];
 }
