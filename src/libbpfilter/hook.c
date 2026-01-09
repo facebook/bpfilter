@@ -41,16 +41,21 @@ static_assert(ARRAY_SIZE(_bf_hook_strs) == _BF_HOOK_MAX,
 
 const char *bf_hook_to_str(enum bf_hook hook)
 {
+    if (hook < 0 || hook >= _BF_HOOK_MAX)
+        return "<bf_hook unknown>";
+
     return _bf_hook_strs[hook];
 }
 
-enum bf_hook bf_hook_from_str(const char *str)
+int bf_hook_from_str(const char *str, enum bf_hook *hook)
 {
-    bf_assert(str);
+    assert(hook);
 
-    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
-        if (bf_streq(_bf_hook_strs[hook], str))
-            return hook;
+    for (enum bf_hook i = 0; i < _BF_HOOK_MAX; ++i) {
+        if (bf_streq(_bf_hook_strs[i], str)) {
+            *hook = i;
+            return 0;
+        }
     }
 
     return -EINVAL;

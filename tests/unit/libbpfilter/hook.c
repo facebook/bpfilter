@@ -35,24 +35,8 @@ static void hook_from_str(void **state)
 {
     (void)state;
 
-    // Test valid conversions
-    assert_int_equal(bf_hook_from_str("BF_HOOK_XDP"), BF_HOOK_XDP);
-    assert_int_equal(bf_hook_from_str("BF_HOOK_TC_INGRESS"),
-                     BF_HOOK_TC_INGRESS);
-    assert_int_equal(bf_hook_from_str("BF_HOOK_NF_PRE_ROUTING"),
-                     BF_HOOK_NF_PRE_ROUTING);
-    assert_int_equal(bf_hook_from_str("BF_HOOK_TC_EGRESS"), BF_HOOK_TC_EGRESS);
-
-    // Test round-trip for all hooks
-    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
-        const char *str = bf_hook_to_str(hook);
-        assert_int_equal(bf_hook_from_str(str), hook);
-    }
-
-    // Test invalid strings
-    assert_err((int)bf_hook_from_str("BF_HOOK_XD"));
-    assert_err((int)bf_hook_from_str("invalid"));
-    assert_err((int)bf_hook_from_str("BF_HOOK"));
+    assert_enum_to_from_str(enum bf_hook, bf_hook_to_str, bf_hook_from_str, BF_HOOK_XDP,
+                            _BF_HOOK_MAX);
 }
 
 static void hook_to_flavor(void **state)
