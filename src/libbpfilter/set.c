@@ -291,7 +291,7 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
                 n_comps, BF_SET_MAX_N_COMPS);
         }
 
-        r = bf_rpack_enum(comp_node, &key[i]);
+        r = bf_rpack_enum(comp_node, &key[i], 0, _BF_MATCHER_TYPE_MAX);
         if (r)
             return bf_rpack_key_err(r, "bf_set.key");
     }

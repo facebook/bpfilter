@@ -399,7 +399,9 @@ static void wpack_enum(void **state)
     assert_ok(bf_rpack_new(&rpack, data, data_len));
     root = bf_rpack_root(rpack);
 
-    assert_ok(bf_rpack_kv_enum(root, "enum_val", &enum_val));
+    assert_ok(bf_rpack_kv_enum(root, "enum_val", &enum_val, 0, 10));
+    assert_err(bf_rpack_kv_enum(root, "enum_val", &enum_val, 0, 5));
+    assert_err(bf_rpack_kv_enum(root, "enum_val", &enum_val, 6, 10));
     assert_int_equal(enum_val, 5);
 }
 

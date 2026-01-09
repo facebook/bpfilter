@@ -304,19 +304,29 @@ typedef union
  * @brief Read an named enumerator value from a node.
  *
  * This macro will ensure the enumerator value is properly casted from the
- * corresponding integer stored in the pack.
+ * corresponding integer stored in the pack, and validate that it falls within
+ * the valid range [first, max).
  *
  * @param node Node to read from.
  * @param key Key of the node to read. Can't be NULL.
  * @param value Pointer to the enumerator value to read into.
+ * @param first First valid enumerator value (inclusive).
+ * @param max Maximum enumerator value (exclusive).
  * @return 0 on success, or a negative error value on failure.
  */
-#define bf_rpack_kv_enum(node, key, value)                                     \
+#define bf_rpack_kv_enum(node, key, value, first, max)                         \
     ({                                                                         \
         int __value;                                                           \
         int __r = bf_rpack_kv_int(node, key, &__value);                        \
-        if (!__r)                                                              \
-            *(value) = __value;                                                \
+        if (!__r) {                                                            \
+            if (__value < (first) || __value >= (max)) {                       \
+                bf_err("invalid %s value %d (expected [%d, %d))", key,         \
+                       __value, (int)(first), (int)(max));                     \
+                __r = -EINVAL;                                                 \
+            } else {                                                           \
+                *(value) = __value;                                            \
+            }                                                                  \
+        }                                                                      \
         __r;                                                                   \
     })
 
@@ -327,14 +337,23 @@ typedef union
  *
  * @param node Node to read from.
  * @param value Pointer to the enumerator value to read into.
+ * @param first First valid enumerator value (inclusive).
+ * @param max Maximum enumerator value (exclusive).
  * @return 0 on success, or a negative error value on failure.
  */
-#define bf_rpack_enum(node, value)                                             \
+#define bf_rpack_enum(node, value, first, max)                                 \
     ({                                                                         \
         int __value;                                                           \
         int __r = bf_rpack_int(node, &__value);                                \
-        if (!__r)                                                              \
-            *(value) = __value;                                                \
+        if (!__r) {                                                            \
+            if (__value < (first) || __value >= (max)) {                       \
+                bf_err("invalid enum value %d (expected [%d, %d))", __value,   \
+                       (int)(first), (int)(max));                              \
+                __r = -EINVAL;                                                 \
+            } else {                                                           \
+                *(value) = __value;                                            \
+            }                                                                  \
+        }                                                                      \
         __r;                                                                   \
     })
 
