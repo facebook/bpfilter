@@ -76,13 +76,14 @@ Now that the daemon is up and running, we will use ``bfcli`` to send a filtering
 .. code-block:: bash
 
 	$ sudo bfcli ruleset set --from-str "
-	chain BF_HOOK_NF_LOCAL_OUT policy ACCEPT
-	    rule
-	        ip4.proto icmp
-	        DROP
+        chain my_chain BF_HOOK_XDP{ifindex=$IFINDEX} ACCEPT
+            rule
+                ip4.proto eq icmp
+                counter
+                DROP
 	"
 
-We split the chain over multiple lines, to it's easier to read. Alternatively, you can write the chain in a file and call ``bfcli ruleset set --from-file $MYFILE``. We choose to create a chain attached to ``BF_HOOK_NF_LOCAL_OUT`` which is called for every packet leaving this host with ``ACCEPT`` as the default policy: if a packet doesn't match any of the rules defined, it will be accepted by default.
+We split the chain over multiple lines, so it's easier to read. Alternatively, you can write the chain in a file and call ``bfcli ruleset set --from-file $MYFILE``. We choose to create a chain attached to ``BF_HOOK_XDP`` with ``ACCEPT`` as the default policy: if a packet doesn't match any of the rules defined, it will be accepted by default.
 
 Our chain contains a single rule matching against the IPv4's ``protocol`` field. Packets matching this rule will be ``DROP`` ed.
 
@@ -99,4 +100,16 @@ Now that our filtering rule is in place, pings to ``facebook.com`` should be blo
 	4 packets transmitted, 0 received, 100% packet loss, time 3010ms
 
 
-100% packet loss? That's great news! If you are eager to learn more ways to filter traffic using **bfcli**, check its :doc:`documentation <bfcli>`.
+100% packet loss? That's great news! Let's see if this is bpfilter's doing:
+
+.. code-block:: bash
+
+    $ sudo bfcli ruleset get
+    chain my_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+        counters policy 12942 packets 12436391 bytes; error 0 packets 0 bytes
+        rule
+            ip4.proto eq icmp
+            counters 4 packets 392 bytes
+            DROP
+
+If you are eager to learn more ways to filter traffic using **bfcli**, check its :doc:`documentation <bfcli>`.
