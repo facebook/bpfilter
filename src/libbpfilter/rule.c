@@ -93,7 +93,7 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.mark");
 
-    r = bf_rpack_kv_enum(node, "verdict", &_rule->verdict);
+    r = bf_rpack_kv_enum(node, "verdict", &_rule->verdict, 0, _BF_VERDICT_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_rule.verdict");
 
