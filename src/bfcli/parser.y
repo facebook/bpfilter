@@ -171,23 +171,16 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
 
 verdict         : VERDICT
                 {
-                    enum bf_verdict verdict;
-
-                    if (bf_verdict_from_str($1, &verdict) < 0)
+                    if (bf_verdict_from_str($1, &$$) < 0)
                         bf_parse_err("unknown verdict '%s'\n", $1);
-
                     free($1);
-                    $$ = verdict;
                 }
 
 hook            : HOOK
                 {
-                    enum bf_hook hook = bf_hook_from_str($1);
-                    if (hook < 0)
+                    if (bf_hook_from_str($1, &$$) < 0)
                         bf_parse_err("unknown hook '%s'\n", $1);
-
                     free($1);
-                    $$ = hook;
                 }
 
 hookopts        : %empty { $$ = NULL; }
@@ -464,24 +457,16 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                 ;
 matcher_type    : MATCHER_TYPE
                 {
-                    enum bf_matcher_type type;
-
-                    if (bf_matcher_type_from_str($1, &type) < 0)
+                    if (bf_matcher_type_from_str($1, &$$) < 0)
                         bf_parse_err("unknown matcher type '%s'\n", $1);
-
                     free($1);
-                    $$ = type;
                 }
 matcher_op      : %empty { $$ = BF_MATCHER_EQ; }
                 | MATCHER_OP
                 {
-                    enum bf_matcher_op op;
-
-                    if (bf_matcher_op_from_str($1, &op) < 0)
+                    if (bf_matcher_op_from_str($1, &$$) < 0)
                         bf_parse_err("unknown matcher operator '%s'\n", $1);
-
                     free($1);
-                    $$ = op;
                 }
                 ;
 
