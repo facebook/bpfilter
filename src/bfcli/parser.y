@@ -182,12 +182,12 @@ verdict         : VERDICT
 
 hook            : HOOK
                 {
-                    enum bf_hook hook = bf_hook_from_str($1);
+                    int hook = bf_hook_from_str($1);
                     if (hook < 0)
                         bf_parse_err("unknown hook '%s'\n", $1);
 
                     free($1);
-                    $$ = hook;
+                    $$ = (enum bf_hook)hook;
                 }
 
 hookopts        : %empty { $$ = NULL; }
