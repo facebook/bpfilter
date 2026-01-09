@@ -74,7 +74,14 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     int r;
 
     bf_assert(chain && name);
-    bf_assert(policy < _BF_TERMINAL_VERDICT_MAX);
+    if (hook < 0 || hook >= _BF_HOOK_MAX) {
+        bf_warn("invalid hook value %d", hook);
+        return -EINVAL;
+    }
+    if (policy < 0 || policy >= _BF_TERMINAL_VERDICT_MAX) {
+        bf_warn("invalid policy value %d", policy);
+        return -EINVAL;
+    }
 
     _chain = malloc(sizeof(*_chain));
     if (!_chain)
@@ -127,10 +134,14 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     r = bf_rpack_kv_enum(node, "hook", &hook);
     if (r)
         return bf_rpack_key_err(r, "bf_chain.hook");
+    if (hook < 0 || hook >= _BF_HOOK_MAX)
+        return bf_err_r(-EINVAL, "invalid hook value %d", hook);
 
     r = bf_rpack_kv_enum(node, "policy", &policy);
     if (r)
         return bf_rpack_key_err(r, "bf_chain.policy");
+    if (policy < 0 || policy >= _BF_TERMINAL_VERDICT_MAX)
+        return bf_err_r(-EINVAL, "invalid policy value %d", policy);
 
     r = bf_rpack_kv_array(node, "sets", &array);
     if (r)
