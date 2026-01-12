@@ -145,3 +145,15 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set);
  */
 struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
                                             const struct bf_matcher *matcher);
+
+/**
+ * @brief Get a set from the chain by name.
+ *
+ * Returns a pointer to the set with the given name. The returned pointer
+ * is owned by the chain and should not be freed by the caller.
+ *
+ * @param chain Chain to get the set from. Can't be NULL.
+ * @param set_name Name of the set to retrieve. Can't be NULL.
+ * @return Pointer to the set, or NULL if not found.
+ */
+struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain, const char *set_name);
