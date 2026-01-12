@@ -229,6 +229,7 @@ static void cmd_to_str(void **state)
     assert_non_null(bf_request_cmd_to_str(BF_REQ_CHAIN_PROG_FD));
     assert_non_null(bf_request_cmd_to_str(BF_REQ_CHAIN_LOGS_FD));
     assert_non_null(bf_request_cmd_to_str(BF_REQ_CHAIN_FLUSH));
+    assert_non_null(bf_request_cmd_to_str(BF_REQ_CHAIN_UPDATE_SET));
     assert_non_null(bf_request_cmd_to_str(BF_REQ_COUNTERS_SET));
     assert_non_null(bf_request_cmd_to_str(BF_REQ_COUNTERS_GET));
     assert_non_null(bf_request_cmd_to_str(BF_REQ_CUSTOM));
@@ -236,6 +237,8 @@ static void cmd_to_str(void **state)
     // Verify specific strings
     assert_string_equal(bf_request_cmd_to_str(BF_REQ_CHAIN_GET),
                         "BF_REQ_CHAIN_GET");
+    assert_string_equal(bf_request_cmd_to_str(BF_REQ_CHAIN_UPDATE_SET),
+                        "BF_REQ_CHAIN_UPDATE_SET");
     assert_string_equal(bf_request_cmd_to_str(BF_REQ_CUSTOM), "BF_REQ_CUSTOM");
 }
 
