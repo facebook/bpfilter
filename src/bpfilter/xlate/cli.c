@@ -17,6 +17,7 @@
 #include <bpfilter/request.h>
 #include <bpfilter/response.h>
 
+#include "bpfilter/set.h"
 #include "cgen/cgen.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
@@ -540,6 +541,76 @@ int _bf_cli_chain_flush(const struct bf_request *request,
     return bf_ctx_delete_cgen(cgen, true);
 }
 
+int _bf_cli_chain_update_set(const struct bf_request *request,
+                       struct bf_response **response)
+{
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    _free_bf_chain_ struct bf_chain *new_chain = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    struct bf_set *dest_set = NULL;
+    _cleanup_free_ char *chain_name = NULL;
+    struct bf_cgen *cgen = NULL;
+    bf_rpack_node_t child;
+    int r;
+
+    assert(request);
+
+    (void)response;
+
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "name", &chain_name);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "to_add", &child);
+    if (r)
+        return r;
+    r = bf_set_new_from_pack(&to_add, child);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_obj(bf_rpack_root(pack), "to_remove", &child);
+    if (r)
+        return r;
+    r = bf_set_new_from_pack(&to_remove, child);
+    if (r)
+        return r;
+
+    if (!bf_streq(to_add->name, to_remove->name))
+        return bf_err_r(-EINVAL, "to_add->name must match to_remove->name");
+
+    cgen = bf_ctx_get_cgen(chain_name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' does not exist", chain_name);
+
+    r = bf_chain_new_from_copy(&new_chain, cgen->chain);
+    if (r)
+        return r;
+
+    dest_set = bf_chain_get_set_by_name(new_chain, to_add->name);
+    if (!dest_set)
+        return bf_err_r(-ENOENT, "set '%s' does not exist", to_add->name);
+
+    r = bf_set_add_many(dest_set, &to_add);
+    if (r)
+        return bf_err_r(r, "failed to calculate set union");
+
+    r = bf_set_remove_many(dest_set, &to_remove);
+    if (r)
+        return bf_err_r(r, "failed to calculate set difference");
+
+    r = bf_cgen_update(cgen, &new_chain);
+    if (r)
+        return bf_err_r(r, "failed to update chain with new set data");
+
+    return 0;
+}
+
 static int _bf_cli_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
@@ -581,6 +652,9 @@ static int _bf_cli_request_handler(const struct bf_request *request,
         break;
     case BF_REQ_CHAIN_FLUSH:
         r = _bf_cli_chain_flush(request, response);
+        break;
+    case BF_REQ_CHAIN_UPDATE_SET:
+        r = _bf_cli_chain_update_set(request, response);
         break;
     default:
         r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
