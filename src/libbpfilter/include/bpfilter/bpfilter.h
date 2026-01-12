@@ -322,7 +322,8 @@ int bf_chain_update(const struct bf_chain *chain);
  * - `-ENOENT`: no chain found for this name or set not found in chain.
  * - `-EINVAL`: set key format doesn't match existing set.
  */
-int bf_set_update(const char *chain_name, const struct bf_set *set);
+int bf_chain_set_update(const char *chain_name, const struct bf_set *to_add,
+                        const struct bf_set *to_remove);
 
 /**
  * @brief Remove a chain.

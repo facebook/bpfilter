@@ -73,6 +73,7 @@ static const char * const _bfc_action_strs[] = {
     "load", // BFC_ACTION_LOAD
     "attach", // BFC_ACTION_ATTACH
     "update", // BFC_ACTION_UPDATE
+    "update-set", // BFC_ACTION_UPDATE_SET
     "flush", // BFC_ACTION_FLUSH
 };
 static_assert(ARRAY_SIZE(_bfc_action_strs) == _BFC_ACTION_MAX,
@@ -106,6 +107,10 @@ enum bfc_opts_option_id
     BFC_OPT_CHAIN_FROM_FILE,
     BFC_OPT_CHAIN_NAME,
     BFC_OPT_CHAIN_HOOK_OPTS,
+    BFC_OPT_SET_NAME,
+    BFC_OPT_SET_FORMAT,
+    BFC_OPT_SET_ADD_PAYLOAD,
+    BFC_OPT_SET_REMOVE_PAYLOAD,
     BFC_OPT_DRY_RUN,
     _BFC_OPT_MAX,
 };
@@ -223,6 +228,21 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .doc = "Update a chain\vAtomically update chain --name with the new "
                "definition provided by --from-str or --from-file.",
         .cb = bfc_chain_update,
+    },
+    {
+        .name = "bfcli chain update-set",
+        .object = BFC_OBJECT_CHAIN,
+        .action = BFC_ACTION_UPDATE_SET,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME,
+                               BFC_OPT_SET_FORMAT, BFC_OPT_SET_ADD_PAYLOAD,
+                               BFC_OPT_SET_REMOVE_PAYLOAD),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME,
+                                  BFC_OPT_SET_FORMAT),
+        .doc = "Update a set in a chain\vAtomically update the content of a "
+               "named set in a chain using delta operations. Use --set-add to "
+               "add elements and --set-remove to remove elements. At least one "
+               "of --set-add or --set-remove must be specified.",
+        .cb = bfc_chain_update_set,
     },
     {
         .name = "bfcli chain flush",
@@ -354,6 +374,43 @@ static void _bfc_opts_chain_hook_opts_cb(struct argp_state *state,
         argp_error(state, "failed to parse hook option '%s'", arg);
 };
 
+static void _bfc_opts_set_name_cb(struct argp_state *state, const char *arg,
+                                  struct bfc_opts *opts)
+{
+    if (strlen(arg) == 0)
+        argp_error(state, "--set-name can't be empty");
+
+    opts->set_name = arg;
+};
+
+static void _bfc_opts_set_format_cb(struct argp_state *state, const char *arg,
+                                    struct bfc_opts *opts)
+{
+    if (strlen(arg) == 0)
+        argp_error(state, "--set-format can't be empty");
+
+    opts->set_format = arg;
+};
+
+static void _bfc_opts_set_add_payload_cb(struct argp_state *state,
+                                         const char *arg, struct bfc_opts *opts)
+{
+    if (strlen(arg) == 0)
+        argp_error(state, "--set-add can't be empty");
+
+    opts->set_add_payload = arg;
+};
+
+static void _bfc_opts_set_remove_payload_cb(struct argp_state *state,
+                                             const char *arg,
+                                             struct bfc_opts *opts)
+{
+    if (strlen(arg) == 0)
+        argp_error(state, "--set-remove can't be empty");
+
+    opts->set_remove_payload = arg;
+};
+
 static void _bfc_opts_dry_run(struct argp_state *state, const char *arg,
                               struct bfc_opts *opts)
 {
@@ -446,6 +503,38 @@ struct bfc_opts_opt
         .arg = "HOOKOPT=VALUE",
         .doc = "Hook option to attach the chain",
         .parser = _bfc_opts_chain_hook_opts_cb,
+    },
+    {
+        .id = BFC_OPT_SET_NAME,
+        .key = 'S',
+        .name = "set-name",
+        .arg = "NAME",
+        .doc = "Name of the set to update",
+        .parser = _bfc_opts_set_name_cb,
+    },
+    {
+        .id = BFC_OPT_SET_FORMAT,
+        .key = 'K',
+        .name = "set-format",
+        .arg = "FORMAT",
+        .doc = "Set key format (e.g., '(ip4.saddr)' or '(ip4.saddr, ip4.proto)')",
+        .parser = _bfc_opts_set_format_cb,
+    },
+    {
+        .id = BFC_OPT_SET_ADD_PAYLOAD,
+        .key = 'A',
+        .name = "set-add",
+        .arg = "PAYLOAD",
+        .doc = "Elements to add to the set (e.g., '{192.168.1.1; 192.168.1.2}')",
+        .parser = _bfc_opts_set_add_payload_cb,
+    },
+    {
+        .id = BFC_OPT_SET_REMOVE_PAYLOAD,
+        .key = 'R',
+        .name = "set-remove",
+        .arg = "PAYLOAD",
+        .doc = "Elements to remove from the set (e.g., '{192.168.1.3; 192.168.1.4}')",
+        .parser = _bfc_opts_set_remove_payload_cb,
     },
     {
         .id = BFC_OPT_DRY_RUN,
@@ -572,6 +661,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_LOAD, "Load a new chain, do not attach it"),
         BFC_HELP_ENTRY(BFC_ACTION_ATTACH, "Attach a loaded chain"),
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an existing chain"),
+        BFC_HELP_ENTRY(BFC_ACTION_UPDATE_SET, "Update a set in a chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
         {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
         {.name = "usage",

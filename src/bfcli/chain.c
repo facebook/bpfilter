@@ -24,6 +24,7 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
+#include <bpfilter/set.h>
 
 #include "helper.h"
 #include "opts.h"
@@ -263,4 +264,38 @@ int bfc_chain_flush(const struct bfc_opts *opts)
         return bf_err_r(r, "unknown error");
 
     return r;
+}
+
+int bfc_chain_update_set(const struct bfc_opts *opts)
+{
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    int r;
+
+    if (opts->set_add_payload) {
+        r = bf_set_new_from_raw(&to_add, opts->set_name, opts->set_format,
+                                opts->set_add_payload);
+        if (r)
+            return bf_err_r(r, "failed to parse set add data");
+    }
+
+    if (opts->set_remove_payload) {
+        r = bf_set_new_from_raw(&to_remove, opts->set_name, opts->set_format,
+                                opts->set_remove_payload);
+        if (r)
+            return bf_err_r(r, "failed to parse set remove data");
+    }
+
+    r = bf_chain_set_update(opts->name, to_add, to_remove);
+    if (r == -ENOENT) {
+        return bf_err_r(r,
+                        "chain '%s' not found or set '%s' not found in chain",
+                        opts->name, opts->set_name);
+    }
+    if (r)
+        return bf_err_r(r, "failed to update set '%s'", opts->set_name);
+
+    bf_info("updated set '%s' in chain '%s'", opts->set_name, opts->name);
+
+    return 0;
 }

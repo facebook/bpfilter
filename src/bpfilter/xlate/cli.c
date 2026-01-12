@@ -540,6 +540,72 @@ int _bf_cli_chain_flush(const struct bf_request *request,
     return bf_ctx_delete_cgen(cgen, true);
 }
 
+int _bf_cli_set_update(const struct bf_request *request,
+                       struct bf_response **response)
+{
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    _free_bf_chain_ struct bf_chain *updated_chain = NULL;
+    _free_bf_rpack_ bf_rpack_t *pack = NULL;
+    _cleanup_free_ char *chain_name = NULL;
+    const char *set_name = NULL;
+    struct bf_cgen *cgen = NULL;
+    bf_rpack_node_t child;
+    int r;
+
+    assert(request);
+
+    (void)response;
+
+    r = bf_rpack_new(&pack, bf_request_data(request),
+                     bf_request_data_len(request));
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_str(bf_rpack_root(pack), "chain_name", &chain_name);
+    if (r)
+        return r;
+
+    r = bf_rpack_kv_node(bf_rpack_root(pack), "to_add", &child);
+    if (r)
+        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_set_new_from_pack(&to_add, child);
+        if (r)
+            return r;
+    }
+
+    r = bf_rpack_kv_node(bf_rpack_root(pack), "to_remove", &child);
+    if (r)
+        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_set_new_from_pack(&to_remove, child);
+        if (r)
+            return r;
+    }
+
+    cgen = bf_ctx_get_cgen(chain_name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' does not exist", chain_name);
+
+    if (to_add)
+        set_name = to_add->name;
+    else if (to_remove)
+        set_name = to_remove->name;
+    else
+        return bf_err_r(-EINVAL, "at least one of to_add or to_remove must be provided");
+
+    r = bf_chain_update_set(cgen->chain, set_name, to_add, to_remove);
+    if (r)
+        return bf_err_r(r, "failed to update set in chain");
+
+    r = bf_cgen_update(cgen, &cgen->chain);
+    if (r)
+        return bf_err_r(r, "failed to update chain with new set data");
+
+    return 0;
+}
+
 static int _bf_cli_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
@@ -581,6 +647,9 @@ static int _bf_cli_request_handler(const struct bf_request *request,
         break;
     case BF_REQ_CHAIN_FLUSH:
         r = _bf_cli_chain_flush(request, response);
+        break;
+    case BF_REQ_CHAIN_SET_UPDATE:
+        r = _bf_cli_set_update(request, response);
         break;
     default:
         r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
