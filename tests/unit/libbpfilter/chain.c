@@ -135,6 +135,16 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
 }
 
+static void get_set_by_name(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
+
+    (void)state;
+
+    assert_non_null(bf_chain_get_set_by_name(chain, "bft_set_dummy"));
+    assert_null(bf_chain_get_set_by_name(chain, "bft_set_missing"));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -143,6 +153,7 @@ int main(void)
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
+        cmocka_unit_test(get_set_by_name),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
