@@ -423,3 +423,104 @@ bool bf_set_is_empty(const struct bf_set *set)
 
     return bf_list_is_empty(&set->elems);
 }
+
+/**
+ * @brief Check if two sets have the same key format.
+ *
+ * @param first First set. Can't be NULL.
+ * @param second Second set. Can't be NULL.
+ * @return 0 if sets have matching format, or -EINVAL on mismatch.
+ */
+static int _bf_set_cmp_key_format(const struct bf_set *first,
+                                  const struct bf_set *second)
+{
+    assert(first);
+    assert(second);
+
+    if (first->n_comps != second->n_comps)
+        return bf_err_r(
+            -EINVAL,
+            "set key format mismatch: first set has %lu components, second has %lu",
+            first->n_comps, second->n_comps);
+
+    if (memcmp(first->key, second->key,
+               first->n_comps * sizeof(enum bf_matcher_type)) != 0)
+        return bf_err_r(
+            -EINVAL,
+            "set key component type mismatch");
+
+    return 0;
+}
+
+int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
+{
+    int r;
+
+    assert(dest);
+    assert(to_add);
+    assert(*to_add);
+
+    r = _bf_set_cmp_key_format(dest, *to_add);
+    if (r)
+        return r;
+
+    // @todo This has O(n * m) complexity. We could get to O(n log n + m) by
+    // turning the linked list into an array and sorting it, but we should
+    // just replace underlying bf_list with true hashset and enjoy O(m).
+    bf_list_foreach (&(*to_add)->elems, elem_node) {
+        void *elem_to_add = bf_list_node_get_data(elem_node);
+        bool found = false;
+
+        bf_list_foreach (&dest->elems, dest_elem_node) {
+            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
+
+            if (memcmp(dest_elem, elem_to_add, dest->elem_size) == 0) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            r = bf_list_add_tail(&dest->elems, bf_list_node_get_data(elem_node));
+            if (r)
+                return bf_err_r(r, "failed to add element to set");
+            // Take ownership of data to stop to_add cleanup from freeing it.
+            bf_list_node_take_data(elem_node);
+        }
+    }
+
+    bf_set_free(to_add);
+
+    return 0;
+}
+
+int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
+{
+    int r;
+
+    assert(dest);
+    assert(to_remove);
+    assert(*to_remove);
+
+    r = _bf_set_cmp_key_format(dest, *to_remove);
+    if (r)
+        return r;
+
+    // @todo This has O(n * m) complexity. Could be O(m) if we used hashsets.
+    bf_list_foreach (&(*to_remove)->elems, elem_node) {
+        const void *elem_to_remove = bf_list_node_get_data(elem_node);
+
+        bf_list_foreach (&dest->elems, dest_elem_node) {
+            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
+
+            if (memcmp(dest_elem, elem_to_remove, dest->elem_size) == 0) {
+                bf_list_delete(&dest->elems, dest_elem_node);
+                break;
+            }
+        }
+    }
+
+    bf_set_free(to_remove);
+
+    return 0;
+}
