@@ -9,6 +9,7 @@
 
 #include <bpfilter/helper.h>
 
+#include "bpfilter/list.h"
 #include "chain.h"
 #include "ruleset.h"
 
@@ -73,6 +74,7 @@ static const char * const _bfc_action_strs[] = {
     "load", // BFC_ACTION_LOAD
     "attach", // BFC_ACTION_ATTACH
     "update", // BFC_ACTION_UPDATE
+    "update-set", // BFC_ACTION_UPDATE_SET
     "flush", // BFC_ACTION_FLUSH
 };
 static_assert(ARRAY_SIZE(_bfc_action_strs) == _BFC_ACTION_MAX,
@@ -106,6 +108,9 @@ enum bfc_opts_option_id
     BFC_OPT_CHAIN_FROM_FILE,
     BFC_OPT_CHAIN_NAME,
     BFC_OPT_CHAIN_HOOK_OPTS,
+    BFC_OPT_SET_NAME,
+    BFC_OPT_SET_ADD,
+    BFC_OPT_SET_REMOVE,
     BFC_OPT_DRY_RUN,
     _BFC_OPT_MAX,
 };
@@ -223,6 +228,19 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .doc = "Update a chain\vAtomically update chain --name with the new "
                "definition provided by --from-str or --from-file.",
         .cb = bfc_chain_update,
+    },
+    {
+        .name = "bfcli chain update-set",
+        .object = BFC_OBJECT_CHAIN,
+        .action = BFC_ACTION_UPDATE_SET,
+        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME,
+                               BFC_OPT_SET_ADD, BFC_OPT_SET_REMOVE),
+        .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME),
+        .doc = "Update a set in a chain\vAtomically update the content of a "
+               "named set in a chain using delta operation. Use --add to "
+               "add elements and --remove to remove elements. At least one "
+               "of --add or --remove must be specified.",
+        .cb = bfc_chain_update_set,
     },
     {
         .name = "bfcli chain flush",
@@ -354,6 +372,42 @@ static void _bfc_opts_chain_hook_opts_cb(struct argp_state *state,
         argp_error(state, "failed to parse hook option '%s'", arg);
 };
 
+static void _bfc_opts_set_name_cb(struct argp_state *state, const char *arg,
+                                  struct bfc_opts *opts)
+{
+    if (strlen(arg) == 0)
+        argp_error(state, "--set-name can't be empty");
+
+    opts->set_name = arg;
+};
+
+static void _bfc_opts_set_add_cb(struct argp_state *state,
+                                         const char *arg, struct bfc_opts *opts)
+{
+    int r;
+
+    if (strlen(arg) == 0)
+        argp_error(state, "--add requires an element");
+
+    r = bf_list_add_tail(&opts->set_add, (void *)arg);
+    if (r)
+        argp_error(state, "failed to add element to list");
+};
+
+static void _bfc_opts_set_remove_cb(struct argp_state *state,
+                                             const char *arg,
+                                             struct bfc_opts *opts)
+{
+    int r;
+
+    if (strlen(arg) == 0)
+        argp_error(state, "--remove requires an element");
+
+    r = bf_list_add_tail(&opts->set_remove, (void *)arg);
+    if (r)
+        argp_error(state, "failed to add element to list");
+};
+
 static void _bfc_opts_dry_run(struct argp_state *state, const char *arg,
                               struct bfc_opts *opts)
 {
@@ -446,6 +500,30 @@ struct bfc_opts_opt
         .arg = "HOOKOPT=VALUE",
         .doc = "Hook option to attach the chain",
         .parser = _bfc_opts_chain_hook_opts_cb,
+    },
+    {
+        .id = BFC_OPT_SET_NAME,
+        .key = 'S',
+        .name = "set-name",
+        .arg = "NAME",
+        .doc = "Name of the set to update",
+        .parser = _bfc_opts_set_name_cb,
+    },
+    {
+        .id = BFC_OPT_SET_ADD,
+        .key = 'A',
+        .name = "add",
+        .arg = "ELEMENT",
+        .doc = "Element to add to the set. Can be specified multiple times.",
+        .parser = _bfc_opts_set_add_cb,
+    },
+    {
+        .id = BFC_OPT_SET_REMOVE,
+        .key = 'R',
+        .name = "remove",
+        .arg = "ELEMENT",
+        .doc = "Element to remove from the set. Can be specified multiple times.",
+        .parser = _bfc_opts_set_remove_cb,
     },
     {
         .id = BFC_OPT_DRY_RUN,
@@ -550,6 +628,8 @@ void bfc_opts_clean(struct bfc_opts *opts)
     assert(opts);
 
     bf_hookopts_clean(&opts->hookopts);
+    bf_list_clean(&opts->set_add);
+    bf_list_clean(&opts->set_remove);
 }
 
 #define _BFC_NAME_LEN (PATH_MAX + 32)
@@ -572,6 +652,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_LOAD, "Load a new chain, do not attach it"),
         BFC_HELP_ENTRY(BFC_ACTION_ATTACH, "Attach a loaded chain"),
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an existing chain"),
+        BFC_HELP_ENTRY(BFC_ACTION_UPDATE_SET, "Update a set in a chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
         {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
         {.name = "usage",
