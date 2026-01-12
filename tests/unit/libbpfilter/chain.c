@@ -100,6 +100,140 @@ static void get_set_from_matcher(void **state)
     assert_null(bf_chain_get_set_for_matcher(chain, r1_m0));
 }
 
+static void update_set(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *initial_set = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, NULL);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, NULL);
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    struct bf_set *chain_set;
+    uint32_t elem1 = 0x01010101;
+    uint32_t elem2 = 0x02020202;
+    uint32_t elem3 = 0x03030303;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&initial_set, "test_set", key, 1));
+    assert_ok(bf_set_add_elem(initial_set, &elem1));
+    assert_ok(bf_list_add_tail(&sets, initial_set));
+    TAKE_PTR(initial_set);
+
+    assert_ok(bf_chain_new(&chain, "test_chain", BF_HOOK_XDP, BF_VERDICT_ACCEPT, &sets, &rules));
+
+    chain_set = bf_list_node_get_data(bf_list_get_head(&chain->sets));
+    assert_non_null(chain_set);
+    assert_string_equal(chain_set->name, "test_set");
+    assert_int_equal(bf_list_size(&chain_set->elems), 1);
+
+    assert_ok(bf_set_new(&to_add, "test_set", key, 1));
+    assert_ok(bf_set_add_elem(to_add, &elem2));
+    assert_ok(bf_set_add_elem(to_add, &elem3));
+
+    assert_ok(bf_chain_update_set(chain, "test_set", to_add, NULL));
+
+    chain_set = bf_list_node_get_data(bf_list_get_head(&chain->sets));
+    assert_non_null(chain_set);
+    assert_string_equal(chain_set->name, "test_set");
+    assert_int_equal(bf_list_size(&chain_set->elems), 3);
+}
+
+static void update_set_not_found(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, NULL);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, NULL);
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t elem = 0x01010101;
+
+    (void)state;
+
+    assert_ok(bf_chain_new(&chain, "test_chain", BF_HOOK_XDP, BF_VERDICT_ACCEPT, &sets, &rules));
+
+    assert_ok(bf_set_new(&to_add, "nonexistent_set", key, 1));
+    assert_ok(bf_set_add_elem(to_add, &elem));
+
+    assert_int_equal(bf_chain_update_set(chain, "nonexistent_set", to_add, NULL), -ENOENT);
+}
+
+static void update_set_key_mismatch(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *old_set = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, NULL);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, NULL);
+    enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_IP4_PROTO};
+    uint32_t elem1 = 0x01010101;
+    struct {
+        uint32_t addr;
+        uint8_t proto;
+    } elem2 = {0x01010101, 6};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&old_set, "test_set", key1, 1));
+    assert_ok(bf_set_add_elem(old_set, &elem1));
+    assert_ok(bf_list_add_tail(&sets, old_set));
+    TAKE_PTR(old_set);
+
+    assert_ok(bf_chain_new(&chain, "test_chain", BF_HOOK_XDP, BF_VERDICT_ACCEPT, &sets, &rules));
+
+    assert_ok(bf_set_new(&to_add, "test_set", key2, 2));
+    assert_ok(bf_set_add_elem(to_add, &elem2));
+
+    assert_int_equal(bf_chain_update_set(chain, "test_set", to_add, NULL), -EINVAL);
+}
+
+static void update_set_trie(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *old_set = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, NULL);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, NULL);
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SNET};
+    struct bf_set *chain_set;
+    struct {
+        uint32_t addr;
+        uint32_t mask;
+    } elem1 = {0x0a000000, 0xffffff00}, elem2 = {0xc0a80000, 0xffff0000},
+      elem3 = {0xac100000, 0xfff00000};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&old_set, "nets", key, 1));
+    assert_true(old_set->use_trie);
+    assert_ok(bf_set_add_elem(old_set, &elem1));
+    assert_ok(bf_list_add_tail(&sets, old_set));
+    TAKE_PTR(old_set);
+
+    assert_ok(bf_chain_new(&chain, "test_chain", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
+                           &sets, &rules));
+
+    chain_set = bf_list_node_get_data(bf_list_get_head(&chain->sets));
+    assert_non_null(chain_set);
+    assert_string_equal(chain_set->name, "nets");
+    assert_true(chain_set->use_trie);
+    assert_int_equal(bf_list_size(&chain_set->elems), 1);
+
+    assert_ok(bf_set_new(&to_add, "nets", key, 1));
+    assert_true(to_add->use_trie);
+    assert_ok(bf_set_add_elem(to_add, &elem2));
+    assert_ok(bf_set_add_elem(to_add, &elem3));
+
+    assert_ok(bf_chain_update_set(chain, "nets", to_add, NULL));
+
+    chain_set = bf_list_node_get_data(bf_list_get_head(&chain->sets));
+    assert_non_null(chain_set);
+    assert_string_equal(chain_set->name, "nets");
+    assert_true(chain_set->use_trie);
+    assert_int_equal(bf_list_size(&chain_set->elems), 3);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -107,6 +241,10 @@ int main(void)
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
+        cmocka_unit_test(update_set),
+        cmocka_unit_test(update_set_not_found),
+        cmocka_unit_test(update_set_key_mismatch),
+        cmocka_unit_test(update_set_trie),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
