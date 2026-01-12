@@ -24,6 +24,7 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
+#include <bpfilter/set.h>
 
 #include "helper.h"
 #include "opts.h"
@@ -263,4 +264,61 @@ int bfc_chain_flush(const struct bfc_opts *opts)
         return bf_err_r(r, "unknown error");
 
     return r;
+}
+
+int bfc_chain_update_set(const struct bfc_opts *opts)
+{
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+    _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
+    struct bf_set *dest_set = NULL;
+    int r;
+
+    if (bf_list_is_empty(&opts->set_add) && bf_list_is_empty(&opts->set_remove))
+        return bf_err_r(-EINVAL, "no elements to add or remove");
+
+    // Fetch dest_set to get key format
+    r = bf_chain_get(opts->name, &chain, &hookopts, &counters);
+    if (r == -ENOENT)
+        return bf_err_r(r, "chain '%s' not found", opts->name);
+    if (r)
+        return bf_err_r(r, "unknown error");
+
+    dest_set = bf_chain_get_set_by_name(chain, opts->set_name);
+    if (!dest_set)
+        return bf_err_r(-ENOENT, "set '%s' does not exist", opts->set_name);
+
+    r = bf_set_new(&to_add, opts->set_name, dest_set->key, dest_set->n_comps);
+    if (r)
+        return bf_err_r(r, "failed to create set");
+
+    bf_list_foreach (&opts->set_add, node) {
+        const char *raw_elem = bf_list_node_get_data(node);
+
+        r = bf_set_add_elem_raw(to_add, raw_elem);
+        if (r)
+            return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
+    }
+
+    r = bf_set_new(&to_remove, opts->set_name, dest_set->key, dest_set->n_comps);
+    if (r)
+        return bf_err_r(r, "failed to create set");
+
+    bf_list_foreach (&opts->set_remove, node) {
+        const char *raw_elem = bf_list_node_get_data(node);
+
+        r = bf_set_add_elem_raw(to_remove, raw_elem);
+        if (r)
+            return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
+    }
+
+    r = bf_chain_update_set(opts->name, to_add, to_remove);
+    if (r)
+        return bf_err_r(r, "failed to update set '%s' in chain '%s'", opts->set_name, opts->name);
+
+    bf_info("updated set '%s' in chain '%s'", opts->set_name, opts->name);
+
+    return 0;
 }

@@ -17,6 +17,7 @@
 #include "bpfilter/pack.h"
 #include "bpfilter/request.h"
 #include "bpfilter/response.h"
+#include "bpfilter/set.h"
 
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
@@ -501,6 +502,51 @@ int bf_chain_update(const struct bf_chain *chain)
     r = bf_send(fd, request, &response, NULL);
     if (r)
         return bf_err_r(r, "bf_chain_update: failed to send request");
+
+    return bf_response_status(response);
+}
+
+int bf_chain_update_set(const char *name, const struct bf_set *to_add,
+                        const struct bf_set *to_remove)
+{
+    _cleanup_close_ int fd = -1;
+    _free_bf_request_ struct bf_request *request = NULL;
+    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    int r;
+
+    assert(name);
+
+    r = bf_wpack_new(&wpack);
+    if (r)
+        return r;
+
+    bf_wpack_kv_str(wpack, "name", name);
+
+    bf_wpack_open_object(wpack, "to_add");
+    r = bf_set_pack(to_add, wpack);
+    if (r)
+        return r;
+    bf_wpack_close_object(wpack);
+
+    bf_wpack_open_object(wpack, "to_remove");
+    r = bf_set_pack(to_remove, wpack);
+    if (r)
+        return r;
+    bf_wpack_close_object(wpack);
+
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_UPDATE_SET,
+                                 wpack);
+    if (r)
+        return bf_err_r(r, "bf_chain_update_set: failed to create a new request");
+
+    fd = bf_connect_to_daemon();
+    if (fd < 0)
+        return bf_err_r(fd, "failed to connect to the daemon");
+
+    r = bf_send(fd, request, &response, NULL);
+    if (r)
+        return bf_err_r(r, "bf_chain_update_set: failed to send request");
 
     return bf_response_status(response);
 }
