@@ -130,3 +130,30 @@ int bf_set_add_elem(struct bf_set *set, const void *elem);
  * @return 0 on success, or a negative error value on failure.
  */
 int bf_set_parse_elem(struct bf_set *set, const char *raw_elem);
+
+/**
+ * @brief Add elements from source set to destination set (union operation).
+ *
+ * Adds all elements from `to_add` to `dest`. Both sets must have the same
+ * key format (n_comps, key components, and use_trie must match).
+ *
+ * @param dest Destination set to add elements to. Can't be NULL.
+ * @param to_add Source set containing elements to add. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure, including:
+ * - `-EINVAL`: set key format doesn't match between dest and to_add.
+ */
+int bf_set_union(struct bf_set *dest, const struct bf_set *to_add);
+
+/**
+ * @brief Remove elements from destination set (difference operation).
+ *
+ * Removes all elements present in `to_remove` from `dest`. Both sets must
+ * have the same key format (n_comps, key components, and use_trie must match).
+ * Elements in `to_remove` that aren't present in `dest` are ignored.
+ *
+ * @param dest Destination set to remove elements from. Can't be NULL.
+ * @param to_remove Source set containing elements to remove. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure, including:
+ * - `-EINVAL`: set key format doesn't match between dest and to_remove.
+ */
+int bf_set_difference(struct bf_set *dest, const struct bf_set *to_remove);
