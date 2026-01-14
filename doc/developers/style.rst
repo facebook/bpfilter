@@ -1,75 +1,356 @@
 Coding style
 ============
 
-.. warning::
+This document describes the code style and guidelines to use for ``bpfilter`` contributors. ClangFormat is used to validate and enforce as many of those rules as possible based on ``.clang-format`` at the root of the repository. The ``check`` build target validates all source files, and the ``fixstyle`` build target can automatically fix all the violations.
 
-    This document is not yet complete, it will evolve gradually over time. If you are unsure about a specific rule: check ClangFormat's configuration (``.clang-format``), check this document, and check the existing code. If none of those can answer your question, do as you want.
+.. note::
 
-``bpfilter`` coding style is enforced by ClangFormat, as defined in its configuration file ``.clang-format`` at the root of the repository. The ``check`` build target can be used to validate all the source files under ``src``, but the issues won't be resolved automatically: changes performed by ClangFormat should be controlled by a developer.
+    The CI will use the ClangFormat version from the latest Fedora release. If you use a different version, you might trigger violation(s) during the CI run, which we expect you to fix.
 
-To format a source file using ClangFormat (from the root of the repository):
+Formatting
+----------
 
-.. code:: shell
+- Use 4 spaces for indentation (no tabs)
+- Line length is limited to 80 characters, but string literals should not be split (makes grepping for error messages easier)
+- Opening braces should be on the next line for function, structure, and enumeration definition. For control statements, opening braces should be on the same line
+- Single-statement bodies don't require braces. However, if either branch of an ``if``/``else`` uses braces, both must use braces
 
-    clang-format --style=file:.clang-format -i $FILE
+File structure
+--------------
 
-.. warning::
+Header guards
+^^^^^^^^^^^^^
 
-    Not all ClangFormat versions are born equal: from a ClangFormat version to another, the behavior of a specific option could change (unfortunately). The proper version of ClangFormat to use with ``bpfilter`` is expected to be the version available in the latest Fedora release.
+Use ``#pragma once``, not ``#ifndef`` guards:
 
-ClangFormat is not sufficient to define a consistent code style, as its set of configuration option can't cover every use case. Hence, this document should serve as a reference for the code style ClangFormat can't validate.
+.. code:: c
+
+    #pragma once
+
+Include ordering
+^^^^^^^^^^^^^^^^
+
+Group and order includes as follows, with a blank line between groups:
+
+1. System headers (``<linux/...>``, ``<errno.h>``, ``<stdlib.h>``)
+2. External library headers (``<bpfilter/...>``)
+3. Local project headers (``"module/file.h"``)
+
+.. code:: c
+
+    #include <linux/bpf.h>
+    #include <errno.h>
+    #include <stdlib.h>
+
+    #include <bpfilter/chain.h>
+
+    #include "cgen/program.h"
+    #include "ctx.h"
+
+Forward declarations
+^^^^^^^^^^^^^^^^^^^^
+
+Prefer forward declarations over includes when only a pointer to a type is needed:
+
+.. code:: c
+
+    struct bf_chain;
+    struct bf_program;
+
+
+Naming conventions
+------------------
+
+Functions and variables
+^^^^^^^^^^^^^^^^^^^^^^^
+
+- Lowercase with underscores: ``bf_chain_new()``, ``bf_ctx_setup()``
+- Prefix with module name: ``bf_chain_*``, ``bf_program_*``, ``bf_ctx_*``
+- Static functions and variables use leading underscore: ``_bf_ctx_free()``
+- CLI utilities use ``bfc_`` prefix: ``bfc_parse_file()``
+- Macros use uppercase with underscores: ``EMIT()``, ``TAKE_PTR()``, ``ARRAY_SIZE()``
+
+Types
+^^^^^
+
+Structs use ``bf_`` prefix:
+
+.. code:: c
+
+    struct bf_chain
+    {
+        // Structure definition
+    };
+
+Enums use ``bf_`` prefix, values are uppercase with enum prefix:
+
+.. code:: c
+
+    enum bf_log_level
+    {
+        BF_LOG_DBG,
+        BF_LOG_INFO,
+        BF_LOG_WARN,
+        BF_LOG_ERR,
+        _BF_LOG_MAX,  // Sentinel value
+    };
+
+Sentinel values use leading underscore and ``_MAX`` suffix.
+
+
+Functions
+---------
+
+Return values
+^^^^^^^^^^^^^
+
+- Return ``0`` on success, negative errno on failure (``-ENOMEM``, ``-EEXIST``)
+- Cleanup functions return ``void`` and take double pointers
+
+.. code:: c
+
+    int bf_chain_new(struct bf_chain **chain);     // 0 or -errno
+    void bf_chain_free(struct bf_chain **chain);   // Sets *chain to NULL
+    bool bf_chain_is_empty(const struct bf_chain *chain);
+
+Error checking
+^^^^^^^^^^^^^^
+
+Check errors with ``if (r)`` or ``if (r < 0)``:
+
+.. code:: c
+
+    r = bf_chain_new(&chain);
+    if (r)
+        return r;
+
+Parameter validation
+^^^^^^^^^^^^^^^^^^^^
+
+Use ``assert()`` to validate preconditions:
+
+.. code:: c
+
+    int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+    {
+        assert(chain);
+        assert(rule);
+        ...
+    }
+
+Only use ``assert()`` for pointer values. For other validation, use ``if ()`` with appropriate error logging and return codes.
 
 
 Memory management
 -----------------
 
-``_cleanup_`` attributes are used extensively in the codebase to simplify resource management. Custom macros are defined to simplify usage of the ``_cleanup`` attribute with the following name prefix:
+Cleanup attributes
+^^^^^^^^^^^^^^^^^^
 
-- ``_free_``: cleanup a dynamically allocated object (e.g. :c:func:`_free_bf_cgen_`).
-- ``_clean_``: cleanup an object with automatic storage duration (e.g. :c:func:`_clean_bf_list`).
+Use ``__attribute__((cleanup))`` extensively. Two naming conventions:
+
+- ``_free_*``: cleanup dynamically allocated objects
+- ``_clean_*``: cleanup objects with automatic storage duration
+
+.. code:: c
+
+    #define _free_bf_chain_ __attribute__((cleanup(_bf_chain_free)))
+
+    void example(void)
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+
+        r = bf_chain_new(&chain);
+        if (r)
+            return r;
+
+        // chain is automatically freed when function returns
+    }
+
+Cleanup functions
+^^^^^^^^^^^^^^^^^
+
+Cleanup functions take double pointers, are no-op if ``*ptr`` is ``NULL`` (already freed), and set ``*ptr`` to ``NULL`` after freeing:
+
+.. code:: c
+
+    static void _bf_chain_free(struct bf_chain **chain)
+    {
+        if (!*chain)
+            return;
+
+        free(*chain);
+        *chain = NULL;
+    }
+
+Ownership transfer
+^^^^^^^^^^^^^^^^^^
+
+Use ``TAKE_PTR()`` to transfer ownership:
+
+.. code:: c
+
+    *out = TAKE_PTR(local);  // local becomes NULL, *out takes ownership
+
+Use ``TAKE_FD()`` for file descriptors, ``TAKE_STRUCT()`` for struct values.
+
+
+Error handling and logging
+--------------------------
+
+Logging macros
+^^^^^^^^^^^^^^
+
+Use the appropriate log level:
+
+- ``bf_dbg()``: debug information
+- ``bf_info()``: informational messages
+- ``bf_warn()``: warnings
+- ``bf_err()``: errors
+- ``bf_abort()``: critical errors (terminates)
+
+Log and return errors with ``bf_err_r()``:
+
+.. code:: c
+
+    if (!ptr)
+        return bf_err_r(-ENOMEM, "failed to allocate chain");
+
+This logs the error and returns the error code in one statement.
+
+Error codes
+^^^^^^^^^^^
+
+Always use negative errno values: ``-ENOMEM``, ``-EINVAL``, ``-EEXIST``, ``-ENOENT``.
 
 
 Comments
 --------
 
-Comments are either single-line (``//``) or multi-lines (``/* */``) C comments, reserve single-line comments for comments that fit on a single line, and multi-lines comments for comments that require... multiple lines.
+Single-line vs multi-line
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For multi-lines comments: repeat and align the asterisk on each line, avoid empty lines, and close the comment on the last line containing text:
+Use ``//`` for comments that fit on one line, ``/* */`` for longer comments:
+
+.. code:: c
+
+    // Single line comment
+
+    /* Multi-line comment with aligned asterisks
+     * and no empty lines. Close on the last text line. */
+
+Avoid:
 
 .. code:: c
 
     /*
-        This is a badly formatted multi-lines comment.
+        Empty lines and misaligned asterisks.
     */
 
-    /* This is a properly formatted multi-lines comments, as there is no empty
-     * line, and asterisks are aligned. */
+Doxygen documentation
+^^^^^^^^^^^^^^^^^^^^^
 
-The technical documentation is generated from the Doxygen comments in the source files. Not all functions deserve to be documented: there's no point documenting a getter, except wasting space and making the file more difficult to read. A function should be documented when its behavior needs to be explained or clarified (ideally the function is clear enough not to be clarified though), or when its arguments have specific requirements.
+Not every function needs documentation. Skip documentation for trivial getters/setters. Document functions when:
 
-Usually, pointer arguments should be expected to be non-NULL, if this expectation differs for a function, it must be documented.
+- Behavior needs explanation
+- Arguments have specific requirements
+- Return values need clarification
 
-Regarding Doxygen usage:
+For documented functions:
 
-- For the sake of clarity, a function's multi-lines documentation should have the first and last comment line empty. This is specific to Doxygen comments, for all other use cases, the rule above still stands.
-- The first line of a function's documentation should be a brief explanation of its purpose, but ``@brief`` should not be used: ``@brief`` doesn't affect the generated output, avoid using it anywhere to maintain consistency.
-- Parameters are tagged with ``@param``. If a parameter's documentation is too long to fit on a single line, indent the next line properly to fit under the parameter's name (see example below). You can refer to the function's parameters in its documentation using `@p`.
-- Return value (if any) is tagged with ``@return``. The same line break rule applies as to ``@param``.
-- Always use the ``@`` version of the Doxygen directives, not the ``\`` one.
-- Refer to symbols from the codebase using `\`` (backticks). For functions, use `\`function_name()\`` so Doxygen will automatically create a link to the function definition.
-- Use ``@code{.c}`` and ``@endcode`` to integrate code example. Remember about this, as it's sometimes clearer to have a simple code example than 20 lines of text.
+- First line is a brief description with ``@brief`` tag
+- Use ``@param`` for parameters, ``@return`` for return values
+- Use backticks to reference function, variable, and parameter names
+- Use ``@code{.c}`` for examples
 
 .. code:: c
 
     /**
-     * Get the index and name of all the interfaces on the host.
+     * @brief Create a new chain from the given parameters.
      *
-     * The memory allocated by this function for @p ifaces must be freed by the
-     * caller.
+     * The caller takes ownership of the returned chain and must free it
+     * with `bf_chain_free()`.
      *
-     * @param ifaces Array of `bf_if_iface` structures. The array will be
-     *        allocated by the function and the caller is responsible for
-     *        freeing it.
-     * @return On success, return the number of interfaces contained in
-     *         @p ifaces . On failure, return a negative errno value.
+     * @param chain On success, points to the new chain. Unchanged on
+     *        failure.
+     * @param type Type of chain to create.
+     * @return 0 on success, negative errno on failure.
      */
+    int bf_chain_new(struct bf_chain **chain, enum bf_chain_type type);
+
+For Doxygen comments specifically, the first and last lines of multi-line documentation should be empty (unlike regular multi-line comments).
+
+
+Structs
+-------
+
+Document struct purpose in the header. Use inline Doxygen comments for non-obvious fields:
+
+.. code:: c
+
+    /**
+     * @brief Represents a filtering chain.
+     */
+    struct bf_chain
+    {
+        enum bf_chain_type type;
+        struct bf_list rules;  /// List of `struct bf_rule`
+        size_t rule_count;
+        int flags; /// Bitmask of enum bf_chain_flags
+    };
+
+
+Macros
+------
+
+Helper macros
+^^^^^^^^^^^^^
+
+Use uppercase for utility macros:
+
+.. code:: c
+
+    ARRAY_SIZE(arr)      // Number of elements
+    UNUSED(x)            // Suppress unused warnings
+    DUMP(prefix, fmt, ...)  // Debug output
+
+Static assertions
+^^^^^^^^^^^^^^^^^
+
+Use ``static_assert()`` to validate assumptions at compile time. This catches errors early and documents invariants:
+
+.. code:: c
+
+    // Validate enum-to-string array size
+    static_assert_enum_mapping(log_level_strs, _BF_LOG_MAX);
+
+    // Validate struct size assumptions
+    static_assert(sizeof(struct bf_header) == 16, "unexpected header size");
+
+
+Testing
+-------
+
+See :doc:`tests` for testing conventions and guidelines.
+
+
+Commit messages
+---------------
+
+Commit messages should be formatted as ``component: subcomponent: short description``:
+- Lowercase, imperative mood ("add", "fix", "remove", not "added", "fixes")
+- No period at the end
+- Keep under 72 characters
+
+Components are ``lib``, ``daemon``, ``cli``, ``tests``, ``build``, ``tools``, ``doc``. Subcomponents reflect the directory structure (e.g., ``tests: e2e:``, ``daemon: cgen: link:``). If you're unsure, check the commit history for a hint.
+
+Examples:
+
+.. code::
+
+    lib: matcher: add meta.flow_hash matcher
+    tests: e2e: fix end-to-end tests leaving files behind
+    build: create targets to run tests suites individually
+
+Use the commit description to explain why the change is necessary. The "what" is taken care of by the code changes. Details about a specific algorithm or complex changes should be documented in the code.
+
