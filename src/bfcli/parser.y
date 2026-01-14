@@ -287,7 +287,7 @@ rule_option     : LOG LOG_HEADERS
                     char *tmp = in;
                     char *saveptr;
                     char *token;
-                    uint8_t log;
+                    uint8_t log = 0;
 
                     while ((token = strtok_r(tmp, ",", &saveptr))) {
                         enum bf_pkthdr header;
