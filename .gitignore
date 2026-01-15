@@ -10,3 +10,6 @@
 __pycache__
 .cache
 .clangd
+
+# Local Claude instructions
+CLAUDE.local.md
