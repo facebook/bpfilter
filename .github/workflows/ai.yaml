@@ -1,0 +1,27 @@
+# AI PR review
+name: AI PR Review
+
+on:
+  push:
+    branches:
+      - 'ci_**'
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: [ "ubuntu-24.04" ]
+    container: ghcr.io/facebook/bpfilter:fedora-43-x64
+    name: "AI PR review"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v4
+      - name: Install Node.js and npm
+        run: dnf install -y nodejs npm
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Review PR
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude /review-pr ${{ github.event.pull_request.number }}
