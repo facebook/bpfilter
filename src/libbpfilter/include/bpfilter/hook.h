@@ -74,10 +74,10 @@ const char *bf_hook_to_str(enum bf_hook hook);
  * Convert a string to a `bf_hook` value.
  *
  * @param str String to convert to a `bf_hook` value. Can't be NULL.
- * @return A valid `bf_hook` value on success, or a negative errno value
- *         on error.
+ * @param hook Hook type value, if the parsing succeeds. Can't be NULL.
+ * @return 0 on success, or a negative errno value on error.
  */
-enum bf_hook bf_hook_from_str(const char *str);
+int bf_hook_from_str(const char *str, enum bf_hook *hook);
 
 /**
  * Convert a `bf_hook` value to a `bf_flavor` value.
