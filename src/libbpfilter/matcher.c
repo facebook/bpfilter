@@ -736,6 +736,40 @@ void _bf_print_icmp_code(const void *payload)
     (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
+static int _bf_parse_u8(enum bf_matcher_type type, enum bf_matcher_op op,
+                        void *payload, const char *raw_payload)
+{
+    bf_assert(payload && raw_payload);
+
+    unsigned long value;
+    char *endptr;
+
+    value = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
+        return 0;
+    }
+
+    value = strtoul(raw_payload, &endptr, BF_BASE_16);
+    if (*endptr == '\0' && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+
+    return -EINVAL;
+}
+
+static void _bf_print_u8(const void *payload)
+{
+    bf_assert(payload);
+
+    (void)fprintf(stdout, "0x%02" PRIx8, *(uint8_t *)payload);
+}
+
 static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
                                  enum bf_matcher_op op, void *payload,
                                  const char *raw_payload)
@@ -1042,6 +1076,20 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
+                },
+        },
+    [BF_MATCHER_IP6_DSCP] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = 0,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_u8, _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_u8, _bf_print_u8),
                 },
         },
     [BF_MATCHER_TCP_SPORT] =
@@ -1410,6 +1458,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP6_DADDR] = "ip6.daddr",
     [BF_MATCHER_IP6_DNET] = "ip6.dnet",
     [BF_MATCHER_IP6_NEXTHDR] = "ip6.nexthdr",
+    [BF_MATCHER_IP6_DSCP] = "ip6.dscp",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
     [BF_MATCHER_TCP_FLAGS] = "tcp.flags",
