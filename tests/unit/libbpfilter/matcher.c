@@ -1340,6 +1340,67 @@ static void error_paths_print(void **state)
     bf_matcher_free(&matcher);
 }
 
+static void ip4_dscp(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test ip4.dscp with decimal value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_EQ, "16"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_IP4_DSCP);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with hexadecimal value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_EQ, "0x10"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0x10);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with minimum value (0)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_EQ, "0"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with maximum value (255)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_EQ, "255"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with NE operator
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_NE, "8"));
+    assert_non_null(matcher);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp print function
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                     BF_MATCHER_EQ, "0xff"));
+    assert_non_null(matcher);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with invalid value (> 255)
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                       BF_MATCHER_EQ, "256"));
+
+    // Test ip4.dscp with invalid string
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                       BF_MATCHER_EQ, "invalid"));
+
+    // Test ip4.dscp with negative value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                       BF_MATCHER_EQ, "-1"));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1395,6 +1456,7 @@ int main(void)
         cmocka_unit_test(print_functions),
         cmocka_unit_test(error_paths_parse),
         cmocka_unit_test(error_paths_print),
+        cmocka_unit_test(ip4_dscp),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -74,6 +74,8 @@ enum bf_matcher_type
     BF_MATCHER_IP4_DNET,
     /// Matches against the IPv4 protocol field
     BF_MATCHER_IP4_PROTO,
+    /// Matches against the IPv4 Differentiated Services Code Point (DSCP) field
+    BF_MATCHER_IP4_DSCP,
     /// Matches IPv6 source address.
     BF_MATCHER_IP6_SADDR,
     /// Matches IPv6 source network.
