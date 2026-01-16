@@ -79,7 +79,7 @@ int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
 
     _cgen->program = NULL;
 
-    r = bf_rpack_kv_enum(node, "front", &_cgen->front);
+    r = bf_rpack_kv_enum(node, "front", &_cgen->front, 0, _BF_FRONT_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_cgen.front");
 
