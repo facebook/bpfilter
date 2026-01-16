@@ -62,6 +62,7 @@ bf_target_add_elfstubs(bpfilter
         "parse_ipv6_nh"
         "update_counters"
         "log"
+        "ratelimit"
 )
 
 target_compile_definitions(bpfilter
