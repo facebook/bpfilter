@@ -11,6 +11,7 @@
 #include <linux/in.h>
 #include <linux/ipv6.h>
 
+#include <assert.h>
 #include <endian.h>
 #include <errno.h>
 #include <stddef.h>
@@ -293,6 +294,33 @@ static int _bf_matcher_generate_ip6_nexthdr(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_generate_ip6_dscp(struct bf_program *program,
+                                         const struct bf_matcher *matcher)
+{
+    uint8_t dscp;
+
+    assert(program);
+    assert(matcher);
+
+    dscp = *(uint8_t *)bf_matcher_payload(matcher);
+
+    /* IPv6 DSCP (traffic class) spans bits 4-11 of the header:
+     * Byte 0: version (4 bits) | dscp_high (4 bits)
+     * Byte 1: dscp_low (4 bits) | flow_label_high (4 bits)
+     * Load 2 bytes, mask with 0x0ff0, compare against dscp << 4. */
+
+    EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, 0));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0ff0));
+
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
+                                                                  BPF_JEQ,
+                    BPF_REG_1, (uint16_t)dscp << 4, 0));
+
+    return 0;
+}
+
 int bf_matcher_generate_ip6(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
@@ -315,6 +343,9 @@ int bf_matcher_generate_ip6(struct bf_program *program,
         break;
     case BF_MATCHER_IP6_NEXTHDR:
         r = _bf_matcher_generate_ip6_nexthdr(program, matcher);
+        break;
+    case BF_MATCHER_IP6_DSCP:
+        r = _bf_matcher_generate_ip6_dscp(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",
