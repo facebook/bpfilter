@@ -32,6 +32,7 @@
 %s STATE_MATCHER_META_PROBA
 %s STATE_MATCHER_IPV4_ADDR
 %s STATE_MATCHER_IP4_NET
+%s STATE_MATCHER_IP4_DSCP
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_IP6_NET
 %s STATE_MATCHER_PORT
@@ -179,6 +180,16 @@ ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); re
 <STATE_MATCHER_IP4_NET>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}\.{int}\.{int}\.{int}\/{int} {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+ip4\.dscp       { BEGIN(STATE_MATCHER_IP4_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP4_DSCP>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
