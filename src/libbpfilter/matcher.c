@@ -1094,6 +1094,20 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
                 },
         },
+    [BF_MATCHER_IP6_DSCP] =
+        {
+            .layer = BF_MATCHER_LAYER_3,
+            .hdr_id = ETH_P_IPV6,
+            .hdr_payload_size = sizeof(uint8_t),
+            .hdr_payload_offset = 0,
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_u8, _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_u8, _bf_print_u8),
+                },
+        },
     [BF_MATCHER_TCP_SPORT] =
         {
             .layer = BF_MATCHER_LAYER_4,
@@ -1461,6 +1475,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_IP6_DADDR] = "ip6.daddr",
     [BF_MATCHER_IP6_DNET] = "ip6.dnet",
     [BF_MATCHER_IP6_NEXTHDR] = "ip6.nexthdr",
+    [BF_MATCHER_IP6_DSCP] = "ip6.dscp",
     [BF_MATCHER_TCP_SPORT] = "tcp.sport",
     [BF_MATCHER_TCP_DPORT] = "tcp.dport",
     [BF_MATCHER_TCP_FLAGS] = "tcp.flags",

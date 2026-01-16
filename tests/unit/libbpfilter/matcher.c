@@ -994,6 +994,93 @@ static void icmpv6_code(void **state)
     bf_matcher_dump(matcher, &prefix);
 }
 
+static void ip6_dscp(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const struct bf_matcher_ops *ops;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test IPv6 DSCP with decimal value 0 (minimum)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "0"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with decimal value 255 (maximum)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "255"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with different DSCP value (e.g., 46 for EF)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "46"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with NE operator
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_NE, "8"));
+    assert_non_null(matcher);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with hexadecimal value (0x2e = 46)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "0x2e"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with another hexadecimal value (0xff = 255)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "0xff"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test print function via ops
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                     BF_MATCHER_EQ, "0x20"));
+    ops = bf_matcher_get_ops(BF_MATCHER_IP6_DSCP, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+}
+
+static void ip6_dscp_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    // Test with value > 255
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "256"));
+
+    // Test with invalid string
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "not_a_number"));
+
+    // Test with negative value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "-1"));
+
+    // Test with value > 0xff in hex
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "0x100"));
+}
+
 static void icmpv6_type(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -1450,6 +1537,8 @@ int main(void)
         cmocka_unit_test(ipv6_network_invalid),
         cmocka_unit_test(icmp_code),
         cmocka_unit_test(icmpv6_code),
+        cmocka_unit_test(ip6_dscp),
+        cmocka_unit_test(ip6_dscp_invalid),
         cmocka_unit_test(icmpv6_type),
         cmocka_unit_test(tcp_port_range),
         cmocka_unit_test(udp_port_range),

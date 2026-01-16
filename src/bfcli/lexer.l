@@ -35,6 +35,7 @@
 %s STATE_MATCHER_IP4_DSCP
 %s STATE_MATCHER_IP6_ADDR
 %s STATE_MATCHER_IP6_NET
+%s STATE_MATCHER_IP6_DSCP
 %s STATE_MATCHER_PORT
 %s STATE_MATCHER_ICMP_TYPE
 %s STATE_MATCHER_ICMP_CODE
@@ -210,6 +211,16 @@ ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext)
 <STATE_MATCHER_IP6_NET>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-zA-Z0-9:\/]+ {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+ip6\.dscp           { BEGIN(STATE_MATCHER_IP6_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_IP6_DSCP>{
+    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
