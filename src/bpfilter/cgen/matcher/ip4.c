@@ -10,6 +10,7 @@
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 
+#include <assert.h>
 #include <endian.h>
 #include <errno.h>
 #include <stddef.h>
@@ -59,6 +60,27 @@ static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
         BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
                                                                   BPF_JEQ,
                     BPF_REG_1, proto, 0));
+
+    return 0;
+}
+
+static int _bf_matcher_generate_ip4_dscp(struct bf_program *program,
+                                         const struct bf_matcher *matcher)
+{
+    uint8_t dscp;
+
+    assert(program);
+    assert(matcher);
+
+    dscp = *(uint8_t *)bf_matcher_payload(matcher);
+
+    EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6,
+                              offsetof(struct iphdr, tos)));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
+                                                                  BPF_JEQ,
+                    BPF_REG_1, dscp, 0));
 
     return 0;
 }
@@ -126,6 +148,9 @@ int bf_matcher_generate_ip4(struct bf_program *program,
         break;
     case BF_MATCHER_IP4_PROTO:
         r = _bf_matcher_generate_ip4_proto(program, matcher);
+        break;
+    case BF_MATCHER_IP4_DSCP:
+        r = _bf_matcher_generate_ip4_dscp(program, matcher);
         break;
     case BF_MATCHER_IP4_SNET:
     case BF_MATCHER_IP4_DNET:
