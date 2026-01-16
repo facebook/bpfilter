@@ -86,6 +86,8 @@ enum bf_matcher_type
     BF_MATCHER_IP6_DNET,
     /// Matches IPv6 next header
     BF_MATCHER_IP6_NEXTHDR,
+    /// Matches against the IPv6 Differentiated Services Code Point (DSCP) field
+    BF_MATCHER_IP6_DSCP,
     /// Matches against the TCP source port. Stored as big-endian.
     BF_MATCHER_TCP_SPORT,
     /// Matches against the TCP destination port. Stored as big-endian.
