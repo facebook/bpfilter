@@ -521,6 +521,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         case BF_MATCHER_IP4_DADDR:
         case BF_MATCHER_IP4_DNET:
         case BF_MATCHER_IP4_PROTO:
+        case BF_MATCHER_IP4_DSCP:
             r = bf_matcher_generate_ip4(program, matcher);
             if (r)
                 return r;
