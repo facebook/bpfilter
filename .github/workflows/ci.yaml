@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - main
-      - 'ci_**'
+      - 'ci/*'
   pull_request:
     branches:
       - main
@@ -127,8 +127,68 @@ jobs:
       - name: Generate the coverage report
         run: make -C $GITHUB_WORKSPACE/build coverage
 
+  benchmark:
+    runs-on: self-hosted
+    # Ensure benchmarks are not run concurrently on bf-bench-3, queues runs
+    concurrency:
+      group: do-no-run-benchmarks-concurrently
+      cancel-in-progress: false
+    steps:
+      - name: Checkout bpfilter repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get base ref
+        run: |
+          BASE_REF="${{ github.base_ref }}"
+          if [ -z "$BASE_REF" ]; then
+            BASE_REF="main"
+          fi
+          echo "BASE_REF=$BASE_REF" >> $GITHUB_ENV
+      - name: Run bfbencher
+        env:
+          # Fix for properly printing the results using rich
+          COLUMNS: 150
+        run: tools/benchmarks/bfbencher --since 2e64a73 --until ${{ env.BASE_REF }} --include HEAD --cache-dir ~/bfbencher-cache --pr-report-output-path pr.html --report-path index.html --no-tui
+      - name: Post benchmark results as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const html = fs.readFileSync('pr.html', 'utf8');
+            const body = `<!-- benchmark-comment -->\n${html}`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('<!-- benchmark-comment -->'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks-report
+          path: index.html
+
   doc:
-    needs: [ test ]
+    needs: [ test, benchmark ]
     timeout-minutes: 5
     runs-on: [ "ubuntu-24.04" ]
     container: ghcr.io/facebook/bpfilter:fedora-43-x64
@@ -149,6 +209,10 @@ jobs:
           key: tests-results-${{ github.run_id }}
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
+      - uses: actions/download-artifact@v4
+        with:
+          name: benchmarks-report
+          path: $GITHUB_WORKSPACE/build/doc/html/external/benchmarks/
       - name: Fix permissions
         if: github.ref == 'refs/heads/main'
         run: |
