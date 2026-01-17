@@ -32,11 +32,10 @@
 #include <git2/types.h>
 #include <initializer_list>
 #include <iostream> // NOLINT
-#include <numeric>
 #include <optional>
 #include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>
-#include <stdlib.h> // NOLINT
+#include <sstream>
 #include <string>
 #include <sys/personality.h>
 #include <sys/types.h>
@@ -89,6 +88,9 @@ constexpr std::array<uint8_t, 80> pkt_local_ip6_tcp {
     0x69, 0x7a, 0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x50, 0x02, 0x20, 0x00, 0x9a, 0xbf, 0x00, 0x00};
 
+constexpr std::array<uint8_t, 42> pkt_local_ip4_icmp { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x40, 0x01, 0x68, 0xc7, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a, 0x0b, 0x08, 0x02, 0xf7, 0xfd, 0x00, 0x00, 0x00, 0x00 };
+constexpr std::array<uint8_t, 54> pkt_local_ip4_tcp { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x28, 0x00, 0x01, 0x00, 0x00, 0x40, 0x06, 0x68, 0xb6, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a, 0x0b, 0x00, 0x17, 0x00, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x02, 0x20, 0x00, 0x7d, 0x41, 0x00, 0x00 };
+constexpr std::array<uint8_t, 90> pkt_remote_ip6_eh { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xdd, 0x60, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00, 0x40, 0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4, 0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04, 0x2b, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3b, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00 };
 constexpr int progRunRepeat = 1000000;
 
 Config config = {};
@@ -112,24 +114,23 @@ benchmarks will be skipped, and only the adhoc benchmark will be run. --adhoc \
 benchmarks won't create any output file.";
 
 constexpr std::array<struct argp_option, 8> options {{
-    {"cli", 'c', "CLI", 0,
-     "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", 0},
-    {"daemon", 'd', "DAEMON", 0,
-     "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", 0},
-    {"srcdir", 's', "SOURCES_DIR", 0,
-     "Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
-     0},
-    {"outfile", 'o', "OUTPUT_FILE", 0,
-     "Path to the JSON file to write the results to. Defaults to 'results.json'.",
-     0},
-    {"adhoc", OPT_KEY_ADHOC, "RULE", 0,
-     "Adhoc benchmark using RULE, skip all the predefined benchmarks.", 0},
-    {"adhoc-repeat", OPT_KEY_ADHOC_REPEAT, "COUNT", 0,
-     "Number of times to repeat the adhoc RULE in the chain. Defaults to 1.", 0},
-    {"no-daemon", OPT_KEY_NO_DAEMON, NULL, OPTION_ARG_OPTIONAL,
-     "If set, the benchmark will assume a daemon is already running and won't start one.",
-     0},
-    {nullptr},
+    {.name="cli", .key='c', .arg="CLI", .flags=0,
+     .doc="Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", .group=0},
+    {.name="daemon", .key='d', .arg="DAEMON", .flags=0,
+     .doc="Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", .group=0},
+    {.name="srcdir", .key='s', .arg="SOURCES_DIR", .flags=0,
+     .doc="Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
+     .group=0},
+    {.name="outfile", .key='o', .arg="OUTPUT_FILE", .flags=0,
+     .doc="Path to the JSON file to write the results to. Defaults to 'results.json'.",
+     .group=0},
+     {.name="filter", .key='f', .arg="FILTER", .flags=0,
+     .doc="Only run benchmarks matching the given FILTER (substring match).", .group=0},
+    {.name="no-daemon", .key=OPT_KEY_NO_DAEMON, .arg=nullptr, .flags=OPTION_ARG_OPTIONAL,
+     .doc="If set, the benchmark will assume a daemon is already running and won't start one.",
+     .group=0},
+     {.name="list", .key='l', .arg=nullptr, .doc="List all available benchmarks and exit.", .group=0},
+    {.name=nullptr},
 }};
 
 inline char *errStr(int value)
@@ -140,29 +141,29 @@ inline char *errStr(int value)
 int optsParser(int key, char *arg, struct ::argp_state *state)
 {
     auto *config = static_cast<Config *>(state->input);
-    int r;
 
     switch (key) {
-    case OPT_KEY_ADHOC:
-        config->adhoc = ::std::string(arg);
-        break;
-    case OPT_KEY_ADHOC_REPEAT:
-        config->adhocRepeat = ::std::stoi(arg);
-        break;
     case OPT_KEY_NO_DAEMON:
         config->runDaemon = false;
         break;
     case 'c':
-        config->bfcli = ::std::string(arg);
+        config->bfcli = ::std::filesystem::absolute(arg);
         break;
     case 'd':
         config->bpfilter = ::std::string(arg);
         break;
     case 's':
         config->srcdir = ::std::string(arg);
+
         break;
     case 'o':
         config->outfile = ::std::string(arg);
+        break;
+    case 'f':
+        ::benchmark::SetBenchmarkFilter(::std::string(arg));
+        break;
+    case 'l':
+        ::benchmark::FLAGS_benchmark_list_tests = true;
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -190,7 +191,7 @@ int setFdNonBlock(Fd &fd)
     ::std::string data;
 
     while ((len = read(fd.get(), buffer.data(), buffer.size())) >= 0)
-        data += ::std::string(::std::begin(buffer), len);
+        data.append(buffer.data(), len);
 
     if (len < 0 && errno != EAGAIN)
         err("failed to read from file descriptor: {}", errStr(errno));
@@ -252,8 +253,8 @@ int exec(const ::std::string &bin, const ::std::vector<::std::string> &args,
     }
 
     // Send back the pipes FD and PID to the parent
-    stdoutFd = std::move(Fd(stdout_pipe[0]));
-    stderrFd = std::move(Fd(stderr_pipe[0]));
+    stdoutFd = Fd(stdout_pipe[0]);
+    stderrFd = Fd(stderr_pipe[0]);
 
     return pid;
 }
@@ -317,15 +318,59 @@ int disableASLR(char **argv)
     return 0;
 }
 
+static std::string which(const std::string& cmd) {
+    // If already a path, resolve directly
+    if (cmd.find('/') != std::string::npos) {
+        auto p = std::filesystem::absolute(cmd);
+        if (std::filesystem::exists(p))
+            return p.string();
+        return {};
+    }
+
+    const char* path_env = std::getenv("PATH");
+    if (!path_env) return {};
+
+    std::istringstream ss(path_env);
+    std::string dir;
+
+    while (std::getline(ss, dir, ':')) {
+        auto candidate = std::filesystem::path(dir) / cmd;
+        if (std::filesystem::exists(candidate) &&
+            access(candidate.c_str(), X_OK) == 0) {
+            return std::filesystem::absolute(candidate).string();
+        }
+    }
+    return {};
+}
+
 int setup(std::span<char *> args)
 {
-    const struct argp argp = {options.data(), optsParser, nullptr, help.c_str()};
+    const struct argp argp = {.options=options.data(), .parser=optsParser, .args_doc=nullptr, .doc=help.c_str()};
 
     const int r = argp_parse(&argp, static_cast<int>(args.size()), args.data(),
                              0, nullptr, &::bf::config);
     if (r != 0) {
         err("failed to parse command line arguments: {}", errStr(r));
         return r;
+    }
+
+    config.bfcli = which(config.bfcli);
+    if (config.bfcli.empty()) {
+        err("bfcli binary '{}' not found", config.bfcli);
+        return -ENOENT;
+    }
+
+    config.bpfilter = which(config.bpfilter);
+    if (config.bpfilter.empty()) {
+        err("bpfilter binary '{}' not found", config.bpfilter);
+        return -ENOENT;
+    }
+
+    config.outfile = ::std::filesystem::absolute(config.outfile);
+    config.srcdir = ::std::filesystem::weakly_canonical(config.srcdir);
+    if (!std::filesystem::exists(config.srcdir)) {
+        err("source directory '{}' does not exist", config.srcdir);
+        return -ENOENT;
     }
 
     const ::bf::Sources srcs(::bf::config.srcdir);
@@ -351,17 +396,10 @@ int setup(std::span<char *> args)
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
     ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
-    ::benchmark::AddCustomContext("runDaemon", ::std::to_string(config.runDaemon));
-
-    if (config.adhoc) {
-        ::benchmark::AddCustomContext("adhoc", *config.adhoc);
-        ::benchmark::AddCustomContext("adhocRepeat", ::std::to_string(config.adhocRepeat));
-        ::benchmark::FLAGS_benchmark_filter = config.adhocBenchName;
-    } else {
-        ::benchmark::AddCustomContext("outfile", config.outfile);
-        ::benchmark::FLAGS_benchmark_out = config.outfile;
-        ::benchmark::FLAGS_benchmark_out_format = "json";
-    }
+    ::benchmark::AddCustomContext("outfile", config.outfile);
+    ::benchmark::AddCustomContext("runDaemon", config.runDaemon ? "yes" : "no");
+    ::benchmark::FLAGS_benchmark_out = config.outfile;
+    ::benchmark::FLAGS_benchmark_out_format = "json";
 
     return 0;
 }
@@ -689,6 +727,20 @@ int Daemon::stop()
     return 0;
 }
 
+std::string Daemon::stdout()
+{
+    auto maybe = readFd(stdoutFd_);
+
+    return  maybe ? *maybe : "";
+}
+
+std::string Daemon::stderr()
+{
+    auto maybe = readFd(stderrFd_);
+
+    return  maybe ? *maybe : "";
+}
+
 Program::Program(std::string name):
     name_ {::std::move(name)}
 {
@@ -806,27 +858,25 @@ int Program::open()
 
         ::close(prog_fd);
     }
-
-    return -ENOENT;
 }
 
-Chain::Chain(::std::string bin, ::std::string name):
+OldChain::OldChain(::std::string bin, ::std::string name):
     bin_ {::std::move(bin)},
     name_ {::std::move(name)}
 {}
 
-Chain::Chain(::std::initializer_list<::std::string> rules)
+OldChain::OldChain(::std::initializer_list<::std::string> rules)
 {
     rules_.insert(rules_.begin(), rules.begin(), rules.end());
 }
 
-Chain &Chain::operator<<(const ::std::string &rule)
+OldChain &OldChain::operator<<(const ::std::string &rule)
 {
     rules_.push_back(rule);
     return *this;
 }
 
-Chain &Chain::repeat(const ::std::string &rule, ::std::size_t count)
+OldChain &OldChain::repeat(const ::std::string &rule, ::std::size_t count)
 {
     for (::std::size_t i = 0; i < count; ++i)
         rules_.push_back(rule);
@@ -834,7 +884,7 @@ Chain &Chain::repeat(const ::std::string &rule, ::std::size_t count)
     return *this;
 }
 
-void Chain::insertRuleIPv4Set(unsigned int nIps)
+void OldChain::insertRuleIPv4Set(unsigned int nIps)
 {
     ::std::string rule = "rule (ip4.saddr) in {";
 
@@ -851,9 +901,9 @@ void Chain::insertRuleIPv4Set(unsigned int nIps)
     *this << rule;
 }
 
-int Chain::apply()
+int OldChain::apply()
 {
-    ::std::string chain = "chain bf_benchmark BF_HOOK_CGROUP_INGRESS DROP ";
+    ::std::string chain = "chain bf_benchmark BF_HOOK_XDP DROP ";
 
     for (const auto &rule: rules_)
         chain += rule + " ";
@@ -877,7 +927,7 @@ int Chain::apply()
     return 0;
 }
 
-Program Chain::getProgram() const
+Program OldChain::getProgram() const
 {
     return {name_};
 }
