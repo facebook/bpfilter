@@ -1,0 +1,27 @@
+name: Nix Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_nix:
+    name: "Build: Nix (${{ matrix.runner }})"
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+    - name: Checkout bpfilter
+      uses: actions/checkout@v4
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      with:
+        determinate: true
+    - name: Build
+      run: nix build
