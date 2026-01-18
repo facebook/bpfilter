@@ -223,7 +223,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: benchmarks-report
-          path: $GITHUB_WORKSPACE/build/doc/html/external/benchmarks/
+          path: ${{ github.workspace }}/build/doc/html/external/benchmarks/
       - name: Fix permissions
         if: github.ref == 'refs/heads/main'
         run: |
