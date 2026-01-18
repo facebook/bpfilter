@@ -17,6 +17,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake")
 
 include(GitVersion)
 get_version_from_git()
+
 message(NOTICE "bpfilter version ${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 # Store the number of CPUs in a variable, can be used to parallelize commands
