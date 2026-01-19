@@ -4,9 +4,11 @@ import abc
 import argparse
 import dataclasses
 import errno
+import fcntl
 import getpass
 import json
 import multiprocessing
+import os
 import pathlib
 import select
 import shutil
@@ -574,6 +576,8 @@ class Executor:
         self._stats = Stats()
         self._cache = diskcache.Cache(self._cache_dir)
         self._local_workdir.mkdir()
+        self._lock_file = None
+        self._lock_channel = None
 
         """
         Remote hosts requires extra setup:
@@ -612,11 +616,106 @@ class Executor:
                 f"sshfs {DEFAULT_USERNAME}@{DEFAULT_HOST[0]}:{self._local_workdir} {self._remote_workdir} -C -o allow_other,default_permissions,exec,user,identityfile=~/.ssh/id_ed25519"
             )
 
+        # Acquire lock after SSH setup (so remote locks work)
+        if args.lock_file:
+            self._acquire_lock(args.lock_file, args.lock_wait_for)
+
+    def _acquire_lock(self, lock_path: pathlib.Path, wait_timeout: int) -> None:
+        """Acquire an exclusive lock, either locally or on the remote host."""
+        if self.is_remote:
+            # For remote hosts, open an SSH channel that holds the lock.
+            # flock will acquire the lock, then cat blocks on stdin keeping
+            # the channel (and lock) open until we close it.
+            renderer.log(f"Acquiring remote lock: {lock_path}")
+
+            # Poll with --nonblock until we get the lock or timeout.
+            # We can't use --wait because we can't distinguish between
+            # "flock is waiting" and "flock acquired, cat is blocking".
+            waited = 0
+            while True:
+                self._lock_channel = self._client.get_transport().open_session()
+                # Ensure the lock file exists and try to set world-rw permissions.
+                # chmod may fail if we don't own the file, but that's ok - flock
+                # opens read-only by default and only needs read permission.
+                flock_cmd = f"touch {lock_path}; chmod 666 {lock_path} 2>/dev/null; flock --exclusive --nonblock {lock_path} cat"
+                self._lock_channel.exec_command(flock_cmd)
+
+                # Give flock a moment to fail if the lock is busy
+                time.sleep(0.5)
+
+                if self._lock_channel.exit_status_ready():
+                    status = self._lock_channel.recv_exit_status()
+                    self._lock_channel.close()
+                    self._lock_channel = None
+
+                    if status == 0:
+                        # Shouldn't happen - cat should block, not exit with 0
+                        renderer.log("Remote lock channel closed unexpectedly")
+                        raise SystemExit(1)
+
+                    # Lock is busy, retry or fail
+                    if waited >= wait_timeout:
+                        renderer.log(
+                            f"Another instance is running (lock file: {lock_path})"
+                        )
+                        raise SystemExit(1)
+
+                    renderer.log(f"Waiting for remote lock... {waited}/{wait_timeout}s")
+                    time.sleep(0.5)  # Total ~1s per iteration
+                    waited += 1
+                else:
+                    # No exit status = flock acquired, cat is blocking
+                    break
+
+            renderer.log("Remote lock acquired")
+        else:
+            # Local lock using fcntl.flock
+            renderer.log(f"Acquiring local lock: {lock_path}")
+            try:
+                # Try to create with world-rw permissions
+                fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
+                # If we created it, ensure permissions are set (umask may restrict)
+                os.fchmod(fd, 0o666)
+                self._lock_file = os.fdopen(fd, "r+")
+            except PermissionError:
+                # File exists but owned by another user - open read-only
+                # flock works on any file descriptor, even read-only
+                fd = os.open(lock_path, os.O_RDONLY)
+                self._lock_file = os.fdopen(fd, "r")
+
+            waited = 0
+            while True:
+                try:
+                    fcntl.flock(self._lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if waited >= wait_timeout:
+                        renderer.log(f"Another instance is running (lock file: {lock_path})")
+                        self._lock_file.close()
+                        self._lock_file = None
+                        raise SystemExit(1)
+                    renderer.log(f"Waiting for lock... {waited}/{wait_timeout}s")
+                    time.sleep(1)
+                    waited += 1
+
+            renderer.log("Local lock acquired")
+
     def __enter__(self) -> "Executor":
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._cache.close()
+
+        # Release lock before cleanup
+        if self._lock_channel:
+            renderer.log("Releasing remote lock")
+            self._lock_channel.close()
+            self._lock_channel = None
+        if self._lock_file:
+            renderer.log("Releasing local lock")
+            fcntl.flock(self._lock_file, fcntl.LOCK_UN)
+            self._lock_file.close()
+            self._lock_file = None
 
         if self.is_remote:
             self.run(f"umount -l {self._remote_workdir}")
@@ -1149,6 +1248,18 @@ def main():
         type=str,
         help="wrapper command to prepend to the benchmark execution (e.g., 'taskset -c 0' or 'numactl --cpunodebind=0')",
         default=None,
+    )
+    parser.add_argument(
+        "--lock-file",
+        type=pathlib.Path,
+        help="path to a lock file to hold while running benchmarks (prevents concurrent runs)",
+        default=None,
+    )
+    parser.add_argument(
+        "--lock-wait-for",
+        type=int,
+        help="seconds to wait for lock acquisition before exiting (default: 0, exit immediately)",
+        default=0,
     )
 
     args = parser.parse_args()
