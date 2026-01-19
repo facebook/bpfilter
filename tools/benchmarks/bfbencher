@@ -612,9 +612,13 @@ class Executor:
             # From now on, all self.run() commands are run on the remote host
 
             self.run(f"mkdir -p {self._remote_workdir}")
-            self.run(
+            r = self.run(
                 f"sshfs {DEFAULT_USERNAME}@{DEFAULT_HOST[0]}:{self._local_workdir} {self._remote_workdir} -C -o allow_other,default_permissions,exec,user,identityfile=~/.ssh/id_ed25519"
             )
+            if r:
+                raise RuntimeError(
+                    f"Failed to mount local workdir on remote host (sshfs exit code: {r})"
+                )
 
         # Acquire lock after SSH setup (so remote locks work)
         if args.lock_file:
