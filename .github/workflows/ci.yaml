@@ -161,7 +161,7 @@ jobs:
               BENCH_RETRY=""
             fi
           else
-            BENCH_UNTIL="heads"
+            BENCH_UNTIL="HEAD"
             BENCH_INCLUDE=""
           fi
           tools/benchmarks/bfbencher --fail-on-significant-change worse --since 201547c --until $BENCH_UNTIL $BENCH_INCLUDE $BENCH_RETRY --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
