@@ -413,7 +413,7 @@ class TuiRenderer(Renderer):
 
 class Analyzer:
     def __init__(
-        self, last_result: float, results: list[float], threshold: float = 1.0
+        self, last_result: float, results: list[float], threshold: float = 2.5
     ):
         # Use robust statistics (median/MAD) to handle outliers
         self.mean = numpy.median(results)
