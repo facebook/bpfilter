@@ -140,26 +140,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      # On pull requests, compare the X latest changes on main against the
-      # last commit of the PR. Otherwise, run the benchmarks up to HEAD.
-      - name: Determine benchmark range
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin main
-            echo "BENCH_UNTIL=origin/main" >> $GITHUB_ENV
-            echo "BENCH_INCLUDE=--include HEAD" >> $GITHUB_ENV
-          else
-            echo "BENCH_UNTIL=HEAD" >> $GITHUB_ENV
-            echo "BENCH_INCLUDE=" >> $GITHUB_ENV
-          fi
-
       # Run bfbencher with the same cache directory for every job, so
       # results are shared.
+      # On pull requests, compare the X latest changes on main against the
+      # last commit of the PR. Otherwise, run the benchmarks up to HEAD.
+      # On job retry, the last commit of the PR will always be retried.
       - name: Run bfbencher
         env:
           # Override rich's default terminal width to prevent wrapping.
           COLUMNS: 150
-        run: tools/benchmarks/bfbencher --fail-on-significant-change worse --since 201547c --until ${{ env.BENCH_UNTIL }} ${{ env.BENCH_INCLUDE }} --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
+          IS_RETRY: ${{ github.run_attempt > 1 }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin main
+            BENCH_UNTIL="origin/main"
+            BENCH_INCLUDE="--include HEAD"
+            if [ "$IS_RETRY" = "true" ]; then
+              BENCH_RETRY="--retry HEAD"
+            else
+              BENCH_RETRY=""
+            fi
+          else
+            BENCH_UNTIL="heads"
+            BENCH_INCLUDE=""
+          fi
+          tools/benchmarks/bfbencher --fail-on-significant-change worse --since 201547c --until $BENCH_UNTIL $BENCH_INCLUDE $BENCH_RETRY --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
 
       - uses: actions/upload-artifact@v4
         with:
