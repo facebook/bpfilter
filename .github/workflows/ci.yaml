@@ -155,6 +155,7 @@ jobs:
             git fetch origin main
             BENCH_UNTIL="origin/main"
             BENCH_INCLUDE="--include HEAD"
+            BENCH_FAIL_ON="--fail-on-significant-change worse"
             if [ "$IS_RETRY" = "true" ]; then
               BENCH_RETRY="--retry HEAD"
             else
@@ -163,10 +164,11 @@ jobs:
           else
             BENCH_UNTIL="HEAD"
             BENCH_INCLUDE=""
+            BENCH_FAIL_ON=""
           fi
           tools/benchmarks/bfbencher \
             --wrapper "/usr/local/bin/bfbencher-wrap" \
-            --fail-on-significant-change worse \
+            $BENCH_FAIL_ON \
             --since 65f915f \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \
