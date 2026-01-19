@@ -420,16 +420,21 @@ class Analyzer:
         # Use robust statistics (median/MAD) to handle outliers
         self.mean = numpy.median(results)
         mad = numpy.median(numpy.abs(results - self.mean))
-        # Scale MAD to be comparable to std for normal distributions
         self.std = mad * 1.4826 if mad else 0
-        self.z_score = (last_result - self.mean) / self.std if self.std else 0
         self.noise = self.std / self.mean if self.mean else 0
         self.pct_change = (
             ((last_result - self.mean) / self.mean) * 100 if self.mean else 0
         )
-        self.is_significant = (
-            abs(self.z_score) > threshold and abs(self.pct_change) > 1.0
-        )
+
+        if self.std == 0:
+            # No variance in history - can't determine significance
+            self.z_score = 0
+            self.is_significant = False
+        else:
+            self.z_score = (last_result - self.mean) / self.std
+            self.is_significant = (
+                abs(self.z_score) > threshold and abs(self.pct_change) > 2.0
+            )
 
 
 class Result:
@@ -499,8 +504,8 @@ class Benchmark:
         nInsns = self.nInsns
 
         return {
-            "time": Analyzer(times[-1], times[-n - 1 : -1], 2.5),
-            "nInsn": Analyzer(nInsns[-1], nInsns[-n - 1 : -1], 2.5) if nInsns else None,
+            "time": Analyzer(times[-1], times[-n - 1 : -1]),
+            "nInsn": Analyzer(nInsns[-1], nInsns[-n - 1 : -1]) if nInsns else None,
         }
 
     @property
