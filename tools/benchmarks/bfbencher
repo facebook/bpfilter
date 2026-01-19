@@ -192,7 +192,7 @@ class Renderer(abc.ABC):
     ) -> Table:
         """Build a Rich Table from benchmark data."""
         if terms is None:
-            terms = [5, 15]
+            terms = [20]
 
         def format_delta(term_stats: TermStats | None) -> str:
             if not term_stats:
@@ -694,7 +694,9 @@ class Executor:
                     break
                 except BlockingIOError:
                     if waited >= wait_timeout:
-                        renderer.log(f"Another instance is running (lock file: {lock_path})")
+                        renderer.log(
+                            f"Another instance is running (lock file: {lock_path})"
+                        )
                         self._lock_file.close()
                         self._lock_file = None
                         raise SystemExit(1)
@@ -1031,6 +1033,9 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                     renderer.update_progress()
                     continue
 
+                # Wait for bpfilter to start
+                time.sleep(1)
+
                 renderer.log(f"\\[{short_sha}] Building benchmarks")
                 r = executor.run(
                     f"make -C {{WORKDIR}}/{commit.hexsha} -j {multiprocessing.cpu_count()} bpfilter bfcli benchmark_bin",
@@ -1043,13 +1048,32 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                     renderer.update_progress()
                     continue
 
+                renderer.log(f"\\[{short_sha}] Starting daemon")
+                daemon_path = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter"
+                r = executor.run(
+                    f"sudo systemd-run --unit=bpfilter --slice=system.slice {daemon_path} --transient",
+                    timeout=10,
+                )
+                if r:
+                    renderer.log(f"❌ \\[{short_sha}] Failed to start daemon")
+                    executor.stats.failure(from_cache=False)
+                    executor.cache[cache_key] = {"success": False}
+                    renderer.update_progress()
+                    continue
+
+                time.sleep(1)
+
                 renderer.log(f"\\[{short_sha}] Run benchmarks")
-                benchmark_cmd = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/benchmark_bin --cli {{WORKDIR}}/{commit.hexsha}/output/sbin/bfcli --daemon {{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter --srcdir {{WORKDIR}}/bpfilter --outfile {benchmark_result_path}"
+                benchmark_cmd = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/benchmark_bin --cli {{WORKDIR}}/{commit.hexsha}/output/sbin/bfcli --no-daemon --daemon {{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter --srcdir {{WORKDIR}}/bpfilter --outfile {benchmark_result_path}"
                 if args.wrapper:
                     benchmark_cmd = f"{args.wrapper} {benchmark_cmd}"
                 benchmark_cmd = f"sudo {benchmark_cmd}"
 
                 r = executor.run(benchmark_cmd, timeout=300)
+
+                renderer.log(f"\\[{short_sha}] Stopping daemon")
+                executor.run("sudo systemctl stop bpfilter", timeout=10)
+
                 if r:
                     renderer.log(f"❌ \\[{short_sha}] Run failed")
                     executor.stats.failure(from_cache=False)
@@ -1085,7 +1109,7 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                 loader=jinja2.FileSystemLoader(args.report_template_path.parent)
             )
             template = env.get_template(args.report_template_path.name)
-            report_terms = [5, 15]
+            report_terms = [20]
             report_rows = renderer._prepare_benchmark_rows(
                 results.sorted_benchmarks(), report_terms
             )
@@ -1114,7 +1138,7 @@ def run_benchmarks(args: argparse.Namespace) -> History:
 
             # Generate PR report (only significant changes) for CI comments
             if args.pr_report_output_path:
-                summary_terms = [5]
+                summary_terms = [20]
                 summary_template = env.get_template("summary.html.j2")
                 summary_rows = renderer._prepare_benchmark_rows(
                     results.sorted_benchmarks(), summary_terms
