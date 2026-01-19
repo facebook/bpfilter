@@ -612,7 +612,7 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     interaction: {
-                        mode: 'index',
+                        mode: 'nearest',
                         intersect: false,
                     },
                     plugins: {
@@ -641,6 +641,7 @@
                             cornerRadius: 8,
                             displayColors: true,
                             boxPadding: 6,
+                            yAlign: 'bottom',
                             callbacks: {
                                 title: function(tooltipItems) {
                                     const idx = tooltipItems[0].dataIndex;
