@@ -284,6 +284,7 @@
 
         .chart-card canvas {
             padding: 1rem;
+            cursor: pointer;
         }
 
         /* Font Utilities */
@@ -606,7 +607,7 @@
             restripeTable();
         }
 
-        function generateChart(id, label, name, commits, runtimeData, instructionData, commitSubjects) {
+        function generateChart(id, label, name, commits, fullCommits, runtimeData, instructionData, commitSubjects) {
             const container = document.getElementById('charts');
 
             container.insertAdjacentHTML("beforeend",
@@ -664,8 +665,17 @@
                                     const hash = commits[idx];
                                     const subject = commitSubjects && commitSubjects[idx] ? commitSubjects[idx] : '';
                                     return subject ? `${hash}: ${subject}` : hash;
+                                },
+                                footer: function() {
+                                    return 'Click to view on GitHub';
                                 }
                             }
+                        }
+                    },
+                    onClick: function(event, elements) {
+                        if (elements.length > 0 && fullCommits) {
+                            const sha = fullCommits[elements[0].index];
+                            window.open(`https://github.com/facebook/bpfilter/commit/${sha}`, '_blank');
                         }
                     },
                     scales: {
@@ -791,7 +801,7 @@
 
         // Create each chart
         {% for benchmark in history.sorted_benchmarks() -%}
-        generateChart("chart-{{ benchmark.name }}", "{{ benchmark.label }}", "{{ benchmark.name }}", {{ benchmark.short_commits_sha }}, {{ benchmark.times }}, {{ benchmark.nInsns | default("null", true) }}, {{ benchmark.commit_subjects | tojson }})
+        generateChart("chart-{{ benchmark.name }}", "{{ benchmark.label }}", "{{ benchmark.name }}", {{ benchmark.short_commits_sha }}, {{ benchmark.commits_sha }}, {{ benchmark.times }}, {{ benchmark.nInsns | default("null", true) }}, {{ benchmark.commit_subjects | tojson }})
         {% endfor %}
 
         document.addEventListener("DOMContentLoaded", function() {
