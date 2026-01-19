@@ -729,8 +729,12 @@ class FilesystemSource:
         return self._repo.head.commit
 
     def prepare(
-        self, since: str, until: str, include: list[str] | None = None
-    ) -> list[git.Commit]:
+        self,
+        since: str,
+        until: str,
+        include: list[str] | None = None,
+        retry: list[str] | None = None,
+    ) -> tuple[list[git.Commit], set[str]]:
         """
         Prepare the source repository and return commits to benchmark.
 
@@ -738,12 +742,14 @@ class FilesystemSource:
             since: Oldest commit ref, or "wip" for uncommitted changes
             until: Newest commit ref, or "wip" for uncommitted changes
             include: Extra commit refs to include, supports "wip"
+            retry: Commit refs to retry (ignore cache for these)
 
         Returns:
-            List of commits in topological order (oldest first)
+            Tuple of (commits in topological order, set of retry commit SHAs)
         """
 
         include = include or []
+        retry = retry or []
         has_wip = (
             since.lower() == "wip"
             or until.lower() == "wip"
@@ -758,6 +764,14 @@ class FilesystemSource:
             None if ref.lower() == "wip" else self._repo.git.rev_parse(ref)
             for ref in include
         ]
+        retry_shas = set()
+        for ref in retry:
+            if ref in ("all", "failed"):
+                continue
+            try:
+                retry_shas.add(self._repo.git.rev_parse(ref))
+            except git.exc.GitCommandError:
+                renderer.log(f"Warning: could not resolve retry ref '{ref}'")
 
         # Handle uncommitted changes
         if self._repo.is_dirty(untracked_files=True):
@@ -809,7 +823,7 @@ class FilesystemSource:
         else:
             renderer.log(f"Found {len(commits)} commits ({since_ref}..{until_ref})")
 
-        return commits
+        return commits, retry_shas
 
     @property
     def repo(self) -> git.Repo:
@@ -853,8 +867,11 @@ def run_benchmarks(args: argparse.Namespace) -> History:
         with executor:
             renderer.log(f'Preparing sources from "{args.sources}"')
             source = FilesystemSource(args.sources, executor.srcdir)
-            commits = source.prepare(
-                since=args.since, until=args.until, include=args.include
+            commits, retry_shas = source.prepare(
+                since=args.since,
+                until=args.until,
+                include=args.include,
+                retry=args.retry,
             )
 
             if not commits:
@@ -863,13 +880,17 @@ def run_benchmarks(args: argparse.Namespace) -> History:
 
             renderer.set_commits(commits)
 
+            retry_all = "all" in args.retry
+            retry_failed = "failed" in args.retry
+
             for commit in commits:
                 short_sha = source.repo.git.rev_parse(commit, short=True)
                 renderer.set_current_commit(commit, executor.stats)
 
                 cache_key = f"{commit.hexsha}-{args.host}"
+                skip_cache = retry_all or commit.hexsha in retry_shas
                 cached_data = (
-                    None if args.retry_all else executor.cache.get(cache_key, {})
+                    None if skip_cache else executor.cache.get(cache_key, {})
                 )
 
                 # Handle the cache, restore data if possible
@@ -884,7 +905,7 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                     )
                     renderer.update_progress()
                     continue
-                elif cached_data and not args.retry_failed:
+                elif cached_data and not retry_failed:
                     renderer.log(f"\\[{short_sha}] Skipping (cached failure)")
                     executor.stats.failure(from_cache=True)
                     renderer.update_progress()
@@ -1086,17 +1107,12 @@ def main():
         default=DEFAULT_REPORT_PATH,
     )
     parser.add_argument(
-        "--retry-failed",
-        action="store_true",
-        help="retry commits that previously failed (ignore cached failures).",
-        default=False,
-    )
-    parser.add_argument(
-        "--retry-all",
-        "-a",
-        action="store_true",
-        help="run the benchmarks for all the commits in the range, ignoring cached results. The cache will be updated with the new results",
-        default=False,
+        "--retry",
+        "-r",
+        type=str,
+        action="append",
+        default=[],
+        help='retry benchmarks for specific commits, ignoring cached results. Use "failed" to retry all failed commits, "all" to retry everything, or a commit ref to retry a specific commit. Can be specified multiple times.',
     )
     parser.add_argument(
         "--no-tui",
