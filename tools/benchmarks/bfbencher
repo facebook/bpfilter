@@ -557,15 +557,6 @@ class History:
         return [self._benchmarks[name] for name in self._last_order]
 
 
-def get_agent_key(pattern: str) -> paramiko.AgentKey | None:
-    """Get a key from the SSH agent matching the given pattern."""
-    with paramiko.Agent() as agent:
-        for key in agent.get_keys():
-            if pattern.lower() in key.comment.lower():
-                return key
-        return None
-
-
 class Executor:
     """
     Context to execute the benchmark.
@@ -593,12 +584,16 @@ class Executor:
         if self.is_remote:
             renderer.log(f"Connecting to remote host {self._host}")
             self._remote_workdir = self._workdir
+            self._agent: paramiko.Agent = paramiko.Agent()
 
             self._client = paramiko.SSHClient()
             self._client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
-            pkey = get_agent_key(self._host)
-            if not pkey:
+            for key in self._agent.get_keys():
+                if self._host.lower() in key.comment.lower():
+                    pkey = key
+                    break
+            else:
                 raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
 
             self._client.connect(
@@ -627,6 +622,7 @@ class Executor:
             self.run(f"umount -l {self._remote_workdir}")
             self.run(f"rm -rf {self._remote_workdir}")
             self._client.close()
+            self._agent.close()
 
         shutil.rmtree(self._local_workdir)
 
