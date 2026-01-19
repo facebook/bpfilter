@@ -816,7 +816,36 @@ class FilesystemSource:
         return self._repo
 
 
-def run_benchmarks(args: argparse.Namespace):
+def has_significant_change(
+    benchmark: Benchmark, terms: list[int], direction: str = "any"
+) -> bool:
+    """Check if a benchmark has any statistically significant change.
+
+    Args:
+        benchmark: The benchmark to check.
+        terms: List of term lengths to check.
+        direction: One of "any", "better", or "worse".
+            - "any": any significant change
+            - "better": significant improvement (negative pct_change)
+            - "worse": significant regression (positive pct_change)
+    """
+    for term in terms:
+        stats = benchmark.get_stats(term)
+        if not stats:
+            continue
+        for analyzer in [stats["time"], stats["nInsn"]]:
+            if not analyzer or not analyzer.is_significant:
+                continue
+            if direction == "any":
+                return True
+            elif direction == "better" and analyzer.pct_change < 0:
+                return True
+            elif direction == "worse" and analyzer.pct_change > 0:
+                return True
+    return False
+
+
+def run_benchmarks(args: argparse.Namespace) -> History:
     executor = Executor(args)
     results = History()
 
@@ -998,6 +1027,8 @@ def run_benchmarks(args: argparse.Namespace):
     # Summary
     renderer.print_summary(executor.stats, results.sorted_benchmarks())
 
+    return results
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1079,6 +1110,12 @@ def main():
         help="path to write the PR report (HTML summary showing only statistically significant changes, for CI comments)",
         default=None,
     )
+    parser.add_argument(
+        "--fail-on-significant-change",
+        choices=["better", "worse", "any"],
+        help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
+        default=None,
+    )
 
     args = parser.parse_args()
 
@@ -1086,9 +1123,16 @@ def main():
     renderer = ConsoleRenderer() if args.no_tui else TuiRenderer()
 
     try:
-        run_benchmarks(args)
+        results = run_benchmarks(args)
     except KeyboardInterrupt:
         renderer.log("Command interrupted by user")
+        raise SystemExit(1)
+
+    if args.fail_on_significant_change:
+        terms = [5, 15]
+        for benchmark in results.sorted_benchmarks():
+            if has_significant_change(benchmark, terms, args.fail_on_significant_change):
+                raise SystemExit(1)
 
 
 if __name__ == "__main__":

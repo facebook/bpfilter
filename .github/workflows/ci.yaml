@@ -133,6 +133,7 @@ jobs:
     concurrency:
       group: do-no-run-benchmarks-concurrently
       cancel-in-progress: false
+    name: "Benchmark"
     steps:
       - name: Checkout bpfilter repository
         uses: actions/checkout@v4
@@ -158,41 +159,8 @@ jobs:
         env:
           # Override rich's default terminal width to prevent wrapping.
           COLUMNS: 150
-        run: tools/benchmarks/bfbencher --since 201547c --until ${{ env.BENCH_UNTIL }} ${{ env.BENCH_INCLUDE }} --cache-dir ~/bfbencher-cache --pr-report-output-path pr.html --report-path index.html --no-tui
+        run: tools/benchmarks/bfbencher --fail-on-significant-change worse --since 201547c --until ${{ env.BENCH_UNTIL }} ${{ env.BENCH_INCLUDE }} --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
 
-      # On pull requests, share the PR report as a comment on the PR.
-      - name: Post benchmark results as PR comment
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const html = fs.readFileSync('pr.html', 'utf8');
-            const body = `<!-- benchmark-comment -->\n${html}`;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes('<!-- benchmark-comment -->'));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body: body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body,
-              });
-            }
       - uses: actions/upload-artifact@v4
         with:
           name: benchmarks-report
