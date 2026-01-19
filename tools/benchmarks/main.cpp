@@ -148,9 +148,7 @@ void multiple_rules__ip4_saddr(::benchmark::State &state)
 BENCHMARK(multiple_rules__ip4_saddr)
     ->Arg(8)
     ->Arg(32)
-    ->Arg(128)
-    ->Arg(512)
-    ->Arg(2048);
+    ->Arg(128);
 
 void single_rule__ip4_saddr__x_elem_set(::benchmark::State &state)
 {
@@ -189,9 +187,9 @@ void single_rule__ip4_saddr__x_elem_set(::benchmark::State &state)
     state.SetLabel(std::format("1 rule, ip4.saddr, {} elements set", nrules));
 }
 BENCHMARK(single_rule__ip4_saddr__x_elem_set)
-    ->Arg(1 << 16)
-    ->Arg(1 << 18)
-    ->Arg(1 << 20);
+    ->Arg(1 << 3)
+    ->Arg(1<< 7)
+    ->Arg(1 << 15);
 
 void single_rule__ip4_saddr_c(::benchmark::State &state)
 {
@@ -310,9 +308,7 @@ void multiple_rules__ip6_saddr(::benchmark::State &state)
 BENCHMARK(multiple_rules__ip6_saddr)
     ->Arg(8)
     ->Arg(32)
-    ->Arg(128)
-    ->Arg(512)
-    ->Arg(2048);
+    ->Arg(128);
 
 void single_rule__ip6_saddr__x_elem_set(::benchmark::State &state)
 {
@@ -351,9 +347,9 @@ void single_rule__ip6_saddr__x_elem_set(::benchmark::State &state)
     state.SetLabel(std::format("1 rule, ip6.saddr, {} elements set", nrules));
 }
 BENCHMARK(single_rule__ip6_saddr__x_elem_set)
-    ->Arg(1 << 16)
-    ->Arg(1 << 18)
-    ->Arg(1 << 20);
+    ->Arg(1 << 3)
+    ->Arg(1<< 7)
+    ->Arg(1 << 15);
 
 void single_rule__ip6_saddr_c(::benchmark::State &state)
 {
