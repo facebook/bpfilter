@@ -889,9 +889,7 @@ def run_benchmarks(args: argparse.Namespace) -> History:
 
                 cache_key = f"{commit.hexsha}-{args.host}"
                 skip_cache = retry_all or commit.hexsha in retry_shas
-                cached_data = (
-                    None if skip_cache else executor.cache.get(cache_key, {})
-                )
+                cached_data = None if skip_cache else executor.cache.get(cache_key, {})
 
                 # Handle the cache, restore data if possible
                 if cached_data and cached_data.get("success", False):
@@ -917,7 +915,7 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                 source.repo.git.checkout(commit)
 
                 builddir = executor.get_builddir(commit)
-                benchmark_result_path = builddir / "benchmarks" / f"{short_sha}.json"
+                benchmark_result_path = builddir / "results.json"
 
                 renderer.log(f"\\[{short_sha}] Configuring")
                 r = executor.run(
@@ -930,13 +928,27 @@ def run_benchmarks(args: argparse.Namespace) -> History:
                     renderer.update_progress()
                     continue
 
-                renderer.log(f"\\[{short_sha}] Building and running benchmarks")
+                renderer.log(f"\\[{short_sha}] Building benchmarks")
                 r = executor.run(
-                    f"make -C {{WORKDIR}}/{commit.hexsha} -j {multiprocessing.cpu_count()} benchmark",
+                    f"make -C {{WORKDIR}}/{commit.hexsha} -j {multiprocessing.cpu_count()} bpfilter bfcli benchmark_bin",
                     timeout=300,
                 )
                 if r:
                     renderer.log(f"❌ \\[{short_sha}] Build failed")
+                    executor.stats.failure(from_cache=False)
+                    executor.cache[cache_key] = {"success": False}
+                    renderer.update_progress()
+                    continue
+
+                renderer.log(f"\\[{short_sha}] Run benchmarks")
+                benchmark_cmd = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/benchmark_bin --cli {{WORKDIR}}/{commit.hexsha}/output/sbin/bfcli --daemon {{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter --srcdir {{WORKDIR}}/bpfilter --outfile {benchmark_result_path}"
+                if args.wrapper:
+                    benchmark_cmd = f"{args.wrapper} {benchmark_cmd}"
+                benchmark_cmd = f"sudo {benchmark_cmd}"
+
+                r = executor.run(benchmark_cmd, timeout=300)
+                if r:
+                    renderer.log(f"❌ \\[{short_sha}] Run failed")
                     executor.stats.failure(from_cache=False)
                     executor.cache[cache_key] = {"success": False}
                     renderer.update_progress()
@@ -1132,6 +1144,12 @@ def main():
         help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
         default=None,
     )
+    parser.add_argument(
+        "--wrapper",
+        type=str,
+        help="wrapper command to prepend to the benchmark execution (e.g., 'taskset -c 0' or 'numactl --cpunodebind=0')",
+        default=None,
+    )
 
     args = parser.parse_args()
 
@@ -1147,7 +1165,9 @@ def main():
     if args.fail_on_significant_change:
         terms = [5, 15]
         for benchmark in results.sorted_benchmarks():
-            if has_significant_change(benchmark, terms, args.fail_on_significant_change):
+            if has_significant_change(
+                benchmark, terms, args.fail_on_significant_change
+            ):
                 raise SystemExit(1)
 
 

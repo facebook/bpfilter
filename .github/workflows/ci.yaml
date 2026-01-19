@@ -164,7 +164,7 @@ jobs:
             BENCH_UNTIL="HEAD"
             BENCH_INCLUDE=""
           fi
-          tools/benchmarks/bfbencher --fail-on-significant-change worse --since 201547c --until $BENCH_UNTIL $BENCH_INCLUDE $BENCH_RETRY --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
+          tools/benchmarks/bfbencher --wrapper "/usr/local/bin/bfbencher-wrap" --fail-on-significant-change worse --since 201547c --until $BENCH_UNTIL $BENCH_INCLUDE $BENCH_RETRY --cache-dir ~/bfbencher-cache --pr-report-output-path $GITHUB_STEP_SUMMARY --report-path index.html --no-tui
 
       - uses: actions/upload-artifact@v4
         with:
