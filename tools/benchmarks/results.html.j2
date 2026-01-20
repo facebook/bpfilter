@@ -473,7 +473,11 @@
                     </div>
                     <div class="col-auto stat-item text-center">
                         <div class="stat-label">Results</div>
-                        <div class="stat-value">{{ n_results }}</div>
+                        {% if stats.n_failures %}
+                        <div class="stat-value">{{ stats.n_successes }} ({{ stats.n_failures }} failures)</div>
+                        {% else %}
+                        <div class="stat-value">{{ stats.n_successes }}</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

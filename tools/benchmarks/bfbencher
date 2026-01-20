@@ -1,71 +1,54 @@
 #!/usr/bin/env python3
 
-import abc
+
+from __future__ import annotations
+
 import argparse
 import dataclasses
 import errno
-import fcntl
 import getpass
 import json
 import multiprocessing
-import os
 import pathlib
 import select
+import shlex
 import shutil
 import socket
 import subprocess
 import tempfile
 import time
 import uuid
-from shlex import split
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
-import diskcache
+import diskcache  # type: ignore[import-untyped]
 import git
 import jinja2
 import numpy
-import paramiko
+import paramiko  # type: ignore[import-untyped]
 import pint
 import rich
-from rich.layout import Layout
-from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TimeElapsedColumn,
-)
-from rich.table import Table
-
-title = """
-
-
-     _      __ _                     _
-    │ │    ╱ _│ │                   │ │
-    │ │__ │ │_│ │__   ___ _ __   ___│ │__   ___ _ __
-    │ '_ ╲│  _│ '_ ╲ ╱ _ ╲ '_ ╲ ╱ __│ '_ ╲ ╱ _ ╲ '__│
-    │ │_) │ │ │ │_) │  __╱ │ │ │ (__│ │ │ │  __╱ │
-    │_.__╱│_│ │_.__╱ ╲___│_│ │_│╲___│_│ │_│╲___│_│
-
-    Benchmarking tool for bpfilter
-
-"""
-
+import rich.console
+import rich.table
 
 DEFAULT_FIRST_COMMIT_REF = "HEAD~10"
 DEFAULT_LAST_COMMIT_REF = "wip"
 DEFAULT_SOURCE_PATH = pathlib.Path(".")
 DEFAULT_CACHE_PATH = pathlib.Path(".cache/bfbencher")
-DEFAULT_REPORT_PATH = pathlib.Path("build/doc/html/external/benchmarks/index.html")
 DEFAULT_USERNAME = getpass.getuser()
 DEFAULT_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/results.html.j2")
+DEFAULT_PR_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/summary.html.j2")
 DEFAULT_HOST = [socket.gethostname(), "localhost"]
+SHORT_SHA_LEN = 7
 
 ureg: pint.UnitRegistry = pint.UnitRegistry()
 
 
 class Stats:
-    def __init__(self):
+    """Tracks benchmark execution statistics for a host."""
+
+    def __init__(self, host: str):
+        self.host = host
         self.n_successes = 0
         self.n_failures = 0
         self.n_cache_hits = 0
@@ -86,115 +69,21 @@ class Stats:
         self.n_failures += 1
 
 
-@dataclasses.dataclass
-class TermStats:
-    """Statistics for a single term (e.g., 5 or 15 commits)."""
+class Renderer:
+    """Console output handler for benchmark progress and results."""
 
-    pct_change: float
-    is_significant: bool
-    mean: float
-    noise: float
-
-
-@dataclasses.dataclass
-class BenchmarkRow:
-    """Prepared data for a single benchmark row."""
-
-    name: str
-    label: str
-    time_str: str
-    insn_str: str | None
-    terms: dict[int, dict[str, TermStats | None]]  # term -> {"time": ..., "nInsn": ...}
-    runtime_ns: float = 0  # Runtime in nanoseconds for sorting
-    insn_count: int = 0  # Instruction count for sorting
-
-
-class Renderer(abc.ABC):
     def __init__(self) -> None:
-        self._console = rich.console.Console()
+        self._console = rich.console.Console(log_path=False)
 
-    @abc.abstractmethod
     def log(self, message: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def set_commits(self, commits: list[git.Commit]) -> None:
-        pass
-
-    @abc.abstractmethod
-    def update_progress(self) -> None:
-        pass
-
-    @abc.abstractmethod
-    def set_current_commit(self, commit: git.Commit, stats: Stats) -> None:
-        pass
+        self._console.log(message)
 
     @property
     def console(self) -> rich.console.Console:
         return self._console
 
-    def _prepare_benchmark_rows(
-        self, benchmarks: list["Benchmark"], terms: list[int]
-    ) -> list[BenchmarkRow]:
-        """Prepare benchmark data for rendering in any format."""
-        rows = []
-        for benchmark in benchmarks:
-            last = benchmark.last
-            if not last:
-                continue
-
-            time_str = f"{last.time:~.2f}"
-            insn_str = f"{last.nInsn:.0f}" if last.nInsn else None
-            runtime_ns = last.time.to("ns").magnitude
-            insn_count = last.nInsn or 0
-
-            term_data = {}
-            for term in terms:
-                bench_stats = benchmark.get_stats(term)
-                if bench_stats:
-                    time_analyzer = bench_stats["time"]
-                    insn_analyzer = bench_stats["nInsn"]
-                    term_data[term] = {
-                        "time": TermStats(
-                            pct_change=time_analyzer.pct_change,
-                            is_significant=time_analyzer.is_significant,
-                            mean=time_analyzer.mean,
-                            noise=time_analyzer.noise,
-                        ),
-                        "nInsn": TermStats(
-                            pct_change=insn_analyzer.pct_change,
-                            is_significant=insn_analyzer.is_significant,
-                            mean=insn_analyzer.mean,
-                            noise=insn_analyzer.noise,
-                        )
-                        if insn_analyzer
-                        else None,
-                    }
-                else:
-                    term_data[term] = {"time": None, "nInsn": None}
-
-            rows.append(
-                BenchmarkRow(
-                    name=benchmark.name,
-                    label=benchmark.label,
-                    time_str=time_str,
-                    insn_str=insn_str,
-                    terms=term_data,
-                    runtime_ns=runtime_ns,
-                    insn_count=insn_count,
-                )
-            )
-
-        return rows
-
-    def _get_stats_table(
-        self, benchmarks: list["Benchmark"], terms: list[int] | None = None
-    ) -> Table:
-        """Build a Rich Table from benchmark data."""
-        if terms is None:
-            terms = [20]
-
-        def format_delta(term_stats: TermStats | None) -> str:
+    def print_report(self, rows: list[Report.BenchmarkRow], terms: list[int]):
+        def format_delta(term_stats: Report.TermStats | None) -> str:
             if not term_stats:
                 return ""
             pct = term_stats.pct_change
@@ -204,15 +93,13 @@ class Renderer(abc.ABC):
                 color = "white"
             return f"[{color}]{pct:+.1f}%[/{color}]"
 
-        rows = self._prepare_benchmark_rows(benchmarks, terms)
-
-        summary_table = Table(title="Benchmark Summary", show_header=True)
-        summary_table.add_column("Benchmark", style="cyan")
-        summary_table.add_column("Time", justify="right")
-        summary_table.add_column("Instructions", justify="right")
+        table = rich.table.Table(title="Benchmark Summary", show_header=True)
+        table.add_column("Benchmark", style="cyan")
+        table.add_column("Time", justify="right")
+        table.add_column("Instructions", justify="right")
         for term in terms:
-            summary_table.add_column(f"Δ Time ({term})", justify="right")
-            summary_table.add_column(f"Δ Insn ({term})", justify="right")
+            table.add_column(f"Δ Time ({term})", justify="right")
+            table.add_column(f"Δ Insn ({term})", justify="right")
 
         for row in rows:
             columns = [row.name, row.time_str, row.insn_str or "-"]
@@ -220,206 +107,28 @@ class Renderer(abc.ABC):
                 term_data = row.terms.get(term, {"time": None, "nInsn": None})
                 columns.append(format_delta(term_data["time"]))
                 columns.append(format_delta(term_data["nInsn"]))
-            summary_table.add_row(*columns)
+            table.add_row(*columns)
 
-        return summary_table
-
-    def _get_context_table(
-        self,
-        stats: Stats,
-        first_commit: git.Commit | None = None,
-        last_commit: git.Commit | None = None,
-        current_commit: git.Commit | None = None,
-        n_commits: int | None = None,
-    ) -> Table:
-        table = Table(title="Context", show_header=False, box=None)
-        table.add_row("", "")
-
-        table.add_row("[bold]Commits", None)
-        if first_commit:
-            table.add_row(
-                "├── First",
-                f"[bold]{first_commit.summary} ({first_commit.hexsha[:7]})[/bold]"
-                if first_commit
-                else "",
-            )
-        if last_commit:
-            table.add_row(
-                "├── Last",
-                f"[bold]{last_commit.summary} ({last_commit.hexsha[:7]})[/bold]"
-                if last_commit
-                else "",
-            )
-        if current_commit:
-            table.add_row(
-                "├── Current",
-                f"[bold]{current_commit.summary} ({current_commit.hexsha[:7]})[/bold]"
-                if current_commit
-                else "",
-            )
-        table.add_row("└── Count", str(n_commits) if n_commits else "unknown")
-        table.add_row("", "")
-
-        table.add_row("[bold]Results", None)
-        table.add_row("├── Success", str(stats.n_successes))
-        table.add_row("└── Failure", str(stats.n_failures))
-        table.add_row("", "")
-
-        table.add_row("[bold]Cache", None)
-        table.add_row("├── Hits", str(stats.n_cache_hits))
-        table.add_row("└── Misses", str(stats.n_cache_misses))
-
-        return table
+        self.console.print(table)
 
 
-renderer: Renderer = None
-
-
-class ConsoleRenderer(Renderer):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def log(self, message: str) -> None:
-        self._console.log(message)
-
-    def set_commits(self, commits: list[git.Commit]) -> None:
-        pass
-
-    def update_progress(self) -> None:
-        pass
-
-    def set_current_commit(self, commit: git.Commit, stats: Stats) -> None:
-        pass
-
-    def print_summary(self, stats: Stats, benchmarks: list["Benchmark"] = []) -> None:
-        self._console.log("\n")
-        self._console.log(self._get_context_table(stats))
-        self._console.log()
-        self._console.log(self._get_stats_table(benchmarks))
-
-
-class TuiRenderer(Renderer):
-    def __init__(self) -> None:
-        super().__init__()
-
-        self._logs = []
-        self.layout = Layout()
-        self._first_commit = None
-        self._last_commit = None
-        self._current_commit = None
-        self._n_commits = 0
-
-        self.layout.split_row(
-            Layout(name="left_pane", size=80), Layout(name="right_pane")
-        )
-
-        self.layout["left_pane"].split_column(
-            Layout(name="title", size=12),
-            Layout(name="progress", size=3),
-            Layout(name="configuration"),
-        )
-
-        self.layout["right_pane"].split_column(
-            Layout(name="header", size=4),
-            Layout(name="logs", size=self._console.size.height - 4),
-        )
-
-        self.layout["header"].update("")
-        self.layout["title"].update(title)
-
-        # Update layout with content
-        self._redraw_configuration()
-
-        self._progress = Progress(
-            SpinnerColumn(),
-            TimeElapsedColumn(),
-            MofNCompleteColumn(),
-            BarColumn(bar_width=None),
-            console=self._console,
-        )
-        self._task = self._progress.add_task("Processing...", total=100)
-        self.layout["progress"].update(Panel(self._progress, border_style="green"))
-
-    def _redraw_configuration(self, stats: Stats = Stats()):
-        table = Table(show_header=False, box=None)
-        table.add_row("", "")
-
-        table.add_row("[bold]Commits", None)
-        table.add_row(
-            "├── First",
-            f"[bold]{self._first_commit.summary} ({self._first_commit.hexsha[:7]})[/bold]"
-            if self._first_commit
-            else "",
-        )
-        table.add_row(
-            "├── Last",
-            f"[bold]{self._last_commit.summary} ({self._last_commit.hexsha[:7]})[/bold]"
-            if self._last_commit
-            else "",
-        )
-        table.add_row(
-            "├── Current",
-            f"[bold]{self._current_commit.summary} ({self._current_commit.hexsha[:7]})[/bold]"
-            if self._current_commit
-            else "",
-        )
-        table.add_row("└── Count", str(self._n_commits))
-        table.add_row("", "")
-
-        table.add_row("[bold]Results", None)
-        table.add_row("├── Success", str(stats.n_successes))
-        table.add_row("└── Failure", str(stats.n_failures))
-        table.add_row("", "")
-
-        table.add_row("[bold]Cache", None)
-        table.add_row("├── Hits", str(stats.n_cache_hits))
-        table.add_row("└── Misses", str(stats.n_cache_misses))
-
-        self.layout["configuration"].update(
-            Panel(table, title="Configuration", border_style="cyan")
-        )
-
-    def log(self, message: str):
-        self._logs.append(message)
-        height = self.layout["logs"].size - 4
-        self.layout["logs"].update(
-            Panel("\n".join(self._logs[-height:]), title="Logs", border_style="yellow")
-        )
-
-    def set_commits(self, commits: list[git.Commit]) -> None:
-        self._first_commit = commits[0] if commits else "No commit"
-        self._last_commit = commits[-1] if commits else "No commit"
-        self._redraw_configuration()
-
-        self._n_commits = len(commits)
-        self._progress.update(self._task, total=self._n_commits)
-
-    def set_current_commit(self, commit: git.Commit, stats: Stats) -> None:
-        self._current_commit = commit
-        self._redraw_configuration(stats)
-
-    def update_progress(self):
-        self._progress.advance(self._task, 1)
-
-    def print_summary(self, stats: Stats, benchmarks: list["Benchmark"] = []) -> None:
-        self._console.clear()
-        self._console.print(title)
-        self._console.print(
-            self._get_context_table(
-                stats, self._first_commit, self._last_commit, n_commits=self._n_commits
-            )
-        )
-        self._console.line(1)
-        self._console.print(self._get_stats_table(benchmarks))
+renderer: Renderer = Renderer()
 
 
 class Analyzer:
+    """Statistical analyzer for detecting significant performance changes.
+
+    Uses robust statistics (median/MAD) to handle outliers and determines
+    if the latest result represents a statistically significant change.
+    """
+
     def __init__(
-        self, last_result: float, results: list[float], threshold: float = 2.5
+        self, last_result: float, results: Sequence[int | float], threshold: float = 2.5
     ):
         # Use robust statistics (median/MAD) to handle outliers
-        self.mean = numpy.median(results)
-        mad = numpy.median(numpy.abs(results - self.mean))
+        arr = numpy.array(results)
+        self.mean = numpy.median(arr)
+        mad = numpy.median(numpy.abs(arr - self.mean))
         self.std = mad * 1.4826 if mad else 0
         self.noise = self.std / self.mean if self.mean else 0
         self.pct_change = (
@@ -438,6 +147,8 @@ class Analyzer:
 
 
 class Result:
+    """Single benchmark result for a specific commit."""
+
     @classmethod
     def from_json(cls, commit: git.Commit, json: dict) -> "Result":
         return Result(
@@ -471,14 +182,16 @@ class Result:
 
     @property
     def short_commit_sha(self) -> str:
-        return self.commit_sha[:7]
+        return self.commit_sha[:SHORT_SHA_LEN]
 
     @property
-    def time(self) -> float:
-        return self.cpu_time.to_compact()
+    def time(self) -> pint.Quantity:
+        return self.cpu_time
 
 
 class Benchmark:
+    """Collection of benchmark results across multiple commits."""
+
     def __init__(self, name: str):
         self._name = name
         self._results: list[Result] = []
@@ -496,7 +209,7 @@ class Benchmark:
     def label(self) -> str:
         return self._label
 
-    def get_stats(self, n: int):
+    def get_stats(self, n: int) -> dict | None:
         if len(self._results) < n + 1:
             return None
 
@@ -518,10 +231,12 @@ class Benchmark:
 
     @property
     def nInsns(self) -> list[int] | None:
+        """Return instruction counts, or None if any result lacks instruction data."""
         nInsns = [x.nInsn for x in self._results]
-        if None not in nInsns:
-            return nInsns
-        return None
+        # nInsn defaults to 0 when missing from JSON, so treat 0 as missing data
+        if any(n == 0 for n in nInsns):
+            return None
+        return nInsns
 
     @property
     def commits_sha(self) -> list[str]:
@@ -533,11 +248,13 @@ class Benchmark:
 
     @property
     def commit_subjects(self) -> list[str]:
-        return [x.commit_summary for x in self._results]
+        return [str(x.commit_summary) for x in self._results]
 
 
 class History:
-    def __init__(self):
+    """Manages benchmark results history across all commits."""
+
+    def __init__(self) -> None:
         self._benchmarks: dict[str, Benchmark] = {}
         self._last_order: list[str] = []
 
@@ -557,14 +274,18 @@ class History:
         self._last_order = order
 
     @property
-    def benchmarks(self):
+    def benchmarks(self) -> dict[str, Benchmark]:
         return self._benchmarks
 
     def sorted_benchmarks(self) -> list[Benchmark]:
         return [self._benchmarks[name] for name in self._last_order]
 
 
-class Executor:
+def get_cache_key(commit: git.Commit, host: str) -> str:
+    return f"{commit.hexsha}-{host}"
+
+
+class Executor(ABC):
     """
     Context to execute the benchmark.
 
@@ -578,163 +299,36 @@ class Executor:
         )
         self._local_workdir: pathlib.Path = self._workdir
         self._cache_dir: pathlib.Path = args.cache_dir
-        self._stats = Stats()
+        self._stats = Stats(self._host)
         self._cache = diskcache.Cache(self._cache_dir)
         self._local_workdir.mkdir()
-        self._lock_file = None
-        self._lock_channel = None
+        self._retry_shas: set[str] = set()
+        self._commits: list[git.Commit] = []
+        self._source = FilesystemSource(args.sources, self._local_workdir / "bpfilter")
+        self._results = History()
+        self._args = args
 
-        """
-        Remote hosts requires extra setup:
-        - Connect to the host, using the corresponding key in ssh-agent
-        - Create a work directory
-        - Mount the remote host's work directory locally
-        """
-        if self.is_remote:
-            renderer.log(f"Connecting to remote host {self._host}")
-            self._remote_workdir = self._workdir
-            self._agent: paramiko.Agent = paramiko.Agent()
+        self._current_commit: git.Commit | None = None
 
-            self._client = paramiko.SSHClient()
-            self._client.set_missing_host_key_policy(paramiko.WarningPolicy())
+    @property
+    def retry_shas(self) -> set[str]:
+        return self._retry_shas
 
-            for key in self._agent.get_keys():
-                if self._host.lower() in key.comment.lower():
-                    pkey = key
-                    break
-            else:
-                raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
+    @property
+    def commits(self) -> list[git.Commit]:
+        return self._commits
 
-            self._client.connect(
-                self._host,
-                username=DEFAULT_USERNAME,
-                pkey=pkey,
-                allow_agent=False,
-            )
+    @property
+    def results(self) -> History:
+        return self._results
 
-            self.run("hostname")
+    @property
+    def current_commit(self) -> git.Commit | None:
+        return self._current_commit
 
-            # From now on, all self.run() commands are run on the remote host
-
-            self.run(f"mkdir -p {self._remote_workdir}")
-            r = self.run(
-                f"sshfs {DEFAULT_USERNAME}@{DEFAULT_HOST[0]}:{self._local_workdir} {self._remote_workdir} -C -o allow_other,default_permissions,exec,user,identityfile=~/.ssh/id_ed25519"
-            )
-            if r:
-                raise RuntimeError(
-                    f"Failed to mount local workdir on remote host (sshfs exit code: {r})"
-                )
-
-        # Acquire lock after SSH setup (so remote locks work)
-        if args.lock_file:
-            self._acquire_lock(args.lock_file, args.lock_wait_for)
-
-    def _acquire_lock(self, lock_path: pathlib.Path, wait_timeout: int) -> None:
-        """Acquire an exclusive lock, either locally or on the remote host."""
-        if self.is_remote:
-            # For remote hosts, open an SSH channel that holds the lock.
-            # flock will acquire the lock, then cat blocks on stdin keeping
-            # the channel (and lock) open until we close it.
-            renderer.log(f"Acquiring remote lock: {lock_path}")
-
-            # Poll with --nonblock until we get the lock or timeout.
-            # We can't use --wait because we can't distinguish between
-            # "flock is waiting" and "flock acquired, cat is blocking".
-            waited = 0
-            while True:
-                self._lock_channel = self._client.get_transport().open_session()
-                # Ensure the lock file exists and try to set world-rw permissions.
-                # chmod may fail if we don't own the file, but that's ok - flock
-                # opens read-only by default and only needs read permission.
-                flock_cmd = f"touch {lock_path}; chmod 666 {lock_path} 2>/dev/null; flock --exclusive --nonblock {lock_path} cat"
-                self._lock_channel.exec_command(flock_cmd)
-
-                # Give flock a moment to fail if the lock is busy
-                time.sleep(0.5)
-
-                if self._lock_channel.exit_status_ready():
-                    status = self._lock_channel.recv_exit_status()
-                    self._lock_channel.close()
-                    self._lock_channel = None
-
-                    if status == 0:
-                        # Shouldn't happen - cat should block, not exit with 0
-                        renderer.log("Remote lock channel closed unexpectedly")
-                        raise SystemExit(1)
-
-                    # Lock is busy, retry or fail
-                    if waited >= wait_timeout:
-                        renderer.log(
-                            f"Another instance is running (lock file: {lock_path})"
-                        )
-                        raise SystemExit(1)
-
-                    renderer.log(f"Waiting for remote lock... {waited}/{wait_timeout}s")
-                    time.sleep(0.5)  # Total ~1s per iteration
-                    waited += 1
-                else:
-                    # No exit status = flock acquired, cat is blocking
-                    break
-
-            renderer.log("Remote lock acquired")
-        else:
-            # Local lock using fcntl.flock
-            renderer.log(f"Acquiring local lock: {lock_path}")
-            try:
-                # Try to create with world-rw permissions
-                fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o666)
-                # If we created it, ensure permissions are set (umask may restrict)
-                os.fchmod(fd, 0o666)
-                self._lock_file = os.fdopen(fd, "r+")
-            except PermissionError:
-                # File exists but owned by another user - open read-only
-                # flock works on any file descriptor, even read-only
-                fd = os.open(lock_path, os.O_RDONLY)
-                self._lock_file = os.fdopen(fd, "r")
-
-            waited = 0
-            while True:
-                try:
-                    fcntl.flock(self._lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except BlockingIOError:
-                    if waited >= wait_timeout:
-                        renderer.log(
-                            f"Another instance is running (lock file: {lock_path})"
-                        )
-                        self._lock_file.close()
-                        self._lock_file = None
-                        raise SystemExit(1)
-                    renderer.log(f"Waiting for lock... {waited}/{wait_timeout}s")
-                    time.sleep(1)
-                    waited += 1
-
-            renderer.log("Local lock acquired")
-
-    def __enter__(self) -> "Executor":
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self._cache.close()
-
-        # Release lock before cleanup
-        if self._lock_channel:
-            renderer.log("Releasing remote lock")
-            self._lock_channel.close()
-            self._lock_channel = None
-        if self._lock_file:
-            renderer.log("Releasing local lock")
-            fcntl.flock(self._lock_file, fcntl.LOCK_UN)
-            self._lock_file.close()
-            self._lock_file = None
-
-        if self.is_remote:
-            self.run(f"umount -l {self._remote_workdir}")
-            self.run(f"rm -rf {self._remote_workdir}")
-            self._client.close()
-            self._agent.close()
-
-        shutil.rmtree(self._local_workdir)
+    @current_commit.setter
+    def current_commit(self, commit: git.Commit):
+        self._current_commit = commit
 
     @property
     def host(self) -> str:
@@ -756,79 +350,212 @@ class Executor:
     def stats(self) -> Stats:
         return self._stats
 
-    def get_builddir(self, commit) -> pathlib.Path:
-        return self._local_workdir / commit.hexsha
+    @property
+    def work_dir(self) -> pathlib.Path:
+        return self._workdir
 
-    def run(
-        self, cmd: str, timeout: int | None = None, force_local: bool = False
-    ) -> int:
-        cmd = cmd.replace("{WORKDIR}", str(self._workdir))
+    def __enter__(self) -> Executor:
+        self.log(f'Preparing sources from "{self._source.local}"')
 
-        renderer.log(f"Running: {cmd}")
+        self._commits, self._retry_shas = self._source.prepare(
+            since=self._args.since,
+            until=self._args.until,
+            include=self._args.include,
+            retry=self._args.retry,
+        )
 
-        if self.is_remote and not force_local:
-            channel = self._client.get_transport().open_session()
-            channel.set_combine_stderr(True)
-            channel.settimeout(timeout)
+        if not self.commits:
+            self.log("No commits found in the specified range")
+            raise FileNotFoundError
 
-            try:
-                channel.exec_command(cmd)
-                while data := channel.recv(1024):
-                    for line in data.decode("utf-8").splitlines():
-                        renderer.log(line)
-            except socket.timeout:
-                renderer.log(f"Command timed out after {timeout}s")
-                return errno.ETIMEDOUT
-            except KeyboardInterrupt:
-                # Forward Ctrl+C to the process
-                channel.send("\x03")
-                channel.close()
-                raise
+        return self
 
-            # Ensure the process is terminated
-            channel.recv_exit_status()
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._cache.close()
+        self._current_commit = None
+        shutil.rmtree(self._local_workdir)
 
-            return channel.exit_status
+    def log(self, msg: str):
+        if commit := self._current_commit:
+            index = self.commits.index(commit)
+            log = f"\\[[yellow bold]{commit.hexsha[:SHORT_SHA_LEN]}[/], {index + 1}/{len(self.commits)}] {msg}"
         else:
-            p = subprocess.Popen(
-                split(cmd),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
+            log = msg
+        renderer.log(log)
+
+    @abstractmethod
+    def _run(self, cmd: list[str], timeout: int | None = None) -> int:
+        pass
+
+    def _substitute_workdir(self, cmd: list[str]) -> list[str]:
+        """Replace {WORKDIR} placeholder in command arguments."""
+        return [str(item).replace("{WORKDIR}", str(self._workdir)) for item in cmd]
+
+    def run(self, cmd: list[str], timeout: int | None = None) -> int:
+        return self._run(self._substitute_workdir(cmd), timeout)
+
+    def run_benchmark_cmd(
+        self,
+        message: str,
+        commit: git.Commit,
+        cmd: list[str],
+        timeout: int | None = None,
+    ) -> bool:
+        self.log(f"[blue bold]{message}[/]")
+
+        r = self._run(self._substitute_workdir(cmd), timeout)
+        if r:
+            self.log(f"[red bold]{message} failed[/]")
+            self.stats.failure(from_cache=False)
+            self.cache[get_cache_key(commit, self._host)] = {"success": False}
+
+        return r == 0
+
+    def add_results(self, commit: git.Commit, results: dict):
+        self._results.add_results([Result.from_json(commit, raw) for raw in results])
+        self.cache[get_cache_key(commit, self.host)] = {
+            "success": True,
+            "results": results,
+        }
+
+
+class RemoteExecutor(Executor):
+    """Executor that runs benchmarks on a remote host via SSH."""
+
+    def __enter__(self) -> RemoteExecutor:
+        super().__enter__()
+
+        self.log(f"Connecting to remote host {self._host}")
+        self._remote_workdir = self._workdir
+        self._agent: paramiko.Agent = paramiko.Agent()
+
+        self._client = paramiko.SSHClient()
+        self._client.set_missing_host_key_policy(paramiko.WarningPolicy())
+
+        for key in self._agent.get_keys():
+            if self._host.lower() in key.comment.lower():
+                pkey = key
+                break
+        else:
+            raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
+
+        self._client.connect(
+            self._host,
+            username=DEFAULT_USERNAME,
+            pkey=pkey,
+            allow_agent=False,
+        )
+
+        # From now on, all self.run() commands are run on the remote host
+        self.run(["hostname"])
+
+        self.run(["mkdir", "-p", str(self._remote_workdir)])
+        r = self.run(
+            [
+                "sshfs",
+                f"{DEFAULT_USERNAME}@{DEFAULT_HOST[0]}:{self._local_workdir}",
+                str(self._remote_workdir),
+                "-C",
+                "-o",
+                "allow_other,default_permissions,exec,user,identityfile=~/.ssh/id_ed25519",
+            ]
+        )
+        if r:
+            raise RuntimeError(
+                f"Failed to mount local workdir on remote host (sshfs exit code: {r})"
             )
 
-            start_time = time.time()
+        return self
 
-            while True:
-                if timeout and (time.time() - start_time) > timeout:
-                    p.kill()
-                    p.wait()
-                    renderer.log(f"Command timed out after {timeout}s")
-                    return errno.ETIMEDOUT
+    def _run(self, cmd: list[str], timeout: int | None = None) -> int:
+        transport = self._client.get_transport()
+        if transport is None:
+            raise RuntimeError("SSH transport is not connected")
+        channel = transport.open_session()
+        channel.set_combine_stderr(True)
+        channel.settimeout(timeout)
 
-                ready, _, _ = select.select([p.stdout], [], [], 0.1)
-                if ready:
-                    line = p.stdout.readline()
-                    if not line:
-                        break
-                    line = line.rstrip()
-                    if line:
-                        renderer.log(line)
-                elif p.poll() is not None:
+        try:
+            channel.exec_command(shlex.join(cmd))
+            while data := channel.recv(1024):
+                for line in data.decode("utf-8").splitlines():
+                    self.log(line)
+        except socket.timeout:
+            self.log(f"Command timed out after {timeout}s")
+            return errno.ETIMEDOUT
+        except KeyboardInterrupt:
+            # Forward Ctrl+C to the process
+            channel.send(b"\x03")
+            channel.close()
+            raise
+
+        # Ensure the process is terminated
+        channel.recv_exit_status()
+
+        return channel.exit_status
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.run(["umount", "-l", str(self._remote_workdir)])
+        self.run(["rm", "-rf", str(self._remote_workdir)])
+        self._client.close()
+        self._agent.close()
+        super().__exit__(exc_type, exc_value, traceback)
+
+
+class LocalExecutor(Executor):
+    """Executor that runs benchmarks on the local host."""
+
+    def _run(self, cmd: list[str], timeout: int | None = None) -> int:
+        p = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        if p.stdout is None:
+            raise RuntimeError("Failed to capture subprocess stdout")
+
+        start_time = time.time()
+
+        while True:
+            if timeout and (time.time() - start_time) > timeout:
+                p.kill()
+                p.wait()
+                self.log(f"Command timed out after {timeout}s")
+                return errno.ETIMEDOUT
+
+            ready, _, _ = select.select([p.stdout], [], [], 0.1)
+            if ready:
+                line = p.stdout.readline()
+                if not line:
                     break
+                line = line.rstrip()
+                if line:
+                    self.log(line)
+            elif p.poll() is not None:
+                break
 
-            p.wait()
-            return p.returncode if p.returncode is not None else 1
+        p.wait()
+        return p.returncode if p.returncode is not None else 1
 
 
 class FilesystemSource:
+    """Manages source repository for benchmarking, including WIP commits."""
+
     def __init__(self, path: str, local_src_dir: pathlib.Path) -> None:
         self._path = pathlib.Path(path)
         self._local = local_src_dir
 
         shutil.copytree(self._path, self._local, dirs_exist_ok=True)
         self._repo: git.Repo = git.Repo(self._local)
+        self._retry_all: bool = False
+        self._retry_failed: bool = False
+
+    @property
+    def local(self) -> pathlib.Path:
+        """Local path to the source repository copy."""
+        return self._local
 
     def _commit_wip(self) -> git.Commit:
         """Commit uncommitted changes as WIP and return the commit."""
@@ -842,8 +569,8 @@ class FilesystemSource:
         self,
         since: str,
         until: str,
-        include: list[str] | None = None,
-        retry: list[str] | None = None,
+        include: list[str],
+        retry: list[str],
     ) -> tuple[list[git.Commit], set[str]]:
         """
         Prepare the source repository and return commits to benchmark.
@@ -857,6 +584,9 @@ class FilesystemSource:
         Returns:
             Tuple of (commits in topological order, set of retry commit SHAs)
         """
+
+        self._retry_all = "all" in retry
+        self._retry_failed = "failed" in retry
 
         include = include or []
         retry = retry or []
@@ -911,7 +641,9 @@ class FilesystemSource:
             if commit.hexsha not in commit_set:
                 commits.append(commit)
                 commit_set.add(commit.hexsha)
-                renderer.log(f"Including commit {commit.hexsha[:7]}: {commit.summary}")
+                renderer.log(
+                    f"Including commit {commit.hexsha[:SHORT_SHA_LEN]}: {str(commit.summary)}"
+                )
             else:
                 renderer.log(f"Commit {ref} already in range, skipping")
 
@@ -938,6 +670,14 @@ class FilesystemSource:
     @property
     def repo(self) -> git.Repo:
         return self._repo
+
+    @property
+    def retry_all(self) -> bool:
+        return self._retry_all
+
+    @property
+    def retry_failed(self) -> bool:
+        return self._retry_failed
 
 
 def has_significant_change(
@@ -969,242 +709,427 @@ def has_significant_change(
     return False
 
 
-def run_benchmarks(args: argparse.Namespace) -> History:
-    executor = Executor(args)
-    results = History()
+class DaemonContext:
+    """Context manager for running the bpfilter daemon during benchmarks."""
 
-    def run(executor: Executor):
-        with executor:
-            renderer.log(f'Preparing sources from "{args.sources}"')
-            source = FilesystemSource(args.sources, executor.srcdir)
-            commits, retry_shas = source.prepare(
-                since=args.since,
-                until=args.until,
-                include=args.include,
-                retry=args.retry,
+    def __init__(self, executor: Executor, daemon_path: pathlib.Path):
+        self._executor: Executor = executor
+        self._daemon_path: pathlib.Path = daemon_path
+
+    def __enter__(self) -> "DaemonContext":
+        cmd = [
+            "sudo",
+            "systemd-run",
+            "--unit",
+            "bpfilter",
+            str(self._daemon_path),
+            "--transient",
+        ]
+
+        if self._executor.run(cmd):
+            raise RuntimeError("failed to start daemon")
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._executor.run(["sudo", "systemctl", "stop", "bpfilter"], timeout=10)
+
+
+class BenchmarkContext:
+    """Context manager for benchmarking a single commit."""
+
+    def __init__(self, executor: Executor, commit: git.Commit):
+        self._executor: Executor = executor
+        self._commit: git.Commit = commit
+
+    def __enter__(self) -> "BenchmarkContext":
+        self._executor._source.repo.git.checkout(self._commit)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        return True
+
+    @property
+    def short_commit_sha(self) -> str:
+        """Shortened commit SHA for display and directory names."""
+        return self._commit.hexsha[:SHORT_SHA_LEN]
+
+    @property
+    def build_dir(self) -> pathlib.Path:
+        return self._executor.work_dir / self.short_commit_sha
+
+    @property
+    def results_path(self) -> pathlib.Path:
+        return self.build_dir / "results.json"
+
+    @property
+    def commit(self) -> git.Commit:
+        return self._commit
+
+    @property
+    def source_dir(self) -> pathlib.Path:
+        return self._executor.work_dir / "bpfilter"
+
+    @property
+    def daemon_path(self) -> pathlib.Path:
+        return self.build_dir / "output/sbin/bpfilter"
+
+    def configure(
+        self, doc: bool = False, tests: bool = False, checks: bool = False
+    ) -> bool:
+        cmd: list[str] = [
+            "cmake",
+            "-S",
+            str(self.source_dir),
+            "-B",
+            str(self.build_dir),
+        ]
+
+        if not doc:
+            cmd += ["-DNO_DOCS=1"]
+        if not tests:
+            cmd += ["-DNO_TESTS=1"]
+        if not checks:
+            cmd += ["-DNO_CHECKS=1"]
+
+        return self._executor.run_benchmark_cmd("Configuring CMake", self._commit, cmd)
+
+    def make(self, target: str) -> bool:
+        cmd = [
+            "make",
+            "-C",
+            str(self.build_dir),
+            "-j",
+            str(multiprocessing.cpu_count()),
+            target,
+        ]
+
+        return self._executor.run_benchmark_cmd(f"Building {target}", self._commit, cmd)
+
+    def run_daemon(self) -> DaemonContext:
+        return DaemonContext(self._executor, self.daemon_path)
+
+    def run_benchmark(
+        self,
+        bind_node: int | None = None,
+        no_preempt: bool = False,
+        cpu_pin: int | None = None,
+        slice: str | None = None,
+    ) -> bool:
+        cmd = [
+            str(self.build_dir / "output/sbin/benchmark_bin"),
+            "--cli",
+            str(self._executor.work_dir / "fake_bfcli.sh"),
+            "--daemon",
+            str(self._executor.work_dir / "fake_bpfilter.sh"),
+            "--no-daemon",
+            "--srcdir",
+            str(self.source_dir),
+            "--outfile",
+            str(self.results_path),
+        ]
+
+        if cpu_pin is not None:
+            cmd = ["taskset", "-c", str(cpu_pin)] + cmd
+        if no_preempt:
+            cmd = ["chrt", "-f", "99"] + cmd
+        if bind_node is not None:
+            cmd = [
+                "numactl",
+                "--membind",
+                str(bind_node),
+                "--cpunodebind",
+                str(bind_node),
+            ] + cmd
+
+        systemd_cmd = ["sudo", "systemd-run"]
+        if slice:
+            systemd_cmd += ["--slice", slice]
+        systemd_cmd += ["--scope"]
+        cmd = systemd_cmd + cmd
+
+        return self._executor.run_benchmark_cmd("Running benchmarks", self._commit, cmd)
+
+    @property
+    def results(self) -> dict | None:
+        if not self.results_path.exists():
+            return None
+
+        with open(self.results_path, "r") as results_file:
+            return json.load(results_file)["benchmarks"]
+
+    @classmethod
+    def commits(cls, executor, **kwargs):
+        for commit in executor.commits:
+            executor.current_commit = commit
+
+            cache_key = f"{commit.hexsha}-{executor.host}"
+            skip_cache = (
+                executor._source.retry_all or commit.hexsha in executor.retry_shas
+            )
+            cached_data = None if skip_cache else executor.cache.get(cache_key, {})
+
+            # Handle the cache, restore data if possible
+            if cached_data and cached_data.get("success", False):
+                executor.log("Using cached results")
+                executor.stats.success(from_cache=True)
+                executor._results.add_results(
+                    [Result.from_json(commit, raw) for raw in cached_data["results"]]
+                )
+                continue
+            elif cached_data and not executor._source.retry_failed:
+                executor.log("Skipping (cached failure)")
+                executor.stats.failure(from_cache=True)
+                continue
+
+            executor.log(
+                f'[yellow bold]Benchmarking "{commit.summary}" ({commit.hexsha[:SHORT_SHA_LEN]})[/]'
             )
 
-            if not commits:
-                renderer.log("No commits found in the specified range")
-                return
+            with cls(executor, commit, **kwargs) as ctx:
+                yield ctx
 
-            renderer.set_commits(commits)
 
-            retry_all = "all" in args.retry
-            retry_failed = "failed" in args.retry
+class Report:
+    """Generates benchmark reports in various formats (HTML, console)."""
 
-            for commit in commits:
-                short_sha = source.repo.git.rev_parse(commit, short=True)
-                renderer.set_current_commit(commit, executor.stats)
+    @dataclasses.dataclass
+    class TermStats:
+        """Statistics for a single term (e.g., 5 or 15 commits)."""
 
-                cache_key = f"{commit.hexsha}-{args.host}"
-                skip_cache = retry_all or commit.hexsha in retry_shas
-                cached_data = None if skip_cache else executor.cache.get(cache_key, {})
+        pct_change: float
+        is_significant: bool
+        mean: float
+        noise: float
 
-                # Handle the cache, restore data if possible
-                if cached_data and cached_data.get("success", False):
-                    renderer.log(f"\\[{short_sha}] Using cached results")
-                    executor.stats.success(from_cache=True)
-                    results.add_results(
-                        [
-                            Result.from_json(commit, raw)
-                            for raw in cached_data["results"]
-                        ]
-                    )
-                    renderer.update_progress()
-                    continue
-                elif cached_data and not retry_failed:
-                    renderer.log(f"\\[{short_sha}] Skipping (cached failure)")
-                    executor.stats.failure(from_cache=True)
-                    renderer.update_progress()
-                    continue
+    @dataclasses.dataclass
+    class BenchmarkRow:
+        """Prepared data for a single benchmark row."""
 
-                renderer.log(f"🔨 \\[{short_sha}] {commit.summary}")
+        name: str
+        label: str
+        time_str: str
+        insn_str: str | None
+        terms: dict[
+            int, dict[str, Report.TermStats | None]
+        ]  # term -> {"time": ..., "nInsn": ...}
+        runtime_ns: float = 0  # Runtime in nanoseconds for sorting
+        insn_count: int = 0  # Instruction count for sorting
 
-                # No cached data, checkout and run the benchmark
-                source.repo.git.checkout(commit)
+    def __init__(self, history: History):
+        self._history = history
 
-                builddir = executor.get_builddir(commit)
-                benchmark_result_path = builddir / "results.json"
+    def _get_benchmark_rows(self, terms: list[int]) -> list[BenchmarkRow]:
+        """Prepare benchmark data for rendering in any format."""
+        rows = []
+        for benchmark in self._history.sorted_benchmarks():
+            last = benchmark.last
+            if not last:
+                continue
 
-                renderer.log(f"\\[{short_sha}] Configuring")
-                r = executor.run(
-                    f"cmake -S {{WORKDIR}}/bpfilter -B {{WORKDIR}}/{commit.hexsha}"
-                )
-                if r:
-                    renderer.log(f"❌ \\[{short_sha}] Configure failed")
-                    executor.stats.failure(from_cache=False)
-                    executor.cache[cache_key] = {"success": False}
-                    renderer.update_progress()
-                    continue
+            time_str = f"{last.time:~.2f}"
+            insn_str = f"{last.nInsn:.0f}" if last.nInsn else None
+            runtime_ns = last.time.to("ns").magnitude
+            insn_count = last.nInsn or 0
 
-                # Wait for bpfilter to start
-                time.sleep(1)
-
-                renderer.log(f"\\[{short_sha}] Building benchmarks")
-                r = executor.run(
-                    f"make -C {{WORKDIR}}/{commit.hexsha} -j {multiprocessing.cpu_count()} bpfilter bfcli benchmark_bin",
-                    timeout=300,
-                )
-                if r:
-                    renderer.log(f"❌ \\[{short_sha}] Build failed")
-                    executor.stats.failure(from_cache=False)
-                    executor.cache[cache_key] = {"success": False}
-                    renderer.update_progress()
-                    continue
-
-                renderer.log(f"\\[{short_sha}] Starting daemon")
-                daemon_path = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter"
-                r = executor.run(
-                    f"sudo systemd-run --unit=bpfilter --slice=system.slice {daemon_path} --transient",
-                    timeout=10,
-                )
-                if r:
-                    renderer.log(f"❌ \\[{short_sha}] Failed to start daemon")
-                    executor.stats.failure(from_cache=False)
-                    executor.cache[cache_key] = {"success": False}
-                    renderer.update_progress()
-                    continue
-
-                time.sleep(1)
-
-                renderer.log(f"\\[{short_sha}] Run benchmarks")
-                benchmark_cmd = f"{{WORKDIR}}/{commit.hexsha}/output/sbin/benchmark_bin --cli {{WORKDIR}}/{commit.hexsha}/output/sbin/bfcli --no-daemon --daemon {{WORKDIR}}/{commit.hexsha}/output/sbin/bpfilter --srcdir {{WORKDIR}}/bpfilter --outfile {benchmark_result_path}"
-                if args.wrapper:
-                    benchmark_cmd = f"{args.wrapper} {benchmark_cmd}"
-                benchmark_cmd = f"sudo {benchmark_cmd}"
-
-                r = executor.run(benchmark_cmd, timeout=300)
-
-                renderer.log(f"\\[{short_sha}] Stopping daemon")
-                executor.run("sudo systemctl stop bpfilter", timeout=10)
-
-                if r:
-                    renderer.log(f"❌ \\[{short_sha}] Run failed")
-                    executor.stats.failure(from_cache=False)
-                    executor.cache[cache_key] = {"success": False}
-                    renderer.update_progress()
-                    continue
-
-                if not benchmark_result_path.exists():
-                    renderer.log(f"❌ \\[{short_sha}] Benchmark results not found")
-                    executor.stats.failure(from_cache=False)
-                    executor.cache[cache_key] = {"success": False}
-                    renderer.update_progress()
-                    continue
-
-                with open(benchmark_result_path, "r") as results_file:
-                    executor.cache[cache_key] = {
-                        "success": True,
-                        "results": json.load(results_file)["benchmarks"],
-                    }
-                    results.add_results(
-                        [
-                            Result.from_json(commit, raw)
-                            for raw in executor.cache[cache_key]["results"]
-                        ]
-                    )
-
-                renderer.log(f"\\[{short_sha}] Completed successfully")
-                executor.stats.success(from_cache=False)
-                renderer.update_progress()
-
-            # Generate HTML report
-            env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(args.report_template_path.parent)
-            )
-            template = env.get_template(args.report_template_path.name)
-            report_terms = [20]
-            report_rows = renderer._prepare_benchmark_rows(
-                results.sorted_benchmarks(), report_terms
-            )
-
-            with open(args.report_path, "w") as f:
-                f.write(
-                    template.render(
-                        history=results,
-                        rows=report_rows,
-                        hostname=executor.host,
-                        first_commit_sha=commits[0].hexsha,
-                        last_commit_sha=commits[-1].hexsha,
-                        n_commits=len(commits),
-                        n_results=executor.stats.n_successes,
-                        terms=report_terms,
-                        ureg=ureg,
-                        get_class=lambda stats: (
-                            "neutral"
-                            if not stats.is_significant
-                            else "is-significant text-danger"
-                            if stats.pct_change > 0
-                            else "is-significant text-success"
+            term_data = {}
+            for term in terms:
+                bench_stats = benchmark.get_stats(term)
+                if bench_stats:
+                    time_analyzer = bench_stats["time"]
+                    insn_analyzer = bench_stats["nInsn"]
+                    term_data[term] = {
+                        "time": Report.TermStats(
+                            pct_change=time_analyzer.pct_change,
+                            is_significant=time_analyzer.is_significant,
+                            mean=time_analyzer.mean,
+                            noise=time_analyzer.noise,
                         ),
-                    )
-                )
-
-            # Generate PR report (only significant changes) for CI comments
-            if args.pr_report_output_path:
-                summary_terms = [20]
-                summary_template = env.get_template("summary.html.j2")
-                summary_rows = renderer._prepare_benchmark_rows(
-                    results.sorted_benchmarks(), summary_terms
-                )
-
-                def format_delta(s):
-                    pct = f"{s.pct_change:+.2f}%"
-                    if not s.is_significant:
-                        return f"<code>{pct}</code>"
-                    emoji = "🔴" if s.pct_change > 0 else "🟢"
-                    return f"<code><strong>{pct}</strong></code> {emoji}"
-
-                def has_significant_change(row):
-                    for term_data in row.terms.values():
-                        time_stats = term_data.get("time")
-                        insn_stats = term_data.get("nInsn")
-                        if (time_stats and time_stats.is_significant) or (
-                            insn_stats and insn_stats.is_significant
-                        ):
-                            return True
-                    return False
-
-                summary_rows = [r for r in summary_rows if has_significant_change(r)]
-
-                with open(args.pr_report_output_path, "w") as f:
-                    f.write(
-                        summary_template.render(
-                            rows=summary_rows,
-                            terms=summary_terms,
-                            stats=executor.stats,
-                            format_delta=format_delta,
+                        "nInsn": Report.TermStats(
+                            pct_change=insn_analyzer.pct_change,
+                            is_significant=insn_analyzer.is_significant,
+                            mean=insn_analyzer.mean,
+                            noise=insn_analyzer.noise,
                         )
-                    )
+                        if insn_analyzer
+                        else None,
+                    }
+                else:
+                    term_data[term] = {"time": None, "nInsn": None}
 
-    if args.no_tui:
-        run(executor)
-    else:
-        with rich.live.Live(
-            renderer.layout,
-            console=renderer.console,
-            refresh_per_second=10,
-            screen=True,
-        ):
-            run(executor)
+            rows.append(
+                Report.BenchmarkRow(
+                    name=benchmark.name,
+                    label=benchmark.label,
+                    time_str=time_str,
+                    insn_str=insn_str,
+                    terms=term_data,
+                    runtime_ns=runtime_ns,
+                    insn_count=insn_count,
+                )
+            )
 
-    # Summary
-    renderer.print_summary(executor.stats, results.sorted_benchmarks())
+        return rows
 
-    return results
+    def write_report(
+        self,
+        commits: list[git.Commit],
+        stats: Stats,
+        template_path: pathlib.Path,
+        report_path: pathlib.Path,
+        terms: list[int],
+    ):
+        if not commits:
+            raise ValueError("Cannot generate report with empty commits list")
+
+        rows = self._get_benchmark_rows(terms)
+
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path.parent))
+        template = env.get_template(template_path.name)
+
+        with open(report_path, "w") as f:
+            f.write(
+                template.render(
+                    history=self._history,
+                    rows=rows,
+                    hostname=stats.host,
+                    first_commit_sha=commits[0].hexsha,
+                    last_commit_sha=commits[-1].hexsha,
+                    n_commits=len(commits),
+                    stats=stats,
+                    terms=terms,
+                    ureg=ureg,
+                    get_class=lambda stats: (
+                        "neutral"
+                        if not stats.is_significant
+                        else "is-significant text-danger"
+                        if stats.pct_change > 0
+                        else "is-significant text-success"
+                    ),
+                )
+            )
+
+    def write_pr_report(
+        self,
+        commits: list[git.Commit],
+        stats: Stats,
+        template_path: pathlib.Path,
+        report_path: pathlib.Path,
+        terms: list[int],
+    ):
+        rows = self._get_benchmark_rows(terms)
+
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path.parent))
+        template = env.get_template(template_path.name)
+
+        def format_delta(s) -> str:
+            pct = f"{s.pct_change:+.2f}%"
+            if not s.is_significant:
+                return f"<code>{pct}</code>"
+            emoji = "🔴" if s.pct_change > 0 else "🟢"
+            return f"<code><strong>{pct}</strong></code> {emoji}"
+
+        def has_significant_change(row):
+            for term_data in row.terms.values():
+                time_stats = term_data.get("time")
+                insn_stats = term_data.get("nInsn")
+                if (time_stats and time_stats.is_significant) or (
+                    insn_stats and insn_stats.is_significant
+                ):
+                    return True
+            return False
+
+        summary_rows = [r for r in rows if has_significant_change(r)]
+
+        with open(report_path, "w") as f:
+            f.write(
+                template.render(
+                    rows=summary_rows,
+                    terms=terms,
+                    stats=stats,
+                    format_delta=format_delta,
+                )
+            )
+
+    def print_report(self, terms: list[int]):
+        rows = self._get_benchmark_rows(terms)
+        renderer.print_report(rows, terms)
+
+
+def run_benchmarks(args: argparse.Namespace):
+    executor = (
+        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
+    )
+
+    with open(executor._local_workdir / "fake_bfcli.sh", "w") as f:
+        f.write('#!/bin/bash\necho "This is not bfcli"')
+
+    with open(executor._local_workdir / "fake_bpfilter.sh", "w") as f:
+        f.write('#!/bin/bash\necho "This is not bpfilter"')
+
+    with executor:
+        for ctx in BenchmarkContext.commits(executor):
+            if not ctx.configure():
+                continue
+
+            if not ctx.make("bpfilter"):
+                continue
+
+            with ctx.run_daemon() as _:
+                if not ctx.make("benchmark_bin"):
+                    continue
+
+                if not ctx.run_benchmark(
+                    args.bind_node, args.no_preempt, args.cpu_pin, args.slice
+                ):
+                    continue
+
+            results = ctx.results
+            if not results:
+                executor.log(f"could not find {ctx.results_path}")
+                continue
+
+            executor.add_results(ctx.commit, results)
+            executor.log("Done!")
+
+        report = Report(executor._results)
+        if args.report_path:
+            report.write_report(
+                executor.commits,
+                executor.stats,
+                args.report_template_path,
+                args.report_path,
+                [20],
+            )
+        if args.pr_report_path:
+            report.write_pr_report(
+                executor.commits,
+                executor.stats,
+                args.pr_report_template_path,
+                args.pr_report_path,
+                [20],
+            )
+        report.print_report([20])
+
+    if args.fail_on_significant_change:
+        terms = [20]
+        for benchmark in executor.results.sorted_benchmarks():
+            if has_significant_change(
+                benchmark, terms, args.fail_on_significant_change
+            ):
+                raise SystemExit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
         prog="bfbencher",
-        description="",
+        description="Benchmark bpfilter performance across git commits.",
     )
 
     parser.add_argument(
         "--since",
         type=str,
-        help=f'Oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
+        help=f'oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
         default=DEFAULT_FIRST_COMMIT_REF,
     )
     parser.add_argument(
@@ -1212,12 +1137,12 @@ def main():
         type=str,
         action="append",
         default=[],
-        help='Include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
+        help='include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
     )
     parser.add_argument(
         "--until",
         type=str,
-        help=f'Newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
+        help=f'newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
         default=DEFAULT_LAST_COMMIT_REF,
     )
     parser.add_argument(
@@ -1247,8 +1172,18 @@ def main():
     parser.add_argument(
         "--report-path",
         type=pathlib.Path,
-        help=f'path of the final HTML report. Defaults to "{DEFAULT_REPORT_PATH}".',
-        default=DEFAULT_REPORT_PATH,
+        help="path of the final HTML report.",
+    )
+    parser.add_argument(
+        "--pr-report-template-path",
+        type=pathlib.Path,
+        help=f'path to the Jinja2 template use to generate the HTML pull-request report. Defaults to "{DEFAULT_PR_REPORT_TEMPLATE_PATH}"',
+        default=DEFAULT_PR_REPORT_TEMPLATE_PATH,
+    )
+    parser.add_argument(
+        "--pr-report-path",
+        type=pathlib.Path,
+        help="path of the HTML summary report for pull requests (shows only significant changes).",
     )
     parser.add_argument(
         "--retry",
@@ -1259,60 +1194,43 @@ def main():
         help='retry benchmarks for specific commits, ignoring cached results. Use "failed" to retry all failed commits, "all" to retry everything, or a commit ref to retry a specific commit. Can be specified multiple times.',
     )
     parser.add_argument(
-        "--no-tui",
-        action="store_true",
-        help="if set, print to the console without TUI",
-        default=False,
-    )
-    parser.add_argument(
-        "--pr-report-output-path",
-        type=pathlib.Path,
-        help="path to write the PR report (HTML summary showing only statistically significant changes, for CI comments)",
-        default=None,
-    )
-    parser.add_argument(
         "--fail-on-significant-change",
         choices=["better", "worse", "any"],
         help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
         default=None,
     )
     parser.add_argument(
-        "--wrapper",
-        type=str,
-        help="wrapper command to prepend to the benchmark execution (e.g., 'taskset -c 0' or 'numactl --cpunodebind=0')",
-        default=None,
-    )
-    parser.add_argument(
-        "--lock-file",
-        type=pathlib.Path,
-        help="path to a lock file to hold while running benchmarks (prevents concurrent runs)",
-        default=None,
-    )
-    parser.add_argument(
-        "--lock-wait-for",
+        "--bind-node",
         type=int,
-        help="seconds to wait for lock acquisition before exiting (default: 0, exit immediately)",
-        default=0,
+        help="CPU and memory node to bind the benchmark to.",
+        default=None,
+    )
+    parser.add_argument(
+        "--no-preempt",
+        action="store_true",
+        help="if set, use chrt to run the bechmark with real-time scheduling policy at the highest priority. This option should reduce jitter as only kernel threads could preempt it.",
+        default=False,
+    )
+    parser.add_argument(
+        "--cpu-pin",
+        type=int,
+        help="if set, defines the CPU to pin the benchmark to. If the CPU is isolated, it will reduce variability between runs.",
+        default=None,
+    )
+    parser.add_argument(
+        "--slice",
+        type=str,
+        help="systemd slice to run the benchmark into. Required if --cpu-pin is isolated at the systemd level.",
+        default=None,
     )
 
     args = parser.parse_args()
 
-    global renderer
-    renderer = ConsoleRenderer() if args.no_tui else TuiRenderer()
-
     try:
-        results = run_benchmarks(args)
+        run_benchmarks(args)
     except KeyboardInterrupt:
         renderer.log("Command interrupted by user")
         raise SystemExit(1)
-
-    if args.fail_on_significant_change:
-        terms = [5, 15]
-        for benchmark in results.sorted_benchmarks():
-            if has_significant_change(
-                benchmark, terms, args.fail_on_significant_change
-            ):
-                raise SystemExit(1)
 
 
 if __name__ == "__main__":
