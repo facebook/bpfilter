@@ -167,18 +167,18 @@ jobs:
             BENCH_FAIL_ON=""
           fi
           tools/benchmarks/bfbencher \
-            --wrapper "/usr/local/bin/bfbencher-wrap" \
-            $BENCH_FAIL_ON \
-            --since 65f915f \
+            --since HEAD~3 \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \
-            $BENCH_RETRY \
             --cache-dir ~/bfbencher-cache \
-            --pr-report-output-path $GITHUB_STEP_SUMMARY \
             --report-path index.html \
-            --no-tui \
-            --lock-file /lock/bfbencher.lock \
-            --lock-wait-for 300
+            --pr-report-path $GITHUB_STEP_SUMMARY \
+            $BENCH_RETRY \
+            $BENCH_FAIL_ON \
+            --bind-node 0 \
+            --no-preempt \
+            --cpu-pin 3 \
+            --slice benchmark.slice
 
       - uses: actions/upload-artifact@v4
         with:
