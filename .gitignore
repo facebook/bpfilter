@@ -10,6 +10,8 @@
 __pycache__
 .cache
 .clangd
+.stack-pr.cfg
 
 # Local Claude instructions
 CLAUDE.local.md
+
