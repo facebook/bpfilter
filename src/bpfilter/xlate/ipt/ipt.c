@@ -472,7 +472,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
     struct bf_ipt_gen_ruleset_entry ruleset[NF_INET_NUMHOOKS] = {};
     struct ipt_entry *entry;
     size_t next_chain_off = 0;
-    size_t nrules;
+    size_t nrules = 0;
     size_t rule_size =
         sizeof(struct ipt_entry) + sizeof(struct xt_standard_target);
     size_t err_size = sizeof(struct ipt_entry) + sizeof(struct xt_error_target);
