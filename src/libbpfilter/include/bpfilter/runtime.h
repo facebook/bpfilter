@@ -97,6 +97,9 @@ struct bf_log
     /** ID of the rule triggering the log. */
     __u32 rule_id;
 
+    /** Verdict of the rule triggering the log. */
+    __u32 verdict;
+
     /** Layer 3 (internet) protocol identifier. */
     __u16 l3_proto;
 

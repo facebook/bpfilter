@@ -122,14 +122,14 @@ enum bf_elfstub_id
     /**
      * Log user-requested packet headers to a ring buffer.
      *
-     * `__u8 bf_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u16 l3_proto, __u8 l4_proto)`
+     * `__u8 bf_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict, __u32 l3_l4_proto)`
      *
      * **Parameters**
      * - `ctx`: address of the `bf_runtime` context of the program.
-     * - `rule_id`: id of the matched rule
+     * - `rule_id`: id of the matched rule.
      * - `headers`: user-requested headers to log.
-     * - `l3_proto`: layer 3 (internet) protocol identifier.
-     * - `l4_proto`: layer 4 (transport) protocol identifier.
+     * - `verdict`: verdict of the matched rule.
+     * - `l3_l4_proto`: layer 3 (internet) and layer 4 (transport) protocols packed (l3 << 16 | l4)
      *
      * **Return** 0 on success, or 1 on error.
      */

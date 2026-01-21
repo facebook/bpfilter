@@ -341,12 +341,14 @@ static void _bf_chain_log_header(const struct bf_log *log)
                    localtime(&time.tv_sec));
 
     (void)fprintf(
-        stdout, "\n%s[%s.%06ld]%s Rule #%u matched %s%llu bytes%s\n",
+        stdout,
+        "\n%s[%s.%06ld]%s Rule #%u matched %s%llu bytes%s with verdict %s\n",
         bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL), time_str,
         time.tv_nsec / BF_TIME_US,
         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), log->rule_id,
         bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD), log->pkt_size,
-        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
+        bf_verdict_to_str((enum bf_verdict)log->verdict));
 }
 
 static void _bf_chain_log_l2(const struct bf_log *log)
