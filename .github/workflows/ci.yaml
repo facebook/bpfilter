@@ -167,7 +167,7 @@ jobs:
             BENCH_FAIL_ON=""
           fi
           tools/benchmarks/bfbencher \
-            --since HEAD~3 \
+            --since 30bd49f \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \
             --cache-dir ~/bfbencher-cache \
