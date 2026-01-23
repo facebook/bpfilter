@@ -32,7 +32,14 @@
 # - clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 #   Avoid usage of Annex K functions for portability reasons.
 # - clang-analyzer-unix.Malloc
-#   Generates false positives.
+#   Disabled due to false positives with GCC's cleanup attribute (__cleanup__).
+#   The Clang Static Analyzer cannot track that _cleanup_free_ variables are
+#   automatically freed when they go out of scope. While ownership_returns and
+#   ownership_takes attributes can inform the analyzer about custom
+#   allocation/deallocation functions, they cannot teach it about the cleanup
+#   attribute pattern. This results in false "potential memory leak" warnings
+#   for every early return in functions using _cleanup_free_.
+#   See: https://github.com/facebook/bpfilter/issues/394
 # - misc-include-cleaner
 #   False positives, e.g. with errno.h: E* macros are not directly defined in it,
 #   but it's the header we should include.
