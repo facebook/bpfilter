@@ -32,6 +32,16 @@
 #define BFC_HELP_ENTRY(action, help)                                           \
     {.name = _bfc_action_strs[action], .doc = (help), .flags = OPTION_DOC}
 
+/**
+ * @brief Get key value for long-only flag.
+ *
+ * By passing non-printable character to argp, we can create
+ * long-only flag. This macro shifts the IDs into non-printable space.
+ *
+ * @param id Unique ID number.
+ */
+#define BFC_OPT_LONG_FLAG_ONLY(id) (1000 + (id))
+
 static const char * const _bfc_object_strs[] = {
     "ruleset", // BFC_OBJECT_RULESET
     "chain", // BFC_OBJECT_CHAIN
@@ -87,6 +97,9 @@ enum bfc_action bfc_action_from_str(const char *str)
 
 enum bfc_opts_option_id
 {
+    BFC_OPT_HELP,
+    BFC_OPT_USAGE,
+    BFC_OPT_VERSION,
     BFC_OPT_RULESET_FROM_STR,
     BFC_OPT_RULESET_FROM_FILE,
     BFC_OPT_CHAIN_FROM_STR,
@@ -102,7 +115,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli ruleset set",
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_SET,
-        .valid_opts = BF_FLAGS(BFC_OPT_RULESET_FROM_STR,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_RULESET_FROM_STR,
                                BFC_OPT_RULESET_FROM_FILE, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_RULESET_FROM_STR, BFC_OPT_RULESET_FROM_FILE),
@@ -115,6 +129,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli ruleset get",
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_GET,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION),
         .doc = "Print the ruleset.\vPrint the current ruleset.",
         .cb = bfc_ruleset_get,
     },
@@ -122,6 +137,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli ruleset flush",
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_FLUSH,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION),
         .doc = "Delete the ruleset.\vRemove every chain from the system.",
         .cb = bfc_ruleset_flush,
     },
@@ -129,7 +145,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain set",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_SET,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
@@ -144,7 +161,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain get",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_GET,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print an existing chain\vRequest the chain --name from the daemon "
@@ -155,7 +172,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain logs",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOGS,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print the packets logged by a chain\vIf the chain contains at "
@@ -167,7 +184,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain load",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOAD,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
@@ -182,7 +200,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain attach",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_ATTACH,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_HOOK_OPTS, BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_HOOK_OPTS, BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Attach an existing chain\vAttach a loaded chain to a hook. Hook "
@@ -194,7 +213,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain update",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_UPDATE,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE,
                                BFC_OPT_CHAIN_NAME, BFC_OPT_DRY_RUN),
         .required_opts =
             BF_FLAGS(BFC_OPT_CHAIN_FROM_STR, BFC_OPT_CHAIN_FROM_FILE),
@@ -206,11 +226,41 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain flush",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_FLUSH,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc = "Delete a chain\vRemove a chain from the system.",
         .cb = bfc_chain_flush,
     },
+};
+
+static void _bfc_opts_help(struct argp_state *state, const char *arg,
+                           struct bfc_opts *opts)
+{
+    (void)arg;
+    (void)opts;
+
+    argp_state_help(state, state->out_stream, ARGP_HELP_STD_HELP);
+    exit(0);
+};
+
+static void _bfc_opts_usage(struct argp_state *state, const char *arg,
+                            struct bfc_opts *opts)
+{
+    (void)arg;
+    (void)opts;
+
+    argp_state_help(state, state->out_stream, ARGP_HELP_STD_USAGE);
+    exit(0);
+};
+
+static void _bfc_opts_version(struct argp_state *state, const char *arg,
+                              struct bfc_opts *opts)
+{
+    (void)arg;
+    (void)opts;
+
+    argp_program_version_hook(state->out_stream, state);
+    exit(0);
 };
 
 const struct bfc_opts_cmd *_bfc_opts_get_cmd(enum bfc_object object,
@@ -230,6 +280,15 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
     struct bfc_opts *opts = state->input;
 
     switch (key) {
+    case 'h':
+        _bfc_opts_help(state, arg, opts);
+        break;
+    case BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE):
+        _bfc_opts_usage(state, arg, opts);
+        break;
+    case 'V':
+        _bfc_opts_version(state, arg, opts);
+        break;
     case ARGP_KEY_ARG:
         if (state->arg_num == 0) {
             opts->object = bfc_object_from_str(arg);
@@ -312,6 +371,27 @@ struct bfc_opts_opt
     void (*parser)(struct argp_state *state, const char *arg,
                    struct bfc_opts *opts);
 } _bfc_options[] = {
+    {
+        .id = BFC_OPT_HELP,
+        .key = 'h',
+        .name = "help",
+        .doc = "Print help",
+        .parser = _bfc_opts_help,
+    },
+    {
+        .id = BFC_OPT_USAGE,
+        .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE),
+        .name = "usage",
+        .doc = "Print short usage message",
+        .parser = _bfc_opts_usage,
+    },
+    {
+        .id = BFC_OPT_VERSION,
+        .key = 'V',
+        .name = "version",
+        .doc = "Print program version",
+        .parser = _bfc_opts_version,
+    },
     {
         .id = BFC_OPT_RULESET_FROM_STR,
         .key = 's',
@@ -469,7 +549,7 @@ void bfc_opts_clean(struct bfc_opts *opts)
     bf_hookopts_clean(&opts->hookopts);
 }
 
-#define _BFC_NAME_LEN 32
+#define _BFC_NAME_LEN (PATH_MAX + 32)
 static char _bfc_name[_BFC_NAME_LEN] = {};
 
 int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
@@ -490,6 +570,9 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_ATTACH, "Attach a loaded chain"),
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an attached chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
+        {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
+        {.name = "usage", .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE), .group = -1, .doc = "Print short usage message"},
+        {.name = "version", .key = 'V', .group = -1, .doc = "Print program version"},
         {0},
     };
     static const struct argp parser = {
@@ -513,7 +596,8 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
     int suboptions_idx = 0;
     int r;
 
-    r = argp_parse(&parser, argc, argv, ARGP_IN_ORDER, NULL, opts);
+    r = argp_parse(&parser, argc, argv, ARGP_IN_ORDER | ARGP_NO_HELP, NULL,
+                   opts);
     if (r)
         return r;
 
@@ -538,7 +622,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
     argc -= 2;
     argv += 2;
 
-    r = argp_parse(&subparser, argc, argv, 0, NULL, opts);
+    r = argp_parse(&subparser, argc, argv, ARGP_NO_HELP, NULL, opts);
     if (r)
         return r;
 
