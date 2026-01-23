@@ -505,10 +505,6 @@ int _bf_cli_chain_update(const struct bf_request *request,
     if (!cgen)
         return -ENOENT;
 
-    if (!cgen->program->link->hookopts) {
-        return bf_err_r(-EINVAL, "chain '%s' is not attached", chain->name);
-    }
-
     r = bf_cgen_update(cgen, &chain);
     if (r)
         return -EINVAL;
