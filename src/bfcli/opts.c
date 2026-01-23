@@ -571,7 +571,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_LOGS, "Print the logged packets"),
         BFC_HELP_ENTRY(BFC_ACTION_LOAD, "Load a new chain, do not attach it"),
         BFC_HELP_ENTRY(BFC_ACTION_ATTACH, "Attach a loaded chain"),
-        BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an attached chain"),
+        BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an existing chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
         {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
         {.name = "usage",
