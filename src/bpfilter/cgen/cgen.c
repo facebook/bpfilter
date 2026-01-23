@@ -378,17 +378,20 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
     if (bf_opts_persist())
         bf_program_unpin(old_prog, pindir_fd);
 
-    r = bf_link_update(old_prog->link, cgen->chain->hook,
-                       new_prog->runtime.prog_fd);
-    if (r) {
-        bf_err_r(r, "failed to update bf_link object with new program");
-        if (bf_opts_persist() && bf_program_pin(old_prog, pindir_fd) < 0)
-            bf_err("failed to repin old program, ignoring");
-        return r;
-    }
+    if (old_prog->link->hookopts) {
+        // Chain is currently attached, update the link to use new program
+        r = bf_link_update(old_prog->link, cgen->chain->hook,
+                           new_prog->runtime.prog_fd);
+        if (r) {
+            bf_err_r(r, "failed to update bf_link object with new program");
+            if (bf_opts_persist() && bf_program_pin(old_prog, pindir_fd) < 0)
+                bf_err("failed to repin old program, ignoring");
+            return r;
+        }
 
-    // We updated the old link, we need to store it in the new program
-    bf_swap(new_prog->link, old_prog->link);
+        // We updated the old link, we need to store it in the new program
+        bf_swap(new_prog->link, old_prog->link);
+    }
 
     if (bf_opts_persist()) {
         r = bf_program_pin(new_prog, pindir_fd);
