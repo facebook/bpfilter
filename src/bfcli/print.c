@@ -124,7 +124,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             need_comma = true;
         }
 
-        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_FAMILY)) {
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_PRIORITIES)) {
             (void)fprintf(stdout, "%spriorities=%d-%d", need_comma ? "," : "",
                           hookopts->priorities[0], hookopts->priorities[1]);
             need_comma = true;
