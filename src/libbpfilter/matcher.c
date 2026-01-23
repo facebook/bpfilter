@@ -614,7 +614,7 @@ static int _bf_parse_tcp_flags(enum bf_matcher_type type, enum bf_matcher_op op,
     uint8_t *flags = payload;
 
     _raw_payload = strdup(raw_payload);
-    if (!raw_payload)
+    if (!_raw_payload)
         goto err;
 
     *flags = 0;
