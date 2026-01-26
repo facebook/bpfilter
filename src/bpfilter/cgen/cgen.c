@@ -401,8 +401,11 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain)
 
     bf_swap(cgen->program, new_prog);
 
-    bf_chain_free(&cgen->chain);
-    cgen->chain = TAKE_PTR(*new_chain);
+    // Don't free cgen->chain if it's the same object (in-place editing)
+    if (cgen->chain != *new_chain) {
+        bf_chain_free(&cgen->chain);
+        cgen->chain = TAKE_PTR(*new_chain);
+    }
 
     return 0;
 }
