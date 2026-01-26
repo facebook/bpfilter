@@ -19,6 +19,71 @@
 #include "bpfilter/set.h"
 #include "bpfilter/verdict.h"
 
+/**
+ * @brief Remove empty sets and rules referencing them from the chain.
+ *
+ * Empty sets are no-ops (no packet can match an empty set). This function
+ * removes them and any rules that reference them, then adjusts set_id values
+ * in remaining matchers.
+ *
+ * @param chain Chain to clean up. Must be non-NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+static int _bf_chain_remove_empty_sets(struct bf_chain *chain)
+{
+    bf_assert(chain);
+
+    size_t n_sets = bf_list_size(&chain->sets);
+    if (n_sets == 0)
+        return 0;
+
+    // Build mapping: old_set_id -> new_set_id (-1 if empty set)
+    _cleanup_free_ int32_t *set_mapping = malloc(n_sets * sizeof(int32_t));
+    if (!set_mapping)
+        return -ENOMEM;
+
+    uint32_t new_idx = 0;
+    uint32_t old_idx = 0;
+    bf_list_foreach (&chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+
+        if (bf_list_is_empty(&set->elems)) {
+            set_mapping[old_idx] = -1;
+            bf_list_delete(&chain->sets, set_node);
+        } else {
+            set_mapping[old_idx] = (int32_t)new_idx++;
+        }
+        old_idx++;
+    }
+
+    if (new_idx == n_sets)
+        return 0;
+
+    bf_list_foreach (&chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        bf_list_foreach (&rule->matchers, matcher_node) {
+            struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+
+            if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
+                continue;
+
+            uint32_t *set_id = (uint32_t *)bf_matcher_payload(matcher);
+
+            if (set_mapping[*set_id] < 0) {
+                bf_warn("ignoring rule at index %u: references empty set",
+                        rule->index);
+                bf_list_delete(&chain->rules, rule_node);
+                break;
+            }
+
+            *set_id = (uint32_t)set_mapping[*set_id];
+        }
+    }
+
+    return 0;
+}
+
 int _bf_chain_check_rule(struct bf_chain *chain, const struct bf_rule *rule)
 {
     bf_assert(rule);
@@ -106,6 +171,10 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
         if (r)
             return r;
     }
+
+    r = _bf_chain_remove_empty_sets(_chain);
+    if (r)
+        return r;
 
     *chain = TAKE_PTR(_chain);
 

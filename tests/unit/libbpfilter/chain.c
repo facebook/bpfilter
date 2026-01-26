@@ -100,6 +100,202 @@ static void get_set_from_matcher(void **state)
     assert_null(bf_chain_get_set_for_matcher(chain, r1_m0));
 }
 
+static void empty_sets_all_empty(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 1;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "all_empty", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    assert_int_equal(bf_list_size(&chain->sets), 0);
+    assert_int_equal(bf_list_size(&chain->rules), 0);
+}
+
+static void empty_sets_mixed(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    // Sets: [non-empty, empty, non-empty]
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    // Rule 0: references set_id=0 (non-empty)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+    // Rule 1: references set_id=1 (empty) - should be removed
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 1;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+    // Rule 2: references set_id=2 (non-empty)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 2;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "mixed", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    // 2 sets remain, 2 rules remain
+    assert_int_equal(bf_list_size(&chain->sets), 2);
+    assert_int_equal(bf_list_size(&chain->rules), 2);
+
+    // Verify set_ids are remapped: rule0 -> set_id=0, rule1 -> set_id=1
+    struct bf_rule *r0 =
+        bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    struct bf_matcher *m0 =
+        bf_list_node_get_data(bf_list_get_head(&r0->matchers));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(m0), 0);
+
+    struct bf_rule *r1 = bf_list_node_get_data(
+        bf_list_node_next(bf_list_get_head(&chain->rules)));
+    struct bf_matcher *m1 =
+        bf_list_node_get_data(bf_list_get_head(&r1->matchers));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(m1), 1);
+}
+
+static void empty_sets_rule_with_multiple_matchers(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t ip = 0xff;
+        uint32_t set_id = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
+                                      &ip, sizeof(ip)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                                      &ip, sizeof(ip)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "multi_matcher", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    // Entire rule removed because one matcher references empty set
+    assert_int_equal(bf_list_size(&chain->sets), 0);
+    assert_int_equal(bf_list_size(&chain->rules), 0);
+}
+
+static void empty_sets_set_id_remapping(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    // Rule referencing set_id=1 (non-empty, should become 0)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 1;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+    // Rule referencing set_id=3 (non-empty, should become 1)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_id = 3;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_id, sizeof(set_id)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "remap", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+    assert_int_equal(bf_list_size(&chain->sets), 2);
+    assert_int_equal(bf_list_size(&chain->rules), 2);
+
+    // Verify set_ids are remapped: 1->0, 3->1
+    struct bf_rule *rule0 =
+        bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    struct bf_matcher *matcher0 =
+        bf_list_node_get_data(bf_list_get_head(&rule0->matchers));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher0), 0);
+
+    struct bf_rule *rule1 = bf_list_node_get_data(
+        bf_list_node_next(bf_list_get_head(&chain->rules)));
+    struct bf_matcher *matcher1 =
+        bf_list_node_get_data(bf_list_get_head(&rule1->matchers));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher1), 1);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -107,6 +303,10 @@ int main(void)
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
+        cmocka_unit_test(empty_sets_all_empty),
+        cmocka_unit_test(empty_sets_mixed),
+        cmocka_unit_test(empty_sets_rule_with_multiple_matchers),
+        cmocka_unit_test(empty_sets_set_id_remapping),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
