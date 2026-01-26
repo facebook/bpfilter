@@ -146,6 +146,38 @@ void bf_link_dump(const struct bf_link *link, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
+/**
+ * @brief Try to attach an XDP program, probing for the best available mode.
+ *
+ * Tries driver mode first, falling back to SKB mode.
+ *
+ * @param prog_fd File descriptor of the BPF program to attach.
+ * @param ifindex Network interface index to attach the program to.
+ * @param hook Hook to attach the program to.
+ * @return File descriptor of the created link on success, negative errno on failure.
+ */
+static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
+{
+    int r;
+
+    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_DRV_MODE, 0, 0);
+    if (r >= 0) {
+        bf_info("attached XDP program in driver mode");
+        return r;
+    }
+
+    if (r != -ENOTSUP)
+        return r;
+
+    bf_dbg_r(r, "driver mode not available");
+
+    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_SKB_MODE, 0, 0);
+    if (r >= 0)
+        bf_info("attached XDP program in SKB mode");
+
+    return r;
+}
+
 int bf_link_attach(struct bf_link *link, enum bf_hook hook,
                    struct bf_hookopts **hookopts, int prog_fd)
 {
@@ -160,8 +192,7 @@ int bf_link_attach(struct bf_link *link, enum bf_hook hook,
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
-        r = bf_bpf_link_create(prog_fd, _hookopts->ifindex, hook,
-                               XDP_FLAGS_SKB_MODE, 0, 0);
+        r = _bf_link_try_attach_xdp(prog_fd, _hookopts->ifindex, hook);
         if (r < 0)
             return bf_err_r(r, "failed to create XDP BPF link");
 
