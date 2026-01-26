@@ -72,3 +72,15 @@ bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (  icm
 (! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr, icmp.code) in {192.168.1.,41; 192.168.1.1,42} counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr, icmp.code) in {192.168.1.1,cafe; 192.168.1.1,42} counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr, icmp.code) in {192.168.1.1,41,192.168.1.1,42} counter DROP")
+
+make_sandbox
+start_bpfilter
+    # Count set maps before creating chain
+    MAP_COUNT_BEFORE=$(bpftool map 2>&1 | grep -c "name set_" || true)
+    ${FROM_NS} bfcli chain set --from-str "chain test BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+        rule (ip4.saddr) in { 192.168.1.1 } DROP
+        rule (ip4.saddr) in {} ACCEPT"
+    # Verify only 1 new set map was created (empty set should not create a map)
+    MAP_COUNT_AFTER=$(bpftool map 2>&1 | grep -c "name set_" || true)
+    [ $((MAP_COUNT_AFTER - MAP_COUNT_BEFORE)) -eq 1 ] || { echo "ERROR: Expected 1 new set map, found $((MAP_COUNT_AFTER - MAP_COUNT_BEFORE))"; exit 1; }
+stop_bpfilter

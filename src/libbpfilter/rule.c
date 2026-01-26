@@ -186,6 +186,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 
     DUMP(prefix, "log: %02x", rule->log);
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
+    DUMP(prefix, "disabled: %s", rule->disabled ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
     DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
     if (bf_rule_has_redirect(rule)) {

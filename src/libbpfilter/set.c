@@ -425,3 +425,10 @@ int bf_set_add_elem(struct bf_set *set, const void *elem)
 
     return 0;
 }
+
+bool bf_set_is_empty(const struct bf_set *set)
+{
+    assert(set);
+
+    return bf_list_is_empty(&set->elems);
+}

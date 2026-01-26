@@ -118,4 +118,12 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack);
 
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
 
+/**
+ * @brief Check if a set is empty.
+ *
+ * @param set Initialised set. Can't be NULL.
+ * @return True if the set has no elements, false otherwise.
+ */
+bool bf_set_is_empty(const struct bf_set *set);
+
 int bf_set_add_elem(struct bf_set *set, const void *elem);
