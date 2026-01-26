@@ -100,6 +100,41 @@ static void get_set_from_matcher(void **state)
     assert_null(bf_chain_get_set_for_matcher(chain, r1_m0));
 }
 
+static void mixed_enabled_disabled_log_flag(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    struct bf_rule *r0 = NULL;
+    struct bf_rule *r1 = NULL;
+    uint32_t set_index;
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    set_index = 0;
+    assert_ok(bf_rule_new(&r0));
+    r0->log = 1;
+    assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_list_add_tail(&rules, r0));
+
+    set_index = 1;
+    assert_ok(bf_rule_new(&r1));
+    assert_ok(bf_rule_add_matcher(r1, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_list_add_tail(&rules, r1));
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    assert_true(r0->disabled);
+    assert_false(r1->disabled);
+    assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -107,6 +142,7 @@ int main(void)
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
+        cmocka_unit_test(mixed_enabled_disabled_log_flag),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -133,15 +133,19 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         struct bf_set *set = bf_list_node_get_data(set_node);
         _free_bf_map_ struct bf_map *map = NULL;
 
-        (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x", (uint8_t)set_idx++);
-        r = bf_map_new_from_set(&map, name, set);
+        if (!bf_set_is_empty(set)) {
+            (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x",
+                           (uint8_t)set_idx);
+            r = bf_map_new_from_set(&map, name, set);
+            if (r < 0)
+                return r;
+        }
+
+        r = bf_list_push(&_program->sets, (void **)&map);
         if (r < 0)
             return r;
 
-        r = bf_list_add_tail(&_program->sets, map);
-        if (r < 0)
-            return r;
-        TAKE_PTR(map);
+        set_idx++;
     };
 
     r = bf_link_new(&_program->link, "bf_link");
@@ -210,8 +214,13 @@ int bf_program_new_from_pack(struct bf_program **program,
     bf_rpack_array_foreach (child, array_node) {
         _free_bf_map_ struct bf_map *map = NULL;
 
-        r = bf_list_emplace(&_program->sets, bf_map_new_from_pack, map, dir_fd,
-                            array_node);
+        if (!bf_rpack_is_nil(array_node)) {
+            r = bf_list_emplace(&_program->sets, bf_map_new_from_pack, map,
+                                dir_fd, array_node);
+        } else {
+            r = bf_list_add_tail(&_program->sets, NULL);
+        }
+
         if (r)
             return bf_err_r(r, "failed to unpack bf_map into bf_program.sets");
     }
@@ -347,7 +356,10 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
         if (bf_list_is_tail(&program->sets, map_node))
             bf_dump_prefix_last(prefix);
 
-        bf_map_dump(map, prefix);
+        if (map)
+            bf_map_dump(map, prefix);
+        else
+            DUMP(prefix, "<empty set - no map>");
     }
     bf_dump_prefix_pop(prefix);
 
@@ -500,6 +512,9 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     assert(program);
     assert(rule);
+
+    if (rule->disabled)
+        return 0;
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -975,6 +990,14 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         _cleanup_free_ uint8_t *keys = NULL;
         struct bf_set *set = bf_list_node_get_data(set_node);
         struct bf_map *map = bf_list_node_get_data(map_node);
+
+        // Skip null maps (empty sets)
+        if (!map) {
+            set_node = bf_list_node_next(set_node);
+            map_node = bf_list_node_next(map_node);
+            continue;
+        }
+
         size_t nelems = bf_list_size(&set->elems);
         size_t idx = 0;
 
@@ -1021,8 +1044,11 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     return 0;
 
 err_destroy_maps:
-    bf_list_foreach (&new_prog->sets, map_node)
-        bf_map_destroy(bf_list_node_get_data(map_node));
+    bf_list_foreach (&new_prog->sets, map_node) {
+        struct bf_map *map = bf_list_node_get_data(map_node);
+        if (map)
+            bf_map_destroy(map);
+    }
     return r;
 }
 
@@ -1106,8 +1132,11 @@ void bf_program_unload(struct bf_program *prog)
     bf_map_destroy(prog->cmap);
     bf_map_destroy(prog->pmap);
     bf_map_destroy(prog->lmap);
-    bf_list_foreach (&prog->sets, map_node)
-        bf_map_destroy(bf_list_node_get_data(map_node));
+    bf_list_foreach (&prog->sets, map_node) {
+        struct bf_map *map = bf_list_node_get_data(map_node);
+        if (map)
+            bf_map_destroy(map);
+    }
 }
 
 int bf_program_get_counter(const struct bf_program *program,
@@ -1168,7 +1197,11 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
     }
 
     bf_list_foreach (&prog->sets, set_node) {
-        r = bf_map_pin(bf_list_node_get_data(set_node), dir_fd);
+        struct bf_map *map = bf_list_node_get_data(set_node);
+        if (!map)
+            continue;
+
+        r = bf_map_pin(map, dir_fd);
         if (r) {
             bf_err_r(r, "failed to pin BPF set map for '%s'", name);
             goto err_unpin_all;
@@ -1199,8 +1232,11 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
     bf_map_unpin(prog->pmap, dir_fd);
     bf_map_unpin(prog->lmap, dir_fd);
 
-    bf_list_foreach (&prog->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node), dir_fd);
+    bf_list_foreach (&prog->sets, set_node) {
+        struct bf_map *map = bf_list_node_get_data(set_node);
+        if (map)
+            bf_map_unpin(map, dir_fd);
+    }
 
     bf_link_unpin(prog->link, dir_fd);
 

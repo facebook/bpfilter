@@ -64,6 +64,10 @@ struct bf_rule
     uint64_t mark;
 
     bool counters;
+
+    /** If true, skip this rule during flag calculation and code generation. */
+    bool disabled;
+
     enum bf_verdict verdict;
 
     /** Target interface index for REDIRECT verdict. 0 if not set. */
