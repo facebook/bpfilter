@@ -35,7 +35,8 @@ static int _bf_ns_info_init(struct bf_ns_info *info, const char *name,
     struct stat stats;
     int r;
 
-    bf_assert(info && name);
+    assert(info);
+    assert(name);
 
     fd = openat(dir_fd, name, O_RDONLY, 0);
     if (fd < 0)
@@ -58,7 +59,7 @@ int bf_ns_init(struct bf_ns *ns, pid_t pid)
     char ns_dir_path[NS_DIR_PATH_LEN];
     int r;
 
-    bf_assert(ns);
+    assert(ns);
 
     /// @todo What if ``/proc`` is not readable?
     (void)snprintf(ns_dir_path, NS_DIR_PATH_LEN, "/proc/%d/ns", pid);
@@ -85,7 +86,7 @@ int bf_ns_init(struct bf_ns *ns, pid_t pid)
 
 void bf_ns_clean(struct bf_ns *ns)
 {
-    bf_assert(ns);
+    assert(ns);
 
     closep(&ns->net.fd);
     closep(&ns->mnt.fd);

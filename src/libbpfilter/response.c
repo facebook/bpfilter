@@ -30,7 +30,7 @@ struct bf_response
 
 int bf_response_new_raw(struct bf_response **response, size_t data_len)
 {
-    bf_assert(response);
+    assert(response);
 
     *response = malloc(sizeof(**response) + data_len);
     if (!*response)
@@ -46,8 +46,8 @@ int bf_response_new_success(struct bf_response **response, const char *data,
 {
     _free_bf_response_ struct bf_response *_response = NULL;
 
-    bf_assert(response);
-    bf_assert(!(!!data ^ !!data_len));
+    assert(response);
+    assert(!(!!data ^ !!data_len));
 
     _response = calloc(1, sizeof(*_response) + data_len);
     if (!_response)
@@ -67,8 +67,8 @@ int bf_response_new_from_dynbuf(struct bf_response **response,
 {
     struct bf_response *tmpres;
 
-    bf_assert(response);
-    bf_assert(dynbuf);
+    assert(response);
+    assert(dynbuf);
 
     if (dynbuf->len < sizeof(*tmpres))
         return -EINVAL;
@@ -88,8 +88,8 @@ int bf_response_new_from_pack(struct bf_response **response, bf_wpack_t *pack)
     size_t data_len;
     int r;
 
-    bf_assert(response);
-    bf_assert(pack);
+    assert(response);
+    assert(pack);
 
     if (!bf_wpack_is_valid(pack))
         return -EINVAL;
@@ -105,7 +105,7 @@ int bf_response_new_failure(struct bf_response **response, int error)
 {
     _free_bf_response_ struct bf_response *_response = NULL;
 
-    bf_assert(response);
+    assert(response);
 
     _response = calloc(1, sizeof(*_response));
     if (!_response)
@@ -128,8 +128,8 @@ int bf_response_copy(struct bf_response **dest, const struct bf_response *src)
 {
     _free_bf_response_ struct bf_response *_response = NULL;
 
-    bf_assert(dest);
-    bf_assert(src);
+    assert(dest);
+    assert(src);
 
     _response = bf_memdup(src, bf_response_size(src));
     if (!_response)
@@ -142,28 +142,28 @@ int bf_response_copy(struct bf_response **dest, const struct bf_response *src)
 
 int bf_response_status(const struct bf_response *response)
 {
-    bf_assert(response);
+    assert(response);
 
     return response->status;
 }
 
 const void *bf_response_data(const struct bf_response *response)
 {
-    bf_assert(response);
+    assert(response);
 
     return response->data;
 }
 
 size_t bf_response_data_len(const struct bf_response *response)
 {
-    bf_assert(response);
+    assert(response);
 
     return response->data_len;
 }
 
 size_t bf_response_size(const struct bf_response *response)
 {
-    bf_assert(response);
+    assert(response);
 
     return sizeof(*response) + response->data_len;
 }

@@ -45,7 +45,9 @@ int bf_bpf_prog_load(const char *name, enum bf_bpf_prog_type prog_type,
     union bpf_attr attr;
     int r;
 
-    bf_assert(name && img && fd);
+    assert(name);
+    assert(img);
+    assert(fd);
 
     memset(&attr, 0, sizeof(attr));
 
@@ -78,8 +80,8 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
 {
     union bpf_attr attr;
 
-    bf_assert(key);
-    bf_assert(value);
+    assert(key);
+    assert(value);
 
     memset(&attr, 0, sizeof(attr));
 
@@ -94,9 +96,9 @@ int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 {
     union bpf_attr attr;
 
-    bf_assert(path);
-    bf_assert(dir_fd >= 0);
-    bf_assert(path[0] == '/' ? !dir_fd : 1);
+    assert(path);
+    assert(dir_fd >= 0);
+    assert(path[0] == '/' ? !dir_fd : 1);
 
     memset(&attr, 0, sizeof(attr));
 
@@ -114,9 +116,10 @@ int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)
     union bpf_attr attr;
     int r;
 
-    bf_assert(path && fd);
-    bf_assert(dir_fd >= 0);
-    bf_assert(path[0] == '/' ? !dir_fd : 1);
+    assert(path);
+    assert(fd);
+    assert(dir_fd >= 0);
+    assert(path[0] == '/' ? !dir_fd : 1);
 
     memset(&attr, 0, sizeof(attr));
 
@@ -139,9 +142,9 @@ int bf_bpf_prog_run(int prog_fd, const void *pkt, size_t pkt_len,
     union bpf_attr attr;
     int r;
 
-    bf_assert(pkt);
-    bf_assert(pkt_len > 0);
-    bf_assert(!(!!ctx ^ !!ctx_len));
+    assert(pkt);
+    assert(pkt_len > 0);
+    assert(!(!!ctx ^ !!ctx_len));
 
     memset(&attr, 0, sizeof(attr));
 
@@ -175,7 +178,7 @@ int bf_bpf_token_create(int bpffs_fd)
 
 int bf_bpf_btf_load(const void *btf_data, int token_fd)
 {
-    bf_assert(btf_data);
+    assert(btf_data);
 
     union bpf_attr attr;
 
@@ -195,7 +198,7 @@ int bf_bpf_map_create(const char *name, enum bf_bpf_map_type type,
                       size_t key_size, size_t value_size, size_t n_elems,
                       const struct bf_btf *btf, int token_fd)
 {
-    bf_assert(name);
+    assert(name);
 
     union bpf_attr attr;
 
@@ -229,7 +232,8 @@ int bf_bpf_map_create(const char *name, enum bf_bpf_map_type type,
 int bf_bpf_map_update_elem(int map_fd, const void *key, const void *value,
                            int flags)
 {
-    bf_assert(key && value);
+    assert(key);
+    assert(value);
 
     union bpf_attr attr;
 
@@ -246,7 +250,8 @@ int bf_bpf_map_update_elem(int map_fd, const void *key, const void *value,
 int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
                             size_t count, int flags)
 {
-    bf_assert(keys && values);
+    assert(keys);
+    assert(values);
 
     union bpf_attr attr;
 

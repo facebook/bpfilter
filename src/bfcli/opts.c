@@ -56,7 +56,7 @@ static const char *bfc_object_to_str(enum bfc_object object)
 
 enum bfc_object bfc_object_from_str(const char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     for (enum bfc_object object = 0; object < _BFC_OBJECT_MAX; ++object) {
         if (bf_streq(_bfc_object_strs[object], str))
@@ -85,7 +85,7 @@ static const char *bfc_action_to_str(enum bfc_action action)
 
 enum bfc_action bfc_action_from_str(const char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     for (enum bfc_action action = 0; action < _BFC_ACTION_MAX; ++action) {
         if (bf_streq(_bfc_action_strs[action], str))
@@ -322,7 +322,7 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
 static void _bfc_opts_from_str_cb(struct argp_state *state, const char *arg,
                                   struct bfc_opts *opts)
 {
-    UNUSED(state);
+    (void)state;
 
     opts->from_str = arg;
 };
@@ -330,7 +330,7 @@ static void _bfc_opts_from_str_cb(struct argp_state *state, const char *arg,
 static void _bfc_opts_from_file_cb(struct argp_state *state, const char *arg,
                                    struct bfc_opts *opts)
 {
-    UNUSED(state);
+    (void)state;
 
     opts->from_file = arg;
 };
@@ -544,7 +544,7 @@ static error_t _bfc_opts_cmd_parser(int key, char *arg,
 
 void bfc_opts_clean(struct bfc_opts *opts)
 {
-    bf_assert(opts);
+    assert(opts);
 
     bf_hookopts_clean(&opts->hookopts);
 }

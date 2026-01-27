@@ -311,7 +311,6 @@ Use uppercase for utility macros:
 .. code:: c
 
     ARRAY_SIZE(arr)      // Number of elements
-    UNUSED(x)            // Suppress unused warnings
     DUMP(prefix, fmt, ...)  // Debug output
 
 Static assertions

@@ -91,7 +91,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    bf_assert(ctx);
+    assert(ctx);
 
     _ctx = calloc(1, sizeof(*_ctx));
     if (!_ctx)
@@ -149,7 +149,7 @@ static int _bf_ctx_new_from_pack(struct bf_ctx **ctx, bf_rpack_node_t node)
     bf_rpack_node_t child, array_node;
     int r;
 
-    bf_assert(ctx);
+    assert(ctx);
 
     r = _bf_ctx_new(&_ctx);
     if (r < 0)
@@ -182,7 +182,7 @@ static int _bf_ctx_new_from_pack(struct bf_ctx **ctx, bf_rpack_node_t node)
  */
 static void _bf_ctx_free(struct bf_ctx **ctx)
 {
-    bf_assert(ctx);
+    assert(ctx);
 
     if (!*ctx)
         return;
@@ -262,8 +262,8 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
  */
 static int _bf_ctx_pack(const struct bf_ctx *ctx, bf_wpack_t *pack)
 {
-    bf_assert(ctx);
-    bf_assert(pack);
+    assert(ctx);
+    assert(pack);
 
     bf_wpack_kv_list(pack, "cgens", &ctx->cgens);
 
@@ -276,7 +276,8 @@ static int _bf_ctx_pack(const struct bf_ctx *ctx, bf_wpack_t *pack)
 static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
                                         const char *name)
 {
-    bf_assert(ctx && name);
+    assert(ctx);
+    assert(name);
 
     bf_list_foreach (&ctx->cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
@@ -298,7 +299,8 @@ static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
         bf_list_default(cgens->ops.free, cgens->ops.pack);
     int r;
 
-    bf_assert(ctx && cgens);
+    assert(ctx);
+    assert(cgens);
 
     bf_list_foreach (&ctx->cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
@@ -321,7 +323,8 @@ static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
  */
 static int _bf_ctx_set_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen)
 {
-    bf_assert(ctx && cgen);
+    assert(ctx);
+    assert(cgen);
 
     if (_bf_ctx_get_cgen(ctx, cgen->chain->name))
         return bf_err_r(-EEXIST, "codegen already exists in context");
@@ -354,8 +357,6 @@ int bf_ctx_setup(void)
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    bf_assert(!_ctx);
-
     r = _bf_ctx_new(&_ctx);
     if (r)
         return bf_err_r(r, "failed to create new context");
@@ -379,7 +380,7 @@ int bf_ctx_save(bf_wpack_t *pack)
 {
     int r;
 
-    bf_assert(pack);
+    assert(pack);
 
     r = _bf_ctx_pack(_bf_global_ctx, pack);
     if (r)
@@ -404,7 +405,7 @@ int bf_ctx_load(bf_rpack_node_t node)
 
 static void _bf_ctx_flush(struct bf_ctx *ctx, enum bf_front front)
 {
-    bf_assert(ctx);
+    assert(ctx);
 
     bf_list_foreach (&ctx->cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);

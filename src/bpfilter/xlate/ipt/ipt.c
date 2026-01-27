@@ -116,7 +116,8 @@
 static int _bf_ipt_target_to_verdict(struct ipt_entry_target *ipt_tgt,
                                      enum bf_verdict *verdict)
 {
-    bf_assert(ipt_tgt && verdict);
+    assert(ipt_tgt);
+    assert(verdict);
 
     if (bf_streq("", ipt_tgt->u.user.name)) {
         struct ipt_standard_target *std_tgt =
@@ -152,7 +153,7 @@ static int _bf_verdict_to_ipt_target(enum bf_verdict verdict,
 {
     struct ipt_standard_target *std_tgt = (struct xt_standard_target *)ipt_tgt;
 
-    bf_assert(ipt_tgt);
+    assert(ipt_tgt);
 
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
@@ -184,7 +185,8 @@ static int _bf_ipt_entry_to_rule(const struct ipt_entry *entry,
     _free_bf_rule_ struct bf_rule *_rule = NULL;
     int r;
 
-    bf_assert(entry && rule);
+    assert(entry);
+    assert(rule);
 
     if (sizeof(*entry) < entry->target_offset)
         return bf_err_r(-ENOTSUP, "iptables modules are not supported");
@@ -290,7 +292,8 @@ static int _bf_rule_to_ipt_entry(const struct bf_rule *rule,
 {
     const struct bf_ip4_lpm_key *net;
 
-    bf_assert(entry && rule);
+    assert(entry);
+    assert(rule);
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -343,7 +346,9 @@ static int _bf_ipt_entries_to_chain(struct bf_chain **chain, int ipt_hook,
     enum bf_verdict policy;
     int r;
 
-    bf_assert(chain && first && last);
+    assert(chain);
+    assert(first);
+    assert(last);
 
     // The last rule of the chain is the policy.
     r = _bf_ipt_target_to_verdict(ipt_get_target(last), &policy);
@@ -405,7 +410,7 @@ static int _bf_ipt_gen_get_ruleset(struct bf_ipt_gen_ruleset_entry *ruleset,
     size_t _nrules = 0;
     int r;
 
-    bf_assert(ruleset);
+    assert(ruleset);
 
     r = bf_ctx_get_cgens_for_front(&cgens, BF_FRONT_IPT);
     if (r)
@@ -479,7 +484,7 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
     struct xt_error_target *err_tgt;
     int r;
 
-    bf_assert(replace);
+    assert(replace);
 
     r = _bf_ipt_gen_get_ruleset(ruleset, &nrules, &dummy_chains);
     if (r)
@@ -599,7 +604,8 @@ _bf_ipt_xlate_ruleset_set(const struct ipt_replace *ipt,
 {
     int r;
 
-    bf_assert(ipt && chains);
+    assert(ipt);
+    assert(chains);
 
     for (int i = 0; i < NF_INET_NUMHOOKS; ++i) {
         _free_bf_chain_ struct bf_chain *chain = NULL;
@@ -636,7 +642,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
     struct bf_cgen *cur_cgens[NF_INET_NUMHOOKS] = {};
     int r;
 
-    bf_assert(req);
+    assert(req);
 
     replace = bf_request_data(req);
     if (bf_ipt_replace_size(replace) != bf_request_data_len(req))
@@ -740,8 +746,8 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 static int _bf_ipt_set_counters_handler(const struct xt_counters_info *counters,
                                         size_t len)
 {
-    UNUSED(counters);
-    UNUSED(len);
+    (void)counters;
+    (void)len;
 
     return 0;
 }
@@ -753,8 +759,8 @@ int _bf_ipt_get_info_handler(const struct bf_request *request,
     _cleanup_free_ struct ipt_getinfo *info = NULL;
     int r;
 
-    bf_assert(request);
-    bf_assert(sizeof(*info) == bf_request_data_len(request));
+    assert(request);
+    assert(sizeof(*info) == bf_request_data_len(request));
 
     info = bf_memdup(bf_request_data(request), bf_request_data_len(request));
     if (!info) {
@@ -794,8 +800,8 @@ int _bf_ipt_get_entries_handler(const struct bf_request *request,
     _cleanup_free_ struct ipt_get_entries *entries = NULL;
     int r;
 
-    bf_assert(request);
-    bf_assert(response);
+    assert(request);
+    assert(response);
 
     entries = bf_memdup(bf_request_data(request), bf_request_data_len(request));
     if (!entries)
@@ -875,14 +881,14 @@ static int _bf_ipt_request_handler(const struct bf_request *request,
 
 static int _bf_ipt_pack(bf_wpack_t *pack)
 {
-    UNUSED(pack);
+    (void)pack;
 
     return 0;
 }
 
 static int _bf_ipt_unpack(bf_rpack_node_t node)
 {
-    UNUSED(node);
+    (void)node;
 
     return 0;
 }

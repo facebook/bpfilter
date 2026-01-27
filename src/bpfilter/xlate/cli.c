@@ -52,8 +52,8 @@ static int _bf_cli_teardown(void)
 int _bf_cli_ruleset_flush(const struct bf_request *request,
                           struct bf_response **response)
 {
-    UNUSED(request);
-    UNUSED(response);
+    (void)request;
+    (void)response;
 
     bf_ctx_flush(BF_FRONT_CLI);
 
@@ -71,7 +71,7 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
     _free_bf_wpack_ bf_wpack_t *pack = NULL;
     int r;
 
-    UNUSED(request);
+    (void)request;
 
     r = bf_wpack_new(&pack);
     if (r)
@@ -126,9 +126,9 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
     bf_rpack_node_t child, node;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     bf_ctx_flush(BF_FRONT_CLI);
 
@@ -204,9 +204,9 @@ int _bf_cli_chain_set(const struct bf_request *request,
     bf_rpack_node_t root, child;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -319,7 +319,7 @@ int _bf_cli_chain_prog_fd(const struct bf_request *request,
     _cleanup_free_ char *name = NULL;
     int r;
 
-    UNUSED(response);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -352,7 +352,7 @@ int _bf_cli_chain_logs_fd(const struct bf_request *request,
     _cleanup_free_ char *name = NULL;
     int r;
 
-    UNUSED(response);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -386,9 +386,9 @@ int _bf_cli_chain_load(const struct bf_request *request,
     bf_rpack_node_t child;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -439,9 +439,9 @@ int _bf_cli_chain_attach(const struct bf_request *request,
     bf_rpack_node_t child;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -485,9 +485,9 @@ int _bf_cli_chain_update(const struct bf_request *request,
     bf_rpack_node_t child;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -524,9 +524,9 @@ int _bf_cli_chain_flush(const struct bf_request *request,
     _cleanup_free_ char *name = NULL;
     int r;
 
-    UNUSED(response);
+    assert(request);
 
-    bf_assert(request);
+    (void)response;
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -549,8 +549,8 @@ static int _bf_cli_request_handler(const struct bf_request *request,
 {
     int r;
 
-    bf_assert(request);
-    bf_assert(response);
+    assert(request);
+    assert(response);
 
     switch (bf_request_cmd(request)) {
     case BF_REQ_RULESET_FLUSH:
@@ -608,14 +608,14 @@ static int _bf_cli_request_handler(const struct bf_request *request,
 
 static int _bf_cli_pack(bf_wpack_t *pack)
 {
-    UNUSED(pack);
+    (void)pack;
 
     return 0;
 }
 
 static int _bf_cli_unpack(bf_rpack_node_t node)
 {
-    UNUSED(node);
+    (void)node;
 
     return 0;
 }

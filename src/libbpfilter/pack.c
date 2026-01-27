@@ -47,7 +47,7 @@ int bf_wpack_new(bf_wpack_t **pack)
 {
     bf_wpack_t *_pack = NULL;
 
-    bf_assert(pack);
+    assert(pack);
 
     _pack = malloc(sizeof(*_pack));
     if (!_pack)
@@ -75,7 +75,7 @@ void bf_wpack_free(bf_wpack_t **pack)
 {
     bf_wpack_t *_pack;
 
-    bf_assert(pack);
+    assert(pack);
 
     _pack = *pack;
     if (!_pack)
@@ -91,7 +91,7 @@ bool bf_wpack_is_valid(bf_wpack_t *pack)
 {
     mpack_error_t error;
 
-    bf_assert(pack);
+    assert(pack);
 
     error = mpack_writer_error(&pack->writer);
     if (error != mpack_ok)
@@ -102,9 +102,9 @@ bool bf_wpack_is_valid(bf_wpack_t *pack)
 
 int bf_wpack_get_data(bf_wpack_t *pack, const void **data, size_t *data_len)
 {
-    bf_assert(pack);
-    bf_assert(data);
-    bf_assert(data_len);
+    assert(pack);
+    assert(data);
+    assert(data_len);
 
     mpack_complete_map(&pack->writer);
 
@@ -165,8 +165,8 @@ void bf_wpack_str(bf_wpack_t *pack, const char *value)
 
 void bf_wpack_bin(bf_wpack_t *pack, const void *value, size_t len)
 {
-    bf_assert(pack);
-    bf_assert(value);
+    assert(pack);
+    assert(value);
 
     mpack_write_bin(&pack->writer, value, len);
 }
@@ -175,8 +175,8 @@ void bf_wpack_list(bf_wpack_t *pack, const bf_list *value)
 {
     int r;
 
-    bf_assert(pack);
-    bf_assert(value);
+    assert(pack);
+    assert(value);
 
     bf_wpack_open_array(pack, NULL);
     r = bf_list_pack(value, pack);
@@ -193,7 +193,7 @@ void bf_wpack_kv_list(bf_wpack_t *pack, const char *key, const bf_list *value)
 
 void bf_wpack_open_object(bf_wpack_t *pack, const char *key)
 {
-    bf_assert(pack);
+    assert(pack);
 
     if (key)
         mpack_write_cstr(&pack->writer, key);
@@ -203,14 +203,14 @@ void bf_wpack_open_object(bf_wpack_t *pack, const char *key)
 
 void bf_wpack_close_object(bf_wpack_t *pack)
 {
-    bf_assert(pack);
+    assert(pack);
 
     mpack_complete_map(&pack->writer);
 }
 
 void bf_wpack_open_array(bf_wpack_t *pack, const char *key)
 {
-    bf_assert(pack);
+    assert(pack);
 
     if (key)
         mpack_write_cstr(&pack->writer, key);
@@ -220,7 +220,7 @@ void bf_wpack_open_array(bf_wpack_t *pack, const char *key)
 
 void bf_wpack_close_array(bf_wpack_t *pack)
 {
-    bf_assert(pack);
+    assert(pack);
 
     mpack_complete_array(&pack->writer);
 }
@@ -239,7 +239,7 @@ int bf_rpack_new(bf_rpack_t **pack, const void *data, size_t data_len)
     _free_bf_rpack_ bf_rpack_t *_pack = NULL;
     mpack_error_t error;
 
-    bf_assert(pack);
+    assert(pack);
 
     _pack = calloc(1, sizeof(*_pack));
     if (!_pack)
@@ -268,7 +268,7 @@ void bf_rpack_free(bf_rpack_t **pack)
 {
     bf_rpack_t *_pack;
 
-    bf_assert(pack);
+    assert(pack);
 
     _pack = *pack;
     if (!_pack)
@@ -325,8 +325,8 @@ int bf_rpack_kv_node(bf_rpack_node_t node, const char *key,
 {
     mpack_node_t _node = MP_NODE(node);
 
-    bf_assert(key);
-    bf_assert(child);
+    assert(key);
+    assert(child);
 
     if (mpack_node_error(_node) != mpack_ok)
         return -EINVAL;
@@ -560,8 +560,8 @@ int bf_rpack_kv_str(bf_rpack_node_t node, const char *key, char **value)
     bf_rpack_node_t child;
     int r;
 
-    bf_assert(key);
-    bf_assert(value);
+    assert(key);
+    assert(value);
 
     r = bf_rpack_kv_node(node, key, &child);
     if (r)
@@ -644,8 +644,8 @@ int bf_rpack_kv_obj(bf_rpack_node_t node, const char *key,
     bf_rpack_node_t _child;
     int r;
 
-    bf_assert(key);
-    bf_assert(child);
+    assert(key);
+    assert(child);
 
     r = bf_rpack_kv_node(node, key, &_child);
     if (r)
@@ -665,8 +665,8 @@ int bf_rpack_kv_array(bf_rpack_node_t node, const char *key,
     bf_rpack_node_t _child;
     int r;
 
-    bf_assert(key);
-    bf_assert(child);
+    assert(key);
+    assert(child);
 
     r = bf_rpack_kv_node(node, key, &_child);
     if (r)

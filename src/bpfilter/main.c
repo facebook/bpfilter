@@ -53,7 +53,7 @@ static const char *ctx_path = BF_RUNTIME_DIR "/data.bin";
  */
 void _bf_sig_handler(int sig)
 {
-    UNUSED(sig);
+    (void)sig;
 
     _bf_stop_received = 1;
 }
@@ -78,7 +78,7 @@ static int _bf_load(const char *path)
     size_t data_len;
     int r;
 
-    bf_assert(path);
+    assert(path);
 
     if (access(ctx_path, F_OK)) {
         if (errno != ENOENT) {
@@ -140,7 +140,7 @@ static int _bf_save(const char *path)
     size_t data_len;
     int r;
 
-    bf_assert(path);
+    assert(path);
 
     if (bf_ctx_is_empty()) {
         /* If the context is empty, we don't need to save it and we can remove
@@ -317,7 +317,8 @@ static int _bf_process_request(struct bf_request *request,
     const struct bf_front_ops *ops;
     int r;
 
-    bf_assert(request && response);
+    assert(request);
+    assert(response);
 
     if (bf_request_front(request) < 0 ||
         bf_request_front(request) >= _BF_FRONT_MAX) {

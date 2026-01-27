@@ -16,7 +16,7 @@ int bf_counter_new(struct bf_counter **counter, uint64_t packets,
 {
     _cleanup_free_ struct bf_counter *_counter = NULL;
 
-    bf_assert(counter);
+    assert(counter);
 
     _counter = malloc(sizeof(*_counter));
     if (!_counter)
@@ -35,7 +35,7 @@ int bf_counter_new_from_pack(struct bf_counter **counter, bf_rpack_node_t node)
     _free_bf_counter_ struct bf_counter *_counter = NULL;
     int r;
 
-    bf_assert(counter);
+    assert(counter);
 
     r = bf_counter_new(&_counter, 0, 0);
     if (r)
@@ -56,7 +56,7 @@ int bf_counter_new_from_pack(struct bf_counter **counter, bf_rpack_node_t node)
 
 void bf_counter_free(struct bf_counter **counter)
 {
-    bf_assert(counter);
+    assert(counter);
 
     if (!*counter)
         return;
@@ -66,8 +66,8 @@ void bf_counter_free(struct bf_counter **counter)
 
 int bf_counter_pack(const struct bf_counter *counter, bf_wpack_t *pack)
 {
-    bf_assert(counter);
-    bf_assert(pack);
+    assert(counter);
+    assert(pack);
 
     bf_wpack_kv_u64(pack, "packets", counter->packets);
     bf_wpack_kv_u64(pack, "bytes", counter->bytes);

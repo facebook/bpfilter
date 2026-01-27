@@ -22,7 +22,7 @@ int bf_if_index_from_name(const char *name)
 {
     unsigned int r;
 
-    bf_assert(name);
+    assert(name);
 
     r = if_nametoindex(name);
     if (r == 0)

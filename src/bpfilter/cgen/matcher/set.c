@@ -15,7 +15,8 @@
 static int _bf_matcher_generate_set_trie(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     const struct bf_set *set =
         bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
@@ -80,7 +81,8 @@ static int _bf_matcher_generate_set_trie(struct bf_program *program,
 int bf_matcher_generate_set(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     const struct bf_set *set =
         bf_chain_get_set_for_matcher(program->runtime.chain, matcher);

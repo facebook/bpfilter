@@ -60,8 +60,8 @@ static int _bf_swich_option_new(struct bf_swich_option **option, uint32_t imm,
 {
     _free_bf_swich_option_ struct bf_swich_option *_option = NULL;
 
-    bf_assert(option);
-    bf_assert(insns);
+    assert(option);
+    assert(insns);
 
     _option = malloc(sizeof(*_option) + (sizeof(struct bpf_insn) * insns_len));
     if (!_option)
@@ -86,7 +86,7 @@ static int _bf_swich_option_new(struct bf_swich_option **option, uint32_t imm,
  */
 static void _bf_swich_option_free(struct bf_swich_option **option)
 {
-    bf_assert(option);
+    assert(option);
 
     if (!*option)
         return;
@@ -97,8 +97,8 @@ static void _bf_swich_option_free(struct bf_swich_option **option)
 
 int bf_swich_init(struct bf_swich *swich, struct bf_program *program, int reg)
 {
-    bf_assert(swich);
-    bf_assert(program);
+    assert(swich);
+    assert(program);
 
     swich->program = program;
     swich->reg = reg;
@@ -114,7 +114,7 @@ int bf_swich_init(struct bf_swich *swich, struct bf_program *program, int reg)
 
 void bf_swich_cleanup(struct bf_swich *swich)
 {
-    bf_assert(swich);
+    assert(swich);
 
     bf_list_clean(&swich->options);
     _bf_swich_option_free(&swich->default_opt);
@@ -127,8 +127,8 @@ int bf_swich_add_option(struct bf_swich *swich, uint32_t imm,
     _free_bf_swich_option_ struct bf_swich_option *option = NULL;
     int r;
 
-    bf_assert(swich);
-    bf_assert(insns);
+    assert(swich);
+    assert(insns);
 
     r = _bf_swich_option_new(&option, imm, insns, insns_len);
     if (r)
@@ -149,8 +149,8 @@ int bf_swich_set_default(struct bf_swich *swich, const struct bpf_insn *insns,
     _free_bf_swich_option_ struct bf_swich_option *option = NULL;
     int r;
 
-    bf_assert(swich);
-    bf_assert(insns);
+    assert(swich);
+    assert(insns);
 
     if (swich->default_opt) {
         bf_warn("default bf_swich option already exists, replacing it");

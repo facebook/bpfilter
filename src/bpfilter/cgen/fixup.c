@@ -14,7 +14,7 @@
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
                  size_t insn_offset, const union bf_fixup_attr *attr)
 {
-    bf_assert(fixup);
+    assert(fixup);
 
     *fixup = calloc(1, sizeof(struct bf_fixup));
     if (!fixup)
@@ -31,7 +31,7 @@ int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
 
 void bf_fixup_free(struct bf_fixup **fixup)
 {
-    bf_assert(fixup);
+    assert(fixup);
 
     if (!*fixup)
         return;
@@ -49,7 +49,7 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
         [BF_FIXUP_ELFSTUB_CALL] = "BF_FIXUP_ELFSTUB_CALL",
     };
 
-    bf_assert(0 <= type && type < _BF_FIXUP_TYPE_MAX);
+    assert(0 <= type && type < _BF_FIXUP_TYPE_MAX);
     static_assert(ARRAY_SIZE(str) == _BF_FIXUP_TYPE_MAX);
 
     return str[type];
@@ -57,8 +57,8 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
 
 void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
 {
-    bf_assert(fixup);
-    bf_assert(prefix);
+    assert(fixup);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_fixup at %p", fixup);
 

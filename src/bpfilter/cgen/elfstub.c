@@ -24,7 +24,8 @@ static_assert(ARRAY_SIZE(_bf_rawstubs) == _BF_ELFSTUB_MAX,
 static int _bf_printk_str_new(struct bf_printk_str **pstr, size_t insn_idx,
                               const char *str)
 {
-    bf_assert(pstr && str);
+    assert(pstr);
+    assert(str);
 
     *pstr = malloc(sizeof(struct bf_printk_str));
     if (!*pstr)
@@ -189,7 +190,7 @@ int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id)
     _free_bf_elfstub_ struct bf_elfstub *_stub = NULL;
     int r;
 
-    bf_assert(stub);
+    assert(stub);
 
     _stub = calloc(1, sizeof(*_stub));
     if (!_stub)
@@ -208,7 +209,7 @@ int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id)
 
 void bf_elfstub_free(struct bf_elfstub **stub)
 {
-    bf_assert(stub);
+    assert(stub);
 
     if (!*stub)
         return;

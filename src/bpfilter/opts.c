@@ -40,7 +40,7 @@ static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
 
 enum bf_verbose bf_verbose_from_str(const char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     for (enum bf_verbose verbose = 0; verbose < _BF_VERBOSE_MAX; ++verbose) {
         if (bf_streq(_bf_verbose_strs[verbose], str))
@@ -116,10 +116,10 @@ static struct argp_option options[] = {
  */
 static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
 {
-    UNUSED(arg);
-
     struct bf_options *args = state->input;
     enum bf_verbose opt;
+
+    (void)arg;
 
     switch (key) {
     case 't':

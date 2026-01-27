@@ -131,8 +131,8 @@ static int _bf_handle_rb_log(void *ctx, void *data, size_t data_size)
 {
     struct bf_log *log = data;
 
-    UNUSED(ctx);
-    UNUSED(data_size);
+    (void)ctx;
+    (void)data_size;
 
     bfc_print_log(log);
 

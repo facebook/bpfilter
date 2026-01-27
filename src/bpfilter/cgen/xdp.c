@@ -30,7 +30,7 @@ static int _bf_xdp_gen_inline_prologue(struct bf_program *program)
 {
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     // Calculate the packet size and store it into the runtime context
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1,
@@ -68,14 +68,14 @@ static int _bf_xdp_gen_inline_prologue(struct bf_program *program)
 
 static int _bf_xdp_gen_inline_epilogue(struct bf_program *program)
 {
-    UNUSED(program);
+    (void)program;
 
     return 0;
 }
 
 static int _bf_xdp_get_verdict(enum bf_verdict verdict)
 {
-    bf_assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
+    assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
 
     static const int verdicts[] = {
         [BF_VERDICT_ACCEPT] = XDP_PASS,

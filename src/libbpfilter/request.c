@@ -61,8 +61,8 @@ int bf_request_new(struct bf_request **request, enum bf_front front,
 {
     _free_bf_request_ struct bf_request *_request = NULL;
 
-    bf_assert(request);
-    bf_assert(!(!!data ^ !!data_len));
+    assert(request);
+    assert(!(!!data ^ !!data_len));
 
     _request = calloc(1, sizeof(*_request) + data_len);
     if (!_request)
@@ -86,8 +86,8 @@ int bf_request_new_from_dynbuf(struct bf_request **request,
 {
     struct bf_request *tmpreq;
 
-    bf_assert(request);
-    bf_assert(dynbuf);
+    assert(request);
+    assert(dynbuf);
 
     if (dynbuf->len < sizeof(*tmpreq))
         return -EINVAL;
@@ -108,8 +108,8 @@ int bf_request_new_from_pack(struct bf_request **request, enum bf_front front,
     size_t data_len;
     int r;
 
-    bf_assert(request);
-    bf_assert(pack);
+    assert(request);
+    assert(pack);
 
     if (!bf_wpack_is_valid(pack))
         return -EINVAL;
@@ -125,8 +125,8 @@ int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
 {
     _free_bf_request_ struct bf_request *_request = NULL;
 
-    bf_assert(dest);
-    bf_assert(src);
+    assert(dest);
+    assert(src);
 
     _request = bf_memdup(src, bf_request_size(src));
     if (!_request)
@@ -145,68 +145,68 @@ void bf_request_free(struct bf_request **request)
 
 enum bf_front bf_request_front(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->front;
 }
 
 enum bf_request_cmd bf_request_cmd(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->cmd;
 }
 
 struct bf_ns *bf_request_ns(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->ns;
 }
 
 int bf_request_fd(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->fd;
 }
 
 const void *bf_request_data(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->data;
 }
 
 size_t bf_request_data_len(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->data_len;
 }
 
 size_t bf_request_size(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
 
     return sizeof(struct bf_request) + request->data_len;
 }
 
 int bf_request_ipt_cmd(const struct bf_request *request)
 {
-    bf_assert(request);
+    assert(request);
     return request->ipt_cmd;
 }
 
 void bf_request_set_ns(struct bf_request *request, struct bf_ns *ns)
 {
-    bf_assert(request);
+    assert(request);
     request->ns = ns;
 }
 
 void bf_request_set_fd(struct bf_request *request, int fd)
 {
-    bf_assert(request);
+    assert(request);
     request->fd = fd;
 }
 
 void bf_request_set_ipt_cmd(struct bf_request *request, int ipt_cmd)
 {
-    bf_assert(request);
+    assert(request);
     request->ipt_cmd = ipt_cmd;
 }
 

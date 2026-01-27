@@ -188,7 +188,8 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
 {
     unsigned long ifindex;
 
-    bf_assert(hookopts && raw_opt);
+    assert(hookopts);
+    assert(raw_opt);
 
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
@@ -209,7 +210,8 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
 static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
                                       prefix_t *prefix)
 {
-    bf_assert(hookopts && prefix);
+    assert(hookopts);
+    assert(prefix);
 
     DUMP(prefix, "ifindex: %d", hookopts->ifindex);
 }
@@ -217,7 +219,8 @@ static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
 static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
                                      const char *raw_opt)
 {
-    bf_assert(hookopts && raw_opt);
+    assert(hookopts);
+    assert(raw_opt);
 
     hookopts->cgpath = strdup(raw_opt);
     if (!hookopts->cgpath) {
@@ -233,7 +236,8 @@ static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
 static void _bf_hookopts_cgpath_dump(const struct bf_hookopts *hookopts,
                                      prefix_t *prefix)
 {
-    bf_assert(hookopts && prefix);
+    assert(hookopts);
+    assert(prefix);
 
     DUMP(prefix, "cgpath: %s", hookopts->cgpath);
 }
@@ -241,7 +245,8 @@ static void _bf_hookopts_cgpath_dump(const struct bf_hookopts *hookopts,
 static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
                                      const char *raw_opt)
 {
-    bf_assert(hookopts && raw_opt);
+    assert(hookopts);
+    assert(raw_opt);
 
     (void)hookopts;
 
@@ -258,7 +263,8 @@ static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
 static void _bf_hookopts_family_dump(const struct bf_hookopts *hookopts,
                                      prefix_t *prefix)
 {
-    bf_assert(hookopts && prefix);
+    assert(hookopts);
+    assert(prefix);
 
     (void)hookopts;
 
@@ -272,7 +278,8 @@ static int _bf_hookopts_priorities_parse(struct bf_hookopts *hookopts,
     _cleanup_free_ char *copy = NULL;
     char *right, *end;
 
-    bf_assert(hookopts && raw_opt);
+    assert(hookopts);
+    assert(raw_opt);
 
     copy = strdup(raw_opt);
     if (!copy)
@@ -321,7 +328,8 @@ err_parsing:
 static void _bf_hookopts_priorities_dump(const struct bf_hookopts *hookopts,
                                          prefix_t *prefix)
 {
-    bf_assert(hookopts && prefix);
+    assert(hookopts);
+    assert(prefix);
 
     DUMP(prefix, "priorities: %d, %d", hookopts->priorities[0],
          hookopts->priorities[1]);
@@ -377,7 +385,7 @@ static_assert(ARRAY_SIZE(_bf_hookopts_ops) == _BF_HOOKOPTS_MAX,
 
 static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
 {
-    bf_assert(key);
+    assert(key);
 
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         if (bf_streq(_bf_hookopts_ops[type].name, key))
@@ -389,7 +397,7 @@ static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
 
 int bf_hookopts_new(struct bf_hookopts **hookopts)
 {
-    bf_assert(hookopts);
+    assert(hookopts);
 
     *hookopts = calloc(1, sizeof(struct bf_hookopts));
     if (!*hookopts)
@@ -405,7 +413,7 @@ int bf_hookopts_new_from_pack(struct bf_hookopts **hookopts,
     bf_rpack_node_t child;
     int r;
 
-    bf_assert(hookopts);
+    assert(hookopts);
 
     r = bf_hookopts_new(&_hookopts);
     if (r)
@@ -481,7 +489,7 @@ void bf_hookopts_clean(struct bf_hookopts *hookopts)
 
 void bf_hookopts_free(struct bf_hookopts **hookopts)
 {
-    bf_assert(hookopts);
+    assert(hookopts);
 
     if (!*hookopts)
         return;
@@ -492,8 +500,8 @@ void bf_hookopts_free(struct bf_hookopts **hookopts)
 
 int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack)
 {
-    bf_assert(hookopts);
-    bf_assert(pack);
+    assert(hookopts);
+    assert(pack);
 
     if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX))
         bf_wpack_kv_int(pack, "ifindex", hookopts->ifindex);
@@ -524,7 +532,8 @@ int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack)
 
 void bf_hookopts_dump(const struct bf_hookopts *hookopts, prefix_t *prefix)
 {
-    bf_assert(hookopts && prefix);
+    assert(hookopts);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_hookopts at %p", hookopts);
 
@@ -550,7 +559,8 @@ int bf_hookopts_parse_opt(struct bf_hookopts *hookopts, const char *raw_opt)
     struct bf_hookopts_ops *ops;
     int r;
 
-    bf_assert(hookopts && raw_opt);
+    assert(hookopts);
+    assert(raw_opt);
 
     value = strchr(raw_opt, '=');
     if (!value)
@@ -576,7 +586,8 @@ int bf_hookopts_parse_opts(struct bf_hookopts *hookopts, bf_list *raw_opts)
 {
     int r;
 
-    bf_assert(hookopts && raw_opts);
+    assert(hookopts);
+    assert(raw_opts);
 
     if (!raw_opts)
         return 0;
@@ -595,7 +606,7 @@ int bf_hookopts_validate(const struct bf_hookopts *hookopts, enum bf_hook hook)
 {
     enum bf_flavor flavor = bf_hook_to_flavor(hook);
 
-    bf_assert(hookopts);
+    assert(hookopts);
 
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         struct bf_hookopts_ops *ops = &_bf_hookopts_ops[type];

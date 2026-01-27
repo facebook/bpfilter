@@ -44,7 +44,8 @@ static const char *target_name[] = {
 static inline void ipt_dump_counters(const struct ipt_counters *counters,
                                      prefix_t *prefix)
 {
-    bf_assert(counters && prefix);
+    assert(counters);
+    assert(prefix);
 
     DUMP(prefix, "struct ipt_counters at %p", counters);
 }
@@ -57,7 +58,8 @@ static inline void ipt_dump_counters(const struct ipt_counters *counters,
  */
 static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
 {
-    bf_assert(ip && prefix);
+    assert(ip);
+    assert(prefix);
 
     DUMP(prefix, "struct ipt_ip at %p", ip);
 
@@ -85,7 +87,8 @@ static void ipt_dump_ip(const struct ipt_ip *ip, prefix_t *prefix)
 static void ipt_dump_match(const struct ipt_entry_match *match,
                            prefix_t *prefix)
 {
-    bf_assert(match && prefix);
+    assert(match);
+    assert(prefix);
 
     DUMP(prefix, "struct ipt_entry_match at %p", match);
 
@@ -118,7 +121,8 @@ static void ipt_dump_target(const struct ipt_entry_target *target,
     bool is_standard;
     struct ipt_standard_target *std_target = (void *)target;
 
-    bf_assert(target && prefix);
+    assert(target);
+    assert(prefix);
 
     is_standard = bf_streq(target->u.user.name, "");
 
@@ -157,7 +161,8 @@ void bf_ipt_dump_replace(const struct ipt_replace *ipt, prefix_t *prefix)
     struct ipt_entry *first_rule;
     struct ipt_entry *last_rule;
 
-    bf_assert(ipt && prefix);
+    assert(ipt);
+    assert(prefix);
 
     DUMP(prefix, "struct ipt_replace at %p", ipt);
 

@@ -14,7 +14,7 @@
 
 void bfc_ruleset_clean(struct bfc_ruleset *ruleset)
 {
-    bf_assert(ruleset);
+    assert(ruleset);
 
     bf_list_clean(&ruleset->chains);
     bf_list_clean(&ruleset->hookopts);
@@ -46,12 +46,12 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
 
 int bfc_ruleset_get(const struct bfc_opts *opts)
 {
-    UNUSED(opts);
-
     _clean_bf_list_ bf_list chains = bf_list_default(bf_chain_free, NULL);
     _clean_bf_list_ bf_list hookopts = bf_list_default(bf_hookopts_free, NULL);
     _clean_bf_list_ bf_list counters = bf_list_default(bf_list_free, NULL);
     int r;
+
+    (void)opts;
 
     r = bf_ruleset_get(&chains, &hookopts, &counters);
     if (r < 0)
@@ -66,7 +66,7 @@ int bfc_ruleset_get(const struct bfc_opts *opts)
 
 int bfc_ruleset_flush(const struct bfc_opts *opts)
 {
-    UNUSED(opts);
+    (void)opts;
 
     return bf_ruleset_flush();
 }
