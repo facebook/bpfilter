@@ -139,16 +139,14 @@ static int _bf_cgroup_gen_inline_get_skb(struct bf_program *program, int reg)
  */
 static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
 {
-    assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
-
-    static const int verdicts[] = {
-        [BF_VERDICT_ACCEPT] = 1,
-        [BF_VERDICT_DROP] = 0,
-    };
-
-    static_assert(ARRAY_SIZE(verdicts) == _BF_TERMINAL_VERDICT_MAX);
-
-    return verdicts[verdict];
+    switch (verdict) {
+    case BF_VERDICT_ACCEPT:
+        return 1;
+    case BF_VERDICT_DROP:
+        return 0;
+    default:
+        return -ENOTSUP;
+    }
 }
 
 const struct bf_flavor_ops bf_flavor_ops_cgroup = {

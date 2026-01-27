@@ -610,9 +610,10 @@ static int _bf_program_generate_rule(struct bf_program *program,
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
-        EMIT(program,
-             BPF_MOV64_IMM(BPF_REG_0,
-                           program->runtime.ops->get_verdict(rule->verdict)));
+        r = program->runtime.ops->get_verdict(rule->verdict);
+        if (r < 0)
+            return r;
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
         EMIT(program, BPF_EXIT_INSN());
         break;
     case BF_VERDICT_CONTINUE:
@@ -851,8 +852,10 @@ int bf_program_generate(struct bf_program *program)
          BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
     EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
-                                               chain->policy)));
+    r = program->runtime.ops->get_verdict(chain->policy);
+    if (r < 0)
+        return r;
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_generate_elfstubs(program);

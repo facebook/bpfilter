@@ -100,6 +100,9 @@ struct bf_flavor_ops
      * Note this function only needs to handle terminal verdicts - verdicts that
      * stop further packet processing. Non-terminal verdicts do not need return
      * codes and therefore do not need to be handled by get_verdict().
+     *
+     * @return Flavor-specific verdict for `verdict`, or a negative errno
+     * value on failure.
      */
     int (*get_verdict)(enum bf_verdict verdict);
 };

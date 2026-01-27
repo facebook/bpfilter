@@ -75,16 +75,14 @@ static int _bf_xdp_gen_inline_epilogue(struct bf_program *program)
 
 static int _bf_xdp_get_verdict(enum bf_verdict verdict)
 {
-    assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
-
-    static const int verdicts[] = {
-        [BF_VERDICT_ACCEPT] = XDP_PASS,
-        [BF_VERDICT_DROP] = XDP_DROP,
-    };
-
-    static_assert(ARRAY_SIZE(verdicts) == _BF_TERMINAL_VERDICT_MAX);
-
-    return verdicts[verdict];
+    switch (verdict) {
+    case BF_VERDICT_ACCEPT:
+        return XDP_PASS;
+    case BF_VERDICT_DROP:
+        return XDP_DROP;
+    default:
+        return -ENOTSUP;
+    }
 }
 
 const struct bf_flavor_ops bf_flavor_ops_xdp = {
