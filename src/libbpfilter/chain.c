@@ -270,3 +270,117 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
 
     return bf_list_get_at(&chain->sets, set_id);
 }
+
+int bf_chain_update_set(struct bf_chain *chain, const char *set_name,
+                        const struct bf_set *to_add,
+                        const struct bf_set *to_remove)
+{
+    struct bf_set *target_set = NULL;
+
+    assert(chain && set_name);
+
+    if (!to_add && !to_remove) {
+        return bf_err_r(-EINVAL,
+                        "at least one of to_add or to_remove must be provided");
+    }
+
+    if (to_add && to_add->name && !bf_streq(to_add->name, set_name)) {
+        return bf_err_r(-EINVAL,
+                        "to_add set name '%s' does not match set_name '%s'",
+                        to_add->name, set_name);
+    }
+
+    if (to_remove && to_remove->name && !bf_streq(to_remove->name, set_name)) {
+        return bf_err_r(-EINVAL,
+                        "to_remove set name '%s' does not match set_name '%s'",
+                        to_remove->name, set_name);
+    }
+
+    bf_list_foreach (&chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+
+        if (set->name && bf_streq(set->name, set_name)) {
+            target_set = set;
+            break;
+        }
+    }
+
+    if (!target_set) {
+        return bf_err_r(-ENOENT, "named set '%s' not found in chain '%s'",
+                        set_name, chain->name);
+    }
+
+    if (to_add) {
+        if (target_set->n_comps != to_add->n_comps) {
+            return bf_err_r(
+                -EINVAL,
+                "to_add set key format mismatch: target set key has %lu components, to_add has %lu",
+                target_set->n_comps, to_add->n_comps);
+        }
+
+        for (size_t i = 0; i < target_set->n_comps; ++i) {
+            if (target_set->key[i] != to_add->key[i]) {
+                return bf_err_r(
+                    -EINVAL,
+                    "to_add set key component %lu type mismatch: expected %s, got %s",
+                    i, bf_matcher_type_to_str(target_set->key[i]),
+                    bf_matcher_type_to_str(to_add->key[i]));
+            }
+        }
+
+        if (target_set->use_trie != to_add->use_trie) {
+            return bf_err_r(
+                -EINVAL,
+                "to_add set type mismatch: target set use_trie=%d, to_add use_trie=%d",
+                target_set->use_trie, to_add->use_trie);
+        }
+
+        bf_list_foreach (&to_add->elems, elem_node) {
+            int r = bf_set_add_elem(target_set, bf_list_node_get_data(elem_node));
+            if (r)
+                return bf_err_r(r, "failed to add element to set");
+        }
+    }
+
+    if (to_remove) {
+        if (target_set->n_comps != to_remove->n_comps) {
+            return bf_err_r(
+                -EINVAL,
+                "to_remove set key format mismatch: target set key has %lu components, to_remove has %lu",
+                target_set->n_comps, to_remove->n_comps);
+        }
+
+        for (size_t i = 0; i < target_set->n_comps; ++i) {
+            if (target_set->key[i] != to_remove->key[i]) {
+                return bf_err_r(
+                    -EINVAL,
+                    "to_remove set key component %lu type mismatch: expected %s, got %s",
+                    i, bf_matcher_type_to_str(target_set->key[i]),
+                    bf_matcher_type_to_str(to_remove->key[i]));
+            }
+        }
+
+        if (target_set->use_trie != to_remove->use_trie) {
+            return bf_err_r(
+                -EINVAL,
+                "to_remove set type mismatch: target set use_trie=%d, to_remove use_trie=%d",
+                target_set->use_trie, to_remove->use_trie);
+        }
+
+        bf_list_foreach (&to_remove->elems, elem_node) {
+            const void *elem_to_remove = bf_list_node_get_data(elem_node);
+
+            bf_list_foreach (&target_set->elems, target_elem_node) {
+                const void *target_elem = bf_list_node_get_data(target_elem_node);
+
+                if (memcmp(target_elem, elem_to_remove, target_set->elem_size) ==
+                    0) {
+                    bf_list_delete(&target_set->elems, target_elem_node);
+                    break;
+                }
+            }
+        }
+    }
+
+    return 0;
+}

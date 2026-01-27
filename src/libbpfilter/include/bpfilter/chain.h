@@ -145,3 +145,26 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set);
  */
 struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
                                             const struct bf_matcher *matcher);
+
+/**
+ * @brief Update a set in the chain using delta operations.
+ *
+ * Applies delta changes to an existing set in the chain. Elements from
+ * `to_add` are added to the set, and elements from `to_remove` are removed.
+ * Both sets must have the same key format as the existing set. If
+ * `to_remove` has elements that already aren't present in the program,
+ * these elements are ignored.
+ *
+ * @param chain Chain containing the set to update. Can't be NULL.
+ * @param set_name Name of the set to update. Can't be NULL.
+ * @param to_add Set containing elements to add. Set name and key format must
+ *        match the existing set. Can be NULL if no elements to add.
+ * @param to_remove Set containing elements to remove. Set name and key format
+ *        must match the existing set. Can be NULL if no elements to remove.
+ * @return 0 on success, or a negative errno value on failure, including:
+ * - `-ENOENT`: no set found with the given name.
+ * - `-EINVAL`: set key format doesn't match existing set.
+ */
+int bf_chain_update_set(struct bf_chain *chain, const char *set_name,
+                        const struct bf_set *to_add,
+                        const struct bf_set *to_remove);

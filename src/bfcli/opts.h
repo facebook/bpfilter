@@ -48,6 +48,7 @@ enum bfc_action
     BFC_ACTION_LOAD,
     BFC_ACTION_ATTACH,
     BFC_ACTION_UPDATE,
+    BFC_ACTION_UPDATE_SET,
     BFC_ACTION_FLUSH,
     _BFC_ACTION_MAX,
 };
@@ -70,6 +71,11 @@ struct bfc_opts
     const char *from_file;
     const char *name;
     struct bf_hookopts hookopts;
+
+    const char *set_name;
+    const char *set_format;
+    const char *set_add_payload;
+    const char *set_remove_payload;
 
     bool dry_run;
 };
