@@ -110,16 +110,14 @@ static int _bf_tc_gen_inline_get_skb(struct bf_program *program, int reg)
  */
 static int _bf_tc_get_verdict(enum bf_verdict verdict)
 {
-    assert(0 <= verdict && verdict < _BF_TERMINAL_VERDICT_MAX);
-
-    static const int verdicts[] = {
-        [BF_VERDICT_ACCEPT] = TC_ACT_OK,
-        [BF_VERDICT_DROP] = TC_ACT_SHOT,
-    };
-
-    static_assert(ARRAY_SIZE(verdicts) == _BF_TERMINAL_VERDICT_MAX);
-
-    return verdicts[verdict];
+    switch (verdict) {
+    case BF_VERDICT_ACCEPT:
+        return TCX_PASS;
+    case BF_VERDICT_DROP:
+        return TCX_DROP;
+    default:
+        return -ENOTSUP;
+    }
 }
 
 const struct bf_flavor_ops bf_flavor_ops_tc = {

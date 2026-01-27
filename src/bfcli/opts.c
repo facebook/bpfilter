@@ -161,7 +161,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain get",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_GET,
-        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print an existing chain\vRequest the chain --name from the daemon "
@@ -172,7 +173,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain logs",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_LOGS,
-        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print the packets logged by a chain\vIf the chain contains at "
@@ -226,7 +228,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain flush",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_FLUSH,
-        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION, BFC_OPT_CHAIN_NAME),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc = "Delete a chain\vRemove a chain from the system.",
         .cb = bfc_chain_flush,
@@ -571,8 +574,14 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an attached chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
         {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
-        {.name = "usage", .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE), .group = -1, .doc = "Print short usage message"},
-        {.name = "version", .key = 'V', .group = -1, .doc = "Print program version"},
+        {.name = "usage",
+         .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE),
+         .group = -1,
+         .doc = "Print short usage message"},
+        {.name = "version",
+         .key = 'V',
+         .group = -1,
+         .doc = "Print program version"},
         {0},
     };
     static const struct argp parser = {
