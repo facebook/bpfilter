@@ -102,8 +102,8 @@ int bf_bpf_prog_run(int prog_fd, const void *pkt, size_t pkt_len,
  *
  * @param bpffs_fd File descriptor of the BPF filesystem to create the token
  *        for.
- * @return A valid token file descriptor on success (which should be closed by
- *         the caller), or a negative error value on failure.
+ * @return A valid token file descriptor on success (owned by the caller),
+ *         or a negative error value on failure.
  */
 int bf_bpf_token_create(int bpffs_fd);
 
@@ -113,7 +113,8 @@ int bf_bpf_token_create(int bpffs_fd);
  * @param btf_data Raw BTF data to send to the kernel. Can't be NULL.
  * @param token_fd File descriptor of the BPF token to use, or -1 if no token
  *        should be used.
- * @return 0 on success, or a negative error value on failure.
+ * @return A valid BTF file descriptor on success (owned by the caller),
+ *         or a negative error value on failure.
  */
 int bf_bpf_btf_load(const void *btf_data, int token_fd);
 
@@ -127,7 +128,8 @@ int bf_bpf_btf_load(const void *btf_data, int token_fd);
  * @param n_elems Number of elements in the map.
  * @param btf BTF data, ignored if `NULL`.
  * @param token_fd BPF token to use to create the map. Ignored if -1.
- * @return 0 on success, or a negative error value on failure.
+ * @return A valid BPF map file descriptor on success (owned by the caller),
+ *         or a negative error value on failure.
  */
 int bf_bpf_map_create(const char *name, enum bf_bpf_map_type type,
                       size_t key_size, size_t value_size, size_t n_elems,
@@ -167,7 +169,8 @@ int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
  * @param flags Extra flags, passed directly to the system call. 0 if no flags.
  * @param family Protocol family, used for Netfilter hooks. Ignored otherwise.
  * @param priority Hook priority, used for Netfilter hooks. Ignored otherwise.
- * @return 0 on success, or a negative error value on failure.
+ * @return A valid BPF link file descriptor on success (owned by the caller),
+ *         or a negative error value on failure.
  */
 int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook, int flags,
                        uint32_t family, int32_t priority);
