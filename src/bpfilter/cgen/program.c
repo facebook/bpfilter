@@ -99,7 +99,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     uint32_t set_idx = 0;
     int r;
 
-    bf_assert(program && chain);
+    assert(program);
+    assert(chain);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
@@ -170,8 +171,8 @@ int bf_program_new_from_pack(struct bf_program **program,
     bf_rpack_node_t child, array_node;
     int r;
 
-    bf_assert(program);
-    bf_assert(chain);
+    assert(program);
+    assert(chain);
 
     r = bf_program_new(&_program, chain);
     if (r < 0)
@@ -281,8 +282,8 @@ void bf_program_free(struct bf_program **program)
 
 int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
 {
-    bf_assert(program);
-    bf_assert(pack);
+    assert(program);
+    assert(pack);
 
     bf_wpack_open_object(pack, "cmap");
     bf_map_pack(program->cmap, pack);
@@ -314,8 +315,8 @@ int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 {
-    bf_assert(program);
-    bf_assert(prefix);
+    assert(program);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_program at %p", program);
 
@@ -391,7 +392,7 @@ int bf_program_grow_img(struct bf_program *program)
     size_t new_cap = _BF_PROGRAM_DEFAULT_IMG_SIZE;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->img)
         new_cap = _bf_round_next_power_of_2(program->img_cap << 1);
@@ -412,12 +413,12 @@ static void _bf_program_fixup_insn(struct bpf_insn *insn,
 {
     switch (type) {
     case BF_FIXUP_INSN_OFF:
-        bf_assert(!insn->off);
-        bf_assert(value < SHRT_MAX);
+        assert(!insn->off);
+        assert(value < SHRT_MAX);
         insn->off = (int16_t)value;
         break;
     case BF_FIXUP_INSN_IMM:
-        bf_assert(!insn->imm);
+        assert(!insn->imm);
         insn->imm = value;
         break;
     default:
@@ -431,8 +432,8 @@ static void _bf_program_fixup_insn(struct bpf_insn *insn,
 static int _bf_program_fixup(struct bf_program *program,
                              enum bf_fixup_type type)
 {
-    bf_assert(program);
-    bf_assert(type >= 0 && type < _BF_FIXUP_TYPE_MAX);
+    assert(program);
+    assert(type >= 0 && type < _BF_FIXUP_TYPE_MAX);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         enum bf_fixup_insn insn_type = _BF_FIXUP_INSN_MAX;
@@ -497,8 +498,8 @@ static int _bf_program_generate_rule(struct bf_program *program,
 {
     int r;
 
-    bf_assert(program);
-    bf_assert(rule);
+    assert(program);
+    assert(rule);
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -636,7 +637,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
     size_t start_at;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     bf_list_foreach (&program->fixups, fixup_node) {
         struct bf_fixup *fixup = bf_list_node_get_data(fixup_node);
@@ -703,7 +704,7 @@ int bf_program_emit(struct bf_program *program, struct bpf_insn insn)
 {
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->img_size == program->img_cap) {
         r = bf_program_grow_img(program);
@@ -720,8 +721,8 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
 {
     int r;
 
-    bf_assert(program);
-    bf_assert(name);
+    assert(program);
+    assert(name);
 
     r = bf_btf_get_id(name);
     if (r < 0)
@@ -742,7 +743,7 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
     _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->img_size == program->img_cap) {
         r = bf_program_grow_img(program);
@@ -775,7 +776,7 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
     _free_bf_fixup_ struct bf_fixup *fixup = NULL;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     if (program->img_size == program->img_cap) {
         r = bf_program_grow_img(program);
@@ -872,7 +873,7 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     uint32_t key = 0;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_printer_assemble(program->printer, &pstr, &pstr_len);
     if (r)
@@ -904,7 +905,7 @@ static int _bf_program_load_counters_map(struct bf_program *program)
     _cleanup_close_ int _fd = -1;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_map_set_n_elems(program->cmap,
                            bf_list_size(&program->runtime.chain->rules) + 2);
@@ -929,7 +930,7 @@ static int _bf_program_load_log_map(struct bf_program *program)
     _cleanup_close_ int _fd = -1;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_map_create(program->lmap);
     if (r < 0)
@@ -950,7 +951,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     const bf_list_node *map_node;
     int r;
 
-    bf_assert(new_prog);
+    assert(new_prog);
 
     set_node = bf_list_get_head(&new_prog->runtime.chain->sets);
     map_node = bf_list_get_head(&new_prog->sets);
@@ -1017,7 +1018,7 @@ int bf_program_load(struct bf_program *prog)
     _cleanup_free_ char *log_buf = NULL;
     int r;
 
-    bf_assert(prog && prog->img);
+    assert(prog);
 
     r = _bf_program_load_sets_maps(prog);
     if (r)
@@ -1063,7 +1064,8 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
 {
     int r;
 
-    bf_assert(prog && hookopts);
+    assert(prog);
+    assert(hookopts);
 
     r = bf_link_attach(prog->link, prog->runtime.chain->hook, hookopts,
                        prog->runtime.prog_fd);
@@ -1077,14 +1079,14 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
 
 void bf_program_detach(struct bf_program *prog)
 {
-    bf_assert(prog);
+    assert(prog);
 
     bf_link_detach(prog->link);
 }
 
 void bf_program_unload(struct bf_program *prog)
 {
-    bf_assert(prog);
+    assert(prog);
 
     closep(&prog->runtime.prog_fd);
     bf_link_detach(prog->link);
@@ -1098,8 +1100,8 @@ void bf_program_unload(struct bf_program *prog)
 int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter)
 {
-    bf_assert(program);
-    bf_assert(counter);
+    assert(program);
+    assert(counter);
 
     int r;
 
@@ -1113,8 +1115,8 @@ int bf_program_get_counter(const struct bf_program *program,
 int bf_cgen_set_counters(struct bf_program *program,
                          const struct bf_counter *counters)
 {
-    UNUSED(program);
-    UNUSED(counters);
+    (void)program;
+    (void)counters;
 
     return -ENOTSUP;
 }
@@ -1124,7 +1126,7 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
     const char *name;
     int r;
 
-    bf_assert(prog);
+    assert(prog);
 
     name = prog->runtime.chain->name;
 
@@ -1178,7 +1180,7 @@ err_unpin_all:
 
 void bf_program_unpin(struct bf_program *prog, int dir_fd)
 {
-    bf_assert(prog);
+    assert(prog);
 
     bf_map_unpin(prog->cmap, dir_fd);
     bf_map_unpin(prog->pmap, dir_fd);

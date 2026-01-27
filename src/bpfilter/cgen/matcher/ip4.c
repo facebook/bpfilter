@@ -27,7 +27,8 @@
 static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
                                          const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     uint32_t *addr = (uint32_t *)bf_matcher_payload(matcher);
     size_t offset = bf_matcher_get_type(matcher) == BF_MATCHER_IP4_SADDR ?
@@ -49,7 +50,8 @@ static int _bf_matcher_generate_ip4_addr(struct bf_program *program,
 static int _bf_matcher_generate_ip4_proto(struct bf_program *program,
                                           const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     uint8_t proto = *(uint8_t *)bf_matcher_payload(matcher);
 
@@ -74,8 +76,8 @@ static int _bf_matcher_generate_ip4_dscp(struct bf_program *program,
 
     dscp = *(uint8_t *)bf_matcher_payload(matcher);
 
-    EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6,
-                              offsetof(struct iphdr, tos)));
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6, offsetof(struct iphdr, tos)));
     EMIT_FIXUP_JMP_NEXT_RULE(
         program,
         BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
@@ -87,7 +89,7 @@ static int _bf_matcher_generate_ip4_dscp(struct bf_program *program,
 
 static void _bf_ip4_prefix_to_mask(uint32_t prefixlen, uint8_t *mask)
 {
-    bf_assert(mask);
+    assert(mask);
 
     memset(mask, 0x00, 4);
 
@@ -99,7 +101,8 @@ static void _bf_ip4_prefix_to_mask(uint32_t prefixlen, uint8_t *mask)
 static int _bf_matcher_generate_ip4_net(struct bf_program *program,
                                         const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     uint32_t mask;
     struct bf_ip4_lpm_key *addr =
@@ -131,7 +134,8 @@ static int _bf_matcher_generate_ip4_net(struct bf_program *program,
 int bf_matcher_generate_ip4(struct bf_program *program,
                             const struct bf_matcher *matcher)
 {
-    bf_assert(program && matcher);
+    assert(program);
+    assert(matcher);
 
     int r;
 

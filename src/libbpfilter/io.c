@@ -30,7 +30,7 @@ static int _bf_recv_in_buff(int fd, struct bf_dynbuf *buf)
 {
     size_t remaining = 1;
 
-    bf_assert(buf);
+    assert(buf);
 
     while (remaining > 0) {
         ssize_t r;
@@ -76,7 +76,7 @@ static int _bf_send_from_buff(int fd, void *buf, size_t buf_len)
 {
     size_t sent = 0;
 
-    bf_assert(buf);
+    assert(buf);
 
     while (buf_len > 0) {
         size_t send_size = bf_min(BF_MSG_BUF_SIZE, buf_len);
@@ -128,7 +128,7 @@ static int _bf_send_request(int fd, const struct bf_request *request)
 {
     int r;
 
-    bf_assert(request);
+    assert(request);
 
     r = _bf_send_from_buff(fd, (void *)request, bf_request_size(request));
     if (r < 0)
@@ -142,7 +142,7 @@ int bf_recv_request(int fd, struct bf_request **request)
     _clean_bf_dynbuf_ struct bf_dynbuf dynbuf = bf_dynbuf_default();
     int r;
 
-    bf_assert(request);
+    assert(request);
 
     r = _bf_recv_in_buff(fd, &dynbuf);
     if (r)
@@ -159,7 +159,7 @@ int bf_send_response(int fd, struct bf_response *response)
 {
     int r;
 
-    bf_assert(response);
+    assert(response);
 
     r = _bf_send_from_buff(fd, (void *)response, bf_response_size(response));
     if (r < 0)
@@ -182,7 +182,7 @@ static int _bf_recv_response(int fd, struct bf_response **response)
     _clean_bf_dynbuf_ struct bf_dynbuf dynbuf = bf_dynbuf_default();
     int r;
 
-    bf_assert(response);
+    assert(response);
 
     r = _bf_recv_in_buff(fd, &dynbuf);
     if (r)
@@ -200,7 +200,7 @@ int bf_ensure_dir(const char *dir)
     struct stat stats;
     int r;
 
-    bf_assert(dir);
+    assert(dir);
 
     r = access(dir, R_OK | W_OK);
     if (r && errno == ENOENT) {
@@ -222,7 +222,7 @@ int bf_opendir(const char *path)
 {
     _cleanup_close_ int fd = -1;
 
-    bf_assert(path);
+    assert(path);
 
     fd = open(path, O_DIRECTORY);
     if (fd < 0)
@@ -236,7 +236,7 @@ int bf_opendir_at(int parent_fd, const char *dir_name, bool mkdir_if_missing)
     _cleanup_close_ int fd = -1;
     int r;
 
-    bf_assert(dir_name);
+    assert(dir_name);
 
 retry:
     fd = openat(parent_fd, dir_name, O_DIRECTORY);
@@ -269,7 +269,7 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive)
 {
     int r;
 
-    bf_assert(dir_name);
+    assert(dir_name);
 
     if (recursive) {
         _cleanup_close_ int child_fd = -1;
@@ -318,7 +318,7 @@ int bf_acquire_lock(const char *path)
 {
     _cleanup_close_ int fd = -1;
 
-    bf_assert(path);
+    assert(path);
 
     fd = open(path, O_CREAT | O_RDWR, BF_PERM_755);
     if (fd < 0)
@@ -423,8 +423,8 @@ int bf_send(int fd, const struct bf_request *request,
     _cleanup_close_ int _recv_fd = -1;
     int r;
 
-    bf_assert(request);
-    bf_assert(response);
+    assert(request);
+    assert(response);
 
     r = _bf_send_request(fd, request);
     if (r < 0)

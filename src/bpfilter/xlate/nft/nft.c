@@ -24,14 +24,14 @@ static int _bf_nft_teardown(void)
 
 static int _bf_nft_pack(bf_wpack_t *pack)
 {
-    UNUSED(pack);
+    (void)pack;
 
     return 0;
 }
 
 static int _bf_nft_unpack(bf_rpack_node_t node)
 {
-    UNUSED(node);
+    (void)node;
 
     return 0;
 }
@@ -39,9 +39,9 @@ static int _bf_nft_unpack(bf_rpack_node_t node)
 static int _bf_nft_request_handler(const struct bf_request *request,
                                    struct bf_response **response)
 {
-    UNUSED(request);
+    assert(response);
 
-    bf_assert(response);
+    (void)request;
 
     return bf_response_new_failure(response, -ENOTSUP);
 }

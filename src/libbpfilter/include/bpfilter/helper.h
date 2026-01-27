@@ -120,10 +120,6 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))
 
-#ifndef bf_assert
-#define bf_assert(x) assert(x)
-#endif
-
 #define bf_static_assert(expr, msg) _Static_assert((expr), msg)
 
 #define BF_STR(s) _BF_STR(s)
@@ -141,13 +137,6 @@ extern const char *strerrordesc_np(int errnum);
 #define static_assert_enum_mapping(array, n_values)                            \
     static_assert(ARRAY_SIZE(array) == (n_values),                             \
                   "missing entries in " BF_STR(array) " array");
-
-/**
- * Mark a variable as unused, to prevent the compiler from emitting a warning.
- *
- * @param x The variable to mark as unused.
- */
-#define UNUSED(x) (void)(x)
 
 /**
  * Set @p ptr to NULL and return its previous value.
@@ -330,8 +319,8 @@ static inline void *bf_memdup(const void *src, size_t len)
  */
 static inline void *bf_memcpy(void *dst, const void *src, size_t len)
 {
-    bf_assert(dst);
-    bf_assert(src ? 1 : len == 0);
+    assert(dst);
+    assert(src ? 1 : len == 0);
 
     if (!src || !len)
         return dst;

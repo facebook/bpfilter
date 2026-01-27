@@ -14,7 +14,7 @@ extern const struct bf_front_ops cli_front;
 
 const struct bf_front_ops *bf_front_ops_get(enum bf_front front)
 {
-    bf_assert(0 <= front && front < _BF_FRONT_MAX);
+    assert(0 <= front && front < _BF_FRONT_MAX);
 
     static const struct bf_front_ops *fronts[] = {
         [BF_FRONT_IPT] = &ipt_front,

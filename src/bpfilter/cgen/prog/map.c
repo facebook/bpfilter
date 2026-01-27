@@ -28,7 +28,8 @@ static int _bf_map_new(struct bf_map **map, const char *name,
                        enum bf_map_type type, enum bf_bpf_map_type bpf_type,
                        size_t key_size, size_t value_size, size_t n_elems)
 {
-    bf_assert(map && name);
+    assert(map);
+    assert(name);
 
     _free_bf_map_ struct bf_map *_map = NULL;
 
@@ -90,7 +91,7 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     _cleanup_free_ char *name = NULL;
     int r;
 
-    bf_assert(map);
+    assert(map);
 
     _map = malloc(sizeof(*_map));
     if (!_map)
@@ -107,7 +108,8 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_map.type");
 
-    r = bf_rpack_kv_enum(node, "bpf_type", &_map->bpf_type, 0, __MAX_BPF_MAP_TYPE);
+    r = bf_rpack_kv_enum(node, "bpf_type", &_map->bpf_type, 0,
+                         __MAX_BPF_MAP_TYPE);
     if (r)
         return bf_rpack_key_err(r, "bf_map.bpf_type");
 
@@ -142,7 +144,7 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
 
 void bf_map_free(struct bf_map **map)
 {
-    bf_assert(map);
+    assert(map);
 
     if (!*map)
         return;
@@ -153,8 +155,8 @@ void bf_map_free(struct bf_map **map)
 
 int bf_map_pack(const struct bf_map *map, bf_wpack_t *pack)
 {
-    bf_assert(map);
-    bf_assert(pack);
+    assert(map);
+    assert(pack);
 
     bf_wpack_kv_str(pack, "name", map->name);
     bf_wpack_kv_enum(pack, "type", map->type);
@@ -177,7 +179,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
 
     static_assert(ARRAY_SIZE(type_strs) == _BF_MAP_TYPE_MAX,
                   "missing entries in _bf_map_type_strs array");
-    bf_assert(0 <= type && type < _BF_MAP_TYPE_MAX);
+    assert(0 <= type && type < _BF_MAP_TYPE_MAX);
 
     return type_strs[type];
 }
@@ -196,8 +198,8 @@ static const char *_bf_bpf_type_to_str(enum bf_bpf_map_type type)
 
 void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
 {
-    bf_assert(map);
-    bf_assert(prefix);
+    assert(map);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_map at %p", map);
 
@@ -228,7 +230,7 @@ static int _bf_btf_new(struct bf_btf **btf)
 {
     _free_bf_btf_ struct bf_btf *_btf = NULL;
 
-    bf_assert(btf);
+    assert(btf);
 
     _btf = malloc(sizeof(struct bf_btf));
     if (!_btf)
@@ -247,7 +249,7 @@ static int _bf_btf_new(struct bf_btf **btf)
 
 static void _bf_btf_free(struct bf_btf **btf)
 {
-    bf_assert(btf);
+    assert(btf);
 
     if (!*btf)
         return;
@@ -263,7 +265,7 @@ static int _bf_btf_load(struct bf_btf *btf)
     const void *raw;
     int r;
 
-    bf_assert(btf);
+    assert(btf);
 
     raw = btf__raw_data(btf->btf, &attr.btf_size);
     if (!raw)
@@ -292,7 +294,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
     struct btf *kbtf;
     int r;
 
-    bf_assert(map);
+    assert(map);
 
     r = _bf_btf_new(&btf);
     if (r < 0)
@@ -332,7 +334,7 @@ int bf_map_create(struct bf_map *map)
     _free_bf_btf_ struct bf_btf *btf = NULL;
     int r;
 
-    bf_assert(map);
+    assert(map);
 
     if (map->key_size == BF_MAP_KEY_SIZE_UNKNOWN) {
         return bf_err_r(
@@ -373,7 +375,7 @@ int bf_map_create(struct bf_map *map)
 
 void bf_map_destroy(struct bf_map *map)
 {
-    bf_assert(map);
+    assert(map);
 
     closep(&map->fd);
 }
@@ -382,7 +384,7 @@ int bf_map_pin(const struct bf_map *map, int dir_fd)
 {
     int r;
 
-    bf_assert(map);
+    assert(map);
 
     r = bf_bpf_obj_pin(map->name, map->fd, dir_fd);
     if (r < 0)
@@ -395,7 +397,7 @@ void bf_map_unpin(const struct bf_map *map, int dir_fd)
 {
     int r;
 
-    bf_assert(map);
+    assert(map);
 
     r = unlinkat(dir_fd, map->name, 0);
     if (r < 0 && errno != ENOENT) {
@@ -409,7 +411,7 @@ void bf_map_unpin(const struct bf_map *map, int dir_fd)
 
 int bf_map_set_key_size(struct bf_map *map, size_t key_size)
 {
-    bf_assert(key_size != 0);
+    assert(key_size != 0);
 
     if (map->fd != -1) {
         return bf_err_r(
@@ -424,7 +426,7 @@ int bf_map_set_key_size(struct bf_map *map, size_t key_size)
 
 int bf_map_set_value_size(struct bf_map *map, size_t value_size)
 {
-    bf_assert(value_size != 0);
+    assert(value_size != 0);
 
     if (map->fd != -1) {
         return bf_err_r(
@@ -439,7 +441,7 @@ int bf_map_set_value_size(struct bf_map *map, size_t value_size)
 
 int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
 {
-    bf_assert(n_elems != 0);
+    assert(n_elems != 0);
 
     if (map->fd != -1) {
         return bf_err_r(
@@ -454,7 +456,9 @@ int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
 
 int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
 {
-    bf_assert(map && key && value);
+    assert(map);
+    assert(key);
+    assert(value);
 
     return bf_bpf_map_update_elem(map->fd, key, value, 0);
 }

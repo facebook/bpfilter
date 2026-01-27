@@ -22,7 +22,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 {
     bf_list_node *_node;
 
-    bf_assert(node);
+    assert(node);
 
     _node = calloc(1, sizeof(*_node));
     if (!_node)
@@ -44,7 +44,7 @@ static int bf_list_node_new(bf_list_node **node, void *data)
 static void bf_list_node_free(bf_list_node **node,
                               void (*free_data)(void **data))
 {
-    bf_assert(node);
+    assert(node);
 
     if (free_data)
         free_data(&(*node)->data);
@@ -55,7 +55,7 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops)
 {
     _free_bf_list_ bf_list *_list = NULL;
 
-    bf_assert(list);
+    assert(list);
 
     _list = calloc(1, sizeof(*_list));
     if (!_list)
@@ -70,7 +70,7 @@ int bf_list_new(bf_list **list, const bf_list_ops *ops)
 
 void bf_list_free(bf_list **list)
 {
-    bf_assert(list);
+    assert(list);
 
     if (!*list)
         return;
@@ -82,7 +82,7 @@ void bf_list_free(bf_list **list)
 
 void bf_list_init(bf_list *list, const bf_list_ops *ops)
 {
-    bf_assert(list);
+    assert(list);
 
     list->len = 0;
     list->head = NULL;
@@ -96,7 +96,7 @@ void bf_list_init(bf_list *list, const bf_list_ops *ops)
 
 void bf_list_clean(bf_list *list)
 {
-    bf_assert(list);
+    assert(list);
 
     bf_list_foreach (list, node)
         bf_list_node_free(&node, list->ops.free);
@@ -108,8 +108,8 @@ void bf_list_clean(bf_list *list)
 
 int bf_list_pack(const bf_list *list, bf_wpack_t *pack)
 {
-    bf_assert(list);
-    bf_assert(pack);
+    assert(list);
+    assert(pack);
 
     if (!list->ops.pack)
         return -ENOTSUP;
@@ -137,7 +137,8 @@ int bf_list_push(bf_list *list, void **data)
 {
     int r;
 
-    bf_assert(data);
+    assert(list);
+    assert(data);
 
     r = bf_list_add_tail(list, *data);
     if (r < 0)
@@ -153,7 +154,7 @@ int bf_list_add_head(bf_list *list, void *data)
     bf_list_node *node = NULL;
     int r;
 
-    bf_assert(list);
+    assert(list);
 
     r = bf_list_node_new(&node, data);
     if (r < 0)
@@ -178,7 +179,7 @@ int bf_list_add_tail(bf_list *list, void *data)
     bf_list_node *node = NULL;
     int r;
 
-    bf_assert(list);
+    assert(list);
 
     r = bf_list_node_new(&node, data);
     if (r < 0)
@@ -200,8 +201,8 @@ int bf_list_add_tail(bf_list *list, void *data)
 
 void bf_list_delete(bf_list *list, bf_list_node *node)
 {
-    bf_assert(list);
-    bf_assert(node);
+    assert(list);
+    assert(node);
 
     if (list->head == node)
         list->head = node->next;
@@ -220,7 +221,7 @@ void bf_list_delete(bf_list *list, bf_list_node *node)
 
 void *bf_list_get_at(const bf_list *list, size_t index)
 {
-    bf_assert(list);
+    assert(list);
 
     bf_list_foreach (list, node) {
         if (index == 0)

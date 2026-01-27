@@ -30,7 +30,7 @@
 
 static void _bfc_print_version(FILE *stream, struct argp_state *state)
 {
-    UNUSED(state);
+    (void)state;
 
     (void)fprintf(stream, "bfcli version %s, libbpfilter version %s\n",
                   BF_VERSION, bf_version());
@@ -55,9 +55,9 @@ int main(int argc, char *argv[])
 
 void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
 {
-    UNUSED(ruleset);
-
     va_list args;
+
+    (void)ruleset;
 
     va_start(args, fmt);
     bf_err_v(fmt, args);

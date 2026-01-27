@@ -136,21 +136,21 @@ int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
 
 static inline void bf_rule_mark_set(struct bf_rule *rule, uint32_t mark)
 {
-    bf_assert(rule);
+    assert(rule);
 
     rule->mark = ~BF_RULE_MARK_MASK | mark;
 }
 
 static inline uint32_t bf_rule_mark_get(const struct bf_rule *rule)
 {
-    bf_assert(rule);
+    assert(rule);
 
     return rule->mark & BF_RULE_MARK_MASK;
 }
 
 static inline bool bf_rule_mark_is_set(const struct bf_rule *rule)
 {
-    bf_assert(rule);
+    assert(rule);
 
     return rule->mark >> 32;
 }

@@ -66,7 +66,8 @@ struct bf_matcher
 int _bf_parse_int(enum bf_matcher_type type, enum bf_matcher_op op,
                   void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long value;
     char *endptr;
@@ -92,7 +93,7 @@ int _bf_parse_int(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_int(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
 }
@@ -102,7 +103,8 @@ void _bf_print_int(const void *payload)
 int _bf_parse_int_range(enum bf_matcher_type type, enum bf_matcher_op op,
                         void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     uint32_t *range = (uint32_t *)payload;
     unsigned long value;
@@ -154,7 +156,7 @@ err:
 
 void _bf_print_int_range(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     uint32_t *range = (uint32_t *)payload;
 
@@ -164,7 +166,8 @@ void _bf_print_int_range(const void *payload)
 int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
                     void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     int idx;
     unsigned long ifindex;
@@ -191,7 +194,7 @@ int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_iface(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const char *ifname;
     uint32_t ifindex = *(uint32_t *)payload;
@@ -206,7 +209,8 @@ void _bf_print_iface(const void *payload)
 int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
                        void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long ethertype;
     char *endptr;
@@ -237,7 +241,7 @@ int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_l3_proto(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const char *ethertype = bf_ethertype_to_str(*(uint16_t *)payload);
 
@@ -250,7 +254,8 @@ void _bf_print_l3_proto(const void *payload)
 int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
                        void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long ipproto;
     char *endptr;
@@ -275,7 +280,7 @@ int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_l4_proto(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const char *ipproto = bf_ipproto_to_str(*(uint8_t *)payload);
 
@@ -288,7 +293,8 @@ void _bf_print_l4_proto(const void *payload)
 int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
                       void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long port;
     char *endptr;
@@ -307,7 +313,7 @@ int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_l4_port(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "%" PRIu16, (uint16_t)be16toh(*(uint16_t *)payload));
 }
@@ -318,7 +324,8 @@ static int _bf_parse_l4_port_range(enum bf_matcher_type type,
                                    enum bf_matcher_op op, void *payload,
                                    const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     uint16_t *ports = (uint16_t *)payload;
     unsigned long port;
@@ -364,7 +371,7 @@ err:
 
 void _bf_print_l4_port_range(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     uint16_t *ports = (uint16_t *)payload;
 
@@ -375,7 +382,8 @@ static int _bf_parse_probability(enum bf_matcher_type type,
                                  enum bf_matcher_op op, void *payload,
                                  const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long proba;
     char *endptr;
@@ -395,7 +403,7 @@ static int _bf_parse_probability(enum bf_matcher_type type,
 
 void _bf_print_probability(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)payload);
 }
@@ -406,11 +414,11 @@ static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
     long long mark;
     char *endptr;
 
-    UNUSED(type);
-    UNUSED(op);
+    assert(payload);
+    assert(raw_payload);
 
-    bf_assert(payload);
-    bf_assert(raw_payload);
+    (void)type;
+    (void)op;
 
     mark = strtoll(raw_payload, &endptr, 0);
     if (*endptr) {
@@ -432,7 +440,7 @@ static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_mark(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
 }
@@ -440,7 +448,8 @@ void _bf_print_mark(const void *payload)
 static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     int r;
 
@@ -457,7 +466,7 @@ static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_ipv4_addr(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     char str[INET4_ADDRSTRLEN];
 
@@ -473,7 +482,8 @@ void _bf_print_ipv4_addr(const void *payload)
 static int _bf_parse_ipv4_net(enum bf_matcher_type type, enum bf_matcher_op op,
                               void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     struct bf_ip4_lpm_key *addr = payload;
     char buf[BF_IPV4_NET_MAX_LEN];
@@ -509,7 +519,7 @@ err:
 
 void _bf_print_ipv4_net(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     char str[INET4_ADDRSTRLEN];
     const struct bf_ip4_lpm_key *addr = payload;
@@ -523,7 +533,8 @@ void _bf_print_ipv4_net(const void *payload)
 static int _bf_parse_ipv6_addr(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     int r;
 
@@ -540,7 +551,7 @@ static int _bf_parse_ipv6_addr(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_ipv6_addr(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     char str[INET6_ADDRSTRLEN];
 
@@ -555,7 +566,8 @@ void _bf_print_ipv6_addr(const void *payload)
 static int _bf_parse_ipv6_net(enum bf_matcher_type type, enum bf_matcher_op op,
                               void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     struct bf_ip6_lpm_key *addr = payload;
     char buf[BF_IPV6_NET_MAX_LEN];
@@ -591,7 +603,7 @@ err:
 
 void _bf_print_ipv6_net(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const struct bf_ip6_lpm_key *addr = payload;
     char str[INET6_ADDRSTRLEN];
@@ -605,7 +617,8 @@ void _bf_print_ipv6_net(const void *payload)
 static int _bf_parse_tcp_flags(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     _cleanup_free_ char *_raw_payload = NULL;
     char *tmp;
@@ -645,7 +658,7 @@ err:
 
 void _bf_print_tcp_flags(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     uint8_t flag = *(uint8_t *)payload;
 
@@ -661,7 +674,8 @@ void _bf_print_tcp_flags(const void *payload)
 static int _bf_parse_icmp_type(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long icmptype;
     char *endptr;
@@ -693,7 +707,7 @@ static int _bf_parse_icmp_type(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_icmp_type(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const char *type = bf_icmp_type_to_str(*(uint8_t *)payload);
 
@@ -706,7 +720,8 @@ void _bf_print_icmp_type(const void *payload)
 static int _bf_parse_icmp_code(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long code;
     char *endptr;
@@ -732,7 +747,7 @@ static int _bf_parse_icmp_code(enum bf_matcher_type type, enum bf_matcher_op op,
 
 void _bf_print_icmp_code(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
@@ -758,16 +773,15 @@ static int _bf_parse_u8(enum bf_matcher_type type, enum bf_matcher_op op,
         return 0;
     }
 
-    bf_err(
-        "\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
-        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+    bf_err("\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
+           bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 
     return -EINVAL;
 }
 
 static void _bf_print_u8(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     (void)fprintf(stdout, "0x%02" PRIx8, *(uint8_t *)payload);
 }
@@ -776,7 +790,8 @@ static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
                                  enum bf_matcher_op op, void *payload,
                                  const char *raw_payload)
 {
-    bf_assert(payload && raw_payload);
+    assert(payload);
+    assert(raw_payload);
 
     unsigned long icmptype;
     char *endptr;
@@ -808,7 +823,7 @@ static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
 
 void _bf_print_icmpv6_type(const void *payload)
 {
-    bf_assert(payload);
+    assert(payload);
 
     const char *type = bf_icmpv6_type_to_str(*(uint8_t *)payload);
 
@@ -1008,10 +1023,10 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .hdr_payload_offset = offsetof(struct iphdr, tos),
             .ops =
                 {
-                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
-                                   _bf_parse_u8, _bf_print_u8),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_u8, _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t), _bf_parse_u8,
+                                   _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t), _bf_parse_u8,
+                                   _bf_print_u8),
                 },
         },
     [BF_MATCHER_IP6_SADDR] =
@@ -1102,10 +1117,10 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .hdr_payload_offset = 0,
             .ops =
                 {
-                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
-                                   _bf_parse_u8, _bf_print_u8),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_u8, _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t), _bf_parse_u8,
+                                   _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t), _bf_parse_u8,
+                                   _bf_print_u8),
                 },
         },
     [BF_MATCHER_TCP_SPORT] =
@@ -1298,8 +1313,8 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
 
-    bf_assert(matcher);
-    bf_assert((payload && payload_len) || (!payload && !payload_len));
+    assert(matcher);
+    assert((payload && payload_len) || (!payload && !payload_len));
 
     _matcher = malloc(sizeof(struct bf_matcher) + payload_len);
     if (!_matcher)
@@ -1323,7 +1338,8 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
     const struct bf_matcher_ops *ops;
     int r;
 
-    bf_assert(matcher && payload);
+    assert(matcher);
+    assert(payload);
 
     ops = bf_matcher_get_ops(type, op);
     if (!ops) {
@@ -1357,7 +1373,7 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     size_t payload_len;
     int r;
 
-    bf_assert(matcher);
+    assert(matcher);
 
     r = bf_rpack_kv_enum(node, "type", &type, 0, _BF_MATCHER_TYPE_MAX);
     if (r)
@@ -1382,7 +1398,7 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
 
 void bf_matcher_free(struct bf_matcher **matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
 
     if (!*matcher)
         return;
@@ -1393,8 +1409,8 @@ void bf_matcher_free(struct bf_matcher **matcher)
 
 int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
 {
-    bf_assert(matcher);
-    bf_assert(pack);
+    assert(matcher);
+    assert(pack);
 
     bf_wpack_kv_int(pack, "type", matcher->type);
     bf_wpack_kv_int(pack, "op", matcher->op);
@@ -1406,8 +1422,8 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
 
 void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 {
-    bf_assert(matcher);
-    bf_assert(prefix);
+    assert(matcher);
+    assert(prefix);
 
     DUMP(prefix, "struct bf_matcher at %p", matcher);
 
@@ -1427,31 +1443,31 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 
 enum bf_matcher_type bf_matcher_get_type(const struct bf_matcher *matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
     return matcher->type;
 }
 
 enum bf_matcher_op bf_matcher_get_op(const struct bf_matcher *matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
     return matcher->op;
 }
 
 const void *bf_matcher_payload(const struct bf_matcher *matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
     return matcher->payload;
 }
 
 size_t bf_matcher_payload_len(const struct bf_matcher *matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
     return matcher->len - sizeof(*matcher);
 }
 
 size_t bf_matcher_len(const struct bf_matcher *matcher)
 {
-    bf_assert(matcher);
+    assert(matcher);
     return matcher->len;
 }
 
@@ -1501,8 +1517,8 @@ const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 
 int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type)
 {
-    bf_assert(str);
-    bf_assert(type);
+    assert(str);
+    assert(type);
 
     for (size_t i = 0; i < _BF_MATCHER_TYPE_MAX; ++i) {
         if (bf_streq(_bf_matcher_type_strs[i], str)) {
@@ -1524,15 +1540,15 @@ static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX);
 
 const char *bf_matcher_op_to_str(enum bf_matcher_op op)
 {
-    bf_assert(0 <= op && op < _BF_MATCHER_OP_MAX);
+    assert(0 <= op && op < _BF_MATCHER_OP_MAX);
 
     return _bf_matcher_ops_strs[op];
 }
 
 int bf_matcher_op_from_str(const char *str, enum bf_matcher_op *op)
 {
-    bf_assert(str);
-    bf_assert(op);
+    assert(str);
+    assert(op);
 
     for (size_t i = 0; i < _BF_MATCHER_OP_MAX; ++i) {
         if (bf_streq(_bf_matcher_ops_strs[i], str)) {
@@ -1553,15 +1569,15 @@ static_assert(ARRAY_SIZE(_bf_tcp_flags_strs) == _BF_TCP_MAX);
 
 const char *bf_tcp_flag_to_str(enum bf_tcp_flag flag)
 {
-    bf_assert(0 <= flag && flag < _BF_TCP_MAX);
+    assert(0 <= flag && flag < _BF_TCP_MAX);
 
     return _bf_tcp_flags_strs[flag];
 }
 
 int bf_tcp_flag_from_str(const char *str, enum bf_tcp_flag *flag)
 {
-    bf_assert(str);
-    bf_assert(flag);
+    assert(str);
+    assert(flag);
 
     for (size_t i = 0; i < _BF_TCP_MAX; ++i) {
         if (bf_streq_i(_bf_tcp_flags_strs[i], str)) {
@@ -1587,7 +1603,8 @@ const char *bf_ethertype_to_str(uint16_t ethertype)
 
 int bf_ethertype_from_str(const char *str, uint16_t *ethertype)
 {
-    bf_assert(str && ethertype);
+    assert(str);
+    assert(ethertype);
 
     if (bf_streq_i(str, "ipv4")) {
         *ethertype = ETH_P_IP;
@@ -1620,7 +1637,8 @@ const char *bf_ipproto_to_str(uint8_t ipproto)
 
 int bf_ipproto_from_str(const char *str, uint8_t *ipproto)
 {
-    bf_assert(str && ipproto);
+    assert(str);
+    assert(ipproto);
 
     for (size_t i = 0; i <= UINT8_MAX; ++i) {
         if (bf_streq_i(str, _bf_ipproto_strs[i])) {
@@ -1662,7 +1680,8 @@ const char *bf_icmp_type_to_str(uint8_t type)
 
 int bf_icmp_type_from_str(const char *str, uint8_t *type)
 {
-    bf_assert(str && type);
+    assert(str);
+    assert(type);
 
     for (size_t i = 0; i <= UINT8_MAX; ++i) {
         if (bf_streq_i(str, _bf_icmp_type_strs[i])) {
@@ -1705,7 +1724,8 @@ const char *bf_icmpv6_type_to_str(uint8_t type)
 
 int bf_icmpv6_type_from_str(const char *str, uint8_t *type)
 {
-    bf_assert(str && type);
+    assert(str);
+    assert(type);
 
     for (size_t i = 0; i <= UINT8_MAX; ++i) {
         if (bf_streq_i(str, _bf_icmpv6_type_strs[i])) {

@@ -34,8 +34,9 @@ int bf_strncpy(char *dst, size_t len, const char *src)
     size_t src_len;
     size_t copy_len;
 
-    bf_assert(dst && src);
-    bf_assert(len);
+    assert(dst);
+    assert(src);
+    assert(len);
 
     src_len = strlen(src);
     copy_len = bf_min(src_len, len - 1);
@@ -50,7 +51,7 @@ int bf_realloc(void **ptr, size_t size)
 {
     _cleanup_free_ void *_ptr;
 
-    bf_assert(ptr);
+    assert(ptr);
 
     _ptr = realloc(*ptr, size);
     if (!_ptr)
@@ -68,9 +69,9 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     size_t _len;
     ssize_t r;
 
-    bf_assert(path);
-    bf_assert(buf);
-    bf_assert(len);
+    assert(path);
+    assert(buf);
+    assert(len);
 
     fd = open(path, O_RDONLY);
     if (fd < 0)
@@ -102,8 +103,8 @@ int bf_write_file(const char *path, const void *buf, size_t len)
     _cleanup_close_ int fd = -1;
     ssize_t r;
 
-    bf_assert(path);
-    bf_assert(buf);
+    assert(path);
+    assert(buf);
 
     fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, OPEN_MODE_644);
     if (fd < 0)
@@ -122,7 +123,7 @@ int bf_write_file(const char *path, const void *buf, size_t len)
 
 char *bf_ltrim(char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     while (isspace(*str))
         str++;
@@ -131,7 +132,7 @@ char *bf_ltrim(char *str)
 
 char *bf_rtrim(char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     char *back = str + strlen(str);
 
@@ -152,7 +153,7 @@ char *bf_rtrim(char *str)
 
 char *bf_trim(char *str)
 {
-    bf_assert(str);
+    assert(str);
 
     return bf_rtrim(bf_ltrim(str));
 }

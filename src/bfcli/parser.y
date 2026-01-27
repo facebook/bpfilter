@@ -136,8 +136,8 @@
 %destructor { bf_chain_free(&$$); } chain
 
 %%
-chains          : chain { UNUSED($1); }
-                | chains chain { UNUSED($2); }
+chains          : chain { (void)$1; }
+                | chains chain { (void)$2; }
                 ;
 
 chain           : CHAIN STRING hook hookopts verdict sets rules

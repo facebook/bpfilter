@@ -122,7 +122,7 @@ const bf_nfpolicy *bf_nf_verdict_policy = _bf_nf_verdict_policy;
 
 int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
 {
-    bf_assert(msg);
+    assert(msg);
 
     _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     struct nlmsghdr *nlh;
@@ -157,7 +157,7 @@ int bf_nfmsg_new(struct bf_nfmsg **msg, uint8_t command, uint32_t seqnr)
 
 int bf_nfmsg_new_done(struct bf_nfmsg **msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
     struct nlmsghdr *nlh;
@@ -191,8 +191,8 @@ int bf_nfmsg_new_done(struct bf_nfmsg **msg)
 
 int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh)
 {
-    bf_assert(msg);
-    bf_assert(nlh);
+    assert(msg);
+    assert(nlh);
 
     _free_bf_nfmsg_ struct bf_nfmsg *_msg = NULL;
 
@@ -221,7 +221,7 @@ int bf_nfmsg_new_from_nlmsghdr(struct bf_nfmsg **msg, struct nlmsghdr *nlh)
 
 void bf_nfmsg_free(struct bf_nfmsg **msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     if (!*msg)
         return;
@@ -233,35 +233,35 @@ void bf_nfmsg_free(struct bf_nfmsg **msg)
 
 struct nlmsghdr *bf_nfmsg_hdr(const struct bf_nfmsg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     return nlmsg_hdr(msg->msg);
 }
 
 size_t bf_nfmsg_data_len(const struct bf_nfmsg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     return nlmsg_datalen(bf_nfmsg_hdr(msg));
 }
 
 size_t bf_nfmsg_len(const struct bf_nfmsg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     return nlmsg_total_size((int)bf_nfmsg_data_len(msg));
 }
 
 uint8_t bf_nfmsg_command(const struct bf_nfmsg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     return bf_nfmsg_hdr(msg)->nlmsg_type & 0xff;
 }
 
 uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg)
 {
-    bf_assert(msg);
+    assert(msg);
 
     return bf_nfmsg_hdr(msg)->nlmsg_seq;
 }
@@ -269,8 +269,8 @@ uint32_t bf_nfmsg_seqnr(const struct bf_nfmsg *msg)
 int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
                        size_t len)
 {
-    bf_assert(msg);
-    bf_assert(data);
+    assert(msg);
+    assert(data);
 
     return nla_put(msg->msg, type, (int)len, data);
 }
@@ -278,8 +278,8 @@ int bf_nfmsg_attr_push(struct bf_nfmsg *msg, uint16_t type, const void *data,
 int bf_nfmsg_parse(const struct bf_nfmsg *msg, bf_nfattr **attrs, int maxtype,
                    const bf_nfpolicy *policy)
 {
-    bf_assert(msg);
-    bf_assert(attrs);
+    assert(msg);
+    assert(attrs);
 
     return nlmsg_parse(bf_nfmsg_hdr(msg), sizeof(struct nfgenmsg), attrs,
                        maxtype - 1, policy);
@@ -288,38 +288,38 @@ int bf_nfmsg_parse(const struct bf_nfmsg *msg, bf_nfattr **attrs, int maxtype,
 int bf_nfattr_parse(bf_nfattr *attr, bf_nfattr **attrs, int maxtype,
                     const bf_nfpolicy *policy)
 {
-    bf_assert(attr);
-    bf_assert(attrs);
+    assert(attr);
+    assert(attrs);
 
     return nla_parse_nested(attrs, maxtype - 1, attr, policy);
 }
 
 void *bf_nfattr_data(bf_nfattr *attr)
 {
-    bf_assert(attr);
+    assert(attr);
 
     return nla_data(attr);
 }
 
 size_t bf_nfattr_data_len(bf_nfattr *attr)
 {
-    bf_assert(attr);
+    assert(attr);
 
     return (size_t)nla_len(attr);
 }
 
 bool bf_nfattr_is_ok(bf_nfattr *attr, size_t remaining)
 {
-    bf_assert(attr);
-    bf_assert(remaining < INT_MAX);
+    assert(attr);
+    assert(remaining < INT_MAX);
 
     return nla_ok(attr, (int)remaining);
 }
 
 bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining)
 {
-    bf_assert(attr);
-    bf_assert(remaining && *remaining < INT_MAX);
+    assert(attr);
+    assert(remaining && *remaining < INT_MAX);
 
     int _remaining = (int)*remaining;
 
@@ -332,8 +332,8 @@ bf_nfattr *bf_nfattr_next(bf_nfattr *attr, size_t *remaining)
 int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
                        uint16_t type)
 {
-    bf_assert(nest);
-    bf_assert(parent);
+    assert(nest);
+    assert(parent);
 
     bf_nfattr *attr;
 
@@ -349,7 +349,7 @@ int bf_nfmsg_nest_init(struct bf_nfnest *nest, struct bf_nfmsg *parent,
 
 void bf_nfnest_cleanup(struct bf_nfnest *nest)
 {
-    bf_assert(nest);
+    assert(nest);
 
     nla_nest_end(nest->parent->msg, nest->attr);
 }
