@@ -283,4 +283,6 @@ tcp\.flags      { BEGIN(STATE_MATCHER_TCP_FLAGS); yylval.sval = strdup(yytext); 
 
 [a-zA-Z0-9_]+   { yylval.sval = strdup(yytext); return STRING; }
 
+.               { return *yytext; }
+
 %%
