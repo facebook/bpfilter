@@ -1,0 +1,1 @@
+chain test BF_HOOK_NF_LOCAL_IN {priorities=100-200} ACCEPT

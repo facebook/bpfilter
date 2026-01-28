@@ -9,6 +9,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     clang \
     clang-tools-extra \
     cmake \
+    compiler-rt \
     doxygen \
     flex \
     gcc \

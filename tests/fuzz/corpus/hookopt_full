@@ -1,0 +1,3 @@
+chain firewall BF_HOOK_XDP {ifindex=lo} DROP
+rule ip4.saddr eq 127.0.0.1 ACCEPT
+rule tcp.dport eq 22 counter ACCEPT

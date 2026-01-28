@@ -17,6 +17,7 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         clang \
         clang-tools-extra \
         cmake \
+        compiler-rt \
         doxygen \
         flex \
         gcc \
@@ -64,6 +65,8 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         libbpf-dev \
         libc-dev \
         libcmocka-dev \
+        libclang-rt-20-dev \
+        libfuzzer-20-dev \ # Exact version depends on Ubuntu version
         libgit2-dev \
         libnl-3-dev \
         libtool \
