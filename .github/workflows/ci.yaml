@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         host:
-          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
           - { name: fedora, version: "43" }
@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         host:
-          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
           - { name: fedora, version: "43" }
@@ -92,7 +92,7 @@ jobs:
     strategy:
       matrix:
         host:
-          - { name: ubuntu-24.04, arch: x64 }
+          - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
     runs-on: [ "${{ matrix.host.name }}" ]
     container:
@@ -114,12 +114,23 @@ jobs:
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
       - name: Build tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` test_bin
-      - name: ewef
-        run: sudo ls
+
       - name: Run unit tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L unit --verbose
+
       - name: Run end-to-end tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
+
+      - name: Run fuzzing tests
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L fuzzing --verbose
+      - name: Upload fuzzer findings
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzzer-findings-${{ matrix.host.arch }}
+          path: ${{ github.workspace }}/build/findings
+          if-no-files-found: ignore
+
       - name: Run integration tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
       - name: Run checks
@@ -188,7 +199,7 @@ jobs:
   doc:
     needs: [ test, benchmark ]
     timeout-minutes: 5
-    runs-on: [ "ubuntu-24.04" ]
+    runs-on: [ "8-core-ubuntu" ]
     container: ghcr.io/facebook/bpfilter:fedora-43-x64
     name: "Documentation"
     steps:

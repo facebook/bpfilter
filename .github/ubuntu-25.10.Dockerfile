@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libbpf-dev \
     libc-dev \
     libcmocka-dev \
+    libfuzzer-21-dev \
     libgit2-dev \
     libnl-3-dev \
     libtool \

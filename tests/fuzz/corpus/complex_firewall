@@ -1,0 +1,13 @@
+chain firewall BF_HOOK_XDP {ifindex=lo} DROP
+# Allow loopback
+rule ip4.saddr eq 127.0.0.1 ACCEPT
+# Allow established
+rule tcp.flags any ack ACCEPT
+# Allow SSH
+rule tcp.dport eq 22 counter log tcp ACCEPT
+# Allow HTTP/HTTPS
+rule tcp.dport range 80-443 ACCEPT
+# Allow DNS
+rule udp.dport eq 53 ACCEPT
+# Allow ICMP ping
+rule icmp.type eq 8 ACCEPT

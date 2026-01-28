@@ -1,0 +1,3 @@
+chain test BF_HOOK_XDP DROP
+rule ip4.saddr not 192.168.0.0/16 ACCEPT
+rule ip4.daddr not 10.0.0.0/8 ACCEPT

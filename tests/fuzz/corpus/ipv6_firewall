@@ -1,0 +1,6 @@
+chain ipv6fw BF_HOOK_XDP DROP
+rule ip6.saddr eq ::1 ACCEPT
+rule ip6.snet eq fe80::/10 ACCEPT
+rule ip6.nexthdr eq tcp tcp.dport eq 22 ACCEPT
+rule icmpv6.type eq 128 ACCEPT
+rule icmpv6.type eq 129 ACCEPT

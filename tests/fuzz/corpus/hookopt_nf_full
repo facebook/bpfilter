@@ -1,0 +1,2 @@
+chain nfchain BF_HOOK_NF_LOCAL_IN {ifindex=1,priorities=100-200} DROP
+rule tcp.dport eq 22 ACCEPT

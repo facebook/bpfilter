@@ -1,0 +1,1 @@
+chain test BF_HOOK_TC_INGRESS {ifindex=eth0} DROP

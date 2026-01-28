@@ -1,0 +1,2 @@
+chain test BF_HOOK_XDP ACCEPT
+rule meta.l3_proto eq ipv4 ip4.saddr eq 10.0.0.1 ip4.proto eq tcp tcp.dport eq 80 tcp.flags any syn DROP
