@@ -1,0 +1,2 @@
+chain test BF_HOOK_XDP ACCEPT
+rule tcp.flags all syn,ack DROP

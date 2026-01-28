@@ -1,0 +1,3 @@
+chain test BF_HOOK_XDP ACCEPT
+rule icmp.type eq echo-request DROP
+rule icmp.type eq echo-reply ACCEPT

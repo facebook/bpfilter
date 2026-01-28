@@ -1,0 +1,9 @@
+chain test BF_HOOK_XDP ACCEPT
+rule ip4.saddr eq 1.1.1.1 DROP
+rule ip4.saddr eq 2.2.2.2 DROP
+rule ip4.saddr eq 3.3.3.3 DROP
+rule ip4.saddr eq 4.4.4.4 DROP
+rule ip4.saddr eq 5.5.5.5 DROP
+rule ip4.saddr eq 6.6.6.6 DROP
+rule ip4.saddr eq 7.7.7.7 DROP
+rule ip4.saddr eq 8.8.8.8 DROP
