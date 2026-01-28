@@ -1,0 +1,5 @@
+chain ingress BF_HOOK_XDP DROP
+rule ip4.saddr eq 127.0.0.1 ACCEPT
+
+chain egress BF_HOOK_TC_EGRESS ACCEPT
+rule ip4.daddr eq 10.0.0.0/8 DROP

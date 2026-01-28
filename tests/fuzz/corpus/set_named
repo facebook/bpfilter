@@ -1,0 +1,3 @@
+chain test BF_HOOK_XDP ACCEPT
+set blocked (ip4.saddr) in {192.168.1.1,10.0.0.1}
+rule (ip4.saddr) in blocked DROP
