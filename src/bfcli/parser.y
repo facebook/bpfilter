@@ -14,7 +14,7 @@
     #include "ruleset.h"
 
     extern int yylex();
-    extern int yyparse();
+    extern int yyparse(struct bfc_ruleset *ruleset);
     extern FILE *yyin;
 
     void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...);
