@@ -191,6 +191,9 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     assert(hookopts);
     assert(raw_opt);
 
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
+        return bf_err_r(-EEXIST, "ifindex= is defined multiple times");
+
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
     if (errno != 0) {
@@ -222,6 +225,9 @@ static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
     assert(hookopts);
     assert(raw_opt);
 
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_CGPATH))
+        return bf_err_r(-EEXIST, "cgpath= is defined multiple times");
+
     hookopts->cgpath = strdup(raw_opt);
     if (!hookopts->cgpath) {
         return bf_err_r(-ENOMEM, "failed to copy hook option cgpath=%s",
@@ -248,7 +254,8 @@ static int _bf_hookopts_family_parse(struct bf_hookopts *hookopts,
     assert(hookopts);
     assert(raw_opt);
 
-    (void)hookopts;
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_FAMILY))
+        return bf_err_r(-EEXIST, "family= is defined multiple times");
 
     if (bf_streq("inet4", raw_opt) || bf_streq("inet6", raw_opt)) {
         bf_warn(
@@ -280,6 +287,9 @@ static int _bf_hookopts_priorities_parse(struct bf_hookopts *hookopts,
 
     assert(hookopts);
     assert(raw_opt);
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_PRIORITIES))
+        return bf_err_r(-EEXIST, "priorities= is defined multiple times");
 
     copy = strdup(raw_opt);
     if (!copy)
