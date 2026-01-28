@@ -178,9 +178,10 @@ verdict         : VERDICT
 
 hook            : HOOK
                 {
-                    if (bf_hook_from_str($1, &$$) < 0)
-                        bf_parse_err("unknown hook '%s'\n", $1);
-                    free($1);
+                    _cleanup_free_ const char *hook_str = $1;
+
+                    if (bf_hook_from_str(hook_str, &$$) < 0)
+                        bf_parse_err("unknown hook '%s'\n", hook_str);
                 }
 
 hookopts        : %empty { $$ = NULL; }
