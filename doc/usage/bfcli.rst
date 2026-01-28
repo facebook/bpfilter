@@ -311,7 +311,7 @@ With:
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
 
-``$OPTIONS`` are hook-specific comma separated key value pairs:
+``$OPTIONS`` are hook-specific comma separated key value pairs. A given hook option can only be specified once:
 
 .. flat-table::
    :header-rows: 1
