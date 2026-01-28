@@ -203,9 +203,9 @@ static void hookopts_parse_ifindex(void **state)
     assert_int_equal(hookopts->ifindex, 42);
     assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
 
-    // Test another value (overwrite)
-    assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
-    assert_int_equal(hookopts->ifindex, 100);
+    // Can't overwrite an option
+    assert_err(bf_hookopts_parse_opt(hookopts, opt2));
+    assert_int_equal(hookopts->ifindex, 42);
 }
 
 static void hookopts_parse_cgpath(void **state)
