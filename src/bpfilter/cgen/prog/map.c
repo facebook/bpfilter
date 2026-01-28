@@ -62,6 +62,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
 {
     static enum bf_bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
         [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_RATELIMIT] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
     };
@@ -172,6 +173,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
 {
     static const char *type_strs[] = {
         [BF_MAP_TYPE_COUNTERS] = "BF_MAP_TYPE_COUNTERS",
+        [BF_MAP_TYPE_RATELIMIT] = "BF_MAP_TYPE_RATELIMIT",
         [BF_MAP_TYPE_PRINTER] = "BF_MAP_TYPE_PRINTER",
         [BF_MAP_TYPE_LOG] = "BF_MAP_TYPE_LOG",
         [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
@@ -309,6 +311,12 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         btf->value_type_id = btf__add_struct(kbtf, "bf_counters", 16);
         btf__add_field(kbtf, "packets", 1, 0, 0);
         btf__add_field(kbtf, "bytes", 1, 64, 0);
+        break;
+    case BF_MAP_TYPE_RATELIMIT: // I have no clue what I'm doing here
+        btf__add_int(kbtf, "u64", 8, 0);
+        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
+        btf->value_type_id = btf__add_struct(kbtf, "bf_", 16);
+        btf__add_field(kbtf, "limit", 1, 0, 0);
         break;
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
