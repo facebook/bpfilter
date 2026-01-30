@@ -119,3 +119,14 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack);
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
 
 int bf_set_add_elem(struct bf_set *set, const void *elem);
+
+/**
+ * @brief Parse a raw element and insert it into a set.
+ *
+ * The element is parsed according to `set->key`.
+ *
+ * @param set Set to parse the element for. Can't be NULL.
+ * @param raw_elem Raw element to parse. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_set_parse_elem(struct bf_set *set, const char *raw_elem);
