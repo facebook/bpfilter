@@ -100,6 +100,170 @@ static void get_set_from_matcher(void **state)
     assert_null(bf_chain_get_set_for_matcher(chain, r1_m0));
 }
 
+static void disabled_flag_empty_set(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    struct bf_rule *rule = bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    assert_true(rule->disabled);
+}
+
+static void disabled_flag_non_empty_set(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    struct bf_rule *rule = bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    assert_false(rule->disabled);
+}
+
+static void disabled_rule_no_log_flag(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        rule->log = 1;
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    struct bf_rule *rule = bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    assert_true(rule->disabled);
+    assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
+static void enabled_rule_log_flag(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        rule->log = 1;
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    struct bf_rule *rule = bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    assert_false(rule->disabled);
+    assert_int_not_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
+static void mixed_enabled_disabled_log_flag(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+
+    (void)state;
+
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+
+    // Rule 0: logging, references empty set (disabled)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        rule->log = 1;
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+    // Rule 1: logging, references non-empty set (enabled)
+    {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+        uint32_t set_index = 1;
+
+        assert_ok(bf_rule_new(&rule));
+        rule->log = 1;
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+        TAKE_PTR(rule);
+    }
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+
+    struct bf_rule *r0 = bf_list_node_get_data(bf_list_get_head(&chain->rules));
+    struct bf_rule *r1 = bf_list_get_at(&chain->rules, 1);
+    assert_true(r0->disabled);
+    assert_false(r1->disabled);
+
+    // BF_CHAIN_LOG should be set (from enabled rule 1)
+    assert_int_not_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -107,6 +271,11 @@ int main(void)
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
+        cmocka_unit_test(disabled_flag_empty_set),
+        cmocka_unit_test(disabled_flag_non_empty_set),
+        cmocka_unit_test(disabled_rule_no_log_flag),
+        cmocka_unit_test(enabled_rule_log_flag),
+        cmocka_unit_test(mixed_enabled_disabled_log_flag),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

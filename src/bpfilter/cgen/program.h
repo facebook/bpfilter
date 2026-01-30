@@ -204,7 +204,7 @@ struct bf_program
     struct bf_map *pmap;
     /// Log map
     struct bf_map *lmap;
-    /// List of set maps
+    /// List of set maps. Entries can be NULL for empty sets.
     bf_list sets;
 
     /** Link objects attaching the program to a hook.

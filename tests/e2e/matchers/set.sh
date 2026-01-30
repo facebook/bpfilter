@@ -56,6 +56,18 @@ bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (  icm
     2, echo-request
 } counter DROP"
 
+# Empty set tests: empty sets are valid, warning is emitted, rule is skipped
+bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr) in {} DROP" 2>&1 | grep -q "rule 0 references empty set"
+bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr, ip4.proto) in {} DROP" 2>&1 | grep -q "rule 0 references empty set"
+bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+    set myset (ip4.saddr) in {}
+    rule (ip4.saddr) in myset DROP
+" 2>&1 | grep -q "rule 0 references empty set"
+bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+    rule (ip4.saddr) in { 192.168.1.1 } DROP
+    rule (ip4.saddr) in {} ACCEPT
+" 2>&1 | grep -q "rule 1 references empty set"
+
 (! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.snet, ip4.dnet) in {
     192.168.1.1/24, 192.167.1.1/24;
     10.211.55.2/24, 192.168.1.1/24

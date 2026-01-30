@@ -19,11 +19,51 @@
 #include "bpfilter/set.h"
 #include "bpfilter/verdict.h"
 
-int _bf_chain_check_rule(struct bf_chain *chain, const struct bf_rule *rule)
+/**
+ * Check if a rule references an empty set.
+ *
+ * @param chain Chain containing the sets list.
+ * @param rule Rule to check.
+ * @return 0 if no issues, 1 if rule references an empty set (should be
+ *         disabled), or negative errno if rule references a non-existent set.
+ */
+static int _bf_rule_references_empty_set(const struct bf_chain *chain,
+                                         const struct bf_rule *rule)
 {
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+
+        if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
+            continue;
+
+        uint32_t set_index = *(uint32_t *)bf_matcher_payload(matcher);
+        struct bf_set *set = bf_list_get_at(&chain->sets, set_index);
+
+        if (!set)
+            return bf_err_r(-EINVAL, "rule %u references non-existent set",
+                            rule->index);
+
+        if (bf_set_is_empty(set)) {
+            bf_warn("rule %u references empty set, rule will be skipped",
+                    rule->index);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
+{
+    int r;
+
     assert(rule);
 
-    if (rule->log)
+    r = _bf_rule_references_empty_set(chain, rule);
+    if (r < 0)
+        return r;
+    rule->disabled = (r > 0);
+
+    if (rule->log && !rule->disabled)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
 
     if (bf_rule_mark_is_set(rule) &&
@@ -41,7 +81,8 @@ int _bf_chain_check_rule(struct bf_chain *chain, const struct bf_rule *rule)
         const struct bf_matcher_meta *meta;
 
         // Track if the chain uses IPv6 nexthdr matcher.
-        if (bf_matcher_get_type(matcher) == BF_MATCHER_IP6_NEXTHDR)
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_IP6_NEXTHDR &&
+            !rule->disabled)
             chain->flags |= BF_FLAG(BF_CHAIN_STORE_NEXTHDR);
 
         // Set matchers are compatible with all hooks.
