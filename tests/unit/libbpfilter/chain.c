@@ -100,6 +100,16 @@ static void get_set_from_matcher(void **state)
     assert_null(bf_chain_get_set_for_matcher(chain, r1_m0));
 }
 
+static void get_set_by_name(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
+
+    (void)state;
+
+    assert_non_null(bf_chain_get_set_by_name(chain, "bft_set_dummy"));
+    assert_null(bf_chain_get_set_by_name(chain, "bft_set_missing"));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -107,6 +117,7 @@ int main(void)
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
+        cmocka_unit_test(get_set_by_name),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

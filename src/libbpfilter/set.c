@@ -138,16 +138,7 @@ static int _bf_set_parse_key(const char *raw_key, enum bf_matcher_type *key,
     return 0;
 }
 
-/**
- * @brief Parse a raw element and insert it into a set.
- *
- * The element is parsed according to `set->key`.
- *
- * @param set Set to parse the element for. Can't be NULL.
- * @param raw_elem Raw element to parse. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
+int bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
 {
     _cleanup_free_ void *elem = NULL;
     _cleanup_free_ char *_raw_elem = NULL;
@@ -250,7 +241,7 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
         if (raw_elem[0] == '\0')
             continue;
 
-        r = _bf_set_parse_elem(_set, raw_elem);
+        r = bf_set_parse_elem(_set, raw_elem);
         if (r)
             return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
 
@@ -422,6 +413,106 @@ int bf_set_add_elem(struct bf_set *set, const void *elem)
         return r;
 
     TAKE_PTR(_elem);
+
+    return 0;
+}
+
+/**
+ * @brief Check if two sets have the same shape (key format).
+ *
+ * @param first First set. Can't be NULL.
+ * @param second Second set. Can't be NULL.
+ * @return 0 if sets have matching shape, or a negative errno value on mismatch.
+ */
+static int _bf_set_check_shape(const struct bf_set *first, const struct bf_set *second)
+{
+    assert(first && second);
+
+    if (first->n_comps != second->n_comps) {
+        return bf_err_r(
+            -EINVAL,
+            "set key format mismatch: first set has %lu components, second has %lu",
+            first->n_comps, second->n_comps);
+    }
+
+    for (size_t i = 0; i < first->n_comps; ++i) {
+        if (first->key[i] != second->key[i]) {
+            return bf_err_r(
+                -EINVAL,
+                "set key component %lu type mismatch: expected %s, got %s",
+                i, bf_matcher_type_to_str(first->key[i]),
+                bf_matcher_type_to_str(second->key[i]));
+        }
+    }
+
+    if (first->use_trie != second->use_trie) {
+        return bf_err_r(-EINVAL,
+                        "set type mismatch: first set use_trie=%d, second use_trie=%d",
+                        first->use_trie, second->use_trie);
+    }
+
+    return 0;
+}
+
+int bf_set_union(struct bf_set *dest, const struct bf_set *to_add)
+{
+    int r;
+
+    assert(dest && to_add);
+
+    r = _bf_set_check_shape(dest, to_add);
+    if (r)
+        return r;
+
+    // This has O(n * m) complexity. We could get to O(n log n + m) by turning
+    // the linked list into an array and sorting it, but we should just replace
+    // underlying bf_list with true hashset and enjoy O(m).
+    bf_list_foreach (&to_add->elems, elem_node) {
+        const void *elem_to_add = bf_list_node_get_data(elem_node);
+        bool found = false;
+
+        bf_list_foreach (&dest->elems, dest_elem_node) {
+            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
+
+            if (memcmp(dest_elem, elem_to_add, dest->elem_size) == 0) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            r = bf_set_add_elem(dest, elem_to_add);
+            if (r)
+                return bf_err_r(r, "failed to add element to set");
+        }
+    }
+
+    return 0;
+}
+
+int bf_set_difference(struct bf_set *dest, const struct bf_set *to_remove)
+{
+    int r;
+
+    assert(dest && to_remove);
+
+    r = _bf_set_check_shape(dest, to_remove);
+    if (r)
+        return r;
+
+    // This has O(n * m) complexity. Could be O(m) if we used hashsets.
+    bf_list_foreach (&to_remove->elems, elem_node) {
+        const void *elem_to_remove = bf_list_node_get_data(elem_node);
+
+        bf_list_foreach (&dest->elems, dest_elem_node) {
+            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
+
+            if (memcmp(dest_elem, elem_to_remove, dest->elem_size) == 0) {
+                bf_list_delete(&dest->elems, dest_elem_node);
+                break;
+            }
+        }
+    }
 
     return 0;
 }

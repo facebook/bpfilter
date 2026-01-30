@@ -360,6 +360,7 @@ static int _bf_process_request(struct bf_request *request,
          bf_request_cmd(request) == BF_REQ_CHAIN_LOAD ||
          bf_request_cmd(request) == BF_REQ_CHAIN_ATTACH ||
          bf_request_cmd(request) == BF_REQ_CHAIN_UPDATE ||
+         bf_request_cmd(request) == BF_REQ_CHAIN_UPDATE_SET ||
          bf_request_cmd(request) == BF_REQ_CHAIN_FLUSH))
         r = _bf_save(ctx_path);
 

@@ -224,6 +224,7 @@ const char *bf_request_cmd_to_str(enum bf_request_cmd cmd)
         [BF_REQ_CHAIN_PROG_FD] = "BF_REQ_CHAIN_PROG_FD",
         [BF_REQ_CHAIN_LOGS_FD] = "BF_REQ_CHAIN_LOGS_FD",
         [BF_REQ_CHAIN_FLUSH] = "BF_REQ_CHAIN_FLUSH",
+        [BF_REQ_CHAIN_UPDATE_SET] = "BF_REQ_CHAIN_UPDATE_SET",
         [BF_REQ_COUNTERS_SET] = "BF_REQ_COUNTERS_SET",
         [BF_REQ_COUNTERS_GET] = "BF_REQ_COUNTERS_GET",
         [BF_REQ_CUSTOM] = "BF_REQ_CUSTOM",

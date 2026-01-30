@@ -141,11 +141,13 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
  * into the kernel. The link used by the codegen is updated to point to the
  * new program.
  *
+ * If `new_chain` is same as `cgen->chain` (existing chain), we assume
+ * it was edited in-place, and regenerate the program.
+ *
  * On success, the new program is stored in the codegen, and the previous
  * program is unloaded and freed.
  *
- * @param cgen Codegen to update. It should already contain a program attached
- *        to a hook. Can't be NULL.
+ * @param cgen Codegen to update. Can't be NULL.
  * @param new_chain Chain containing the new rules, sets, and policy.
  *        Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
