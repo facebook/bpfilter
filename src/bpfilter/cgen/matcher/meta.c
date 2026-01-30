@@ -19,7 +19,9 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
+#include "cgen/elfstub.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/swich.h"
 #include "filter.h"
 
@@ -202,6 +204,48 @@ static int _bf_matcher_generate_meta_flow_hash(struct bf_program *program,
     return 0;
 }
 
+static int
+_bf_matcher_generate_meta_flow_probability(struct bf_program *program,
+                                           const struct bf_matcher *matcher)
+{
+    float proba = *(float *)bf_matcher_payload(matcher);
+
+    /**
+     * Calculate flow hash using the bf_flow_hash elfstub.
+     *
+     * The elfstub computes a 32-bit hash from the packet's 5-tuple
+     * (src ip, dst ip, src port, dst port, protocol) plus IPv6 flow label.
+     *
+     * Arguments:
+     * - r1: pointer to bf_runtime context
+     * - r2: L3 protocol ID (from r7, set by prologue)
+     * - r3: L4 protocol ID (from r8, set by prologue)
+     *
+     * Return: hash value in r0
+     */
+
+    // Set up elfstub arguments
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program,
+         BPF_ALU64_IMM(BPF_ADD, BPF_REG_1,
+                       -(int)sizeof(struct bf_runtime)));  // r1 = ctx
+    EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_7));    // r2 = l3_proto
+    EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_8));    // r3 = l4_proto
+
+    // Call the elfstub - result in r0
+    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_FLOW_HASH);
+
+    // Compare the computed hash against the probability threshold
+    // The hash is uniformly distributed, so we compare against
+    // (UINT32_MAX * probability / 100)
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP32_IMM(BPF_JGT, BPF_REG_0,
+                      (uint32_t)((double)UINT32_MAX * (proba / 100.0)), 0));
+
+    return 0;
+}
+
 int bf_matcher_generate_meta(struct bf_program *program,
                              const struct bf_matcher *matcher)
 {
@@ -229,6 +273,9 @@ int bf_matcher_generate_meta(struct bf_program *program,
         break;
     case BF_MATCHER_META_FLOW_HASH:
         r = _bf_matcher_generate_meta_flow_hash(program, matcher);
+        break;
+    case BF_MATCHER_META_FLOW_PROBABILITY:
+        r = _bf_matcher_generate_meta_flow_probability(program, matcher);
         break;
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",

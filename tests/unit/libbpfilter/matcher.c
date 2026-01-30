@@ -1488,6 +1488,317 @@ static void ip4_dscp(void **state)
                                        BF_MATCHER_EQ, "-1"));
 }
 
+static void meta_flow_hash(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test META_FLOW_HASH with EQ and decimal value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_EQ, "0"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_META_FLOW_HASH);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 0);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with maximum decimal value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_EQ, "4294967295"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), UINT32_MAX);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with hexadecimal value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_EQ, "0xdeadbeef"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 0xdeadbeef);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with NE operator
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_NE, "0x12345678"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_NE);
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 0x12345678);
+    bf_matcher_dump(matcher, &prefix);
+}
+
+static void meta_flow_hash_range(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test META_FLOW_HASH with RANGE operator (decimal)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_RANGE, "0-4294967295"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_RANGE);
+    assert_int_equal(bf_matcher_payload_len(matcher), 2 * sizeof(uint32_t));
+    uint32_t *range = (uint32_t *)bf_matcher_payload(matcher);
+    assert_int_equal(range[0], 0);
+    assert_int_equal(range[1], UINT32_MAX);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with hexadecimal range
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_RANGE, "0x1000-0x2000"));
+    assert_non_null(matcher);
+    range = (uint32_t *)bf_matcher_payload(matcher);
+    assert_int_equal(range[0], 0x1000);
+    assert_int_equal(range[1], 0x2000);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with single value range (min == max)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_RANGE, "100-100"));
+    assert_non_null(matcher);
+    range = (uint32_t *)bf_matcher_payload(matcher);
+    assert_int_equal(range[0], 100);
+    assert_int_equal(range[1], 100);
+    bf_matcher_dump(matcher, &prefix);
+}
+
+static void meta_flow_hash_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    // Test with negative value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_EQ, "-1"));
+
+    // Test with value too large (> UINT32_MAX)
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_EQ, "0xfffffffff"));
+
+    // Test with invalid string
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_EQ, "not_a_number"));
+
+    // Test with invalid hex format
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_EQ, "0x"));
+
+    // Test range with reversed values (max < min)
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_RANGE, "100-50"));
+
+    // Test range with missing end value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_RANGE, "100-"));
+
+    // Test range with missing start value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_RANGE, "-100"));
+
+    // Test range without delimiter
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                      BF_MATCHER_RANGE, "100"));
+}
+
+static void meta_flow_hash_pack_unpack(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    // Test pack/unpack for EQ operator
+    assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_EQ, "0xabcd1234"));
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    assert_true(bft_matcher_equal(source, destination));
+    bf_matcher_free(&source);
+    bf_matcher_free(&destination);
+    bf_wpack_free(&wpack);
+    bf_rpack_free(&rpack);
+
+    // Test pack/unpack for RANGE operator
+    assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_RANGE, "0x1000-0x2000"));
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    assert_true(bft_matcher_equal(source, destination));
+}
+
+static void meta_flow_hash_print(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const struct bf_matcher_ops *ops;
+
+    (void)state;
+
+    // Test _bf_print_int via ops (EQ)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_EQ, "0xdeadbeef"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+    bf_matcher_free(&matcher);
+
+    // Test _bf_print_int via ops (NE)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_NE, "42"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_NE);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+    bf_matcher_free(&matcher);
+
+    // Test _bf_print_int_range via ops (RANGE)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_HASH,
+                                     BF_MATCHER_RANGE, "0-0xffffffff"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+}
+
+static void meta_flow_probability(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test with 0%
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "0%"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_META_FLOW_PROBABILITY);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 0.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with 50%
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "50%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 50.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with 100%
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "100%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 100.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with floating-point value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "33.33%"));
+    assert_non_null(matcher);
+    float val = *(float *)bf_matcher_payload(matcher);
+    assert_true(val > 33.32f && val < 33.34f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with another floating-point value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "12.5%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 12.5f);
+    bf_matcher_dump(matcher, &prefix);
+}
+
+static void meta_flow_probability_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    // Test with value over 100%
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "101%"));
+
+    // Test with value over 100% (float)
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "100.01%"));
+
+    // Test without % sign
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "50"));
+
+    // Test with negative value
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "-10%"));
+
+    // Test with invalid string
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "abc%"));
+}
+
+static void meta_flow_probability_pack_unpack(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    // Test pack/unpack for EQ operator
+    assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "75%"));
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    assert_true(bft_matcher_equal(source, destination));
+}
+
+static void meta_flow_probability_print(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const struct bf_matcher_ops *ops;
+
+    (void)state;
+
+    // Test _bf_print_probability via ops
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FLOW_PROBABILITY,
+                                     BF_MATCHER_EQ, "25%"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1546,6 +1857,15 @@ int main(void)
         cmocka_unit_test(error_paths_parse),
         cmocka_unit_test(error_paths_print),
         cmocka_unit_test(ip4_dscp),
+        cmocka_unit_test(meta_flow_hash),
+        cmocka_unit_test(meta_flow_hash_range),
+        cmocka_unit_test(meta_flow_hash_invalid),
+        cmocka_unit_test(meta_flow_hash_pack_unpack),
+        cmocka_unit_test(meta_flow_hash_print),
+        cmocka_unit_test(meta_flow_probability),
+        cmocka_unit_test(meta_flow_probability_invalid),
+        cmocka_unit_test(meta_flow_probability_pack_unpack),
+        cmocka_unit_test(meta_flow_probability_print),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
