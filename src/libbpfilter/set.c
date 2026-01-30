@@ -138,16 +138,7 @@ static int _bf_set_parse_key(const char *raw_key, enum bf_matcher_type *key,
     return 0;
 }
 
-/**
- * @brief Parse a raw element and insert it into a set.
- *
- * The element is parsed according to `set->key`.
- *
- * @param set Set to parse the element for. Can't be NULL.
- * @param raw_elem Raw element to parse. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-static int _bf_set_parse_elem(struct bf_set *set, const char *raw_elem)
+int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
 {
     _cleanup_free_ void *elem = NULL;
     _cleanup_free_ char *_raw_elem = NULL;
@@ -250,7 +241,7 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
         if (raw_elem[0] == '\0')
             continue;
 
-        r = _bf_set_parse_elem(_set, raw_elem);
+        r = bf_set_add_elem_raw(_set, raw_elem);
         if (r)
             return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
 
