@@ -62,6 +62,7 @@ bf_target_add_elfstubs(bpfilter
         "parse_ipv6_nh"
         "update_counters"
         "log"
+        "flow_hash"
 )
 
 target_compile_definitions(bpfilter
