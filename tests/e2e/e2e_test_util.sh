@@ -65,13 +65,20 @@ make_sandbox() {
         ${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
         SETUSERNS_PID=$!
 
+        # util-linux 2.38+ supports --map-users/--map-groups
+        UNSHARE_VERSION=$(unshare --version | grep -oP '\d+\.\d+' | head -1)
+        if [ "$(printf '%s\n' "2.38" "$UNSHARE_VERSION" | sort -V | head -1)" = "2.38" ]; then
+            UNSHARE_MAP_OPTS="--map-users=all --map-groups=all"
+        else
+            UNSHARE_MAP_OPTS=""
+        fi
+
         unshare \
             --user=${WORKDIR}/ns/user \
             --mount=${WORKDIR}/ns/mnt \
             --net=/var/run/netns/${NETNS_NAME} \
             --keep-caps \
-            --map-groups=all \
-            --map-users=all \
+            ${UNSHARE_MAP_OPTS} \
             -r /bin/bash -c "
                 set -e
                 mount -t tmpfs tmpfs /run
@@ -144,7 +151,7 @@ destroy_sandbox() {
 start_bpfilter() {
     echo "Start bpfilter"
 
-    local timeout=2
+    local timeout=10
     local start_time=$(date +%s)
     local end_time=$((start_time + timeout))
 
@@ -157,7 +164,7 @@ start_bpfilter() {
             WITH_DAEMON=1
             return 0
         fi
-        sleep 0.01
+        sleep 0.1
     done
 
     return 1
