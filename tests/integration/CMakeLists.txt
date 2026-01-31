@@ -9,7 +9,7 @@ add_test(NAME "integration.pedantic.c"
 
 set_tests_properties("integration.pedantic.c" PROPERTIES
     LABELS "integration"
-    ENVIRONMENT "ROOT_DIR=${CMAKE_SOURCE_DIR};BUILD_DIR=${CMAKE_BINARY_DIR};GEN_INC_DIR=${lib_gen_inc_dir}/include"
+    ENVIRONMENT "LIB_INC_DIR=${CMAKE_SOURCE_DIR}/src/libbpfilter/include;BUILD_DIR=${CMAKE_BINARY_DIR};GEN_INC_DIR=${lib_gen_inc_dir}/include"
 )
 
 add_test(NAME "integration.pedantic.cpp"
@@ -18,7 +18,7 @@ add_test(NAME "integration.pedantic.cpp"
 
 set_tests_properties("integration.pedantic.cpp" PROPERTIES
     LABELS "integration"
-    ENVIRONMENT "ROOT_DIR=${CMAKE_SOURCE_DIR};BUILD_DIR=${CMAKE_BINARY_DIR};GEN_INC_DIR=${lib_gen_inc_dir}/include"
+    ENVIRONMENT "LIB_INC_DIR=${CMAKE_SOURCE_DIR}/src/libbpfilter/include;BUILD_DIR=${CMAKE_BINARY_DIR};GEN_INC_DIR=${lib_gen_inc_dir}/include"
 )
 
 add_custom_target(integration
