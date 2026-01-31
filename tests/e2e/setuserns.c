@@ -162,10 +162,27 @@ int do_in(const struct st_opts *opts)
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, opts->socket_path, sizeof(addr.sun_path) - 1);
 
-    r = connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
-    if (r < 0)
-        return bf_err_r(errno, "do_in: failed to connect to socket at %s",
-                        opts->socket_path);
+    {
+        int timeout_ms = 100000;
+        int interval_ms = 100;
+        int elapsed_ms = 0;
+
+        while (elapsed_ms < timeout_ms) {
+            r = connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
+            if (r == 0)
+                break;
+            if (errno != ECONNREFUSED && errno != ENOENT)
+                return bf_err_r(errno, "do_in: failed to connect to socket at %s",
+                                opts->socket_path);
+            usleep(interval_ms * 1000);
+            elapsed_ms += interval_ms;
+        }
+
+        if (r < 0)
+            return bf_err_r(errno,
+                            "do_in: failed to connect to socket at %s after %d seconds",
+                            opts->socket_path, timeout_ms / 1000);
+    }
 
     /**
      * Configure bpffs to allow for BPF tokens
