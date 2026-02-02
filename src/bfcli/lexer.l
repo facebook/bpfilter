@@ -72,7 +72,7 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
 (ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
 REDIRECT                 { BEGIN(STATE_REDIRECT_IFACE); return REDIRECT_TOKEN; }
 <STATE_REDIRECT_IFACE>{
-    {int}|[0-9a-zA-Z-]+ {
+    {int}|[0-9a-zA-Z_-]+ {
         BEGIN(STATE_REDIRECT_DIR);
         yylval.sval = strdup(yytext);
         return REDIRECT_IFACE;

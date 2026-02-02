@@ -225,3 +225,6 @@ chain xdp BF_HOOK_XDP ACCEPT
         }
         counter
         ACCEPT
+    rule
+        meta.l4_proto tcp
+        REDIRECT lo out

@@ -259,3 +259,6 @@ chain tc_egress BF_HOOK_TC_EGRESS ACCEPT
         }
         counter
         ACCEPT
+    rule
+        meta.l4_proto tcp
+        REDIRECT lo in
