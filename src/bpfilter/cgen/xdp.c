@@ -11,6 +11,7 @@
 
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/program.h"
@@ -73,6 +74,38 @@ static int _bf_xdp_gen_inline_epilogue(struct bf_program *program)
     return 0;
 }
 
+/**
+ * @brief Generate bytecode to redirect a packet using XDP.
+ *
+ * XDP redirect only supports egress direction - the packet is always
+ * transmitted out of the target interface. The BPF_F_INGRESS flag is
+ * ignored by XDP's bpf_redirect().
+ *
+ * @param program Program to generate bytecode for. Can't be NULL.
+ * @param ifindex Target interface index.
+ * @param dir Direction (must be BF_REDIRECT_EGRESS for XDP).
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_xdp_gen_inline_redirect(struct bf_program *program,
+                                       uint32_t ifindex,
+                                       enum bf_redirect_dir dir)
+{
+    assert(program);
+
+    if (dir != BF_REDIRECT_EGRESS)
+        return bf_err_r(-ENOTSUP, "XDP redirect only supports 'out' direction");
+
+    // bpf_redirect(ifindex, flags) - flags are ignored for XDP
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_1, ifindex));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 0));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_redirect));
+
+    // Return value from bpf_redirect() is the action (XDP_REDIRECT on success)
+    EMIT(program, BPF_EXIT_INSN());
+
+    return 0;
+}
+
 static int _bf_xdp_get_verdict(enum bf_verdict verdict)
 {
     switch (verdict) {
@@ -88,5 +121,6 @@ static int _bf_xdp_get_verdict(enum bf_verdict verdict)
 const struct bf_flavor_ops bf_flavor_ops_xdp = {
     .gen_inline_prologue = _bf_xdp_gen_inline_prologue,
     .gen_inline_epilogue = _bf_xdp_gen_inline_epilogue,
+    .gen_inline_redirect = _bf_xdp_gen_inline_redirect,
     .get_verdict = _bf_xdp_get_verdict,
 };

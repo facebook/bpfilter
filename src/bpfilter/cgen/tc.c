@@ -103,6 +103,36 @@ static int _bf_tc_gen_inline_get_skb(struct bf_program *program, int reg)
 }
 
 /**
+ * @brief Generate bytecode to redirect a packet using TC.
+ *
+ * TC redirect supports both ingress and egress directions via the
+ * BPF_F_INGRESS flag passed to bpf_redirect().
+ *
+ * @param program Program to generate bytecode for. Can't be NULL.
+ * @param ifindex Target interface index.
+ * @param dir Direction: ingress or egress.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_tc_gen_inline_redirect(struct bf_program *program,
+                                      uint32_t ifindex,
+                                      enum bf_redirect_dir dir)
+{
+    uint64_t flags = dir == BF_REDIRECT_INGRESS ? BPF_F_INGRESS : 0;
+
+    assert(program);
+
+    // bpf_redirect(ifindex, flags)
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_1, ifindex));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, flags));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_redirect));
+
+    // Return value from bpf_redirect() is TC_ACT_REDIRECT on success
+    EMIT(program, BPF_EXIT_INSN());
+
+    return 0;
+}
+
+/**
  * Convert a standard verdict into a return value.
  *
  * @param verdict Verdict to convert. Must be valid.
@@ -126,5 +156,6 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_set_mark = _bf_tc_gen_inline_set_mark,
     .gen_inline_get_mark = _bf_tc_gen_inline_get_mark,
     .gen_inline_get_skb = _bf_tc_gen_inline_get_skb,
+    .gen_inline_redirect = _bf_tc_gen_inline_redirect,
     .get_verdict = _bf_tc_get_verdict,
 };

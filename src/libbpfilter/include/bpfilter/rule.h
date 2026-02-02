@@ -65,6 +65,11 @@ struct bf_rule
 
     bool counters;
     enum bf_verdict verdict;
+
+    /** Target interface index for REDIRECT verdict. 0 if not set. */
+    uint32_t redirect_ifindex;
+    /** Direction for REDIRECT verdict. */
+    enum bf_redirect_dir redirect_dir;
 };
 
 static_assert(
@@ -153,4 +158,20 @@ static inline bool bf_rule_mark_is_set(const struct bf_rule *rule)
     assert(rule);
 
     return rule->mark >> 32;
+}
+
+static inline void bf_rule_set_redirect(struct bf_rule *rule, uint32_t ifindex,
+                                        enum bf_redirect_dir dir)
+{
+    assert(rule);
+
+    rule->redirect_ifindex = ifindex;
+    rule->redirect_dir = dir;
+}
+
+static inline bool bf_rule_has_redirect(const struct bf_rule *rule)
+{
+    assert(rule);
+
+    return rule->redirect_ifindex != 0;
 }

@@ -9,10 +9,41 @@
 #include <stddef.h>
 
 #include "bpfilter/helper.h"
+#include "bpfilter/logger.h"
+
+static const char *_bf_redirect_dir_strs[] = {
+    [BF_REDIRECT_INGRESS] = "in",
+    [BF_REDIRECT_EGRESS] = "out",
+};
+static_assert(ARRAY_SIZE(_bf_redirect_dir_strs) == _BF_REDIRECT_DIR_MAX,
+              "missing entries in the redirect dir array");
+
+const char *bf_redirect_dir_to_str(enum bf_redirect_dir dir)
+{
+    if (dir < 0 || dir >= _BF_REDIRECT_DIR_MAX)
+        return "<bf_redirect_dir unknown>";
+
+    return _bf_redirect_dir_strs[dir];
+}
+
+int bf_redirect_dir_from_str(const char *str, enum bf_redirect_dir *dir)
+{
+    assert(dir);
+
+    for (size_t i = 0; i < _BF_REDIRECT_DIR_MAX; ++i) {
+        if (bf_streq(_bf_redirect_dir_strs[i], str)) {
+            *dir = i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
 
 static const char *_bf_verdict_strs[] = {
     [BF_VERDICT_ACCEPT] = "ACCEPT",
     [BF_VERDICT_DROP] = "DROP",
+    [BF_VERDICT_REDIRECT] = "REDIRECT",
     [BF_VERDICT_CONTINUE] = "CONTINUE",
 };
 static_assert(ARRAY_SIZE(_bf_verdict_strs) == _BF_VERDICT_MAX,

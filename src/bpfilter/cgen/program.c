@@ -617,6 +617,16 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
         EMIT(program, BPF_EXIT_INSN());
         break;
+    case BF_VERDICT_REDIRECT:
+        if (!program->runtime.ops->gen_inline_redirect) {
+            return bf_err_r(-ENOTSUP, "redirect is not supported by %s hook",
+                            bf_hook_to_str(program->runtime.chain->hook));
+        }
+        r = program->runtime.ops->gen_inline_redirect(
+            program, rule->redirect_ifindex, rule->redirect_dir);
+        if (r)
+            return r;
+        break;
     case BF_VERDICT_CONTINUE:
         // Fall through to next rule or default chain policy.
         break;
