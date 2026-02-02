@@ -9,7 +9,12 @@
 # Verdicts
 "ACCEPT"
 "DROP"
+"REDIRECT"
 "CONTINUE"
+
+# Redirect directions
+"in"
+"out"
 
 # Hooks
 "BF_HOOK_XDP"
