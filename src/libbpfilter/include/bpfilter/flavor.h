@@ -95,6 +95,18 @@ struct bf_flavor_ops
     int (*gen_inline_get_skb)(struct bf_program *program, int reg);
 
     /**
+     * @brief Generate bytecode to redirect a packet to another interface.
+     *
+     * @param program Program to generate bytecode for. Can't be NULL.
+     * @param ifindex Target interface index.
+     * @param dir Direction to redirect: ingress or egress.
+     * @return 0 on success, negative errno on failure. Returns -ENOTSUP if the
+     *         flavor doesn't support redirect.
+     */
+    int (*gen_inline_redirect)(struct bf_program *program, uint32_t ifindex,
+                               enum bf_redirect_dir dir);
+
+    /**
      * Generates a flavor-specific return code corresponding to the verdict.
      *
      * Note this function only needs to handle terminal verdicts - verdicts that

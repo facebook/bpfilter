@@ -97,6 +97,19 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.verdict");
 
+    if (bf_rpack_kv_contains(node, "redirect_ifindex")) {
+        r = bf_rpack_kv_u32(node, "redirect_ifindex", &_rule->redirect_ifindex);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.redirect_ifindex");
+    }
+
+    if (bf_rpack_kv_contains(node, "redirect_dir")) {
+        r = bf_rpack_kv_enum(node, "redirect_dir", &_rule->redirect_dir, 0,
+                             _BF_REDIRECT_DIR_MAX);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.redirect_dir");
+    }
+
     r = bf_rpack_kv_array(node, "matchers", &m_nodes);
     if (r)
         return bf_rpack_key_err(r, "bf_rule.matchers");
@@ -139,6 +152,8 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
     bf_wpack_kv_bool(pack, "counters", rule->counters);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);
+    bf_wpack_kv_u32(pack, "redirect_ifindex", rule->redirect_ifindex);
+    bf_wpack_kv_int(pack, "redirect_dir", rule->redirect_dir);
 
     bf_wpack_kv_list(pack, "matchers", &rule->matchers);
 
@@ -172,8 +187,15 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "log: %02x", rule->log);
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
-    DUMP(bf_dump_prefix_last(prefix), "verdict: %s",
-         bf_verdict_to_str(rule->verdict));
+    DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
+    if (bf_rule_has_redirect(rule)) {
+        DUMP(prefix, "redirect_ifindex: %u", rule->redirect_ifindex);
+        DUMP(bf_dump_prefix_last(prefix), "redirect_dir: %s",
+             bf_redirect_dir_to_str(rule->redirect_dir));
+    } else {
+        DUMP(prefix, "redirect_ifindex: <not set>");
+        DUMP(bf_dump_prefix_last(prefix), "redirect_dir: <not set>");
+    }
 
     bf_dump_prefix_pop(prefix);
 }
