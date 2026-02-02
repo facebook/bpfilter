@@ -275,7 +275,14 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         }
         counter_node = bf_list_node_next(counter_node);
 
-        (void)fprintf(stdout, "        %s\n", bf_verdict_to_str(rule->verdict));
+        if (rule->verdict == BF_VERDICT_REDIRECT) {
+            (void)fprintf(stdout, "        REDIRECT %u %s\n",
+                          rule->redirect_ifindex,
+                          bf_redirect_dir_to_str(rule->redirect_dir));
+        } else {
+            (void)fprintf(stdout, "        %s\n",
+                          bf_verdict_to_str(rule->verdict));
+        }
     }
 }
 

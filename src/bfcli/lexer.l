@@ -23,6 +23,8 @@
 %s STATE_HOOK_OPTS
 %s STATE_LOG_OPTS
 %s STATE_MARK_OPTS
+%s STATE_REDIRECT_IFACE
+%s STATE_REDIRECT_DIR
 %s STATE_MATCHER_SET
 %s STATE_MATCHER_META_IFACE
 %s STATE_MATCHER_META_L3_PROTO
@@ -66,6 +68,21 @@ BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return H
 }
     /* Verdicts */
 (ACCEPT|DROP|CONTINUE)   { yylval.sval = strdup(yytext); return VERDICT; }
+REDIRECT                 { BEGIN(STATE_REDIRECT_IFACE); return REDIRECT_TOKEN; }
+<STATE_REDIRECT_IFACE>{
+    {int}|[0-9a-zA-Z-]+ {
+        BEGIN(STATE_REDIRECT_DIR);
+        yylval.sval = strdup(yytext);
+        return REDIRECT_IFACE;
+    }
+}
+<STATE_REDIRECT_DIR>{
+    (in|out) {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return REDIRECT_DIR;
+    }
+}
 
     /* Mark */
 mark            { BEGIN(STATE_MARK_OPTS); return MARK; }

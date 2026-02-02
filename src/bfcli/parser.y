@@ -10,6 +10,7 @@
     #include <stdbool.h>
 
     #include <bpfilter/list.h>
+    #include <bpfilter/if.h>
 
     #include "ruleset.h"
 
@@ -67,6 +68,12 @@
         bool counter;
         uint32_t mark;
     };
+
+    struct bfc_rule_verdict {
+        enum bf_verdict verdict;
+        uint32_t redirect_ifindex;
+        enum bf_redirect_dir redirect_dir;
+    };
 }
 
 %define parse.error detailed
@@ -87,6 +94,7 @@
     enum bf_matcher_op matcher_op;
     struct bf_hookopts *hookopts;
     struct bf_rule_options rule_options;
+    struct bfc_rule_verdict rule_verdict;
 }
 
 // Tokens
@@ -94,6 +102,7 @@
 %token RULE
 %token SET
 %token LOG COUNTER MARK
+%token REDIRECT_TOKEN
 %token <sval> LOG_HEADERS
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
@@ -101,6 +110,8 @@
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
 %token <sval> RAW_HOOKOPT
 %token <sval> RAW_PAYLOAD
+%token <sval> REDIRECT_IFACE
+%token <sval> REDIRECT_DIR
 
 // Grammar types
 %destructor { freep(&$$); } <sval>
@@ -110,6 +121,7 @@
 %destructor { bf_hookopts_free(&$$); } hookopts
 
 %type <verdict> verdict
+%type <rule_verdict> rule_verdict
 
 %type <matcher_type> matcher_type
 
@@ -174,6 +186,37 @@ verdict         : VERDICT
                     if (bf_verdict_from_str($1, &$$) < 0)
                         bf_parse_err("unknown verdict '%s'\n", $1);
                     free($1);
+                }
+
+rule_verdict    : verdict
+                {
+                    $$ = (struct bfc_rule_verdict){
+                        .verdict = $1,
+                        .redirect_ifindex = 0,
+                        .redirect_dir = BF_REDIRECT_EGRESS,
+                    };
+                }
+                | REDIRECT_TOKEN REDIRECT_IFACE REDIRECT_DIR
+                {
+                    _cleanup_free_ const char *iface = $2;
+                    _cleanup_free_ const char *dir = $3;
+                    uint32_t ifindex;
+                    enum bf_redirect_dir redirect_dir;
+                    int r;
+
+                    r = bf_if_index_from_str(iface, &ifindex);
+                    if (r)
+                        bf_parse_err("interface '%s' not found", iface);
+
+                    // Parse direction
+                    if (bf_redirect_dir_from_str(dir, &redirect_dir) < 0)
+                        bf_parse_err("invalid redirect direction '%s' (expected 'in' or 'out')", dir);
+
+                    $$ = (struct bfc_rule_verdict){
+                        .verdict = BF_VERDICT_REDIRECT,
+                        .redirect_ifindex = ifindex,
+                        .redirect_dir = redirect_dir,
+                    };
                 }
 
 hook            : HOOK
@@ -246,7 +289,7 @@ rules           : %empty { $$ = NULL; }
                     $$ = TAKE_PTR($1);
                 }
                 ;
-rule            : RULE matchers rule_options verdict
+rule            : RULE matchers rule_options rule_verdict
                 {
                     _free_bf_rule_ struct bf_rule *rule = NULL;
 
@@ -259,7 +302,9 @@ rule            : RULE matchers rule_options verdict
                     if ($3.flags & BF_RULE_OPTION_MARK)
                         bf_rule_mark_set(rule, $3.mark);
 
-                    rule->verdict = $4;
+                    rule->verdict = $4.verdict;
+                    if ($4.verdict == BF_VERDICT_REDIRECT)
+                        bf_rule_set_redirect(rule, $4.redirect_ifindex, $4.redirect_dir);
 
                     bf_list_foreach ($2, matcher_node) {
                         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
