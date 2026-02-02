@@ -41,3 +41,28 @@ const char *bf_if_name_from_index(int index)
 
     return _bf_if_name;
 }
+
+int bf_if_index_from_str(const char *str, uint32_t *ifindex)
+{
+    int idx;
+    unsigned long parsed;
+    char *endptr;
+
+    assert(str);
+    assert(ifindex);
+
+    idx = bf_if_index_from_name(str);
+    if (idx > 0) {
+        *ifindex = (uint32_t)idx;
+        return 0;
+    }
+
+    errno = 0;
+    parsed = strtoul(str, &endptr, BF_BASE_10);
+    if (*endptr == '\0' && errno == 0 && parsed > 0 && parsed <= UINT32_MAX) {
+        *ifindex = (uint32_t)parsed;
+        return 0;
+    }
+
+    return -EINVAL;
+}
