@@ -360,14 +360,23 @@ With:
   - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required.
   - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
-  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP`` or ``CONTINUE``.
-    - ``ACCEPT``: forward the packet to the kernel
+  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, or ``REDIRECT``.
+    - ``ACCEPT``: forward the packet to the kernel.
     - ``DROP``: discard the packet.
     - ``CONTINUE``: continue processing subsequent rules.
+    - ``REDIRECT $IFACE $DIR``: redirect the packet to interface ``$IFACE`` in direction ``$DIR``. ``$IFACE`` can be an interface name (e.g., "eth0") or an interface index (e.g., "2"). ``$DIR`` is either ``in`` for ingress or ``out`` for egress.
 
-In a chain, as soon as a rule matches a packet, its verdict is applied. If the verdict is ``ACCEPT`` or ``DROP``, the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
+In a chain, as soon as a rule matches a packet, its verdict is applied. If the verdict is ``ACCEPT``, ``DROP``, or ``REDIRECT``, the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
 
 Note ``CONTINUE`` means a packet can be counted more than once if multiple rules specify ``CONTINUE`` and ``counter``.
+
+.. note::
+
+    ``REDIRECT`` is only supported by the following hooks:
+      - ``BF_HOOK_XDP``: only ``out`` direction is supported (XDP always transmits out of the target interface).
+      - ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``: both ``in`` and ``out`` directions are supported.
+
+    ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``) or cgroup (``BF_HOOK_CGROUP_*``) hooks.
 
 Sets
 ~~~~
