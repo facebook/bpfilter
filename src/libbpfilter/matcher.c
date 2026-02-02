@@ -169,27 +169,16 @@ int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
     assert(payload);
     assert(raw_payload);
 
-    int idx;
-    unsigned long ifindex;
-    char *endptr;
+    int r;
 
-    idx = bf_if_index_from_name(raw_payload);
-    if (idx > 0) {
-        *(uint32_t *)payload = (uint32_t)idx;
-        return 0;
+    r = bf_if_index_from_str(raw_payload, (uint32_t *)payload);
+    if (r) {
+        return bf_err_r(r,
+            "\"%s %s\" expects an interface name (e.g., \"eth0\", \"wlan0\") or a decimal interface index (e.g., \"1\", \"2\"), not '%s'",
+            bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
     }
 
-    ifindex = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && 0 < ifindex && ifindex <= UINT32_MAX) {
-        *(uint32_t *)payload = (uint32_t)ifindex;
-        return 0;
-    }
-
-    bf_err(
-        "\"%s %s\" expects an interface name (e.g., \"eth0\", \"wlan0\") or a decimal interface index (e.g., \"1\", \"2\"), not '%s'",
-        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
+    return 0;
 }
 
 void _bf_print_iface(const void *payload)
