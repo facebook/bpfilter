@@ -16,10 +16,24 @@ static void to_from_str(void **state)
                             _BF_VERDICT_MAX);
 }
 
+static void redirect_dir_to_from_str(void **state)
+{
+    (void)state;
+
+    assert_enum_to_from_str(enum bf_redirect_dir, bf_redirect_dir_to_str,
+                            bf_redirect_dir_from_str, BF_REDIRECT_INGRESS,
+                            _BF_REDIRECT_DIR_MAX);
+
+    // Verify specific direction strings
+    assert_string_equal(bf_redirect_dir_to_str(BF_REDIRECT_INGRESS), "in");
+    assert_string_equal(bf_redirect_dir_to_str(BF_REDIRECT_EGRESS), "out");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(to_from_str),
+        cmocka_unit_test(redirect_dir_to_from_str),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
