@@ -146,6 +146,18 @@
             return __r;                                                        \
     })
 
+#define EMIT_LOAD_RATELIMIT_FD_FIXUP(program, reg)                             \
+    ({                                                                         \
+        const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
+        int __r = bf_program_emit_fixup(                                       \
+            (program), BF_FIXUP_TYPE_RATELIMIT_MAP_FD, ld_insn[0], NULL);      \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+        __r = bf_program_emit((program), ld_insn[1]);                          \
+        if (__r < 0)                                                           \
+            return __r;                                                        \
+    })
+
 #define EMIT_LOAD_LOG_FD_FIXUP(program, reg)                                   \
     ({                                                                         \
         const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
@@ -200,6 +212,8 @@ struct bf_program
 
     /// Counters map
     struct bf_map *cmap;
+    /// Rate limit map
+    struct bf_map *rmap;
     /// Printer map
     struct bf_map *pmap;
     /// Log map

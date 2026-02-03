@@ -56,9 +56,10 @@
     })
 
     enum bf_rule_option_flag {
-        BF_RULE_OPTION_LOG      = 1 << 0,
-        BF_RULE_OPTION_COUNTER  = 1 << 1,
-        BF_RULE_OPTION_MARK     = 1 << 2,
+        BF_RULE_OPTION_LOG        = 1 << 0,
+        BF_RULE_OPTION_COUNTER    = 1 << 1,
+        BF_RULE_OPTION_MARK       = 1 << 2,
+        BF_RULE_OPTION_RATELIMIT  = 1 << 3,
     };
 
     struct bf_rule_options {
@@ -66,6 +67,7 @@
 
         uint8_t log;
         bool counter;
+        uint32_t ratelimit;
         uint32_t mark;
     };
 
@@ -101,9 +103,10 @@
 %token CHAIN
 %token RULE
 %token SET
-%token LOG COUNTER MARK
+%token LOG COUNTER RATELIMIT MARK
 %token REDIRECT_TOKEN
 %token <sval> LOG_HEADERS
+%token <sval> RATELIMIT_VAL
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
 %token <sval> STRING
@@ -297,6 +300,7 @@ rule            : RULE matchers rule_options rule_verdict
                         bf_parse_err("failed to create a new bf_rule\n");
 
                     rule->log = $3.flags & BF_RULE_OPTION_LOG ? $3.log : 0;
+                    rule->ratelimit = $3.flags & BF_RULE_OPTION_RATELIMIT ? $3.ratelimit : 0;
                     rule->counters = $3.flags & BF_RULE_OPTION_COUNTER ? $3.counter : false;
 
                     if ($3.flags & BF_RULE_OPTION_MARK)
@@ -351,6 +355,26 @@ rule_option     : LOG LOG_HEADERS
                         .flags = BF_RULE_OPTION_COUNTER,
                     };
                 }
+                | RATELIMIT RATELIMIT_VAL
+                {
+                    _cleanup_free_ char *in = $2;
+                    char *tmp = in;
+                    char *saveptr;
+                    uint32_t limit;
+
+                    if (tmp[0] == '-')
+                        bf_parse_err("ratelimit should be positive");
+
+                    errno = 0;
+                    limit = strtoul(strtok_r(tmp, "/", &saveptr), NULL, 0);
+                    if (errno != 0)
+                        bf_parse_err("ratelimit value is too large");
+
+                    $$ = (struct bf_rule_options){
+                        .ratelimit = limit,
+                        .flags = BF_RULE_OPTION_RATELIMIT,
+                    };
+                }
                 | MARK STRING
                 {
                     _cleanup_free_ const char *raw_mark = $2;
@@ -385,6 +409,13 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                             bf_parse_err("duplicate keyword \"counter\" in rule");
                         $1.flags |= BF_RULE_OPTION_COUNTER;
                         $1.counter = $2.counter;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_RATELIMIT) {
+                        if ($1.flags & BF_RULE_OPTION_RATELIMIT)
+                            bf_parse_err("duplicate keyword \"ratelimit\" in rule");
+                        $1.flags |= BF_RULE_OPTION_RATELIMIT;
+                        $1.ratelimit = $2.ratelimit;
                     }
 
                     if ($2.flags & BF_RULE_OPTION_MARK) {

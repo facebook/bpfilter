@@ -135,6 +135,20 @@ enum bf_elfstub_id
      */
     BF_ELFSTUB_LOG,
 
+    /**
+     * Drop packets when `limit` number of packets have already been seen in the last unit of time
+     *
+     * `__u8 bf_ratelimit(void *map, __u64 key, __u64 limit)`
+     *
+     * **Parameters**
+     * - `map`: address of the ratelimit map.
+     * - `key`: key of the map to update.
+     * - `limit`: number of packets allowed to pass in one unit of time.
+     *
+     * **Return** 0 on accept, or 1 on drop.
+     */
+    BF_ELFSTUB_RATELIMIT,
+
     _BF_ELFSTUB_MAX,
 };
 
