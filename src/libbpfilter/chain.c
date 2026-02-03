@@ -332,3 +332,39 @@ struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain, const char *set_
 
     return NULL;
 }
+
+int bf_chain_new_from_copy(struct bf_chain **dest, const struct bf_chain *src)
+{
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+    int r;
+
+    assert(dest);
+    assert(src);
+
+    // For now, we do a copy by serializing and deserializing the struct.
+    // @todo Implement deep copy to avoid serialization overhead.
+    r = bf_wpack_new(&wpack);
+    if (r)
+        return bf_err_r(r, "failed to create wpack for chain serialization");
+
+    r = bf_chain_pack(src, wpack);
+    if (r)
+        return bf_err_r(r, "failed to serialize chain");
+
+    r = bf_wpack_get_data(wpack, &data, &data_len);
+    if (r)
+        return bf_err_r(r, "failed to get serialized chain data");
+
+    r = bf_rpack_new(&rpack, data, data_len);
+    if (r)
+        return bf_err_r(r, "failed to create rpack for chain deserialization");
+
+    r = bf_chain_new_from_pack(dest, bf_rpack_root(rpack));
+    if (r)
+        return bf_err_r(r, "failed to deserialize chain");
+
+    return 0;
+}
