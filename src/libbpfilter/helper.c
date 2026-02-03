@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,25 +99,58 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     return 0;
 }
 
+static int _bf_get_tmpfile_fd(const char *base, char tmpfile_path[static PATH_MAX])
+{
+    _cleanup_free_ char *tmp = NULL;
+    size_t path_len;
+    char *dir;
+    int fd;
+
+    /* The dirname call may modify its argument. */
+    tmp = strdup(base);
+    if (!tmp)
+        return bf_err_r(ENOMEM, "could not duplicate path %s", base);
+
+    dir = dirname(tmp);
+
+    path_len = snprintf(tmpfile_path, PATH_MAX, "%s%s", dir, "/bpfilter.tmp.XXXXXX");
+    if (path_len >= PATH_MAX)
+        return bf_err_r(ENAMETOOLONG, "tmpfile name too long (%lu bytes)", path_len);
+
+    fd = mkstemp(tmpfile_path);
+    if (fd < 0)
+        return bf_err_r(errno, "failed to open %s", tmpfile_path);
+
+    return fd;
+}
+
 int bf_write_file(const char *path, const void *buf, size_t len)
 {
     _cleanup_close_ int fd = -1;
     ssize_t r;
+    int err;
+    char tmpfile_path[PATH_MAX];
 
     bf_assert(path);
     bf_assert(buf);
 
-    fd = open(path, O_TRUNC | O_CREAT | O_WRONLY, OPEN_MODE_644);
+    fd = _bf_get_tmpfile_fd(path, tmpfile_path);
     if (fd < 0)
-        return bf_err_r(errno, "failed to open %s", path);
+        return bf_err_r(fd, "failed to get temporary file name");
 
     r = write(fd, buf, len);
     if (r < 0)
-        return bf_err_r(errno, "failed to write to %s", path);
+        return bf_err_r(errno, "failed to write to %s", tmpfile_path);
     if ((size_t)r != len)
-        return bf_err_r(EIO, "can't write full data to %s", path);
+        return bf_err_r(EIO, "can't write full data to %s", tmpfile_path);
 
     closep(&fd);
+
+    if (rename(tmpfile_path, path) < 0) {
+        err = errno;
+        unlink(tmpfile_path);
+        return bf_err_r(err, "failed to move %s to %s", tmpfile_path, path);
+    }
 
     return 0;
 }
