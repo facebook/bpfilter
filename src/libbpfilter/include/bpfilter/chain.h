@@ -157,3 +157,12 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
  * @return Pointer to the set, or NULL if not found.
  */
 struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain, const char *set_name);
+
+/** Allocate and initialize a chain as a copy of another chain.
+ *
+ * @param dest The destination chain. It will be allocated during the call.
+ *        Can't be NULL.
+ * @param src The source chain, to copy from. Can't be NULL.
+ * @return 0 on success, negative error code on failure.
+ */
+int bf_chain_new_from_copy(struct bf_chain **dest, const struct bf_chain *src);
