@@ -643,13 +643,15 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT(program, BPF_MOV32_IMM(BPF_REG_3, rule->ratelimit));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_RATELIMIT);
 
-        _clean_bf_jmpctx_ struct bf_jmpctx ctx =
-            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+        {
+            _clean_bf_jmpctx_ struct bf_jmpctx ctx =
+                bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
 
-        EMIT(program,
-             BPF_MOV64_IMM(BPF_REG_0,
-                           program->runtime.ops->get_verdict(BF_VERDICT_DROP)));
-        EMIT(program, BPF_EXIT_INSN());
+            EMIT(program,
+                 BPF_MOV64_IMM(BPF_REG_0, program->runtime.ops->get_verdict(
+                                              BF_VERDICT_DROP)));
+            EMIT(program, BPF_EXIT_INSN());
+        }
     }
 
     switch (rule->verdict) {
@@ -963,7 +965,7 @@ static int _bf_program_load_ratelimit_map(struct bf_program *program)
     _cleanup_close_ int _fd = -1;
     int r;
 
-    bf_assert(program);
+    assert(program);
 
     r = bf_map_create(program->rmap);
     if (r < 0)

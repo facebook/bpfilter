@@ -23,9 +23,8 @@ __u8 bf_ratelimit(void *map, __u64 key, __u64 limit)
         return 1;
     }
 
-    if (current_time != ratelimit->last_time) {
+    if (current_time != ratelimit->last_time)
         ratelimit->current = 0;
-    }
 
     ratelimit->current++;
     ratelimit->last_time = current_time;

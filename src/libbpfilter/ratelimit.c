@@ -16,7 +16,7 @@ int bf_ratelimit_new(struct bf_ratelimit **ratelimit, uint64_t current,
 {
     _cleanup_free_ struct bf_ratelimit *_ratelimit = NULL;
 
-    bf_assert(ratelimit);
+    assert(ratelimit);
 
     _ratelimit = malloc(sizeof(*_ratelimit));
     if (!_ratelimit)
@@ -36,7 +36,7 @@ int bf_ratelimit_new_from_pack(struct bf_ratelimit **ratelimit,
     _free_bf_ratelimit_ struct bf_ratelimit *_ratelimit = NULL;
     int r;
 
-    bf_assert(ratelimit);
+    assert(ratelimit);
 
     r = bf_ratelimit_new(&_ratelimit, 0, 0);
     if (r)
@@ -57,7 +57,7 @@ int bf_ratelimit_new_from_pack(struct bf_ratelimit **ratelimit,
 
 void bf_ratelimit_free(struct bf_ratelimit **ratelimit)
 {
-    bf_assert(ratelimit);
+    assert(ratelimit);
 
     if (!*ratelimit)
         return;
@@ -67,8 +67,8 @@ void bf_ratelimit_free(struct bf_ratelimit **ratelimit)
 
 int bf_ratelimit_pack(const struct bf_ratelimit *ratelimit, bf_wpack_t *pack)
 {
-    bf_assert(ratelimit);
-    bf_assert(pack);
+    assert(ratelimit);
+    assert(pack);
 
     bf_wpack_kv_u64(pack, "current", ratelimit->current);
     bf_wpack_kv_u64(pack, "last_time", ratelimit->last_time);

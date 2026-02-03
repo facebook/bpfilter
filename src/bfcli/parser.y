@@ -360,19 +360,15 @@ rule_option     : LOG LOG_HEADERS
                     _cleanup_free_ char *in = $2;
                     char *tmp = in;
                     char *saveptr;
+                    uint32_t limit;
 
                     if (tmp[0] == '-')
                         bf_parse_err("ratelimit should be positive");
 
                     errno = 0;
-                    uint32_t limit = strtoul(strtok_r(tmp, "/", &saveptr), NULL, 0);
+                    limit = strtoul(strtok_r(tmp, "/", &saveptr), NULL, 0);
                     if (errno != 0)
                         bf_parse_err("ratelimit value is too large");
-
-                    $$ = (struct bf_rule_options){
-                        .ratelimit = limit,
-                        .flags = BF_RULE_OPTION_RATELIMIT,
-                    };
 
                     $$ = (struct bf_rule_options){
                         .ratelimit = limit,

@@ -312,12 +312,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         btf__add_field(kbtf, "packets", 1, 0, 0);
         btf__add_field(kbtf, "bytes", 1, 64, 0);
         break;
-    case BF_MAP_TYPE_RATELIMIT: // I have no clue what I'm doing here
-        btf__add_int(kbtf, "u64", 8, 0);
-        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
-        btf->value_type_id = btf__add_struct(kbtf, "bf_", 16);
-        btf__add_field(kbtf, "limit", 1, 0, 0);
-        break;
+    case BF_MAP_TYPE_RATELIMIT:
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
     case BF_MAP_TYPE_LOG:
