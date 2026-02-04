@@ -19,7 +19,7 @@ Before anything, you will have to run the daemon on your system, see :doc:`daemo
 Once the daemon is running, you need to choose which front-end's CLI to use:
 
 - :doc:`bfcli`: ``bpfilter``-specific CLI, developed as part of the project. ``bfcli`` supports new ``bpfilter`` features before other CLIs as it's used for development. It allows for a more flexible rule definition: you can use a combination of filters and hooks that might not be possible with other CLIs. However, it doesn't support ``nftables`` or ``iptables`` rules format.
-- :doc:`nftables`: requires a custom version of the ``nft`` binary with ``bpfilter`` support (see below), and support for new ``bpfilter`` features is usually a bit delayed.
+- :doc:`nftables` (work in progress): requires a custom version of the ``nft`` binary with ``bpfilter`` support, and support for new ``bpfilter`` features is usually a bit delayed.
 - :doc:`iptables`: similar to ``nftables``, however ``iptables`` has been deprecated globally in favor of ``nftables``.
 
 Install
