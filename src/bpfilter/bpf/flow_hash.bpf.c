@@ -25,6 +25,9 @@
 /// xxHash32 finalizer constants.
 #define XXH32_PRIME1 0x85ebca77
 #define XXH32_PRIME2 0xc2b2ae3d
+#define XXH32_SHIFT1 15
+#define XXH32_SHIFT2 13
+#define XXH32_SHIFT3 16
 
 /**
  * xxHash32 avalanche finalizer.
@@ -38,11 +41,11 @@
  */
 static inline __u32 xxh32_avalanche(__u32 hash)
 {
-    hash ^= hash >> 15;
+    hash ^= hash >> XXH32_SHIFT1;
     hash *= XXH32_PRIME1;
-    hash ^= hash >> 13;
+    hash ^= hash >> XXH32_SHIFT2;
     hash *= XXH32_PRIME2;
-    hash ^= hash >> 16;
+    hash ^= hash >> XXH32_SHIFT3;
 
     return hash;
 }
