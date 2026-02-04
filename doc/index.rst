@@ -58,7 +58,6 @@
    <h5>Key features</h5>
 
 - **High performance**: utilizes eBPF's near-native performance capabilities
-- **Flexible integration**: use the custom ``iptables`` integration or **bpfilter**'s ``bfcli`` command line for extended functionalities
 - **Low overhead**: minimal resource consumption with maximized efficiency
 - **Developer-friendly**: clean architecture with clear separation of components
 
