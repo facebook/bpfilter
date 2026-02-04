@@ -48,6 +48,7 @@ enum bfc_action
     BFC_ACTION_LOAD,
     BFC_ACTION_ATTACH,
     BFC_ACTION_UPDATE,
+    BFC_ACTION_UPDATE_SET,
     BFC_ACTION_FLUSH,
     _BFC_ACTION_MAX,
 };
@@ -71,6 +72,12 @@ struct bfc_opts
     const char *name;
     struct bf_hookopts hookopts;
 
+    const char *set_name;
+    // set_add and set_remove don't own their data.
+    // They store strings from argv.
+    bf_list set_add;
+    bf_list set_remove;
+
     bool dry_run;
 };
 
@@ -89,7 +96,9 @@ struct bfc_opts_cmd
  * @brief Initialize a `bfc_opts` object to default values.
  */
 #define bfc_opts_default()                                                     \
-    {.object = _BFC_OBJECT_MAX, .action = _BFC_ACTION_MAX};
+    {.object = _BFC_OBJECT_MAX, .action = _BFC_ACTION_MAX,                     \
+     .set_add = bf_list_default(NULL, NULL),                                   \
+     .set_remove = bf_list_default(NULL, NULL)};
 
 void bfc_opts_clean(struct bfc_opts *opts);
 int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv);

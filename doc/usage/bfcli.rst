@@ -239,6 +239,37 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
               counters 0 packets 0 bytes
               DROP
 
+``chain update-set``
+~~~~~~~~~~~~~~~~~~~~
+
+Atomically update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership.
+
+**Options**
+  - ``--name NAME``: name of the chain containing the set.
+  - ``--set-name NAME``: name of the set to update.
+  - ``--add ELEMENT``: element to add to the set. Can be specified multiple times.
+  - ``--remove ELEMENT``: element to remove from the set. Can be specified multiple times.
+
+At least one of ``--add`` or ``--remove`` must be specified.
+
+**Examples**
+
+.. code:: shell
+
+    $ # Create a chain with a named set
+    $ sudo bfcli chain set --from-str "
+          chain my_filter BF_HOOK_XDP{ifindex=2} ACCEPT
+              set blocklist (ip4.saddr) in { 192.168.1.100 }
+              rule
+                  (ip4.saddr) in blocklist
+                  DROP"
+
+    $ # Add addresses to the blocklist
+    $ sudo bfcli chain update-set --name my_filter --set-name blocklist --add 192.168.1.101 --add 192.168.1.102
+
+    $ # Remove an address from the blocklist
+    $ sudo bfcli chain update-set --name my_filter --set-name blocklist --remove 192.168.1.100
+
 ``chain flush``
 ~~~~~~~~~~~~~~~
 

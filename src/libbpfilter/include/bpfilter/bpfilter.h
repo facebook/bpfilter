@@ -12,6 +12,7 @@
 
 struct bf_response;
 struct bf_chain;
+struct bf_set;
 struct ipt_getinfo;
 struct ipt_get_entries;
 struct ipt_replace;
@@ -288,6 +289,39 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts);
  * - `-ENOLINK`: the chain to update is not attached.
  */
 int bf_chain_update(const struct bf_chain *chain);
+
+/**
+ * @brief Update a named set in an existing chain using delta operations.
+ *
+ * The chain to update must exist. This operation triggers regeneration of
+ * the chain's BPF program with the updated set data. Elements from `to_add`
+ * are added to the set, and elements from `to_remove` are removed. If
+ * `to_remove` has elements that already aren't present in the program,
+ * these elements are ignored.
+ *
+ * **Request payload format**
+ * @code{.json}
+ * {
+ *   "chain_name": "",
+ *   "to_add": { }, // bf_set object
+ *   "to_remove": { } // bf_set object
+ * }
+ * @endcode
+ *
+ * **Response payload format**
+ * The response doesn't contain data.
+ *
+ * @param name Name of the chain containing the set. Can't be NULL.
+ * @param to_add Set containing elements to add. The set name and key format
+ *        must match the existing set in the chain. Can't be NULL.
+ * @param to_remove Set containing elements to remove. The set name and key
+ *        format must match the existing set in the chain. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure, including:
+ * - `-ENOENT`: no chain found for this name or set not found in chain.
+ * - `-EINVAL`: set key format doesn't match existing set.
+ */
+int bf_chain_update_set(const char *name, const struct bf_set *to_add,
+                        const struct bf_set *to_remove);
 
 /**
  * @brief Remove a chain.

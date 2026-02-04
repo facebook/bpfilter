@@ -247,6 +247,155 @@ static void new_from_raw_invalid(void **state)
     assert_err(bf_set_new_from_raw(&set, "test", "()", "{1.2.3.4}"));
 }
 
+static void add_many_basic(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t elem1 = 0x01010101;
+    uint32_t elem2 = 0x02020202;
+    uint32_t elem3 = 0x03030303;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_new(&to_add, "to_add", key, ARRAY_SIZE(key)));
+
+    assert_ok(bf_set_add_elem(dest, &elem1));
+    assert_ok(bf_set_add_elem(dest, &elem2));
+
+    assert_ok(bf_set_add_elem(to_add, &elem2));
+    assert_ok(bf_set_add_elem(to_add, &elem3));
+
+    assert_ok(bf_set_add_many(dest, &to_add));
+
+    assert_int_equal(bf_list_size(&dest->elems), 3);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 2), elem3);
+    assert_null(to_add);
+}
+
+static void add_many_mismatched_key_count(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_TCP_SPORT};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key1, ARRAY_SIZE(key1)));
+    assert_ok(bf_set_new(&to_add, "to_add", key2, ARRAY_SIZE(key2)));
+
+    assert_err(bf_set_add_many(dest, &to_add));
+    assert_non_null(to_add);
+}
+
+static void add_many_mismatched_key_type(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_DADDR};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key1, ARRAY_SIZE(key1)));
+    assert_ok(bf_set_new(&to_add, "to_add", key2, ARRAY_SIZE(key2)));
+
+    assert_err(bf_set_add_many(dest, &to_add));
+    assert_non_null(to_add);
+}
+
+static void remove_many_basic(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t elem1 = 0x01010101;
+    uint32_t elem2 = 0x02020202;
+    uint32_t elem3 = 0x03030303;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_new(&to_remove, "to_remove", key, ARRAY_SIZE(key)));
+
+    assert_ok(bf_set_add_elem(dest, &elem1));
+    assert_ok(bf_set_add_elem(dest, &elem2));
+    assert_ok(bf_set_add_elem(dest, &elem3));
+
+    assert_ok(bf_set_add_elem(to_remove, &elem2));
+
+    assert_ok(bf_set_remove_many(dest, &to_remove));
+
+    assert_int_equal(bf_list_size(&dest->elems), 2);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem3);
+    assert_null(to_remove);
+}
+
+static void remove_many_disjoint_sets(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t elem1 = 0x01010101;
+    uint32_t elem2 = 0x02020202;
+    uint32_t elem3 = 0x03030303;
+    uint32_t elem4 = 0x04040404;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_new(&to_remove, "to_remove", key, ARRAY_SIZE(key)));
+
+    assert_ok(bf_set_add_elem(dest, &elem1));
+    assert_ok(bf_set_add_elem(dest, &elem2));
+
+    assert_ok(bf_set_add_elem(to_remove, &elem3));
+    assert_ok(bf_set_add_elem(to_remove, &elem4));
+
+    assert_ok(bf_set_remove_many(dest, &to_remove));
+    assert_int_equal(bf_list_size(&dest->elems), 2);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
+    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
+    assert_null(to_remove);
+}
+
+static void remove_many_mismatched_key_count(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_TCP_SPORT};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key1, ARRAY_SIZE(key1)));
+    assert_ok(bf_set_new(&to_remove, "to_remove", key2, ARRAY_SIZE(key2)));
+
+    assert_err(bf_set_remove_many(dest, &to_remove));
+    assert_non_null(to_remove);
+}
+
+static void remove_many_mismatched_key_type(void **state)
+{
+    _free_bf_set_ struct bf_set *dest = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_DADDR};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&dest, "dest", key1, ARRAY_SIZE(key1)));
+    assert_ok(bf_set_new(&to_remove, "to_remove", key2, ARRAY_SIZE(key2)));
+
+    assert_err(bf_set_remove_many(dest, &to_remove));
+    assert_non_null(to_remove);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -264,6 +413,13 @@ int main(void)
         cmocka_unit_test(new_from_raw),
         cmocka_unit_test(new_from_raw_multiple_keys),
         cmocka_unit_test(new_from_raw_invalid),
+        cmocka_unit_test(add_many_basic),
+        cmocka_unit_test(add_many_mismatched_key_count),
+        cmocka_unit_test(add_many_mismatched_key_type),
+        cmocka_unit_test(remove_many_basic),
+        cmocka_unit_test(remove_many_disjoint_sets),
+        cmocka_unit_test(remove_many_mismatched_key_count),
+        cmocka_unit_test(remove_many_mismatched_key_type),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
