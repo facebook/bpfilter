@@ -1,6 +1,9 @@
 # Usual build folder
 /build/
 
+# Nix
+result
+
 # IDE configuration folder
 .zed
 .vscode
