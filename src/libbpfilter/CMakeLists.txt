@@ -100,6 +100,7 @@ target_include_directories(libbpfilter
 target_link_libraries(libbpfilter
     PRIVATE
         bf_global_flags
+        m
     PUBLIC
         PkgConfig::bpf
 )

@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -397,6 +398,41 @@ void _bf_print_probability(const void *payload)
     assert(payload);
 
     (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)payload);
+}
+
+static int _bf_parse_flow_probability(enum bf_matcher_type type,
+                                      enum bf_matcher_op op, void *payload,
+                                      const char *raw_payload)
+{
+    assert(payload);
+    assert(raw_payload);
+
+    double proba;
+    char *endptr;
+
+    proba = strtod(raw_payload, &endptr);
+    if (endptr[0] == '%' && endptr[1] == '\0' && proba >= 0.0 &&
+        proba <= 100.0) {
+        *(float *)payload = (float)proba;
+        return 0;
+    }
+
+    bf_err(
+        "\"%s %s\" expects a valid percentage value (i.e., within [0%%, 100%%], e.g., \"50%%\" or \"33.33%%\"), not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+
+    return -EINVAL;
+}
+
+static void _bf_print_flow_probability(const void *payload)
+{
+    assert(payload);
+
+    float proba = *(float *)payload;
+    if (proba == floorf(proba))
+        (void)fprintf(stdout, "%.0f%%", proba);
+    else
+        (void)fprintf(stdout, "%g%%", proba);
 }
 
 static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
@@ -924,6 +960,19 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_int, _bf_print_int),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint32_t),
                                    _bf_parse_int_range, _bf_print_int_range),
+                },
+        },
+    [BF_MATCHER_META_FLOW_PROBABILITY] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .unsupported_hooks = BF_FLAGS(
+                BF_HOOK_NF_FORWARD, BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
+                BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
+                                   _bf_parse_flow_probability,
+                                   _bf_print_flow_probability),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
@@ -1471,6 +1520,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_META_DPORT] = "meta.dport",
     [BF_MATCHER_META_MARK] = "meta.mark",
     [BF_MATCHER_META_FLOW_HASH] = "meta.flow_hash",
+    [BF_MATCHER_META_FLOW_PROBABILITY] = "meta.flow_probability",
     [BF_MATCHER_IP4_SADDR] = "ip4.saddr",
     [BF_MATCHER_IP4_SNET] = "ip4.snet",
     [BF_MATCHER_IP4_DADDR] = "ip4.daddr",

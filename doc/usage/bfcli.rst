@@ -555,6 +555,11 @@ Meta
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` must be decimal or hexadecimal 32-bits integers, with ``$START <= $END``. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
+    * - Flow probability
+      - ``meta.flow_probability``
+      - ``eq``
+      - ``$PROBABILITY``
+      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). Unlike ``meta.probability`` which uses per-packet randomness, ``meta.flow_probability`` computes a deterministic hash from the packet's 5-tuple (source/destination IP, source/destination port, protocol) ensuring all packets from the same flow get the same match decision. Only applies to IPv4/IPv6 packets with TCP or UDP on L4; packets with other protocols are skipped. Compatible with ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``, ``BF_HOOK_CGROUP_INGRESS``, and ``BF_HOOK_CGROUP_EGRESS`` hooks.
 
 IPv4
 ####

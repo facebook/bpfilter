@@ -1240,6 +1240,24 @@ static void print_functions(void **state)
     ops->print(bf_matcher_payload(matcher));
     bf_matcher_free(&matcher);
 
+    // Test _bf_print_flow_probability via ops (integer value)
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50%"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+    bf_matcher_free(&matcher);
+
+    // Test _bf_print_flow_probability via ops (fractional value)
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "33.33%"));
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+    bf_matcher_free(&matcher);
+
     // Test _bf_print_mark via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
                                       BF_MATCHER_EQ, "0x1234"));
@@ -1492,6 +1510,122 @@ static void ip4_dscp(void **state)
                                        BF_MATCHER_EQ, "-1"));
 }
 
+static void meta_flow_probability(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    // Test with 0%
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "0%"));
+    assert_non_null(matcher);
+    assert_int_equal(bf_matcher_get_type(matcher),
+                     BF_MATCHER_META_FLOW_PROBABILITY);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
+    assert_int_equal(bf_matcher_payload_len(matcher), sizeof(float));
+    assert_true(*(float *)bf_matcher_payload(matcher) == 0.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with 50%
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 50.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with 100%
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "100%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 100.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with floating-point value
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "33.33%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) > 33.32f);
+    assert_true(*(float *)bf_matcher_payload(matcher) < 33.34f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with small floating-point value
+    assert_ok(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "0.1%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) > 0.09f);
+    assert_true(*(float *)bf_matcher_payload(matcher) < 0.11f);
+    bf_matcher_dump(matcher, &prefix);
+}
+
+static void meta_flow_probability_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    // Test with value over 100%
+    assert_err(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "101%"));
+
+    // Test with value slightly over 100%
+    assert_err(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "100.01%"));
+
+    // Test without % sign
+    assert_err(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50"));
+
+    // Test with negative value
+    assert_err(bf_matcher_new_from_raw(
+        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "-10%"));
+}
+
+static void meta_flow_probability_pack_unpack(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    // Test pack/unpack for EQ operator with integer percentage
+    assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "50%"));
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    assert_true(bft_matcher_equal(source, destination));
+    bf_matcher_free(&source);
+    bf_matcher_free(&destination);
+    bf_wpack_free(&wpack);
+    bf_rpack_free(&rpack);
+
+    // Test pack/unpack with floating-point percentage
+    assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "33.33%"));
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    assert_true(bft_matcher_equal(source, destination));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1550,6 +1684,9 @@ int main(void)
         cmocka_unit_test(error_paths_parse),
         cmocka_unit_test(error_paths_print),
         cmocka_unit_test(ip4_dscp),
+        cmocka_unit_test(meta_flow_probability),
+        cmocka_unit_test(meta_flow_probability_invalid),
+        cmocka_unit_test(meta_flow_probability_pack_unpack),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
