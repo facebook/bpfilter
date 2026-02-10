@@ -195,3 +195,19 @@ char *bf_trim(char *str)
 
     return bf_rtrim(bf_ltrim(str));
 }
+
+uint64_t bf_fnv1a(const void *data, size_t len, uint64_t hash)
+{
+    const uint8_t *bytes;
+
+    assert(data);
+
+    bytes = data;
+
+    for (size_t i = 0; i < len; ++i) {
+        hash ^= bytes[i];
+        hash *= BF_FNV1A_PRIME;
+    }
+
+    return hash;
+}
