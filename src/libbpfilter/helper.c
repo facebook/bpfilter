@@ -20,6 +20,11 @@
 
 #define OPEN_MODE_644 (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
+/// FNV-1a 64-bit offset basis (the initial hash value).
+#define _BF_FNV1A_INIT 0xcbf29ce484222325ULL
+/// FNV-1a 64-bit prime.
+#define _BF_FNV1A_PRIME 0x100000001b3ULL
+
 void closep(int *fd)
 {
     if (*fd < 0)
@@ -194,4 +199,25 @@ char *bf_trim(char *str)
     assert(str);
 
     return bf_rtrim(bf_ltrim(str));
+}
+
+uint64_t bf_fnv1a_init(void)
+{
+    return _BF_FNV1A_INIT;
+}
+
+uint64_t bf_fnv1a(const void *data, size_t len, uint64_t hash)
+{
+    const uint8_t *bytes;
+
+    assert(data);
+
+    bytes = data;
+
+    for (size_t i = 0; i < len; ++i) {
+        hash ^= bytes[i];
+        hash *= _BF_FNV1A_PRIME;
+    }
+
+    return hash;
 }
