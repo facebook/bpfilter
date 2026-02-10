@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -394,3 +395,22 @@ int bf_read_file(const char *path, void **buf, size_t *len);
  * @return 0 on success, negative errno value on error.
  */
 int bf_write_file(const char *path, const void *buf, size_t len);
+
+/// FNV-1a 64-bit offset basis.
+/// @see https://en.wikipedia.org/wiki/Fowler-Noll-Vo_hash_function
+#define BF_FNV1A_INIT 0xcbf29ce484222325ULL
+/// FNV-1a 64-bit prime.
+#define BF_FNV1A_PRIME 0x100000001b3ULL
+
+/**
+ * @brief Compute a FNV-1a 64-bit hash.
+ *
+ * Pass @ref BF_FNV1A_INIT as @p hash for the initial call. To hash
+ * multiple fields, chain calls by passing the previous return value.
+ *
+ * @param data Data to hash. Can't be NULL.
+ * @param len Number of bytes to hash.
+ * @param hash Initial or chained hash value.
+ * @return Updated hash value.
+ */
+uint64_t bf_fnv1a(const void *data, size_t len, uint64_t hash);
