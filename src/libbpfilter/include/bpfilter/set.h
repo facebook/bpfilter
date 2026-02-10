@@ -167,3 +167,18 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add);
  * - `-EINVAL`: set key format doesn't match between dest and to_remove.
  */
 int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove);
+
+/**
+ * @brief Check if two sets have identical content.
+ *
+ * Compares key structure and elements (order-independent). Uses internal
+ * static state for sorting, so this function is not reentrant.
+ *
+ * @todo Use a hash set instead of sorting to make this function reentrant.
+ *
+ * @param lhs First set. Can't be NULL.
+ * @param rhs Second set. Can't be NULL.
+ * @return 1 if the sets are equal, 0 if not, or a negative errno value
+ *         on failure.
+ */
+int bf_set_equal(const struct bf_set *lhs, const struct bf_set *rhs);

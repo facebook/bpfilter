@@ -524,3 +524,80 @@ int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
 
     return 0;
 }
+
+// qsort comparator for set elements. Uses a static size since qsort
+// doesn't support context and the daemon is single-threaded.
+static size_t _bf_set_elem_cmp_size;
+
+static int _bf_set_elem_cmp(const void *lhs, const void *rhs)
+{
+    return memcmp(lhs, rhs, _bf_set_elem_cmp_size);
+}
+
+static int _bf_set_get_sorted_elems(const struct bf_set *set, void **out)
+{
+    size_t n_elems;
+    void *arr;
+    size_t offset = 0;
+
+    assert(set);
+    assert(out);
+
+    n_elems = bf_list_size(&set->elems);
+
+    if (n_elems == 0) {
+        *out = NULL;
+        return 0;
+    }
+
+    arr = malloc(n_elems * set->elem_size);
+    if (!arr)
+        return -ENOMEM;
+
+    bf_list_foreach (&set->elems, elem_node) {
+        memcpy((uint8_t *)arr + offset, bf_list_node_get_data(elem_node),
+               set->elem_size);
+        offset += set->elem_size;
+    }
+
+    _bf_set_elem_cmp_size = set->elem_size;
+    qsort(arr, n_elems, set->elem_size, _bf_set_elem_cmp);
+
+    *out = arr;
+
+    return 0;
+}
+
+int bf_set_equal(const struct bf_set *lhs, const struct bf_set *rhs)
+{
+    _cleanup_free_ void *lhs_sorted = NULL;
+    _cleanup_free_ void *rhs_sorted = NULL;
+    size_t n_elems;
+    int r;
+
+    assert(lhs);
+    assert(rhs);
+
+    if (lhs->n_comps != rhs->n_comps)
+        return 0;
+    if (memcmp(lhs->key, rhs->key,
+               lhs->n_comps * sizeof(enum bf_matcher_type)) != 0)
+        return 0;
+    if (lhs->elem_size != rhs->elem_size)
+        return 0;
+
+    n_elems = bf_list_size(&lhs->elems);
+    if (bf_list_size(&rhs->elems) != n_elems)
+        return 0;
+    if (n_elems == 0)
+        return 1;
+
+    r = _bf_set_get_sorted_elems(lhs, &lhs_sorted);
+    if (r)
+        return r;
+    r = _bf_set_get_sorted_elems(rhs, &rhs_sorted);
+    if (r)
+        return r;
+
+    return memcmp(lhs_sorted, rhs_sorted, n_elems * lhs->elem_size) == 0;
+}
