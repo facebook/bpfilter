@@ -176,7 +176,7 @@ int bf_bpf_token_create(int bpffs_fd)
     return bf_bpf(BF_BPF_TOKEN_CREATE, &attr);
 }
 
-int bf_bpf_btf_load(const void *btf_data, int token_fd)
+int bf_bpf_btf_load(const void *btf_data, size_t btf_data_len, int token_fd)
 {
     assert(btf_data);
 
@@ -185,6 +185,7 @@ int bf_bpf_btf_load(const void *btf_data, int token_fd)
     memset(&attr, 0, sizeof(attr));
 
     attr.btf = bf_ptr_to_u64(btf_data);
+    attr.btf_size = btf_data_len;
 
     if (token_fd != -1) {
         attr.btf_token_fd = token_fd;
