@@ -111,12 +111,13 @@ int bf_bpf_token_create(int bpffs_fd);
  * @brief Load BTF data into the kernel.
  *
  * @param btf_data Raw BTF data to send to the kernel. Can't be NULL.
+ * @param btf_data_len Length of `btf_data`.
  * @param token_fd File descriptor of the BPF token to use, or -1 if no token
  *        should be used.
  * @return A valid BTF file descriptor on success (owned by the caller),
  *         or a negative error value on failure.
  */
-int bf_bpf_btf_load(const void *btf_data, int token_fd);
+int bf_bpf_btf_load(const void *btf_data, size_t btf_data_len, int token_fd);
 
 /**
  * @brief Create a new BPF map.

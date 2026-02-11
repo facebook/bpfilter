@@ -73,7 +73,7 @@ static int _bf_btf_load(struct bf_btf *btf)
     if (!raw)
         return bf_err_r(errno, "failed to request BTF raw data");
 
-    r = bf_bpf_btf_load(raw, bf_ctx_token());
+    r = bf_bpf_btf_load(raw, attr.btf_size, bf_ctx_token());
     if (r < 0)
         return r;
 
