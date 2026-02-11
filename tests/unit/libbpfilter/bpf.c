@@ -289,7 +289,7 @@ static void bpf_btf_load_success(void **state)
     (void)mock;
 
     bft_mock_syscall_set_retval(25);
-    r = bf_bpf_btf_load(btf_data, -1);
+    r = bf_bpf_btf_load(btf_data, 1, -1);
     assert_int_equal(r, 25);
 }
 
@@ -304,7 +304,7 @@ static void bpf_btf_load_with_token(void **state)
     (void)mock;
 
     bft_mock_syscall_set_retval(26);
-    r = bf_bpf_btf_load(btf_data, 5);
+    r = bf_bpf_btf_load(btf_data, 1, 5);
     assert_int_equal(r, 26);
 }
 
