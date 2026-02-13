@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eux
 
 WORKDIR=$(mktemp -d)
 BF_OUTPUT_FILE=${WORKDIR}/bf.log
