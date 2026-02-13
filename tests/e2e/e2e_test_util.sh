@@ -2,8 +2,6 @@
 
 set -eux
 
-IN_SANBOX=0
-WITH_DAEMON=0
 TEST_PATH=
 FROM_NS=
 
@@ -44,8 +42,6 @@ RULESETS_DIR=.
 
 make_sandbox() {
     echo "Create the sandbox"
-
-    IN_SANBOX=1
 
     # Disable selinux if available, not all distros enforce setlinux
     if command -v setenforce &> /dev/null; then
@@ -133,7 +129,6 @@ start_bpfilter() {
     # Wait for the daemon to listen to the requests
     while [ $(date +%s) -lt $end_time ]; do
         if grep -q "waiting for requests" "${BF_OUTPUT_FILE}"; then
-            WITH_DAEMON=1
             return 0
         fi
         sleep 0.1
@@ -159,38 +154,22 @@ stop_bpfilter() {
 
     echo "Stop bpfilter"
 
-    if [ -n "$BPFILTER_PID" ]; then
-        if [ "$skip_cleanup" -eq 0 ] && [ "${HAS_TOKEN_SUPPORT:-1}" -ne 1 ]; then
-            bfcli ruleset flush || true
-        fi
+    bfcli ruleset flush || true
+    kill $BPFILTER_PID 2>/dev/null || true
+    wait $BPFILTER_PID || true
 
-        kill $BPFILTER_PID 2>/dev/null || true
-        wait $BPFILTER_PID || true
-    fi
-
-    WITH_DAEMON=0
+    echo "========== bpfilter output =========="
+    cat "$BF_OUTPUT_FILE" || true
 }
 
 cleanup() {
-    echo "cleanup() called with exit value $1"
-
-    if [ "$WITH_DAEMON" -ne 0 ]; then
-        stop_bpfilter
-
-        echo "========== bpfilter output =========="
-        cat "$BF_OUTPUT_FILE" || true
-    fi
-
-    if [ "$IN_SANBOX" -ne 0 ]; then
-        destroy_sandbox
-    fi
-
-    exit $1
+    stop_bpfilter
+    destroy_sandbox
 }
 
 # Set trap to ensure cleanup happens
-trap 'cleanup $?' EXIT
-trap 'cleanup 1' INT TERM
+trap 'ret=$?; cleanup; exit ${ret}' EXIT
+trap 'cleanup 1; exit 1' INT TERM
 
 
 ################################################################################
@@ -201,4 +180,5 @@ trap 'cleanup 1' INT TERM
 
 WITH_TIMEOUT="timeout --signal INT --preserve-status .5"
 
+cleanup
 mkdir -p ${WORKDIR}
