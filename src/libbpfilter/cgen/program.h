@@ -10,6 +10,7 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/core/list.h>
+#include <bpfilter/core/vector.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
@@ -203,9 +204,7 @@ struct bf_program
 
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
-    struct bpf_insn *img;
-    size_t img_size;
-    size_t img_cap;
+    bf_vector img;
     bf_list fixups;
 
     /** Runtime data used to interact with the program and cache information.
@@ -238,9 +237,15 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
 void bf_program_free(struct bf_program **program);
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
-int bf_program_grow_img(struct bf_program *program);
 
-int bf_program_emit(struct bf_program *program, struct bpf_insn insn);
+static inline int bf_program_emit(struct bf_program *program,
+                                  struct bpf_insn insn)
+{
+    assert(program);
+
+    return bf_vector_add(&program->img, &insn);
+}
+
 int bf_program_emit_kfunc_call(struct bf_program *program, const char *name);
 int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
                           struct bpf_insn insn,

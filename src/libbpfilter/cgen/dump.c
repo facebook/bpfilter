@@ -104,10 +104,14 @@ void bf_program_dump_bytecode(const struct bf_program *program)
 
     bf_dump_prefix_push(&prefix);
 
-    bf_dbg("Bytecode for program at %p, %lu insn:", program, program->img_size);
+    bf_dbg("Bytecode for program at %p, %lu insn:", program, program->img.size);
 
-    for (size_t i = 0; i < program->img_size; ++i) {
-        if (i == program->img_size - 1)
+    for (size_t i = 0; i < program->img.size; ++i) {
+        struct bpf_insn *insn = bf_vector_get(&program->img, i);
+        if (!insn)
+            bf_abort("bytecode dump: invalid instruction index %lu", i);
+
+        if (i == program->img.size - 1)
             bf_dump_prefix_last(&prefix);
 
         if (double_insn) {
@@ -116,10 +120,10 @@ void bf_program_dump_bytecode(const struct bf_program *program)
             continue;
         }
 
-        print_bpf_insn(&callbacks, &program->img[i], true);
+        print_bpf_insn(&callbacks, insn, true);
         ++bfdd.idx;
 
-        double_insn = program->img[i].code == (BPF_LD | BPF_IMM | BPF_DW);
+        double_insn = insn->code == (BPF_LD | BPF_IMM | BPF_DW);
     }
 
     // Force flush, otherwise output on stderr might appear.
