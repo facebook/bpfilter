@@ -102,6 +102,33 @@ static int _bf_tc_gen_inline_get_skb(struct bf_program *program, int reg)
     return 0;
 }
 
+#define BF_NSEC_PER_MSEC UINT64_C(1000000)
+
+static int _bf_tc_gen_inline_set_delay(struct bf_program *program,
+                                       uint32_t delay_ms)
+{
+    uint64_t delay_ns = (uint64_t)delay_ms * BF_NSEC_PER_MSEC;
+    struct bpf_insn ld64[2] = {BPF_LD_IMM64(BPF_REG_2, delay_ns)};
+
+    // r0 = bpf_ktime_get_ns()
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_ktime_get_ns));
+
+    // r2 = delay_ns
+    EMIT(program, ld64[0]);
+    EMIT(program, ld64[1]);
+
+    // r2 += r0 (now + delay)
+    EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_2, BPF_REG_0));
+
+    // bpf_skb_set_tstamp(skb, tstamp, BPF_SKB_TSTAMP_DELIVERY_MONO)
+    EMIT(program,
+         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, BPF_SKB_TSTAMP_DELIVERY_MONO));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_skb_set_tstamp));
+
+    return 0;
+}
+
 /**
  * @brief Generate bytecode to redirect a packet using TC.
  *
@@ -156,6 +183,7 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_set_mark = _bf_tc_gen_inline_set_mark,
     .gen_inline_get_mark = _bf_tc_gen_inline_get_mark,
     .gen_inline_get_skb = _bf_tc_gen_inline_get_skb,
+    .gen_inline_set_delay = _bf_tc_gen_inline_set_delay,
     .gen_inline_redirect = _bf_tc_gen_inline_redirect,
     .get_verdict = _bf_tc_get_verdict,
 };

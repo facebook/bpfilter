@@ -83,6 +83,11 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
                         "XDP and Netfilter chains can't set packet mark");
     }
 
+    if (bf_rule_has_delay(rule) && chain->hook != BF_HOOK_TC_INGRESS &&
+        chain->hook != BF_HOOK_TC_EGRESS) {
+        return bf_err_r(-EINVAL, "only TC chains support delay");
+    }
+
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
         const struct bf_matcher_meta *meta;

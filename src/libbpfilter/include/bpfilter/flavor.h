@@ -94,6 +94,8 @@ struct bf_flavor_ops
     int (*gen_inline_get_mark)(struct bf_program *program, int reg);
     int (*gen_inline_get_skb)(struct bf_program *program, int reg);
 
+    int (*gen_inline_set_delay)(struct bf_program *program, uint32_t delay_ms);
+
     /**
      * @brief Generate bytecode to redirect a packet to another interface.
      *

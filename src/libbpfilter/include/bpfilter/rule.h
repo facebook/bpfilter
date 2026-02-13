@@ -63,6 +63,11 @@ struct bf_rule
      * See `bf_rule_mark_is_set`. */
     uint64_t mark;
 
+    /** Delay to apply to the packet in milliseconds. Only supported for TC
+     * hooks. 0 means no delay. When set, the codegen will set `skb->tstamp`
+     * to `now + delay_ms` using EDT scheduling. */
+    uint32_t delay_ms;
+
     bool counters;
 
     /** If true, skip this rule during flag calculation and code generation. */
@@ -178,4 +183,25 @@ static inline bool bf_rule_has_redirect(const struct bf_rule *rule)
     assert(rule);
 
     return rule->redirect_ifindex != 0;
+}
+
+static inline void bf_rule_set_delay(struct bf_rule *rule, uint32_t delay_ms)
+{
+    assert(rule);
+
+    rule->delay_ms = delay_ms;
+}
+
+static inline uint32_t bf_rule_get_delay(const struct bf_rule *rule)
+{
+    assert(rule);
+
+    return rule->delay_ms;
+}
+
+static inline bool bf_rule_has_delay(const struct bf_rule *rule)
+{
+    assert(rule);
+
+    return rule->delay_ms != 0;
 }

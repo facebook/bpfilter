@@ -599,6 +599,21 @@ static int _bf_program_generate_rule(struct bf_program *program,
         }
     }
 
+    if (bf_rule_has_delay(rule)) {
+        if (!program->runtime.ops->gen_inline_set_delay) {
+            return bf_err_r(-ENOTSUP, "delay is not supported by %s",
+                            program->runtime.chain->name);
+        }
+
+        r = program->runtime.ops->gen_inline_set_delay(program,
+                                                       bf_rule_get_delay(rule));
+        if (r) {
+            return bf_err_r(r,
+                            "failed to generate bytecode to set delay for '%s'",
+                            program->runtime.chain->name);
+        }
+    }
+
     if (rule->log) {
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
         EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));

@@ -268,6 +268,10 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             (void)fprintf(stdout, "        mark 0x%x\n",
                           bf_rule_mark_get(rule));
 
+        if (bf_rule_has_delay(rule))
+            (void)fprintf(stdout, "        delay %ums\n",
+                          bf_rule_get_delay(rule));
+
         if (rule->counters) {
             counter = bf_list_node_get_data(counter_node);
             (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",

@@ -23,6 +23,7 @@
 %s STATE_HOOK_OPTS
 %s STATE_LOG_OPTS
 %s STATE_MARK_OPTS
+%s STATE_DELAY_OPTS
 %s STATE_REDIRECT_IFACE
 %s STATE_REDIRECT_DIR
 %s STATE_MATCHER_SET
@@ -88,6 +89,16 @@ REDIRECT                 { BEGIN(STATE_REDIRECT_IFACE); return REDIRECT_TOKEN; }
 mark            { BEGIN(STATE_MARK_OPTS); return MARK; }
 <STATE_MARK_OPTS>{
     {int} {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return STRING;
+    }
+}
+
+    /* Delay */
+delay           { BEGIN(STATE_DELAY_OPTS); return DELAY; }
+<STATE_DELAY_OPTS>{
+    {int}ms {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return STRING;

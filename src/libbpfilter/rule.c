@@ -93,6 +93,12 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.mark");
 
+    if (bf_rpack_kv_contains(node, "delay_ms")) {
+        r = bf_rpack_kv_u32(node, "delay_ms", &_rule->delay_ms);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.delay_ms");
+    }
+
     r = bf_rpack_kv_enum(node, "verdict", &_rule->verdict, 0, _BF_VERDICT_MAX);
     if (r)
         return bf_rpack_key_err(r, "bf_rule.verdict");
@@ -151,6 +157,7 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
     bf_wpack_kv_u8(pack, "log", rule->log);
     bf_wpack_kv_bool(pack, "counters", rule->counters);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
+    bf_wpack_kv_u32(pack, "delay_ms", rule->delay_ms);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);
     bf_wpack_kv_u32(pack, "redirect_ifindex", rule->redirect_ifindex);
     bf_wpack_kv_int(pack, "redirect_dir", rule->redirect_dir);
@@ -188,6 +195,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(prefix, "disabled: %s", rule->disabled ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
+    DUMP(prefix, "delay_ms: %u", rule->delay_ms);
     DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));
     if (bf_rule_has_redirect(rule)) {
         DUMP(prefix, "redirect_ifindex: %u", rule->redirect_ifindex);

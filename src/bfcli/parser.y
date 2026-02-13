@@ -59,6 +59,7 @@
         BF_RULE_OPTION_LOG      = 1 << 0,
         BF_RULE_OPTION_COUNTER  = 1 << 1,
         BF_RULE_OPTION_MARK     = 1 << 2,
+        BF_RULE_OPTION_DELAY    = 1 << 3,
     };
 
     struct bf_rule_options {
@@ -67,6 +68,7 @@
         uint8_t log;
         bool counter;
         uint32_t mark;
+        uint32_t delay_ms;
     };
 
     struct bfc_rule_verdict {
@@ -101,7 +103,7 @@
 %token CHAIN
 %token RULE
 %token SET
-%token LOG COUNTER MARK
+%token LOG COUNTER MARK DELAY
 %token REDIRECT_TOKEN
 %token <sval> LOG_HEADERS
 %token <sval> SET_TYPE
@@ -302,6 +304,9 @@ rule            : RULE matchers rule_options rule_verdict
                     if ($3.flags & BF_RULE_OPTION_MARK)
                         bf_rule_mark_set(rule, $3.mark);
 
+                    if ($3.flags & BF_RULE_OPTION_DELAY)
+                        bf_rule_set_delay(rule, $3.delay_ms);
+
                     rule->verdict = $4.verdict;
                     if ($4.verdict == BF_VERDICT_REDIRECT)
                         bf_rule_set_redirect(rule, $4.redirect_ifindex, $4.redirect_dir);
@@ -370,6 +375,25 @@ rule_option     : LOG LOG_HEADERS
                         .flags = BF_RULE_OPTION_MARK,
                     };
                 }
+                | DELAY STRING
+                {
+                    _cleanup_free_ const char *raw_delay = $2;
+                    long long delay;
+                    char *endptr;
+
+                    delay = strtoll(raw_delay, &endptr, 0);
+                    if (strcmp(endptr, "ms") != 0)
+                        bf_parse_err("delay value '%s' must end with 'ms'", raw_delay);
+                    if (delay <= 0)
+                        bf_parse_err("delay should be a positive value, not '%s'", raw_delay);
+                    if (delay > UINT32_MAX)
+                        bf_parse_err("delay should be at most %u ms", UINT32_MAX);
+
+                    $$ = (struct bf_rule_options){
+                        .delay_ms = (uint32_t)delay,
+                        .flags = BF_RULE_OPTION_DELAY,
+                    };
+                }
 
 rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                 | rule_options rule_option {
@@ -392,6 +416,13 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                             bf_parse_err("duplicate keyword \"mark\" in rule");
                         $1.flags |= BF_RULE_OPTION_MARK;
                         $1.mark = $2.mark;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_DELAY) {
+                        if ($1.flags & BF_RULE_OPTION_DELAY)
+                            bf_parse_err("duplicate keyword \"delay\" in rule");
+                        $1.flags |= BF_RULE_OPTION_DELAY;
+                        $1.delay_ms = $2.delay_ms;
                     }
 
                     $$ = $1;

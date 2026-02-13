@@ -106,6 +106,7 @@ bf_add_e2e_test(e2e rules/icmp_tc.sh ROOT)
 bf_add_e2e_test(e2e rules/icmp_xdp.sh ROOT)
 bf_add_e2e_test(e2e rules/log.sh ROOT)
 bf_add_e2e_test(e2e rules/mark.sh ROOT)
+bf_add_e2e_test(e2e rules/delay.sh ROOT)
 bf_add_e2e_test(e2e rules/redirect.sh ROOT)
 
 bf_add_e2e_test(e2e rulesets/rulesets.sh ROOT)
