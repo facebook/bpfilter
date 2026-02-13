@@ -2,25 +2,32 @@
 
 set -eux
 
-WORKDIR=$(mktemp -d)
-BF_OUTPUT_FILE=${WORKDIR}/bf.log
-BPFILTER_PID=
-SETUSERNS_SOCKET_PATH=${WORKDIR}/setuserns.sock
-
 IN_SANBOX=0
 WITH_DAEMON=0
 HAS_TOKEN_SUPPORT=0
 TEST_PATH=
 FROM_NS=
 
-# Network settings
-NETNS_NAME="bftestns"
-VETH_HOST="veth_host"
-VETH_NS="veth_ns"
-HOST_IP="10.0.0.1/24"
-NS_IP="10.0.0.2/24"
-HOST_IP_ADDR="10.0.0.1"
-NS_IP_ADDR="10.0.0.2"
+# Derive resources names from the test name. Allows for pre-test cleanup
+# and parallel testing of different tests.
+_TEST_NAME=$(basename "$0" .sh)
+_TEST_HASH=$(printf '%s' "$_TEST_NAME" | cksum | awk '{print $1}')
+_OCTET2=$(( (_TEST_HASH >> 8) & 0xFF ))
+_OCTET3=$(( _TEST_HASH & 0xFF ))
+_SHORT_ID=$(( _TEST_HASH & 0xFFFF ))
+
+WORKDIR="/tmp/bpfilter.e2e.${_TEST_NAME}"
+_UNIT_NAME="bpfilter-e2e-${_TEST_NAME}"
+BF_OUTPUT_FILE=${WORKDIR}/bf.log
+BPFILTER_PID=
+
+NETNS_NAME="bftest_${_TEST_NAME}"
+VETH_HOST="veth_h_${_SHORT_ID}"
+VETH_NS="veth_n_${_SHORT_ID}"
+HOST_IP="10.${_OCTET2}.${_OCTET3}.1/24"
+NS_IP="10.${_OCTET2}.${_OCTET3}.2/24"
+HOST_IP_ADDR="10.${_OCTET2}.${_OCTET3}.1"
+NS_IP_ADDR="10.${_OCTET2}.${_OCTET3}.2"
 HOST_IFINDEX=
 NS_IFINDEX=
 
@@ -228,3 +235,5 @@ trap 'cleanup 1' INT TERM
 ################################################################################
 
 WITH_TIMEOUT="timeout --signal INT --preserve-status .5"
+
+mkdir -p ${WORKDIR}
