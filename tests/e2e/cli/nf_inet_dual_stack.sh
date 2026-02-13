@@ -12,14 +12,11 @@ ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} bfcli chain set --from-str "chain nf_dual_0 BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT rule ip4.proto icmp counter DROP"
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 
-# Verify that both inet4 and inet6 BPF links were created
-# We expect to see 2 netfilter links attached (one for PF_INET, one for PF_INET6)
-# BPF links are in the BPF filesystem, not network namespace, so check from host
-LINK_COUNT=$(bpftool link show 2>&1 | grep -c "netfilter")
+# Verify that both inet4 and inet6 BPF links were created (bf_link + bf_link_extra)
+LINK_COUNT=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/nf_dual_0/ -name 'bf_link*' | wc -l)
 if [ "${LINK_COUNT}" -ne 2 ]; then
     echo "ERROR: Expected 2 netfilter links (inet4 + inet6), found ${LINK_COUNT}"
-    echo "DEBUG: Full bpftool link output:"
-    bpftool link show || true
+    ${FROM_NS} ls -la ${WORKDIR}/bpf/bpfilter/nf_dual_0/ || true
     exit 1
 fi
 
@@ -30,10 +27,10 @@ ${FROM_NS} bfcli chain update --name nf_dual_0 --from-str "chain nf_dual_0 BF_HO
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 
 # Verify both links still exist after update
-LINK_COUNT_AFTER=$(bpftool link show 2>&1 | grep -c "netfilter")
+LINK_COUNT_AFTER=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/nf_dual_0/ -name 'bf_link*' | wc -l)
 if [ "${LINK_COUNT_AFTER}" -ne 2 ]; then
     echo "ERROR: Expected 2 netfilter links after update, found ${LINK_COUNT_AFTER}"
-    bpftool link show || true
+    ${FROM_NS} ls -la ${WORKDIR}/bpf/bpfilter/nf_dual_0/ || true
     exit 1
 fi
 
@@ -42,9 +39,9 @@ ${FROM_NS} bfcli chain flush --name nf_dual_0
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 
 # Verify links are removed after flush
-LINK_COUNT_FINAL=$(bpftool link show 2>&1 | grep -c "netfilter" || echo "0")
+LINK_COUNT_FINAL=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/nf_dual_0/ -name 'bf_link*' | wc -l || echo "0")
 if [ "${LINK_COUNT_FINAL}" -ne 0 ]; then
     echo "ERROR: Expected 0 netfilter links after flush, found ${LINK_COUNT_FINAL}"
-    bpftool link show || true
+    ${FROM_NS} ls -la ${WORKDIR}/bpf/bpfilter/nf_dual_0/ || true
     exit 1
 fi
