@@ -4,7 +4,6 @@ set -eux
 
 IN_SANBOX=0
 WITH_DAEMON=0
-HAS_TOKEN_SUPPORT=0
 TEST_PATH=
 FROM_NS=
 
@@ -33,9 +32,8 @@ NS_IFINDEX=
 
 # Tested binaries
 BFCLI=bfcli
-_BPFILTER=bpfilter
+_BPFILTER=$(command -v bpfilter)
 BPFILTER= # bpfilter command to use in tests (includes the required options)
-SETUSERNS=setuserns
 RULESETS_DIR=.
 
 ################################################################################
@@ -54,9 +52,6 @@ make_sandbox() {
         setenforce 0 || true
     fi
 
-    # Check if BPF token is supported
-    bash -c "sudo bpftool btf dump file /sys/kernel/btf/vmlinux format c | grep -q \"__s32 prog_token_fd;\"" && HAS_TOKEN_SUPPORT=1 || HAS_TOKEN_SUPPORT=0
-
     # Create the namespaces mount points
     mkdir ${WORKDIR}/{ns,bpf}
     mount --bind ${WORKDIR}/ns ${WORKDIR}/ns
@@ -67,43 +62,19 @@ make_sandbox() {
     # Create the netns to be used by unshare
     ip netns add ${NETNS_NAME}
 
-    # Create the user and mount namespaces, mount a new /run to have the bpfilter socket
-    if [ $HAS_TOKEN_SUPPORT -eq 1 ]; then
-        ${SETUSERNS} out --socket ${SETUSERNS_SOCKET_PATH} &
-        SETUSERNS_PID=$!
-
-        # util-linux 2.38+ supports --map-users/--map-groups
-        UNSHARE_VERSION=$(unshare --version | grep -oP '\d+\.\d+' | head -1)
-        if [ "$(printf '%s\n' "2.38" "$UNSHARE_VERSION" | sort -V | head -1)" = "2.38" ]; then
-            UNSHARE_MAP_OPTS="--map-users=all --map-groups=all"
-        else
-            UNSHARE_MAP_OPTS=""
-        fi
-
         unshare \
-            --user=${WORKDIR}/ns/user \
             --mount=${WORKDIR}/ns/mnt \
             --net=/var/run/netns/${NETNS_NAME} \
             --keep-caps \
-            ${UNSHARE_MAP_OPTS} \
-            -r /bin/bash -c "
+        /bin/bash -c "
                 set -e
                 mount -t tmpfs tmpfs /run
-                ${SETUSERNS} in --socket ${SETUSERNS_SOCKET_PATH} --bpffs-mount-path ${WORKDIR}/bpf
-        " &
+            mount -t bpf bpf ${WORKDIR}/bpf
+    "
 
-        BPFILTER="${_BPFILTER} --verbose debug --with-bpf-token --bpffs-path ${WORKDIR}/bpf"
-        wait $SETUSERNS_PID
-    else
-        unshare --net=/var/run/netns/${NETNS_NAME} &
-        BPFILTER="${_BPFILTER} --verbose debug"
-    fi
+    BPFILTER="${_BPFILTER} --verbose debug --bpffs-path ${WORKDIR}/bpf"
 
-    if [ "${HAS_TOKEN_SUPPORT:-1}" -eq 1 ]; then
-        FROM_NS="nsenter --mount=${WORKDIR}/ns/mnt --user=${WORKDIR}/ns/user --net=/var/run/netns/${NETNS_NAME}"
-    else
-        FROM_NS="nsenter --net=/var/run/netns/${NETNS_NAME}"
-    fi
+    FROM_NS="nsenter --mount=${WORKDIR}/ns/mnt --net=/var/run/netns/${NETNS_NAME}"
 
     # Create the veth
     ip link add ${VETH_HOST} type veth peer name ${VETH_NS}
@@ -130,7 +101,6 @@ make_sandbox() {
     echo "  Tested binaries"
     echo "    bfcli: ${BFCLI}"
     echo "    bpfilter: ${_BPFILTER}"
-    echo "    setuserns: ${SETUSERNS}"
     echo "    rulesets-dir: ${RULESETS_DIR}"
 }
 
@@ -141,13 +111,8 @@ destroy_sandbox() {
     umount /var/run/netns/${NETNS_NAME} || true
     ip netns delete ${NETNS_NAME} || true
 
-    # If BPF token is not supported, user and mnt namespaces are not mounted
-    if [ "${HAS_TOKEN_SUPPORT:-1}" -eq 1 ]; then
         umount ${WORKDIR}/bpf || true
-        umount ${WORKDIR}/ns/user || true
         umount ${WORKDIR}/ns/mnt || true
-    fi
-
     umount ${WORKDIR}/ns || true
 
     rm -rf ${WORKDIR} || true
