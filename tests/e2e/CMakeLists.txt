@@ -68,6 +68,7 @@ bf_add_e2e_test(e2e daemon/netns_to_host.sh ROOT)
 bf_add_e2e_test(e2e daemon/pin_updated_chain.sh ROOT)
 bf_add_e2e_test(e2e daemon/restore_attached.sh ROOT)
 bf_add_e2e_test(e2e daemon/restore_non_attached.sh ROOT)
+bf_add_e2e_test(e2e daemon/restore_with_sets.sh ROOT)
 bf_add_e2e_test(e2e daemon/sock_exists.sh ROOT)
 
 bf_add_e2e_test(e2e matchers/icmp_code.sh)
