@@ -75,7 +75,13 @@ start_bpfilter
     ${FROM_NS} bfcli chain set --from-str "chain test BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
         rule (ip4.saddr) in { 192.168.1.1 } DROP
         rule (ip4.saddr) in {} ACCEPT"
-    # Verify only 1 set map was pinned (empty set should not create a map)
-    MAP_COUNT=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/test/ -name 'set_*' | wc -l)
+
+    # Verify only 1 set map is associated to the program (empty set should not create a map)
+    MAP_IDS=$(${FROM_NS} bpftool -j prog show pinned ${WORKDIR}/bpf/bpfilter/test/bf_prog | jq -r '.map_ids[]')
+    MAP_COUNT=0
+    for map_id in ${MAP_IDS}; do
+        name=$(${FROM_NS} bpftool -j map show id ${map_id} | jq -r '.name')
+        [[ "${name}" == set_* ]] && MAP_COUNT=$((MAP_COUNT + 1))
+    done
     [ "${MAP_COUNT}" -eq 1 ] || { echo "ERROR: Expected 1 set map, found ${MAP_COUNT}"; exit 1; }
 stop_bpfilter

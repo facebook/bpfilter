@@ -73,6 +73,26 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
                         const struct bf_set *set);
 
 /**
+ * @brief Allocate and initialize a new map from an existing BPF map file
+ * descriptor.
+ *
+ * Uses `BPF_OBJ_GET_INFO_BY_FD` to query the map's properties and BTF data.
+ * The internal `bf_map_type` is determined from the BTF decl tag attached to
+ * the map's value type. Ring buffer maps do not allow for BTF data, so any
+ * ring buffer map is assumed to be a log map.
+ *
+ * The file descriptor is duplicated internally; the caller retains ownership
+ * of `fd`.
+ *
+ * @param map Map object to allocate and initialize. On success, `*map` points
+ *        to a valid @ref bf_map . On failure, `*map` is unchanged. Can't be
+ *        NULL.
+ * @param fd File descriptor of an existing BPF map. Must be valid.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_map_new_from_fd(struct bf_map **map, int fd);
+
+/**
  * @brief Allocate and initialize a new map from serialized data.
  *
  * @note The new bf_map object will represent a BPF map from bpfilter's point

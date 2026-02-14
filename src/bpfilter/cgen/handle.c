@@ -5,7 +5,10 @@
 
 #include "cgen/handle.h"
 
+#include <linux/bpf.h>
+
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -21,6 +24,7 @@
 
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
+#include "ctx.h"
 
 int bf_handle_new(struct bf_handle **handle, const char *prog_name)
 {
@@ -46,8 +50,10 @@ int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
                             bf_rpack_node_t node)
 {
     _free_bf_handle_ struct bf_handle *_handle = NULL;
+    _cleanup_free_ uint32_t *map_ids = NULL;
+    struct bpf_prog_info prog_info = {};
     _cleanup_free_ char *name = NULL;
-    bf_rpack_node_t child, array_node;
+    bf_rpack_node_t child;
     int r;
 
     assert(handle);
@@ -73,43 +79,59 @@ int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
             return bf_rpack_key_err(r, "bf_handle.link");
     }
 
-    r = bf_rpack_kv_node(node, "cmap", &child);
+    r = bf_bpf_obj_get_info(_handle->prog_fd, &prog_info, sizeof(prog_info));
     if (r)
-        return bf_rpack_key_err(r, "bf_handle.cmap");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_map_new_from_pack(&_handle->cmap, dir_fd, child);
+        return bf_err_r(r, "failed to get program info for '%s'", name);
+
+    if (prog_info.nr_map_ids > 0) {
+        uint32_t nr_map_ids = prog_info.nr_map_ids;
+
+        map_ids = calloc(nr_map_ids, sizeof(*map_ids));
+        if (!map_ids)
+            return -ENOMEM;
+
+        memset(&prog_info, 0, sizeof(prog_info));
+        prog_info.nr_map_ids = nr_map_ids;
+        prog_info.map_ids = bf_ptr_to_u64(map_ids);
+
+        r = bf_bpf_obj_get_info(_handle->prog_fd, &prog_info,
+                                sizeof(prog_info));
         if (r)
-            return bf_rpack_key_err(r, "bf_handle.cmap");
+            return bf_err_r(r, "failed to get map IDs for '%s'", name);
     }
 
-    r = bf_rpack_kv_node(node, "pmap", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_handle.pmap");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_map_new_from_pack(&_handle->pmap, dir_fd, child);
-        if (r)
-            return bf_rpack_key_err(r, "bf_handle.pmap");
-    }
-
-    r = bf_rpack_kv_node(node, "lmap", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_handle.lmap");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_map_new_from_pack(&_handle->lmap, dir_fd, child);
-        if (r)
-            return bf_rpack_key_err(r, "bf_handle.lmap");
-    }
-
-    r = bf_rpack_kv_array(node, "sets", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_handle.sets");
-    bf_rpack_array_foreach (child, array_node) {
+    for (uint32_t i = 0; i < prog_info.nr_map_ids; ++i) {
+        _cleanup_close_ int map_fd = -1;
         _free_bf_map_ struct bf_map *map = NULL;
 
-        r = bf_list_emplace(&_handle->sets, bf_map_new_from_pack, map, dir_fd,
-                            array_node);
+        map_fd = bf_bpf_map_get_fd_by_id(map_ids[i]);
+        if (map_fd < 0) {
+            return bf_err_r(map_fd, "failed to get fd for map ID %u",
+                            map_ids[i]);
+        }
+
+        r = bf_map_new_from_fd(&map, map_fd);
         if (r)
-            return bf_err_r(r, "failed to unpack bf_map into bf_handle.sets");
+            return bf_err_r(r, "failed to restore map from ID %u", map_ids[i]);
+
+        switch (map->type) {
+        case BF_MAP_TYPE_COUNTERS:
+            _handle->cmap = TAKE_PTR(map);
+            break;
+        case BF_MAP_TYPE_PRINTER:
+            _handle->pmap = TAKE_PTR(map);
+            break;
+        case BF_MAP_TYPE_LOG:
+            _handle->lmap = TAKE_PTR(map);
+            break;
+        case BF_MAP_TYPE_SET:
+            r = bf_list_push(&_handle->sets, (void **)&map);
+            if (r)
+                return r;
+            break;
+        default:
+            return bf_err_r(-EINVAL, "unknown bf_map type %d", map->type);
+        }
     }
 
     *handle = TAKE_PTR(_handle);
@@ -148,32 +170,6 @@ int bf_handle_pack(const struct bf_handle *handle, bf_wpack_t *pack)
     } else {
         bf_wpack_kv_nil(pack, "link");
     }
-
-    if (handle->cmap) {
-        bf_wpack_open_object(pack, "cmap");
-        bf_map_pack(handle->cmap, pack);
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "cmap");
-    }
-
-    if (handle->pmap) {
-        bf_wpack_open_object(pack, "pmap");
-        bf_map_pack(handle->pmap, pack);
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "pmap");
-    }
-
-    if (handle->lmap) {
-        bf_wpack_open_object(pack, "lmap");
-        bf_map_pack(handle->lmap, pack);
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "lmap");
-    }
-
-    bf_wpack_kv_list(pack, "sets", &handle->sets);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
@@ -262,38 +258,6 @@ int bf_handle_pin(struct bf_handle *handle, int dir_fd)
         goto err_unpin_all;
     }
 
-    if (handle->cmap) {
-        r = bf_map_pin(handle->cmap, dir_fd);
-        if (r) {
-            bf_err_r(r, "failed to pin BPF counters map");
-            goto err_unpin_all;
-        }
-    }
-
-    if (handle->pmap) {
-        r = bf_map_pin(handle->pmap, dir_fd);
-        if (r) {
-            bf_err_r(r, "failed to pin BPF printer map");
-            goto err_unpin_all;
-        }
-    }
-
-    if (handle->lmap) {
-        r = bf_map_pin(handle->lmap, dir_fd);
-        if (r) {
-            bf_err_r(r, "failed to pin BPF log map");
-            goto err_unpin_all;
-        }
-    }
-
-    bf_list_foreach (&handle->sets, set_node) {
-        r = bf_map_pin(bf_list_node_get_data(set_node), dir_fd);
-        if (r) {
-            bf_err_r(r, "failed to pin BPF set map");
-            goto err_unpin_all;
-        }
-    }
-
     if (handle->link) {
         r = bf_link_pin(handle->link, dir_fd);
         if (r) {
@@ -312,16 +276,6 @@ err_unpin_all:
 void bf_handle_unpin(struct bf_handle *handle, int dir_fd)
 {
     assert(handle);
-
-    if (handle->cmap)
-        bf_map_unpin(handle->cmap, dir_fd);
-    if (handle->pmap)
-        bf_map_unpin(handle->pmap, dir_fd);
-    if (handle->lmap)
-        bf_map_unpin(handle->lmap, dir_fd);
-
-    bf_list_foreach (&handle->sets, set_node)
-        bf_map_unpin(bf_list_node_get_data(set_node), dir_fd);
 
     if (handle->link)
         bf_link_unpin(handle->link, dir_fd);
