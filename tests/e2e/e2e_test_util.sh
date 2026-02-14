@@ -154,7 +154,10 @@ stop_bpfilter() {
 
     echo "Stop bpfilter"
 
-    bfcli ruleset flush || true
+    if [ "$skip_cleanup" -eq 0 ]; then
+        bfcli ruleset flush || true
+    fi
+
     kill $BPFILTER_PID 2>/dev/null || true
     wait $BPFILTER_PID || true
 
