@@ -96,7 +96,8 @@ struct bfc_opts_cmd
  * @brief Initialize a `bfc_opts` object to default values.
  */
 #define bfc_opts_default()                                                     \
-    {.object = _BFC_OBJECT_MAX, .action = _BFC_ACTION_MAX,                     \
+    {.object = _BFC_OBJECT_MAX,                                                \
+     .action = _BFC_ACTION_MAX,                                                \
      .set_add = bf_list_default(NULL, NULL),                                   \
      .set_remove = bf_list_default(NULL, NULL)};
 

@@ -302,7 +302,8 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
             return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
     }
 
-    r = bf_set_new(&to_remove, opts->set_name, dest_set->key, dest_set->n_comps);
+    r = bf_set_new(&to_remove, opts->set_name, dest_set->key,
+                   dest_set->n_comps);
     if (r)
         return bf_err_r(r, "failed to create set");
 
@@ -316,7 +317,8 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
 
     r = bf_chain_update_set(opts->name, to_add, to_remove);
     if (r)
-        return bf_err_r(r, "failed to update set '%s' in chain '%s'", opts->set_name, opts->name);
+        return bf_err_r(r, "failed to update set '%s' in chain '%s'",
+                        opts->set_name, opts->name);
 
     bf_info("updated set '%s' in chain '%s'", opts->set_name, opts->name);
 

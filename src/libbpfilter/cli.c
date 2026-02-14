@@ -535,10 +535,11 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
         return r;
     bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CHAIN_UPDATE_SET,
-                                 wpack);
+    r = bf_request_new_from_pack(&request, BF_FRONT_CLI,
+                                 BF_REQ_CHAIN_UPDATE_SET, wpack);
     if (r)
-        return bf_err_r(r, "bf_chain_update_set: failed to create a new request");
+        return bf_err_r(r,
+                        "bf_chain_update_set: failed to create a new request");
 
     fd = bf_connect_to_daemon();
     if (fd < 0)

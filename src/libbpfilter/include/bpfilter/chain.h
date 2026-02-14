@@ -156,7 +156,8 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
  * @param set_name Name of the set to retrieve. Can't be NULL.
  * @return Pointer to the set, or NULL if not found.
  */
-struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain, const char *set_name);
+struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain,
+                                        const char *set_name);
 
 /** Allocate and initialize a chain as a copy of another chain.
  *
