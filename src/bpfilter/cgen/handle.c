@@ -49,10 +49,13 @@ int bf_handle_new(struct bf_handle **handle, const char *prog_name)
 int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
                             bf_rpack_node_t node)
 {
+    _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     _free_bf_handle_ struct bf_handle *_handle = NULL;
     _cleanup_free_ uint32_t *map_ids = NULL;
-    struct bpf_prog_info prog_info = {};
+    _cleanup_close_ int link_fd = -1;
+    _cleanup_close_ int link_extra_fd = -1;
     _cleanup_free_ char *name = NULL;
+    struct bpf_prog_info prog_info = {};
     bf_rpack_node_t child;
     int r;
 
@@ -70,13 +73,26 @@ int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
     if (r < 0)
         return bf_err_r(r, "failed to restore bf_handle.prog_fd from pin");
 
-    r = bf_rpack_kv_node(node, "link", &child);
+    r = bf_rpack_kv_node(node, "hookopts", &child);
     if (r)
-        return bf_rpack_key_err(r, "bf_handle.link");
+        return bf_rpack_key_err(r, "bf_handle.hookopts");
     if (!bf_rpack_is_nil(child)) {
-        r = bf_link_new_from_pack(&_handle->link, dir_fd, child);
+        r = bf_hookopts_new_from_pack(&hookopts, child);
         if (r)
-            return bf_rpack_key_err(r, "bf_handle.link");
+            return bf_rpack_key_err(r, "bf_handle.hookopts");
+
+        r = bf_bpf_obj_get("bf_link", dir_fd, &link_fd);
+        if (r)
+            return bf_err_r(r, "failed to open chain's link");
+
+        r = bf_bpf_obj_get("bf_link_extra", dir_fd, &link_extra_fd);
+        if (r != 0 && r != -ENOENT)
+            return bf_err_r(r, "failed to open chain's link extra");
+
+        r = bf_link_new_from_fd(&_handle->link, &hookopts, link_fd,
+                                link_extra_fd);
+        if (r)
+            return bf_err_r(r, "failed to restore bf_link");
     }
 
     r = bf_bpf_obj_get_info(_handle->prog_fd, &prog_info, sizeof(prog_info));
@@ -164,11 +180,11 @@ int bf_handle_pack(const struct bf_handle *handle, bf_wpack_t *pack)
     bf_wpack_kv_str(pack, "prog_name", handle->prog_name);
 
     if (handle->link) {
-        bf_wpack_open_object(pack, "link");
-        bf_link_pack(handle->link, pack);
+        bf_wpack_open_object(pack, "hookopts");
+        bf_hookopts_pack(handle->link->hookopts, pack);
         bf_wpack_close_object(pack);
     } else {
-        bf_wpack_kv_nil(pack, "link");
+        bf_wpack_kv_nil(pack, "hookopts");
     }
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;

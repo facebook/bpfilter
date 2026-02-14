@@ -3,6 +3,8 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
+#define _GNU_SOURCE
+
 #include "cgen/prog/link.h"
 
 #include <linux/bpf.h>
@@ -17,6 +19,7 @@
 #include <unistd.h>
 
 #include <bpfilter/bpf.h>
+#include <bpfilter/bpf_types.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
@@ -49,6 +52,8 @@ int bf_link_new(struct bf_link **link, enum bf_hook hook,
         return -ENOMEM;
 
     _link->hook = hook;
+    _link->fd = -1;
+    _link->fd_extra = -1;
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
@@ -140,6 +145,116 @@ int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
                         "failed to open pinned extra BPF link 'bf_link_extra'");
     }
 
+    *link = TAKE_PTR(_link);
+
+    return 0;
+}
+
+int bf_link_new_from_fd(struct bf_link **link, struct bf_hookopts **hookopts,
+                        int fd, int fd_extra)
+{
+    _free_bf_link_ struct bf_link *_link = NULL;
+    struct bpf_link_info info = {};
+    int r;
+
+    assert(link);
+
+    r = bf_bpf_obj_get_info(fd, &info, sizeof(info));
+    if (r)
+        return bf_err_r(r, "failed to get BPF link info from fd %d", fd);
+
+    _link = calloc(1, sizeof(*_link));
+    if (!_link)
+        return -ENOMEM;
+
+    _link->fd = -1;
+    _link->fd_extra = -1;
+
+    switch (info.type) {
+    case BPF_LINK_TYPE_XDP:
+        _link->hook = BF_HOOK_XDP;
+        if (!((*hookopts)->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX)) ||
+            (int)info.xdp.ifindex != (*hookopts)->ifindex) {
+            return bf_err_r(-EINVAL,
+                            "hookopts doesn't define same ifindex as the link");
+        }
+        break;
+    case BPF_LINK_TYPE_TCX:
+        if (info.tcx.attach_type == BF_BPF_TCX_INGRESS)
+            _link->hook = BF_HOOK_TC_INGRESS;
+        else if (info.tcx.attach_type == BF_BPF_TCX_ENGRESS)
+            _link->hook = BF_HOOK_TC_EGRESS;
+        else
+            return bf_err_r(-EINVAL, "unknown TCX attach type %u",
+                            info.tcx.attach_type);
+        if (!((*hookopts)->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX)) ||
+            (int)info.tcx.ifindex != (*hookopts)->ifindex) {
+            return bf_err_r(-EINVAL,
+                            "hookopts doesn't define same ifindex as the link");
+        }
+        break;
+    case BPF_LINK_TYPE_NETFILTER:
+        _link->hook = bf_hook_from_nf_hook(info.netfilter.hooknum);
+        if ((int)_link->hook < 0)
+            return bf_err_r(-EINVAL, "unknown NF hooknum %u",
+                            info.netfilter.hooknum);
+        if (!((*hookopts)->used_opts & BF_FLAG(BF_HOOKOPTS_PRIORITIES)) ||
+            info.netfilter.priority != (*hookopts)->priorities[0]) {
+            return bf_err_r(
+                -EINVAL, "hookopts doesn't define same priority as the link");
+        }
+        break;
+    case BPF_LINK_TYPE_CGROUP:
+        if (info.cgroup.attach_type == BF_BPF_CGROUP_INET_INGRESS)
+            _link->hook = BF_HOOK_CGROUP_INGRESS;
+        else if (info.cgroup.attach_type == BF_BPF_CGROUP_INET_EGRESS)
+            _link->hook = BF_HOOK_CGROUP_EGRESS;
+        else
+            return bf_err_r(-EINVAL, "unknown cgroup attach type %u",
+                            info.cgroup.attach_type);
+
+        {
+            /* MAX_HANDLE_SZ is 128 */
+            struct cgid_file_handle
+            {
+                unsigned int handle_bytes;
+                int handle_type;
+                unsigned char f_handle[128];
+            };
+
+            struct cgid_file_handle handle = {.handle_bytes = 128};
+            int mount_id;
+
+            if (!((*hookopts)->used_opts & BF_FLAG(BF_HOOKOPTS_PRIORITIES)))
+                return bf_err_r(-EINVAL, "missing cgpath in hookopts");
+
+            if (name_to_handle_at(AT_FDCWD, (*hookopts)->cgpath,
+                                  (struct file_handle *)&handle, &mount_id,
+                                  0) < 0)
+                return bf_err_r(errno, "failed to validate cgid");
+
+            if (info.cgroup.cgroup_id != *(uint64_t *)handle.f_handle) {
+                return bf_err_r(
+                    -EINVAL, "hookopts doesn't define same cgroup as the link");
+            }
+        }
+        break;
+    default:
+        return bf_err_r(-ENOTSUP, "unsupported BPF link type %u", info.type);
+    }
+
+    _link->fd = dup(fd);
+    if (_link->fd < 0)
+        return bf_err_r(-errno, "failed to duplicate link fd %d", fd);
+
+    if (fd_extra >= 0) {
+        _link->fd_extra = dup(fd_extra);
+        if (_link->fd_extra < 0)
+            return bf_err_r(-errno, "failed to duplicate extra link fd %d",
+                            fd_extra);
+    }
+
+    _link->hookopts = TAKE_PTR(*hookopts);
     *link = TAKE_PTR(_link);
 
     return 0;

@@ -65,6 +65,25 @@ int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
                           bf_rpack_node_t node);
 
 /**
+ * @brief Create a new link from its file descriptor.
+ *
+ * Reconstruct a `bf_link` from kernel state by querying `bpf_link_info`.
+ * The hook type and hook options are derived from the link's type-specific
+ * fields. Both file descriptors are duplicated internally.
+ *
+ * @param link Link object to allocate and initialize. On failure, @c *link is
+ *        unchanged. Can't be NULL.
+ * @param hookopts Hook options used when creating the link. On success, the
+ *        new link takes ownership of it. Can't be NULL.
+ * @param fd File descriptor of the BPF link. Must be valid.
+ * @param fd_extra File descriptor of the extra BPF link (e.g. inet6 for
+ *        Netfilter). Pass -1 if not applicable.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_link_new_from_fd(struct bf_link **link, struct bf_hookopts **hookopts,
+                        int fd, int fd_extra);
+
+/**
  * Deallocate a `bf_link` object.
  *
  * The BPF link's file descriptor contained in `link` is closed and set to
