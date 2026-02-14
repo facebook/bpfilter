@@ -20,6 +20,7 @@ add_executable(bpfilter
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip6.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip6.c

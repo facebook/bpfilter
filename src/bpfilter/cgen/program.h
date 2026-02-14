@@ -185,10 +185,9 @@
     })
 
 struct bf_chain;
-struct bf_map;
 struct bf_counter;
-struct bf_link;
 struct bf_hookopts;
+struct bf_handle;
 
 struct bf_program
 {
@@ -198,19 +197,10 @@ struct bf_program
     /// Log messages printer
     struct bf_printer *printer;
 
-    /// Counters map
-    struct bf_map *cmap;
-    /// Printer map
-    struct bf_map *pmap;
-    /// Log map
-    struct bf_map *lmap;
-    /// List of set maps. Entries can be NULL for empty sets.
-    bf_list sets;
-
-    /** Link objects attaching the program to a hook.
-     * @todo A ``bf_program`` should not have any link until the program is
-     * attached. */
-    struct bf_link *link;
+    /** Handle containing BPF object references (prog_fd, maps, link).
+     * Created in bf_program_new(), populated during load/attach.
+     * Can be transferred to bf_cgen via bf_program_take_handle(). */
+    struct bf_handle *handle;
 
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
@@ -223,13 +213,6 @@ struct bf_program
      * This data is not serialized. */
     struct
     {
-        /** File descriptor of the program. */
-        int prog_fd;
-
-        /** File descriptor of the directory to pin the program into. Unused
-         * in transient mode. */
-        int pindir_fd;
-
         /** Hook-specific ops to use to generate the program. */
         const struct bf_flavor_ops *ops;
 
@@ -368,6 +351,18 @@ void bf_program_detach(struct bf_program *prog);
  * @param prog Program to unload. Must not be attached. Can't be NULL.
  */
 void bf_program_unload(struct bf_program *prog);
+
+/**
+ * @brief Transfer ownership of the handle from the program.
+ *
+ * After this call, the program no longer owns the handle and the caller
+ * becomes responsible for freeing it. The program's handle pointer is set
+ * to NULL.
+ *
+ * @param prog Program to take the handle from. Can't be NULL.
+ * @return The handle, or NULL if the program has no handle.
+ */
+struct bf_handle *bf_program_take_handle(struct bf_program *prog);
 
 int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter);
