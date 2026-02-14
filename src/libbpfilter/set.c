@@ -445,9 +445,7 @@ static int _bf_set_cmp_key_format(const struct bf_set *first,
 
     if (memcmp(first->key, second->key,
                first->n_comps * sizeof(enum bf_matcher_type)) != 0)
-        return bf_err_r(
-            -EINVAL,
-            "set key component type mismatch");
+        return bf_err_r(-EINVAL, "set key component type mismatch");
 
     return 0;
 }
@@ -481,7 +479,8 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
         }
 
         if (!found) {
-            r = bf_list_add_tail(&dest->elems, bf_list_node_get_data(elem_node));
+            r = bf_list_add_tail(&dest->elems,
+                                 bf_list_node_get_data(elem_node));
             if (r)
                 return bf_err_r(r, "failed to add element to set");
             // Take ownership of data to stop to_add cleanup from freeing it.

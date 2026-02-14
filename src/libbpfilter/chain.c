@@ -319,7 +319,8 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
     return bf_list_get_at(&chain->sets, set_id);
 }
 
-struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain, const char *set_name)
+struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain,
+                                        const char *set_name)
 {
     assert(chain);
     assert(set_name);

@@ -173,9 +173,11 @@ int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
 
     r = bf_if_index_from_str(raw_payload, (uint32_t *)payload);
     if (r) {
-        return bf_err_r(r,
+        return bf_err_r(
+            r,
             "\"%s %s\" expects an interface name (e.g., \"eth0\", \"wlan0\") or a decimal interface index (e.g., \"1\", \"2\"), not '%s'",
-            bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+            bf_matcher_type_to_str(type), bf_matcher_op_to_str(op),
+            raw_payload);
     }
 
     return 0;
