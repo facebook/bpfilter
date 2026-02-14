@@ -17,10 +17,8 @@
  */
 struct bf_link
 {
-    /** Name of the link. From the kernel perspective, BPF link objects don't
-     * have a name like the programs, but this name will be used to pin the
-     * link. */
-    char name[BPF_OBJ_NAME_LEN];
+    /** Hook to which the link is attached. */
+    enum bf_hook hook;
 
     /** Hook options used for the link. Only valid if the link is materialized */
     struct bf_hookopts *hookopts;
@@ -44,10 +42,14 @@ struct bf_link
  *
  * @param link `bf_link` object to allocate and initialize. On failure,
  *        this parameter is unchanged. Can't be NULL.
- * @param name Name of the link. Can't be empty or NULL.
+ * @param hook Hook to attach the link to.
+ * @param hookopts Hook options used to create the link. Each hook will require
+ *        specific hook options. On success, `link` will own it. Can't be NULL.
+ * @param prog_fd File descriptor of the BPF program to attach.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_link_new(struct bf_link **link, const char *name);
+int bf_link_new(struct bf_link **link, enum bf_hook hook,
+                struct bf_hookopts **hookopts, int prog_fd);
 
 /**
  * @brief Allocate and initialize a new link from serialized data.
@@ -92,39 +94,16 @@ int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack);
 void bf_link_dump(const struct bf_link *link, prefix_t *prefix);
 
 /**
- * Attach a BPF program to a hook using a the link.
- *
- * @todo Validate `hookopts` before attaching the link.
- *
- * @param link `bf_link` object to use to attach the program. Can't be NULL.
- * @param hook Hook to attach the program to.
- * @param hookopts Hook-specific options to use to attach the program to the
- *        hook. Can't be NULL.
- * @param prog_fd BPF program to attach.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_link_attach(struct bf_link *link, enum bf_hook hook,
-                   struct bf_hookopts **hookopts, int prog_fd);
-
-/**
  * Replace the program attached to the link.
  *
  * BPF link allows for the program they attach to, to be replaced atomically
  * with another program.
  *
  * @param link Link to update. Can't be NULL.
- * @param hook Hook the link is already attached to.
  * @param prog_fd File descriptor of the new program to attach to the link.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd);
-
-/**
- * Detach the BPF link from the hook.
- *
- * @param link Link to detach. Can't be NULL.
- */
-void bf_link_detach(struct bf_link *link);
+int bf_link_update(struct bf_link *link, int prog_fd);
 
 /**
  * Pin the link to the system.

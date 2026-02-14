@@ -24,163 +24,12 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/pack.h>
 
-int bf_link_new(struct bf_link **link, const char *name)
+static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook);
+
+int bf_link_new(struct bf_link **link, enum bf_hook hook,
+                struct bf_hookopts **hookopts, int prog_fd)
 {
     _free_bf_link_ struct bf_link *_link = NULL;
-
-    assert(link);
-    assert(name);
-    assert(name[0] != '\0');
-
-    _link = malloc(sizeof(*_link));
-    if (!_link)
-        return -ENOMEM;
-
-    bf_strncpy(_link->name, BPF_OBJ_NAME_LEN, name);
-
-    _link->hookopts = NULL;
-    _link->fd = -1;
-    _link->fd_extra = -1;
-
-    *link = TAKE_PTR(_link);
-
-    return 0;
-}
-
-int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
-                          bf_rpack_node_t node)
-{
-    _free_bf_link_ struct bf_link *_link = NULL;
-    _cleanup_free_ char *name = NULL;
-    bf_rpack_node_t child;
-    int r;
-
-    assert(link);
-
-    r = bf_rpack_kv_str(node, "name", &name);
-    if (r)
-        return bf_rpack_key_err(r, "bf_link.name");
-
-    r = bf_link_new(&_link, name);
-    if (r)
-        return bf_err_r(r, "failed to create bf_link from pack");
-
-    r = bf_rpack_kv_node(node, "hookopts", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_link.hookopts");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_hookopts_new_from_pack(&_link->hookopts, child);
-        if (r)
-            return r;
-    }
-
-    if (dir_fd != -1) {
-        r = bf_bpf_obj_get("bf_link", dir_fd, &_link->fd);
-        if (r)
-            return bf_err_r(r, "failed to open pinned BPF link 'bf_link'");
-
-        r = bf_bpf_obj_get("bf_link_extra", dir_fd, &_link->fd_extra);
-        if (r && r != -ENOENT) {
-            return bf_err_r(
-                r, "failed to open pinned extra BPF link 'bf_link_extra'");
-        }
-    }
-
-    *link = TAKE_PTR(_link);
-
-    return 0;
-}
-
-void bf_link_free(struct bf_link **link)
-{
-    assert(link);
-
-    if (!*link)
-        return;
-
-    bf_hookopts_free(&(*link)->hookopts);
-    closep(&(*link)->fd);
-    closep(&(*link)->fd_extra);
-    freep((void *)link);
-}
-
-int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack)
-{
-    assert(link);
-    assert(pack);
-
-    bf_wpack_kv_str(pack, "name", link->name);
-
-    if (link->hookopts) {
-        bf_wpack_open_object(pack, "hookopts");
-        bf_hookopts_pack(link->hookopts, pack);
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "hookopts");
-    }
-
-    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
-}
-
-void bf_link_dump(const struct bf_link *link, prefix_t *prefix)
-{
-    assert(link);
-    assert(prefix);
-
-    DUMP(prefix, "struct bf_link at %p", link);
-
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "name: %s", link->name);
-
-    if (link->hookopts) {
-        DUMP(prefix, "hookopts: struct bf_hookopts *");
-        bf_dump_prefix_push(prefix);
-        bf_hookopts_dump(link->hookopts, prefix);
-        bf_dump_prefix_pop(prefix);
-    } else {
-        DUMP(prefix, "hookopts: struct bf_hookopts * (NULL)");
-    }
-
-    DUMP(bf_dump_prefix_last(prefix), "fd: %d", link->fd);
-    DUMP(bf_dump_prefix_last(prefix), "fd_extra: %d", link->fd_extra);
-    bf_dump_prefix_pop(prefix);
-}
-
-/**
- * @brief Try to attach an XDP program, probing for the best available mode.
- *
- * Tries driver mode first, falling back to SKB mode.
- *
- * @param prog_fd File descriptor of the BPF program to attach.
- * @param ifindex Network interface index to attach the program to.
- * @param hook Hook to attach the program to.
- * @return File descriptor of the created link on success, negative errno on failure.
- */
-static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
-{
-    int r;
-
-    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_DRV_MODE, 0, 0);
-    if (r >= 0) {
-        bf_info("attached XDP program in driver mode");
-        return r;
-    }
-
-    if (r != -ENOTSUP)
-        return r;
-
-    bf_dbg_r(r, "driver mode not available");
-
-    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_SKB_MODE, 0, 0);
-    if (r >= 0)
-        bf_info("attached XDP program in SKB mode");
-
-    return r;
-}
-
-int bf_link_attach(struct bf_link *link, enum bf_hook hook,
-                   struct bf_hookopts **hookopts, int prog_fd)
-{
     _cleanup_close_ int fd = -1;
     _cleanup_close_ int fd_extra = -1;
     _cleanup_close_ int cgroup_fd = -1;
@@ -189,6 +38,17 @@ int bf_link_attach(struct bf_link *link, enum bf_hook hook,
 
     assert(link);
     assert(hookopts);
+
+    if (!*hookopts) {
+        return bf_err_r(-EINVAL,
+                        "hookopts are required when created a new bf_link");
+    }
+
+    _link = calloc(1, sizeof(*_link));
+    if (!_link)
+        return -ENOMEM;
+
+    _link->hook = hook;
 
     switch (bf_hook_to_flavor(hook)) {
     case BF_FLAVOR_XDP:
@@ -237,11 +97,131 @@ int bf_link_attach(struct bf_link *link, enum bf_hook hook,
         return -ENOTSUP;
     }
 
-    link->fd = TAKE_FD(fd);
-    link->fd_extra = TAKE_FD(fd_extra);
-    link->hookopts = TAKE_PTR(*hookopts);
+    _link->fd = TAKE_FD(fd);
+    _link->fd_extra = TAKE_FD(fd_extra);
+    _link->hookopts = TAKE_PTR(*hookopts);
+
+    *link = TAKE_PTR(_link);
 
     return 0;
+}
+
+int bf_link_new_from_pack(struct bf_link **link, int dir_fd,
+                          bf_rpack_node_t node)
+{
+    _free_bf_link_ struct bf_link *_link = NULL;
+    bf_rpack_node_t child;
+    int r;
+
+    assert(link);
+
+    _link = malloc(sizeof(*_link));
+    if (!_link)
+        return -ENOMEM;
+
+    r = bf_rpack_kv_enum(node, "hook", &_link->hook, 0, _BF_HOOK_MAX);
+    if (r)
+        return bf_rpack_key_err(r, "bf_link.hook");
+
+    r = bf_rpack_kv_node(node, "hookopts", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_link.hookopts");
+    r = bf_hookopts_new_from_pack(&_link->hookopts, child);
+    if (r)
+        return r;
+
+    r = bf_bpf_obj_get("bf_link", dir_fd, &_link->fd);
+    if (r)
+        return bf_err_r(r, "failed to open pinned BPF link 'bf_link'");
+
+    r = bf_bpf_obj_get("bf_link_extra", dir_fd, &_link->fd_extra);
+    if (r && r != -ENOENT) {
+        return bf_err_r(r,
+                        "failed to open pinned extra BPF link 'bf_link_extra'");
+    }
+
+    *link = TAKE_PTR(_link);
+
+    return 0;
+}
+
+void bf_link_free(struct bf_link **link)
+{
+    assert(link);
+
+    if (!*link)
+        return;
+
+    bf_hookopts_free(&(*link)->hookopts);
+    closep(&(*link)->fd);
+    closep(&(*link)->fd_extra);
+    freep((void *)link);
+}
+
+int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack)
+{
+    assert(link);
+    assert(pack);
+
+    bf_wpack_kv_enum(pack, "hook", link->hook);
+    bf_wpack_open_object(pack, "hookopts");
+    bf_hookopts_pack(link->hookopts, pack);
+    bf_wpack_close_object(pack);
+
+    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
+}
+
+void bf_link_dump(const struct bf_link *link, prefix_t *prefix)
+{
+    assert(link);
+    assert(prefix);
+
+    DUMP(prefix, "struct bf_link at %p", link);
+
+    bf_dump_prefix_push(prefix);
+
+    DUMP(prefix, "hook: %s", bf_hook_to_str(link->hook));
+
+    DUMP(prefix, "hookopts: struct bf_hookopts *");
+    bf_dump_prefix_push(prefix);
+    bf_hookopts_dump(link->hookopts, prefix);
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "fd: %d", link->fd);
+    DUMP(bf_dump_prefix_last(prefix), "fd_extra: %d", link->fd_extra);
+    bf_dump_prefix_pop(prefix);
+}
+
+/**
+ * @brief Try to attach an XDP program, probing for the best available mode.
+ *
+ * Tries driver mode first, falling back to SKB mode.
+ *
+ * @param prog_fd File descriptor of the BPF program to attach.
+ * @param ifindex Network interface index to attach the program to.
+ * @param hook Hook to attach the program to.
+ * @return File descriptor of the created link on success, negative errno on failure.
+ */
+static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
+{
+    int r;
+
+    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_DRV_MODE, 0, 0);
+    if (r >= 0) {
+        bf_info("attached XDP program in driver mode");
+        return r;
+    }
+
+    if (r != -ENOTSUP)
+        return r;
+
+    bf_dbg_r(r, "driver mode not available");
+
+    r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_SKB_MODE, 0, 0);
+    if (r >= 0)
+        bf_info("attached XDP program in SKB mode");
+
+    return r;
 }
 
 static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
@@ -281,53 +261,26 @@ static int _bf_link_update_nf(struct bf_link *link, enum bf_hook hook,
     return 0;
 }
 
-int bf_link_update(struct bf_link *link, enum bf_hook hook, int prog_fd)
+int bf_link_update(struct bf_link *link, int prog_fd)
 {
     assert(link);
 
     int r;
 
-    switch (bf_hook_to_flavor(hook)) {
+    switch (bf_hook_to_flavor(link->hook)) {
     case BF_FLAVOR_XDP:
     case BF_FLAVOR_TC:
     case BF_FLAVOR_CGROUP:
         r = bf_bpf_link_update(link->fd, prog_fd);
         break;
     case BF_FLAVOR_NF:
-        r = _bf_link_update_nf(link, hook, prog_fd);
+        r = _bf_link_update_nf(link, link->hook, prog_fd);
         break;
     default:
         return -ENOTSUP;
     }
 
     return r;
-}
-
-void bf_link_detach(struct bf_link *link)
-{
-    assert(link);
-
-    int r;
-
-    r = bf_bpf_link_detach(link->fd);
-    if (r) {
-        bf_warn_r(
-            r,
-            "call to BPF_LINK_DETACH failed, closing the file descriptor and assuming the link is destroyed");
-    }
-
-    if (link->fd_extra > 0) {
-        r = bf_bpf_link_detach(link->fd_extra);
-        if (r) {
-            bf_warn_r(
-                r,
-                "call to BPF_LINK_DETACH for extra link failed, closing the file descriptor and assuming the link is destroyed");
-        }
-    }
-
-    bf_hookopts_free(&link->hookopts);
-    closep(&link->fd);
-    closep(&link->fd_extra);
 }
 
 int bf_link_pin(struct bf_link *link, int dir_fd)
