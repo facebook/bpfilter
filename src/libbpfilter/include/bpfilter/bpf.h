@@ -162,6 +162,39 @@ int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
                             size_t count, int flags);
 
 /**
+ * @brief Get information about a BPF object from its file descriptor.
+ *
+ * Uses `BPF_OBJ_GET_INFO_BY_FD` to query the kernel for information about
+ * a BPF object (map, program, BTF, or link). The caller must provide the
+ * appropriate info structure for the object type (e.g. `struct bpf_map_info`
+ * for maps, `struct bpf_btf_info` for BTF).
+ *
+ * @param fd File descriptor of the BPF object to query. Must be valid.
+ * @param info Pointer to the info structure to fill. Can't be NULL.
+ * @param info_len Size of the info structure.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_bpf_obj_get_info(int fd, void *info, uint32_t info_len);
+
+/**
+ * @brief Get a file descriptor for a BPF map from its ID.
+ *
+ * @param id Map ID to look up.
+ * @return A valid map file descriptor on success (owned by the caller),
+ *         or a negative errno value on failure.
+ */
+int bf_bpf_map_get_fd_by_id(uint32_t id);
+
+/**
+ * @brief Get a file descriptor for a BTF object from its ID.
+ *
+ * @param id BTF ID to look up.
+ * @return A valid BTF file descriptor on success (owned by the caller),
+ *         or a negative errno value on failure.
+ */
+int bf_bpf_btf_get_fd_by_id(uint32_t id);
+
+/**
  * @brief Create a new BPF link.
  *
  * @param prog_fd File descriptor of the program to attach to the link.

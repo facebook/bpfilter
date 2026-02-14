@@ -267,6 +267,43 @@ int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
     return bf_bpf(BF_BPF_MAP_UPDATE_BATCH, &attr);
 }
 
+int bf_bpf_obj_get_info(int fd, void *info, uint32_t info_len)
+{
+    union bpf_attr attr;
+
+    assert(info);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.info.bpf_fd = fd;
+    attr.info.info_len = info_len;
+    attr.info.info = bf_ptr_to_u64(info);
+
+    return bf_bpf(BF_BPF_OBJ_GET_INFO_BY_FD, &attr);
+}
+
+int bf_bpf_map_get_fd_by_id(uint32_t id)
+{
+    union bpf_attr attr;
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.map_id = id;
+
+    return bf_bpf(BF_BPF_MAP_GET_FD_BY_ID, &attr);
+}
+
+int bf_bpf_btf_get_fd_by_id(uint32_t id)
+{
+    union bpf_attr attr;
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.btf_id = id;
+
+    return bf_bpf(BF_BPF_BTF_GET_FD_BY_ID, &attr);
+}
+
 int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook, int flags,
                        uint32_t family, int32_t priority)
 {
