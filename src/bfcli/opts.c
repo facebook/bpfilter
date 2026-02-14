@@ -381,8 +381,8 @@ static void _bfc_opts_set_name_cb(struct argp_state *state, const char *arg,
     opts->set_name = arg;
 };
 
-static void _bfc_opts_set_add_cb(struct argp_state *state,
-                                         const char *arg, struct bfc_opts *opts)
+static void _bfc_opts_set_add_cb(struct argp_state *state, const char *arg,
+                                 struct bfc_opts *opts)
 {
     int r;
 
@@ -394,9 +394,8 @@ static void _bfc_opts_set_add_cb(struct argp_state *state,
         argp_error(state, "failed to add element to list");
 };
 
-static void _bfc_opts_set_remove_cb(struct argp_state *state,
-                                             const char *arg,
-                                             struct bfc_opts *opts)
+static void _bfc_opts_set_remove_cb(struct argp_state *state, const char *arg,
+                                    struct bfc_opts *opts)
 {
     int r;
 
@@ -522,7 +521,8 @@ struct bfc_opts_opt
         .key = 'R',
         .name = "remove",
         .arg = "ELEMENT",
-        .doc = "Element to remove from the set. Can be specified multiple times.",
+        .doc =
+            "Element to remove from the set. Can be specified multiple times.",
         .parser = _bfc_opts_set_remove_cb,
     },
     {
