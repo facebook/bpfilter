@@ -296,63 +296,6 @@ int bf_program_generate(struct bf_program *program);
 int bf_program_load(struct bf_program *prog);
 
 /**
- * Attach a loaded program to a hook.
- *
- * @warning If the program hasn't been loaded (using `bf_program_load`),
- * `bf_program_attach` will fail.
- *
- * The program is attached to a hook using a `bf_link` object. In persistent
- * mode, the link will be pinned to the filesystem. If the link can't be pinned,
- * the program will be detached from the hook.
- *
- * @param prog Program to attach. Can't be NULL.
- * @param hookopts Hook-specific options to attach the program to the hook.
- *        Can't be NULL.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts);
-
-/**
- * @brief Pin the BPF program.
- *
- * The program and all the BPF objects it uses will be pinned into `dir_fd`.
- * The BPF link is only pinned if the program is attached to a hook.
- *
- * @param prog Program to pin. Can't be NULL.
- * @param dir_fd File descriptor of the directory to pin the program and its
- *        BPF objects into.
- * @return 0 on success, or a negative errno value on error.
- */
-int bf_program_pin(struct bf_program *prog, int dir_fd);
-
-/**
- * @brief Unpin the BPF program.
- *
- * This function never fails. If the program is not pinned, no file will be
- * removed.
- *
- * @param prog Program to unpin. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the pinned objects.
- */
-void bf_program_unpin(struct bf_program *prog, int dir_fd);
-
-/**
- * Detach the program from the kernel.
- *
- * The program is detached but not unloaded.
- *
- * @param prog Program to detach. Can't be NULL.
- */
-void bf_program_detach(struct bf_program *prog);
-
-/**
- * Unload the program.
- *
- * @param prog Program to unload. Must not be attached. Can't be NULL.
- */
-void bf_program_unload(struct bf_program *prog);
-
-/**
  * @brief Transfer ownership of the handle from the program.
  *
  * After this call, the program no longer owns the handle and the caller

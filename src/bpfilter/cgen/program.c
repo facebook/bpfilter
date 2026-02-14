@@ -919,37 +919,6 @@ int bf_program_load(struct bf_program *prog)
     return r;
 }
 
-int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
-{
-    int r;
-
-    assert(prog);
-    assert(hookopts);
-
-    r = bf_link_new(&prog->handle->link, prog->runtime.chain->hook, hookopts,
-                    prog->handle->prog_fd);
-    if (r) {
-        return bf_err_r(r, "failed to attach bf_link for %s program",
-                        bf_flavor_to_str(prog->flavor));
-    }
-
-    return r;
-}
-
-void bf_program_detach(struct bf_program *prog)
-{
-    assert(prog);
-
-    bf_link_free(&prog->handle->link);
-}
-
-void bf_program_unload(struct bf_program *prog)
-{
-    assert(prog);
-
-    bf_handle_unload(prog->handle);
-}
-
 struct bf_handle *bf_program_take_handle(struct bf_program *prog)
 {
     assert(prog);
@@ -973,20 +942,6 @@ int bf_cgen_set_counters(struct bf_program *program,
     (void)counters;
 
     return -ENOTSUP;
-}
-
-int bf_program_pin(struct bf_program *prog, int dir_fd)
-{
-    assert(prog);
-
-    return bf_handle_pin(prog->handle, dir_fd);
-}
-
-void bf_program_unpin(struct bf_program *prog, int dir_fd)
-{
-    assert(prog);
-
-    bf_handle_unpin(prog->handle, dir_fd);
 }
 
 size_t bf_program_chain_counter_idx(const struct bf_program *program)
