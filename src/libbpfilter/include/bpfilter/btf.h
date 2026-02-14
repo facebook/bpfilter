@@ -10,8 +10,8 @@
 struct bf_btf
 {
     struct btf *btf;
-    uint32_t key_type_id;
-    uint32_t value_type_id;
+    int key_type_id;
+    int value_type_id;
     int fd;
 };
 
