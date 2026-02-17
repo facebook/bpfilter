@@ -1,0 +1,34 @@
+# For tips how to configure this workflow, see https://github.com/anthropics/claude-code-action.
+# Examples: https://github.com/anthropics/claude-code-action/blob/0cf5eeec4f908121edd03a81411b55485994f8d3/docs/solutions.md.
+
+name: Claude PR Review
+on:
+    pull_request:
+        types: [opened, synchronize]
+jobs:
+    review:
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write # gh CLI authentication
+            pull-requests: write # make a comment on PR
+            contents: read # clone repo
+            actions: read # see GH Actions outputs
+            issues: read # read issues (for context)
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - uses: anthropics/claude-code-action@v1
+              with:
+                  # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+                  claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+                  plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+                  plugins: "code-review@claude-code-plugins"
+                  prompt: |
+                      /code-review:code-review --comment
+                  claude_args: |
+                      --max-turns 50
+                      --model claude-opus-4-6
+                      --allowedTools "Read,Write,Grep,Glob,Bash(cat:*),Bash(test:*),Bash(printf:*),Bash(jq:*),Bash(head:*),Bash(git:*),Bash(gh:*)"
+                  additional_permissions: |
+                      actions: read
