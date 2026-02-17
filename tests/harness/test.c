@@ -229,6 +229,7 @@ bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs)
     return lhs->count == rhs->count && lhs->size == rhs->size;
 }
 
+#ifndef BF_USE_HASHSET
 bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
 {
     const struct bf_list_node *n0, *n1;
@@ -252,6 +253,7 @@ bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
                        sizeof(enum bf_matcher_type) * lhs->n_comps) &&
            lhs->use_trie == rhs->use_trie;
 }
+#endif
 
 bool bft_hashset_eq(const struct bf_hashset *lhs, const struct bf_hashset *rhs)
 {

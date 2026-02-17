@@ -9,12 +9,12 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
+#include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
 struct bf_hookopts;
 struct bf_matcher;
 struct bf_rule;
-struct bf_set;
 
 #define _free_bf_chain_ __attribute__((cleanup(bf_chain_free)))
 

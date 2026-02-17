@@ -5,6 +5,30 @@
 
 #pragma once
 
+#ifdef BF_USE_HASHSET
+
+#include <bpfilter/hashset.h>
+
+#define bf_set bf_hashset
+#define _free_bf_set_ _free_bf_hashset_
+#define BF_SET_MAX_N_COMPS BF_HASHSET_MAX_N_COMPS
+#define bf_set_new bf_hashset_new
+#define bf_set_new_from_raw bf_hashset_new_from_raw
+#define bf_set_new_from_pack bf_hashset_new_from_pack
+#define bf_set_free bf_hashset_free
+#define bf_set_pack bf_hashset_pack
+#define bf_set_dump bf_hashset_dump
+#define bf_set_is_empty bf_hashset_is_empty
+#define bf_set_add_elem bf_hashset_add_elem
+#define bf_set_add_elem_raw bf_hashset_add_elem_raw
+#define bf_set_add_many bf_hashset_add_many
+#define bf_set_remove_many bf_hashset_remove_many
+#define bf_set_foreach bf_hashset_foreach
+#define bf_set_size bf_hashset_size
+#define bf_set_contains bf_hashset_contains
+
+#else
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -196,3 +220,5 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add);
  * - `-EINVAL`: set key format doesn't match between dest and to_remove.
  */
 int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove);
+
+#endif

@@ -9,10 +9,10 @@
 #include <stddef.h>
 
 #include <bpfilter/list.h>
+#include <bpfilter/set.h>
 
 struct bf_response;
 struct bf_chain;
-struct bf_set;
 struct bf_hookopts;
 
 /**
