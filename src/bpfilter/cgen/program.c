@@ -29,7 +29,6 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
-#include <bpfilter/core/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
@@ -698,7 +697,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         _free_bf_map_ struct bf_map *map = NULL;
         _cleanup_free_ uint8_t *values = NULL;
         _cleanup_free_ uint8_t *keys = NULL;
-        size_t nelems = bf_list_size(&set->elems);
+        size_t nelems = bf_set_size(set);
         size_t idx = 0;
 
         if (!nelems) {
@@ -722,9 +721,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         if (!keys)
             return bf_err_r(errno, "failed to allocate map keys");
 
-        bf_list_foreach (&set->elems, elem_node) {
-            void *elem = bf_list_node_get_data(elem_node);
-
+        bf_set_foreach (set, elem) {
             memcpy(keys + (idx * set->elem_size), elem, set->elem_size);
             values[idx] = 1;
             ++idx;
