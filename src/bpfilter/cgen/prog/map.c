@@ -221,7 +221,7 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
     return _bf_map_new(map, name, BF_MAP_TYPE_SET,
                        set->use_trie ? BF_BPF_MAP_TYPE_LPM_TRIE :
                                        BF_BPF_MAP_TYPE_HASH,
-                       set->elem_size, 1, bf_list_size(&set->elems));
+                       set->elem_size, 1, bf_set_size(set));
 }
 
 int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)

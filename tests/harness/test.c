@@ -232,7 +232,7 @@ bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
 {
     const struct bf_list_node *n0, *n1;
 
-    if (bf_list_size(&lhs->elems) != bf_list_size(&rhs->elems))
+    if (bf_set_size(lhs) != bf_set_size(rhs))
         return false;
 
     if (lhs->elem_size != rhs->elem_size)

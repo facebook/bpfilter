@@ -102,7 +102,7 @@ static void add_elem(void **state)
 
     assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
     assert_ok(bf_set_add_elem(set, &elem));
-    assert_int_equal(bf_list_size(&set->elems), 1);
+    assert_int_equal(bf_set_size(set), 1);
 }
 
 static void add_multiple_elems(void **state)
@@ -122,7 +122,7 @@ static void add_multiple_elems(void **state)
         assert_ok(bf_set_add_elem(set, elem));
     }
 
-    assert_int_equal(bf_list_size(&set->elems), 5);
+    assert_int_equal(bf_set_size(set), 5);
 }
 
 static void pack_and_unpack(void **state)
@@ -181,7 +181,7 @@ static void pack_and_unpack_empty(void **state)
     assert_ok(bf_set_new_from_pack(&destination, node));
 
     assert_true(bft_set_eq(source, destination));
-    assert_int_equal(bf_list_size(&destination->elems), 0);
+    assert_int_equal(bf_set_size(destination), 0);
 }
 
 static void dump(void **state)
@@ -224,7 +224,7 @@ static void new_from_raw(void **state)
     assert_string_equal(set->name, "test_raw");
     assert_int_equal(set->n_comps, 1);
     assert_int_equal(set->key[0], BF_MATCHER_IP4_SADDR);
-    assert_int_equal(bf_list_size(&set->elems), 2);
+    assert_int_equal(bf_set_size(set), 2);
 }
 
 static void new_from_raw_multiple_keys(void **state)
@@ -240,7 +240,7 @@ static void new_from_raw_multiple_keys(void **state)
     assert_int_equal(set->n_comps, 2);
     assert_int_equal(set->key[0], BF_MATCHER_IP4_DADDR);
     assert_int_equal(set->key[1], BF_MATCHER_TCP_SPORT);
-    assert_int_equal(bf_list_size(&set->elems), 2);
+    assert_int_equal(bf_set_size(set), 2);
 }
 
 static void new_from_raw_invalid(void **state)
@@ -280,7 +280,7 @@ static void add_many_basic(void **state)
 
     assert_ok(bf_set_add_many(dest, &to_add));
 
-    assert_int_equal(bf_list_size(&dest->elems), 3);
+    assert_int_equal(bf_set_size(dest), 3);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 2), elem3);
@@ -347,7 +347,7 @@ static void remove_many_basic(void **state)
 
     assert_ok(bf_set_remove_many(dest, &to_remove));
 
-    assert_int_equal(bf_list_size(&dest->elems), 2);
+    assert_int_equal(bf_set_size(dest), 2);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem3);
     assert_null(to_remove);
@@ -377,7 +377,7 @@ static void remove_many_disjoint_sets(void **state)
     assert_ok(bf_set_add_elem(to_remove, &elem4));
 
     assert_ok(bf_set_remove_many(dest, &to_remove));
-    assert_int_equal(bf_list_size(&dest->elems), 2);
+    assert_int_equal(bf_set_size(dest), 2);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
     assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
     assert_null(to_remove);
@@ -419,6 +419,27 @@ static void remove_many_mismatched_key_type(void **state)
     assert_non_null(to_remove);
 }
 
+static void getters(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "my_set", key, ARRAY_SIZE(key)));
+
+    assert_string_equal(set->name, "my_set");
+    assert_int_equal(set->n_comps, 2);
+    assert_int_equal(set->key[0], BF_MATCHER_IP4_DADDR);
+    assert_int_equal(set->key[1], BF_MATCHER_TCP_SPORT);
+
+    // Anonymous set has NULL name
+    bf_set_free(&set);
+    assert_ok(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
+    assert_null(set->name);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -443,6 +464,7 @@ int main(void)
         cmocka_unit_test(remove_many_disjoint_sets),
         cmocka_unit_test(remove_many_mismatched_key_count),
         cmocka_unit_test(remove_many_mismatched_key_type),
+        cmocka_unit_test(getters),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
