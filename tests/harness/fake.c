@@ -221,6 +221,7 @@ struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len)
     return TAKE_PTR(matcher);
 }
 
+#ifndef BF_USE_HASHSET
 struct bf_set *bft_set_dummy(size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -245,6 +246,7 @@ struct bf_set *bft_set_dummy(size_t n_elems)
 
     return TAKE_PTR(set);
 }
+#endif
 
 struct bf_hashset *bft_hashset_dummy(size_t n_elems)
 {

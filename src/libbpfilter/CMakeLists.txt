@@ -55,7 +55,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
     ${CMAKE_CURRENT_SOURCE_DIR}/version.c
@@ -64,6 +63,15 @@ set(libbpfilter_srcs
     ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h
     ${CMAKE_SOURCE_DIR}/src/external/mpack.c
 )
+
+if (NOT USE_HASHSET)
+    list(APPEND libbpfilter_srcs ${CMAKE_CURRENT_SOURCE_DIR}/set.c)
+endif ()
+
+set(BF_PC_EXTRA_CFLAGS "")
+if (USE_HASHSET)
+    string(APPEND BF_PC_EXTRA_CFLAGS " -DBF_USE_HASHSET")
+endif ()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/bpfilter.pc.in
@@ -86,6 +94,8 @@ target_compile_definitions(libbpfilter
     PRIVATE
         # MPack should use the C standard library API
         MPACK_STDLIB
+    PUBLIC
+        $<$<BOOL:${USE_HASHSET}>:BF_USE_HASHSET>
 )
 
 target_include_directories(libbpfilter

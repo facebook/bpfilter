@@ -94,24 +94,25 @@ jobs:
         host:
           - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
+        use_hashset: [ 0, 1 ]
     runs-on: [ "${{ matrix.host.name }}" ]
     container:
       image: ghcr.io/facebook/bpfilter:fedora-43-${{ matrix.host.arch }}
       options: --privileged
-    name: "Test: ${{ matrix.host.arch }}"
+    name: "Test: ${{ matrix.host.arch }}${{ matrix.use_hashset == 1 && ' (hashset)' || '' }}"
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
       - name: Restore the cached test results
         uses: actions/cache@v4
-        if: matrix.host.arch == 'x64'
+        if: matrix.host.arch == 'x64' && matrix.use_hashset == 0
         with:
           path: build/coverage
           key: tests-results-${{ github.run_id }}
       - name: Mount bpffs
         run: mount bpffs /sys/fs/bpf -t bpf
       - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1 -DUSE_HASHSET=${{ matrix.use_hashset }}
       - name: Build tests
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` test_bin
 
@@ -125,7 +126,7 @@ jobs:
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L fuzzing --verbose
       - name: Upload fuzzer findings
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.use_hashset == 0
         with:
           name: fuzzer-findings-${{ matrix.host.arch }}
           path: ${{ github.workspace }}/build/findings
@@ -136,6 +137,7 @@ jobs:
       - name: Run checks
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
       - name: Generate the coverage report
+        if: matrix.use_hashset == 0
         run: make -C $GITHUB_WORKSPACE/build coverage
 
   benchmark:

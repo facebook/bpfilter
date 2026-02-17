@@ -545,3 +545,16 @@ int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
 
     return 0;
 }
+
+bool bf_set_contains(const struct bf_set *set, const void *elem)
+{
+    assert(set);
+    assert(elem);
+
+    bf_list_foreach (&set->elems, node) {
+        if (memcmp(bf_list_node_get_data(node), elem, set->elem_size) == 0)
+            return true;
+    }
+
+    return false;
+}

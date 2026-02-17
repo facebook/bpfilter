@@ -34,6 +34,7 @@ option(NO_TESTS "Disable unit, end-to-end, and integration tests" 0)
 option(NO_CHECKS "Disable the check target (clang-tidy and clang-format" 0)
 option(NO_BENCHMARKS "Disable the benchmark" 0)
 option(WITH_COVERAGE "Build with code coverage support. Disabled by default" 0)
+option(USE_HASHSET "Use bf_hashset instead of bf_set for set implementation. Disabled by default" 0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

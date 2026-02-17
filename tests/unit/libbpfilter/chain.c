@@ -147,7 +147,11 @@ static void get_set_by_name(void **state)
 
     (void)state;
 
+#ifdef BF_USE_HASHSET
+    assert_non_null(bf_chain_get_set_by_name(chain, "bft_hashset_dummy"));
+#else
     assert_non_null(bf_chain_get_set_by_name(chain, "bft_set_dummy"));
+#endif
     assert_null(bf_chain_get_set_by_name(chain, "bft_set_missing"));
 }
 
