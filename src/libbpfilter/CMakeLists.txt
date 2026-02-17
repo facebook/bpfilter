@@ -15,6 +15,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hashset.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/if.h
@@ -41,6 +42,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/hashset.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
     ${CMAKE_CURRENT_SOURCE_DIR}/if.c
