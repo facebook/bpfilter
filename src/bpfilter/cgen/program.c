@@ -148,10 +148,6 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
         set_idx++;
     };
 
-    r = bf_link_new(&_program->link, "bf_link");
-    if (r)
-        return r;
-
     r = bf_printer_new(&_program->printer);
     if (r)
         return r;
@@ -225,17 +221,15 @@ int bf_program_new_from_pack(struct bf_program **program,
             return bf_err_r(r, "failed to unpack bf_map into bf_program.sets");
     }
 
-    /* Try to restore the link: on success, replace the program's link with the
-     * restored on. If -ENOENT is returned, the link doesn't exist, meaning the
-     * program is not attached. Otherwise, return an error. */
-    r = bf_rpack_kv_obj(node, "link", &child);
+    // Restore the link if it exists
+    r = bf_rpack_kv_node(node, "link", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_program.link");
-    r = bf_link_new_from_pack(&link, dir_fd, child);
-    if (!r)
-        bf_swap(_program->link, link);
-    else if (r != -ENOENT)
-        return bf_err_r(r, "failed to restore bf_program.link");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_link_new_from_pack(&_program->link, dir_fd, child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_program.link");
+    }
 
     bf_printer_free(&_program->printer);
     r = bf_rpack_kv_obj(node, "printer", &child);
@@ -308,9 +302,13 @@ int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
 
     bf_wpack_kv_list(pack, "sets", &program->sets);
 
-    bf_wpack_open_object(pack, "link");
-    bf_link_pack(program->link, pack);
-    bf_wpack_close_object(pack);
+    if (program->link) {
+        bf_wpack_open_object(pack, "link");
+        bf_link_pack(program->link, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "link");
+    }
 
     bf_wpack_open_object(pack, "printer");
     bf_printer_pack(program->printer, pack);
@@ -363,10 +361,14 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
     }
     bf_dump_prefix_pop(prefix);
 
-    DUMP(prefix, "link: struct bf_link *");
-    bf_dump_prefix_push(prefix);
-    bf_link_dump(program->link, prefix);
-    bf_dump_prefix_pop(prefix);
+    if (program->link) {
+        DUMP(prefix, "link: struct bf_link *");
+        bf_dump_prefix_push(prefix);
+        bf_link_dump(program->link, prefix);
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "link: struct bf_link * (NULL)");
+    }
 
     DUMP(prefix, "printer: struct bf_printer *");
     bf_dump_prefix_push(prefix);
@@ -1106,8 +1108,8 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
     assert(prog);
     assert(hookopts);
 
-    r = bf_link_attach(prog->link, prog->runtime.chain->hook, hookopts,
-                       prog->runtime.prog_fd);
+    r = bf_link_new(&prog->link, "bf_link", prog->runtime.chain->hook, hookopts,
+                    prog->runtime.prog_fd);
     if (r) {
         return bf_err_r(r, "failed to attach bf_link for %s program",
                         bf_flavor_to_str(prog->flavor));
@@ -1120,7 +1122,7 @@ void bf_program_detach(struct bf_program *prog)
 {
     assert(prog);
 
-    bf_link_detach(prog->link);
+    bf_link_free(&prog->link);
 }
 
 void bf_program_unload(struct bf_program *prog)
@@ -1128,7 +1130,7 @@ void bf_program_unload(struct bf_program *prog)
     assert(prog);
 
     closep(&prog->runtime.prog_fd);
-    bf_link_detach(prog->link);
+    bf_link_free(&prog->link);
     bf_map_destroy(prog->cmap);
     bf_map_destroy(prog->pmap);
     bf_map_destroy(prog->lmap);
@@ -1209,7 +1211,7 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
     }
 
     // If a link exists, pin it too.
-    if (prog->link->hookopts) {
+    if (prog->link) {
         r = bf_link_pin(prog->link, dir_fd);
         if (r) {
             bf_err_r(r, "failed to pin BPF link for '%s'", name);
@@ -1238,7 +1240,8 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
             bf_map_unpin(map, dir_fd);
     }
 
-    bf_link_unpin(prog->link, dir_fd);
+    if (prog->link)
+        bf_link_unpin(prog->link, dir_fd);
 
     unlinkat(dir_fd, prog->prog_name, 0);
 }
