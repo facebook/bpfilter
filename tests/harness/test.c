@@ -10,6 +10,7 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/hashset.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
@@ -249,6 +250,29 @@ bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
     return bf_streq(lhs->name, rhs->name) && lhs->n_comps == rhs->n_comps &&
            0 == memcmp(lhs->key, rhs->key,
                        sizeof(enum bf_matcher_type) * lhs->n_comps) &&
+           lhs->use_trie == rhs->use_trie;
+}
+
+bool bft_hashset_eq(const struct bf_hashset *lhs, const struct bf_hashset *rhs)
+{
+    if (bf_hashset_size(lhs) != bf_hashset_size(rhs))
+        return false;
+
+    if (lhs->elem_size != rhs->elem_size)
+        return false;
+
+    bf_hashset_foreach (lhs, elem) {
+        if (!bf_hashset_contains(rhs, elem))
+            return false;
+    }
+
+    if (lhs->name != rhs->name &&
+        (!lhs->name || !rhs->name || strcmp(lhs->name, rhs->name) != 0))
+        return false;
+
+    return lhs->n_comps == rhs->n_comps &&
+           memcmp(lhs->key, rhs->key,
+                  sizeof(enum bf_matcher_type) * lhs->n_comps) == 0 &&
            lhs->use_trie == rhs->use_trie;
 }
 
