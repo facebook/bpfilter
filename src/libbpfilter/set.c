@@ -11,7 +11,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "bpfilter/core/list.h"
+#include "bpfilter/core/hashset.h"
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
@@ -21,6 +21,28 @@
 #define _BF_SET_USE_TRIE_MASK                                                  \
     (BF_FLAGS(BF_MATCHER_IP4_SNET, BF_MATCHER_IP4_DNET, BF_MATCHER_IP6_SNET,   \
               BF_MATCHER_IP6_DNET))
+
+static uint64_t _bf_set_elem_hash(const void *data, void *ctx)
+{
+    return bf_fnv1a(data, *(const size_t *)ctx, BF_FNV1A_INIT);
+}
+
+static bool _bf_set_elem_equal(const void *lhs, const void *rhs, void *ctx)
+{
+    return memcmp(lhs, rhs, *(const size_t *)ctx) == 0;
+}
+
+static void _bf_set_elem_free(void **data, void *ctx)
+{
+    (void)ctx;
+    freep((void *)data);
+}
+
+static const bf_hashset_ops _bf_set_elem_ops = {
+    .hash = _bf_set_elem_hash,
+    .equal = _bf_set_elem_equal,
+    .free = _bf_set_elem_free,
+};
 
 int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
                size_t n_comps)
@@ -40,7 +62,7 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
                         BF_SET_MAX_N_COMPS);
     }
 
-    _set = malloc(sizeof(*_set));
+    _set = calloc(1, sizeof(*_set));
     if (!_set)
         return -ENOMEM;
 
@@ -54,7 +76,6 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
     memcpy(&(_set)->key, key, n_comps * sizeof(enum bf_matcher_type));
     _set->n_comps = n_comps;
     _set->elem_size = 0;
-    _set->elems = bf_list_default(freep, NULL);
 
     for (size_t i = 0; i < n_comps; ++i) {
         const struct bf_matcher_ops *ops;
@@ -69,6 +90,8 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
 
         mask |= BF_FLAG(_set->key[i]);
     }
+
+    bf_hashset_init(&_set->elems, &_bf_set_elem_ops, &_set->elem_size);
 
     _set->use_trie = n_comps == 1 && mask & _BF_SET_USE_TRIE_MASK;
 
@@ -194,9 +217,12 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
                         raw_elem);
     }
 
-    r = bf_list_add_tail(&set->elems, elem);
+    r = bf_hashset_add(&set->elems, elem);
+    if (r == -EEXIST)
+        return 0;
     if (r)
         return bf_err_r(r, "failed to insert element into set");
+
     TAKE_PTR(elem);
 
     return 0;
@@ -325,7 +351,7 @@ void bf_set_free(struct bf_set **set)
     if (!*set)
         return;
 
-    bf_list_clean(&(*set)->elems);
+    bf_hashset_clean(&(*set)->elems);
     freep((void *)&(*set)->name);
     freep((void *)set);
 }
@@ -346,8 +372,8 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
     bf_wpack_close_array(pack);
 
     bf_wpack_open_array(pack, "elements");
-    bf_list_foreach (&set->elems, elem_node)
-        bf_wpack_bin(pack, bf_list_node_get_data(elem_node), set->elem_size);
+    bf_hashset_foreach (&set->elems, elem)
+        bf_wpack_bin(pack, elem->data, set->elem_size);
     bf_wpack_close_array(pack);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
@@ -355,6 +381,8 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
 
 void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
 {
+    size_t dump_idx = 0;
+
     assert(set);
     assert(prefix);
 
@@ -373,17 +401,17 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "elem_size: %lu", set->elem_size);
-    DUMP(bf_dump_prefix_last(prefix), "elems: bf_list<bytes>[%lu]",
-         bf_list_size(&set->elems));
+    DUMP(bf_dump_prefix_last(prefix), "elems: bf_hashset<bytes>[%lu]",
+         bf_hashset_size(&set->elems));
 
     bf_dump_prefix_push(prefix);
-    bf_list_foreach (&set->elems, elem_node) {
-        if (bf_list_is_tail(&set->elems, elem_node))
+    bf_hashset_foreach (&set->elems, elem) {
+        if (++dump_idx == bf_hashset_size(&set->elems))
             bf_dump_prefix_last(prefix);
 
-        DUMP(prefix, "void * @ %p", bf_list_node_get_data(elem_node));
+        DUMP(prefix, "void * @ %p", elem->data);
         bf_dump_prefix_push(prefix);
-        bf_dump_hex(prefix, bf_list_node_get_data(elem_node), set->elem_size);
+        bf_dump_hex(prefix, elem->data, set->elem_size);
         bf_dump_prefix_pop(prefix);
     }
     bf_dump_prefix_pop(prefix);
@@ -405,8 +433,10 @@ int bf_set_add_elem(struct bf_set *set, const void *elem)
 
     memcpy(_elem, elem, set->elem_size);
 
-    r = bf_list_add_tail(&set->elems, _elem);
-    if (r < 0)
+    r = bf_hashset_add(&set->elems, _elem);
+    if (r == -EEXIST)
+        return 0;
+    if (r)
         return r;
 
     TAKE_PTR(_elem);
@@ -418,7 +448,14 @@ bool bf_set_is_empty(const struct bf_set *set)
 {
     assert(set);
 
-    return bf_list_is_empty(&set->elems);
+    return bf_hashset_is_empty(&set->elems);
+}
+
+int bf_set_reserve(struct bf_set *set, size_t count)
+{
+    assert(set);
+
+    return bf_hashset_reserve(&set->elems, count);
 }
 
 /**
@@ -459,30 +496,10 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
     if (r)
         return r;
 
-    // @todo This has O(n * m) complexity. We could get to O(n log n + m) by
-    // turning the linked list into an array and sorting it, but we should
-    // just replace underlying bf_list with true hashset and enjoy O(m).
-    bf_list_foreach (&(*to_add)->elems, elem_node) {
-        void *elem_to_add = bf_list_node_get_data(elem_node);
-        bool found = false;
-
-        bf_list_foreach (&dest->elems, dest_elem_node) {
-            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
-
-            if (memcmp(dest_elem, elem_to_add, dest->elem_size) == 0) {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            r = bf_list_add_tail(&dest->elems,
-                                 bf_list_node_get_data(elem_node));
-            if (r)
-                return bf_err_r(r, "failed to add element to set");
-            // Take ownership of data to stop to_add cleanup from freeing it.
-            bf_list_node_take_data(elem_node);
-        }
+    bf_hashset_foreach (&(*to_add)->elems, elem) {
+        r = bf_set_add_elem(dest, elem->data);
+        if (r)
+            return bf_err_r(r, "failed to add element to set");
     }
 
     bf_set_free(to_add);
@@ -502,18 +519,10 @@ int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
     if (r)
         return r;
 
-    // @todo This has O(n * m) complexity. Could be O(m) if we used hashsets.
-    bf_list_foreach (&(*to_remove)->elems, elem_node) {
-        const void *elem_to_remove = bf_list_node_get_data(elem_node);
-
-        bf_list_foreach (&dest->elems, dest_elem_node) {
-            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
-
-            if (memcmp(dest_elem, elem_to_remove, dest->elem_size) == 0) {
-                bf_list_delete(&dest->elems, dest_elem_node);
-                break;
-            }
-        }
+    bf_hashset_foreach (&(*to_remove)->elems, elem) {
+        r = bf_hashset_delete(&dest->elems, elem->data);
+        if (r && r != -ENOENT)
+            return bf_err_r(r, "failed to remove element from set");
     }
 
     bf_set_free(to_remove);

@@ -102,7 +102,7 @@ static void add_elem(void **state)
 
     assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
     assert_ok(bf_set_add_elem(set, &elem));
-    assert_int_equal(bf_list_size(&set->elems), 1);
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
 }
 
 static void add_multiple_elems(void **state)
@@ -122,7 +122,44 @@ static void add_multiple_elems(void **state)
         assert_ok(bf_set_add_elem(set, elem));
     }
 
-    assert_int_equal(bf_list_size(&set->elems), 5);
+    assert_int_equal(bf_hashset_size(&set->elems), 5);
+}
+
+static void add_duplicate(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
+    uint32_t elem = 0x01020304;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(set, &elem));
+    assert_ok(bf_set_add_elem(set, &elem));
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+}
+
+static void reserve(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "test", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_reserve(set, 50));
+    assert_true(bf_hashset_cap(&set->elems) >= 100);
+
+    size_t cap_after = bf_hashset_cap(&set->elems);
+    for (uint32_t i = 0; i < 50; ++i) {
+        uint32_t addr = 0x0A000001 + i;
+        assert_ok(bf_set_add_elem(set, &addr));
+    }
+    assert_int_equal(bf_hashset_cap(&set->elems), cap_after);
+    assert_int_equal(bf_hashset_size(&set->elems), 50);
 }
 
 static void pack_and_unpack(void **state)
@@ -150,7 +187,7 @@ static void pack_and_unpack(void **state)
     assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
     assert_ok(bf_set_new_from_pack(&destination, node));
 
-    assert_true(bft_set_eq(source, destination));
+    assert_true(bft_set_eq_ordered(source, destination));
 }
 
 static void pack_and_unpack_empty(void **state)
@@ -180,8 +217,8 @@ static void pack_and_unpack_empty(void **state)
     assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
     assert_ok(bf_set_new_from_pack(&destination, node));
 
-    assert_true(bft_set_eq(source, destination));
-    assert_int_equal(bf_list_size(&destination->elems), 0);
+    assert_true(bft_set_eq_ordered(source, destination));
+    assert_int_equal(bf_hashset_size(&destination->elems), 0);
 }
 
 static void dump(void **state)
@@ -224,7 +261,7 @@ static void new_from_raw(void **state)
     assert_string_equal(set->name, "test_raw");
     assert_int_equal(set->n_comps, 1);
     assert_int_equal(set->key[0], BF_MATCHER_IP4_SADDR);
-    assert_int_equal(bf_list_size(&set->elems), 2);
+    assert_int_equal(bf_hashset_size(&set->elems), 2);
 }
 
 static void new_from_raw_multiple_keys(void **state)
@@ -240,7 +277,7 @@ static void new_from_raw_multiple_keys(void **state)
     assert_int_equal(set->n_comps, 2);
     assert_int_equal(set->key[0], BF_MATCHER_IP4_DADDR);
     assert_int_equal(set->key[1], BF_MATCHER_TCP_SPORT);
-    assert_int_equal(bf_list_size(&set->elems), 2);
+    assert_int_equal(bf_hashset_size(&set->elems), 2);
 }
 
 static void new_from_raw_invalid(void **state)
@@ -280,10 +317,10 @@ static void add_many_basic(void **state)
 
     assert_ok(bf_set_add_many(dest, &to_add));
 
-    assert_int_equal(bf_list_size(&dest->elems), 3);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 2), elem3);
+    assert_int_equal(bf_hashset_size(&dest->elems), 3);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_true(bf_hashset_contains(&dest->elems, &elem2));
+    assert_true(bf_hashset_contains(&dest->elems, &elem3));
     assert_null(to_add);
 }
 
@@ -347,9 +384,10 @@ static void remove_many_basic(void **state)
 
     assert_ok(bf_set_remove_many(dest, &to_remove));
 
-    assert_int_equal(bf_list_size(&dest->elems), 2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem3);
+    assert_int_equal(bf_hashset_size(&dest->elems), 2);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_false(bf_hashset_contains(&dest->elems, &elem2));
+    assert_true(bf_hashset_contains(&dest->elems, &elem3));
     assert_null(to_remove);
 }
 
@@ -377,9 +415,9 @@ static void remove_many_disjoint_sets(void **state)
     assert_ok(bf_set_add_elem(to_remove, &elem4));
 
     assert_ok(bf_set_remove_many(dest, &to_remove));
-    assert_int_equal(bf_list_size(&dest->elems), 2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
+    assert_int_equal(bf_hashset_size(&dest->elems), 2);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_true(bf_hashset_contains(&dest->elems, &elem2));
     assert_null(to_remove);
 }
 
@@ -429,6 +467,8 @@ int main(void)
         cmocka_unit_test(new_with_invalid_network_combination),
         cmocka_unit_test(add_elem),
         cmocka_unit_test(add_multiple_elems),
+        cmocka_unit_test(add_duplicate),
+        cmocka_unit_test(reserve),
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(pack_and_unpack_empty),
         cmocka_unit_test(dump),
