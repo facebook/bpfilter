@@ -66,6 +66,24 @@ struct bf_set
 };
 
 /**
+ * @brief Iterate over the elements of a set.
+ *
+ * @param set Pointer to the set to iterate over. Must be non-NULL.
+ * @param elem_var Name of the variable containing the current element data
+ *        (as `void *`). This variable will be created automatically.
+ */
+#define bf_set_foreach(set, elem_var)                                          \
+    for (bf_list_node *_bf_set_node = (set)->elems.head,                       \
+                      *_bf_set_next = _bf_set_node ? _bf_set_node->next :      \
+                                                     NULL,                     \
+                      *_bf_set_brk = NULL;                                     \
+         _bf_set_node; _bf_set_node = _bf_set_brk ? NULL : _bf_set_next,       \
+                      _bf_set_next = _bf_set_node ? _bf_set_node->next : NULL) \
+        for (void *(elem_var) = (_bf_set_brk = (void *)1,                      \
+                                bf_list_node_get_data(_bf_set_node));          \
+             _bf_set_brk; _bf_set_brk = NULL)
+
+/**
  * @brief Allocate and initialise a new set.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
@@ -125,6 +143,19 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
  * @return True if the set has no elements, false otherwise.
  */
 bool bf_set_is_empty(const struct bf_set *set);
+
+/**
+ * @brief Get the number of elements in a set.
+ *
+ * @param set Initialised set. Can't be NULL.
+ * @return Number of elements in the set.
+ */
+size_t bf_set_size(const struct bf_set *set);
+
+const char *bf_set_get_name(const struct bf_set *set);
+size_t bf_set_get_n_comps(const struct bf_set *set);
+enum bf_matcher_type bf_set_get_key_comp(const struct bf_set *set,
+                                         size_t index);
 
 int bf_set_add_elem(struct bf_set *set, const void *elem);
 

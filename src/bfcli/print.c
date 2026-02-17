@@ -148,31 +148,31 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     bf_list_foreach (&chain->sets, set_node) {
         struct bf_set *set = bf_list_node_get_data(set_node);
 
-        if (!set->name)
+        if (!bf_set_get_name(set))
             continue;
 
-        (void)fprintf(stdout, "    set %s (", set->name);
-        for (size_t i = 0; i < set->n_comps; ++i) {
-            (void)fprintf(stdout, "%s", bf_matcher_type_to_str(set->key[i]));
+        (void)fprintf(stdout, "    set %s (", bf_set_get_name(set));
+        for (size_t i = 0; i < bf_set_get_n_comps(set); ++i) {
+            (void)fprintf(stdout, "%s",
+                          bf_matcher_type_to_str(bf_set_get_key_comp(set, i)));
 
-            if (i != set->n_comps - 1)
+            if (i != bf_set_get_n_comps(set) - 1)
                 (void)fprintf(stdout, ", ");
         }
         (void)fprintf(stdout, ") in {\n");
 
-        bf_list_foreach (&set->elems, elem_node) {
+        bf_set_foreach (set, payload) {
             uint32_t payload_idx = 0;
-            void *payload = bf_list_node_get_data(elem_node);
 
             (void)fprintf(stdout, "        ");
-            for (size_t i = 0; i < set->n_comps; ++i) {
+            for (size_t i = 0; i < bf_set_get_n_comps(set); ++i) {
                 const struct bf_matcher_meta *meta =
-                    bf_matcher_get_meta(set->key[i]);
+                    bf_matcher_get_meta(bf_set_get_key_comp(set, i));
 
                 meta->ops[BF_MATCHER_IN].print(payload + payload_idx);
                 payload_idx += meta->ops[BF_MATCHER_IN].ref_payload_size;
 
-                if (i != set->n_comps - 1)
+                if (i != bf_set_get_n_comps(set) - 1)
                     (void)fprintf(stdout, ", ");
             }
             (void)fprintf(stdout, "\n");
@@ -196,34 +196,35 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                     bf_chain_get_set_for_matcher(chain, matcher);
 
                 (void)fprintf(stdout, "        (");
-                for (size_t i = 0; i < set->n_comps; ++i) {
-                    (void)fprintf(stdout, "%s",
-                                  bf_matcher_type_to_str(set->key[i]));
+                for (size_t i = 0; i < bf_set_get_n_comps(set); ++i) {
+                    (void)fprintf(
+                        stdout, "%s",
+                        bf_matcher_type_to_str(bf_set_get_key_comp(set, i)));
 
-                    if (i != set->n_comps - 1)
+                    if (i != bf_set_get_n_comps(set) - 1)
                         (void)fprintf(stdout, ", ");
                 }
 
-                if (set->name) {
-                    (void)fprintf(stdout, ") in %s", set->name);
+                if (bf_set_get_name(set)) {
+                    (void)fprintf(stdout, ") in %s", bf_set_get_name(set));
                 } else {
                     (void)fprintf(stdout, ") in {\n");
 
-                    bf_list_foreach (&set->elems, elem_node) {
+                    bf_set_foreach (set, payload) {
                         uint32_t payload_idx = 0;
-                        void *payload = bf_list_node_get_data(elem_node);
 
                         (void)fprintf(stdout, "            ");
-                        for (size_t i = 0; i < set->n_comps; ++i) {
+                        for (size_t i = 0; i < bf_set_get_n_comps(set); ++i) {
                             const struct bf_matcher_meta *meta =
-                                bf_matcher_get_meta(set->key[i]);
+                                bf_matcher_get_meta(
+                                    bf_set_get_key_comp(set, i));
 
                             meta->ops[BF_MATCHER_IN].print(payload +
                                                            payload_idx);
                             payload_idx +=
                                 meta->ops[BF_MATCHER_IN].ref_payload_size;
 
-                            if (i != set->n_comps - 1)
+                            if (i != bf_set_get_n_comps(set) - 1)
                                 (void)fprintf(stdout, ", ");
                         }
                         (void)fprintf(stdout, "\n");

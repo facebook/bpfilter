@@ -346,8 +346,8 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
     bf_wpack_close_array(pack);
 
     bf_wpack_open_array(pack, "elements");
-    bf_list_foreach (&set->elems, elem_node)
-        bf_wpack_bin(pack, bf_list_node_get_data(elem_node), set->elem_size);
+    bf_set_foreach (set, elem)
+        bf_wpack_bin(pack, elem, set->elem_size);
     bf_wpack_close_array(pack);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
@@ -374,7 +374,7 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
 
     DUMP(prefix, "elem_size: %lu", set->elem_size);
     DUMP(bf_dump_prefix_last(prefix), "elems: bf_list<bytes>[%lu]",
-         bf_list_size(&set->elems));
+         bf_set_size(set));
 
     bf_dump_prefix_push(prefix);
     bf_list_foreach (&set->elems, elem_node) {
@@ -419,6 +419,35 @@ bool bf_set_is_empty(const struct bf_set *set)
     assert(set);
 
     return bf_list_is_empty(&set->elems);
+}
+
+size_t bf_set_size(const struct bf_set *set)
+{
+    assert(set);
+
+    return bf_list_size(&set->elems);
+}
+
+const char *bf_set_get_name(const struct bf_set *set)
+{
+    assert(set);
+
+    return set->name;
+}
+
+size_t bf_set_get_n_comps(const struct bf_set *set)
+{
+    assert(set);
+
+    return set->n_comps;
+}
+
+enum bf_matcher_type bf_set_get_key_comp(const struct bf_set *set, size_t index)
+{
+    assert(set);
+    assert(index < set->n_comps);
+
+    return set->key[index];
 }
 
 /**
@@ -466,9 +495,7 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
         void *elem_to_add = bf_list_node_get_data(elem_node);
         bool found = false;
 
-        bf_list_foreach (&dest->elems, dest_elem_node) {
-            const void *dest_elem = bf_list_node_get_data(dest_elem_node);
-
+        bf_set_foreach (dest, dest_elem) {
             if (memcmp(dest_elem, elem_to_add, dest->elem_size) == 0) {
                 found = true;
                 break;
@@ -503,9 +530,7 @@ int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
         return r;
 
     // @todo This has O(n * m) complexity. Could be O(m) if we used hashsets.
-    bf_list_foreach (&(*to_remove)->elems, elem_node) {
-        const void *elem_to_remove = bf_list_node_get_data(elem_node);
-
+    bf_set_foreach (*to_remove, elem_to_remove) {
         bf_list_foreach (&dest->elems, dest_elem_node) {
             const void *dest_elem = bf_list_node_get_data(dest_elem_node);
 
