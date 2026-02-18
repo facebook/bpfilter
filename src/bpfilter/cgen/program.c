@@ -64,6 +64,12 @@
 #define _BF_LOG_MAP_N_ENTRIES 1000
 #define _BF_LOG_MAP_SIZE                                                       \
     _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
+#define _BF_PROG_NAME "bf_prog"
+#define _BF_SET_MAP_PREFIX "bf_set_"
+#define _BF_COUNTER_MAP_NAME "bf_cmap"
+#define _BF_PRINTER_MAP_NAME "bf_pmap"
+#define _BF_LOG_MAP_NAME "bf_lmap"
+#define _BF_LINK_NAME "bf_link"
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {
@@ -95,8 +101,6 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
 int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
 {
     _free_bf_program_ struct bf_program *_program = NULL;
-    char name[BPF_OBJ_NAME_LEN];
-    uint32_t set_idx = 0;
     int r;
 
     assert(program);
@@ -111,49 +115,13 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     _program->runtime.ops = bf_flavor_ops_get(_program->flavor);
     _program->runtime.chain = chain;
 
-    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s", "bf_prog");
-
-    r = bf_map_new(&_program->cmap, "counters_map", BF_MAP_TYPE_COUNTERS,
-                   sizeof(uint32_t), sizeof(struct bf_counter), 1);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the counters bf_map object");
-
-    r = bf_map_new(&_program->pmap, "printer_map", BF_MAP_TYPE_PRINTER,
-                   sizeof(uint32_t), BF_MAP_VALUE_SIZE_UNKNOWN, 1);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the printer bf_map object");
-
-    r = bf_map_new(&_program->lmap, "log_map", BF_MAP_TYPE_LOG, 0, 0,
-                   _BF_LOG_MAP_SIZE);
-    if (r < 0)
-        return bf_err_r(r, "failed to create the log bf_map object");
-
+    (void)snprintf(_program->prog_name, BPF_OBJ_NAME_LEN, "%s", _BF_PROG_NAME);
     _program->sets = bf_list_default(bf_map_free, bf_map_pack);
-    bf_list_foreach (&chain->sets, set_node) {
-        struct bf_set *set = bf_list_node_get_data(set_node);
-        _free_bf_map_ struct bf_map *map = NULL;
-
-        if (!bf_set_is_empty(set)) {
-            (void)snprintf(name, BPF_OBJ_NAME_LEN, "set_%04x",
-                           (uint8_t)set_idx);
-            r = bf_map_new_from_set(&map, name, set);
-            if (r < 0)
-                return r;
-        }
-
-        r = bf_list_push(&_program->sets, (void **)&map);
-        if (r < 0)
-            return r;
-
-        set_idx++;
-    };
+    _program->fixups = bf_list_default(bf_fixup_free, NULL);
 
     r = bf_printer_new(&_program->printer);
     if (r)
         return r;
-
-    bf_list_init(&_program->fixups,
-                 (bf_list_ops[]) {{.free = (bf_list_ops_free)bf_fixup_free}});
 
     *program = TAKE_PTR(_program);
 
@@ -165,7 +133,6 @@ int bf_program_new_from_pack(struct bf_program **program,
                              bf_rpack_node_t node)
 {
     _free_bf_program_ struct bf_program *_program = NULL;
-    _free_bf_link_ struct bf_link *link = NULL;
     const void *img;
     size_t img_len;
     bf_rpack_node_t child, array_node;
@@ -175,32 +142,35 @@ int bf_program_new_from_pack(struct bf_program **program,
     assert(chain);
 
     r = bf_program_new(&_program, chain);
-    if (r < 0)
+    if (r)
         return r;
 
-    bf_map_free(&_program->cmap);
-    r = bf_rpack_kv_obj(node, "cmap", &child);
+    r = bf_rpack_kv_node(node, "cmap", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_program.cmap");
-    r = bf_map_new_from_pack(&_program->cmap, dir_fd, child);
-    if (r)
-        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_map_new_from_pack(&_program->cmap, dir_fd, child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_program.cmap");
+    }
 
-    bf_map_free(&_program->pmap);
-    r = bf_rpack_kv_obj(node, "pmap", &child);
+    r = bf_rpack_kv_node(node, "pmap", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_program.pmap");
-    r = bf_map_new_from_pack(&_program->pmap, dir_fd, child);
-    if (r)
-        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_map_new_from_pack(&_program->pmap, dir_fd, child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_program.pmap");
+    }
 
-    bf_map_free(&_program->lmap);
-    r = bf_rpack_kv_obj(node, "lmap", &child);
+    r = bf_rpack_kv_node(node, "lmap", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_program.lmap");
-    r = bf_map_new_from_pack(&_program->lmap, dir_fd, child);
-    if (r)
-        return r;
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_map_new_from_pack(&_program->lmap, dir_fd, child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_program.lmap");
+    }
 
     bf_list_clean(&_program->sets);
     _program->sets = bf_list_default(bf_map_free, bf_map_pack);
@@ -288,17 +258,29 @@ int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
     assert(program);
     assert(pack);
 
-    bf_wpack_open_object(pack, "cmap");
-    bf_map_pack(program->cmap, pack);
-    bf_wpack_close_object(pack);
+    if (program->cmap) {
+        bf_wpack_open_object(pack, "cmap");
+        bf_map_pack(program->cmap, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "cmap");
+    }
 
-    bf_wpack_open_object(pack, "pmap");
-    bf_map_pack(program->pmap, pack);
-    bf_wpack_close_object(pack);
+    if (program->pmap) {
+        bf_wpack_open_object(pack, "pmap");
+        bf_map_pack(program->pmap, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "pmap");
+    }
 
-    bf_wpack_open_object(pack, "lmap");
-    bf_map_pack(program->lmap, pack);
-    bf_wpack_close_object(pack);
+    if (program->lmap) {
+        bf_wpack_open_object(pack, "lmap");
+        bf_map_pack(program->lmap, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "lmap");
+    }
 
     bf_wpack_kv_list(pack, "sets", &program->sets);
 
@@ -331,20 +313,32 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
 
     DUMP(prefix, "prog_name: %s", program->prog_name);
 
-    DUMP(prefix, "cmap: struct bf_map *");
-    bf_dump_prefix_push(prefix);
-    bf_map_dump(program->cmap, bf_dump_prefix_last(prefix));
-    bf_dump_prefix_pop(prefix);
+    if (program->cmap) {
+        DUMP(prefix, "cmap: struct bf_map *");
+        bf_dump_prefix_push(prefix);
+        bf_map_dump(program->cmap, bf_dump_prefix_last(prefix));
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "cmap: struct bf_map * (NULL)");
+    }
 
-    DUMP(prefix, "pmap: struct bf_map *");
-    bf_dump_prefix_push(prefix);
-    bf_map_dump(program->pmap, bf_dump_prefix_last(prefix));
-    bf_dump_prefix_pop(prefix);
+    if (program->pmap) {
+        DUMP(prefix, "pmap: struct bf_map *");
+        bf_dump_prefix_push(prefix);
+        bf_map_dump(program->pmap, bf_dump_prefix_last(prefix));
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "pmap: struct bf_map * (NULL)");
+    }
 
-    DUMP(prefix, "lmap: struct bf_map *");
-    bf_dump_prefix_push(prefix);
-    bf_map_dump(program->lmap, bf_dump_prefix_last(prefix));
-    bf_dump_prefix_pop(prefix);
+    if (program->lmap) {
+        DUMP(prefix, "lmap: struct bf_map *");
+        bf_dump_prefix_push(prefix);
+        bf_map_dump(program->lmap, bf_dump_prefix_last(prefix));
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "lmap: struct bf_map * (NULL)");
+    }
 
     DUMP(prefix, "sets: bf_list<bf_map>[%lu]", bf_list_size(&program->sets));
     bf_dump_prefix_push(prefix);
@@ -909,117 +903,98 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r)
         return bf_err_r(r, "failed to assemble printer map string");
 
-    r = bf_map_set_value_size(program->pmap, pstr_len);
-    if (r < 0)
-        return r;
-
-    r = bf_map_create(program->pmap);
-    if (r < 0)
-        return r;
+    r = bf_map_new(&program->pmap, _BF_PRINTER_MAP_NAME, BF_MAP_TYPE_PRINTER,
+                   sizeof(uint32_t), pstr_len, 1);
+    if (r)
+        return bf_err_r(r, "failed to create the printer bf_map object");
 
     r = bf_map_set_elem(program->pmap, &key, pstr);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to set print map elem");
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_PRINTER_MAP_FD);
-    if (r) {
-        bf_map_destroy(program->pmap);
+    if (r)
         return bf_err_r(r, "failed to fixup printer map FD");
-    }
 
     return 0;
 }
 
 static int _bf_program_load_counters_map(struct bf_program *program)
 {
-    _cleanup_close_ int _fd = -1;
     int r;
 
     assert(program);
 
-    r = bf_map_set_n_elems(program->cmap,
-                           bf_list_size(&program->runtime.chain->rules) + 2);
-    if (r < 0)
-        return r;
-
-    r = bf_map_create(program->cmap);
-    if (r < 0)
-        return r;
+    r = bf_map_new(&program->cmap, _BF_COUNTER_MAP_NAME, BF_MAP_TYPE_COUNTERS,
+                   sizeof(uint32_t), sizeof(struct bf_counter),
+                   bf_list_size(&program->runtime.chain->rules) + 2);
+    if (r)
+        return bf_err_r(r, "failed to create the counters bf_map object");
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_COUNTERS_MAP_FD);
-    if (r < 0) {
-        bf_map_destroy(program->cmap);
+    if (r)
         return bf_err_r(r, "failed to fixup counters map FD");
-    }
 
     return 0;
 }
 
 static int _bf_program_load_log_map(struct bf_program *program)
 {
-    _cleanup_close_ int _fd = -1;
     int r;
 
     assert(program);
 
-    r = bf_map_create(program->lmap);
-    if (r < 0)
-        return r;
+    // Do not create a log map if it's unused in the chain
+    if (!(program->runtime.chain->flags & BF_FLAG(BF_CHAIN_LOG)))
+        return 0;
+
+    r = bf_map_new(&program->lmap, _BF_LOG_MAP_NAME, BF_MAP_TYPE_LOG, 0, 0,
+                   _BF_LOG_MAP_SIZE);
+    if (r)
+        return bf_err_r(r, "failed to create the log bf_map object");
 
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_LOG_MAP_FD);
-    if (r < 0) {
-        bf_map_destroy(program->lmap);
+    if (r)
         return bf_err_r(r, "failed to fixup log map FD");
-    }
 
     return 0;
 }
 
 static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 {
-    const bf_list_node *set_node;
-    const bf_list_node *map_node;
+    char name[BPF_OBJ_NAME_LEN];
+    size_t set_idx = 0;
     int r;
 
     assert(new_prog);
 
-    set_node = bf_list_get_head(&new_prog->runtime.chain->sets);
-    map_node = bf_list_get_head(&new_prog->sets);
-
-    // Fill the bf_map with the sets content
-    while (set_node && map_node) {
+    bf_list_foreach (&new_prog->runtime.chain->sets, set_node) {
+        struct bf_set *set = bf_list_node_get_data(set_node);
+        _free_bf_map_ struct bf_map *map = NULL;
         _cleanup_free_ uint8_t *values = NULL;
         _cleanup_free_ uint8_t *keys = NULL;
-        struct bf_set *set = bf_list_node_get_data(set_node);
-        struct bf_map *map = bf_list_node_get_data(map_node);
-
-        // Skip null maps (empty sets)
-        if (!map) {
-            set_node = bf_list_node_next(set_node);
-            map_node = bf_list_node_next(map_node);
-            continue;
-        }
-
         size_t nelems = bf_list_size(&set->elems);
         size_t idx = 0;
 
-        r = bf_map_create(map);
-        if (r < 0) {
-            r = bf_err_r(r, "failed to create BPF map for set");
-            goto err_destroy_maps;
+        if (!nelems) {
+            r = bf_list_add_tail(&new_prog->sets, NULL);
+            if (r)
+                return r;
+            continue;
         }
+
+        (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x", (uint8_t)set_idx++);
+        r = bf_map_new_from_set(&map, name, set);
+        if (r)
+            return r;
 
         values = malloc(nelems);
-        if (!values) {
-            r = bf_err_r(errno, "failed to allocate map values");
-            goto err_destroy_maps;
-        }
+        if (!values)
+            return bf_err_r(-errno, "failed to allocate map values");
 
         keys = malloc(set->elem_size * nelems);
-        if (!keys) {
-            r = bf_err_r(errno, "failed to allocate map keys");
-            goto err_destroy_maps;
-        }
+        if (!keys)
+            return bf_err_r(errno, "failed to allocate map keys");
 
         bf_list_foreach (&set->elems, elem_node) {
             void *elem = bf_list_node_get_data(elem_node);
@@ -1030,28 +1005,19 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         }
 
         r = bf_bpf_map_update_batch(map->fd, keys, values, nelems, BPF_ANY);
-        if (r < 0) {
-            bf_err_r(r, "failed to add set elements to the map");
-            goto err_destroy_maps;
-        }
+        if (r)
+            return bf_err_r(r, "failed to add set elements to the map");
 
-        set_node = bf_list_node_next(set_node);
-        map_node = bf_list_node_next(map_node);
-    }
+        r = bf_list_push(&new_prog->sets, (void **)&map);
+        if (r)
+            return r;
+    };
 
     r = _bf_program_fixup(new_prog, BF_FIXUP_TYPE_SET_MAP_FD);
-    if (r < 0)
-        goto err_destroy_maps;
+    if (r)
+        return r;
 
     return 0;
-
-err_destroy_maps:
-    bf_list_foreach (&new_prog->sets, map_node) {
-        struct bf_map *map = bf_list_node_get_data(map_node);
-        if (map)
-            bf_map_destroy(map);
-    }
-    return r;
 }
 
 int bf_program_load(struct bf_program *prog)
@@ -1063,19 +1029,19 @@ int bf_program_load(struct bf_program *prog)
 
     r = _bf_program_load_sets_maps(prog);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to load the sets map");
 
     r = _bf_program_load_counters_map(prog);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to load the counter map");
 
     r = _bf_program_load_printer_map(prog);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to load the printer map");
 
     r = _bf_program_load_log_map(prog);
     if (r)
-        return r;
+        return bf_err_r(r, "failed to load the log map");
 
     if (bf_opts_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
@@ -1108,7 +1074,7 @@ int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
     assert(prog);
     assert(hookopts);
 
-    r = bf_link_new(&prog->link, "bf_link", prog->runtime.chain->hook, hookopts,
+    r = bf_link_new(&prog->link, _BF_LINK_NAME, prog->runtime.chain->hook, hookopts,
                     prog->runtime.prog_fd);
     if (r) {
         return bf_err_r(r, "failed to attach bf_link for %s program",
@@ -1127,18 +1093,18 @@ void bf_program_detach(struct bf_program *prog)
 
 void bf_program_unload(struct bf_program *prog)
 {
+    _clean_bf_list_ bf_list list;
+
     assert(prog);
+
+    list = bf_list_default_from(prog->sets);
 
     closep(&prog->runtime.prog_fd);
     bf_link_free(&prog->link);
-    bf_map_destroy(prog->cmap);
-    bf_map_destroy(prog->pmap);
-    bf_map_destroy(prog->lmap);
-    bf_list_foreach (&prog->sets, map_node) {
-        struct bf_map *map = bf_list_node_get_data(map_node);
-        if (map)
-            bf_map_destroy(map);
-    }
+    bf_map_free(&prog->cmap);
+    bf_map_free(&prog->pmap);
+    bf_map_free(&prog->lmap);
+    bf_swap(list, prog->sets);
 }
 
 int bf_program_get_counter(const struct bf_program *program,
@@ -1180,22 +1146,28 @@ int bf_program_pin(struct bf_program *prog, int dir_fd)
         goto err_unpin_all;
     }
 
-    r = bf_map_pin(prog->cmap, dir_fd);
-    if (r) {
-        bf_err_r(r, "failed to pin BPF counters map for '%s'", name);
-        goto err_unpin_all;
+    if (prog->cmap) {
+        r = bf_map_pin(prog->cmap, dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF counters map for '%s'", name);
+            goto err_unpin_all;
+        }
     }
 
-    r = bf_map_pin(prog->pmap, dir_fd);
-    if (r) {
-        bf_err_r(r, "failed to pin BPF printer map for '%s'", name);
-        goto err_unpin_all;
+    if (prog->pmap) {
+        r = bf_map_pin(prog->pmap, dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF printer map for '%s'", name);
+            goto err_unpin_all;
+        }
     }
 
-    r = bf_map_pin(prog->lmap, dir_fd);
-    if (r) {
-        bf_err_r(r, "failed to pin BPF log map for '%s'", name);
-        goto err_unpin_all;
+    if (prog->lmap) {
+        r = bf_map_pin(prog->lmap, dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF log map for '%s'", name);
+            goto err_unpin_all;
+        }
     }
 
     bf_list_foreach (&prog->sets, set_node) {
@@ -1230,9 +1202,12 @@ void bf_program_unpin(struct bf_program *prog, int dir_fd)
 {
     assert(prog);
 
-    bf_map_unpin(prog->cmap, dir_fd);
-    bf_map_unpin(prog->pmap, dir_fd);
-    bf_map_unpin(prog->lmap, dir_fd);
+    if (prog->cmap)
+        bf_map_unpin(prog->cmap, dir_fd);
+    if (prog->pmap)
+        bf_map_unpin(prog->pmap, dir_fd);
+    if (prog->lmap)
+        bf_map_unpin(prog->lmap, dir_fd);
 
     bf_list_foreach (&prog->sets, set_node) {
         struct bf_map *map = bf_list_node_get_data(set_node);
