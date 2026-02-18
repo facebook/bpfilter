@@ -9,10 +9,14 @@ file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/bpfilter/*.h        ${CMAKE_SOURCE_DIR}/src/bpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.h     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/*.h           ${CMAKE_SOURCE_DIR}/src/bfcli/*.c
-    # ${CMAKE_SOURCE_DIR}/tests/*.h               ${CMAKE_SOURCE_DIR}/tests/*.c
 )
 list(FILTER bf_srcs EXCLUDE REGEX "src/bpfilter/xlate/nft/nfmsg.*")
 list(FILTER bf_srcs EXCLUDE REGEX "src/bpfilter/xlate/nft/nfgroup.*")
+
+file(GLOB_RECURSE bf_test_srcs
+    ${CMAKE_SOURCE_DIR}/tests/*.h               ${CMAKE_SOURCE_DIR}/tests/*.c
+)
+set(bf_all_srcs ${bf_srcs} ${bf_test_srcs})
 
 add_test(NAME "check.lint"
     COMMAND
@@ -40,7 +44,8 @@ add_test(NAME "check.checkstyle"
         ${CLANG_FORMAT_BIN}
             --style=file:${CMAKE_SOURCE_DIR}/.clang-format
             --dry-run
-            ${bf_srcs}
+            --Werror
+            ${bf_all_srcs}
 )
 
 set_tests_properties("check.checkstyle" PROPERTIES
@@ -52,7 +57,7 @@ add_custom_target(fixstyle
         ${CLANG_FORMAT_BIN}
             --style=file:${CMAKE_SOURCE_DIR}/.clang-format
             -i
-            ${bf_srcs}
+            ${bf_all_srcs}
     COMMENT "Fixing style for all the source files"
 )
 
