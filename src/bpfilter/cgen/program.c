@@ -65,7 +65,6 @@
 #define _BF_LOG_MAP_N_ENTRIES 1000
 #define _BF_LOG_MAP_SIZE                                                       \
     _bf_round_next_power_of_2(sizeof(struct bf_log) * _BF_LOG_MAP_N_ENTRIES)
-#define _BF_PROG_NAME "bf_prog"
 #define _BF_SET_MAP_PREFIX "bf_set_"
 #define _BF_COUNTER_MAP_NAME "bf_cmap"
 #define _BF_PRINTER_MAP_NAME "bf_pmap"
@@ -98,13 +97,15 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
     return flavor_ops[flavor];
 }
 
-int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
+int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
+                   struct bf_handle *handle)
 {
     _free_bf_program_ struct bf_program *_program = NULL;
     int r;
 
     assert(program);
     assert(chain);
+    assert(handle);
 
     _program = calloc(1, sizeof(*_program));
     if (!_program)
@@ -114,61 +115,11 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain)
     _program->runtime.ops = bf_flavor_ops_get(_program->flavor);
     _program->runtime.chain = chain;
     _program->fixups = bf_list_default(bf_fixup_free, NULL);
-
-    r = bf_handle_new(&_program->handle, _BF_PROG_NAME);
-    if (r)
-        return r;
+    _program->handle = handle;
 
     r = bf_printer_new(&_program->printer);
     if (r)
         return r;
-
-    *program = TAKE_PTR(_program);
-
-    return 0;
-}
-
-int bf_program_new_from_pack(struct bf_program **program,
-                             const struct bf_chain *chain, int dir_fd,
-                             bf_rpack_node_t node)
-{
-    _free_bf_program_ struct bf_program *_program = NULL;
-    const void *img;
-    size_t img_len;
-    bf_rpack_node_t child;
-    int r;
-
-    assert(program);
-    assert(chain);
-
-    r = bf_program_new(&_program, chain);
-    if (r)
-        return r;
-
-    bf_handle_free(&_program->handle);
-    r = bf_rpack_kv_obj(node, "handle", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.handle");
-    r = bf_handle_new_from_pack(&_program->handle, dir_fd, child);
-    if (r)
-        return r;
-
-    bf_printer_free(&_program->printer);
-    r = bf_rpack_kv_obj(node, "printer", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.printer");
-    r = bf_printer_new_from_pack(&_program->printer, child);
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_bin(node, "img", &img, &img_len);
-    if (r)
-        return bf_rpack_key_err(r, "bf_program.img");
-    _program->img = bf_memdup(img, img_len);
-    if (!_program->img)
-        return bf_rpack_key_err(-ENOMEM, "bf_program.img");
-    _program->img_size = img_len / sizeof(struct bpf_insn);
-    _program->img_cap = _program->img_size;
 
     *program = TAKE_PTR(_program);
 
@@ -183,30 +134,10 @@ void bf_program_free(struct bf_program **program)
     bf_list_clean(&(*program)->fixups);
     free((*program)->img);
 
-    bf_handle_free(&(*program)->handle);
     bf_printer_free(&(*program)->printer);
 
     free(*program);
     *program = NULL;
-}
-
-int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack)
-{
-    assert(program);
-    assert(pack);
-
-    bf_wpack_open_object(pack, "handle");
-    bf_handle_pack(program->handle, pack);
-    bf_wpack_close_object(pack);
-
-    bf_wpack_open_object(pack, "printer");
-    bf_printer_pack(program->printer, pack);
-    bf_wpack_close_object(pack);
-
-    bf_wpack_kv_bin(pack, "img", program->img,
-                    program->img_size * sizeof(struct bpf_insn));
-
-    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
@@ -928,35 +859,6 @@ int bf_program_load(struct bf_program *prog)
     return r;
 }
 
-int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts)
-{
-    assert(prog);
-    assert(hookopts);
-
-    return bf_handle_attach(prog->handle, prog->runtime.chain->hook, hookopts);
-}
-
-void bf_program_detach(struct bf_program *prog)
-{
-    assert(prog);
-
-    bf_handle_detach(prog->handle);
-}
-
-void bf_program_unload(struct bf_program *prog)
-{
-    assert(prog);
-
-    bf_handle_unload(prog->handle);
-}
-
-struct bf_handle *bf_program_take_handle(struct bf_program *prog)
-{
-    assert(prog);
-
-    return TAKE_PTR(prog->handle);
-}
-
 int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter)
 {
@@ -973,20 +875,6 @@ int bf_cgen_set_counters(struct bf_program *program,
     (void)counters;
 
     return -ENOTSUP;
-}
-
-int bf_program_pin(struct bf_program *prog, int dir_fd)
-{
-    assert(prog);
-
-    return bf_handle_pin(prog->handle, dir_fd);
-}
-
-void bf_program_unpin(struct bf_program *prog, int dir_fd)
-{
-    assert(prog);
-
-    bf_handle_unpin(prog->handle, dir_fd);
 }
 
 size_t bf_program_chain_counter_idx(const struct bf_program *program)
