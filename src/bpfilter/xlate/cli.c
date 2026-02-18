@@ -91,10 +91,9 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
         if (r)
             return bf_err_r(r, "failed to add chain to list");
 
-        r = bf_list_add_tail(&hookopts,
-                             cgen->program->handle->link ?
-                                 cgen->program->handle->link->hookopts :
-                                 NULL);
+        r = bf_list_add_tail(&hookopts, cgen->handle->link ?
+                                            cgen->handle->link->hookopts :
+                                            NULL);
         if (r)
             return bf_err_r(r, "failed to add hookopts to list");
 
@@ -301,9 +300,9 @@ static int _bf_cli_chain_get(const struct bf_request *request,
         return r;
     bf_wpack_close_object(wpack);
 
-    if (cgen->program->handle->link) {
+    if (cgen->handle->link) {
         bf_wpack_open_object(wpack, "hookopts");
-        r = bf_hookopts_pack(cgen->program->handle->link->hookopts, wpack);
+        r = bf_hookopts_pack(cgen->handle->link->hookopts, wpack);
         if (r)
             return r;
         bf_wpack_close_object(wpack);
@@ -339,10 +338,10 @@ int _bf_cli_chain_prog_fd(const struct bf_request *request,
     if (!cgen)
         return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
-    if (!cgen->program || cgen->program->handle->prog_fd == -1)
+    if (cgen->handle->prog_fd == -1)
         return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
 
-    r = bf_send_fd(bf_request_fd(request), cgen->program->handle->prog_fd);
+    r = bf_send_fd(bf_request_fd(request), cgen->handle->prog_fd);
     if (r < 0)
         return bf_err_r(errno, "failed to send prog FD for '%s'", name);
 
@@ -372,10 +371,10 @@ int _bf_cli_chain_logs_fd(const struct bf_request *request,
     if (!cgen)
         return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
-    if (!cgen->program || !cgen->program->handle->lmap)
+    if (!cgen->handle->lmap)
         return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", name);
 
-    r = bf_send_fd(bf_request_fd(request), cgen->program->handle->lmap->fd);
+    r = bf_send_fd(bf_request_fd(request), cgen->handle->lmap->fd);
     if (r < 0)
         return bf_err_r(errno, "failed to send logs FD for '%s'", name);
 
@@ -467,7 +466,7 @@ int _bf_cli_chain_attach(const struct bf_request *request,
     cgen = bf_ctx_get_cgen(name);
     if (!cgen)
         return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
-    if (cgen->program->handle->link)
+    if (cgen->handle->link)
         return bf_err_r(-EBUSY, "chain '%s' is already linked to a hook", name);
 
     r = bf_hookopts_validate(hookopts, cgen->chain->hook);

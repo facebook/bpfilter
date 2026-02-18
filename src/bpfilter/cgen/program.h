@@ -197,8 +197,8 @@ struct bf_program
     struct bf_printer *printer;
 
     /** Handle containing BPF object references (prog_fd, maps, link).
-     * Created in `bf_program_new()`, populated during load/attach.
-     * Can be transferred to bf_cgen via `bf_program_take_handle()`. */
+     * Non-owning pointer, passed in from `bf_cgen` via `bf_program_new()`.
+     * Populated during load/attach. */
     struct bf_handle *handle;
 
     /* Bytecode */
@@ -228,42 +228,14 @@ struct bf_program
  *
  * @param program `bf_program` object to allocate and initialize. Can't be NULL.
  * @param chain Chain the program is generated from. Can't be NULL.
+ * @param handle Handle to store BPF object references in. The program borrows
+ *        this pointer (non-owning). Can't be NULL.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_program_new(struct bf_program **program, const struct bf_chain *chain);
-
-/**
- * @brief Allocate and initialize a new program from serialized data.
- *
- * @note The new bf_program object will represent a BPF map from bpfilter's
- * point of view, but it's not a BPF program.
- *
- * @todo `bf_program` should be recreated from the current system state by
- * using `BF_OBJ_INFO_BF_FD`, and not serialized.
- *
- * @param program Program object to allocate and initialize from the serialized
- *        data. The caller will own the object. On failure, `*program` is
- *        unchanged. Can't be NULL.
- * @param chain Chain to restore the program for. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the program's pins.
- *        Must be a valid file descriptor, or -1 if the pin should not be opened.
- * @param node Node containing the serialized program. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_program_new_from_pack(struct bf_program **program,
-                             const struct bf_chain *chain, int dir_fd,
-                             bf_rpack_node_t node);
+int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
+                   struct bf_handle *handle);
 
 void bf_program_free(struct bf_program **program);
-
-/**
- * @brief Serialize a program.
- *
- * @param program Program to serialize. Can't be NULL.
- * @param pack `bf_wpack_t` object to serialize the program into. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-int bf_program_pack(const struct bf_program *program, bf_wpack_t *pack);
 
 void bf_program_dump(const struct bf_program *program, prefix_t *prefix);
 int bf_program_grow_img(struct bf_program *program);
@@ -293,75 +265,6 @@ int bf_program_generate(struct bf_program *program);
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_program_load(struct bf_program *prog);
-
-/**
- * Attach a loaded program to a hook.
- *
- * @warning If the program hasn't been loaded (using `bf_program_load`),
- * `bf_program_attach` will fail.
- *
- * The program is attached to a hook using a `bf_link` object. In persistent
- * mode, the link will be pinned to the filesystem. If the link can't be pinned,
- * the program will be detached from the hook.
- *
- * @param prog Program to attach. Can't be NULL.
- * @param hookopts Hook-specific options to attach the program to the hook.
- *        Can't be NULL.
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_program_attach(struct bf_program *prog, struct bf_hookopts **hookopts);
-
-/**
- * @brief Pin the BPF program.
- *
- * The program and all the BPF objects it uses will be pinned into `dir_fd`.
- * The BPF link is only pinned if the program is attached to a hook.
- *
- * @param prog Program to pin. Can't be NULL.
- * @param dir_fd File descriptor of the directory to pin the program and its
- *        BPF objects into.
- * @return 0 on success, or a negative errno value on error.
- */
-int bf_program_pin(struct bf_program *prog, int dir_fd);
-
-/**
- * @brief Unpin the BPF program.
- *
- * This function never fails. If the program is not pinned, no file will be
- * removed.
- *
- * @param prog Program to unpin. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the pinned objects.
- */
-void bf_program_unpin(struct bf_program *prog, int dir_fd);
-
-/**
- * Detach the program from the kernel.
- *
- * The program is detached but not unloaded.
- *
- * @param prog Program to detach. Can't be NULL.
- */
-void bf_program_detach(struct bf_program *prog);
-
-/**
- * Unload the program.
- *
- * @param prog Program to unload. Must not be attached. Can't be NULL.
- */
-void bf_program_unload(struct bf_program *prog);
-
-/**
- * @brief Transfer ownership of the handle from the program.
- *
- * After this call, the program no longer owns the handle and the caller
- * becomes responsible for freeing it. The program's handle pointer is set
- * to NULL.
- *
- * @param prog Program to take the handle from. Can't be NULL.
- * @return The handle, or NULL if the program has no handle.
- */
-struct bf_handle *bf_program_take_handle(struct bf_program *prog);
 
 int bf_program_get_counter(const struct bf_program *program,
                            uint32_t counter_idx, struct bf_counter *counter);
