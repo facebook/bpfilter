@@ -11,7 +11,6 @@ You are welcome to reach out to qde@naccy.de if you need help, or have any quest
 To do
 -----
 
-* Enforce ``clang-format`` and ``clang-tidy`` on all source files.
 * Remove the RPM ``x86_64`` macro `workaround <https://pagure.io/epel/issue/325>`_ from the Fedora ``bpfilter.spec``.
 * Gate the documentation generate in Fedora's ``bpfilter.spec`` with a ``bcond``.
 * Add support for CMake 4.0 and ``ninja``.
