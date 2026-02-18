@@ -24,20 +24,141 @@
 
 #include "ctx.h"
 
+#define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
+
+static void _bf_btf_free(struct bf_btf **btf);
+
+static int _bf_btf_new(struct bf_btf **btf)
+{
+    _free_bf_btf_ struct bf_btf *_btf = NULL;
+
+    assert(btf);
+
+    _btf = malloc(sizeof(struct bf_btf));
+    if (!_btf)
+        return -ENOMEM;
+
+    _btf->fd = -1;
+
+    _btf->btf = btf__new_empty();
+    if (!_btf->btf)
+        return -errno;
+
+    *btf = TAKE_PTR(_btf);
+
+    return 0;
+}
+
+static void _bf_btf_free(struct bf_btf **btf)
+{
+    assert(btf);
+
+    if (!*btf)
+        return;
+
+    btf__free((*btf)->btf);
+    closep(&(*btf)->fd);
+    freep((void *)btf);
+}
+
+static int _bf_btf_load(struct bf_btf *btf)
+{
+    union bpf_attr attr = {};
+    const void *raw;
+    int r;
+
+    assert(btf);
+
+    raw = btf__raw_data(btf->btf, &attr.btf_size);
+    if (!raw)
+        return bf_err_r(errno, "failed to request BTF raw data");
+
+    r = bf_bpf_btf_load(raw, attr.btf_size, bf_ctx_token());
+    if (r < 0)
+        return r;
+
+    btf->fd = r;
+
+    return 0;
+}
+
+/**
+ * @brief Create the BTF data for the map.
+ *
+ * @param map Map to create the BTF data for. @c map.type will define the
+ *        exact content of the BTF object. Can't be NULL.
+ * @return A @ref bf_btf structure on success, or NULL on error. The
+ *         @ref bf_btf structure is owned by the caller.
+ */
+static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
+{
+    _free_bf_btf_ struct bf_btf *btf = NULL;
+    struct btf *kbtf;
+    int r;
+
+    assert(map);
+
+    r = _bf_btf_new(&btf);
+    if (r < 0)
+        return NULL;
+
+    kbtf = btf->btf;
+
+    switch (map->type) {
+    case BF_MAP_TYPE_COUNTERS:
+        btf__add_int(kbtf, "u64", 8, 0);
+        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
+        btf->value_type_id = btf__add_struct(kbtf, "bf_counters", 16);
+        btf__add_field(kbtf, "packets", 1, 0, 0);
+        btf__add_field(kbtf, "bytes", 1, 64, 0);
+        break;
+    case BF_MAP_TYPE_PRINTER:
+    case BF_MAP_TYPE_SET:
+    case BF_MAP_TYPE_LOG:
+        // No BTF data available for these map types
+        return NULL;
+    default:
+        bf_err_r(-ENOTSUP, "bf_map type %d is not supported", map->type);
+        return NULL;
+    }
+
+    r = _bf_btf_load(btf);
+    if (r) {
+        bf_warn_r(r, "failed to load BTF data for %s, ignoring", map->name);
+        return NULL;
+    }
+
+    return TAKE_PTR(btf);
+}
+
 static int _bf_map_new(struct bf_map **map, const char *name,
                        enum bf_map_type type, enum bf_bpf_map_type bpf_type,
                        size_t key_size, size_t value_size, size_t n_elems)
 {
+    _free_bf_map_ struct bf_map *_map = NULL;
+    _free_bf_btf_ struct bf_btf *btf = NULL;
+    _cleanup_close_ int fd = -1;
+
     assert(map);
     assert(name);
 
-    _free_bf_map_ struct bf_map *_map = NULL;
-
     if (name[0] == '\0')
-        return bf_err_r(-EINVAL, "map name can't be empty");
+        return bf_err_r(-EINVAL, "bf_map: name can't be empty");
 
-    if (n_elems == 0)
-        return bf_err_r(-EINVAL, "map can't be created without elements");
+    if (type != BF_MAP_TYPE_LOG && key_size == 0)
+        return bf_err_r(-EINVAL, "bf_map %s: key size can't be 0", name);
+    if (type == BF_MAP_TYPE_LOG && key_size != 0)
+        return bf_err_r(-EINVAL, "bf_map %s: key size must be 0", name);
+
+    if (type != BF_MAP_TYPE_LOG && value_size == 0)
+        return bf_err_r(-EINVAL, "bf_map %s: value size can't be 0", name);
+    if (type == BF_MAP_TYPE_LOG && value_size != 0)
+        return bf_err_r(-EINVAL, "bf_map %s: value size must be 0", name);
+
+    if (n_elems == 0) {
+        return bf_err_r(-EINVAL, "bf_map %s: number of elements can't be 0",
+                        name);
+    }
 
     _map = malloc(sizeof(*_map));
     if (!_map)
@@ -52,6 +173,15 @@ static int _bf_map_new(struct bf_map **map, const char *name,
 
     bf_strncpy(_map->name, BPF_OBJ_NAME_LEN, name);
 
+    btf = _bf_map_make_btf(_map);
+
+    fd =
+        bf_bpf_map_create(_map->name, _map->bpf_type, _map->key_size,
+                          _map->value_size, _map->n_elems, btf, bf_ctx_token());
+    if (fd < 0)
+        return bf_err_r(fd, "bf_map %s: failed to create map", name);
+
+    _map->fd = TAKE_FD(fd);
     *map = TAKE_PTR(_map);
 
     return 0;
@@ -66,6 +196,9 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
     };
 
+    assert(map);
+    assert(name);
+
     if (type == BF_MAP_TYPE_SET) {
         return bf_err_r(
             -EINVAL,
@@ -79,6 +212,10 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
 int bf_map_new_from_set(struct bf_map **map, const char *name,
                         const struct bf_set *set)
 {
+    assert(map);
+    assert(name);
+    assert(set);
+
     return _bf_map_new(map, name, BF_MAP_TYPE_SET,
                        set->use_trie ? BF_BPF_MAP_TYPE_LPM_TRIE :
                                        BF_BPF_MAP_TYPE_HASH,
@@ -92,6 +229,9 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     int r;
 
     assert(map);
+
+    if (dir_fd < 0)
+        return bf_err_r(-EBADFD, "dir_fd is invalid");
 
     _map = malloc(sizeof(*_map));
     if (!_map)
@@ -127,15 +267,9 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     if (_map->n_elems == 0)
         return bf_err_r(-EINVAL, "bf_map should not have 0 elements");
 
-    if (dir_fd != -1) {
-        r = bf_bpf_obj_get(_map->name, dir_fd, &_map->fd);
-        if (r < 0) {
-            return bf_err_r(r, "failed to open pinned BPF map '%s'",
-                            _map->name);
-        }
-    } else {
-        _map->fd = -1;
-    }
+    r = bf_bpf_obj_get(_map->name, dir_fd, &_map->fd);
+    if (r < 0)
+        return bf_err_r(r, "failed to open pinned BPF map '%s'", _map->name);
 
     *map = TAKE_PTR(_map);
 
@@ -209,175 +343,12 @@ void bf_map_dump(const struct bf_map *map, prefix_t *prefix)
     DUMP(prefix, "bpf_type: %s", _bf_bpf_type_to_str(map->bpf_type));
     DUMP(prefix, "key_size: %lu", map->key_size);
     DUMP(prefix, "value_size: %lu", map->value_size);
-
-    if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
-        DUMP(prefix, "n_elems: unknown");
-    } else {
-        DUMP(prefix, "n_elems: %lu", map->n_elems);
-    }
+    DUMP(prefix, "n_elems: %lu", map->n_elems);
 
     bf_dump_prefix_last(prefix);
     DUMP(prefix, "fd: %d", map->fd);
 
     bf_dump_prefix_pop(prefix);
-}
-
-#define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
-
-static void _bf_btf_free(struct bf_btf **btf);
-
-static int _bf_btf_new(struct bf_btf **btf)
-{
-    _free_bf_btf_ struct bf_btf *_btf = NULL;
-
-    assert(btf);
-
-    _btf = malloc(sizeof(struct bf_btf));
-    if (!_btf)
-        return -ENOMEM;
-
-    _btf->fd = -1;
-
-    _btf->btf = btf__new_empty();
-    if (!_btf->btf)
-        return -errno;
-
-    *btf = TAKE_PTR(_btf);
-
-    return 0;
-}
-
-static void _bf_btf_free(struct bf_btf **btf)
-{
-    assert(btf);
-
-    if (!*btf)
-        return;
-
-    btf__free((*btf)->btf);
-    closep(&(*btf)->fd);
-    freep((void *)btf);
-}
-
-static int _bf_btf_load(struct bf_btf *btf)
-{
-    union bpf_attr attr = {};
-    const void *raw;
-    int r;
-
-    assert(btf);
-
-    raw = btf__raw_data(btf->btf, &attr.btf_size);
-    if (!raw)
-        return bf_err_r(errno, "failed to request BTF raw data");
-
-    r = bf_bpf_btf_load(raw, attr.btf_size, bf_ctx_token());
-    if (r < 0)
-        return r;
-
-    btf->fd = r;
-
-    return 0;
-}
-
-/**
- * Create the BTF data for the map.
- *
- * @param map Map to create the BTF data for. @c map.type will define the
- *        exact content of the BTF object. Can't be NULL.
- * @return A @ref bf_btf structure on success, or NULL on error. The
- *         @ref bf_btf structure is owned by the caller.
- */
-static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
-{
-    _free_bf_btf_ struct bf_btf *btf = NULL;
-    struct btf *kbtf;
-    int r;
-
-    assert(map);
-
-    r = _bf_btf_new(&btf);
-    if (r < 0)
-        return NULL;
-
-    kbtf = btf->btf;
-
-    switch (map->type) {
-    case BF_MAP_TYPE_COUNTERS:
-        btf__add_int(kbtf, "u64", 8, 0);
-        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
-        btf->value_type_id = btf__add_struct(kbtf, "bf_counters", 16);
-        btf__add_field(kbtf, "packets", 1, 0, 0);
-        btf__add_field(kbtf, "bytes", 1, 64, 0);
-        break;
-    case BF_MAP_TYPE_PRINTER:
-    case BF_MAP_TYPE_SET:
-    case BF_MAP_TYPE_LOG:
-        // No BTF data available for this map types
-        return NULL;
-    default:
-        bf_err_r(-ENOTSUP, "bf_map type %d is not supported", map->type);
-        return NULL;
-    }
-
-    r = _bf_btf_load(btf);
-    if (r) {
-        bf_warn_r(r, "failed to load BTF data for %s, ignoring", map->name);
-        return NULL;
-    }
-
-    return TAKE_PTR(btf);
-}
-
-int bf_map_create(struct bf_map *map)
-{
-    _free_bf_btf_ struct bf_btf *btf = NULL;
-    int r;
-
-    assert(map);
-
-    if (map->key_size == BF_MAP_KEY_SIZE_UNKNOWN) {
-        return bf_err_r(
-            -EINVAL,
-            "can't create a map with BF_MAP_KEY_SIZE_UNKNOWN key size");
-    }
-
-    if (map->value_size == BF_MAP_VALUE_SIZE_UNKNOWN) {
-        return bf_err_r(
-            -EINVAL,
-            "can't create a map with BF_MAP_VALUE_SIZE_UNKNOWN value size");
-    }
-
-    if (map->n_elems == BF_MAP_N_ELEMS_UNKNOWN) {
-        return bf_err_r(
-            -EINVAL,
-            "can't create a map with BF_MAP_N_ELEMS_UNKNOWN number of elements");
-    }
-
-    /** The BTF data is not mandatory to use the map, but a good addition.
-     * Hence, bpfilter will try to make the BTF data available, but will
-     * ignore if that fails. @ref _bf_map_make_btf is used to isolate the
-     * BTF data generation: if it fails we ignore the issue, but if it
-     * succeeds we update the @c bpf_attr structure with the BTF details.
-     * There is some boilerplate for @ref bf_btf structure, it could be
-     * simpler, but the current implementation ensure the BTF data is properly
-     * freed on error, without preventing the BPF map to be created. */
-    r = bf_bpf_map_create(map->name, map->bpf_type, map->key_size,
-                          map->value_size, map->n_elems, _bf_map_make_btf(map),
-                          bf_ctx_token());
-    if (r < 0)
-        return bf_err_r(r, "failed to create BPF map '%s'", map->name);
-
-    map->fd = r;
-
-    return 0;
-}
-
-void bf_map_destroy(struct bf_map *map)
-{
-    assert(map);
-
-    closep(&map->fd);
 }
 
 int bf_map_pin(const struct bf_map *map, int dir_fd)
@@ -407,51 +378,6 @@ void bf_map_unpin(const struct bf_map *map, int dir_fd)
             "failed to unlink BPF map '%s', assuming the map is not pinned",
             map->name);
     }
-}
-
-int bf_map_set_key_size(struct bf_map *map, size_t key_size)
-{
-    assert(key_size != 0);
-
-    if (map->fd != -1) {
-        return bf_err_r(
-            -EPERM,
-            "can't change the size of the map key once it has been created");
-    }
-
-    map->key_size = key_size;
-
-    return 0;
-}
-
-int bf_map_set_value_size(struct bf_map *map, size_t value_size)
-{
-    assert(value_size != 0);
-
-    if (map->fd != -1) {
-        return bf_err_r(
-            -EPERM,
-            "can't change the size of the map value once it has been created");
-    }
-
-    map->value_size = value_size;
-
-    return 0;
-}
-
-int bf_map_set_n_elems(struct bf_map *map, size_t n_elems)
-{
-    assert(n_elems != 0);
-
-    if (map->fd != -1) {
-        return bf_err_r(
-            -EPERM,
-            "can't change the number of elements in a map once the map has been created");
-    }
-
-    map->n_elems = n_elems;
-
-    return 0;
 }
 
 int bf_map_set_elem(const struct bf_map *map, void *key, void *value)
