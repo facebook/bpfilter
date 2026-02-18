@@ -542,7 +542,7 @@ int _bf_cli_chain_flush(const struct bf_request *request,
 }
 
 int _bf_cli_chain_update_set(const struct bf_request *request,
-                       struct bf_response **response)
+                             struct bf_response **response)
 {
     _free_bf_set_ struct bf_set *to_add = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
