@@ -172,16 +172,18 @@ int do_in(const struct st_opts *opts)
             if (r == 0)
                 break;
             if (errno != ECONNREFUSED && errno != ENOENT)
-                return bf_err_r(errno, "do_in: failed to connect to socket at %s",
+                return bf_err_r(errno,
+                                "do_in: failed to connect to socket at %s",
                                 opts->socket_path);
             usleep(interval_ms * 1000);
             elapsed_ms += interval_ms;
         }
 
         if (r < 0)
-            return bf_err_r(errno,
-                            "do_in: failed to connect to socket at %s after %d seconds",
-                            opts->socket_path, timeout_ms / 1000);
+            return bf_err_r(
+                errno,
+                "do_in: failed to connect to socket at %s after %d seconds",
+                opts->socket_path, timeout_ms / 1000);
     }
 
     /**

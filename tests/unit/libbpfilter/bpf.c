@@ -64,8 +64,8 @@ static void bpf_prog_load_success(void **state)
 
     // Return fd 10
     bft_mock_syscall_set_retval(10);
-    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1,
-                         BF_BPF_XDP, NULL, 0, -1, &fd);
+    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1, BF_BPF_XDP,
+                         NULL, 0, -1, &fd);
     assert_ok(r);
     assert_int_equal(fd, 10);
 }
@@ -83,8 +83,8 @@ static void bpf_prog_load_failure(void **state)
 
     // Return error
     bft_mock_syscall_set_retval(-EINVAL);
-    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1,
-                         BF_BPF_XDP, NULL, 0, -1, &fd);
+    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1, BF_BPF_XDP,
+                         NULL, 0, -1, &fd);
     assert_err(r);
     assert_int_equal(fd, -1); // fd unchanged on error
 }
@@ -102,8 +102,8 @@ static void bpf_prog_load_with_token(void **state)
 
     // Test with token_fd
     bft_mock_syscall_set_retval(15);
-    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1,
-                         BF_BPF_XDP, NULL, 0, 5, &fd);
+    r = bf_bpf_prog_load("test_prog", BF_BPF_PROG_TYPE_XDP, img, 1, BF_BPF_XDP,
+                         NULL, 0, 5, &fd);
     assert_ok(r);
     assert_int_equal(fd, 15);
 }
@@ -334,8 +334,8 @@ static void bpf_map_create_lpm_trie(void **state)
 
     // LPM_TRIE sets BPF_F_NO_PREALLOC flag
     bft_mock_syscall_set_retval(101);
-    r = bf_bpf_map_create("test_lpm", BF_BPF_MAP_TYPE_LPM_TRIE, 8, 8, 1024, NULL,
-                          -1);
+    r = bf_bpf_map_create("test_lpm", BF_BPF_MAP_TYPE_LPM_TRIE, 8, 8, 1024,
+                          NULL, -1);
     assert_int_equal(r, 101);
 }
 
@@ -349,7 +349,8 @@ static void bpf_map_create_with_token(void **state)
     (void)mock;
 
     bft_mock_syscall_set_retval(102);
-    r = bf_bpf_map_create("test_map", BF_BPF_MAP_TYPE_ARRAY, 4, 8, 100, NULL, 5);
+    r = bf_bpf_map_create("test_map", BF_BPF_MAP_TYPE_ARRAY, 4, 8, 100, NULL,
+                          5);
     assert_int_equal(r, 102);
 }
 

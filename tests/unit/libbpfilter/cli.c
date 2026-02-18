@@ -3,10 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bpfilter/bpfilter.h>
-
 #include <errno.h>
 
+#include <bpfilter/bpfilter.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/hook.h>
@@ -151,16 +150,11 @@ static void chain_flush(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(ruleset_get),
-        cmocka_unit_test(ruleset_set),
-        cmocka_unit_test(ruleset_flush),
-        cmocka_unit_test(chain_set),
-        cmocka_unit_test(chain_get),
-        cmocka_unit_test(chain_prog_fd),
-        cmocka_unit_test(chain_logs_fd),
-        cmocka_unit_test(chain_load),
-        cmocka_unit_test(chain_attach),
-        cmocka_unit_test(chain_update),
+        cmocka_unit_test(ruleset_get),   cmocka_unit_test(ruleset_set),
+        cmocka_unit_test(ruleset_flush), cmocka_unit_test(chain_set),
+        cmocka_unit_test(chain_get),     cmocka_unit_test(chain_prog_fd),
+        cmocka_unit_test(chain_logs_fd), cmocka_unit_test(chain_load),
+        cmocka_unit_test(chain_attach),  cmocka_unit_test(chain_update),
         cmocka_unit_test(chain_flush),
     };
 

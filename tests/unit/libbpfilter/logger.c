@@ -116,51 +116,55 @@ static void logger_get_color_no_tty(void **state)
     assert_string_equal(bf_logger_get_color(BF_COLOR_GREEN, BF_STYLE_BOLD), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_YELLOW, BF_STYLE_NORMAL),
                         "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_YELLOW, BF_STYLE_BOLD), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_NORMAL), "");
+    assert_string_equal(bf_logger_get_color(BF_COLOR_YELLOW, BF_STYLE_BOLD),
+                        "");
+    assert_string_equal(bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_NORMAL),
+                        "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_BOLD), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_MAGENTA, BF_STYLE_NORMAL),
                         "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_MAGENTA, BF_STYLE_BOLD),
                         "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_NORMAL), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_NORMAL),
+    assert_string_equal(bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_NORMAL),
                         "");
+    assert_string_equal(bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD), "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_NORMAL), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_BOLD),
                         "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_NORMAL),
-                        "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_NORMAL), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_BOLD),
                         "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_NORMAL),
-                        "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_NORMAL), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_BOLD),
                         "");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_NORMAL), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD),
-                        "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD), "");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_NORMAL), "");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_BOLD), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_BLUE, BF_STYLE_NORMAL),
-                        "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_BLUE, BF_STYLE_NORMAL), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_BLUE, BF_STYLE_BOLD),
                         "");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_MAGENTA, BF_STYLE_NORMAL), "");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_MAGENTA, BF_STYLE_BOLD), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL),
-                        "");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL), "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_BOLD),
                         "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_WHITE, BF_STYLE_NORMAL),
                         "");
     assert_string_equal(bf_logger_get_color(BF_COLOR_WHITE, BF_STYLE_BOLD), "");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), "");
+    assert_string_equal(bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
+                        "");
 }
 
 static void logger_get_color_values(void **state)
@@ -185,7 +189,8 @@ static void logger_get_color_values(void **state)
     assert_non_null(bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_NORMAL));
     assert_non_null(bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_NORMAL));
     assert_non_null(bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_NORMAL));
-    assert_non_null(bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_NORMAL));
+    assert_non_null(
+        bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_NORMAL));
     assert_non_null(bf_logger_get_color(BF_COLOR_LIGHT_BLUE, BF_STYLE_NORMAL));
     assert_non_null(
         bf_logger_get_color(BF_COLOR_LIGHT_MAGENTA, BF_STYLE_NORMAL));
@@ -271,23 +276,24 @@ static void logger_get_color_with_tty(void **state)
                         "\033[0;36m");
     assert_string_equal(bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD),
                         "\033[1;36m");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_NORMAL),
-                        "\033[0;37m");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_NORMAL),
+        "\033[0;37m");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GRAY, BF_STYLE_BOLD),
                         "\033[1;37m");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_NORMAL),
-                        "\033[0;90m");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_NORMAL), "\033[0;90m");
     assert_string_equal(bf_logger_get_color(BF_COLOR_DARK_GRAY, BF_STYLE_BOLD),
                         "\033[1;90m");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_NORMAL),
-                        "\033[0;91m");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_NORMAL), "\033[0;91m");
     assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_RED, BF_STYLE_BOLD),
                         "\033[1;91m");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_NORMAL),
         "\033[0;92m");
-    assert_string_equal(bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD),
-                        "\033[1;92m");
+    assert_string_equal(
+        bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD), "\033[1;92m");
     assert_string_equal(
         bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_NORMAL),
         "\033[0;93m");

@@ -4,13 +4,14 @@
  */
 
 #define _GNU_SOURCE
+#include <linux/bpf.h>
+
 #include <dlfcn.h>
 #include <errno.h>
-#include <linux/bpf.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdatomic.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 

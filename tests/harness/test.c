@@ -10,10 +10,10 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
-#include <bpfilter/helper.h>
 
 #include "bpfilter/list.h"
 
@@ -241,11 +241,15 @@ bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
     n0 = bf_list_get_head(&lhs->elems);
     n1 = bf_list_get_head(&rhs->elems);
     for (; n0 || n1; n0 = bf_list_node_next(n0), n1 = bf_list_node_next(n1)) {
-        if (0 != memcmp(bf_list_node_get_data(n0), bf_list_node_get_data(n1), lhs->elem_size))
+        if (0 != memcmp(bf_list_node_get_data(n0), bf_list_node_get_data(n1),
+                        lhs->elem_size))
             return false;
     }
 
-    return bf_streq(lhs->name, rhs->name) && lhs->n_comps == rhs->n_comps && 0 == memcmp(lhs->key, rhs->key, sizeof(enum bf_matcher_type) * lhs->n_comps) && lhs->use_trie == rhs->use_trie;
+    return bf_streq(lhs->name, rhs->name) && lhs->n_comps == rhs->n_comps &&
+           0 == memcmp(lhs->key, rhs->key,
+                       sizeof(enum bf_matcher_type) * lhs->n_comps) &&
+           lhs->use_trie == rhs->use_trie;
 }
 
 bool bft_chain_equal(const struct bf_chain *chain0,
