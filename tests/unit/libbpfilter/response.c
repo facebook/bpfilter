@@ -205,15 +205,19 @@ static void size_calculation(void **state)
 
     (void)state;
 
-    assert_ok(bf_response_new_success(&response1, small_data, strlen(small_data) + 1));
-    assert_ok(bf_response_new_success(&response2, large_data, strlen(large_data) + 1));
+    assert_ok(bf_response_new_success(&response1, small_data,
+                                      strlen(small_data) + 1));
+    assert_ok(bf_response_new_success(&response2, large_data,
+                                      strlen(large_data) + 1));
 
     // Larger data should result in larger size
     assert_int_gt(bf_response_size(response2), bf_response_size(response1));
 
     // Size difference should match data length difference
-    size_t size_diff = bf_response_size(response2) - bf_response_size(response1);
-    size_t data_diff = bf_response_data_len(response2) - bf_response_data_len(response1);
+    size_t size_diff =
+        bf_response_size(response2) - bf_response_size(response1);
+    size_t data_diff =
+        bf_response_data_len(response2) - bf_response_data_len(response1);
     assert_int_equal(size_diff, data_diff);
 }
 

@@ -19,6 +19,7 @@
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
+
 #include "bpfilter/hook.h"
 
 static int _bft_list_dummy_pack(const void *data, bf_wpack_t *pack)
@@ -88,8 +89,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
     uint32_t id = 0;
     int r;
 
-    r = bf_chain_new(&chain, "bft_chain_dummy", BF_HOOK_TC_EGRESS, BF_VERDICT_ACCEPT,
-                     NULL, NULL);
+    r = bf_chain_new(&chain, "bft_chain_dummy", BF_HOOK_TC_EGRESS,
+                     BF_VERDICT_ACCEPT, NULL, NULL);
     if (r)
         return NULL;
 
@@ -106,16 +107,19 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
                 return NULL;
 
             id = 0;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id, sizeof(id));
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
+                                    sizeof(id));
             if (r)
                 return NULL;
 
-            r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ, &ip, sizeof(ip));
+            r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
+                                    &ip, sizeof(ip));
             if (r)
                 return NULL;
 
             ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id, sizeof(id));
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
+                                    sizeof(id));
             if (r)
                 return NULL;
 
@@ -155,7 +159,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
                 return NULL;
 
             ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id, sizeof(id));
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
+                                    sizeof(id));
             if (r)
                 return NULL;
 

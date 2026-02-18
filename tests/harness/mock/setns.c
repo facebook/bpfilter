@@ -24,8 +24,7 @@ int setns(int fd, int nstype)
     if (!real) {
         real = dlsym(RTLD_NEXT, "setns");
         if (!real) {
-            (void)fprintf(stderr,
-                          "failed to locate real function for setns\n");
+            (void)fprintf(stderr, "failed to locate real function for setns\n");
             exit(1);
         }
     }

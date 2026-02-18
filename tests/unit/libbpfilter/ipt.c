@@ -3,12 +3,12 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bpfilter/bpfilter.h>
-
 #include <linux/netfilter/x_tables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include <string.h>
+
+#include <bpfilter/bpfilter.h>
 
 #include "fake.h"
 #include "test.h"

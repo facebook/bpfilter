@@ -375,7 +375,7 @@ static void rpack_new_free(void **state)
     bf_rpack_free(&rpack);
 
     // Truncated data should fail (map with 10 elements but no data)
-    char invalid[] = "\x8a";  // fixmap with 10 elements, but no data follows
+    char invalid[] = "\x8a"; // fixmap with 10 elements, but no data follows
     assert_err(bf_rpack_new(&rpack, invalid, sizeof(invalid) - 1));
 }
 

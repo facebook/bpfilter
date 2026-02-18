@@ -77,19 +77,25 @@ static void get_set_from_matcher(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
     struct bf_rule *r0 = bf_list_node_get_data(bf_list_get_head(&chain->rules));
-    struct bf_matcher *r0_m0 = bf_list_node_get_data(bf_list_get_head(&r0->matchers));
-    struct bf_matcher *r0_m2 = bf_list_node_get_data(bf_list_get_tail(&r0->matchers));
+    struct bf_matcher *r0_m0 =
+        bf_list_node_get_data(bf_list_get_head(&r0->matchers));
+    struct bf_matcher *r0_m2 =
+        bf_list_node_get_data(bf_list_get_tail(&r0->matchers));
 
-    struct bf_rule *r1 = bf_list_node_get_data(bf_list_node_next(bf_list_get_head(&chain->rules)));
-    struct bf_matcher *r1_m0 = bf_list_node_get_data(bf_list_get_head(&r1->matchers));
+    struct bf_rule *r1 = bf_list_node_get_data(
+        bf_list_node_next(bf_list_get_head(&chain->rules)));
+    struct bf_matcher *r1_m0 =
+        bf_list_node_get_data(bf_list_get_head(&r1->matchers));
 
     struct bf_rule *r5 = bf_list_node_get_data(bf_list_get_tail(&chain->rules));
-    struct bf_matcher *r5_m0 = bf_list_node_get_data(bf_list_get_head(&r5->matchers));
+    struct bf_matcher *r5_m0 =
+        bf_list_node_get_data(bf_list_get_head(&r5->matchers));
 
     struct bf_list_node *snode = bf_list_get_head(&chain->sets);
     struct bf_set *set0 = bf_list_node_get_data(snode);
     struct bf_set *set1 = bf_list_node_get_data(bf_list_node_next(snode));
-    struct bf_set *set2 = bf_list_node_get_data(bf_list_node_next(bf_list_node_next(snode)));
+    struct bf_set *set2 =
+        bf_list_node_get_data(bf_list_node_next(bf_list_node_next(snode)));
 
     (void)state;
 
@@ -117,18 +123,18 @@ static void mixed_enabled_disabled_log_flag(void **state)
     set_index = 0;
     assert_ok(bf_rule_new(&r0));
     r0->log = 1;
-    assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
+                                  sizeof(set_index)));
     assert_ok(bf_list_add_tail(&rules, r0));
 
     set_index = 1;
     assert_ok(bf_rule_new(&r1));
-    assert_ok(bf_rule_add_matcher(r1, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_rule_add_matcher(r1, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
+                                  sizeof(set_index)));
     assert_ok(bf_list_add_tail(&rules, r1));
 
-    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
-                           BF_VERDICT_ACCEPT, &sets, &rules));
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS, BF_VERDICT_ACCEPT,
+                           &sets, &rules));
 
     assert_true(r0->disabled);
     assert_false(r1->disabled);

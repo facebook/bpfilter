@@ -3,9 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bpfilter/hook.h>
-
 #include <sys/socket.h>
+
+#include <bpfilter/hook.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/list.h"
@@ -35,8 +35,8 @@ static void hook_from_str(void **state)
 {
     (void)state;
 
-    assert_enum_to_from_str(enum bf_hook, bf_hook_to_str, bf_hook_from_str, BF_HOOK_XDP,
-                            _BF_HOOK_MAX);
+    assert_enum_to_from_str(enum bf_hook, bf_hook_to_str, bf_hook_from_str,
+                            BF_HOOK_XDP, _BF_HOOK_MAX);
 }
 
 static void hook_to_flavor(void **state)

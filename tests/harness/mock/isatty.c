@@ -19,8 +19,7 @@ int isatty(int fd)
     if (!real) {
         real = dlsym(RTLD_NEXT, "isatty");
         if (!real) {
-            (void)fprintf(stderr,
-                          "failed to locate real function for isatty");
+            (void)fprintf(stderr, "failed to locate real function for isatty");
             exit(1);
         }
     }

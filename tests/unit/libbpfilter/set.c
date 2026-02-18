@@ -13,6 +13,7 @@
 static void new_and_free(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
     (void)state;
@@ -34,6 +35,7 @@ static void new_and_free(void **state)
 static void new_with_multiple_keys(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
 
     (void)state;
@@ -48,6 +50,7 @@ static void new_with_multiple_keys(void **state)
 static void new_with_invalid_params(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
     (void)state;
@@ -65,6 +68,7 @@ static void new_with_invalid_params(void **state)
 static void new_with_trie_key(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SNET};
 
     (void)state;
@@ -77,6 +81,7 @@ static void new_with_trie_key(void **state)
 static void new_with_invalid_network_combination(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SNET, BF_MATCHER_TCP_SPORT};
 
     (void)state;
@@ -88,7 +93,9 @@ static void new_with_invalid_network_combination(void **state)
 static void add_elem(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
     uint32_t elem = 0x01020304; // 1.2.3.4
 
     (void)state;
@@ -101,6 +108,7 @@ static void add_elem(void **state)
 static void add_multiple_elems(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
 
     (void)state;
@@ -154,6 +162,7 @@ static void pack_and_unpack_empty(void **state)
     bf_rpack_node_t node;
     const void *data;
     size_t data_len;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
     (void)state;
@@ -190,7 +199,9 @@ static void dump(void **state)
 static void dump_empty(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
     prefix_t prefix = {};
 
     (void)state;
@@ -207,8 +218,7 @@ static void new_from_raw(void **state)
     (void)state;
 
     // Test creating set from raw key and payload
-    assert_ok(bf_set_new_from_raw(&set, "test_raw",
-                                  "(ip4.saddr)",
+    assert_ok(bf_set_new_from_raw(&set, "test_raw", "(ip4.saddr)",
                                   "{1.2.3.4; 5.6.7.8}"));
     assert_non_null(set);
     assert_string_equal(set->name, "test_raw");
@@ -224,8 +234,7 @@ static void new_from_raw_multiple_keys(void **state)
     (void)state;
 
     // Test creating set with multiple key components
-    assert_ok(bf_set_new_from_raw(&set, "test_multi",
-                                  "(ip4.daddr, tcp.sport)",
+    assert_ok(bf_set_new_from_raw(&set, "test_multi", "(ip4.daddr, tcp.sport)",
                                   "{1.2.3.4, 80; 5.6.7.8, 443}"));
     assert_non_null(set);
     assert_int_equal(set->n_comps, 2);
@@ -251,7 +260,9 @@ static void add_many_basic(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_add = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
     uint32_t elem1 = 0x01010101;
     uint32_t elem2 = 0x02020202;
     uint32_t elem3 = 0x03030303;
@@ -280,7 +291,9 @@ static void add_many_mismatched_key_count(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_add = NULL;
+
     enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+
     enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_TCP_SPORT};
 
     (void)state;
@@ -296,7 +309,9 @@ static void add_many_mismatched_key_type(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_add = NULL;
+
     enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+
     enum bf_matcher_type key2[] = {BF_MATCHER_IP4_DADDR};
 
     (void)state;
@@ -312,7 +327,9 @@ static void remove_many_basic(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
     uint32_t elem1 = 0x01010101;
     uint32_t elem2 = 0x02020202;
     uint32_t elem3 = 0x03030303;
@@ -340,7 +357,9 @@ static void remove_many_disjoint_sets(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
+
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
     uint32_t elem1 = 0x01010101;
     uint32_t elem2 = 0x02020202;
     uint32_t elem3 = 0x03030303;
@@ -368,7 +387,9 @@ static void remove_many_mismatched_key_count(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
+
     enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+
     enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_TCP_SPORT};
 
     (void)state;
@@ -384,7 +405,9 @@ static void remove_many_mismatched_key_type(void **state)
 {
     _free_bf_set_ struct bf_set *dest = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
+
     enum bf_matcher_type key1[] = {BF_MATCHER_IP4_SADDR};
+
     enum bf_matcher_type key2[] = {BF_MATCHER_IP4_DADDR};
 
     (void)state;

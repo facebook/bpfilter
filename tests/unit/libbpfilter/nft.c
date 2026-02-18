@@ -3,11 +3,11 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bpfilter/bpfilter.h>
-
 #include <linux/netlink.h>
 
 #include <errno.h>
+
+#include <bpfilter/bpfilter.h>
 
 #include "fake.h"
 #include "test.h"

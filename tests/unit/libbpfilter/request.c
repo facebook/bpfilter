@@ -23,7 +23,8 @@ static void new_request(void **state)
     (void)state;
 
     // Create request with no data
-    assert_ok(bf_request_new(&request, BF_FRONT_CLI, BF_REQ_CHAIN_GET, NULL, 0));
+    assert_ok(
+        bf_request_new(&request, BF_FRONT_CLI, BF_REQ_CHAIN_GET, NULL, 0));
     assert_non_null(request);
     assert_int_equal(bf_request_front(request), BF_FRONT_CLI);
     assert_int_equal(bf_request_cmd(request), BF_REQ_CHAIN_GET);
@@ -97,8 +98,8 @@ static void new_from_pack(void **state)
     bf_wpack_kv_str(pack, "message", data);
 
     assert_true(bf_wpack_is_valid(pack));
-    assert_ok(bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CUSTOM,
-                                       pack));
+    assert_ok(
+        bf_request_new_from_pack(&request, BF_FRONT_CLI, BF_REQ_CUSTOM, pack));
     assert_non_null(request);
     assert_int_equal(bf_request_front(request), BF_FRONT_CLI);
     assert_int_equal(bf_request_cmd(request), BF_REQ_CUSTOM);
@@ -115,8 +116,8 @@ static void copy(void **state)
     (void)state;
 
     // Copy request with data
-    assert_ok(bf_request_new(&src, BF_FRONT_NFT, BF_REQ_CHAIN_LOAD, data,
-                             data_len));
+    assert_ok(
+        bf_request_new(&src, BF_FRONT_NFT, BF_REQ_CHAIN_LOAD, data, data_len));
     assert_ok(bf_request_copy(&dest, src));
 
     assert_non_null(dest);
@@ -174,7 +175,8 @@ static void setters(void **state)
 
     (void)state;
 
-    assert_ok(bf_request_new(&request, BF_FRONT_CLI, BF_REQ_CHAIN_GET, NULL, 0));
+    assert_ok(
+        bf_request_new(&request, BF_FRONT_CLI, BF_REQ_CHAIN_GET, NULL, 0));
 
     // Test bf_request_set_ns
     bf_request_set_ns(request, fake_ns);
