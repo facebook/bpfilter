@@ -354,6 +354,8 @@ int bf_map_create(struct bf_map *map)
             "can't create a map with BF_MAP_N_ELEMS_UNKNOWN number of elements");
     }
 
+    btf = _bf_map_make_btf(map);
+
     /** The BTF data is not mandatory to use the map, but a good addition.
      * Hence, bpfilter will try to make the BTF data available, but will
      * ignore if that fails. @ref _bf_map_make_btf is used to isolate the
@@ -363,8 +365,7 @@ int bf_map_create(struct bf_map *map)
      * simpler, but the current implementation ensure the BTF data is properly
      * freed on error, without preventing the BPF map to be created. */
     r = bf_bpf_map_create(map->name, map->bpf_type, map->key_size,
-                          map->value_size, map->n_elems, _bf_map_make_btf(map),
-                          bf_ctx_token());
+                          map->value_size, map->n_elems, btf, bf_ctx_token());
     if (r < 0)
         return bf_err_r(r, "failed to create BPF map '%s'", map->name);
 
