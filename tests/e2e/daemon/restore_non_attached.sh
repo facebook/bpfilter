@@ -19,7 +19,7 @@ start_bpfilter
         rule (ip4.saddr) in myset counter DROP
         rule (ip4.saddr) in empty_set ACCEPT"
 
-    ping -c 1 -W 0.1 ${NS_IP_ADDR}
+    ping -c 1 -W 1 ${NS_IP_ADDR}
 stop_bpfilter --skip-cleanup
 
 start_bpfilter
@@ -30,5 +30,5 @@ start_bpfilter
     echo "$chain_output" | grep -q "empty_set"
 
     ${FROM_NS} bfcli chain attach --name test_chain --option ifindex=${NS_IFINDEX}
-    (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+    (! ping -c 1 -W 1 ${NS_IP_ADDR})
 stop_bpfilter

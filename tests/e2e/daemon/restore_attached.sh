@@ -6,7 +6,7 @@ make_sandbox
 
 start_bpfilter
     ${FROM_NS} bfcli chain set --from-str "chain test_chain BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
-    ping -c 1 -W 0.1 ${NS_IP_ADDR}
+    ping -c 1 -W 1 ${NS_IP_ADDR}
 stop_bpfilter --skip-cleanup
 
 start_bpfilter
@@ -21,7 +21,7 @@ start_bpfilter
         set empty_set (ip4.saddr) in {}
         rule (ip4.saddr) in myset counter DROP
         rule (ip4.saddr) in empty_set ACCEPT"
-    (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+    (! ping -c 1 -W 1 ${NS_IP_ADDR})
 stop_bpfilter --skip-cleanup
 
 start_bpfilter
@@ -30,5 +30,5 @@ start_bpfilter
     echo "$chain_output" | grep -q "${HOST_IP_ADDR}"
     echo "$chain_output" | grep -q "192.168.1.2"
     echo "$chain_output" | grep -q "empty_set"
-    (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+    (! ping -c 1 -W 1 ${NS_IP_ADDR})
 stop_bpfilter

@@ -99,7 +99,7 @@ End-to-end tests are designed to validate bpfilter's behaviour as seen by the us
     start_bpfilter
 
     # Ping the sandbox's IPv4 address from the sandboxed namespace
-    ${FROM_NS} ping -c 1 -W 0.1 ${NS_IP_ADDR}
+    ${FROM_NS} ping -c 1 -W 1 ${NS_IP_ADDR}
 
 
 Integration tests

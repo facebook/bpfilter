@@ -106,6 +106,7 @@ destroy_sandbox() {
     # netns should be unmounted AND deleted
     umount /var/run/netns/${NETNS_NAME} || true
     ip netns delete ${NETNS_NAME} || true
+    ip link delete ${VETH_HOST} || true
 
         umount ${WORKDIR}/bpf || true
         umount ${WORKDIR}/ns/mnt || true
@@ -154,7 +155,9 @@ stop_bpfilter() {
 
     echo "Stop bpfilter"
 
-    bfcli ruleset flush || true
+    if [[ $skip_cleanup -eq 0 ]]; then
+        ${FROM_NS} bfcli ruleset flush || true
+    fi
     kill $BPFILTER_PID 2>/dev/null || true
     wait $BPFILTER_PID || true
 

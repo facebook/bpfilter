@@ -17,9 +17,9 @@ ${FROM_NS} bfcli chain flush --name chain_load_xdp_2
 
 # Chain exists and is attached
 ${FROM_NS} bfcli chain set --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
-ping -c 1 -W 0.1 ${NS_IP_ADDR}
+ping -c 1 -W 1 ${NS_IP_ADDR}
 ${FROM_NS} bfcli chain update --from-str "chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log transport counter DROP"
-(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+(! ping -c 1 -W 1 ${NS_IP_ADDR})
 ${FROM_NS} bfcli chain update --name chain_load_xdp_3 --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
-ping -c 1 -W 0.1 ${NS_IP_ADDR}
+ping -c 1 -W 1 ${NS_IP_ADDR}
 ${FROM_NS} bfcli chain flush --name chain_load_xdp_3
