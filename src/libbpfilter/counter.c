@@ -11,8 +11,7 @@
 
 #include "bpfilter/helper.h"
 
-int bf_counter_new(struct bf_counter **counter, uint64_t packets,
-                   uint64_t bytes)
+int bf_counter_new(struct bf_counter **counter, uint64_t count, uint64_t size)
 {
     _cleanup_free_ struct bf_counter *_counter = NULL;
 
@@ -22,8 +21,8 @@ int bf_counter_new(struct bf_counter **counter, uint64_t packets,
     if (!_counter)
         return -ENOMEM;
 
-    _counter->bytes = bytes;
-    _counter->packets = packets;
+    _counter->count = count;
+    _counter->size = size;
 
     *counter = TAKE_PTR(_counter);
 
@@ -41,13 +40,13 @@ int bf_counter_new_from_pack(struct bf_counter **counter, bf_rpack_node_t node)
     if (r)
         return r;
 
-    r = bf_rpack_kv_u64(node, "packets", &_counter->packets);
+    r = bf_rpack_kv_u64(node, "count", &_counter->count);
     if (r)
-        return bf_rpack_key_err(r, "bf_counter.packets");
+        return bf_rpack_key_err(r, "bf_counter.count");
 
-    r = bf_rpack_kv_u64(node, "bytes", &_counter->bytes);
+    r = bf_rpack_kv_u64(node, "size", &_counter->size);
     if (r)
-        return bf_rpack_key_err(r, "bf_counter.bytes");
+        return bf_rpack_key_err(r, "bf_counter.size");
 
     *counter = TAKE_PTR(_counter);
 
@@ -69,8 +68,8 @@ int bf_counter_pack(const struct bf_counter *counter, bf_wpack_t *pack)
     assert(counter);
     assert(pack);
 
-    bf_wpack_kv_u64(pack, "packets", counter->packets);
-    bf_wpack_kv_u64(pack, "bytes", counter->bytes);
+    bf_wpack_kv_u64(pack, "count", counter->count);
+    bf_wpack_kv_u64(pack, "size", counter->size);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

@@ -138,11 +138,11 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
     counter = bf_list_node_get_data(policy_counter_node);
     (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
-                  counter->packets, counter->bytes);
+                  counter->count, counter->size);
 
     counter = bf_list_node_get_data(err_counter_node);
-    (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->packets,
-                  counter->bytes);
+    (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->count,
+                  counter->size);
 
     // Loop over named sets
     bf_list_foreach (&chain->sets, set_node) {
@@ -271,7 +271,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         if (rule->counters) {
             counter = bf_list_node_get_data(counter_node);
             (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",
-                          counter->packets, counter->bytes);
+                          counter->count, counter->size);
         }
         counter_node = bf_list_node_next(counter_node);
 
