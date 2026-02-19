@@ -14,8 +14,8 @@
 
 struct bf_counter
 {
-    __u64 packets;
-    __u64 bytes;
+    __u64 count;
+    __u64 size;
 };
 
 __u8 bf_update_counters(struct bf_runtime *ctx, void *map, __u64 key)
@@ -28,8 +28,8 @@ __u8 bf_update_counters(struct bf_runtime *ctx, void *map, __u64 key)
         return 1;
     }
 
-    counter->packets += 1;
-    counter->bytes += ctx->pkt_size;
+    counter->count += 1;
+    counter->size += ctx->pkt_size;
 
     return 0;
 }

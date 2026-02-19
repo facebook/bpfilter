@@ -539,8 +539,8 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
                                     "failed to get counters for iptables rule");
                 }
 
-                entry->counters.bcnt = counters.bytes;
-                entry->counters.pcnt = counters.packets;
+                entry->counters.bcnt = counters.size;
+                entry->counters.pcnt = counters.count;
             }
 
             entry = (void *)entry + rule_size;
@@ -556,8 +556,8 @@ static int _bf_ipt_gen_ipt_replace(struct ipt_replace **replace,
                     r, "failed to get policy counters for iptables chain");
             }
 
-            entry->counters.bcnt = counters.bytes;
-            entry->counters.pcnt = counters.packets;
+            entry->counters.bcnt = counters.size;
+            entry->counters.pcnt = counters.count;
         }
 
         entry->target_offset = sizeof(struct ipt_entry);

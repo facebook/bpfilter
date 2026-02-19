@@ -225,7 +225,7 @@ bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb)
 
 bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs)
 {
-    return lhs->packets == rhs->packets && lhs->bytes == rhs->bytes;
+    return lhs->count == rhs->count && lhs->size == rhs->size;
 }
 
 bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)

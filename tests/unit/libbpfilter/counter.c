@@ -11,8 +11,8 @@
 #include "fake.h"
 #include "test.h"
 
-#define BFT_COUNTER_PKTS 4
-#define BFT_COUNTER_BYTES 3190
+#define BFT_COUNTER_COUNT 4
+#define BFT_COUNTER_SIZE 3190
 
 static void new_and_free(void **state)
 {
@@ -21,16 +21,16 @@ static void new_and_free(void **state)
     (void)state;
 
     // Free counters manually
-    assert_ok(bf_counter_new(&counter, BFT_COUNTER_PKTS, BFT_COUNTER_BYTES));
-    assert_int_equal(counter->packets, BFT_COUNTER_PKTS);
-    assert_int_equal(counter->bytes, BFT_COUNTER_BYTES);
+    assert_ok(bf_counter_new(&counter, BFT_COUNTER_COUNT, BFT_COUNTER_SIZE));
+    assert_int_equal(counter->count, BFT_COUNTER_COUNT);
+    assert_int_equal(counter->size, BFT_COUNTER_SIZE);
     bf_counter_free(&counter);
     assert_null(counter);
 
     // Free counters using the cleanup attribute
-    assert_ok(bf_counter_new(&counter, BFT_COUNTER_PKTS, BFT_COUNTER_BYTES));
-    assert_int_equal(counter->packets, BFT_COUNTER_PKTS);
-    assert_int_equal(counter->bytes, BFT_COUNTER_BYTES);
+    assert_ok(bf_counter_new(&counter, BFT_COUNTER_COUNT, BFT_COUNTER_SIZE));
+    assert_int_equal(counter->count, BFT_COUNTER_COUNT);
+    assert_int_equal(counter->size, BFT_COUNTER_SIZE);
 }
 
 static void pack_and_unpack(void **state)
@@ -46,7 +46,7 @@ static void pack_and_unpack(void **state)
     (void)state;
 
     // Pack the source counter
-    assert_ok(bf_counter_new(&source, BFT_COUNTER_PKTS, BFT_COUNTER_BYTES));
+    assert_ok(bf_counter_new(&source, BFT_COUNTER_COUNT, BFT_COUNTER_SIZE));
     assert_ok(bf_wpack_new(&wpack));
     bf_wpack_open_object(wpack, "counter");
     assert_ok(bf_counter_pack(source, wpack));
@@ -66,7 +66,7 @@ static void unpack_error(void **state)
     (void)state;
 
     {
-        // Missing `packets` field
+        // Missing `size` field
 
         _free_bf_counter_ struct bf_counter *destination = NULL;
         _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -75,7 +75,7 @@ static void unpack_error(void **state)
         size_t data_len;
 
         assert_ok(bf_wpack_new(&wpack));
-        bf_wpack_kv_u64(wpack, "packets", BFT_COUNTER_PKTS);
+        bf_wpack_kv_u64(wpack, "count", BFT_COUNTER_COUNT);
         assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
         assert_ok(bf_rpack_new(&rpack, data, data_len));
@@ -84,7 +84,7 @@ static void unpack_error(void **state)
     }
 
     {
-        // Missing `bytes` field
+        // Missing `count` field
 
         _free_bf_counter_ struct bf_counter *destination = NULL;
         _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -93,7 +93,7 @@ static void unpack_error(void **state)
         size_t data_len;
 
         assert_ok(bf_wpack_new(&wpack));
-        bf_wpack_kv_u64(wpack, "bytes", BFT_COUNTER_BYTES);
+        bf_wpack_kv_u64(wpack, "size", BFT_COUNTER_SIZE);
         assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
         assert_ok(bf_rpack_new(&rpack, data, data_len));
