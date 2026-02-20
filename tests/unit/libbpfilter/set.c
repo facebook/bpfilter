@@ -419,6 +419,71 @@ static void remove_many_mismatched_key_type(void **state)
     assert_non_null(to_remove);
 }
 
+static void equal_with_reordered_elements(void **state)
+{
+    _free_bf_set_ struct bf_set *lhs = NULL;
+    _free_bf_set_ struct bf_set *rhs = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
+    uint8_t elem_a[8] = {10, 0, 0, 1, 0, 80, 0, 0};
+    uint8_t elem_b[8] = {10, 0, 0, 2, 0, 90, 0, 0};
+    uint8_t elem_c[8] = {10, 0, 0, 3, 1, 0, 0, 0};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&lhs, "set_a", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(lhs, elem_a));
+    assert_ok(bf_set_add_elem(lhs, elem_b));
+    assert_ok(bf_set_add_elem(lhs, elem_c));
+
+    assert_ok(bf_set_new(&rhs, "set_b", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(rhs, elem_c));
+    assert_ok(bf_set_add_elem(rhs, elem_a));
+    assert_ok(bf_set_add_elem(rhs, elem_b));
+
+    assert_int_equal(bf_set_equal(lhs, rhs), 1);
+    assert_int_equal(bf_set_equal(lhs, lhs), 1);
+}
+
+static void not_equal(void **state)
+{
+    _free_bf_set_ struct bf_set *set_a = NULL;
+    _free_bf_set_ struct bf_set *set_b = NULL;
+    _free_bf_set_ struct bf_set *set_diff_key = NULL;
+    _free_bf_set_ struct bf_set *set_empty = NULL;
+    _free_bf_set_ struct bf_set *set_empty2 = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
+    enum bf_matcher_type key2[] = {BF_MATCHER_IP4_SADDR, BF_MATCHER_TCP_SPORT};
+    uint8_t elem_a[8] = {10, 0, 0, 1, 0, 80, 0, 0};
+    uint8_t elem_b[8] = {10, 0, 0, 2, 0, 90, 0, 0};
+    uint8_t elem_c[8] = {10, 0, 0, 3, 1, 0, 0, 0};
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set_a, NULL, key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(set_a, elem_a));
+    assert_ok(bf_set_add_elem(set_a, elem_b));
+
+    assert_ok(bf_set_new(&set_b, NULL, key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(set_b, elem_a));
+    assert_ok(bf_set_add_elem(set_b, elem_c));
+
+    assert_int_equal(bf_set_equal(set_a, set_b), 0);
+
+    assert_ok(bf_set_add_elem(set_b, elem_b));
+    assert_int_equal(bf_set_equal(set_a, set_b), 0);
+
+    assert_ok(bf_set_new(&set_diff_key, NULL, key2, ARRAY_SIZE(key2)));
+    assert_ok(bf_set_add_elem(set_diff_key, elem_a));
+    assert_ok(bf_set_add_elem(set_diff_key, elem_b));
+    assert_int_equal(bf_set_equal(set_a, set_diff_key), 0);
+
+    assert_ok(bf_set_new(&set_empty, NULL, key, ARRAY_SIZE(key)));
+    assert_int_equal(bf_set_equal(set_a, set_empty), 0);
+
+    assert_ok(bf_set_new(&set_empty2, NULL, key, ARRAY_SIZE(key)));
+    assert_int_equal(bf_set_equal(set_empty, set_empty2), 1);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -443,6 +508,8 @@ int main(void)
         cmocka_unit_test(remove_many_disjoint_sets),
         cmocka_unit_test(remove_many_mismatched_key_count),
         cmocka_unit_test(remove_many_mismatched_key_type),
+        cmocka_unit_test(equal_with_reordered_elements),
+        cmocka_unit_test(not_equal),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
