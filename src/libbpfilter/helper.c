@@ -100,7 +100,8 @@ int bf_read_file(const char *path, void **buf, size_t *len)
     return 0;
 }
 
-static int _bf_get_tmpfile_fd(const char *base, char tmpfile_path[static PATH_MAX])
+static int _bf_get_tmpfile_fd(const char *base,
+                              char tmpfile_path[static PATH_MAX])
 {
     _cleanup_free_ char *tmp = NULL;
     size_t path_len;
@@ -114,9 +115,11 @@ static int _bf_get_tmpfile_fd(const char *base, char tmpfile_path[static PATH_MA
 
     dir = dirname(tmp);
 
-    path_len = snprintf(tmpfile_path, PATH_MAX, "%s%s", dir, "/bpfilter.tmp.XXXXXX");
+    path_len =
+        snprintf(tmpfile_path, PATH_MAX, "%s%s", dir, "/bpfilter.tmp.XXXXXX");
     if (path_len >= PATH_MAX)
-        return bf_err_r(ENAMETOOLONG, "tmpfile name too long (%lu bytes)", path_len);
+        return bf_err_r(ENAMETOOLONG, "tmpfile name too long (%lu bytes)",
+                        path_len);
 
     fd = mkstemp(tmpfile_path);
     if (fd < 0)
