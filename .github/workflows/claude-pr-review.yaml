@@ -3,25 +3,33 @@
 
 name: Claude PR Review
 on:
-    pull_request:
+    # _target gives forks access to upstream's secrets.
+    pull_request_target:
         types: [opened, synchronize]
+        branches: [main]
 jobs:
     review:
         runs-on: ubuntu-latest
         permissions:
-            id-token: write # gh CLI authentication
-            pull-requests: write # make a comment on PR
+            id-token: write # authentication for Claude GH bot
+            pull-requests: write # make comments on PR
             contents: read # clone repo
             actions: read # see GH Actions outputs
             issues: read # read issues (for context)
         steps:
-            - name: Checkout repository
+            # With _target mode, actions/checkout is checking out upstream, not the current PR.
+            # This is fine, we don't want anyone to be able to inject custom CLAUDE.md.
+            - name: Checkout upstream repository
               uses: actions/checkout@v6
 
             - uses: anthropics/claude-code-action@v1
               with:
+                  # Anthropic auth
                   # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
                   claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+
+                  # Prompt
                   plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
                   plugins: "code-review@claude-code-plugins"
                   prompt: |
@@ -30,5 +38,10 @@ jobs:
                       --max-turns 50
                       --model claude-opus-4-6
                       --allowedTools "Read,Write,Grep,Glob,Bash(cat:*),Bash(test:*),Bash(printf:*),Bash(jq:*),Bash(head:*),Bash(git:*),Bash(gh:*)"
+
+                  # Run even when triggered by 3rd party developer's PR
+                  allowed_non_write_users: "*"
+
+                  # Enable access to other GH Actions outputs
                   additional_permissions: |
                       actions: read
