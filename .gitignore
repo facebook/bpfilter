@@ -1,6 +1,9 @@
 # Usual build folder
 /build/
 
+# Nix
+result*
+
 # IDE configuration folder
 .zed
 .vscode
@@ -14,4 +17,3 @@ __pycache__
 
 # Local Claude instructions
 CLAUDE.local.md
-
