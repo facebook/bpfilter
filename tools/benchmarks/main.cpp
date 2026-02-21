@@ -6,6 +6,7 @@
 #include <benchmark/benchmark.h>
 #include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <format>
 #include <span>
@@ -512,6 +513,72 @@ void single_rule__tcp_sport(::benchmark::State &state)
     state.SetLabel("1 rule, tcp.sport");
 }
 BENCHMARK(single_rule__tcp_sport);
+
+void single_rule__meta_flow_hash(::benchmark::State &state)
+{
+    // meta.flow_hash is only supported on TC hooks
+    Chain chain("bf_benchmark", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT);
+
+    // Match flow hash in full range 0-UINT32_MAX (little-endian uint32_t: min, max)
+    chain << Rule(BF_VERDICT_DROP, false, {}, std::vector<Matcher>{
+        Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE, {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff}),
+    });
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bf::test::Program(chain.name());
+
+    // TC_ACT_SHOT = 2 for DROP
+    while (state.KeepRunningBatch(::bf::progRunRepeat)) {
+        auto stats = prog.run(::bf::pkt_local_ip4_tcp);
+        if (stats.retval != 2)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("1 rule, meta.flow_hash");
+}
+BENCHMARK(single_rule__meta_flow_hash);
+
+void single_rule__meta_flow_probability(::benchmark::State &state)
+{
+    // meta.flow_probability is supported on XDP, TC, and CGROUP hooks
+    Chain chain("bf_benchmark", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT);
+
+    // Match with 100% probability (float payload: 100.0f = 100%)
+    float prob = 100.0f;
+    std::vector<uint8_t> payload(sizeof(float));
+    std::memcpy(payload.data(), &prob, sizeof(float));
+
+    chain << Rule(BF_VERDICT_DROP, false, {}, std::vector<Matcher>{
+        Matcher(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, payload),
+    });
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bf::test::Program(chain.name());
+
+    // TC_ACT_SHOT = 2 for DROP
+    while (state.KeepRunningBatch(::bf::progRunRepeat)) {
+        auto stats = prog.run(::bf::pkt_local_ip4_tcp);
+        if (stats.retval != 2)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("1 rule, meta.flow_probability");
+}
+BENCHMARK(single_rule__meta_flow_probability);
 
 } // namespace
 
