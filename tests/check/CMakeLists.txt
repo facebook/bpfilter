@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
 
-find_program(CLANG_TIDY_BIN NAMES clang-tidy-18 clang-tidy REQUIRED)
+find_program(RUN_CLANG_TIDY_BIN NAMES run-clang-tidy-18 run-clang-tidy REQUIRED)
 find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
 
 file(GLOB_RECURSE bf_srcs
@@ -20,11 +20,11 @@ set(bf_all_srcs ${bf_srcs} ${bf_test_srcs})
 
 add_test(NAME "check.lint"
     COMMAND
-        ${CLANG_TIDY_BIN}
-            --quiet
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+        ${RUN_CLANG_TIDY_BIN}
+            -config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
-            --extra-arg=-fno-caret-diagnostics
+            -extra-arg=-fno-caret-diagnostics
+            -j ${CPU_COUNT}
             ${bf_srcs}
 )
 
