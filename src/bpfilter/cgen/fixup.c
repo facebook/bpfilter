@@ -17,7 +17,7 @@ int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
     assert(fixup);
 
     *fixup = calloc(1, sizeof(struct bf_fixup));
-    if (!fixup)
+    if (!*fixup)
         return -ENOMEM;
 
     (*fixup)->type = type;
