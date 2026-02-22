@@ -32,7 +32,7 @@ int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook,
     _cleanup_close_ int fd = -1;
     _cleanup_close_ int fd_extra = -1;
     _cleanup_close_ int cgroup_fd = -1;
-    struct bf_hookopts *_hookopts = *hookopts;
+    struct bf_hookopts *_hookopts = NULL;
     int r;
 
     assert(link);
@@ -47,6 +47,7 @@ int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook,
                         "hookopts are required when creating a new bf_link");
     }
 
+    _hookopts = *hookopts;
     _link = calloc(1, sizeof(*_link));
     if (!_link)
         return -ENOMEM;
@@ -244,10 +245,12 @@ static int _bf_link_update_nf(struct bf_link *link, int prog_fd)
 {
     _cleanup_close_ int new_inet_fd = -1;
     _cleanup_close_ int new_inet6_fd = -1;
-    struct bf_hookopts opts = *link->hookopts;
+    struct bf_hookopts opts;
     int r;
 
     assert(link);
+
+    opts = *link->hookopts;
 
     // Attach new program to both inet4 and inet6 using the unused priority
     // This ensures the network is never left unfiltered
