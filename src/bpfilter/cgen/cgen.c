@@ -428,11 +428,13 @@ void bf_cgen_unload(struct bf_cgen *cgen)
 
 int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
 {
-    bf_list _counters = bf_list_default_from(*counters);
+    bf_list _counters;
     int r;
 
     assert(cgen);
     assert(counters);
+
+    _counters = bf_list_default_from(*counters);
 
     /* Iterate over all the rules, then the policy counter (size(rules)) and
      * the errors counters (sizeof(rules) + 1)*/
