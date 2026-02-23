@@ -113,6 +113,10 @@ enum bf_matcher_type
     _BF_MATCHER_TYPE_MAX,
 };
 
+/// @todo Change `bf_matcher_type` bitmasks to 64 bits.
+static_assert(_BF_MATCHER_TYPE_MAX <= 8 * sizeof(uint32_t),
+              "too many matcher types for uint32_t bitmask");
+
 /**
  * Defines the structure of the payload for bf_matcher's
  * @ref BF_MATCHER_IP4_SADDR and @ref BF_MATCHER_IP4_DADDR types.

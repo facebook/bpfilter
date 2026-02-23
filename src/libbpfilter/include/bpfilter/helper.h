@@ -17,65 +17,29 @@ extern const char *strerrordesc_np(int errnum);
 
 #define _BF_APPLY0(t, s, dummy)
 #define _BF_APPLY1(t, s, a) t(a)
-#define _BF_APPLY2(t, s, a, b) t(a) s t(b)
-#define _BF_APPLY3(t, s, a, b, c)                                              \
-    t(a) s t(b)                                                                \
-    s t(c)
-#define _BF_APPLY4(t, s, a, b, c, d)                                           \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)
-#define _BF_APPLY5(t, s, a, b, c, d, e)                                        \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)
-#define _BF_APPLY6(t, s, a, b, c, d, e, f)                                     \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)                                                                     \
-    s t(f)
-#define _BF_APPLY7(t, s, a, b, c, d, e, f, g)                                  \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)                                                                     \
-    s t(f)                                                                     \
-    s t(g)
-#define _BF_APPLY8(t, s, a, b, c, d, e, f, g, h)                               \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)                                                                     \
-    s t(f)                                                                     \
-    s t(g)                                                                     \
-    s t(h)
-#define _BF_APPLY9(t, s, a, b, c, d, e, f, g, h, i)                            \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)                                                                     \
-    s t(f)                                                                     \
-    s t(g)                                                                     \
-    s t(h)                                                                     \
-    s t(i)
-#define _BF_APPLY10(t, s, a, b, c, d, e, f, g, h, i, j)                        \
-    t(a) s t(b)                                                                \
-    s t(c)                                                                     \
-    s t(d)                                                                     \
-    s t(e)                                                                     \
-    s t(f)                                                                     \
-    s t(g)                                                                     \
-    s t(h)                                                                     \
-    s t(i)                                                                     \
-    s t(j)
+#define _BF_APPLY2(t, s, a, ...) t(a) s _BF_APPLY1(t, s, __VA_ARGS__)
+#define _BF_APPLY3(t, s, a, ...) t(a) s _BF_APPLY2(t, s, __VA_ARGS__)
+#define _BF_APPLY4(t, s, a, ...) t(a) s _BF_APPLY3(t, s, __VA_ARGS__)
+#define _BF_APPLY5(t, s, a, ...) t(a) s _BF_APPLY4(t, s, __VA_ARGS__)
+#define _BF_APPLY6(t, s, a, ...) t(a) s _BF_APPLY5(t, s, __VA_ARGS__)
+#define _BF_APPLY7(t, s, a, ...) t(a) s _BF_APPLY6(t, s, __VA_ARGS__)
+#define _BF_APPLY8(t, s, a, ...) t(a) s _BF_APPLY7(t, s, __VA_ARGS__)
+#define _BF_APPLY9(t, s, a, ...) t(a) s _BF_APPLY8(t, s, __VA_ARGS__)
+#define _BF_APPLY10(t, s, a, ...) t(a) s _BF_APPLY9(t, s, __VA_ARGS__)
+#define _BF_APPLY11(t, s, a, ...) t(a) s _BF_APPLY10(t, s, __VA_ARGS__)
+#define _BF_APPLY12(t, s, a, ...) t(a) s _BF_APPLY11(t, s, __VA_ARGS__)
+#define _BF_APPLY13(t, s, a, ...) t(a) s _BF_APPLY12(t, s, __VA_ARGS__)
+#define _BF_APPLY14(t, s, a, ...) t(a) s _BF_APPLY13(t, s, __VA_ARGS__)
+#define _BF_APPLY15(t, s, a, ...) t(a) s _BF_APPLY14(t, s, __VA_ARGS__)
+#define _BF_APPLY16(t, s, a, ...) t(a) s _BF_APPLY15(t, s, __VA_ARGS__)
 
-#define __BF_NUM_ARGS1(dummy, x10, x9, x8, x7, x6, x5, x4, x3, x2, x1, x0,     \
-                       ...)                                                    \
+#define __BF_NUM_ARGS1(dummy, x16, x15, x14, x13, x12, x11, x10, x9, x8, x7,   \
+                       x6, x5, x4, x3, x2, x1, x0, ...)                        \
     x0
 #define _BF_NUM_ARGS(...)                                                      \
-    __BF_NUM_ARGS1(dummy, ##__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+    __BF_NUM_ARGS1(dummy, ##__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7,  \
+                   6, 5, 4, 3, 2, 1, 0)
+
 #define ___BF_APPLY_ALL(t, s, n, ...) _BF_APPLY##n(t, s, __VA_ARGS__)
 #define __BF_APPLY_ALL(t, s, n, ...) ___BF_APPLY_ALL(t, s, n, __VA_ARGS__)
 #define _BF_APPLY_ALL(t, s, ...)                                               \
@@ -112,9 +76,9 @@ extern const char *strerrordesc_np(int errnum);
  *
  * @see `BF_FLAGS`
  *
- * @return `1 << n` to be used as a flag.
+ * @return `1ULL << n` to be used as a flag.
  */
-#define BF_FLAG(n) (1 << (n))
+#define BF_FLAG(n) (1ULL << (n))
 
 /**
  * @brief Generate a bitmask covering all valid flags below `max_value`.
