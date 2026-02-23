@@ -130,6 +130,17 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
                    struct bf_hookopts **hookopts);
 
 /**
+ * Flags to control the behavior of `bf_cgen_update`.
+ */
+enum bf_cgen_update_flags
+{
+    /** Preserve counter values from the old program. */
+    BF_CGEN_UPDATE_PRESERVE_COUNTERS,
+
+    _BF_CGEN_UPDATE_MAX,
+};
+
+/**
  * Update the program attached to the hook.
  *
  * A new program will be generated based on `new_chain`, before it is loaded
@@ -142,9 +153,11 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
  * @param cgen Codegen to update. Can't be NULL.
  * @param new_chain Chain containing the new rules, sets, and policy.
  *        Can't be NULL.
+ * @param flags Flags to control update behavior. 0 if no flags.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain);
+int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
+                   uint32_t flags);
 
 /**
  * Detach a program from the kernel.

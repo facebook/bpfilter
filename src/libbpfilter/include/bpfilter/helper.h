@@ -116,6 +116,13 @@ extern const char *strerrordesc_np(int errnum);
  */
 #define BF_FLAG(n) (1 << (n))
 
+/**
+ * @brief Generate a bitmask covering all valid flags below `max_value`.
+ *
+ * @return Mask with bits 0 through max_value-1 set.
+ */
+#define BF_FLAGS_MASK(max_value) ((1ULL << (max_value)) - 1)
+
 #define bf_packed __attribute__((packed))
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))

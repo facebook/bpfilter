@@ -206,7 +206,7 @@ See below for a list of available hook options.
 ``chain update``
 ~~~~~~~~~~~~~~~~
 
-Update an existing chain. The new chain will atomically update the existing one. Hook options are ignored. The new chain will replace the existing chain with the same name.
+Update an existing chain. The new chain will atomically update the existing one. Hook options are ignored. The new chain will replace the existing chain with the same name. Counters are reset to zero.
 
 If you want to modify the hook options, use ``bfcli chain set`` instead.
 
@@ -242,7 +242,7 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
 ``chain update-set``
 ~~~~~~~~~~~~~~~~~~~~
 
-Atomically update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership.
+Atomically update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership. Counters are preserved across the update.
 
 **Options**
   - ``--name NAME``: name of the chain containing the set.

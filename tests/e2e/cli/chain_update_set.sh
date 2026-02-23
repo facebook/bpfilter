@@ -202,3 +202,36 @@ chain_output=$(${FROM_NS} bfcli chain get --name test_xdp)
 echo "$chain_output"
 echo "$chain_output" | grep -q '10.0.0.1'
 echo "$chain_output" | grep -q '10.0.0.2'
+
+# Counters are preserved after update-set for both set and non-set rules
+${FROM_NS} bfcli chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set blocked_ips (ip4.saddr) in {
+        10.0.0.1
+    }
+    rule
+        (ip4.saddr) in blocked_ips
+        counter
+        DROP
+    rule
+        ip4.proto icmp
+        counter
+        DROP
+"
+
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+${FROM_NS} bfcli chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips \
+    --add ${HOST_IP_ADDR}
+
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+${FROM_NS} bfcli chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips \
+    --add 10.0.0.2
+
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[0].value.count')
+test "$counter" = "1"
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[1].value.count')
+test "$counter" = "1"
+${FROM_NS} bfcli chain flush --name test_xdp
