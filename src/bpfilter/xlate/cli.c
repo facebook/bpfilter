@@ -509,7 +509,7 @@ int _bf_cli_chain_update(const struct bf_request *request,
     if (!cgen)
         return -ENOENT;
 
-    r = bf_cgen_update(cgen, &chain);
+    r = bf_cgen_update(cgen, &chain, 0);
     if (r)
         return -EINVAL;
 
@@ -607,7 +607,8 @@ int _bf_cli_chain_update_set(const struct bf_request *request,
     if (r)
         return bf_err_r(r, "failed to calculate set difference");
 
-    r = bf_cgen_update(cgen, &new_chain);
+    r = bf_cgen_update(cgen, &new_chain,
+                       BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS));
     if (r)
         return bf_err_r(r, "failed to update chain with new set data");
 

@@ -718,7 +718,7 @@ static int _bf_ipt_ruleset_set(const struct bf_request *req)
 
             TAKE_PTR(cgen);
         } else {
-            r = bf_cgen_update(cgen, &chain);
+            r = bf_cgen_update(cgen, &chain, 0);
             if (r) {
                 TAKE_PTR(cgen);
                 bf_err_r(
