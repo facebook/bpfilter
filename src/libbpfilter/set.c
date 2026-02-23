@@ -31,9 +31,6 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
     assert(set);
     assert(key);
 
-    static_assert(_BF_MATCHER_TYPE_MAX < 8 * sizeof(uint32_t),
-                  "matcher type bitmask won't fit in 32 bits");
-
     if (n_comps == 0)
         return bf_err_r(-EINVAL, "at least 1 key component is required");
 
