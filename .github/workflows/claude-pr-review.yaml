@@ -50,7 +50,7 @@ jobs:
                       Instead in the final top-level comment, include a suggestion how to improve CLAUDE.md.
 
                       Provide detailed feedback as PR comments, using inline comments for specific issues.
-                      Use `mcp__github_comment__update_claude_comment` for top-level feedback. Keep it short.
+                      Use `gh pr comment ${{ github.event.pull_request.number }} --body "..."` for top-level summary. Keep it short.
                       Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
                       Prefix all your GitHub comments with "Claude: ".
                       Use `gh pr view <PR NUMBER> --comments` output to make sure you don't comment about the same issue twice.
@@ -63,15 +63,15 @@ jobs:
                       --allowedTools "
                         Read,Write,Edit,MultiEdit,LS,Grep,Glob,
                         Bash(cat:*),Bash(test:*),Bash(printf:*),Bash(jq:*),Bash(head:*),Bash(git:*),Bash(gh:*),
-                        mcp__github_comment__update_claude_comment,
                         mcp__github_inline_comment__create_inline_comment,
                         "
 
                   # Run even when triggered by 3rd party developer's PR
                   allowed_non_write_users: "*"
 
-                  # Make in-progress comment, then update it
-                  track_progress: true
+                  # This requires "tag mode", which is currently bugged:
+                  # https://github.com/anthropics/claude-code-action/issues/939
+                  track_progress: false
 
                   # Enable access to other GH Actions outputs
                   additional_permissions: |
