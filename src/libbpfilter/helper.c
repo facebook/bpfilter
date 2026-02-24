@@ -22,7 +22,7 @@
 
 void closep(int *fd)
 {
-    if (*fd == -1)
+    if (*fd < 0)
         return;
 
     if (close(*fd))
