@@ -255,14 +255,16 @@ static inline void freep(void *ptr)
 }
 
 /**
- * Close a file descriptor and set it to -1.
+ * @brief Close a file descriptor and set it to -1.
  *
  * `bpfilter` uses `-1` as neutral value for file descriptor, meaning it
  * doesn't represent an open file yet. Once closed, a file descriptor should
  * be reset to `-1`.
  *
- * `closep` is used to close a file descriptor. If the file descriptor is
- * `-1`, then nothing it done. Otherwise, it is closed and reset to `-1`.
+ * `closep` is used to close a file descriptor. File descriptors with negative
+ * values are ignored (-1 is used for "unset", but will also ignore file
+ * descriptors containing negative errno values). Once closed, `*fd` is set
+ * to `-1`.
  *
  * If the call to `close` fails, a warning is printed, and the file descriptor
  * is assumed to be already closed.
