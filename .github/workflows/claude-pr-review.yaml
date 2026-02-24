@@ -7,12 +7,17 @@ on:
     pull_request_target:
         types: [opened, synchronize]
         branches: [main]
+concurrency:
+    group: claude-review-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
 jobs:
     review:
         runs-on: ubuntu-latest
         permissions:
             id-token: write # authentication for Claude GH bot
             pull-requests: write # make comments on PR
+            # Note: `pull-requests: write` gives us write access to `issues/comments` API as well,
+            # as long as the comment is under PR.
             contents: read # clone repo
             actions: read # see GH Actions outputs
             issues: read # read issues (for context)
@@ -36,37 +41,100 @@ jobs:
                   prompt: |
                       REPO: ${{ github.repository }}
                       PR NUMBER: ${{ github.event.pull_request.number }}
+                      HEAD SHA: ${{ github.event.pull_request.head.sha }}
 
-                      Please review this pull request. Use instructions in /review-pr command. However, the patch will be
-                      built and tested by other GitHub Actions workflows, so you should skip these parts of that command.
+                      Review this pull request.
+                      Read `.claude/commands/review-pr.md` and `doc/developers/style.rst` for review guidelines.
+                      You are in the upstream repo without the patch applied. Do not apply it.
 
-                      You can use multiple subagents to parallelize tasks. Each subagent should be told the PR title and description.
+                      ## Phase 1: Gather context
 
-                      Use `gh pr diff ${{ github.event.pull_request.number }} --patch` to access the PR content.
-                      Use `gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments` to list top-level comments.
-                      Use `gh api --paginate repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments` to list inline review comments.
-                      Use `gh api --paginate repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews | jq '.[] | select(.body != "" and .body != null)'` to list top-level review comments.
-                      You are in repository without that patch applied. Do not apply it.
+                      Fetch the patch, PR title/body, and list of existing comments (top-level, inline, and reviews):
+                      - `gh pr diff ${{ github.event.pull_request.number }} --patch`
+                      - `gh pr view ${{ github.event.pull_request.number }} --json title,body`
+                      - `gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`
+                      - `gh api --paginate repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`
+                      - `gh api --paginate repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews`
 
-                      For every issue, rate how significant it is. Make sure you are confident in your diagnosis.
+                      ## Phase 2: Parallel review subagents
 
-                      For every CLAUDE.md compliance violation, check if repo has other places where this issue appears.
-                      If it does, do not point out the violation in the place it appears.
-                      Instead in the final top-level comment, include a suggestion how to improve CLAUDE.md.
+                      Read `.claude/commands/review-pr.md` for the review checklist.
+                      All build, test, coverage, and cleanup instructions do not apply — other CI workflows handle those.
+                      Also skip the "Output format" and "Report" sections - they are not applicable here.
 
-                      Provide detailed feedback as PR comments, using inline comments for specific issues.
-                      Use `gh pr comment ${{ github.event.pull_request.number }} --body "..."` for top-level summary. Keep it very short.
-                      Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
-                      Prefix all your GitHub comments with "Claude: ".
-                      Use the API comment endpoints above to make sure you don't comment about the same issue twice (check both top-level and inline).
+                      For the remaining sections (Code review, Style, Documentation, Commit),
+                      launch subagents to review them in parallel. Group related sections
+                      as needed — use 2-8 subagents based on PR size and scope.
 
-                      When linking to code in inline comments, follow the following format precisely, otherwise the Markdown preview
-                      won't render correctly: https://github.com/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/README.md#L10-L15
+                      Give each subagent the PR title, description, full patch, and the list of changed files.
+                      Tell them to look at the pre-patch repo for context, and to read
+                      `.claude/commands/review-pr.md` and `doc/developers/style.rst` for review guidelines.
+                      Tell them to skip the "Output format" and "Report" subsections in review-pr.md —
+                      those are for the standalone slash-command, not for subagent output.
+
+                      Each subagent must return a JSON array of issues:
+                      `[{"file": "path", "line": <number or null>, "severity": "must-fix|suggestion|nit", "title": "...", "body": "..."}]`
+
+                      Each subagent MUST verify its findings before returning them:
+                      - For style/convention claims, check at least 3 existing examples in the codebase to confirm
+                        the pattern actually exists before flagging a violation.
+                      - For "use X instead of Y" suggestions, confirm X actually exists and works for this case.
+                      - If unsure, don't include the issue.
+
+                      ## Phase 3: Collect and post
+
+                      After ALL subagents complete:
+                      1. Collect all issues. Merge duplicates (same file, lines within 3 of each other, same problem).
+                      2. Drop low-confidence findings.
+                      3. For CLAUDE.md violations that appear in 3+ existing places in the codebase, do NOT post inline comments.
+                         Instead, add them to the 'CLAUDE.md improvements' section of the tracking comment
+                      4. Check existing inline review comments (fetched in Phase 1). Do NOT post an inline comment if
+                         one already exists on the same file+line about the same problem.
+                      5. Check for author replies that dismiss or reject a previous comment. Do NOT re-raise an issue
+                         the PR author has already responded to disagreeing with.
+                      6. Post new inline comments with `mcp__github_inline_comment__create_inline_comment`.
+
+                      Prefix ALL comments with "Claude: ".
+                      Link format: https://github.com/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/README.md#L10-L15
+
+                      Then maintain a single top-level "tracking comment" listing ALL issues as checkboxes.
+                      Use a hidden HTML marker to find it: `<!-- claude-pr-review -->`.
+                      Look through the top-level comments fetched in Phase 1 for one containing that marker.
+
+                      **If no tracking comment exists (first run):**
+                      Create one with `gh pr comment ${{ github.event.pull_request.number }} --body "..."` using this format:
+                      ```
+                      Claude: review of <REPO> #<PR NUMBER> (<HEAD SHA>)
+
+                      <!-- claude-pr-review -->
+
+                      ### Must fix
+                      - [ ] **title** — `file:line` — short explanation
+
+                      ### Suggestions
+                      - [ ] **title** — `file:line` — short explanation
+
+                      ### Nits
+                      - [ ] **title** — `file:line` — short explanation
+
+                      ### CLAUDE.md improvements
+                      - improvement suggestion
+                      ```
+                      Omit empty sections.
+
+                      **If a tracking comment already exists (subsequent run):**
+                      1. Parse the existing checkboxes. For each old issue, check if the current patch still has
+                         that problem (re-check the relevant lines in the new diff). If fixed, mark it `- [x]`.
+                         If the author dismissed it, mark it `- [x] ~~title~~ (dismissed)`.
+                      2. Append any NEW issues found in this run that aren't already listed.
+                      3. Update the HEAD SHA in the header line.
+                      4. Edit the comment in-place. Use jq + stdin to avoid shell-quoting issues with markdown:
+                         `jq -n --arg body "$BODY" '{"body":$body}' | gh api --method PATCH repos/${{ github.repository }}/issues/comments/<comment-id> --input -`
                   claude_args: |
-                      --max-turns 50
+                      --max-turns 100
                       --model claude-opus-4-6
                       --allowedTools "
-                        Read,Write,Edit,MultiEdit,LS,Grep,Glob,
+                        Read,Write,Edit,MultiEdit,LS,Grep,Glob,Task,
                         Bash(cat:*),Bash(test:*),Bash(printf:*),Bash(jq:*),Bash(head:*),Bash(git:*),Bash(gh:*),
                         mcp__github_inline_comment__create_inline_comment,
                         "
