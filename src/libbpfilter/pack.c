@@ -281,8 +281,8 @@ void bf_rpack_free(bf_rpack_t **pack)
 #define MP_NODE(node) (*(mpack_node_t *)&(node))
 #define BF_NODE(node) (*(bf_rpack_node_t *)(mpack_node_t[]) {node})
 
-_Static_assert(sizeof(bf_rpack_node_t) >= sizeof(mpack_node_t),
-               "bf_rpack_node_t too small for mpack_node_t");
+static_assert(sizeof(bf_rpack_node_t) >= sizeof(mpack_node_t),
+              "bf_rpack_node_t too small for mpack_node_t");
 
 bf_rpack_node_t bf_rpack_root(const bf_rpack_t *pack)
 {

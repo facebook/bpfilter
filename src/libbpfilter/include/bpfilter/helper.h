@@ -120,8 +120,6 @@ extern const char *strerrordesc_np(int errnum);
 #define bf_aligned(x) __attribute__((aligned(x)))
 #define bf_unused __attribute__((unused))
 
-#define bf_static_assert(expr, msg) _Static_assert((expr), msg)
-
 #define BF_STR(s) _BF_STR(s)
 #define _BF_STR(s) #s
 

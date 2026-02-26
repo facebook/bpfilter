@@ -1577,7 +1577,8 @@ static const char *_bf_matcher_ops_strs[] = {
     [BF_MATCHER_IN] = "in",   [BF_MATCHER_RANGE] = "range",
 };
 
-static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX);
+static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX,
+              "missing entries in the matcher ops strings array");
 
 const char *bf_matcher_op_to_str(enum bf_matcher_op op)
 {
@@ -1606,7 +1607,8 @@ static const char *_bf_tcp_flags_strs[] = {
     [BF_TCP_PSH] = "psh", [BF_TCP_ACK] = "ack", [BF_TCP_URG] = "urg",
     [BF_TCP_ECE] = "ece", [BF_TCP_CWR] = "cwr",
 };
-static_assert(ARRAY_SIZE(_bf_tcp_flags_strs) == _BF_TCP_MAX);
+static_assert(ARRAY_SIZE(_bf_tcp_flags_strs) == _BF_TCP_MAX,
+              "missing entries in the TCP flags strings array");
 
 const char *bf_tcp_flag_to_str(enum bf_tcp_flag flag)
 {
