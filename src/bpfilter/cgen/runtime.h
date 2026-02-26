@@ -127,8 +127,8 @@ struct bf_runtime
     __u8 bf_aligned(8) scratch[64];
 };
 
-_Static_assert(sizeof(struct bf_runtime) % 8 == 0,
-               "bf_runtime should be aligned to 8 bytes");
+static_assert(sizeof(struct bf_runtime) % 8 == 0,
+              "bf_runtime should be aligned to 8 bytes");
 
 extern void *bpf_dynptr_slice(const struct bpf_dynptr *, __u32, void *, __u32);
 extern int bpf_dynptr_from_xdp(struct xdp_md *, __u64, struct bpf_dynptr *);
