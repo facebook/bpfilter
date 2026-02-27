@@ -14,8 +14,7 @@ const char *bf_front_to_str(enum bf_front front)
         [BF_FRONT_NFT] = "BF_FRONT_NFT",
         [BF_FRONT_CLI] = "BF_FRONT_CLI",
     };
-    static_assert(ARRAY_SIZE(names) == _BF_FRONT_MAX,
-                  "missing fronts in bf_front_to_str()");
+    static_assert_enum_mapping(names, _BF_FRONT_MAX);
 
     if (front < 0 || front >= _BF_FRONT_MAX)
         return "<bf_front unknown>";

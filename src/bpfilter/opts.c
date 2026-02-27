@@ -35,8 +35,7 @@ static const char *_bf_verbose_strs[] = {
     [BF_VERBOSE_BYTECODE] = "bytecode",
 };
 
-static_assert(ARRAY_SIZE(_bf_verbose_strs) == _BF_VERBOSE_MAX,
-              "missing entries in _bf_verbose_strs array");
+static_assert_enum_mapping(_bf_verbose_strs, _BF_VERBOSE_MAX);
 
 enum bf_verbose bf_verbose_from_str(const char *str)
 {

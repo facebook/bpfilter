@@ -81,8 +81,7 @@ static const char *_bf_log_level_strs[] = {
     [BF_LOG_DBG] = "debug", [BF_LOG_INFO] = "info",   [BF_LOG_WARN] = "warning",
     [BF_LOG_ERR] = "error", [BF_LOG_ABORT] = "abort",
 };
-static_assert(ARRAY_SIZE(_bf_log_level_strs) == _BF_LOG_MAX,
-              "missing entries in _bf_log_level_strs strings array");
+static_assert_enum_mapping(_bf_log_level_strs, _BF_LOG_MAX);
 
 const char *bf_log_level_to_str(enum bf_log_level level)
 {
