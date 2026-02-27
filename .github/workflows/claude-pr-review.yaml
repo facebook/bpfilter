@@ -75,6 +75,10 @@ jobs:
                       Each subagent must return a JSON array of issues:
                       `[{"file": "path", "line": <number or null>, "severity": "must-fix|suggestion|nit", "title": "...", "body": "..."}]`
 
+                      Subagents must ONLY return the JSON array — they must NOT post comments,
+                      call `gh`, or use `mcp__github_inline_comment__create_inline_comment`.
+                      All posting happens in Phase 3.
+
                       Each subagent MUST verify its findings before returning them:
                       - For style/convention claims, check at least 3 existing examples in the codebase to confirm
                         the pattern actually exists before flagging a violation.
@@ -128,8 +132,11 @@ jobs:
                          If the author dismissed it, mark it `- [x] ~~title~~ (dismissed)`.
                       2. Append any NEW issues found in this run that aren't already listed.
                       3. Update the HEAD SHA in the header line.
-                      4. Edit the comment in-place. Use jq + stdin to avoid shell-quoting issues with markdown:
-                         `jq -n --arg body "$BODY" '{"body":$body}' | gh api --method PATCH repos/${{ github.repository }}/issues/comments/<comment-id> --input -`
+                      4. Edit the comment in-place.
+                         ```
+                         printf '%s' "$BODY" > pr-review-body.txt
+                         gh api --method PATCH repos/${{ github.repository }}/issues/comments/<comment-id> -F body=@pr-review-body.txt
+                         ```
                   claude_args: |
                       --max-turns 100
                       --model claude-opus-4-6
