@@ -120,7 +120,7 @@ enum bf_log_level
                           _bf_logger_prefix_fmt_args(level, color),            \
                           ##__VA_ARGS__, bf_strerror(code));                   \
         }                                                                      \
-        -abs(code);                                                            \
+        (code) < 0 ? (code) : -(code);                                         \
     })
 
 #define bf_err_r(code, fmt, ...)                                               \
