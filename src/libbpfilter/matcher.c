@@ -1545,8 +1545,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_SET] = "<set>",
 };
 
-static_assert(ARRAY_SIZE(_bf_matcher_type_strs) == _BF_MATCHER_TYPE_MAX,
-              "missing entries in the matcher type array");
+static_assert_enum_mapping(_bf_matcher_type_strs, _BF_MATCHER_TYPE_MAX);
 
 const char *bf_matcher_type_to_str(enum bf_matcher_type type)
 {
@@ -1577,8 +1576,7 @@ static const char *_bf_matcher_ops_strs[] = {
     [BF_MATCHER_IN] = "in",   [BF_MATCHER_RANGE] = "range",
 };
 
-static_assert(ARRAY_SIZE(_bf_matcher_ops_strs) == _BF_MATCHER_OP_MAX,
-              "missing entries in the matcher ops strings array");
+static_assert_enum_mapping(_bf_matcher_ops_strs, _BF_MATCHER_OP_MAX);
 
 const char *bf_matcher_op_to_str(enum bf_matcher_op op)
 {
@@ -1607,8 +1605,7 @@ static const char *_bf_tcp_flags_strs[] = {
     [BF_TCP_PSH] = "psh", [BF_TCP_ACK] = "ack", [BF_TCP_URG] = "urg",
     [BF_TCP_ECE] = "ece", [BF_TCP_CWR] = "cwr",
 };
-static_assert(ARRAY_SIZE(_bf_tcp_flags_strs) == _BF_TCP_MAX,
-              "missing entries in the TCP flags strings array");
+static_assert_enum_mapping(_bf_tcp_flags_strs, _BF_TCP_MAX);
 
 const char *bf_tcp_flag_to_str(enum bf_tcp_flag flag)
 {
@@ -1670,8 +1667,6 @@ static const char *_bf_ipproto_strs[UINT8_MAX + 1] = {
     [IPPROTO_DSTOPTS] = "dst",   [IPPROTO_ICMPV6] = "icmpv6",
     [IPPROTO_MH] = "mh",
 };
-static_assert(ARRAY_SIZE(_bf_ipproto_strs) == (UINT8_MAX + 1),
-              "missing entries in IP protocols strings array");
 
 const char *bf_ipproto_to_str(uint8_t ipproto)
 {
@@ -1713,8 +1708,6 @@ static const char *_bf_icmp_type_strs[UINT8_MAX + 1] = {
     [ICMP_ADDRESS] = "address-mask-request",
     [ICMP_ADDRESSREPLY] = "address-mask-reply",
 };
-static_assert(ARRAY_SIZE(_bf_icmp_type_strs) == (UINT8_MAX + 1),
-              "missing entries in ICMP types strings array");
 
 const char *bf_icmp_type_to_str(uint8_t type)
 {
@@ -1757,8 +1750,6 @@ static const char *_bf_icmpv6_type_strs[UINT8_MAX + 1] = {
     [ICMPV6_ND_NEIGHADVERT] = "nd-neighbor-advert",
     [ICMPV6_MLD2_REPORT] = "mld2-listener-report",
 };
-static_assert(ARRAY_SIZE(_bf_icmpv6_type_strs) == (UINT8_MAX + 1),
-              "missing entries in ICMPv6 types strings array");
 
 const char *bf_icmpv6_type_to_str(uint8_t type)
 {

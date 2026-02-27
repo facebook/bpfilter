@@ -50,8 +50,7 @@ static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)
     };
 
     assert(0 <= type && type < _BF_FIXUP_TYPE_MAX);
-    static_assert(ARRAY_SIZE(str) == _BF_FIXUP_TYPE_MAX,
-                  "missing entries in the fixup type strings array");
+    static_assert_enum_mapping(str, _BF_FIXUP_TYPE_MAX);
 
     return str[type];
 }

@@ -230,8 +230,7 @@ const char *bf_request_cmd_to_str(enum bf_request_cmd cmd)
         [BF_REQ_CUSTOM] = "BF_REQ_CUSTOM",
     };
 
-    static_assert(ARRAY_SIZE(cmd_strs) == _BF_REQ_CMD_MAX,
-                  "missing entries in bf_request_cmd array");
+    static_assert_enum_mapping(cmd_strs, _BF_REQ_CMD_MAX);
 
     return cmd_strs[cmd];
 }

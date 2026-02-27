@@ -91,8 +91,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_CGROUP] = &bf_flavor_ops_cgroup,
     };
 
-    static_assert(ARRAY_SIZE(flavor_ops) == _BF_FLAVOR_MAX,
-                  "missing entries in bf_flavor_ops array");
+    static_assert_enum_mapping(flavor_ops, _BF_FLAVOR_MAX);
 
     return flavor_ops[flavor];
 }

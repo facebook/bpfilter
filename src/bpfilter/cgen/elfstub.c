@@ -16,8 +16,7 @@
 
 #include "cgen/rawstubs.h"
 
-static_assert(ARRAY_SIZE(_bf_rawstubs) == _BF_ELFSTUB_MAX,
-              "_bf_rawstubs doesn't contain as many entries as bf_elfstub_id");
+static_assert_enum_mapping(_bf_rawstubs, _BF_ELFSTUB_MAX);
 
 #define _free_bf_printk_str_ __attribute__((cleanup(_bf_printk_str_free)))
 

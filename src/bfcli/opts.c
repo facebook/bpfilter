@@ -47,8 +47,7 @@ static const char * const _bfc_object_strs[] = {
     "ruleset", // BFC_OBJECT_RULESET
     "chain", // BFC_OBJECT_CHAIN
 };
-static_assert(ARRAY_SIZE(_bfc_object_strs) == _BFC_OBJECT_MAX,
-              "missing entries in bfc_object strings array");
+static_assert_enum_mapping(_bfc_object_strs, _BFC_OBJECT_MAX);
 
 static const char *bfc_object_to_str(enum bfc_object object)
 {
@@ -77,8 +76,7 @@ static const char * const _bfc_action_strs[] = {
     "update-set", // BFC_ACTION_UPDATE_SET
     "flush", // BFC_ACTION_FLUSH
 };
-static_assert(ARRAY_SIZE(_bfc_action_strs) == _BFC_ACTION_MAX,
-              "missing entries in bfc_action strings array");
+static_assert_enum_mapping(_bfc_action_strs, _BFC_ACTION_MAX);
 
 static const char *bfc_action_to_str(enum bfc_action action)
 {

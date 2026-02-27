@@ -36,8 +36,7 @@ static const char *_bf_hook_strs[] = {
     [BF_HOOK_NF_POST_ROUTING] = "BF_HOOK_NF_POST_ROUTING",
     [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
 };
-static_assert(ARRAY_SIZE(_bf_hook_strs) == _BF_HOOK_MAX,
-              "missing entries in bf_hook strings array");
+static_assert_enum_mapping(_bf_hook_strs, _BF_HOOK_MAX);
 
 const char *bf_hook_to_str(enum bf_hook hook)
 {
@@ -76,8 +75,7 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
     };
 
-    static_assert(ARRAY_SIZE(flavors) == _BF_HOOK_MAX,
-                  "missing entries in bf_flavor array");
+    static_assert_enum_mapping(flavors, _BF_HOOK_MAX);
 
     return flavors[hook];
 }
@@ -97,8 +95,7 @@ enum bf_bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BF_BPF_TCX_ENGRESS,
     };
 
-    static_assert(ARRAY_SIZE(attach_types) == _BF_HOOK_MAX,
-                  "missing entries in bpf_attach_type array");
+    static_assert_enum_mapping(attach_types, _BF_HOOK_MAX);
 
     return attach_types[hook];
 }
@@ -118,8 +115,7 @@ enum bf_bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
         [BF_HOOK_TC_EGRESS] = BF_BPF_PROG_TYPE_SCHED_CLS,
     };
 
-    static_assert(ARRAY_SIZE(prog_types) == _BF_HOOK_MAX,
-                  "missing entries in bpf_prog_type array");
+    static_assert_enum_mapping(prog_types, _BF_HOOK_MAX);
 
     return prog_types[hook];
 }
@@ -383,8 +379,7 @@ static struct bf_hookopts_ops
                                 .dump = _bf_hookopts_priorities_dump},
 };
 
-static_assert(ARRAY_SIZE(_bf_hookopts_ops) == _BF_HOOKOPTS_MAX,
-              "missing entries in bf_hookopts_ops array");
+static_assert_enum_mapping(_bf_hookopts_ops, _BF_HOOKOPTS_MAX);
 
 #define _bf_hookopts_is_required(type, flavor)                                 \
     (_bf_hookopts_ops[type].required_by & BF_FLAG(flavor))

@@ -15,8 +15,7 @@ const char *bf_flavor_to_str(enum bf_flavor flavor)
         [BF_FLAVOR_XDP] = "BF_FLAVOR_XDP",
         [BF_FLAVOR_CGROUP] = "BF_FLAVOR_CGROUP",
     };
-    static_assert(ARRAY_SIZE(flavor_str) == _BF_FLAVOR_MAX,
-                  "missing entries in flavor_str array");
+    static_assert_enum_mapping(flavor_str, _BF_FLAVOR_MAX);
 
     if (flavor < 0 || flavor >= _BF_FLAVOR_MAX)
         return "<bf_flavor unknown>";

@@ -311,8 +311,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
         [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
     };
 
-    static_assert(ARRAY_SIZE(type_strs) == _BF_MAP_TYPE_MAX,
-                  "missing entries in _bf_map_type_strs array");
+    static_assert_enum_mapping(type_strs, _BF_MAP_TYPE_MAX);
     assert(0 <= type && type < _BF_MAP_TYPE_MAX);
 
     return type_strs[type];
