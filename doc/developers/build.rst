@@ -1,7 +1,7 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. There is also a nix flake which supports all the make targets except for ``doc``.
+This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. There is also a nix flake which supports all the make targets.
 
 If you want to perform a full build of ``bpfilter`` (including all test tests, code check, benchmarks, and documentation), the following dependencies are required:
 

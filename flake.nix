@@ -79,18 +79,13 @@
               lcov
 
               # Documentation
-              # TODO: this (`make doc`) is still broken but should be fixed when linuxdoc is added to nixpkgs
               doxygen
               python3
               python3Packages.sphinx
-              # python3Packages.breathe
-              # python3Packages.furo
-              # python3Packages.linuxdoc
-              # python3Packages.gitpython
-              # python3Packages.scapy
-              # python3Packages.python-dateutil
-              # python3Packages.setuptools
-              # glibcLocales
+              python3Packages.breathe
+              python3Packages.furo
+              python3Packages.linuxdoc
+              python3Packages.setuptools
             ];
 
             shellHook = ''
