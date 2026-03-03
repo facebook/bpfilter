@@ -209,6 +209,7 @@ ${FROM_NS} bfcli chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_I
         10.0.0.1
     }
     rule
+        ip4.proto icmp
         (ip4.saddr) in blocked_ips
         counter
         DROP
