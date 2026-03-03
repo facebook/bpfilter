@@ -20,12 +20,8 @@
  *
  * Generic request format sent by the client to the daemon.
  *
- * @var bf_request::front
- *  Front this request is targeted to.
  * @var bf_request::cmd
  *  Command.
- * @var bf_request::ipt_cmd
- *  Custom command for the IPT front.
  * @var bf_request::data_len
  *  Length of the client-specific data.
  * @var bf_request::data
@@ -33,7 +29,6 @@
  */
 struct bf_request
 {
-    enum bf_front front;
     enum bf_request_cmd cmd;
 
     /** Namespaces the request is coming from. This field will be automatically
@@ -45,19 +40,14 @@ struct bf_request
      * own the file descriptor. */
     int fd;
 
-    union
-    {
-        int ipt_cmd;
-    };
-
     size_t data_len;
 
     /// @todo Return a user-readable error message if the request fails.
     char data[];
 };
 
-int bf_request_new(struct bf_request **request, enum bf_front front,
-                   enum bf_request_cmd cmd, const void *data, size_t data_len)
+int bf_request_new(struct bf_request **request, enum bf_request_cmd cmd,
+                   const void *data, size_t data_len)
 {
     _free_bf_request_ struct bf_request *_request = NULL;
 
@@ -73,7 +63,6 @@ int bf_request_new(struct bf_request **request, enum bf_front front,
         _request->data_len = data_len;
     }
 
-    _request->front = front;
     _request->cmd = cmd;
 
     *request = TAKE_PTR(_request);
@@ -101,7 +90,7 @@ int bf_request_new_from_dynbuf(struct bf_request **request,
     return 0;
 }
 
-int bf_request_new_from_pack(struct bf_request **request, enum bf_front front,
+int bf_request_new_from_pack(struct bf_request **request,
                              enum bf_request_cmd cmd, bf_wpack_t *pack)
 {
     const void *data;
@@ -118,7 +107,7 @@ int bf_request_new_from_pack(struct bf_request **request, enum bf_front front,
     if (r)
         return r;
 
-    return bf_request_new(request, front, cmd, data, data_len);
+    return bf_request_new(request, cmd, data, data_len);
 }
 
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src)
@@ -141,12 +130,6 @@ void bf_request_free(struct bf_request **request)
 {
     free(*request);
     *request = NULL;
-}
-
-enum bf_front bf_request_front(const struct bf_request *request)
-{
-    assert(request);
-    return request->front;
 }
 
 enum bf_request_cmd bf_request_cmd(const struct bf_request *request)
@@ -186,12 +169,6 @@ size_t bf_request_size(const struct bf_request *request)
     return sizeof(struct bf_request) + request->data_len;
 }
 
-int bf_request_ipt_cmd(const struct bf_request *request)
-{
-    assert(request);
-    return request->ipt_cmd;
-}
-
 void bf_request_set_ns(struct bf_request *request, struct bf_ns *ns)
 {
     assert(request);
@@ -202,12 +179,6 @@ void bf_request_set_fd(struct bf_request *request, int fd)
 {
     assert(request);
     request->fd = fd;
-}
-
-void bf_request_set_ipt_cmd(struct bf_request *request, int ipt_cmd)
-{
-    assert(request);
-    request->ipt_cmd = ipt_cmd;
 }
 
 const char *bf_request_cmd_to_str(enum bf_request_cmd cmd)

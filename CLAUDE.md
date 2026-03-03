@@ -9,7 +9,7 @@ bpfilter is an eBPF-based packet filtering framework that translates filtering r
 - `bpfilter` - Daemon that generates and manages BPF programs
 - `bfcli` - CLI for defining filtering rules
 
-**Requirements:** Linux 6.6+, libbpf 1.2+, libnl-3
+**Requirements:** Linux 6.6+, libbpf 1.2+
 
 ## Directory structure
 
@@ -22,7 +22,7 @@ src/
 │   ├── cgen/             # BPF code generation engine
 │   │   ├── matcher/      # Packet matcher codegen (ip4, ip6, tcp, udp, icmp, meta, set)
 │   │   └── prog/         # Program linking (link, map)
-│   ├── xlate/            # Rule translation (cli, ipt/, nft/)
+│   ├── xlate.c           # Rule translation
 │   └── bpf/              # eBPF stub programs
 ├── bfcli/                # CLI (parser.y, lexer.l, opts, print, chain, ruleset)
 └── external/             # External deps (mpack)
@@ -35,7 +35,7 @@ tests/
 └── harness/              # Test utilities (test.h, mock.h, fake.h)
 
 doc/
-├── usage/                # User guides (bfcli, daemon, iptables, nftables)
+├── usage/                # User guides (bfcli, daemon)
 └── developers/           # Dev docs (build, style, tests, modules/)
 ```
 

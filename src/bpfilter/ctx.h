@@ -8,7 +8,6 @@
 #include <stdbool.h>
 
 #include <bpfilter/dump.h>
-#include <bpfilter/front.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
@@ -78,13 +77,9 @@ int bf_ctx_save(bf_wpack_t *pack);
 int bf_ctx_load(bf_rpack_node_t node);
 
 /**
- * Unload and delete all the codegens, reset the context to a clean state.
- *
- * On failure, the context is left unchanged.
- *
- * @param front Front to flush the codegens for.
+ * @brief Unload and delete all the codegens.
  */
-void bf_ctx_flush(enum bf_front front);
+void bf_ctx_flush(void);
 
 /**
  * Check if the context is empty (no codegen defined).
@@ -102,17 +97,16 @@ bool bf_ctx_is_empty(void);
 struct bf_cgen *bf_ctx_get_cgen(const char *name);
 
 /**
- * Get the list of @ref bf_cgen defined for a given @p front .
+ * Get the list of all @ref bf_cgen in the context.
  *
  * The @p cgens list returned to the caller does not own the codegens, it can
  * safely be cleaned up using @ref bf_list_clean or @ref bf_list_free .
  *
  * @param cgens List of @ref bf_cgen to fill. The list will be initialised by
  *        this function. Can't be NULL. On failure, @p cgens is left unchanged.
- * @param front Front the get the list of @ref bf_cgen for.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front);
+int bf_ctx_get_cgens(bf_list *cgens);
 
 /**
  * Add a codegen to the global context.

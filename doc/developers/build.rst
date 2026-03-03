@@ -31,7 +31,6 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         libbpf-devel \
         libcmocka-devel \
         libgit2-devel \
-        libnl3-devel \
         libtool \
         procps-ng \
         python3-breathe \
@@ -68,7 +67,6 @@ If you want to perform a full build of ``bpfilter`` (including all test tests, c
         libclang-rt-20-dev \
         libfuzzer-20-dev \ # Exact version depends on Ubuntu version
         libgit2-dev \
-        libnl-3-dev \
         libtool \
         linux-tools-common \
         make \

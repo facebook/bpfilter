@@ -15,7 +15,6 @@
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
@@ -290,27 +289,20 @@ static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
 }
 
 /**
- * See @ref bf_ctx_get_cgens_for_front for details.
+ * See @ref bf_ctx_get_cgens for details.
  */
-static int _bf_ctx_get_cgens_for_front(const struct bf_ctx *ctx, bf_list *cgens,
-                                       enum bf_front front)
+static int _bf_ctx_get_cgens(const struct bf_ctx *ctx, bf_list *cgens)
 {
-    _clean_bf_list_ bf_list _cgens =
-        bf_list_default(cgens->ops.free, cgens->ops.pack);
+    _clean_bf_list_ bf_list _cgens = bf_list_default_from(*cgens);
     int r;
 
     assert(ctx);
     assert(cgens);
 
     bf_list_foreach (&ctx->cgens, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        if (cgen->front != front)
-            continue;
-
-        r = bf_list_add_tail(&_cgens, cgen);
+        r = bf_list_add_tail(&_cgens, bf_list_node_get_data(cgen_node));
         if (r)
-            return bf_err_r(r, "failed to insert codegen into list");
+            return r;
     }
 
     *cgens = bf_list_move(_cgens);
@@ -403,24 +395,21 @@ int bf_ctx_load(bf_rpack_node_t node)
     return 0;
 }
 
-static void _bf_ctx_flush(struct bf_ctx *ctx, enum bf_front front)
+static void _bf_ctx_flush(struct bf_ctx *ctx)
 {
     assert(ctx);
 
     bf_list_foreach (&ctx->cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
 
-        if (cgen->front != front)
-            continue;
-
         bf_cgen_unload(cgen);
         bf_list_delete(&ctx->cgens, cgen_node);
     }
 }
 
-void bf_ctx_flush(enum bf_front front)
+void bf_ctx_flush(void)
 {
-    _bf_ctx_flush(_bf_global_ctx, front);
+    _bf_ctx_flush(_bf_global_ctx);
 }
 
 bool bf_ctx_is_empty(void)
@@ -438,9 +427,9 @@ struct bf_cgen *bf_ctx_get_cgen(const char *name)
     return _bf_ctx_get_cgen(_bf_global_ctx, name);
 }
 
-int bf_ctx_get_cgens_for_front(bf_list *cgens, enum bf_front front)
+int bf_ctx_get_cgens(bf_list *cgens)
 {
-    return _bf_ctx_get_cgens_for_front(_bf_global_ctx, cgens, front);
+    return _bf_ctx_get_cgens(_bf_global_ctx, cgens);
 }
 
 int bf_ctx_set_cgen(struct bf_cgen *cgen)

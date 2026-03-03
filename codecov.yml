@@ -3,6 +3,3 @@ ignore:
   - src/core/bpf.c
   # To test end-to-end using BPF_PROG_TEST_RUN
   - src/daemon/cgen/**
-  # To test using integration tests
-  - src/daemon/xlate/ipt/**
-  - src/daemon/xlate/nft/**

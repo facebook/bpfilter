@@ -15,7 +15,6 @@
 
 #include <bpfilter/btf.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/io.h>
 #include <bpfilter/logger.h>
@@ -27,7 +26,6 @@
 
 #include "ctx.h"
 #include "opts.h"
-#include "xlate/front.h"
 
 /**
  * Global flag to indicate whether the daemon should stop.
@@ -74,7 +72,7 @@ static int _bf_load(const char *path)
 {
     _free_bf_rpack_ bf_rpack_t *pack = NULL;
     _cleanup_free_ void *data = NULL;
-    bf_rpack_node_t child, array_node;
+    bf_rpack_node_t child;
     size_t data_len;
     int r;
 
@@ -107,20 +105,6 @@ static int _bf_load(const char *path)
     r = bf_ctx_load(child);
     if (r < 0)
         return r;
-
-    r = bf_rpack_kv_array(bf_rpack_root(pack), "cache", &child);
-    if (r)
-        return r;
-    bf_rpack_array_foreach (child, array_node) {
-        if (bf_rpack_is_nil(array_node))
-            continue;
-
-        r = bf_front_ops_get(i)->unpack(array_node);
-        if (r < 0) {
-            return bf_err_r(r, "failed to restore context for %s",
-                            bf_front_to_str(i));
-        }
-    }
 
     bf_dbg("loaded serialized context from %s", path);
 
@@ -159,22 +143,6 @@ static int _bf_save(const char *path)
         return r;
     bf_wpack_close_object(pack);
 
-    /** @todo Front packing should be name-based to avoid relying on the
-     * enumeration order. */
-    bf_wpack_open_array(pack, "cache");
-    for (int i = 0; i < _BF_FRONT_MAX; ++i) {
-        if (bf_opts_is_front_enabled(i)) {
-            bf_wpack_open_object(pack, NULL);
-            r = bf_front_ops_get(i)->pack(pack);
-            if (r < 0)
-                return r;
-            bf_wpack_close_object(pack);
-        } else {
-            bf_wpack_nil(pack);
-        }
-    }
-    bf_wpack_close_array(pack);
-
     r = bf_wpack_get_data(pack, &data, &data_len);
     if (r)
         return r;
@@ -191,16 +159,8 @@ static int _bf_save(const char *path)
 /**
  * Initialize bpfilter's daemon runtime.
  *
- * Setup signal handler (for graceful shutdown), load context from disk, and
- * initialise various front-ends.
- *
- * If no context can be loaded, a new one is initialized from scratch.
- *
- * Front-ends' @p init function is called every time. They are responsible for
- * checking whether they need to perform any initialization or not, depending
- * on the loaded runtime context.
- *
- * Updated context is saved back to disk.
+ * Setup signal handler (for graceful shutdown), load context from disk. If no
+ * context can be loaded, a new one is initialized from scratch.
  *
  * @return 0 on success, negative error code on failure.
  */
@@ -240,26 +200,6 @@ static int _bf_init(int argc, char *argv[])
 
     bf_ctx_dump(EMPTY_PREFIX);
 
-    for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
-        if (!bf_opts_is_front_enabled(front))
-            continue;
-
-        r = bf_front_ops_get(front)->setup();
-        if (r < 0) {
-            return bf_err_r(r, "failed to setup front-end %s",
-                            bf_front_to_str(front));
-        }
-
-        bf_dbg("completed setup for %s", bf_front_to_str(front));
-    }
-
-    if (!bf_opts_transient()) {
-        r = _bf_save(ctx_path);
-        if (r < 0) {
-            return bf_err_r(r, "failed to backup context at %s", ctx_path);
-        }
-    }
-
     return 0;
 }
 
@@ -270,33 +210,23 @@ static int _bf_init(int argc, char *argv[])
  */
 static int _bf_clean(void)
 {
-    _cleanup_close_ int pindir_fd = -1;
     int r;
-
-    for (enum bf_front front = 0; front < _BF_FRONT_MAX; ++front) {
-        if (!bf_opts_is_front_enabled(front))
-            continue;
-
-        r = bf_front_ops_get(front)->teardown();
-        if (r < 0) {
-            bf_warn_r(r, "failed to teardown front-end %s, continuing",
-                      bf_front_to_str(front));
-        }
-    }
 
     bf_ctx_teardown(bf_opts_transient());
 
     r = bf_ctx_rm_pindir();
-    if (r < 0 && r != -ENOENT && errno != -ENOTEMPTY)
+    if (r < 0 && r != -ENOENT && r != -ENOTEMPTY)
         return bf_err_r(r, "failed to remove pin directory");
 
     return 0;
 }
 
+extern int bf_request_handler(const struct bf_request *request,
+                              struct bf_response **response);
+
 /**
  * Process a request.
  *
- * The handler corresponding to @p bf_request_front(request) will be called (if any).
  * If the handler returns 0, @p response is expected to be filled, and ready
  * to be returned to the client.
  * If the handler returns a negative error code, @p response is filled by @ref
@@ -314,18 +244,10 @@ static int _bf_clean(void)
 static int _bf_process_request(struct bf_request *request,
                                struct bf_response **response)
 {
-    const struct bf_front_ops *ops;
     int r;
 
     assert(request);
     assert(response);
-
-    if (bf_request_front(request) < 0 ||
-        bf_request_front(request) >= _BF_FRONT_MAX) {
-        bf_warn("received a request from front %d, unknown front, ignoring",
-                bf_request_front(request));
-        return bf_response_new_failure(response, -EINVAL);
-    }
 
     if (bf_request_cmd(request) < 0 ||
         bf_request_cmd(request) >= _BF_REQ_CMD_MAX) {
@@ -334,18 +256,10 @@ static int _bf_process_request(struct bf_request *request,
         return bf_response_new_failure(response, -EINVAL);
     }
 
-    if (!bf_opts_is_front_enabled(bf_request_front(request))) {
-        bf_warn("received a request from %s, but front is disabled, ignoring",
-                bf_front_to_str(bf_request_front(request)));
-        return bf_response_new_failure(response, -ENOTSUP);
-    }
+    bf_info("processing request %s",
+            bf_request_cmd_to_str(bf_request_cmd(request)));
 
-    bf_info("processing request %s from %s",
-            bf_request_cmd_to_str(bf_request_cmd(request)),
-            bf_front_to_str(bf_request_front(request)));
-
-    ops = bf_front_ops_get(bf_request_front(request));
-    r = ops->request_handler(request, response);
+    r = bf_request_handler(request, response);
     if (r) {
         /* We failed to process the request, so we need to generate an
          * error. If the error response is successfully generated, then we

@@ -9,7 +9,6 @@
 
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/front.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
@@ -28,9 +27,6 @@ struct bf_hookopts;
  */
 struct bf_cgen
 {
-    /// Front used to define the chain.
-    enum bf_front front;
-
     /// Chain containing the rules, sets, and policy.
     struct bf_chain *chain;
 
@@ -45,15 +41,13 @@ struct bf_cgen
  * Allocate and initialise a new codegen.
  *
  * @param cgen Codegen to allocate and initialise. Can't be NULL.
- * @param front Front used to define the chain.
  * @param chain Chain containing the codegen's rules, sets, and policy. On
  *        success, the new codegen will take ownership of the chain, and
  *        @c *chain will be NULL. Can't be NULL, and @c *chain must point to
  *        a valid @ref bf_chain .
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
-                struct bf_chain **chain);
+int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
 
 /**
  * @brief Allocate and initialize a new codegen from serialized data.

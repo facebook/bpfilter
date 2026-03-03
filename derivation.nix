@@ -8,7 +8,6 @@
   bison,
   flex,
   libbpf,
-  libnl,
   elfutils,
   openssl,
   testers,
@@ -55,7 +54,6 @@ in
 
     buildInputs = [
       libbpf
-      libnl
       elfutils
       openssl
       zlib

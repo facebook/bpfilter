@@ -15,7 +15,6 @@
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
@@ -52,8 +51,7 @@ static int _bf_cgen_get_chain_pindir_fd(const char *name)
     return TAKE_FD(chain_fd);
 }
 
-int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
-                struct bf_chain **chain)
+int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
     int r;
@@ -65,7 +63,6 @@ int bf_cgen_new(struct bf_cgen **cgen, enum bf_front front,
     if (!_cgen)
         return -ENOMEM;
 
-    _cgen->front = front;
     _cgen->chain = TAKE_PTR(*chain);
 
     r = bf_handle_new(&_cgen->handle, _BF_PROG_NAME);
@@ -89,10 +86,6 @@ int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
     _cgen = calloc(1, sizeof(*_cgen));
     if (!_cgen)
         return -ENOMEM;
-
-    r = bf_rpack_kv_enum(node, "front", &_cgen->front, 0, _BF_FRONT_MAX);
-    if (r)
-        return bf_rpack_key_err(r, "bf_cgen.front");
 
     r = bf_rpack_kv_obj(node, "chain", &child);
     if (r)
@@ -148,8 +141,6 @@ int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack)
     assert(cgen);
     assert(pack);
 
-    bf_wpack_kv_enum(pack, "front", cgen->front);
-
     bf_wpack_open_object(pack, "chain");
     bf_chain_pack(cgen->chain, pack);
     bf_wpack_close_object(pack);
@@ -169,7 +160,6 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
     DUMP(prefix, "struct bf_cgen at %p", cgen);
 
     bf_dump_prefix_push(prefix);
-    DUMP(prefix, "front: %s", bf_front_to_str(cgen->front));
 
     // Chain
     DUMP(prefix, "chain: struct bf_chain *");

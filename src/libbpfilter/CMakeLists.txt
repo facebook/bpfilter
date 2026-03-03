@@ -15,7 +15,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/front.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/if.h
@@ -41,16 +40,13 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/front.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
     ${CMAKE_CURRENT_SOURCE_DIR}/if.c
     ${CMAKE_CURRENT_SOURCE_DIR}/io.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ipt.c
     ${CMAKE_CURRENT_SOURCE_DIR}/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/nft.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/request.c
