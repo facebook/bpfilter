@@ -6,9 +6,6 @@ The ``bpfilter`` daemon is responsible for creating the BPF program correspondin
 It is possible to customize the daemon's behavior using the following command-line flags:
 
 - ``-t``, ``--transient``: if used, ``bpfilter`` won't pin any BPF program or map, and no data will be serialized to the filesystem. Hence, as soon as the daemon is stopped, the loaded BPF programs and maps will be removed from the system.
-- ``--no-cli``: disable ``bfcli`` support.
-- ``--no-nftables``: disable ``nftables`` support.
-- ``--no-iptables``: disable ``iptables`` support.
 - ``--with-bpf-token``: if set, the daemon will associate a BPF token to every ``bpf()`` system call. This is required when the daemon runs in user namespaces. The daemon will create the token from the bpffs mounted at ``--bpffs-path``. The user is responsible for configuring the file system, so a token can be created. Only supported for kernel v6.9+, if the current kernel doesn't support BPF token, the daemon will stop with a non-zero exit code.
 - ``--bpffs-path``: use a custom BPF filesystem directory. By default, bpfilter will pin the BPF objects in a ``bpfilter`` directory in ``/sys/fs/bpf``, this option will move the ``bpfilter`` folder into a different directory. The path provided must be a directory on a BPF filesystem.
 - ``-v=VERBOSE_FLAG``, ``--verbose=VERBOSE_FLAG``: enable verbose logs for ``VERBOSE_FLAG``. Currently, 3 verbose flags are supported:

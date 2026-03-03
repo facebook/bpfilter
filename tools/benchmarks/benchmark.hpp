@@ -148,9 +148,6 @@ public:
     {
     public:
         Options &transient();
-        Options &noCli();
-        Options &noIptables();
-        Options &noNftables();
         Options &bufferLen(::std::size_t len);
         Options &verbose(const ::std::string &component);
         [[nodiscard]] ::std::vector<::std::string> get() const;

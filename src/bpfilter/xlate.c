@@ -7,7 +7,6 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
@@ -24,32 +23,6 @@
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
 #include "ctx.h"
-#include "xlate/front.h"
-
-static int _bf_cli_setup(void);
-static int _bf_cli_teardown(void);
-static int _bf_cli_request_handler(const struct bf_request *request,
-                                   struct bf_response **response);
-static int _bf_cli_pack(bf_wpack_t *pack);
-static int _bf_cli_unpack(bf_rpack_node_t node);
-
-const struct bf_front_ops cli_front = {
-    .setup = _bf_cli_setup,
-    .teardown = _bf_cli_teardown,
-    .request_handler = _bf_cli_request_handler,
-    .pack = _bf_cli_pack,
-    .unpack = _bf_cli_unpack,
-};
-
-static int _bf_cli_setup(void)
-{
-    return 0;
-}
-
-static int _bf_cli_teardown(void)
-{
-    return 0;
-}
 
 int _bf_cli_ruleset_flush(const struct bf_request *request,
                           struct bf_response **response)
@@ -57,7 +30,7 @@ int _bf_cli_ruleset_flush(const struct bf_request *request,
     (void)request;
     (void)response;
 
-    bf_ctx_flush(BF_FRONT_CLI);
+    bf_ctx_flush();
 
     return 0;
 }
@@ -79,7 +52,7 @@ static int _bf_cli_ruleset_get(const struct bf_request *request,
     if (r)
         return r;
 
-    r = bf_ctx_get_cgens_for_front(&cgens, BF_FRONT_CLI);
+    r = bf_ctx_get_cgens(&cgens);
     if (r < 0)
         return bf_err_r(r, "failed to get cgen list");
 
@@ -134,7 +107,7 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
 
     (void)response;
 
-    bf_ctx_flush(BF_FRONT_CLI);
+    bf_ctx_flush();
 
     r = bf_rpack_new(&pack, bf_request_data(request),
                      bf_request_data_len(request));
@@ -167,7 +140,7 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
                 goto err_load;
         }
 
-        r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
+        r = bf_cgen_new(&cgen, &chain);
         if (r)
             goto err_load;
 
@@ -193,7 +166,7 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
     return 0;
 
 err_load:
-    bf_ctx_flush(BF_FRONT_CLI);
+    bf_ctx_flush();
     return r;
 }
 
@@ -235,7 +208,7 @@ int _bf_cli_chain_set(const struct bf_request *request,
             return r;
     }
 
-    r = bf_cgen_new(&new_cgen, BF_FRONT_CLI, &chain);
+    r = bf_cgen_new(&new_cgen, &chain);
     if (r)
         return r;
 
@@ -412,7 +385,7 @@ int _bf_cli_chain_load(const struct bf_request *request,
                         chain->name);
     }
 
-    r = bf_cgen_new(&cgen, BF_FRONT_CLI, &chain);
+    r = bf_cgen_new(&cgen, &chain);
     if (r)
         return r;
 
@@ -615,8 +588,8 @@ int _bf_cli_chain_update_set(const struct bf_request *request,
     return 0;
 }
 
-static int _bf_cli_request_handler(const struct bf_request *request,
-                                   struct bf_response **response)
+int bf_request_handler(const struct bf_request *request,
+                       struct bf_response **response)
 {
     int r;
 
@@ -661,7 +634,7 @@ static int _bf_cli_request_handler(const struct bf_request *request,
         r = _bf_cli_chain_update_set(request, response);
         break;
     default:
-        r = bf_err_r(-EINVAL, "unsupported command %d for CLI front-end",
+        r = bf_err_r(-EINVAL, "unsupported command %d",
                      bf_request_cmd(request));
         break;
     }
@@ -678,18 +651,4 @@ static int _bf_cli_request_handler(const struct bf_request *request,
     }
 
     return r;
-}
-
-static int _bf_cli_pack(bf_wpack_t *pack)
-{
-    (void)pack;
-
-    return 0;
-}
-
-static int _bf_cli_unpack(bf_rpack_node_t node)
-{
-    (void)node;
-
-    return 0;
 }

@@ -13,7 +13,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 
@@ -69,9 +68,6 @@ static struct bf_options
     /** Path to the bpffs to pin the BPF objects into. */
     const char *bpffs_path;
 
-    /** Bit flags for enabled fronts. */
-    uint16_t fronts;
-
     /** Verbose flags. Supported flags are:
      * - @c debug Print all the debug logs.
      * - @c bpf Add debug log messages in the generated BPF programs. */
@@ -80,7 +76,6 @@ static struct bf_options
     .transient = false,
     .with_bpf_token = false,
     .bpffs_path = BF_DEFAULT_BPFFS_PATH,
-    .fronts = 0xffff,
     .verbose = 0,
 };
 
@@ -91,11 +86,11 @@ static struct argp_option options[] = {
     {"buffer-len", 'b', "BUF_LEN_POW", 0,
      "DEPRECATED. Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
      0},
-    {"no-iptables", BF_OPT_NO_IPTABLES_KEY, 0, 0, "Disable iptables support",
-     0},
-    {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0, "Disable nftables support",
-     0},
-    {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "Disable CLI support", 0},
+    {"no-iptables", BF_OPT_NO_IPTABLES_KEY, 0, 0,
+     "DEPRECATED. Disable iptables support", 0},
+    {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0,
+     "DEPRECATED. Disable nftables support", 0},
+    {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "DEPRECATED. Disable CLI support", 0},
     {"with-bpf-token", BF_OPT_WITH_BPF_TOKEN, NULL, 0,
      "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
      0},
@@ -129,16 +124,13 @@ static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
             "--buffer-len is deprecated, buffer size is defined automatically");
         break;
     case BF_OPT_NO_IPTABLES_KEY:
-        bf_info("disabling iptables support");
-        args->fronts &= ~BF_FLAG(BF_FRONT_IPT);
+        bf_warn("--no-iptables is deprecated");
         break;
     case BF_OPT_NO_NFTABLES_KEY:
-        bf_info("disabling nftables support");
-        args->fronts &= ~BF_FLAG(BF_FRONT_NFT);
+        bf_warn("--no-nftables is deprecated");
         break;
     case BF_OPT_NO_CLI_KEY:
-        bf_info("disabling CLI support");
-        args->fronts &= ~BF_FLAG(BF_FRONT_CLI);
+        bf_warn("--no-cli is deprecated");
         break;
     case BF_OPT_WITH_BPF_TOKEN:
         args->with_bpf_token = true;
@@ -183,11 +175,6 @@ bool bf_opts_transient(void)
 bool bf_opts_persist(void)
 {
     return !_bf_opts.transient;
-}
-
-bool bf_opts_is_front_enabled(enum bf_front front)
-{
-    return _bf_opts.fronts & BF_FLAG(front);
 }
 
 bool bf_opts_with_bpf_token(void)

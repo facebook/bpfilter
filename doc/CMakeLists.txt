@@ -82,8 +82,6 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/daemon.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/usage/iptables.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/usage/nftables.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/generation.rst
@@ -92,9 +90,6 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/tests.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter/bpfilter.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter/xlate/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter/xlate/ipt.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter/xlate/nft.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/libbpfilter/libbpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/benchmarks/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coverage/index.rst

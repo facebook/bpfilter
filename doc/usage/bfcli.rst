@@ -1,7 +1,7 @@
 ``bfcli``
 =========
 
-``bfcli`` is a command line tool to communicate with the bpfilter daemon. It provides supports for extended features compared to the iptables client.
+``bfcli`` is a command line tool to communicate with the bpfilter daemon.
 
 Commands
 --------

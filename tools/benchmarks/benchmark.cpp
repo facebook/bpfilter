@@ -562,24 +562,6 @@ Daemon::Options &Daemon::Options::transient()
     return *this;
 }
 
-Daemon::Options &Daemon::Options::noCli()
-{
-    options_.emplace_back("--no-cli");
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::noIptables()
-{
-    options_.emplace_back("--no-iptables");
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::noNftables()
-{
-    options_.emplace_back("--no-nftables");
-    return *this;
-}
-
 Daemon::Options &Daemon::Options::bufferLen(::std::size_t len)
 {
     options_.emplace_back("--buffer-len");

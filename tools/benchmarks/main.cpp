@@ -601,7 +601,7 @@ int main(int argc, char *argv[])
     if (::bf::config.runDaemon) {
      daemon = bf::Daemon(
         ::bf::config.bpfilter,
-        bf::Daemon::Options().transient().noIptables().noNftables());
+        bf::Daemon::Options().transient());
     }
 
     try {

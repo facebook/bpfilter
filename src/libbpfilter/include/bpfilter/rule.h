@@ -50,7 +50,7 @@ int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr);
  * Represents a rule to match against packets.
  *
  * @var bf_rule::index
- *  Rule's index. Identifies the rule's within other rules from the same front.
+ *  Rule's index. Identifies the rule's within other rules from the same chain.
  */
 struct bf_rule
 {

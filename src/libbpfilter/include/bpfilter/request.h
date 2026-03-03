@@ -7,7 +7,6 @@
 
 #include <stddef.h>
 
-#include <bpfilter/front.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/pack.h>
 
@@ -23,19 +22,16 @@ struct bf_ns;
  * data contained in the request, and call the proper handler.
  *
  * @var bf_request_cmd::BF_REQ_CUSTOM
- *  Custom request: only the front this request is targeted to is able to
- *  understand what is the actual command. Allows for fronts to implement
- *  new commands.
+ *  Custom request.
  */
 enum bf_request_cmd
 {
-    /* Flush the ruleset: remove all the filtering rules defined for a
-     * front-end. */
+    /* Flush the ruleset: remove all the filtering rules defined. */
     BF_REQ_RULESET_FLUSH,
     BF_REQ_RULESET_GET,
 
-    /** Set the current ruleset. Existing chains are flushed for the current
-     * front-end and replaced with the chains defined in the request. */
+    /** Set the current ruleset. Existing chains are flushed and replaced with
+     * the chains defined in the request. */
     BF_REQ_RULESET_SET,
 
     BF_REQ_CHAIN_SET,
@@ -60,18 +56,17 @@ struct bf_request;
  * Allocate and initialise a new request.
  *
  * @param request Pointer to the request to allocate. Must be non-NULL.
- * @param front Front identifier.
  * @param cmd Request command.
  * @param data Client-specific data.
  * @param data_len Length of the client-specific data.
  * @return 0 on success or negative errno code on failure.
  */
-int bf_request_new(struct bf_request **request, enum bf_front front,
-                   enum bf_request_cmd cmd, const void *data, size_t data_len);
+int bf_request_new(struct bf_request **request, enum bf_request_cmd cmd,
+                   const void *data, size_t data_len);
 
 int bf_request_new_from_dynbuf(struct bf_request **request,
                                struct bf_dynbuf *dynbuf);
-int bf_request_new_from_pack(struct bf_request **request, enum bf_front front,
+int bf_request_new_from_pack(struct bf_request **request,
                              enum bf_request_cmd cmd, bf_wpack_t *pack);
 
 /**
@@ -94,17 +89,14 @@ void bf_request_free(struct bf_request **request);
  */
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src);
 
-enum bf_front bf_request_front(const struct bf_request *request);
 struct bf_ns *bf_request_ns(const struct bf_request *request);
 enum bf_request_cmd bf_request_cmd(const struct bf_request *request);
 int bf_request_fd(const struct bf_request *request);
-int bf_request_ipt_cmd(const struct bf_request *request);
 const void *bf_request_data(const struct bf_request *request);
 size_t bf_request_data_len(const struct bf_request *request);
 
 void bf_request_set_ns(struct bf_request *request, struct bf_ns *ns);
 void bf_request_set_fd(struct bf_request *request, int fd);
-void bf_request_set_ipt_cmd(struct bf_request *request, int ipt_cmd);
 
 /**
  * Get the total size of the request: request structure and data.

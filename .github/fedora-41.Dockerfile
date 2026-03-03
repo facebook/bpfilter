@@ -23,7 +23,6 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     libbpf-devel \
     libcmocka-devel \
     libgit2-devel \
-    libnl3-devel \
     libtool \
     procps-ng \
     python3-breathe \
