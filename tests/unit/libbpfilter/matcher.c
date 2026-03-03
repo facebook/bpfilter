@@ -554,7 +554,7 @@ static void meta_probability(void **state)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
                                       BF_MATCHER_EQ, "0%"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 0.0f);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
@@ -562,7 +562,7 @@ static void meta_probability(void **state)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
                                       BF_MATCHER_EQ, "50%"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 50);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 50.0f);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
@@ -570,7 +570,25 @@ static void meta_probability(void **state)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
                                       BF_MATCHER_EQ, "100%"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 100);
+    assert_true(*(float *)bf_matcher_payload(matcher) == 100.0f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with floating-point value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
+                                      BF_MATCHER_EQ, "33.33%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) > 33.32f);
+    assert_true(*(float *)bf_matcher_payload(matcher) < 33.34f);
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Test with small floating-point value
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
+                                      BF_MATCHER_EQ, "0.1%"));
+    assert_non_null(matcher);
+    assert_true(*(float *)bf_matcher_payload(matcher) > 0.09f);
+    assert_true(*(float *)bf_matcher_payload(matcher) < 0.11f);
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -583,6 +601,10 @@ static void meta_probability_invalid(void **state)
     // Test with value over 100%
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
                                        BF_MATCHER_EQ, "101%"));
+
+    // Test with value slightly over 100%
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
+                                       BF_MATCHER_EQ, "100.01%"));
 
     // Test without % sign
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,

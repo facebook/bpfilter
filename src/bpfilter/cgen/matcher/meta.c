@@ -67,13 +67,13 @@ static int
 _bf_matcher_generate_meta_probability(struct bf_program *program,
                                       const struct bf_matcher *matcher)
 {
-    uint8_t proba = *(uint8_t *)bf_matcher_payload(matcher);
+    float proba = *(float *)bf_matcher_payload(matcher);
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_prandom_u32));
     EMIT_FIXUP_JMP_NEXT_RULE(
         program,
         BPF_JMP_IMM(BPF_JGT, BPF_REG_0,
-                    (uint32_t)((uint64_t)UINT32_MAX * (proba / 100.0)), 0));
+                    (uint32_t)((double)UINT32_MAX * (proba / 100.0)), 0));
 
     return 0;
 }
