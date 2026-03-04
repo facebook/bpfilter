@@ -73,8 +73,8 @@ using TimePoint = std::chrono::steady_clock::time_point;
 using time = std::chrono::steady_clock;
 using seconds = std::chrono::seconds;
 
-constexpr int CGROUP_DROP = 0;
-constexpr int CGROUP_ACCEPT = 1;
+constexpr int CGROUP_SKB_DROP = 0;
+constexpr int CGROUP_SKB_ACCEPT = 1;
 
 // Ether(src=0x01, dst=0x02)
 // IPv6(src='::1', dst='::2')

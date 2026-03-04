@@ -30,15 +30,15 @@ ${FROM_NS} bfcli chain attach --name chain_attach_tc_1 --option ifindex=${NS_IFI
 ${FROM_NS} bfcli chain flush --name chain_attach_tc_0
 ${FROM_NS} bfcli chain flush --name chain_attach_tc_1
 
-# cgroup
+# cgroup_skb
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
-${FROM_NS} bfcli chain load --from-str "chain chain_attach_cgroup_0 BF_HOOK_CGROUP_INGRESS ACCEPT"
-${FROM_NS} bfcli chain load --from-str "chain chain_attach_cgroup_1 BF_HOOK_CGROUP_INGRESS ACCEPT rule ip4.proto icmp log internet counter DROP"
-${FROM_NS} bfcli chain attach --name chain_attach_cgroup_0 --option cgpath=/sys/fs/cgroup
-${FROM_NS} bfcli chain attach --name chain_attach_cgroup_1 --option cgpath=/sys/fs/cgroup
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_cgroup_skb_0 BF_HOOK_CGROUP_SKB_INGRESS ACCEPT"
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_cgroup_skb_1 BF_HOOK_CGROUP_SKB_INGRESS ACCEPT rule ip4.proto icmp log internet counter DROP"
+${FROM_NS} bfcli chain attach --name chain_attach_cgroup_skb_0 --option cgpath=/sys/fs/cgroup
+${FROM_NS} bfcli chain attach --name chain_attach_cgroup_skb_1 --option cgpath=/sys/fs/cgroup
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
-${FROM_NS} bfcli chain flush --name chain_attach_cgroup_0
-${FROM_NS} bfcli chain flush --name chain_attach_cgroup_1
+${FROM_NS} bfcli chain flush --name chain_attach_cgroup_skb_0
+${FROM_NS} bfcli chain flush --name chain_attach_cgroup_skb_1
 
 # Netfilter
 ping -c 1 -W 0.1 ${NS_IP_ADDR}

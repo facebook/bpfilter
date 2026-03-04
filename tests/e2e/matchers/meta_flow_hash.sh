@@ -3,8 +3,8 @@
 . "$(dirname "$0")"/../e2e_test_util.sh
 
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_XDP ACCEPT rule meta.flow_hash eq 0 counter DROP")
-(! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_INGRESS ACCEPT rule meta.flow_hash eq 0 counter DROP")
-(! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_EGRESS ACCEPT rule meta.flow_hash eq 0 counter DROP")
+(! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SKB_INGRESS ACCEPT rule meta.flow_hash eq 0 counter DROP")
+(! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SKB_EGRESS ACCEPT rule meta.flow_hash eq 0 counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_NF_FORWARD ACCEPT rule meta.flow_hash eq 0 counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_NF_LOCAL_IN ACCEPT rule meta.flow_hash eq 0 counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_NF_LOCAL_OUT ACCEPT rule meta.flow_hash eq 0 counter DROP")

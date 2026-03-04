@@ -74,7 +74,7 @@ struct bf_runtime
      * program flavor:
      * - `BF_FLAVOR_XDP`: `struct xdp_md *`
      * - `BF_FLAVOR_TC`: `struct struct __sk_buff *`
-     * - `BF_FLAVOR_CGROUP`: `struct __sk_buff *`
+     * - `BF_FLAVOR_CGROUP_SKB`: `struct __sk_buff *`
      * - `BF_FLAVOR_NF`: `struct bpf_nf_ctx *` */
     void *arg;
 

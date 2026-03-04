@@ -12,14 +12,14 @@ set -o pipefail
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_NF_POST_ROUTING ACCEPT rule meta.flow_probability eq 50% counter DROP")
 (! bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_NF_PRE_ROUTING ACCEPT rule meta.flow_probability eq 50% counter DROP")
 
-# Supported hooks: XDP, TC, and CGROUP
+# Supported hooks: XDP, TC, and CGROUP_SKB
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_XDP ACCEPT rule meta.flow_probability eq 50% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_TC_INGRESS ACCEPT rule meta.flow_probability eq 0% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_TC_INGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_TC_INGRESS ACCEPT rule meta.flow_probability eq 100% counter DROP"
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_TC_EGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
-bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_INGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
-bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_EGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
+bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SKB_INGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
+bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SKB_EGRESS ACCEPT rule meta.flow_probability eq 50% counter DROP"
 
 # Floating-point percentages
 bfcli ruleset set --dry-run --from-str "chain test BF_HOOK_TC_INGRESS ACCEPT rule meta.flow_probability eq 33.33% counter DROP"

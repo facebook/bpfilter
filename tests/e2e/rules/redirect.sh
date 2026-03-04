@@ -9,9 +9,9 @@ get_counter() {
 make_sandbox
 start_bpfilter
 
-# Invalid: REDIRECT not supported for NF/Cgroup hooks, and XDP only supports 'out'
+# Invalid: REDIRECT not supported for NF/cgroup_skb hooks, and XDP only supports 'out'
 (! ${FROM_NS} bfcli chain set --from-str "chain c BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=100-200} ACCEPT rule ip4.proto icmp REDIRECT 1 out")
-(! ${FROM_NS} bfcli chain set --from-str "chain c BF_HOOK_CGROUP_INGRESS{cgpath=/sys/fs/cgroup} ACCEPT rule ip4.proto icmp REDIRECT 1 out")
+(! ${FROM_NS} bfcli chain set --from-str "chain c BF_HOOK_CGROUP_SKB_INGRESS{cgpath=/sys/fs/cgroup} ACCEPT rule ip4.proto icmp REDIRECT 1 out")
 (! ${FROM_NS} bfcli chain set --from-str "chain c BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 in")
 (! ${FROM_NS} bfcli chain set --from-str "chain c BF_HOOK_TC_INGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT nonexistent_iface in")
 

@@ -36,7 +36,7 @@
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/cgroup.h"
+#include "cgen/cgroup_skb.h"
 #include "cgen/dump.h"
 #include "cgen/fixup.h"
 #include "cgen/handle.h"
@@ -88,7 +88,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_TC] = &bf_flavor_ops_tc,
         [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
         [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
-        [BF_FLAVOR_CGROUP] = &bf_flavor_ops_cgroup,
+        [BF_FLAVOR_CGROUP_SKB] = &bf_flavor_ops_cgroup_skb,
     };
 
     static_assert_enum_mapping(flavor_ops, _BF_FLAVOR_MAX);

@@ -948,10 +948,11 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_FLOW_HASH] =
         {
             .layer = BF_MATCHER_NO_LAYER,
-            .unsupported_hooks = BF_FLAGS(
-                BF_HOOK_XDP, BF_HOOK_CGROUP_INGRESS, BF_HOOK_CGROUP_EGRESS,
-                BF_HOOK_NF_FORWARD, BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
-                BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING),
+            .unsupported_hooks =
+                BF_FLAGS(BF_HOOK_XDP, BF_HOOK_CGROUP_SKB_INGRESS,
+                         BF_HOOK_CGROUP_SKB_EGRESS, BF_HOOK_NF_FORWARD,
+                         BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
+                         BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
