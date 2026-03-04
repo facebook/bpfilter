@@ -39,4 +39,4 @@ Namespaces
 
 The network namespace will define the available interface indexes to attach the XDP and TC chains, as well as the interface indexes to filter packets on.
 
-The mount namespace is required to ensure the daemon will attach a CGroup chain to the proper CGroup.
+The mount namespace is required to ensure the daemon will attach a cgroup_skb chain to the proper cgroup.

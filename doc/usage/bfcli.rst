@@ -334,8 +334,8 @@ With:
     - ``BF_HOOK_TC_INGRESS``: ingress TC hook.
     - ``BF_HOOK_NF_PRE_ROUTING``: similar to ``nftables`` and ``iptables`` prerouting hook.
     - ``BF_HOOK_NF_LOCAL_IN``: similar to ``nftables`` and ``iptables`` input hook.
-    - ``BF_HOOK_CGROUP_INGRESS``: ingress cgroup hook.
-    - ``BF_HOOK_CGROUP_EGRESS``: egress cgroup hook.
+    - ``BF_HOOK_CGROUP_SKB_INGRESS``: ingress cgroup_skb hook.
+    - ``BF_HOOK_CGROUP_SKB_EGRESS``: egress cgroup_skb hook.
     - ``BF_HOOK_NF_FORWARD``: similar to ``nftables`` and ``iptables`` forward hook.
     - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
@@ -358,7 +358,7 @@ With:
      - N/A
      - Interface index to attach the program to.
    * - ``cgpath=$CGROUP_PATH``
-     - ``BF_HOOK_CGROUP_INGRESS``, ``BF_HOOK_CGROUP_EGRESS``
+     - ``BF_HOOK_CGROUP_SKB_INGRESS``, ``BF_HOOK_CGROUP_SKB_EGRESS``
      - N/A
      - Path to the cgroup to attach to.
    * - ``family=$FAMILY``
@@ -407,7 +407,7 @@ Note ``CONTINUE`` means a packet can be counted more than once if multiple rules
       - ``BF_HOOK_XDP``: only ``out`` direction is supported (XDP always transmits out of the target interface).
       - ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``: both ``in`` and ``out`` directions are supported.
 
-    ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``) or cgroup (``BF_HOOK_CGROUP_*``) hooks.
+    ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``) or cgroup_skb (``BF_HOOK_CGROUP_SKB_*``) hooks.
 
 Sets
 ~~~~
@@ -559,7 +559,7 @@ Meta
       - ``meta.flow_probability``
       - ``eq``
       - ``$PROBABILITY``
-      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). Unlike ``meta.probability`` which uses per-packet randomness, ``meta.flow_probability`` computes a deterministic hash from the packet's 5-tuple (source/destination IP, source/destination port, protocol) ensuring all packets from the same flow get the same match decision. Only applies to IPv4/IPv6 packets with TCP or UDP on L4; packets with other protocols are skipped. Compatible with ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``, ``BF_HOOK_CGROUP_INGRESS``, and ``BF_HOOK_CGROUP_EGRESS`` hooks.
+      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). Unlike ``meta.probability`` which uses per-packet randomness, ``meta.flow_probability`` computes a deterministic hash from the packet's 5-tuple (source/destination IP, source/destination port, protocol) ensuring all packets from the same flow get the same match decision. Only applies to IPv4/IPv6 packets with TCP or UDP on L4; packets with other protocols are skipped. Compatible with ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``, ``BF_HOOK_CGROUP_SKB_INGRESS``, and ``BF_HOOK_CGROUP_SKB_EGRESS`` hooks.
 
 IPv4
 ####

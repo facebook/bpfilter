@@ -56,10 +56,10 @@ static void hook_to_flavor(void **state)
     assert_int_equal(bf_hook_to_flavor(BF_HOOK_TC_EGRESS), BF_FLAVOR_TC);
     assert_int_equal(bf_hook_to_flavor(BF_HOOK_NF_PRE_ROUTING), BF_FLAVOR_NF);
     assert_int_equal(bf_hook_to_flavor(BF_HOOK_NF_LOCAL_IN), BF_FLAVOR_NF);
-    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_INGRESS),
-                     BF_FLAVOR_CGROUP);
-    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_EGRESS),
-                     BF_FLAVOR_CGROUP);
+    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_SKB_INGRESS),
+                     BF_FLAVOR_CGROUP_SKB);
+    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_SKB_EGRESS),
+                     BF_FLAVOR_CGROUP_SKB);
 }
 
 static void hook_to_bpf_attach_type(void **state)
@@ -118,7 +118,7 @@ static void hook_to_nf_hook(void **state)
     // Test invalid NF hook conversions (non-NF hooks)
     assert_err((int)bf_hook_to_nf_hook(BF_HOOK_XDP));
     assert_err((int)bf_hook_to_nf_hook(BF_HOOK_TC_INGRESS));
-    assert_err((int)bf_hook_to_nf_hook(BF_HOOK_CGROUP_INGRESS));
+    assert_err((int)bf_hook_to_nf_hook(BF_HOOK_CGROUP_SKB_INGRESS));
 }
 
 static void hook_from_nf_hook(void **state)
@@ -401,8 +401,8 @@ static void hookopts_validate_cgroup(void **state)
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         assert_ok(bf_hookopts_new(&hookopts));
-        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_INGRESS));
-        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_EGRESS));
+        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_INGRESS));
+        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_EGRESS));
     }
 
     // With cgpath, should be valid
@@ -411,8 +411,8 @@ static void hookopts_validate_cgroup(void **state)
         char opt[] = "cgpath=/sys/fs/cgroup";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt));
-        assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_INGRESS));
-        assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_EGRESS));
+        assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_INGRESS));
+        assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_EGRESS));
     }
 
     // Cgroup doesn't support ifindex
@@ -423,7 +423,7 @@ static void hookopts_validate_cgroup(void **state)
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
-        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_INGRESS));
+        assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_INGRESS));
     }
 }
 

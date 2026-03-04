@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "cgen/cgroup.h"
+#include "cgen/cgroup_skb.h"
 
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
@@ -27,7 +27,7 @@
 // Forward definition to avoid headers clusterfuck.
 uint16_t htons(uint16_t hostshort);
 
-static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
+static int _bf_cgroup_skb_gen_inline_prologue(struct bf_program *program)
 {
     int offset;
     int r;
@@ -95,15 +95,15 @@ static int _bf_cgroup_gen_inline_prologue(struct bf_program *program)
     return 0;
 }
 
-static int _bf_cgroup_gen_inline_epilogue(struct bf_program *program)
+static int _bf_cgroup_skb_gen_inline_epilogue(struct bf_program *program)
 {
     (void)program;
 
     return 0;
 }
 
-static int _bf_cgroup_gen_inline_set_mark(struct bf_program *program,
-                                          uint32_t mark)
+static int _bf_cgroup_skb_gen_inline_set_mark(struct bf_program *program,
+                                              uint32_t mark)
 {
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
@@ -114,7 +114,8 @@ static int _bf_cgroup_gen_inline_set_mark(struct bf_program *program,
     return 0;
 }
 
-static int _bf_cgroup_gen_inline_get_mark(struct bf_program *program, int reg)
+static int _bf_cgroup_skb_gen_inline_get_mark(struct bf_program *program,
+                                              int reg)
 {
     EMIT(program,
          BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
@@ -124,7 +125,8 @@ static int _bf_cgroup_gen_inline_get_mark(struct bf_program *program, int reg)
     return 0;
 }
 
-static int _bf_cgroup_gen_inline_get_skb(struct bf_program *program, int reg)
+static int _bf_cgroup_skb_gen_inline_get_skb(struct bf_program *program,
+                                             int reg)
 {
     EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
 
@@ -137,7 +139,7 @@ static int _bf_cgroup_gen_inline_get_skb(struct bf_program *program, int reg)
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
+static int _bf_cgroup_skb_get_verdict(enum bf_verdict verdict)
 {
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
@@ -149,11 +151,11 @@ static int _bf_cgroup_get_verdict(enum bf_verdict verdict)
     }
 }
 
-const struct bf_flavor_ops bf_flavor_ops_cgroup = {
-    .gen_inline_prologue = _bf_cgroup_gen_inline_prologue,
-    .gen_inline_epilogue = _bf_cgroup_gen_inline_epilogue,
-    .gen_inline_set_mark = _bf_cgroup_gen_inline_set_mark,
-    .gen_inline_get_mark = _bf_cgroup_gen_inline_get_mark,
-    .gen_inline_get_skb = _bf_cgroup_gen_inline_get_skb,
-    .get_verdict = _bf_cgroup_get_verdict,
+const struct bf_flavor_ops bf_flavor_ops_cgroup_skb = {
+    .gen_inline_prologue = _bf_cgroup_skb_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_cgroup_skb_gen_inline_epilogue,
+    .gen_inline_set_mark = _bf_cgroup_skb_gen_inline_set_mark,
+    .gen_inline_get_mark = _bf_cgroup_skb_gen_inline_get_mark,
+    .gen_inline_get_skb = _bf_cgroup_skb_gen_inline_get_skb,
+    .get_verdict = _bf_cgroup_skb_get_verdict,
 };

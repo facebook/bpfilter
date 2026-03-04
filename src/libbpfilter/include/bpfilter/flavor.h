@@ -54,13 +54,13 @@ enum bf_flavor
     BF_FLAVOR_XDP,
 
     /**
-     * cgroup BPF programs are a middle ground between TC and BPF_NETFILTER
+     * cgroup_skb BPF programs are a middle ground between TC and BPF_NETFILTER
      * programs:
      * - Input: `struct __sk_buff`
      * - Headers available: from L3
      * - Return code: 0 to drop, 1 to accept
      */
-    BF_FLAVOR_CGROUP,
+    BF_FLAVOR_CGROUP_SKB,
     _BF_FLAVOR_MAX,
 };
 

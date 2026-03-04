@@ -26,8 +26,8 @@
 namespace bf
 {
 
-extern const int CGROUP_DROP;
-extern const int CGROUP_ACCEPT;
+extern const int CGROUP_SKB_DROP;
+extern const int CGROUP_SKB_ACCEPT;
 
 /**
  * Dummy network packet, created using Python's @c scapy and the following

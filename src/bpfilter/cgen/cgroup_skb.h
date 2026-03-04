@@ -7,4 +7,4 @@
 
 #include <bpfilter/flavor.h>
 
-extern const struct bf_flavor_ops bf_flavor_ops_cgroup;
+extern const struct bf_flavor_ops bf_flavor_ops_cgroup_skb;

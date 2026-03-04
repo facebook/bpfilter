@@ -547,7 +547,7 @@ BENCHMARK(single_rule__meta_flow_hash);
 
 void single_rule__meta_flow_probability(::benchmark::State &state)
 {
-    // meta.flow_probability is supported on XDP, TC, and CGROUP hooks
+    // meta.flow_probability is supported on XDP, TC, and CGROUP_SKB hooks
     Chain chain("bf_benchmark", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT);
 
     // Match with 100% probability (float payload: 100.0f = 100%)

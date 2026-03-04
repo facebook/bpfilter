@@ -35,8 +35,8 @@ enum bf_hook
     BF_HOOK_NF_PRE_ROUTING,
     BF_HOOK_NF_LOCAL_IN,
     BF_HOOK_NF_FORWARD,
-    BF_HOOK_CGROUP_INGRESS,
-    BF_HOOK_CGROUP_EGRESS,
+    BF_HOOK_CGROUP_SKB_INGRESS,
+    BF_HOOK_CGROUP_SKB_EGRESS,
     BF_HOOK_NF_LOCAL_OUT,
     BF_HOOK_NF_POST_ROUTING,
     BF_HOOK_TC_EGRESS,
@@ -139,7 +139,7 @@ struct bf_hookopts
     // XDP and TC
     int ifindex;
 
-    // cgroup
+    // cgroup_skb
     const char *cgpath;
 
     // Netfilter
