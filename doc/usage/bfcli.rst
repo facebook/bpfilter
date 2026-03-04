@@ -539,7 +539,7 @@ Meta
       - ``meta.probability``
       - ``eq``
       - ``$PROBABILITY``
-      - ``$PROBABILITY`` is a valid decimal percentage value (i.e., within [0%, 100%]).
+      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%").
     * - :rspan:`1` Mark
       - :rspan:`1` ``meta.mark``
       - ``eq``

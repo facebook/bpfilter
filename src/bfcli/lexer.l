@@ -32,7 +32,6 @@
 %s STATE_MATCHER_META_FLOW_HASH
 %s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
-%s STATE_MATCHER_META_FLOW_PROBA
 %s STATE_MATCHER_IPV4_ADDR
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP4_DSCP
@@ -155,17 +154,8 @@ ip6\.nexthdr    { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); r
 }
 
 meta\.probability  { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+meta\.flow_probability { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_PROBA>{
-    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    {int}% {
-        BEGIN(INITIAL);
-        yylval.sval = strdup(yytext);
-        return RAW_PAYLOAD;
-    }
-}
-
-meta\.flow_probability { BEGIN(STATE_MATCHER_META_FLOW_PROBA); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
-<STATE_MATCHER_META_FLOW_PROBA>{
     (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {float}% {
         BEGIN(INITIAL);
