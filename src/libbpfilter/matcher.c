@@ -377,36 +377,6 @@ static int _bf_parse_probability(enum bf_matcher_type type,
     assert(payload);
     assert(raw_payload);
 
-    unsigned long proba;
-    char *endptr;
-
-    proba = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (endptr[0] == '%' && endptr[1] == '\0' && proba <= 100) {
-        *(uint8_t *)payload = (uint8_t)proba;
-        return 0;
-    }
-
-    bf_err(
-        "\"%s %s\" expects a valid decimal percentage value (i.e., within [0%%, 100%%]), not '%s'",
-        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
-}
-
-void _bf_print_probability(const void *payload)
-{
-    assert(payload);
-
-    (void)fprintf(stdout, "%" PRIu8 "%%", *(uint8_t *)payload);
-}
-
-static int _bf_parse_flow_probability(enum bf_matcher_type type,
-                                      enum bf_matcher_op op, void *payload,
-                                      const char *raw_payload)
-{
-    assert(payload);
-    assert(raw_payload);
-
     double proba;
     char *endptr;
 
@@ -424,7 +394,7 @@ static int _bf_parse_flow_probability(enum bf_matcher_type type,
     return -EINVAL;
 }
 
-static void _bf_print_flow_probability(const void *payload)
+static void _bf_print_probability(const void *payload)
 {
     assert(payload);
 
@@ -928,7 +898,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .layer = BF_MATCHER_NO_LAYER,
             .ops =
                 {
-                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
                                    _bf_parse_probability,
                                    _bf_print_probability),
                 },
@@ -971,8 +941,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
-                                   _bf_parse_flow_probability,
-                                   _bf_print_flow_probability),
+                                   _bf_parse_probability,
+                                   _bf_print_probability),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
