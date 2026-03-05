@@ -41,13 +41,7 @@
 #include "cgen/fixup.h"
 #include "cgen/handle.h"
 #include "cgen/jmp.h"
-#include "cgen/matcher/icmp.h"
-#include "cgen/matcher/ip4.h"
-#include "cgen/matcher/ip6.h"
-#include "cgen/matcher/meta.h"
-#include "cgen/matcher/set.h"
-#include "cgen/matcher/tcp.h"
-#include "cgen/matcher/udp.h"
+#include "cgen/matcher/packet.h"
 #include "cgen/nf.h"
 #include "cgen/printer.h"
 #include "cgen/prog/link.h"
@@ -300,73 +294,14 @@ static int _bf_program_generate_rule(struct bf_program *program,
     if (rule->disabled)
         return 0;
 
+    assert(program->runtime.ops->gen_inline_matcher);
+
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
 
-        switch (bf_matcher_get_type(matcher)) {
-        case BF_MATCHER_META_IFACE:
-        case BF_MATCHER_META_L3_PROTO:
-        case BF_MATCHER_META_L4_PROTO:
-        case BF_MATCHER_META_PROBABILITY:
-        case BF_MATCHER_META_SPORT:
-        case BF_MATCHER_META_DPORT:
-        case BF_MATCHER_META_MARK:
-        case BF_MATCHER_META_FLOW_HASH:
-        case BF_MATCHER_META_FLOW_PROBABILITY:
-            r = bf_matcher_generate_meta(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_IP4_SADDR:
-        case BF_MATCHER_IP4_SNET:
-        case BF_MATCHER_IP4_DADDR:
-        case BF_MATCHER_IP4_DNET:
-        case BF_MATCHER_IP4_PROTO:
-        case BF_MATCHER_IP4_DSCP:
-            r = bf_matcher_generate_ip4(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_IP6_SADDR:
-        case BF_MATCHER_IP6_SNET:
-        case BF_MATCHER_IP6_DADDR:
-        case BF_MATCHER_IP6_DNET:
-        case BF_MATCHER_IP6_NEXTHDR:
-        case BF_MATCHER_IP6_DSCP:
-            r = bf_matcher_generate_ip6(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_TCP_SPORT:
-        case BF_MATCHER_TCP_DPORT:
-        case BF_MATCHER_TCP_FLAGS:
-            r = bf_matcher_generate_tcp(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_UDP_SPORT:
-        case BF_MATCHER_UDP_DPORT:
-            r = bf_matcher_generate_udp(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_ICMP_TYPE:
-        case BF_MATCHER_ICMP_CODE:
-        case BF_MATCHER_ICMPV6_TYPE:
-        case BF_MATCHER_ICMPV6_CODE:
-            r = bf_matcher_generate_icmp(program, matcher);
-            if (r)
-                return r;
-            break;
-        case BF_MATCHER_SET:
-            r = bf_matcher_generate_set(program, matcher);
-            if (r)
-                return r;
-            break;
-        default:
-            return bf_err_r(-EINVAL, "unknown matcher type %d",
-                            bf_matcher_get_type(matcher));
-        };
+        r = program->runtime.ops->gen_inline_matcher(program, matcher);
+        if (r)
+            return r;
     }
 
     if (bf_rule_mark_is_set(rule)) {
