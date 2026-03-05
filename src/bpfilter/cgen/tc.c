@@ -15,9 +15,12 @@
 #include <bpfilter/btf.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/matcher.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/cgen.h"
+#include "cgen/matcher/meta.h"
+#include "cgen/matcher/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "filter.h"
@@ -85,21 +88,28 @@ static int _bf_tc_gen_inline_set_mark(struct bf_program *program, uint32_t mark)
     return 0;
 }
 
-static int _bf_tc_gen_inline_get_mark(struct bf_program *program, int reg)
+static int _bf_tc_gen_inline_matcher(struct bf_program *program,
+                                     const struct bf_matcher *matcher)
 {
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
-    EMIT(program,
-         BPF_LDX_MEM(BPF_W, reg, BPF_REG_1, offsetof(struct __sk_buff, mark)));
+    assert(program);
+    assert(matcher);
 
-    return 0;
-}
+    switch (bf_matcher_get_type(matcher)) {
+    case BF_MATCHER_META_MARK:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_1,
+                                  offsetof(struct __sk_buff, mark)));
 
-static int _bf_tc_gen_inline_get_skb(struct bf_program *program, int reg)
-{
-    EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
+        return bf_matcher_generate_meta_mark_cmp(program, matcher);
+    case BF_MATCHER_META_FLOW_HASH:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
 
-    return 0;
+        return bf_matcher_generate_meta_flow_hash_cmp(program, matcher);
+    default:
+        return bf_matcher_generate_packet(program, matcher);
+    }
 }
 
 /**
@@ -154,8 +164,7 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_prologue = _bf_tc_gen_inline_prologue,
     .gen_inline_epilogue = _bf_tc_gen_inline_epilogue,
     .gen_inline_set_mark = _bf_tc_gen_inline_set_mark,
-    .gen_inline_get_mark = _bf_tc_gen_inline_get_mark,
-    .gen_inline_get_skb = _bf_tc_gen_inline_get_skb,
     .gen_inline_redirect = _bf_tc_gen_inline_redirect,
     .get_verdict = _bf_tc_get_verdict,
+    .gen_inline_matcher = _bf_tc_gen_inline_matcher,
 };
