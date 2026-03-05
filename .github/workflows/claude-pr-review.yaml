@@ -27,7 +27,8 @@ jobs:
             - name: Checkout upstream repository
               uses: actions/checkout@v6
 
-            - uses: anthropics/claude-code-action@v1
+            # TODO(@pzmarzly): Unpin once https://github.com/anthropics/claude-code-action/issues/1013 is fixed.
+            - uses: anthropics/claude-code-action@v1.0.66
               env:
                   ANTHROPIC_BASE_URL: https://openrouter.ai/api
               with:
