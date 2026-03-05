@@ -92,6 +92,22 @@ int bf_bpf_map_lookup_elem(int fd, const void *key, void *value)
     return bf_bpf(BF_BPF_MAP_LOOKUP_ELEM, &attr);
 }
 
+int bf_bpf_map_get_info(int fd, struct bpf_map_info *info)
+{
+    union bpf_attr attr;
+
+    assert(info);
+
+    memset(&attr, 0, sizeof(attr));
+    memset(info, 0, sizeof(*info));
+
+    attr.info.bpf_fd = fd;
+    attr.info.info_len = sizeof(*info);
+    attr.info.info = bf_ptr_to_u64(info);
+
+    return bf_bpf(BF_BPF_OBJ_GET_INFO_BY_FD, &attr);
+}
+
 int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
 {
     union bpf_attr attr;
@@ -107,8 +123,7 @@ int bf_bpf_obj_pin(const char *path, int fd, int dir_fd)
     attr.file_flags = dir_fd ? BPF_F_PATH_FD : 0;
     attr.path_fd = dir_fd;
 
-    int r = bf_bpf(BF_BPF_OBJ_PIN, &attr);
-    return r;
+    return bf_bpf(BF_BPF_OBJ_PIN, &attr);
 }
 
 int bf_bpf_obj_get(const char *path, int dir_fd, int *fd)

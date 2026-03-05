@@ -20,6 +20,7 @@ enum bf_bpf_cmd
     BF_BPF_LINK_CREATE = 28,
     BF_BPF_LINK_UPDATE = 29,
     BF_BPF_LINK_DETACH = 34,
+    BF_BPF_OBJ_GET_INFO_BY_FD = 15,
 };
 
 enum bf_bpf_prog_type

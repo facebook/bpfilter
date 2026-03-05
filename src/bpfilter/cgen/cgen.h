@@ -61,6 +61,19 @@ int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
 int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node);
 
 /**
+ * @brief Allocate and initialize a codegen from a pinned context map.
+ *
+ * Opens the `bf_ctx` context map pinned in the directory referenced by
+ * `dir_fd`, reads the serialized cgen data, and deserializes it.
+ *
+ * @param cgen Codegen to allocate and initialize. Can't be NULL.
+ * @param dir_fd File descriptor of the chain's bpffs pin directory. Must be
+ *        valid.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd);
+
+/**
  * Free a codegen.
  *
  * If one or more programs are loaded, they won't be unloaded. Use @ref

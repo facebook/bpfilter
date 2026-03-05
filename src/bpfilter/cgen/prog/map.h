@@ -21,6 +21,7 @@ enum bf_map_type
     BF_MAP_TYPE_PRINTER,
     BF_MAP_TYPE_LOG,
     BF_MAP_TYPE_SET,
+    BF_MAP_TYPE_CTX,
     _BF_MAP_TYPE_MAX,
 };
 

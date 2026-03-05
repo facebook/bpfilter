@@ -140,6 +140,32 @@ static void bpf_map_lookup_elem_failure(void **state)
     assert_int_equal(r, -ENOENT);
 }
 
+static void bpf_map_get_info_success(void **state)
+{
+    struct bpf_map_info info;
+
+    (void)state;
+
+    _clean_bft_mock_ bft_mock mock = bft_mock_get(syscall);
+    (void)mock;
+
+    bft_mock_syscall_set_retval(0);
+    assert_ok(bf_bpf_map_get_info(10, &info));
+}
+
+static void bpf_map_get_info_failure(void **state)
+{
+    struct bpf_map_info info;
+
+    (void)state;
+
+    _clean_bft_mock_ bft_mock mock = bft_mock_get(syscall);
+    (void)mock;
+
+    bft_mock_syscall_set_retval(-EINVAL);
+    assert_err(bf_bpf_map_get_info(10, &info));
+}
+
 static void bpf_obj_pin_success(void **state)
 {
     int r;
@@ -498,6 +524,8 @@ int main(void)
         cmocka_unit_test(bpf_prog_load_with_token),
         cmocka_unit_test(bpf_map_lookup_elem_success),
         cmocka_unit_test(bpf_map_lookup_elem_failure),
+        cmocka_unit_test(bpf_map_get_info_success),
+        cmocka_unit_test(bpf_map_get_info_failure),
         cmocka_unit_test(bpf_obj_pin_success),
         cmocka_unit_test(bpf_obj_pin_relative),
         cmocka_unit_test(bpf_obj_get_success),
