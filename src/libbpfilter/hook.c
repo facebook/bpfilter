@@ -35,6 +35,8 @@ static const char *_bf_hook_strs[] = {
     [BF_HOOK_NF_LOCAL_OUT] = "BF_HOOK_NF_LOCAL_OUT",
     [BF_HOOK_NF_POST_ROUTING] = "BF_HOOK_NF_POST_ROUTING",
     [BF_HOOK_TC_EGRESS] = "BF_HOOK_TC_EGRESS",
+    [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4] = "BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4",
+    [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6] = "BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6",
 };
 static_assert_enum_mapping(_bf_hook_strs, _BF_HOOK_MAX);
 
@@ -73,6 +75,8 @@ enum bf_flavor bf_hook_to_flavor(enum bf_hook hook)
         [BF_HOOK_NF_LOCAL_OUT] = BF_FLAVOR_NF,
         [BF_HOOK_NF_POST_ROUTING] = BF_FLAVOR_NF,
         [BF_HOOK_TC_EGRESS] = BF_FLAVOR_TC,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4] = BF_FLAVOR_CGROUP_SOCK_ADDR,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6] = BF_FLAVOR_CGROUP_SOCK_ADDR,
     };
 
     static_assert_enum_mapping(flavors, _BF_HOOK_MAX);
@@ -93,6 +97,8 @@ enum bf_bpf_attach_type bf_hook_to_bpf_attach_type(enum bf_hook hook)
         [BF_HOOK_NF_LOCAL_OUT] = BF_BPF_NETFILTER,
         [BF_HOOK_NF_POST_ROUTING] = BF_BPF_NETFILTER,
         [BF_HOOK_TC_EGRESS] = BF_BPF_TCX_ENGRESS,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4] = BF_BPF_CGROUP_INET4_CONNECT,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6] = BF_BPF_CGROUP_INET6_CONNECT,
     };
 
     static_assert_enum_mapping(attach_types, _BF_HOOK_MAX);
@@ -113,6 +119,8 @@ enum bf_bpf_prog_type bf_hook_to_bpf_prog_type(enum bf_hook hook)
         [BF_HOOK_NF_LOCAL_OUT] = BF_BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_NF_POST_ROUTING] = BF_BPF_PROG_TYPE_NETFILTER,
         [BF_HOOK_TC_EGRESS] = BF_BPF_PROG_TYPE_SCHED_CLS,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4] = BF_BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
+        [BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6] = BF_BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
     };
 
     static_assert_enum_mapping(prog_types, _BF_HOOK_MAX);
@@ -359,7 +367,8 @@ static struct bf_hookopts_ops
                              .dump = _bf_hookopts_ifindex_dump},
     [BF_HOOKOPTS_CGPATH] = {.name = "cgpath",
                             .type = BF_HOOKOPTS_CGPATH,
-                            .required_by = BF_FLAGS(BF_FLAVOR_CGROUP_SKB),
+                            .required_by = BF_FLAGS(BF_FLAVOR_CGROUP_SKB,
+                                                    BF_FLAVOR_CGROUP_SOCK_ADDR),
                             .supported_by = 0,
                             .parse = _bf_hookopts_cgpath_parse,
                             .dump = _bf_hookopts_cgpath_dump},
