@@ -14,6 +14,7 @@
 #define bf_ptr_to_u64(ptr) ((unsigned long long)(ptr))
 
 struct bf_btf;
+struct bpf_map_info;
 union bpf_attr;
 
 int bf_bpf(enum bf_bpf_cmd cmd, union bpf_attr *attr);
@@ -51,6 +52,15 @@ int bf_bpf_prog_load(const char *name, enum bf_bpf_prog_type prog_type,
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_bpf_map_lookup_elem(int fd, const void *key, void *value);
+
+/**
+ * @brief Get information about a BPF map.
+ *
+ * @param fd File descriptor of the map. Must be valid.
+ * @param info Map info structure to fill. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_bpf_map_get_info(int fd, struct bpf_map_info *info);
 
 /**
  * Pin a BPF object to the system.
