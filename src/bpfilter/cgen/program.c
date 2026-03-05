@@ -83,6 +83,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
         [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
         [BF_FLAVOR_CGROUP_SKB] = &bf_flavor_ops_cgroup_skb,
+        [BF_FLAVOR_CGROUP_SOCK_ADDR] = NULL,
     };
 
     static_assert_enum_mapping(flavor_ops, _BF_FLAVOR_MAX);
