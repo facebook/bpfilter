@@ -28,6 +28,7 @@ enum bf_bpf_prog_type
     BF_BPF_PROG_TYPE_XDP = 6,
     BF_BPF_PROG_TYPE_SCHED_CLS = 3,
     BF_BPF_PROG_TYPE_CGROUP_SKB = 8,
+    BF_BPF_PROG_TYPE_CGROUP_SOCK_ADDR = 18,
     BF_BPF_PROG_TYPE_NETFILTER = 32,
 };
 
@@ -39,6 +40,8 @@ enum bf_bpf_attach_type
     BF_BPF_TCX_ENGRESS = 47,
     BF_BPF_CGROUP_INET_INGRESS = 0,
     BF_BPF_CGROUP_INET_EGRESS = 1,
+    BF_BPF_CGROUP_INET4_CONNECT = 10,
+    BF_BPF_CGROUP_INET6_CONNECT = 11,
 };
 
 enum bf_bpf_map_type
