@@ -14,6 +14,7 @@ const char *bf_flavor_to_str(enum bf_flavor flavor)
         [BF_FLAVOR_NF] = "BF_FLAVOR_NF",
         [BF_FLAVOR_XDP] = "BF_FLAVOR_XDP",
         [BF_FLAVOR_CGROUP_SKB] = "BF_FLAVOR_CGROUP_SKB",
+        [BF_FLAVOR_CGROUP_SOCK_ADDR] = "BF_FLAVOR_CGROUP_SOCK_ADDR",
     };
     static_assert_enum_mapping(flavor_str, _BF_FLAVOR_MAX);
 
