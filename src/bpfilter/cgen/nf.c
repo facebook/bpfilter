@@ -147,6 +147,7 @@ static int _bf_nf_gen_inline_get_skb(struct bf_program *program, int reg)
     EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
     if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
         return offset;
+    EMIT(program, BPF_LDX_MEM(BPF_DW, reg, reg, offset));
 
     return 0;
 }
