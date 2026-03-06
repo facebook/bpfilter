@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include <bpfilter/hashset.h>
 #include <bpfilter/list.h>
 
 typedef bool (*bft_list_eq_cb)(const void *, const void *);
@@ -52,4 +53,9 @@ const void *bft_get_randomly_filled_buffer(size_t len);
 struct bf_chain *bft_chain_dummy(bool with_rules);
 struct bf_rule *bft_rule_dummy(size_t n_matchers);
 struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len);
+#ifdef BF_USE_HASHSET
+#define bft_set_dummy bft_hashset_dummy
+#else
 struct bf_set *bft_set_dummy(size_t n_elems);
+#endif
+struct bf_hashset *bft_hashset_dummy(size_t n_elems);

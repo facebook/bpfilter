@@ -15,6 +15,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hashset.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/if.h
@@ -29,6 +30,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/rule.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/set.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/vector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/verdict.h
 
     # Private sources and headers
@@ -40,6 +42,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/hashset.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
     ${CMAKE_CURRENT_SOURCE_DIR}/if.c
@@ -52,7 +55,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/set.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
     ${CMAKE_CURRENT_SOURCE_DIR}/version.c
 
@@ -60,6 +63,10 @@ set(libbpfilter_srcs
     ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h
     ${CMAKE_SOURCE_DIR}/src/external/mpack.c
 )
+
+if (NOT ${USE_HASHSET})
+    list(APPEND libbpfilter_srcs ${CMAKE_CURRENT_SOURCE_DIR}/set.c)
+endif ()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/bpfilter.pc.in
@@ -82,6 +89,8 @@ target_compile_definitions(libbpfilter
     PRIVATE
         # MPack should use the C standard library API
         MPACK_STDLIB
+    PUBLIC
+        $<$<BOOL:${USE_HASHSET}>:BF_USE_HASHSET>
 )
 
 target_include_directories(libbpfilter

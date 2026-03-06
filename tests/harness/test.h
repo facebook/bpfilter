@@ -20,7 +20,9 @@
 
 #include "fake.h"
 
-struct bf_set;
+#include <bpfilter/set.h>
+
+struct bf_hashset;
 struct bf_counter;
 
 #define assert_ok(expr) assert_true((expr) == 0)
@@ -79,7 +81,12 @@ struct bf_counter;
  */
 bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb);
 
+#ifdef BF_USE_HASHSET
+#define bft_set_eq bft_hashset_eq
+#else
 bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs);
+#endif
+bool bft_hashset_eq(const struct bf_hashset *lhs, const struct bf_hashset *rhs);
 bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs);
 bool bft_chain_equal(const struct bf_chain *chain0,
                      const struct bf_chain *chain1);

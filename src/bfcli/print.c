@@ -160,9 +160,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         }
         (void)fprintf(stdout, ") in {\n");
 
-        bf_list_foreach (&set->elems, elem_node) {
+        bf_set_foreach (set, payload) {
             uint32_t payload_idx = 0;
-            void *payload = bf_list_node_get_data(elem_node);
 
             (void)fprintf(stdout, "        ");
             for (size_t i = 0; i < set->n_comps; ++i) {
@@ -209,9 +208,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                 } else {
                     (void)fprintf(stdout, ") in {\n");
 
-                    bf_list_foreach (&set->elems, elem_node) {
+                    bf_set_foreach (set, payload) {
                         uint32_t payload_idx = 0;
-                        void *payload = bf_list_node_get_data(elem_node);
 
                         (void)fprintf(stdout, "            ");
                         for (size_t i = 0; i < set->n_comps; ++i) {

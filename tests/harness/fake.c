@@ -13,6 +13,7 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/hashset.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
 #include <bpfilter/matcher.h>
@@ -220,6 +221,7 @@ struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len)
     return TAKE_PTR(matcher);
 }
 
+#ifndef BF_USE_HASHSET
 struct bf_set *bft_set_dummy(size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -238,6 +240,30 @@ struct bf_set *bft_set_dummy(size_t n_elems)
         memset(elem, (uint8_t)i, set->elem_size);
 
         r = bf_set_add_elem(set, elem);
+        if (r)
+            return NULL;
+    }
+
+    return TAKE_PTR(set);
+}
+#endif
+
+struct bf_hashset *bft_hashset_dummy(size_t n_elems)
+{
+    _free_bf_hashset_ struct bf_hashset *set = NULL;
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR, BF_MATCHER_TCP_SPORT};
+    int r;
+
+    r = bf_hashset_new(&set, "bft_hashset_dummy", key, ARRAY_SIZE(key));
+    if (r)
+        return NULL;
+
+    for (size_t i = 0; i < n_elems; ++i) {
+        uint8_t elem[set->elem_size];
+
+        memset(elem, (uint8_t)i, set->elem_size);
+
+        r = bf_hashset_add_elem(set, elem);
         if (r)
             return NULL;
     }
