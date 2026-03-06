@@ -50,17 +50,6 @@ struct bf_cgen
 int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
 
 /**
- * @brief Allocate and initialize a new codegen from serialized data.
- *
- * @param cgen Codegen object to allocate and initialize from the serialized
- *        data. The caller will own the object. On failure, `*cgen` is
- *        unchanged. Can't be NULL.
- * @param node Node containing the serialized codegen.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node);
-
-/**
  * @brief Allocate and initialize a codegen from a pinned context map.
  *
  * Opens the `bf_ctx` context map pinned in the directory referenced by

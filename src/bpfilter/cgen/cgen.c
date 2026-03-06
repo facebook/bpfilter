@@ -118,6 +118,46 @@ static int _bf_cgen_persist(const struct bf_cgen *cgen, int dir_fd)
     return 0;
 }
 
+static int _bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
+{
+    _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
+    _cleanup_close_ int dir_fd = -1;
+    bf_rpack_node_t child;
+    int r;
+
+    assert(cgen);
+
+    _cgen = calloc(1, sizeof(*_cgen));
+    if (!_cgen)
+        return -ENOMEM;
+
+    r = bf_rpack_kv_obj(node, "chain", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.chain");
+
+    r = bf_chain_new_from_pack(&_cgen->chain, child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.chain");
+
+    r = bf_rpack_kv_node(node, "handle", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_cgen.handle");
+
+    dir_fd = _bf_cgen_get_chain_pindir_fd(_cgen->chain->name);
+    if (dir_fd < 0) {
+        return bf_err_r(dir_fd, "failed to open chain pin directory for '%s'",
+                        _cgen->chain->name);
+    }
+
+    r = bf_handle_new_from_pack(&_cgen->handle, dir_fd, child);
+    if (r)
+        return r;
+
+    *cgen = TAKE_PTR(_cgen);
+
+    return 0;
+}
+
 int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd)
 {
     _free_bf_rpack_ bf_rpack_t *pack = NULL;
@@ -153,7 +193,7 @@ int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd)
     if (r)
         return bf_err_r(r, "failed to create rpack for bf_cgen");
 
-    r = bf_cgen_new_from_pack(cgen, bf_rpack_root(pack));
+    r = _bf_cgen_new_from_pack(cgen, bf_rpack_root(pack));
     if (r)
         return bf_err_r(r, "failed to deserialize cgen from context map");
 
@@ -175,45 +215,6 @@ int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain)
     _cgen->chain = TAKE_PTR(*chain);
 
     r = bf_handle_new(&_cgen->handle, _BF_PROG_NAME);
-    if (r)
-        return r;
-
-    *cgen = TAKE_PTR(_cgen);
-
-    return 0;
-}
-
-int bf_cgen_new_from_pack(struct bf_cgen **cgen, bf_rpack_node_t node)
-{
-    _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    _cleanup_close_ int dir_fd = -1;
-    bf_rpack_node_t child;
-    int r;
-
-    assert(cgen);
-
-    _cgen = calloc(1, sizeof(*_cgen));
-    if (!_cgen)
-        return -ENOMEM;
-
-    r = bf_rpack_kv_obj(node, "chain", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_cgen.chain");
-
-    r = bf_chain_new_from_pack(&_cgen->chain, child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_cgen.chain");
-
-    r = bf_rpack_kv_node(node, "handle", &child);
-    if (r)
-        return bf_rpack_key_err(r, "bf_cgen.handle");
-
-    if ((dir_fd = _bf_cgen_get_chain_pindir_fd(_cgen->chain->name)) < 0) {
-        return bf_err_r(dir_fd, "failed to open chain pin directory for '%s'",
-                        _cgen->chain->name);
-    }
-
-    r = bf_handle_new_from_pack(&_cgen->handle, dir_fd, child);
     if (r)
         return r;
 
@@ -573,20 +574,20 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
         bf_swap(new_handle->link, old_handle->link);
     }
 
+    bf_swap(cgen->handle, new_handle);
+
     if (persist) {
-        r = bf_handle_pin(new_handle, pindir_fd);
+        r = bf_handle_pin(cgen->handle, pindir_fd);
         if (r)
-            return bf_err_r(r, "failed to pin new handle, ignoring");
+            return bf_err_r(r, "failed to pin new handle");
 
         r = _bf_cgen_persist(cgen, pindir_fd);
         if (r) {
-            bf_handle_unpin(new_handle, pindir_fd);
+            bf_handle_unpin(cgen->handle, pindir_fd);
             return bf_err_r(r, "failed to persist cgen for '%s'",
                             cgen->chain->name);
         }
     }
-
-    bf_swap(cgen->handle, new_handle);
 
     bf_chain_free(&cgen->chain);
     cgen->chain = TAKE_PTR(*new_chain);

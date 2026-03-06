@@ -19,7 +19,6 @@
 #include <bpfilter/io.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/ns.h>
-#include <bpfilter/pack.h>
 #include <bpfilter/request.h>
 #include <bpfilter/response.h>
 #include <bpfilter/version.h>
@@ -33,18 +32,6 @@
 static volatile sig_atomic_t _bf_stop_received = 0;
 
 /**
- * Path to bpfilter's runtime context file.
- *
- * bpfilter will periodically save its internal context back to disk, to prevent
- * spurious service interruption to lose information about the current state of
- * the daemon.
- *
- * This runtime context is read back when the daemon is restarted, so bpfilter
- * can manage the BPF programs that survived the daemon reboot.
- */
-static const char *ctx_path = BF_RUNTIME_DIR "/data.bin";
-
-/**
  * Set atomic flag to stop the daemon if specific signals are received.
  *
  * @param sig Signal number.
@@ -54,106 +41,6 @@ void _bf_sig_handler(int sig)
     (void)sig;
 
     _bf_stop_received = 1;
-}
-
-/**
- * Load bpfilter's runtime context from disk.
- *
- * Read the daemon's runtime context from @p path and initialize the internal
- * context with it.
- *
- * @param path Path to the context file.
- * @return This function will return:
- *         - 1 if the runtime context has been succesfully restored from the disk.
- *         - 0 if no serialized context has been found on the disk.
- *         - < 0 on error.
- */
-static int _bf_load(const char *path)
-{
-    _free_bf_rpack_ bf_rpack_t *pack = NULL;
-    _cleanup_free_ void *data = NULL;
-    bf_rpack_node_t child;
-    size_t data_len;
-    int r;
-
-    assert(path);
-
-    if (access(ctx_path, F_OK)) {
-        if (errno != ENOENT) {
-            return bf_info_r(errno, "failed test access to context file: %s",
-                             path);
-        }
-
-        bf_info("no serialized context found on disk, "
-                "a new context will be created");
-
-        return 0;
-    }
-
-    r = bf_read_file(path, &data, &data_len);
-    if (r < 0)
-        return r;
-
-    r = bf_rpack_new(&pack, data, data_len);
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_obj(bf_rpack_root(pack), "ctx", &child);
-    if (r)
-        return r;
-
-    r = bf_ctx_load(child);
-    if (r < 0)
-        return r;
-
-    bf_dbg("loaded serialized context from %s", path);
-
-    return 1;
-}
-
-/**
- * Save bpfilter's runtime context to disk.
- *
- * @param path Path to the context file.
- * @return 0 on success, negative error code on failure.
- */
-static int _bf_save(const char *path)
-{
-    _free_bf_wpack_ bf_wpack_t *pack = NULL;
-    const void *data;
-    size_t data_len;
-    int r;
-
-    assert(path);
-
-    if (bf_ctx_is_empty()) {
-        /* If the context is empty, we don't need to save it and we can remove
-         * the existing save. */
-        unlink(path);
-        return 0;
-    }
-
-    r = bf_wpack_new(&pack);
-    if (r)
-        return r;
-
-    bf_wpack_open_object(pack, "ctx");
-    r = bf_ctx_save(pack);
-    if (r)
-        return r;
-    bf_wpack_close_object(pack);
-
-    r = bf_wpack_get_data(pack, &data, &data_len);
-    if (r)
-        return r;
-
-    r = bf_write_file(path, data, data_len);
-    if (r < 0)
-        return r;
-
-    bf_dbg("saved serialized context to %s", path);
-
-    return 0;
 }
 
 /**
@@ -185,18 +72,9 @@ static int _bf_init(int argc, char *argv[])
     if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
 
-    // Either load context, or initialize it from scratch.
-    if (!bf_opts_transient()) {
-        r = _bf_load(ctx_path);
-        if (r < 0)
-            return bf_err_r(r, "failed to restore bpfilter context");
-    }
-
-    if (bf_opts_transient() || r == 0) {
-        r = bf_ctx_setup();
-        if (r < 0)
-            return bf_err_r(r, "failed to setup context");
-    }
+    r = bf_ctx_setup();
+    if (r)
+        return bf_err_r(r, "failed to setup context");
 
     bf_ctx_dump(EMPTY_PREFIX);
 
@@ -266,17 +144,6 @@ static int _bf_process_request(struct bf_request *request,
          * return 0, otherwise we return the error code. */
         r = bf_response_new_failure(response, r);
     }
-
-    if (!bf_opts_transient() &&
-        (bf_request_cmd(request) == BF_REQ_RULESET_FLUSH ||
-         bf_request_cmd(request) == BF_REQ_RULESET_SET ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_SET ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_LOAD ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_ATTACH ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_UPDATE ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_UPDATE_SET ||
-         bf_request_cmd(request) == BF_REQ_CHAIN_FLUSH))
-        r = _bf_save(ctx_path);
 
     return r;
 }
