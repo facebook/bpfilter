@@ -75,7 +75,8 @@ struct bf_runtime
      * - `BF_FLAVOR_XDP`: `struct xdp_md *`
      * - `BF_FLAVOR_TC`: `struct struct __sk_buff *`
      * - `BF_FLAVOR_CGROUP_SKB`: `struct __sk_buff *`
-     * - `BF_FLAVOR_NF`: `struct bpf_nf_ctx *` */
+     * - `BF_FLAVOR_NF`: `struct bpf_nf_ctx *`
+     * - `BF_FLAVOR_CGROUP_SOCK_ADDR`: `struct bpf_sock_addr *` */
     void *arg;
 
     /** BPF dynamic pointer to access the packet data. Dynamic pointers are
@@ -85,7 +86,7 @@ struct bf_runtime
     /** Ring buffer map containing the logged packets. */
     void *log_map;
 
-    /** Total size of the packet. */
+    /** Total size of the packet, or 0 for non-packet flavors. */
     __u64 pkt_size;
 
     /** IPv6 extension header mask */
