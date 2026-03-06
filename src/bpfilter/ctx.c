@@ -5,6 +5,7 @@
 
 #include "ctx.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -134,44 +135,6 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
 }
 
 /**
- * @brief Allocate and initialize a new context from serialized data.
- *
- * @param ctx Context object to allocate and initialize from the serialized
- *        data. The caller will own the object. On failure, `*ctx` is
- *        unchanged. Can't be NULL.
- * @param node Node containing the serialized matcher.
- * @return 0 on success, or a negative errno value on failure.
- */
-static int _bf_ctx_new_from_pack(struct bf_ctx **ctx, bf_rpack_node_t node)
-{
-    _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
-    bf_rpack_node_t child, array_node;
-    int r;
-
-    assert(ctx);
-
-    r = _bf_ctx_new(&_ctx);
-    if (r < 0)
-        return r;
-
-    r = bf_rpack_kv_array(node, "cgens", &child);
-    if (r)
-        return r;
-    bf_rpack_array_foreach (child, array_node) {
-        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
-
-        r = bf_list_emplace(&_ctx->cgens, bf_cgen_new_from_pack, cgen,
-                            array_node);
-        if (r)
-            return r;
-    }
-
-    *ctx = TAKE_PTR(_ctx);
-
-    return 0;
-}
-
-/**
  * Free a context.
  *
  * If @p ctx points to a NULL pointer, this function does nothing. Once
@@ -240,33 +203,6 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
-}
-
-/**
- * @brief Serialize a context.
- *
- * The context is serialized as:
- * @code
- * {
- *   "cgens": [
- *     { bf_codegen },
- *     // ...
- *   ]
- * }
- * @endcode
- *
- * @param ctx Context to serialize. Can't be NULL.
- * @param pack `bf_wpack_t` object to serialize the context into. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-static int _bf_ctx_pack(const struct bf_ctx *ctx, bf_wpack_t *pack)
-{
-    assert(ctx);
-    assert(pack);
-
-    bf_wpack_kv_list(pack, "cgens", &ctx->cgens);
-
-    return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }
 
 /**
@@ -344,6 +280,107 @@ static int _bf_ctx_delete_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen,
     return -ENOENT;
 }
 
+static void _bf_free_dir(DIR **dir)
+{
+    if (!*dir)
+        return;
+
+    closedir(*dir);
+    *dir = NULL;
+}
+
+#define _free_dir_ __attribute__((__cleanup__(_bf_free_dir)))
+
+/**
+ * @brief Discover and restore chains from bpffs context maps.
+ *
+ * Iterates subdirectories under `{bpffs}/bpfilter/`, deserializing each
+ * chain's `bf_ctx` context map into a `bf_cgen` and adding it to the
+ * global context. The global context must already be initialized via
+ * `bf_ctx_setup` before calling this function.
+ *
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_ctx_discover(void)
+{
+    _cleanup_close_ int bpffs_fd = -1;
+    _cleanup_close_ int pindir_fd = -1;
+    _free_dir_ DIR *dir = NULL;
+    struct dirent *entry;
+    int iter_fd;
+    int r;
+
+    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    if (bpffs_fd < 0) {
+        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
+                        bf_opts_bpffs_path());
+    }
+
+    pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", false);
+    if (pindir_fd < 0) {
+        if (pindir_fd == -ENOENT) {
+            bf_info("no bpfilter pin directory found, nothing to discover");
+            return 0;
+        }
+        return bf_err_r(pindir_fd, "failed to open pin directory");
+    }
+
+    /* fdopendir() takes ownership of the fd: dup so pindir_fd remains valid
+     * for openat() calls inside the loop. */
+    iter_fd = dup(pindir_fd);
+    if (iter_fd < 0)
+        return bf_err_r(-errno, "failed to dup pin directory fd");
+
+    dir = fdopendir(iter_fd);
+    if (!dir) {
+        r = -errno;
+        close(iter_fd);
+        return bf_err_r(r, "failed to open pin directory for iteration");
+    }
+
+    for (;;) {
+        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _cleanup_close_ int chain_fd = -1;
+
+        errno = 0;
+        entry = readdir(dir);
+        if (!entry)
+            break;
+
+        if (bf_streq(entry->d_name, ".") || bf_streq(entry->d_name, ".."))
+            continue;
+
+        if (entry->d_type != DT_DIR)
+            continue;
+
+        chain_fd = openat(pindir_fd, entry->d_name, O_DIRECTORY);
+        if (chain_fd < 0) {
+            bf_warn("failed to open chain directory '%s', skipping",
+                    entry->d_name);
+            continue;
+        }
+
+        r = bf_cgen_new_from_dir_fd(&cgen, chain_fd);
+        if (r) {
+            bf_warn("failed to restore chain '%s', skipping", entry->d_name);
+            continue;
+        }
+
+        bf_info("discovered chain '%s'", entry->d_name);
+
+        r = bf_list_push(&_bf_global_ctx->cgens, (void **)&cgen);
+        if (r) {
+            bf_warn("failed to add restored chain '%s' to context, skipping",
+                    entry->d_name);
+        }
+    }
+
+    if (errno)
+        return bf_err_r(-errno, "failed to read pin directory");
+
+    return 0;
+}
+
 int bf_ctx_setup(void)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
@@ -354,6 +391,14 @@ int bf_ctx_setup(void)
         return bf_err_r(r, "failed to create new context");
 
     _bf_global_ctx = TAKE_PTR(_ctx);
+
+    if (!bf_opts_transient()) {
+        r = _bf_ctx_discover();
+        if (r) {
+            _bf_ctx_free(&_bf_global_ctx);
+            return bf_err_r(r, "failed to discover chains");
+        }
+    }
 
     return 0;
 }
@@ -366,33 +411,6 @@ void bf_ctx_teardown(bool clear)
     }
 
     _bf_ctx_free(&_bf_global_ctx);
-}
-
-int bf_ctx_save(bf_wpack_t *pack)
-{
-    int r;
-
-    assert(pack);
-
-    r = _bf_ctx_pack(_bf_global_ctx, pack);
-    if (r)
-        return bf_err_r(r, "failed to serialize context");
-
-    return 0;
-}
-
-int bf_ctx_load(bf_rpack_node_t node)
-{
-    _free_bf_ctx_ struct bf_ctx *ctx = NULL;
-    int r;
-
-    r = _bf_ctx_new_from_pack(&ctx, node);
-    if (r)
-        return bf_err_r(r, "failed to deserialize context");
-
-    _bf_global_ctx = TAKE_PTR(ctx);
-
-    return 0;
 }
 
 static void _bf_ctx_flush(struct bf_ctx *ctx)
@@ -410,11 +428,6 @@ static void _bf_ctx_flush(struct bf_ctx *ctx)
 void bf_ctx_flush(void)
 {
     _bf_ctx_flush(_bf_global_ctx);
-}
-
-bool bf_ctx_is_empty(void)
-{
-    return bf_list_is_empty(&_bf_global_ctx->cgens);
 }
 
 void bf_ctx_dump(prefix_t *prefix)

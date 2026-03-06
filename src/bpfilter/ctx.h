@@ -9,26 +9,20 @@
 
 #include <bpfilter/dump.h>
 #include <bpfilter/list.h>
-#include <bpfilter/pack.h>
 
 #include "cgen/elfstub.h"
 
 /**
  * @file ctx.h
  *
- * Global runtime context for @c bpfilter daemon.
+ * Global runtime context for `bpfilter` daemon.
  *
- * This file contains the definition of the @ref bf_ctx structure, which is
+ * This file contains the definition of the `bf_ctx` structure, which is
  * the main structure used to store the daemon's runtime context.
  *
- * All the public @c bf_ctx_* functions manipulate a private global context.
- * This context can be serialized and deserialized to restore the daemon's
- * runtime context if bpfilter is restarted.
- *
- * The @c bf_ctx structure contains an array of lists containing the codegens.
- * There is a list of codegen for each hook. Some hooks allow for multiple
- * codegens to be defined (e.g. XDP, TC), but others do not
- * (e.g. BF_HOOK_NF_LOCAL_IN) in which case the list contains a single codegen.
+ * All the public `bf_ctx_*` functions manipulate a private global context.
+ * Chain state is persisted in per-chain bpffs context maps and restored
+ * via `bf_ctx_setup` on restart.
  */
 
 struct bf_cgen;
@@ -44,10 +38,6 @@ int bf_ctx_setup(void);
 /**
  * Teardown the global context.
  *
- * If @ref bf_ctx_save has not been called prior to this function, the runtime
- * context will be lost: if bpfilter is stopped and @c clear is false, bpfilter
- * will lost track of its BPF objects.
- *
  * @param clear If true, all the BPF programs will be unloaded before clearing
  *        the context.
  */
@@ -61,32 +51,9 @@ void bf_ctx_teardown(bool clear);
 void bf_ctx_dump(prefix_t *prefix);
 
 /**
- * @brief Serialize the global context.
- *
- * @param pack `bf_wpack_t` object to serialize the context into. Can't be NULL.
- * @return 0 on success, or a negative error value on failure.
- */
-int bf_ctx_save(bf_wpack_t *pack);
-
-/**
- * @brief Deserialize the global context.
- *
- * @param node Node containing the serialized context.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_ctx_load(bf_rpack_node_t node);
-
-/**
  * @brief Unload and delete all the codegens.
  */
 void bf_ctx_flush(void);
-
-/**
- * Check if the context is empty (no codegen defined).
- *
- * @return true is the context is empty, false otherwise.
- */
-bool bf_ctx_is_empty(void);
 
 /**
  * Get a codegen from the global context.
