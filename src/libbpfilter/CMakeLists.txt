@@ -3,6 +3,9 @@
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(bpf REQUIRED IMPORTED_TARGET libbpf)
+pkg_check_modules(nl REQUIRED IMPORTED_TARGET libnl-3.0)
+
+include(ElfStubs)
 
 set(libbpfilter_srcs
     # Public interface
@@ -12,8 +15,10 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/btf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/chain.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/counter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/ctx.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/elfstub.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
@@ -22,23 +27,22 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/list.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/logger.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/matcher.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/ns.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/pack.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/request.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/response.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/rule.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/set.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/verdict.h
 
-    # Private sources and headers
+    # Private sources and headers
     ${CMAKE_CURRENT_SOURCE_DIR}/bpf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/btf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cli.c
     ${CMAKE_CURRENT_SOURCE_DIR}/counter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
@@ -48,17 +52,40 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/request.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
     ${CMAKE_CURRENT_SOURCE_DIR}/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
     ${CMAKE_CURRENT_SOURCE_DIR}/version.c
 
+    # Code generation engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup_skb.h        ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup_skb.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip4.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip6.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/ip6.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/tcp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/tcp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/udp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/udp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/icmp.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/icmp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/link.h         ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/link.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/map.h          ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/map.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/runtime.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/stub.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/stub.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/swich.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/swich.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.c
+
     # External
     ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h
     ${CMAKE_SOURCE_DIR}/src/external/mpack.c
+    ${CMAKE_SOURCE_DIR}/src/external/include/disasm.h   ${CMAKE_SOURCE_DIR}/src/external/disasm.c
 )
 
 configure_file(
@@ -76,6 +103,19 @@ configure_file(
 add_library(libbpfilter
     SHARED
         ${libbpfilter_srcs}
+)
+
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/cgen)
+bf_target_add_elfstubs(libbpfilter
+    DIR ${CMAKE_CURRENT_SOURCE_DIR}/bpf
+    SYM_PREFIX "_bf_rawstubs_"
+    DECL_HDR_PATH ${CMAKE_CURRENT_BINARY_DIR}/include/cgen/rawstubs.h
+    STUBS
+        "parse_ipv6_eh"
+        "parse_ipv6_nh"
+        "update_counters"
+        "log"
+        "flow_hash"
 )
 
 target_compile_definitions(libbpfilter
@@ -97,6 +137,7 @@ target_link_libraries(libbpfilter
     PRIVATE
         bf_global_flags
         m
+        PkgConfig::nl
     PUBLIC
         PkgConfig::bpf
 )

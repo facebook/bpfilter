@@ -3,52 +3,47 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "ctx.h"
-
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #include <bpfilter/bpf.h>
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/ns.h>
 #include <bpfilter/pack.h>
 
 #include "cgen/cgen.h"
-#include "cgen/elfstub.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
 /**
  * @struct bf_ctx
  *
- * bpfilter working context. Only one context is used during the daemon's
+ * bpfilter working context. Only one context is used during the library's
  * lifetime.
  */
 struct bf_ctx
 {
-    /// Namespaces the daemon was started in.
-    struct bf_ns ns;
-
     /// BPF token file descriptor
     int token_fd;
+
+    int lock_fd;
 
     bf_list cgens;
 
     struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
-
-    /// If true, don't persist state and unload programs on exit.
-    bool transient;
 
     /// Pass a token to BPF system calls, obtained from bpffs.
     bool with_bpf_token;
@@ -62,7 +57,7 @@ struct bf_ctx
 
 static void _bf_ctx_free(struct bf_ctx **ctx);
 
-/// Global daemon context. Hidden in this translation unit.
+/// Global runtime context. Hidden in this translation unit.
 static struct bf_ctx *_bf_global_ctx = NULL;
 
 static int _bf_ctx_gen_token(const char *bpffs_path)
@@ -94,13 +89,12 @@ static int _bf_ctx_gen_token(const char *bpffs_path)
  * On failure, @p ctx is left unchanged.
  *
  * @param ctx New context to create. Can't be NULL.
- * @param transient If true, don't persist state and unload programs on exit.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
  * @param verbose Bitmask of verbose flags.
  * @return 0 on success, negative errno value on failure.
  */
-static int _bf_ctx_new(struct bf_ctx **ctx, bool transient, bool with_bpf_token,
+static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
                        const char *bpffs_path, uint16_t verbose)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
@@ -109,18 +103,18 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool transient, bool with_bpf_token,
     assert(ctx);
     assert(bpffs_path);
 
+    r = bf_btf_setup();
+    if (r)
+        return bf_err_r(r, "failed to load vmlinux BTF");
+
     _ctx = calloc(1, sizeof(*_ctx));
     if (!_ctx)
         return -ENOMEM;
 
-    _ctx->transient = transient;
     _ctx->with_bpf_token = with_bpf_token;
     _ctx->bpffs_path = bpffs_path;
     _ctx->verbose = verbose;
-
-    r = bf_ns_init(&_ctx->ns, getpid());
-    if (r)
-        return bf_err_r(r, "failed to initialise current bf_ns");
+    _ctx->lock_fd = -1;
 
     _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
@@ -170,12 +164,14 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
     if (!*ctx)
         return;
 
-    bf_ns_clean(&(*ctx)->ns);
     closep(&(*ctx)->token_fd);
+    closep(&(*ctx)->lock_fd);
     bf_list_clean(&(*ctx)->cgens);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);
+
+    bf_btf_teardown();
 
     freep((void *)ctx);
 }
@@ -188,24 +184,6 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     DUMP(prefix, "struct bf_ctx at %p", ctx);
 
     bf_dump_prefix_push(prefix);
-
-    // Namespaces
-    DUMP(prefix, "ns: struct bf_ns")
-    bf_dump_prefix_push(prefix);
-
-    DUMP(prefix, "net: struct bf_ns_info");
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "fd: %d", ctx->ns.net.fd);
-    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.net.inode);
-    bf_dump_prefix_pop(prefix);
-
-    DUMP(bf_dump_prefix_last(prefix), "mnt: struct bf_ns_info");
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "fd: %d", ctx->ns.mnt.fd);
-    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.mnt.inode);
-    bf_dump_prefix_pop(prefix);
-
-    bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "token_fd: %d", ctx->token_fd);
 
@@ -402,25 +380,35 @@ static int _bf_ctx_discover(void)
     return 0;
 }
 
-int bf_ctx_setup(bool transient, bool with_bpf_token, const char *bpffs_path,
-                 uint16_t verbose)
+int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
+    _cleanup_close_ int pindir_fd = -1;
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    r = _bf_ctx_new(&_ctx, transient, with_bpf_token, bpffs_path, verbose);
+    r = _bf_ctx_new(&_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
-    _bf_global_ctx = TAKE_PTR(_ctx);
+    _bf_global_ctx = _ctx;
 
-    if (!bf_ctx_is_transient()) {
-        r = _bf_ctx_discover();
-        if (r) {
-            _bf_ctx_free(&_bf_global_ctx);
-            return bf_err_r(r, "failed to discover chains");
-        }
+    pindir_fd = bf_ctx_get_pindir_fd();
+    if (pindir_fd < 0)
+        return bf_err_r(pindir_fd, "failed to get pin directory FD");
+
+    r = flock(pindir_fd, LOCK_EX | LOCK_NB);
+    if (r)
+        return bf_err_r(-errno, "failed to lock pin directory");
+
+    r = _bf_ctx_discover();
+    if (r) {
+        _bf_ctx_free(&_bf_global_ctx);
+        return bf_err_r(r, "failed to discover chains");
     }
+
+    _bf_global_ctx->lock_fd = TAKE_FD(pindir_fd);
+
+    TAKE_PTR(_ctx);
 
     return 0;
 }
@@ -472,11 +460,6 @@ int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload)
     return _bf_ctx_delete_cgen(_bf_global_ctx, cgen, unload);
 }
 
-struct bf_ns *bf_ctx_get_ns(void)
-{
-    return &_bf_global_ctx->ns;
-}
-
 int bf_ctx_token(void)
 {
     return _bf_global_ctx->token_fd;
@@ -523,11 +506,6 @@ int bf_ctx_rm_pindir(void)
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
 {
     return _bf_global_ctx->stubs[id];
-}
-
-bool bf_ctx_is_transient(void)
-{
-    return _bf_global_ctx->transient;
 }
 
 bool bf_ctx_is_verbose(enum bf_verbose opt)

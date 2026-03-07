@@ -44,10 +44,9 @@ add_custom_target(benchmark
         ${CMAKE_SOURCE_DIR}/tools/asroot
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
-                --daemon $<TARGET_FILE:bpfilter>
                 --srcdir ${CMAKE_SOURCE_DIR}
                 --outfile ${CMAKE_BINARY_DIR}/benchmarks/{gitrev}.json
-    DEPENDS benchmark_bin bfcli bpfilter
+    DEPENDS benchmark_bin bfcli
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
     COMMENT "Running benchmarks"

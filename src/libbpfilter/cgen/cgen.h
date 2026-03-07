@@ -14,7 +14,6 @@
 
 struct bf_chain;
 struct bf_handle;
-struct bf_ns;
 struct bf_hookopts;
 
 #define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
@@ -68,7 +67,7 @@ int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd);
  * If one or more programs are loaded, they won't be unloaded. Use @ref
  * bf_cgen_unload first to ensure programs are unloaded. This behaviour
  * is expected so @ref bf_cgen can be freed without unloading the BPF
- * program, during a daemon restart for example.
+ * program, during a restart for example.
  *
  * @param cgen Codegen to free. Can't be NULL.
  */
@@ -90,12 +89,10 @@ int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack);
  * is assumed that no chain with the same name exist.
  *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
- * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
  * @param hookopts Hook options.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
-                struct bf_hookopts **hookopts);
+int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts);
 
 /**
  * Create and load a `bf_program` into the kernel.
@@ -118,12 +115,10 @@ int bf_cgen_load(struct bf_cgen *cgen);
  * the program filters on (e.g. `meta.iface`, for all hooks) is correct too.
  *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
- * @param ns Namespaces to switch to before attaching the programs. Can't be NULL.
  * @param hookopts Hook options. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
-                   struct bf_hookopts **hookopts);
+int bf_cgen_attach(struct bf_cgen *cgen, struct bf_hookopts **hookopts);
 
 /**
  * Flags to control the behavior of `bf_cgen_update`.

@@ -19,13 +19,13 @@
  *
  * ELF stubs source code is part of bpfilter's sources, they are compiled
  * using clang, the ELF file is stored in a C array and accessible to the
- * daemon at runtime.
+ * libbpfilter at runtime.
  *
  * **Creating a new ELF stub**
  *
- * 1. Add a new source file for the BPF program in the daemon's codebase (in the
- *    `bpf` folder, as `$NAME.bpf.c`).
- * 2. Declare the ELF stub in the daemon's CMakeLists.txt (in
+ * 1. Add a new source file for the BPF program in the library's codebase (in
+ *    the `bpf` folder, as `$NAME.bpf.c`).
+ * 2. Declare the ELF stub in libbpfilter's CMakeLists.txt (in
  *    `bf_target_add_elfstubs()`).
  * 3. Add a new ID for this stub in `bf_elfstub_id`.
  * 4. Write the BPF C code: define a single function (additional inline

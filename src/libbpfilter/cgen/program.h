@@ -10,12 +10,12 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
-#include "cgen/elfstub.h"
 #include "cgen/fixup.h"
 #include "cgen/printer.h"
 #include "cgen/runtime.h"
@@ -257,7 +257,7 @@ int bf_program_generate(struct bf_program *program);
  * loaded, all the maps are destroyed.
  *
  * Once the loading succeeds, the program and the maps are pinned to the
- * filesystem, unless the daemon is in transient mode. If the BPF objects can't
+ * filesystem, unless bpfilter is in transient mode. If the BPF objects can't
  * be pinned, the program is unloaded and the maps destroyed.
  *
  * @param prog Program to load into the kernel. Can't be NULL and must contain

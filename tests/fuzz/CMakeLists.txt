@@ -7,8 +7,10 @@ set(CMAKE_CXX_COMPILER clang++)
 file(GLOB_RECURSE libbpfilter_fuzz_srcs
     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.h     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.c
 )
+# BPF stub sources are compiled via ElfStubs, not as regular C files.
+list(FILTER libbpfilter_fuzz_srcs EXCLUDE REGEX ".*/bpf/.*\\.bpf\\.c$")
 
-add_executable(fuzz_parser
+add_executable(fuzz_parser EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_parser.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/helper.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/ruleset.c
@@ -16,6 +18,7 @@ add_executable(fuzz_parser
     ${CMAKE_BINARY_DIR}/src/bfcli/generated/lexer.c
     ${libbpfilter_fuzz_srcs}
     ${CMAKE_SOURCE_DIR}/src/external/mpack.c
+    ${CMAKE_SOURCE_DIR}/src/external/disasm.c
 )
 
 target_compile_options(fuzz_parser
@@ -39,6 +42,7 @@ target_include_directories(fuzz_parser
         ${CMAKE_SOURCE_DIR}/src/libbpfilter
         ${CMAKE_SOURCE_DIR}/src/libbpfilter/include
         ${CMAKE_BINARY_DIR}/src/libbpfilter/include
+        ${CMAKE_BINARY_DIR}/src/libbpfilter/elfstubs/src
         ${CMAKE_BINARY_DIR}/src/bfcli/include
 )
 
@@ -52,7 +56,7 @@ target_link_libraries(fuzz_parser
         bpf
 )
 
-add_dependencies(fuzz_parser bfcli_parser bfcli_lexer)
+add_dependencies(fuzz_parser bfcli_parser bfcli_lexer libbpfilter)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/corpus)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/findings)

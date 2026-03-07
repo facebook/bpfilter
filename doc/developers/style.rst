@@ -341,7 +341,7 @@ Commit messages should be formatted as ``component: subcomponent: short descript
 - No period at the end
 - Keep under 72 characters
 
-Components are ``lib``, ``daemon``, ``cli``, ``tests``, ``build``, ``tools``, ``doc``. Subcomponents reflect the directory structure (e.g., ``tests: e2e:``, ``daemon: cgen: link:``). If you're unsure, check the commit history for a hint.
+Components are ``lib``, ``cli``, ``tests``, ``build``, ``tools``, ``doc``. Subcomponents reflect the directory structure (e.g., ``tests: e2e:``, ``lib: cgen: link:``). If you're unsure, check the commit history for a hint.
 
 Examples:
 

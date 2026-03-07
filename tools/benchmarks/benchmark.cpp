@@ -33,14 +33,12 @@
 #include <initializer_list>
 #include <iostream> // NOLINT
 #include <optional>
-#include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>
 #include <sstream>
 #include <string>
 #include <sys/personality.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <thread>
 #include <tuple>
 #include <unistd.h>
 #include <utility>
@@ -97,15 +95,12 @@ Config config = {};
 
 namespace
 {
-constexpr int waitForDaemonTimeoutS = 5;
-constexpr int waitForDaemonSleepMs = 10;
 constexpr int maxCommitHashLen = 7;
 
 enum
 {
     OPT_KEY_ADHOC,
     OPT_KEY_ADHOC_REPEAT,
-    OPT_KEY_NO_DAEMON,
 };
 
 const ::std::string help = "\v\
@@ -113,22 +108,17 @@ const ::std::string help = "\v\
 benchmarks will be skipped, and only the adhoc benchmark will be run. --adhoc \
 benchmarks won't create any output file.";
 
-constexpr std::array<struct argp_option, 8> options {{
+constexpr std::array<struct argp_option, 6> options {{
     {.name="cli", .key='c', .arg="CLI", .flags=0,
      .doc="Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", .group=0},
-    {.name="daemon", .key='d', .arg="DAEMON", .flags=0,
-     .doc="Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", .group=0},
     {.name="srcdir", .key='s', .arg="SOURCES_DIR", .flags=0,
-     .doc="Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
+     .doc="Path to the bpfilter sources folder. Defaults to the current directory.",
      .group=0},
     {.name="outfile", .key='o', .arg="OUTPUT_FILE", .flags=0,
      .doc="Path to the JSON file to write the results to. Defaults to 'results.json'.",
      .group=0},
      {.name="filter", .key='f', .arg="FILTER", .flags=0,
      .doc="Only run benchmarks matching the given FILTER (substring match).", .group=0},
-    {.name="no-daemon", .key=OPT_KEY_NO_DAEMON, .arg=nullptr, .flags=OPTION_ARG_OPTIONAL,
-     .doc="If set, the benchmark will assume a daemon is already running and won't start one.",
-     .group=0},
      {.name="list", .key='l', .arg=nullptr, .doc="List all available benchmarks and exit.", .group=0},
     {.name=nullptr},
 }};
@@ -143,14 +133,8 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
     auto *config = static_cast<Config *>(state->input);
 
     switch (key) {
-    case OPT_KEY_NO_DAEMON:
-        config->runDaemon = false;
-        break;
     case 'c':
         config->bfcli = ::std::filesystem::absolute(arg);
-        break;
-    case 'd':
-        config->bpfilter = ::std::string(arg);
         break;
     case 's':
         config->srcdir = ::std::string(arg);
@@ -360,12 +344,6 @@ int setup(std::span<char *> args)
         return -ENOENT;
     }
 
-    config.bpfilter = which(config.bpfilter);
-    if (config.bpfilter.empty()) {
-        err("bpfilter binary '{}' not found", config.bpfilter);
-        return -ENOENT;
-    }
-
     config.outfile = ::std::filesystem::absolute(config.outfile);
     config.srcdir = ::std::filesystem::weakly_canonical(config.srcdir);
     if (!std::filesystem::exists(config.srcdir)) {
@@ -394,10 +372,8 @@ int setup(std::span<char *> args)
     ::benchmark::AddCustomContext("gitrev", config.gitrev);
     ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
-    ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
     ::benchmark::AddCustomContext("outfile", config.outfile);
-    ::benchmark::AddCustomContext("runDaemon", config.runDaemon ? "yes" : "no");
     ::benchmark::FLAGS_benchmark_out = config.outfile;
     ::benchmark::FLAGS_benchmark_out_format = "json";
 
@@ -554,173 +530,6 @@ int Fd::close()
     fd_ = -1;
 
     return 0;
-}
-
-Daemon::Options &Daemon::Options::transient()
-{
-    options_.emplace_back("--transient");
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::bufferLen(::std::size_t len)
-{
-    options_.emplace_back("--buffer-len");
-    options_.emplace_back(::std::to_string(len));
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::verbose(const ::std::string &component)
-{
-    options_.emplace_back("--verbose");
-    options_.emplace_back(component);
-    return *this;
-}
-
-::std::vector<::std::string> Daemon::Options::get() const
-{
-    return options_;
-}
-
-Daemon::Daemon(::std::string path, Options options):
-    path_ {::std::move(path)},
-    options_ {::std::move(options)}
-{
-    if (start() < 0)
-        abort("failed to start bpfilter");
-}
-
-Daemon::Daemon(Daemon &&other) noexcept(false)
-{
-    if (pid_)
-        abort("calling ::bf::Daemon(::bf::Daemon &&) on an active daemon!");
-
-    other.pid_.swap(pid_);
-    stdoutFd_ = ::std::move(other.stdoutFd_);
-    stderrFd_ = ::std::move(other.stderrFd_);
-}
-
-Daemon &Daemon::operator=(Daemon &&other) noexcept(false)
-{
-    if (pid_)
-        abort(
-            "calling ::bf::Daemon::operator=(::fd::Daemon &&) on an active daemon!");
-
-    other.pid_.swap(pid_);
-    stdoutFd_ = ::std::move(other.stdoutFd_);
-    stderrFd_ = ::std::move(other.stderrFd_);
-
-    return *this;
-}
-
-Daemon::~Daemon() noexcept(false)
-{
-    if (stop() < 0)
-        abort("failed to stop bpfilter");
-}
-
-int Daemon::start()
-{
-    Fd stdoutFd, stderrFd;
-    int pid, r;
-
-    if (pid_)
-        abort("calling ::bf::Daemon::start() on an active daemon!");
-
-    pid = exec(path_, options_.get(), stdoutFd, stderrFd);
-    if (pid < 0) {
-        err("failed to start the daemon: {}", errStr(pid));
-        return pid;
-    }
-
-    if ((r = setFdNonBlock(stdoutFd)) < 0) {
-        err("failed to set non-blocking flag to the daemon's stdout FD: {}",
-            errStr(r));
-        return r;
-    }
-
-    if ((r = setFdNonBlock(stderrFd)) < 0) {
-        err("failed to set non-blocking flag to the daemon's stderr FD: {}",
-            errStr(r));
-        return r;
-    }
-
-    const TimePoint begin = time::now();
-
-    while (true) {
-        int status;
-
-        r = waitpid(pid, &status, WNOHANG);
-        if (r == -1) {
-            err("failed to wait on the deamon's PID {}: {}", pid,
-                errStr(errno));
-            return -errno;
-        }
-        if (r != 0) {
-            auto errLogs = readFd(stderrFd);
-            err("daemon seems to be dead! Err logs:\n{}",
-                errLogs ? *errLogs : "<no logs>");
-            return -ENOENT;
-        }
-
-        auto data = readFd(stderrFd);
-        if (data &&
-            data->find("waiting for requests...") != ::std::string::npos)
-            break;
-
-        if (std::chrono::duration_cast<seconds>(time::now() - begin).count() >
-            waitForDaemonTimeoutS) {
-            // Let's try to stop it just in case
-            kill(pid, SIGINT);
-            err("daemon is not showing up after {} seconds, aborting",
-                waitForDaemonTimeoutS);
-            return -EIO;
-        }
-
-        // Wait a bit for the daemon to be ready
-        ::std::this_thread::sleep_for(
-            std::chrono::milliseconds(waitForDaemonSleepMs));
-    }
-
-    pid_ = ::std::optional<int>(pid);
-    stdoutFd_ = std::move(stdoutFd);
-    stderrFd_ = std::move(stderrFd);
-
-    return 0;
-}
-
-int Daemon::stop()
-{
-    if (!pid_)
-        return 0;
-
-    int r = kill(*pid_, SIGINT);
-    if (r < 0) {
-        err("failed to send SIGINT signal to the daemon: {}", errStr(errno));
-        return -errno;
-    }
-
-    int status;
-    r = waitpid(*pid_, &status, 0);
-    if (r < 0) {
-        err("can't wait on the daemon: {}", errStr(errno));
-        return -errno;
-    }
-
-    return 0;
-}
-
-std::string Daemon::stdout()
-{
-    auto maybe = readFd(stdoutFd_);
-
-    return  maybe ? *maybe : "";
-}
-
-std::string Daemon::stderr()
-{
-    auto maybe = readFd(stderrFd_);
-
-    return  maybe ? *maybe : "";
 }
 
 Program::Program(std::string name):

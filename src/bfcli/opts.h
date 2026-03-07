@@ -6,15 +6,16 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <bpfilter/hook.h>
 
 /**
  * @file opts.h
  *
- * bfcli commands are constructed as `bfcli OBJECT ACTION [OPTIONS...]`, with
- * `OBJECT` the type of bpfilter object to manipulate, and `ACTION` the action
- * to apply to the object.
+ * bfcli commands are constructed as
+ * `bfcli [OPTIONS...] OBJECT ACTION [OPTIONS...]`, with `OBJECT` the type of
+ * bpfilter object to manipulate, and `ACTION` the action to apply to the object.
  *
  * This file provides the mechanism to define and parse command line object for
  * all the existing commands supported by bfcli.
@@ -79,6 +80,10 @@ struct bfc_opts
     bf_list set_remove;
 
     bool dry_run;
+
+    bool with_bpf_token;
+    const char *bpffs_path;
+    uint16_t verbose;
 };
 
 struct bfc_opts_cmd
@@ -99,7 +104,8 @@ struct bfc_opts_cmd
     {.object = _BFC_OBJECT_MAX,                                                \
      .action = _BFC_ACTION_MAX,                                                \
      .set_add = bf_list_default(NULL, NULL),                                   \
-     .set_remove = bf_list_default(NULL, NULL)};
+     .set_remove = bf_list_default(NULL, NULL),                                \
+     .bpffs_path = "/sys/fs/bpf"};
 
 void bfc_opts_clean(struct bfc_opts *opts);
 int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv);

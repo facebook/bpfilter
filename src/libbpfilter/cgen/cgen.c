@@ -17,13 +17,13 @@
 #include <bpfilter/bpf.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/ns.h>
 #include <bpfilter/pack.h>
 
 #include "cgen/dump.h"
@@ -31,7 +31,6 @@
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
-#include "ctx.h"
 
 #define _BF_PROG_NAME "bf_prog"
 #define _BF_CTX_PIN_NAME "bf_ctx"
@@ -235,7 +234,8 @@ void bf_cgen_free(struct bf_cgen **cgen)
      * the chain hasn't been pinned (e.g. due to a failure), the pin directory
      * will be empty and will be removed. If the chain is valid and pinned, then
      * the removal of the pin directory will fail, but that's alright. */
-    if (!bf_ctx_is_transient() && (pin_fd = bf_ctx_get_pindir_fd()) >= 0)
+    pin_fd = bf_ctx_get_pindir_fd();
+    if (pin_fd >= 0)
         bf_rmdir_at(pin_fd, (*cgen)->chain->name, false);
 
     bf_handle_free(&(*cgen)->handle);
@@ -305,21 +305,17 @@ int bf_cgen_get_counter(const struct bf_cgen *cgen,
     return bf_handle_get_counter(cgen->handle, counter_idx, counter);
 }
 
-int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
-                struct bf_hookopts **hookopts)
+int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts)
 {
     _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
 
-    if (persist) {
-        pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
-        if (pindir_fd < 0)
-            return pindir_fd;
-    }
+    pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
+    if (pindir_fd < 0)
+        return pindir_fd;
 
     r = bf_program_new(&prog, cgen->chain, cgen->handle);
     if (r < 0)
@@ -334,29 +330,20 @@ int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
         return bf_err_r(r, "failed to load the chain");
 
     if (hookopts) {
-        r = bf_ns_set(ns, bf_ctx_get_ns());
-        if (r)
-            return bf_err_r(r, "failed to switch to the client's namespaces");
-
         r = bf_handle_attach(cgen->handle, cgen->chain->hook, hookopts);
         if (r < 0)
             return bf_err_r(r, "failed to load and attach the chain");
-
-        if (bf_ns_set(bf_ctx_get_ns(), ns))
-            bf_abort("failed to restore previous namespaces, aborting");
     }
 
-    if (persist) {
-        r = bf_handle_pin(cgen->handle, pindir_fd);
-        if (r)
-            return r;
+    r = bf_handle_pin(cgen->handle, pindir_fd);
+    if (r)
+        return r;
 
-        r = _bf_cgen_persist(cgen, pindir_fd);
-        if (r) {
-            bf_handle_unpin(cgen->handle, pindir_fd);
-            return bf_err_r(r, "failed to persist cgen for '%s'",
-                            cgen->chain->name);
-        }
+    r = _bf_cgen_persist(cgen, pindir_fd);
+    if (r) {
+        bf_handle_unpin(cgen->handle, pindir_fd);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
     }
 
     return 0;
@@ -366,16 +353,13 @@ int bf_cgen_load(struct bf_cgen *cgen)
 {
     _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
 
-    if (persist) {
-        pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
-        if (pindir_fd < 0)
-            return pindir_fd;
-    }
+    pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
+    if (pindir_fd < 0)
+        return pindir_fd;
 
     r = bf_program_new(&prog, cgen->chain, cgen->handle);
     if (r < 0)
@@ -389,17 +373,15 @@ int bf_cgen_load(struct bf_cgen *cgen)
     if (r < 0)
         return bf_err_r(r, "failed to load the chain");
 
-    if (persist) {
-        r = bf_handle_pin(cgen->handle, pindir_fd);
-        if (r)
-            return r;
+    r = bf_handle_pin(cgen->handle, pindir_fd);
+    if (r)
+        return r;
 
-        r = _bf_cgen_persist(cgen, pindir_fd);
-        if (r) {
-            bf_handle_unpin(cgen->handle, pindir_fd);
-            return bf_err_r(r, "failed to persist cgen for '%s'",
-                            cgen->chain->name);
-        }
+    r = _bf_cgen_persist(cgen, pindir_fd);
+    if (r) {
+        bf_handle_unpin(cgen->handle, pindir_fd);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
     }
 
     bf_info("load %s", cgen->chain->name);
@@ -408,52 +390,38 @@ int bf_cgen_load(struct bf_cgen *cgen)
     return 0;
 }
 
-int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
-                   struct bf_hookopts **hookopts)
+int bf_cgen_attach(struct bf_cgen *cgen, struct bf_hookopts **hookopts)
 {
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
-    assert(ns);
     assert(hookopts);
 
     bf_info("attaching %s to %s", cgen->chain->name,
             bf_hook_to_str(cgen->chain->hook));
     bf_hookopts_dump(*hookopts, EMPTY_PREFIX);
 
-    if (persist) {
-        pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
-        if (pindir_fd < 0)
-            return pindir_fd;
-    }
-
-    r = bf_ns_set(ns, bf_ctx_get_ns());
-    if (r)
-        return bf_err_r(r, "failed to switch to the client's namespaces");
+    pindir_fd = _bf_cgen_get_chain_pindir_fd(cgen->chain->name);
+    if (pindir_fd < 0)
+        return pindir_fd;
 
     r = bf_handle_attach(cgen->handle, cgen->chain->hook, hookopts);
     if (r < 0)
         return bf_err_r(r, "failed to attach chain '%s'", cgen->chain->name);
 
-    if (bf_ns_set(bf_ctx_get_ns(), ns))
-        bf_abort("failed to restore previous namespaces, aborting");
+    r = bf_link_pin(cgen->handle->link, pindir_fd);
+    if (r) {
+        bf_handle_detach(cgen->handle);
+        return r;
+    }
 
-    if (persist) {
-        r = bf_link_pin(cgen->handle->link, pindir_fd);
-        if (r) {
-            bf_handle_detach(cgen->handle);
-            return r;
-        }
-
-        r = _bf_cgen_persist(cgen, pindir_fd);
-        if (r) {
-            bf_link_unpin(cgen->handle->link, pindir_fd);
-            bf_handle_detach(cgen->handle);
-            return bf_err_r(r, "failed to persist cgen for '%s'",
-                            cgen->chain->name);
-        }
+    r = _bf_cgen_persist(cgen, pindir_fd);
+    if (r) {
+        bf_link_unpin(cgen->handle->link, pindir_fd);
+        bf_handle_detach(cgen->handle);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
     }
 
     return r;
@@ -508,7 +476,6 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
     _free_bf_program_ struct bf_program *new_prog = NULL;
     _free_bf_handle_ struct bf_handle *new_handle = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = !bf_ctx_is_transient();
     struct bf_handle *old_handle;
     int r;
 
@@ -520,11 +487,9 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
 
     old_handle = cgen->handle;
 
-    if (persist) {
-        pindir_fd = _bf_cgen_get_chain_pindir_fd((*new_chain)->name);
-        if (pindir_fd < 0)
-            return pindir_fd;
-    }
+    pindir_fd = _bf_cgen_get_chain_pindir_fd((*new_chain)->name);
+    if (pindir_fd < 0)
+        return pindir_fd;
 
     r = bf_handle_new(&new_handle, _BF_PROG_NAME);
     if (r)
@@ -557,14 +522,13 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
             return bf_err_r(r, "failed to transfer counters");
     }
 
-    if (persist)
-        bf_handle_unpin(old_handle, pindir_fd);
+    bf_handle_unpin(old_handle, pindir_fd);
 
     if (old_handle->link) {
         r = bf_link_update(old_handle->link, new_handle->prog_fd);
         if (r) {
             bf_err_r(r, "failed to update bf_link object with new program");
-            if (persist && bf_handle_pin(old_handle, pindir_fd) < 0)
+            if (bf_handle_pin(old_handle, pindir_fd) < 0)
                 bf_err("failed to repin old handle, ignoring");
             return r;
         }
@@ -575,29 +539,25 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
 
     bf_swap(cgen->handle, new_handle);
 
-    if (persist) {
-        r = bf_handle_pin(cgen->handle, pindir_fd);
-        if (r)
-            return bf_err_r(r, "failed to pin new handle");
+    r = bf_handle_pin(cgen->handle, pindir_fd);
+    if (r)
+        return bf_err_r(r, "failed to pin new handle");
 
-        r = _bf_cgen_persist(cgen, pindir_fd);
-        if (r) {
-            bf_handle_unpin(cgen->handle, pindir_fd);
-            return bf_err_r(r, "failed to persist cgen for '%s'",
-                            cgen->chain->name);
-        }
+    r = _bf_cgen_persist(cgen, pindir_fd);
+    if (r) {
+        bf_handle_unpin(cgen->handle, pindir_fd);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
     }
 
     bf_chain_free(&cgen->chain);
     cgen->chain = TAKE_PTR(*new_chain);
 
-    if (persist) {
-        r = _bf_cgen_persist(cgen, pindir_fd);
-        if (r) {
-            bf_handle_unpin(cgen->handle, pindir_fd);
-            return bf_err_r(r, "failed to persist cgen for '%s'",
-                            cgen->chain->name);
-        }
+    r = _bf_cgen_persist(cgen, pindir_fd);
+    if (r) {
+        bf_handle_unpin(cgen->handle, pindir_fd);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
     }
 
     return 0;

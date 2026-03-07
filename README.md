@@ -32,7 +32,7 @@
 - **Low overhead**: minimal resource consumption with maximized efficiency
 - **Developer-friendly**: clean architecture with clear separation of components
 
-**bpfilter** combines three components: a CLI that allows users to define filtering rules in human-readable text, a daemon that converts these rules into efficient BPF programs, and a library that facilitates seamless communication between applications and the filtering subsystem.
+**bpfilter** combines two components: a core library that translates filtering rules into efficient BPF programs and manages their lifecycle, and a CLI that allows users to define and manage filtering rules in human-readable text.
 
 Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.io/usage/index.html), the [developer documentation](https://bpfilter.io/developers/build.html), our [contributing guide](https://bpfilter.io/developers/contributing.html), or watch our latest [public talk](https://www.youtube.com/watch?v=fzaPEm4PXn0)!
 
@@ -61,9 +61,6 @@ make -C $BUILD_DIR
 ### Usage
 
 ```shell
-# Start the daemon
-sudo $BUILD_DIR/output/sbin/bpfilter
-
 # Count the number of ping coming to interface #2
 sudo $BUILD_DIR/output/sbin/bfcli ruleset set --from-str "chain my_chain BF_HOOK_XDP{ifindex=2} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ```

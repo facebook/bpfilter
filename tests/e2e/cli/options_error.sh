@@ -2,22 +2,22 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
-(! bfcli ruleset set --from-str "" --from-file "")
-(! bfcli ruleset set)
+(! ${BFCLI} ruleset set --from-str "" --from-file "")
+(! ${BFCLI} ruleset set)
 
-(! bfcli chain set --from-str "" --from-file "")
-(! bfcli chain set)
+(! ${BFCLI} chain set --from-str "" --from-file "")
+(! ${BFCLI} chain set)
 
-(! bfcli chain get)
+(! ${BFCLI} chain get)
 
-(! bfcli chain logs)
+(! ${BFCLI} chain logs)
 
-(! bfcli chain load --from-str "" --from-file "")
-(! bfcli chain load)
+(! ${BFCLI} chain load --from-str "" --from-file "")
+(! ${BFCLI} chain load)
 
-(! bfcli chain attach)
+(! ${BFCLI} chain attach)
 
-(! bfcli chain attach --from-str "" --from-file "")
-(! bfcli chain attach)
+(! ${BFCLI} chain attach --from-str "" --from-file "")
+(! ${BFCLI} chain attach)
 
-(! bfcli chain flush)
+(! ${BFCLI} chain flush)
