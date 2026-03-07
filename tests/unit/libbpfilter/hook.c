@@ -29,6 +29,10 @@ static void hook_to_str(void **state)
                         "BF_HOOK_TC_INGRESS");
     assert_string_equal(bf_hook_to_str(BF_HOOK_NF_PRE_ROUTING),
                         "BF_HOOK_NF_PRE_ROUTING");
+    assert_string_equal(bf_hook_to_str(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+                        "BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4");
+    assert_string_equal(bf_hook_to_str(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+                        "BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6");
 }
 
 static void hook_from_str(void **state)
@@ -60,6 +64,10 @@ static void hook_to_flavor(void **state)
                      BF_FLAVOR_CGROUP_SKB);
     assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_SKB_EGRESS),
                      BF_FLAVOR_CGROUP_SKB);
+    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+                     BF_FLAVOR_CGROUP_SOCK_ADDR);
+    assert_int_equal(bf_hook_to_flavor(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+                     BF_FLAVOR_CGROUP_SOCK_ADDR);
 }
 
 static void hook_to_bpf_attach_type(void **state)
@@ -78,6 +86,12 @@ static void hook_to_bpf_attach_type(void **state)
                      BF_BPF_TCX_INGRESS);
     assert_int_equal(bf_hook_to_bpf_attach_type(BF_HOOK_TC_EGRESS),
                      BF_BPF_TCX_ENGRESS);
+    assert_int_equal(
+        bf_hook_to_bpf_attach_type(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+        BF_BPF_CGROUP_INET4_CONNECT);
+    assert_int_equal(
+        bf_hook_to_bpf_attach_type(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+        BF_BPF_CGROUP_INET6_CONNECT);
 }
 
 static void hook_to_bpf_prog_type(void **state)
@@ -97,6 +111,12 @@ static void hook_to_bpf_prog_type(void **state)
                      BF_BPF_PROG_TYPE_SCHED_CLS);
     assert_int_equal(bf_hook_to_bpf_prog_type(BF_HOOK_NF_PRE_ROUTING),
                      BF_BPF_PROG_TYPE_NETFILTER);
+    assert_int_equal(
+        bf_hook_to_bpf_prog_type(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+        BF_BPF_PROG_TYPE_CGROUP_SOCK_ADDR);
+    assert_int_equal(
+        bf_hook_to_bpf_prog_type(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+        BF_BPF_PROG_TYPE_CGROUP_SOCK_ADDR);
 }
 
 static void hook_to_nf_hook(void **state)
@@ -393,11 +413,11 @@ static void hookopts_validate_tc(void **state)
     }
 }
 
-static void hookopts_validate_cgroup(void **state)
+static void hookopts_validate_cgroup_skb(void **state)
 {
     (void)state;
 
-    // Cgroup requires cgpath
+    // cgroup_skb requires cgpath
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         assert_ok(bf_hookopts_new(&hookopts));
@@ -415,7 +435,7 @@ static void hookopts_validate_cgroup(void **state)
         assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_EGRESS));
     }
 
-    // Cgroup doesn't support ifindex
+    // cgroup_skb doesn't support ifindex
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         char opt1[] = "cgpath=/sys/fs/cgroup";
@@ -424,6 +444,45 @@ static void hookopts_validate_cgroup(void **state)
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
         assert_err(bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SKB_INGRESS));
+    }
+}
+
+static void hookopts_validate_cgroup_sock_addr(void **state)
+{
+    (void)state;
+
+    // cgroup_sock_addr requires cgpath
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_err(
+            bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4));
+        assert_err(
+            bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6));
+    }
+
+    // With cgpath, should be valid
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt[] = "cgpath=/sys/fs/cgroup";
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt));
+        assert_ok(
+            bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4));
+        assert_ok(
+            bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6));
+    }
+
+    // cgroup_sock_addr doesn't support ifindex
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt1[] = "cgpath=/sys/fs/cgroup";
+        char opt2[] = "ifindex=1";
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
+        assert_err(
+            bf_hookopts_validate(hookopts, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4));
     }
 }
 
@@ -691,7 +750,8 @@ int main(void)
         cmocka_unit_test(hookopts_parse_invalid_format),
         cmocka_unit_test(hookopts_validate_xdp),
         cmocka_unit_test(hookopts_validate_tc),
-        cmocka_unit_test(hookopts_validate_cgroup),
+        cmocka_unit_test(hookopts_validate_cgroup_skb),
+        cmocka_unit_test(hookopts_validate_cgroup_sock_addr),
         cmocka_unit_test(hookopts_validate_nf),
         cmocka_unit_test(hookopts_pack_and_unpack),
         cmocka_unit_test(hookopts_pack_empty),

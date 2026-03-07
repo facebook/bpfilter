@@ -9,6 +9,7 @@
 
 #include <bpfilter/verdict.h>
 
+struct bf_matcher;
 struct bf_program;
 
 /**
@@ -61,6 +62,15 @@ enum bf_flavor
      * - Return code: 0 to drop, 1 to accept
      */
     BF_FLAVOR_CGROUP_SKB,
+
+    /**
+     * cgroup_sock_addr BPF programs, attached to a cgroup to intercept
+     * socket operations (connect, bind, sendmsg, recvmsg):
+     * - Input: `struct bpf_sock_addr`
+     * - No packet data; L3/L4 protocol from socket metadata
+     * - Return code: 0 to drop, 1 to accept
+     */
+    BF_FLAVOR_CGROUP_SOCK_ADDR,
     _BF_FLAVOR_MAX,
 };
 
@@ -91,8 +101,6 @@ struct bf_flavor_ops
     int (*gen_inline_epilogue)(struct bf_program *program);
 
     int (*gen_inline_set_mark)(struct bf_program *program, uint32_t mark);
-    int (*gen_inline_get_mark)(struct bf_program *program, int reg);
-    int (*gen_inline_get_skb)(struct bf_program *program, int reg);
 
     /**
      * @brief Generate bytecode to redirect a packet to another interface.
@@ -117,6 +125,16 @@ struct bf_flavor_ops
      * value on failure.
      */
     int (*get_verdict)(enum bf_verdict verdict);
+
+    /**
+     * @brief Generate bytecode for a matcher. Required for all flavors.
+     *
+     * @param program Program being generated. Can't be NULL.
+     * @param matcher Matcher to generate code for. Can't be NULL.
+     * @return 0 on success, negative errno on error.
+     */
+    int (*gen_inline_matcher)(struct bf_program *program,
+                              const struct bf_matcher *matcher);
 };
 
 /**
