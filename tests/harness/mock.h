@@ -52,7 +52,7 @@
  * @endcode
  *
  * This module also defines convenience function to simulate a runtime
- * environment such as creating a temporary file to serialize the daemon into.
+ * environment such as creating a temporary file to serialize the context into.
 
 
 MOCKING IS ONLY TO MOCK, not to trigger different code path during testing

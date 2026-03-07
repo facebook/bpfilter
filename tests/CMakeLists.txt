@@ -43,7 +43,6 @@ if (${WITH_COVERAGE})
                 --parallel ${N}
                 --quiet
                 "${CMAKE_SOURCE_DIR}/src/libbpfilter\\*"
-                "${CMAKE_SOURCE_DIR}/src/bpfilter\\*"
         COMMAND
             ${LCOV_BIN}
                 --summary ${CMAKE_BINARY_DIR}/coverage.lcov

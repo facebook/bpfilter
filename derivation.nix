@@ -80,9 +80,6 @@ in
     };
 
     preFixup = ''
-      substituteInPlace $out/lib/systemd/system/bpfilter.service \
-        --replace-fail /usr/sbin/bpfilter $out/bin/bpfilter
-
       # workaround for https://github.com/NixOS/nixpkgs/issues/144170
       substituteInPlace $out/lib/pkgconfig/bpfilter.pc --replace-fail ''${prefix}/ ""
     '';

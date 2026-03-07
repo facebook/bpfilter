@@ -205,8 +205,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
                                BFC_OPT_CHAIN_NAME),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
-            "Print an existing chain\vRequest the chain --name from the daemon "
-            "and print it.",
+            "Print an existing chain\vRequest the chain --name and print it.",
         .cb = bfc_chain_get,
     },
     {

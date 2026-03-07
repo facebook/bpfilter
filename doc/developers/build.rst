@@ -1,7 +1,7 @@
 Build from sources
 ==================
 
-This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run the ``bpfilter`` daemon. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. There is also a nix flake which supports all the make targets.
+This document describes the process to build ``bpfilter`` from sources. While ``bpfilter`` can be built on most systems, a recent (6.6+) Linux kernel is required with ``libbpf`` 1.2+ to run ``bpfilter``. ``bpfilter`` officially supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. There is also a nix flake which supports all the make targets except for ``doc``.
 
 If you want to perform a full build of ``bpfilter`` (including all test tests, code check, benchmarks, and documentation), the following dependencies are required:
 
@@ -101,7 +101,7 @@ The usual CMake options are allowed (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_
 
 A full configuration (without any part disabled) will provide the following targets:
 
-- ``core``, ``bpfilter``, ``libbpfilter``, ``bfcli``: the ``bpfilter`` binaries.
+- ``core``, ``libbpfilter``, ``bfcli``: the ``bpfilter`` binaries.
 - ``test_bin``: build the binaries needed to run the tests (below).
 - ``test``: run all the tests. This command will run ``unit``, ``check``, ``e2e``, and ``integration`` targets. See :doc:`tests` for more information.
 - ``fuzzing``: fuzz the CLI parser indefinitely. Use ``fuzzing_quick`` for a quick, 60-second fuzzing session.
