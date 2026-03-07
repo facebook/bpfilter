@@ -14,8 +14,8 @@
 /**
  * @file pack.h
  *
- * Serialization is used to send/receive bpfilter objects to and from the
- * daemon. While bpfilter originally used a custom logic to convert its objects
+ * Serialization is used to persist and transfer bpfilter objects. While
+ * bpfilter originally used a custom logic to convert its objects
  * into binary data, it was inefficient and didn't support different versions of
  * the same object (when fields are added or removed). Instead, the new packing
  * logic provides an API to (de)serialize bpfilter objects using

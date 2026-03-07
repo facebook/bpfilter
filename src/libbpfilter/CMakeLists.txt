@@ -28,8 +28,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/logger.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/matcher.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/pack.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/request.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/response.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/rule.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/set.h
@@ -54,8 +52,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/request.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
     ${CMAKE_CURRENT_SOURCE_DIR}/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
@@ -85,7 +81,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/swich.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/swich.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xlate.c
 
     # External
     ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h

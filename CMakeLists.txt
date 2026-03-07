@@ -90,7 +90,6 @@ target_link_options(bf_global_flags_cxx
 
 add_subdirectory(src/libbpfilter)
 add_subdirectory(src/bfcli)
-add_subdirectory(src/bpfilter)
 
 if (NOT ${NO_DOCS})
     add_subdirectory(doc)

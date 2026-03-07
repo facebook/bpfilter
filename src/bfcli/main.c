@@ -15,8 +15,6 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/request.h>
-#include <bpfilter/response.h>
 #include <bpfilter/set.h>
 #include <bpfilter/version.h>
 

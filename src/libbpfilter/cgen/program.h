@@ -257,7 +257,7 @@ int bf_program_generate(struct bf_program *program);
  * loaded, all the maps are destroyed.
  *
  * Once the loading succeeds, the program and the maps are pinned to the
- * filesystem, unless the daemon is in transient mode. If the BPF objects can't
+ * filesystem, unless bpfilter is in transient mode. If the BPF objects can't
  * be pinned, the program is unloaded and the maps destroyed.
  *
  * @param prog Program to load into the kernel. Can't be NULL and must contain

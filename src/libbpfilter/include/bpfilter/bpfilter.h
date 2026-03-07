@@ -16,7 +16,7 @@ struct bf_set;
 struct bf_hookopts;
 
 /**
- * @brief Get the ruleset from the daemon.
+ * @brief Get the current ruleset.
  *
  * **Request payload format**
  * The request doesn't contain data.
@@ -61,7 +61,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
 /**
  * @brief Load a ruleset.
  *
- * The daemon will flush the whole ruleset and install the chains defined in
+ * The library will flush the whole ruleset and install the chains defined in
  * the provided lists instead.
  *
  * `hookopts` should contain as many elements as `chains`, so they can be

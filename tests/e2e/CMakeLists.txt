@@ -42,7 +42,7 @@ function(bf_add_e2e_test GROUP SOURCE)
 endfunction()
 
 add_custom_target(e2e_bin
-    DEPENDS setuserns libbpfilter bfcli bpfilter
+    DEPENDS setuserns libbpfilter bfcli
     COMMENT "Building end-to-end test binaries"
 )
 

@@ -10,7 +10,7 @@ file(GLOB_RECURSE libbpfilter_fuzz_srcs
 # BPF stub sources are compiled via ElfStubs, not as regular C files.
 list(FILTER libbpfilter_fuzz_srcs EXCLUDE REGEX ".*/bpf/.*\\.bpf\\.c$")
 
-add_executable(fuzz_parser
+add_executable(fuzz_parser EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_parser.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/helper.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/ruleset.c

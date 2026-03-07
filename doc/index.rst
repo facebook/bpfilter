@@ -61,6 +61,6 @@
 - **Low overhead**: minimal resource consumption with maximized efficiency
 - **Developer-friendly**: clean architecture with clear separation of components
 
-**bpfilter** combines three components: a CLI that allows users to define filtering rules in human-readable text, a daemon that converts these rules into efficient BPF programs, and a library that facilitates seamless communication between applications and the filtering subsystem.
+**bpfilter** combines two components: ``bfcli``, a CLI that allows users to define filtering rules in human-readable text, and ``libbpfilter``, a library that converts these rules into efficient BPF programs and manages their lifecycle.
 
 Want to know more about **bpfilter**? Check the :doc:`user's guide <usage/index>`, the :doc:`developer documentation <developers/build>`, or watch our talk at `Scale <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_!
