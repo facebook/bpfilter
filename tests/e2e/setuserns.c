@@ -12,13 +12,38 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
+
+/* glibc < 2.36 doesn't provide fsopen/fsconfig/fsmount/move_mount wrappers,
+ * use raw syscall() instead. */
+static inline int fsopen(const char *fsname, unsigned int flags)
+{
+    return (int)syscall(__NR_fsopen, fsname, flags);
+}
+
+static inline int fsconfig(int fd, unsigned int cmd, const char *key,
+                           const char *value, int aux)
+{
+    return (int)syscall(__NR_fsconfig, fd, cmd, key, value, aux);
+}
+
+static inline int fsmount(int fd, unsigned int flags, unsigned int attr_flags)
+{
+    return (int)syscall(__NR_fsmount, fd, flags, attr_flags);
+}
+
+static inline int move_mount(int from_dirfd, const char *from_pathname,
+                             int to_dirfd, const char *to_pathname,
+                             unsigned int flags)
+{
+    return (int)syscall(__NR_move_mount, from_dirfd, from_pathname, to_dirfd,
+                        to_pathname, flags);
+}
 
 #define CMD_LEN 64
 static char cmd[CMD_LEN];
