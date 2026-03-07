@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #include <bpfilter/bpf.h>
@@ -37,6 +38,8 @@ struct bf_ctx
 {
     /// BPF token file descriptor
     int token_fd;
+
+    int lock_fd;
 
     bf_list cgens;
 
@@ -111,6 +114,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     _ctx->with_bpf_token = with_bpf_token;
     _ctx->bpffs_path = bpffs_path;
     _ctx->verbose = verbose;
+    _ctx->lock_fd = -1;
 
     _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
@@ -161,6 +165,7 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     closep(&(*ctx)->token_fd);
+    closep(&(*ctx)->lock_fd);
     bf_list_clean(&(*ctx)->cgens);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
@@ -377,6 +382,7 @@ static int _bf_ctx_discover(void)
 
 int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
+    _cleanup_close_ int pindir_fd = -1;
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
@@ -386,11 +392,21 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 
     _bf_global_ctx = _ctx;
 
+    pindir_fd = bf_ctx_get_pindir_fd();
+    if (pindir_fd < 0)
+        return bf_err_r(pindir_fd, "failed to get pin directory FD");
+
+    r = flock(pindir_fd, LOCK_EX | LOCK_NB);
+    if (r)
+        return bf_err_r(-errno, "failed to lock pin directory");
+
     r = _bf_ctx_discover();
     if (r) {
         _bf_ctx_free(&_bf_global_ctx);
         return bf_err_r(r, "failed to discover chains");
     }
+
+    _bf_global_ctx->lock_fd = TAKE_FD(pindir_fd);
 
     TAKE_PTR(_ctx);
 
