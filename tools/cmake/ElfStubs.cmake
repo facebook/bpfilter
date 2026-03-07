@@ -55,7 +55,7 @@ function(bf_target_add_elfstubs TARGET)
                     -target bpf
                     -g
                     -I ${CMAKE_SOURCE_DIR}/src/libbpfilter/include
-                    -I ${CMAKE_SOURCE_DIR}/src/bpfilter
+                    -I ${CMAKE_SOURCE_DIR}/src/libbpfilter
                     -I ${CMAKE_SOURCE_DIR}/src/external/include
                     -c ${_LOCAL_DIR}/${_stub}.bpf.c
                     -o ${ELFSTUBS_ELF_DIR}/${_stub}.o
