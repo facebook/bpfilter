@@ -10,12 +10,12 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
-#include "cgen/elfstub.h"
 #include "cgen/fixup.h"
 #include "cgen/printer.h"
 #include "cgen/runtime.h"

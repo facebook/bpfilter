@@ -7,6 +7,7 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
@@ -22,7 +23,6 @@
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
-#include "ctx.h"
 
 int _bf_cli_ruleset_flush(const struct bf_request *request,
                           struct bf_response **response)
@@ -144,8 +144,7 @@ int _bf_cli_ruleset_set(const struct bf_request *request,
         if (r)
             goto err_load;
 
-        r = bf_cgen_set(cgen, bf_request_ns(request),
-                        hookopts ? &hookopts : NULL);
+        r = bf_cgen_set(cgen, hookopts ? &hookopts : NULL);
         if (r) {
             bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
             goto err_load;
@@ -219,8 +218,7 @@ int _bf_cli_chain_set(const struct bf_request *request,
         (void)bf_ctx_delete_cgen(old_cgen, true);
     }
 
-    r = bf_cgen_set(new_cgen, bf_request_ns(request),
-                    hookopts ? &hookopts : NULL);
+    r = bf_cgen_set(new_cgen, hookopts ? &hookopts : NULL);
     if (r)
         return r;
 
@@ -446,7 +444,7 @@ int _bf_cli_chain_attach(const struct bf_request *request,
     if (r)
         return bf_err_r(r, "failed to validate hook options");
 
-    r = bf_cgen_attach(cgen, bf_request_ns(request), &hookopts);
+    r = bf_cgen_attach(cgen, &hookopts);
     if (r)
         return bf_err_r(r, "failed to attach codegen to hook");
 

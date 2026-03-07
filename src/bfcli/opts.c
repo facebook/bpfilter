@@ -6,8 +6,12 @@
 #include "opts.h"
 
 #include <argp.h>
+#include <errno.h>
 
+#include <bpfilter/bpfilter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/logger.h>
 
 #include "bpfilter/list.h"
 #include "chain.h"
@@ -42,6 +46,9 @@
  * @param id Unique ID number.
  */
 #define BFC_OPT_LONG_FLAG_ONLY(id) (1000 + (id))
+
+/// Index of the ACTION argument in argv, set during stage-1 parsing.
+static int _bfc_action_argv_idx = 0;
 
 static const char * const _bfc_object_strs[] = {
     "ruleset", // BFC_OBJECT_RULESET
@@ -94,6 +101,36 @@ enum bfc_action bfc_action_from_str(const char *str)
 
     return -EINVAL;
 }
+
+static const char * const _bfc_verbose_strs[] = {
+    [BF_VERBOSE_DEBUG] = "debug",
+    [BF_VERBOSE_BPF] = "bpf",
+    [BF_VERBOSE_BYTECODE] = "bytecode",
+};
+static_assert_enum_mapping(_bfc_verbose_strs, _BF_VERBOSE_MAX);
+
+static enum bf_verbose _bfc_verbose_from_str(const char *str)
+{
+    assert(str);
+
+    for (enum bf_verbose op = 0; op < _BF_VERBOSE_MAX; ++op) {
+        if (bf_streq(_bfc_verbose_strs[op], str))
+            return op;
+    }
+
+    return -EINVAL;
+}
+
+/**
+ * Deprecated global option keys. These are stage-1 only flags and must not
+ * be part of @ref bfc_opts_option_id (which indexes @c _bfc_options[]).
+ */
+enum
+{
+    _BFC_DEPRECATED_NO_IPTABLES = 100,
+    _BFC_DEPRECATED_NO_NFTABLES,
+    _BFC_DEPRECATED_NO_CLI,
+};
 
 enum bfc_opts_option_id
 {
@@ -308,6 +345,33 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
     case 'V':
         _bfc_opts_version(state, arg, opts);
         break;
+    case BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_IPTABLES):
+        bf_warn("option --no-iptables is deprecated");
+        break;
+    case BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_NFTABLES):
+        bf_warn("option --no-nftables is deprecated");
+        break;
+    case BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_CLI):
+        bf_warn("option --no-cli is deprecated");
+        break;
+    case 't':
+        opts->with_bpf_token = true;
+        break;
+    case 'b':
+        opts->bpffs_path = arg;
+        break;
+    case 'v': {
+        enum bf_verbose opt = _bfc_verbose_from_str(arg);
+        if ((int)opt < 0)
+            argp_error(
+                state,
+                "unknown --verbose option '%s', valid options: [debug, bpf, bytecode]",
+                arg);
+        if (opt == BF_VERBOSE_DEBUG)
+            bf_log_set_level(BF_LOG_DBG);
+        opts->verbose |= BF_FLAG(opt);
+        break;
+    }
     case ARGP_KEY_ARG:
         if (state->arg_num == 0) {
             opts->object = bfc_object_from_str(arg);
@@ -322,6 +386,7 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
                 argp_error(state, "object '%s' does not support action '%s'",
                            bfc_object_to_str(opts->object),
                            bfc_action_to_str(opts->action));
+            _bfc_action_argv_idx = state->next - 1;
             state->next = state->argc;
         } else {
             return ARGP_ERR_UNKNOWN;
@@ -652,15 +717,64 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE, "Update an existing chain"),
         BFC_HELP_ENTRY(BFC_ACTION_UPDATE_SET, "Update a set in a chain"),
         BFC_HELP_ENTRY(BFC_ACTION_FLUSH, "Remove a chain"),
-        {.name = "help", .key = 'h', .group = -1, .doc = "Print help"},
-        {.name = "usage",
-         .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE),
-         .group = -1,
-         .doc = "Print short usage message"},
-        {.name = "version",
-         .key = 'V',
-         .group = -1,
-         .doc = "Print program version"},
+        {
+            .name = "no-iptables",
+            .key = BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_IPTABLES),
+            .doc = "DEPRECATED. Disable iptables support",
+            .group = -1,
+        },
+        {
+            .name = "no-nftables",
+            .key = BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_NFTABLES),
+            .doc = "DEPRECATED. Disable nftables support",
+            .group = -1,
+        },
+        {
+            .name = "no-cli",
+            .key = BFC_OPT_LONG_FLAG_ONLY(_BFC_DEPRECATED_NO_CLI),
+            .doc = "DEPRECATED. Disable CLI support",
+            .group = -1,
+        },
+        {
+            .name = "with-bpf-token",
+            .key = 't',
+            .doc =
+                "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
+            .group = -1,
+        },
+        {
+            .name = "bpffs-path",
+            .key = 'b',
+            .arg = "BPFFS_PATH",
+            .doc =
+                "Path to the bpffs to pin the BPF objects into. Defaults to /sys/fs/bpf.",
+            .group = -1,
+        },
+        {
+            .name = "verbose",
+            .key = 'v',
+            .arg = "VERBOSE_FLAG",
+            .doc = "Verbose flags to enable. Can be used more than once.",
+            .group = -1,
+        },
+        {
+            .name = "help",
+            .key = 'h',
+            .group = -1,
+            .doc = "Print help",
+        },
+        {
+            .name = "usage",
+            .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_USAGE),
+            .group = -1,
+            .doc = "Print short usage message",
+        },
+        {
+            .name = "version",
+            .key = 'V',
+            .group = -1,
+            .doc = "Print program version",
+        },
         {0},
     };
     static const struct argp parser = {
@@ -706,9 +820,9 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
     (void)snprintf(_bfc_name, _BFC_NAME_LEN, "%s %s %s", argv[0],
                    bfc_object_to_str(opts->object),
                    bfc_action_to_str(opts->action));
-    argv[2] = _bfc_name;
-    argc -= 2;
-    argv += 2;
+    argv[_bfc_action_argv_idx] = _bfc_name;
+    argc -= _bfc_action_argv_idx;
+    argv += _bfc_action_argv_idx;
 
     r = argp_parse(&subparser, argc, argv, ARGP_NO_HELP, NULL, opts);
     if (r)

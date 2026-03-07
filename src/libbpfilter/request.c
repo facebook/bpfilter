@@ -31,10 +31,6 @@ struct bf_request
 {
     enum bf_request_cmd cmd;
 
-    /** Namespaces the request is coming from. This field will be automatically
-     * populated by the daemon when receiving the request. */
-    struct bf_ns *ns;
-
     /** File descriptor of the receiver socket. This field is automatically
      * populated by the daemon when receiving the request. The request doesn't
      * own the file descriptor. */
@@ -138,12 +134,6 @@ enum bf_request_cmd bf_request_cmd(const struct bf_request *request)
     return request->cmd;
 }
 
-struct bf_ns *bf_request_ns(const struct bf_request *request)
-{
-    assert(request);
-    return request->ns;
-}
-
 int bf_request_fd(const struct bf_request *request)
 {
     assert(request);
@@ -167,12 +157,6 @@ size_t bf_request_size(const struct bf_request *request)
     assert(request);
 
     return sizeof(struct bf_request) + request->data_len;
-}
-
-void bf_request_set_ns(struct bf_request *request, struct bf_ns *ns)
-{
-    assert(request);
-    request->ns = ns;
 }
 
 void bf_request_set_fd(struct bf_request *request, int fd)

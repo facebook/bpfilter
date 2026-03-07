@@ -15,8 +15,10 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/btf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/chain.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/counter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/ctx.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/elfstub.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
@@ -25,7 +27,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/list.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/logger.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/matcher.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/ns.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/pack.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/request.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/response.h
@@ -40,8 +41,10 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cli.c
     ${CMAKE_CURRENT_SOURCE_DIR}/counter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
@@ -51,7 +54,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/request.c
     ${CMAKE_CURRENT_SOURCE_DIR}/response.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
@@ -63,7 +65,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup_skb.h        ${CMAKE_CURRENT_SOURCE_DIR}/cgen/cgroup_skb.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.h              ${CMAKE_CURRENT_SOURCE_DIR}/cgen/dump.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/fixup.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/handle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
@@ -85,9 +86,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/tc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/xlate.c
-
-    # Global context
-    ${CMAKE_CURRENT_SOURCE_DIR}/ctx.h                    ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
 
     # External
     ${CMAKE_SOURCE_DIR}/src/external/include/mpack.h
