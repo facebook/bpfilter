@@ -8,6 +8,7 @@
 #include <argp.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -24,7 +25,129 @@
 #include <bpfilter/version.h>
 
 #include "ctx.h"
-#include "opts.h"
+
+#define BF_DEFAULT_BPFFS_PATH "/sys/fs/bpf"
+
+enum
+{
+    BF_OPT_NO_IPTABLES_KEY,
+    BF_OPT_NO_NFTABLES_KEY,
+    BF_OPT_NO_CLI_KEY,
+    BF_OPT_WITH_BPF_TOKEN,
+    BF_OPT_BPFFS_PATH,
+};
+
+struct bf_options
+{
+    bool transient;
+    bool with_bpf_token;
+    const char *bpffs_path;
+    uint16_t verbose;
+};
+
+static const char *_bf_verbose_strs[] = {
+    [BF_VERBOSE_DEBUG] = "debug",
+    [BF_VERBOSE_BPF] = "bpf",
+    [BF_VERBOSE_BYTECODE] = "bytecode",
+};
+
+static_assert_enum_mapping(_bf_verbose_strs, _BF_VERBOSE_MAX);
+
+static enum bf_verbose _bf_verbose_from_str(const char *str)
+{
+    assert(str);
+
+    for (enum bf_verbose verbose = 0; verbose < _BF_VERBOSE_MAX; ++verbose) {
+        if (bf_streq(_bf_verbose_strs[verbose], str))
+            return verbose;
+    }
+
+    return -EINVAL;
+}
+
+static struct argp_option _bf_options[] = {
+    {"transient", 't', 0, 0,
+     "Do not load or save runtime context and remove all BPF programs on shutdown",
+     0},
+    {"buffer-len", 'b', "BUF_LEN_POW", 0,
+     "DEPRECATED. Size of the BPF log buffer as a power of 2 (only used when --verbose is used). Default: 16.",
+     0},
+    {"no-iptables", BF_OPT_NO_IPTABLES_KEY, 0, 0,
+     "DEPRECATED. Disable iptables support", 0},
+    {"no-nftables", BF_OPT_NO_NFTABLES_KEY, 0, 0,
+     "DEPRECATED. Disable nftables support", 0},
+    {"no-cli", BF_OPT_NO_CLI_KEY, 0, 0, "DEPRECATED. Disable CLI support", 0},
+    {"with-bpf-token", BF_OPT_WITH_BPF_TOKEN, NULL, 0,
+     "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
+     0},
+    {"bpffs-path", BF_OPT_BPFFS_PATH, "BPFFS_PATH", 0,
+     "Path to the bpffs to pin the BPF objects into. Defaults to " BF_DEFAULT_BPFFS_PATH
+     ".",
+     0},
+    {"verbose", 'v', "VERBOSE_FLAG", 0,
+     "Verbose flags to enable. Can be used more than once.", 0},
+    {0},
+};
+
+static error_t _bf_opts_parser(int key, char *arg, struct argp_state *state)
+{
+    struct bf_options *args = state->input;
+    enum bf_verbose opt;
+
+    (void)arg;
+
+    switch (key) {
+    case 't':
+        args->transient = true;
+        break;
+    case 'b':
+        bf_warn(
+            "--buffer-len is deprecated, buffer size is defined automatically");
+        break;
+    case BF_OPT_NO_IPTABLES_KEY:
+        bf_warn("--no-iptables is deprecated");
+        break;
+    case BF_OPT_NO_NFTABLES_KEY:
+        bf_warn("--no-nftables is deprecated");
+        break;
+    case BF_OPT_NO_CLI_KEY:
+        bf_warn("--no-cli is deprecated");
+        break;
+    case BF_OPT_WITH_BPF_TOKEN:
+        args->with_bpf_token = true;
+        bf_info("using a BPF token");
+        break;
+    case BF_OPT_BPFFS_PATH:
+        args->bpffs_path = arg;
+        bf_info("using bpffs at %s", args->bpffs_path);
+        break;
+    case 'v':
+        opt = _bf_verbose_from_str(arg);
+        if ((int)opt < 0) {
+            return bf_err_r(
+                (int)opt,
+                "unknown --verbose option '%s', valid --verbose options: [debug, bpf, bytecode]",
+                arg);
+        }
+        bf_info("enabling verbose for '%s'", arg);
+        if (opt == BF_VERBOSE_DEBUG)
+            bf_log_set_level(BF_LOG_DBG);
+        args->verbose |= BF_FLAG(opt);
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
+    }
+
+    return 0;
+}
+
+static int _bf_opts_init(struct bf_options *opts, int argc, char *argv[])
+{
+    struct argp argp = {_bf_options, _bf_opts_parser, NULL, NULL, 0, NULL,
+                        NULL};
+
+    return argp_parse(&argp, argc, argv, 0, 0, opts);
+}
 
 /**
  * Global flag to indicate whether the daemon should stop.
@@ -46,15 +169,21 @@ void _bf_sig_handler(int sig)
 /**
  * Initialize bpfilter's daemon runtime.
  *
- * Setup signal handler (for graceful shutdown), load context from disk. If no
- * context can be loaded, a new one is initialized from scratch.
+ * Setup signal handler (for graceful shutdown), initialize a fresh context,
+ * discover existing chains from bpffs, and initialise various front-ends.
  *
  * @return 0 on success, negative error code on failure.
  */
 static int _bf_init(int argc, char *argv[])
 {
     struct sigaction sighandler = {.sa_handler = _bf_sig_handler};
-    int r = 0;
+    struct bf_options opts = {
+        .transient = false,
+        .with_bpf_token = false,
+        .bpffs_path = BF_DEFAULT_BPFFS_PATH,
+        .verbose = 0,
+    };
+    int r;
 
     if (sigaction(SIGINT, &sighandler, NULL) < 0)
         return bf_err_r(errno, "can't override handler for SIGINT");
@@ -64,7 +193,7 @@ static int _bf_init(int argc, char *argv[])
 
     bf_info("starting bpfilter version %s", BF_VERSION);
 
-    r = bf_opts_init(argc, argv);
+    r = _bf_opts_init(&opts, argc, argv);
     if (r < 0)
         return bf_err_r(r, "failed to parse command line arguments");
 
@@ -72,29 +201,12 @@ static int _bf_init(int argc, char *argv[])
     if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
 
-    r = bf_ctx_setup();
+    r = bf_ctx_setup(opts.transient, opts.with_bpf_token, opts.bpffs_path,
+                     opts.verbose);
     if (r)
         return bf_err_r(r, "failed to setup context");
 
     bf_ctx_dump(EMPTY_PREFIX);
-
-    return 0;
-}
-
-/**
- * Clean up bpfilter's daemon runtime.
- *
- * @return 0 on success, negative error code on failure.
- */
-static int _bf_clean(void)
-{
-    int r;
-
-    bf_ctx_teardown(bf_opts_transient());
-
-    r = bf_ctx_rm_pindir();
-    if (r < 0 && r != -ENOENT && r != -ENOTEMPTY)
-        return bf_err_r(r, "failed to remove pin directory");
 
     return 0;
 }
@@ -274,7 +386,7 @@ int main(int argc, char *argv[])
     if (r < 0)
         return bf_err_r(r, "run() failed");
 
-    _bf_clean();
+    bf_ctx_teardown();
     bf_btf_teardown();
 
     return r;

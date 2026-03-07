@@ -32,7 +32,6 @@
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
 #include "ctx.h"
-#include "opts.h"
 
 #define _BF_PROG_NAME "bf_prog"
 #define _BF_CTX_PIN_NAME "bf_ctx"
@@ -236,7 +235,7 @@ void bf_cgen_free(struct bf_cgen **cgen)
      * the chain hasn't been pinned (e.g. due to a failure), the pin directory
      * will be empty and will be removed. If the chain is valid and pinned, then
      * the removal of the pin directory will fail, but that's alright. */
-    if (bf_opts_persist() && (pin_fd = bf_ctx_get_pindir_fd()) >= 0)
+    if (!bf_ctx_is_transient() && (pin_fd = bf_ctx_get_pindir_fd()) >= 0)
         bf_rmdir_at(pin_fd, (*cgen)->chain->name, false);
 
     bf_handle_free(&(*cgen)->handle);
@@ -311,7 +310,7 @@ int bf_cgen_set(struct bf_cgen *cgen, const struct bf_ns *ns,
 {
     _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = bf_opts_persist();
+    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
@@ -367,7 +366,7 @@ int bf_cgen_load(struct bf_cgen *cgen)
 {
     _free_bf_program_ struct bf_program *prog = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = bf_opts_persist();
+    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
@@ -413,7 +412,7 @@ int bf_cgen_attach(struct bf_cgen *cgen, const struct bf_ns *ns,
                    struct bf_hookopts **hookopts)
 {
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = bf_opts_persist();
+    bool persist = !bf_ctx_is_transient();
     int r;
 
     assert(cgen);
@@ -509,7 +508,7 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
     _free_bf_program_ struct bf_program *new_prog = NULL;
     _free_bf_handle_ struct bf_handle *new_handle = NULL;
     _cleanup_close_ int pindir_fd = -1;
-    bool persist = bf_opts_persist();
+    bool persist = !bf_ctx_is_transient();
     struct bf_handle *old_handle;
     int r;
 

@@ -26,7 +26,6 @@
 
 #include "cgen/cgen.h"
 #include "cgen/elfstub.h"
-#include "opts.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
@@ -47,6 +46,18 @@ struct bf_ctx
     bf_list cgens;
 
     struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
+
+    /// If true, don't persist state and unload programs on exit.
+    bool transient;
+
+    /// Pass a token to BPF system calls, obtained from bpffs.
+    bool with_bpf_token;
+
+    /// Path to the bpffs to pin the BPF objects into.
+    const char *bpffs_path;
+
+    /// Verbose flags.
+    uint16_t verbose;
 };
 
 static void _bf_ctx_free(struct bf_ctx **ctx);
@@ -54,25 +65,24 @@ static void _bf_ctx_free(struct bf_ctx **ctx);
 /// Global daemon context. Hidden in this translation unit.
 static struct bf_ctx *_bf_global_ctx = NULL;
 
-static int _bf_ctx_gen_token(void)
+static int _bf_ctx_gen_token(const char *bpffs_path)
 {
     _cleanup_close_ int mnt_fd = -1;
     _cleanup_close_ int bpffs_fd = -1;
     _cleanup_close_ int token_fd = -1;
 
-    mnt_fd = open(bf_opts_bpffs_path(), O_DIRECTORY);
+    mnt_fd = open(bpffs_path, O_DIRECTORY);
     if (mnt_fd < 0)
-        return bf_err_r(errno, "failed to open '%s'", bf_opts_bpffs_path());
+        return bf_err_r(errno, "failed to open '%s'", bpffs_path);
 
     bpffs_fd = openat(mnt_fd, ".", 0, O_RDWR);
     if (bpffs_fd < 0)
-        return bf_err_r(errno, "failed to get bpffs FD from '%s'",
-                        bf_opts_bpffs_path());
+        return bf_err_r(errno, "failed to get bpffs FD from '%s'", bpffs_path);
 
     token_fd = bf_bpf_token_create(bpffs_fd);
     if (token_fd < 0) {
         return bf_err_r(token_fd, "failed to create BPF token for '%s'",
-                        bf_opts_bpffs_path());
+                        bpffs_path);
     }
 
     return TAKE_FD(token_fd);
@@ -84,25 +94,36 @@ static int _bf_ctx_gen_token(void)
  * On failure, @p ctx is left unchanged.
  *
  * @param ctx New context to create. Can't be NULL.
+ * @param transient If true, don't persist state and unload programs on exit.
+ * @param with_bpf_token If true, create a BPF token from bpffs.
+ * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
+ * @param verbose Bitmask of verbose flags.
  * @return 0 on success, negative errno value on failure.
  */
-static int _bf_ctx_new(struct bf_ctx **ctx)
+static int _bf_ctx_new(struct bf_ctx **ctx, bool transient, bool with_bpf_token,
+                       const char *bpffs_path, uint16_t verbose)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
     assert(ctx);
+    assert(bpffs_path);
 
     _ctx = calloc(1, sizeof(*_ctx));
     if (!_ctx)
         return -ENOMEM;
+
+    _ctx->transient = transient;
+    _ctx->with_bpf_token = with_bpf_token;
+    _ctx->bpffs_path = bpffs_path;
+    _ctx->verbose = verbose;
 
     r = bf_ns_init(&_ctx->ns, getpid());
     if (r)
         return bf_err_r(r, "failed to initialise current bf_ns");
 
     _ctx->token_fd = -1;
-    if (bf_opts_with_bpf_token()) {
+    if (_ctx->with_bpf_token) {
         _cleanup_close_ int token_fd = -1;
 
         r = bf_btf_kernel_has_token();
@@ -114,7 +135,7 @@ static int _bf_ctx_new(struct bf_ctx **ctx)
         if (r)
             return bf_err_r(r, "failed to check for BPF token support");
 
-        token_fd = _bf_ctx_gen_token();
+        token_fd = _bf_ctx_gen_token(_ctx->bpffs_path);
         if (token_fd < 0)
             return bf_err_r(token_fd, "failed to generate a BPF token");
 
@@ -310,10 +331,10 @@ static int _bf_ctx_discover(void)
     int iter_fd;
     int r;
 
-    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
     if (bpffs_fd < 0) {
         return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        bf_opts_bpffs_path());
+                        _bf_global_ctx->bpffs_path);
     }
 
     pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", false);
@@ -381,18 +402,19 @@ static int _bf_ctx_discover(void)
     return 0;
 }
 
-int bf_ctx_setup(void)
+int bf_ctx_setup(bool transient, bool with_bpf_token, const char *bpffs_path,
+                 uint16_t verbose)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    r = _bf_ctx_new(&_ctx);
+    r = _bf_ctx_new(&_ctx, transient, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
     _bf_global_ctx = TAKE_PTR(_ctx);
 
-    if (!bf_opts_transient()) {
+    if (!bf_ctx_is_transient()) {
         r = _bf_ctx_discover();
         if (r) {
             _bf_ctx_free(&_bf_global_ctx);
@@ -403,13 +425,8 @@ int bf_ctx_setup(void)
     return 0;
 }
 
-void bf_ctx_teardown(bool clear)
+void bf_ctx_teardown(void)
 {
-    if (clear) {
-        bf_list_foreach (&_bf_global_ctx->cgens, cgen_node)
-            bf_cgen_unload(bf_list_node_get_data(cgen_node));
-    }
-
     _bf_ctx_free(&_bf_global_ctx);
 }
 
@@ -470,16 +487,16 @@ int bf_ctx_get_pindir_fd(void)
     _cleanup_close_ int bpffs_fd = -1;
     _cleanup_close_ int pindir_fd = -1;
 
-    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
     if (bpffs_fd < 0) {
         return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        bf_opts_bpffs_path());
+                        _bf_global_ctx->bpffs_path);
     }
 
     pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", true);
     if (pindir_fd < 0) {
         return bf_err_r(pindir_fd, "failed to open pin directory %s/bpfilter",
-                        bf_opts_bpffs_path());
+                        _bf_global_ctx->bpffs_path);
     }
 
     return TAKE_FD(pindir_fd);
@@ -490,10 +507,10 @@ int bf_ctx_rm_pindir(void)
     _cleanup_close_ int bpffs_fd = -1;
     int r;
 
-    bpffs_fd = bf_opendir(bf_opts_bpffs_path());
+    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
     if (bpffs_fd < 0) {
         return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        bf_opts_bpffs_path());
+                        _bf_global_ctx->bpffs_path);
     }
 
     r = bf_rmdir_at(bpffs_fd, "bpfilter", false);
@@ -506,4 +523,14 @@ int bf_ctx_rm_pindir(void)
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
 {
     return _bf_global_ctx->stubs[id];
+}
+
+bool bf_ctx_is_transient(void)
+{
+    return _bf_global_ctx->transient;
+}
+
+bool bf_ctx_is_verbose(enum bf_verbose opt)
+{
+    return _bf_global_ctx->verbose & BF_FLAG(opt);
 }
