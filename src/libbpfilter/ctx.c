@@ -30,7 +30,7 @@
 /**
  * @struct bf_ctx
  *
- * bpfilter working context. Only one context is used during the daemon's
+ * bpfilter working context. Only one context is used during the library's
  * lifetime.
  */
 struct bf_ctx
@@ -54,7 +54,7 @@ struct bf_ctx
 
 static void _bf_ctx_free(struct bf_ctx **ctx);
 
-/// Global daemon context. Hidden in this translation unit.
+/// Global runtime context. Hidden in this translation unit.
 static struct bf_ctx *_bf_global_ctx = NULL;
 
 static int _bf_ctx_gen_token(const char *bpffs_path)

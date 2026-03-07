@@ -85,7 +85,7 @@ End-to-end tests are designed to validate bpfilter's behaviour as seen by the us
 
 **Example**
 
-``e2e_test_util.sh`` provides functions to create a sandboxed environment and start the ``bpfilter`` daemon. Here is an example of a simple end-to-end test that creates a sandbox and starts ``bpfilter``:
+``e2e_test_util.sh`` provides functions to create a sandboxed environment. Here is an example of a simple end-to-end test that creates a sandbox:
 
 .. code-block:: shell
 
@@ -97,7 +97,6 @@ End-to-end tests are designed to validate bpfilter's behaviour as seen by the us
     . "$(dirname "$0")"/../e2e_test_util.sh
 
     make_sandbox
-    start_bpfilter
 
     # Ping the sandbox's IPv4 address from the sandboxed namespace
     ${FROM_NS} ping -c 1 -W 0.1 ${NS_IP_ADDR}

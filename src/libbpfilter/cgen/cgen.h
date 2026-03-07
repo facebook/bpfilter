@@ -67,7 +67,7 @@ int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd);
  * If one or more programs are loaded, they won't be unloaded. Use @ref
  * bf_cgen_unload first to ensure programs are unloaded. This behaviour
  * is expected so @ref bf_cgen can be freed without unloading the BPF
- * program, during a daemon restart for example.
+ * program, during a restart for example.
  *
  * @param cgen Codegen to free. Can't be NULL.
  */

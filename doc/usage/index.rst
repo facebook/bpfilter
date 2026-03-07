@@ -6,15 +6,12 @@ Usage
    :maxdepth: 2
    :caption: Usage
 
-   daemon
    bfcli
 
 
-``bpfilter`` is composed of two main parts that work together: the client used by the users to define the filtering rules and send them to the **daemon** that performs the heavy lifting of generating the BPF bytecode.
+``bpfilter`` is composed of two main parts: ``libbpfilter``, the core library that generates and manages BPF programs, and ``bfcli``, the CLI used to define filtering rules. ``bfcli`` calls ``libbpfilter`` directly to translate rules into BPF programs and load them into the kernel.
 
-Before anything, you will have to run the daemon on your system, see :doc:`daemon` for more details.
-
-Then, use ``bfcli`` to create, update, or read chains.
+See :doc:`bfcli` for the full command reference and filter syntax.
 
 Install
 -------
@@ -31,7 +28,7 @@ If you use a different distribution, you can still build and use **bpfilter** if
 Example usage
 -------------
 
-From here on, we assume **bpfilter** has been installed on your system. If you build it locally, you will need to substitute the ``bpfilter`` command with ``$BUILD_DIR/output/sbin/bpfilter``, same for ``bfcli``. The example below is meant to familiarize you with **bpfilter**, more in-depth information can be found throughout the documentation.
+From here on, we assume **bpfilter** has been installed on your system. If you build it locally, you will need to substitute the ``bfcli`` command with ``$BUILD_DIR/output/bin/bfcli``. The example below is meant to familiarize you with **bpfilter**, more in-depth information can be found throughout the documentation.
 
 This example will block ``ping`` requests sent going out of the local host to a remote server.
 
@@ -53,19 +50,9 @@ Let's check if we can ping ``facebook.com`` before we do anything:
 	rtt min/avg/max/mdev = 23.596/25.493/28.622/1.880 ms
 
 
-**Start the daemon**
-
-The daemon is responsible for receiving the user-defined filtering rules, and translating them into BPF programs. We will start it in ``--transient`` mode, so all the filtering programs defined will be discarded when we stop it, preventing any mistake on our side!
-
-.. code-block:: bash
-
-	$ sudo bpfilter --transient
-	info   : waiting for requests...
-
-
 **Create a new filtering rule**
 
-Now that the daemon is up and running, we will use ``bfcli`` to send a filtering chain. A chain is a set of rules to filter packets on:
+Use ``bfcli`` to create a filtering chain. A chain is a set of rules to filter packets on:
 
 .. code-block:: bash
 

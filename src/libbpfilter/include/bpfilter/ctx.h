@@ -15,10 +15,10 @@
 /**
  * @file ctx.h
  *
- * Global runtime context for `bpfilter` daemon.
+ * Global runtime context for `bpfilter`.
  *
  * This file contains the definition of the `bf_ctx` structure, which is
- * the main structure used to store the daemon's runtime context.
+ * the main structure used to store the runtime context.
  *
  * All the public `bf_ctx_*` functions manipulate a private global context.
  * Chain state is persisted in per-chain bpffs context maps and restored

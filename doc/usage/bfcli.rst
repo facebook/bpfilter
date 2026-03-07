@@ -45,7 +45,7 @@ Chains with valid hook options defined are attached to their hook. Chains withou
 ``ruleset get``
 ~~~~~~~~~~~~~~~
 
-Print the ruleset: request all the chains and rules from the daemon with counters values.
+Print the ruleset: request all the chains and rules with counters values.
 
 **Example**
 
@@ -62,7 +62,7 @@ Print the ruleset: request all the chains and rules from the daemon with counter
 ``ruleset flush``
 ~~~~~~~~~~~~~~~~~
 
-Remove all the chains and rules defined by the daemon. Once this command completes, the daemon doesn't contain any filtering rules, as if it was freshly started.
+Remove all the chains and rules. Once this command completes, bpfilter doesn't contain any filtering rules.
 
 **Examples**
 
@@ -82,14 +82,14 @@ Remove all the chains and rules defined by the daemon. Once this command complet
 ``chain set``
 ~~~~~~~~~~~~~
 
-Generate and load a chain into the kernel. If the chain definition contains hook options, the daemon will attach it to its hook. Any existing chain with the same name (attached or not) will be discarded and replaced with the new one.
+Generate and load a chain into the kernel. If the chain definition contains hook options, bpfilter will attach it to its hook. Any existing chain with the same name (attached or not) will be discarded and replaced with the new one.
 
 If you want to update an existing chain without downtime, use ``bfcli chain update`` instead.
 
 **Options**
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
-  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specifies which one to use.
   - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**
@@ -171,7 +171,7 @@ If a chain with the same name already exist, it won't be replaced. See ``bfcli c
 **Options**
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
-  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specifies which one to use.
   - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**
@@ -226,7 +226,7 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
 **Options**
   - ``--from-str CHAIN``: read the chain to set from the command line arguments.
   - ``--from-file FILEPATH``: read the chain from a file.
-  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specify which one to send to the daemon.
+  - ``--name NAME``: if ``--from-str`` or ``--from-file`` provide multiple chains, ``NAME`` specifies which one to use.
   - ``--dry-run``: parse and validate the chain, but do not apply it.
 
 **Examples**

@@ -72,7 +72,7 @@ function(bf_add_e2e_c_test SOURCE)
 endfunction()
 
 add_custom_target(e2e_bin
-    DEPENDS setuserns libbpfilter bfcli bpfilter harness harness_cxx
+    DEPENDS setuserns libbpfilter bfcli harness harness_cxx
     COMMENT "Building end-to-end test binaries"
 )
 
