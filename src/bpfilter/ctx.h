@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <bpfilter/dump.h>
 #include <bpfilter/list.h>
@@ -28,20 +29,30 @@
 struct bf_cgen;
 struct bf_ns;
 
+enum bf_verbose
+{
+    BF_VERBOSE_DEBUG,
+    BF_VERBOSE_BPF,
+    BF_VERBOSE_BYTECODE,
+    _BF_VERBOSE_MAX,
+};
+
 /**
  * Initialise the global context.
  *
+ * @param transient If true, don't persist state and unload programs on exit.
+ * @param with_bpf_token If true, create a BPF token from bpffs.
+ * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
+ * @param verbose Bitmask of verbose flags.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_setup(void);
+int bf_ctx_setup(bool transient, bool with_bpf_token, const char *bpffs_path,
+                 uint16_t verbose);
 
 /**
  * Teardown the global context.
- *
- * @param clear If true, all the BPF programs will be unloaded before clearing
- *        the context.
  */
-void bf_ctx_teardown(bool clear);
+void bf_ctx_teardown(void);
 
 /**
  * Dump the global context.
@@ -141,3 +152,13 @@ int bf_ctx_rm_pindir(void);
  * @return The requested ELF stub.
  */
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);
+
+/**
+ * @return true if transient mode is enabled.
+ */
+bool bf_ctx_is_transient(void);
+
+/**
+ * @return true if the given verbose flag is set.
+ */
+bool bf_ctx_is_verbose(enum bf_verbose opt);

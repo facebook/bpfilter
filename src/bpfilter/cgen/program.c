@@ -57,7 +57,6 @@
 #include "cgen/xdp.h"
 #include "ctx.h"
 #include "filter.h"
-#include "opts.h"
 
 #define _BF_LOG_BUF_SIZE                                                       \
     (UINT32_MAX >> 8) /* verifier maximum in kernels <= 5.1 */
@@ -834,7 +833,7 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return bf_err_r(r, "failed to load the log map");
 
-    if (bf_opts_is_verbose(BF_VERBOSE_DEBUG)) {
+    if (bf_ctx_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
         if (!log_buf) {
             return bf_err_r(-ENOMEM,
@@ -842,7 +841,7 @@ int bf_program_load(struct bf_program *prog)
         }
     }
 
-    if (bf_opts_is_verbose(BF_VERBOSE_BYTECODE))
+    if (bf_ctx_is_verbose(BF_VERBOSE_BYTECODE))
         bf_program_dump_bytecode(prog);
 
     r = bf_bpf_prog_load(prog->handle->prog_name,
