@@ -362,11 +362,13 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
         break;
     case 'v': {
         enum bf_verbose opt = _bfc_verbose_from_str(arg);
-        if ((int)opt < 0)
+        if ((int)opt < 0) {
             argp_error(
                 state,
                 "unknown --verbose option '%s', valid options: [debug, bpf, bytecode]",
                 arg);
+            break;
+        }
         if (opt == BF_VERBOSE_DEBUG)
             bf_log_set_level(BF_LOG_DBG);
         opts->verbose |= BF_FLAG(opt);

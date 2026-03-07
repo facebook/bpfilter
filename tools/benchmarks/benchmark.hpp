@@ -84,7 +84,6 @@ struct Config
 {
 public:
     ::std::string bfcli = "bfcli";
-    ::std::string bpfilter = "bpfilter";
     ::std::string srcdir = ".";
     ::std::string outfile = "results.json";
     ::std::string gitrev = "<unknown>";
@@ -92,7 +91,6 @@ public:
     int adhocRepeat = 1;
     const ::std::string adhocBenchName = "bf_adhoc";
     int64_t gitdate = 0;
-    bool runDaemon = true;
 
     Config() noexcept = default;
 };
@@ -139,43 +137,6 @@ public:
 
 private:
     int fd_ = -1;
-};
-
-class Daemon
-{
-public:
-    class Options
-    {
-    public:
-        Options &transient();
-        Options &bufferLen(::std::size_t len);
-        Options &verbose(const ::std::string &component);
-        [[nodiscard]] ::std::vector<::std::string> get() const;
-
-    private:
-        ::std::vector<::std::string> options_;
-    };
-
-    Daemon(::std::string path = "bpfilter", Options options = Options());
-    Daemon(Daemon &other) = delete;
-    Daemon(Daemon &&other) noexcept(false);
-    ~Daemon() noexcept(false);
-
-    Daemon &operator=(Daemon &other) = delete;
-    Daemon &operator=(Daemon &&other) noexcept(false);
-
-    std::string stdout();
-    std::string stderr();
-
-private:
-    ::std::string path_;
-    Options options_;
-    std::optional<pid_t> pid_;
-    Fd stdoutFd_;
-    Fd stderrFd_;
-
-    [[nodiscard]] int start();
-    int stop();
 };
 
 class Program

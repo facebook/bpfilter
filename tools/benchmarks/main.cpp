@@ -20,6 +20,7 @@
 
 extern "C" {
 #include <bpfilter/bpfilter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/runtime.h>
@@ -597,24 +598,22 @@ int main(int argc, char *argv[])
 
     ::bf::restorePermissions(::bf::config.outfile);
 
-    ::std::optional<bf::Daemon> daemon;
-    if (::bf::config.runDaemon) {
-     daemon = bf::Daemon(
-        ::bf::config.bpfilter,
-        bf::Daemon::Options().transient());
+    int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
+    if (r < 0) {
+        err("failed to initialise bpfilter context: {}", std::strerror(-r));
+        return r;
     }
 
     try {
         ::benchmark::RunSpecifiedBenchmarks();
     } catch (const ::std::exception &e) {
-        if (daemon) {
-            std::cout << daemon->stderr();
-        }
         err("failed to run benchmark: {}", e.what());
+        bf_ctx_teardown();
         return -1;
     }
 
     ::benchmark::Shutdown();
+    bf_ctx_teardown();
 
     return 0;
 }
