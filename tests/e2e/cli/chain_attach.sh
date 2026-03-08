@@ -40,6 +40,18 @@ ${FROM_NS} bfcli chain attach --name chain_attach_cgroup_skb_1 --option cgpath=/
 ${FROM_NS} bfcli chain flush --name chain_attach_cgroup_skb_0
 ${FROM_NS} bfcli chain flush --name chain_attach_cgroup_skb_1
 
+# cgroup_sock_addr
+CGROUP_PATH=/sys/fs/cgroup/bftest_chain_attach
+mkdir -p ${CGROUP_PATH}
+trap 'ret=$?; rmdir ${CGROUP_PATH} 2>/dev/null; cleanup; exit ${ret}' EXIT
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_csa4_0 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 DROP"
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_csa4_1 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT"
+${FROM_NS} bfcli chain attach --name chain_attach_csa4_0 --option cgpath=${CGROUP_PATH}
+${FROM_NS} bfcli chain attach --name chain_attach_csa4_1 --option cgpath=${CGROUP_PATH}
+(! ${FROM_NS} bash -c "echo \$\$ > ${CGROUP_PATH}/cgroup.procs && echo > /dev/udp/${HOST_IP_ADDR}/9990" 2>/dev/null)
+${FROM_NS} bfcli chain flush --name chain_attach_csa4_0
+${FROM_NS} bfcli chain flush --name chain_attach_csa4_1
+
 # Netfilter
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} bfcli chain load --from-str "chain chain_attach_nf_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP"
