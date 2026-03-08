@@ -340,6 +340,13 @@ With:
     - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
+    - ``BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4``: cgroup hook for IPv4 ``connect()`` syscalls.
+    - ``BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6``: cgroup hook for IPv6 ``connect()`` syscalls.
+
+  .. note::
+
+      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``tcp.dport``, ``udp.dport``.
+
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
 
 ``$OPTIONS`` are hook-specific comma separated key value pairs. A given hook option can only be specified once:
@@ -358,7 +365,7 @@ With:
      - N/A
      - Interface index to attach the program to.
    * - ``cgpath=$CGROUP_PATH``
-     - ``BF_HOOK_CGROUP_SKB_INGRESS``, ``BF_HOOK_CGROUP_SKB_EGRESS``
+     - ``BF_HOOK_CGROUP_SKB_*``, ``BF_HOOK_CGROUP_SOCK_ADDR_*``
      - N/A
      - Path to the cgroup to attach to.
    * - ``family=$FAMILY``
@@ -388,8 +395,8 @@ Rules are defined such as:
 
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
-  - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required.
-  - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
+  - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required. ``log`` is **not** supported by ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
+  - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of ``connect()`` calls.
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, or ``REDIRECT``.
     - ``ACCEPT``: forward the packet to the kernel.
@@ -407,7 +414,7 @@ Note ``CONTINUE`` means a packet can be counted more than once if multiple rules
       - ``BF_HOOK_XDP``: only ``out`` direction is supported (XDP always transmits out of the target interface).
       - ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``: both ``in`` and ``out`` directions are supported.
 
-    ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``) or cgroup_skb (``BF_HOOK_CGROUP_SKB_*``) hooks.
+    ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``), cgroup_skb (``BF_HOOK_CGROUP_SKB_*``), or cgroup_sock_addr (``BF_HOOK_CGROUP_SOCK_ADDR_*``) hooks.
 
 Sets
 ~~~~
@@ -539,12 +546,12 @@ Meta
       - ``meta.probability``
       - ``eq``
       - ``$PROBABILITY``
-      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%").
+      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, probability applies at the connection level: each ``connect()`` call is independently accepted or dropped.
     * - :rspan:`1` Mark
       - :rspan:`1` ``meta.mark``
       - ``eq``
       - :rspan:`1` ``$MARK``
-      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` hook.
+      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` and ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
     * - ``not``
     * - :rspan:`2` Flow hash
       - :rspan:`2` ``meta.flow_hash``
