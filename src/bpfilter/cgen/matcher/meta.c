@@ -21,6 +21,7 @@
 #include <bpfilter/matcher.h>
 
 #include "cgen/elfstub.h"
+#include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/runtime.h"
 #include "cgen/swich.h"
@@ -36,29 +37,6 @@ static int _bf_matcher_generate_meta_iface(struct bf_program *program,
     EMIT_FIXUP_JMP_NEXT_RULE(
         program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1,
                              *(uint32_t *)bf_matcher_payload(matcher), 0));
-
-    return 0;
-}
-
-static int _bf_matcher_generate_meta_l3_proto(struct bf_program *program,
-                                              const struct bf_matcher *matcher)
-{
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(BPF_JNE, BPF_REG_7,
-                    htobe16(*(uint16_t *)bf_matcher_payload(matcher)), 0));
-
-    return 0;
-}
-
-static int _bf_matcher_generate_meta_l4_proto(struct bf_program *program,
-                                              const struct bf_matcher *matcher)
-{
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
-                                                                  BPF_JEQ,
-                    BPF_REG_8, *(uint8_t *)bf_matcher_payload(matcher), 0));
 
     return 0;
 }
@@ -112,97 +90,13 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
     // If r1 == 0: no TCP nor UDP header found, jump to the next rule
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0));
 
-    switch (bf_matcher_get_op(matcher)) {
-    case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, *port, 0));
-        break;
-    case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, *port, 0));
-        break;
-    case BF_MATCHER_RANGE:
-        /* Convert the big-endian value stored in the packet into a
-         * little-endian value for x86 and arm before comparing it to the
-         * reference value. This is a JLT/JGT comparison, we need to have the
-         * MSB where the machine expects then. */
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JLT, BPF_REG_1, port[0], 0));
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_1, port[1], 0));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
-                        bf_matcher_get_op(matcher));
+        return bf_cmp_range(program, port[0], port[1], BPF_REG_1);
     }
 
-    return 0;
-}
-
-int bf_matcher_generate_meta_mark_cmp(struct bf_program *program,
-                                      const struct bf_matcher *matcher)
-{
-    uint32_t mark;
-
-    assert(program);
-    assert(matcher);
-
-    mark = *(uint32_t *)bf_matcher_payload(matcher);
-
-    switch (bf_matcher_get_op(matcher)) {
-    case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, mark, 0));
-        break;
-    case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, mark, 0));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
-                        bf_matcher_get_op(matcher));
-    }
-
-    return 0;
-}
-
-int bf_matcher_generate_meta_flow_hash_cmp(struct bf_program *program,
-                                           const struct bf_matcher *matcher)
-{
-    uint32_t *hash;
-
-    assert(program);
-    assert(matcher);
-
-    hash = (uint32_t *)bf_matcher_payload(matcher);
-
-    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_hash_recalc));
-
-    switch (bf_matcher_get_op(matcher)) {
-    case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_0, hash[0], 0));
-        break;
-    case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, hash[0], 0));
-        break;
-    case BF_MATCHER_RANGE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JLT, BPF_REG_0, hash[0], 0));
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_0, hash[1], 0));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
-                        bf_matcher_get_op(matcher));
-    }
-
-    return 0;
+    return bf_cmp_value(program, bf_matcher_get_op(matcher), port, 2,
+                        BPF_REG_1);
 }
 
 static int
@@ -257,28 +151,23 @@ _bf_matcher_generate_meta_flow_probability(struct bf_program *program,
 int bf_matcher_generate_meta(struct bf_program *program,
                              const struct bf_matcher *matcher)
 {
-    int r;
-
     switch (bf_matcher_get_type(matcher)) {
     case BF_MATCHER_META_IFACE:
-        r = _bf_matcher_generate_meta_iface(program, matcher);
-        break;
-    case BF_MATCHER_META_L3_PROTO:
-        r = _bf_matcher_generate_meta_l3_proto(program, matcher);
-        break;
+        return _bf_matcher_generate_meta_iface(program, matcher);
+    case BF_MATCHER_META_L3_PROTO: {
+        uint16_t be_val = htobe16(*(uint16_t *)bf_matcher_payload(matcher));
+        return bf_cmp_value(program, BF_MATCHER_EQ, &be_val, 2, BPF_REG_7);
+    }
     case BF_MATCHER_META_L4_PROTO:
-        r = _bf_matcher_generate_meta_l4_proto(program, matcher);
-        break;
+        return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                            bf_matcher_payload(matcher), 1, BPF_REG_8);
     case BF_MATCHER_META_PROBABILITY:
-        r = _bf_matcher_generate_meta_probability(program, matcher);
-        break;
+        return _bf_matcher_generate_meta_probability(program, matcher);
     case BF_MATCHER_META_SPORT:
     case BF_MATCHER_META_DPORT:
-        r = _bf_matcher_generate_meta_port(program, matcher);
-        break;
+        return _bf_matcher_generate_meta_port(program, matcher);
     case BF_MATCHER_META_FLOW_PROBABILITY:
-        r = _bf_matcher_generate_meta_flow_probability(program, matcher);
-        break;
+        return _bf_matcher_generate_meta_flow_probability(program, matcher);
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
         return bf_err_r(-ENOTSUP,
@@ -287,10 +176,5 @@ int bf_matcher_generate_meta(struct bf_program *program,
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",
                         bf_matcher_get_type(matcher));
-    };
-
-    if (r)
-        return r;
-
-    return 0;
+    }
 }
