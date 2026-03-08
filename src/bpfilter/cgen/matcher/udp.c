@@ -11,13 +11,12 @@
 #include <linux/udp.h>
 
 #include <endian.h>
-#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
+#include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "filter.h"
 
@@ -31,33 +30,13 @@ static int _bf_matcher_generate_udp_port(struct bf_program *program,
 
     EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, offset));
 
-    switch (bf_matcher_get_op(matcher)) {
-    case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, *port, 0));
-        break;
-    case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, *port, 0));
-        break;
-    case BF_MATCHER_RANGE:
-        /* Convert the big-endian value stored in the packet into a
-         * little-endian value for x86 and arm before comparing it to the
-         * reference value. This is a JLT/JGT comparison, we need to have the
-         * MSB where the machine expects then. */
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JLT, BPF_REG_1, port[0], 0));
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_1, port[1], 0));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
-                        bf_matcher_get_op(matcher));
+        return bf_cmp_range(program, port[0], port[1], BPF_REG_1);
     }
 
-    return 0;
+    return bf_cmp_value(program, bf_matcher_get_op(matcher), port, 2,
+                        BPF_REG_1);
 }
 
 int bf_matcher_generate_udp(struct bf_program *program,

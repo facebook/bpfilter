@@ -23,7 +23,7 @@
 #include <bpfilter/verdict.h>
 
 #include "cgen/jmp.h"
-#include "cgen/matcher/meta.h"
+#include "cgen/matcher/cmp.h"
 #include "cgen/matcher/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
@@ -146,15 +146,23 @@ static int _bf_nf_gen_inline_matcher(struct bf_program *program,
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_2, offset));
 
-        return bf_matcher_generate_meta_mark_cmp(program, matcher);
+        return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                            bf_matcher_payload(matcher), 4, BPF_REG_1);
     case BF_MATCHER_META_FLOW_HASH:
         EMIT(program,
              BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
         if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_1, offset));
+        EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_hash_recalc));
 
-        return bf_matcher_generate_meta_flow_hash_cmp(program, matcher);
+        if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
+            uint32_t *hash = (uint32_t *)bf_matcher_payload(matcher);
+            return bf_cmp_range(program, hash[0], hash[1], BPF_REG_0);
+        }
+
+        return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                            bf_matcher_payload(matcher), 4, BPF_REG_0);
     default:
         return bf_matcher_generate_packet(program, matcher);
     }
