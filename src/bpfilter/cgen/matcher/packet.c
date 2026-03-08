@@ -5,26 +5,280 @@
 
 #include "cgen/matcher/packet.h"
 
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/in.h> // NOLINT
+#include <linux/ipv6.h>
+
+#include <assert.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
-#include "cgen/matcher/icmp.h"
-#include "cgen/matcher/ip4.h"
-#include "cgen/matcher/ip6.h"
+#include "cgen/matcher/cmp.h"
 #include "cgen/matcher/meta.h"
 #include "cgen/matcher/set.h"
-#include "cgen/matcher/tcp.h"
-#include "cgen/matcher/udp.h"
 #include "cgen/program.h"
+#include "cgen/stub.h"
+#include "filter.h"
+
+/**
+ * Packet matcher codegen follows a three-stage pipeline:
+ *
+ * 1. Protocol check: `_bf_program_generate_rule()` (in program.c)
+ *    emits deduplicated protocol guards before the matcher loop,
+ *    so each L3/L4 protocol is verified at most once per rule.
+ *
+ * 2. Header + field load:  `bf_stub_load_header()` loads the header
+ *    base address into `R6`, then `_bf_matcher_pkt_load_field()` reads
+ *    the target field into the specified register (and `reg+1` for
+ *    128-bit values such as IPv6 addresses).
+ *
+ * 3. Comparison:  A `bf_cmp_*` function compares the value in the
+ *    specified register against the matcher's reference payload.
+ */
+
+#define BF_IPV6_EH_HOPOPTS(x) ((x) << 0)
+#define BF_IPV6_EH_ROUTING(x) ((x) << 1)
+#define BF_IPV6_EH_FRAGMENT(x) ((x) << 2)
+#define BF_IPV6_EH_AH(x) ((x) << 3)
+#define BF_IPV6_EH_DSTOPTS(x) ((x) << 4)
+#define BF_IPV6_EH_MH(x) ((x) << 5)
+
+/**
+ * @brief Load a packet field from the header into the specified register.
+ *
+ * `R6` must already point to the header base. For 128-bit fields (IPv6
+ * addresses), the low 8 bytes are loaded into `reg` and the high 8 bytes into
+ * `reg + 1`.
+ *
+ * @param program Program to emit into. Can't be NULL.
+ * @param meta Matcher metadata describing field offset and size. Can't be NULL.
+ * @param reg BPF register to load the value into.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_matcher_pkt_load_field(struct bf_program *program,
+                                      const struct bf_matcher_meta *meta,
+                                      int reg)
+{
+    switch (meta->hdr_payload_size) {
+    case 1:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_B, reg, BPF_REG_6, meta->hdr_payload_offset));
+        break;
+    case 2:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_H, reg, BPF_REG_6, meta->hdr_payload_offset));
+        break;
+    case 4:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_W, reg, BPF_REG_6, meta->hdr_payload_offset));
+        break;
+    case 8:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, meta->hdr_payload_offset));
+        break;
+    case 16:
+        EMIT(program,
+             BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, meta->hdr_payload_offset));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, reg + 1, BPF_REG_6,
+                                  meta->hdr_payload_offset + 8));
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+static int _bf_matcher_pkt_load(struct bf_program *program,
+                                const struct bf_matcher_meta *meta, int reg)
+{
+    int r;
+
+    r = bf_stub_load_header(program, meta, BPF_REG_6);
+    if (r)
+        return r;
+
+    return _bf_matcher_pkt_load_field(program, meta, reg);
+}
+
+/**
+ * @brief Generic load + value compare for matchers whose field size and offset
+ * are fully described by `_bf_matcher_metas`.
+ *
+ * Emits: header load -> field load -> `bf_cmp_value`.
+ *
+ * @param program Program to generate bytecode into. Can't be NULL.
+ * @param matcher Matcher to generate bytecode for. Can't be NULL.
+ * @param meta Matcher metadata describing field size and offset. Can't be NULL.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_matcher_pkt_load_and_cmp(struct bf_program *program,
+                                        const struct bf_matcher *matcher,
+                                        const struct bf_matcher_meta *meta)
+{
+    int r;
+
+    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    if (r)
+        return r;
+
+    return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                        bf_matcher_payload(matcher), meta->hdr_payload_size,
+                        BPF_REG_1);
+}
+
+static int _bf_matcher_pkt_generate_net(struct bf_program *program,
+                                        const struct bf_matcher *matcher,
+                                        const struct bf_matcher_meta *meta)
+{
+    const uint32_t prefixlen = *(const uint32_t *)bf_matcher_payload(matcher);
+    const void *data =
+        (const uint8_t *)bf_matcher_payload(matcher) + sizeof(uint32_t);
+    int r;
+
+    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    if (r)
+        return r;
+
+    return bf_cmp_masked_value(program, bf_matcher_get_op(matcher), data,
+                               prefixlen, meta->hdr_payload_size, BPF_REG_1);
+}
+
+static int _bf_matcher_pkt_generate_port(struct bf_program *program,
+                                         const struct bf_matcher *matcher,
+                                         const struct bf_matcher_meta *meta)
+{
+    int r;
+
+    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    if (r)
+        return r;
+
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
+        uint16_t *ports = (uint16_t *)bf_matcher_payload(matcher);
+        /* Convert the big-endian value stored in the packet into a
+         * little-endian value for x86 and arm before comparing it to the
+         * reference value. This is a JLT/JGT comparison, we need to have the
+         * MSB where the machine expects then. */
+        EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
+        return bf_cmp_range(program, ports[0], ports[1], BPF_REG_1);
+    }
+
+    return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                        bf_matcher_payload(matcher), meta->hdr_payload_size,
+                        BPF_REG_1);
+}
+
+static int
+_bf_matcher_pkt_generate_tcp_flags(struct bf_program *program,
+                                   const struct bf_matcher *matcher,
+                                   const struct bf_matcher_meta *meta)
+{
+    int r;
+
+    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    if (r)
+        return r;
+
+    switch (bf_matcher_get_op(matcher)) {
+    case BF_MATCHER_ANY:
+    case BF_MATCHER_ALL:
+        return bf_cmp_bitfield(program, bf_matcher_get_op(matcher),
+                               *(uint8_t *)bf_matcher_payload(matcher),
+                               BPF_REG_1);
+    default:
+        return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                            bf_matcher_payload(matcher), meta->hdr_payload_size,
+                            BPF_REG_1);
+    }
+}
+
+static int
+_bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
+                                     const struct bf_matcher *matcher)
+{
+    const uint8_t ehdr = *(uint8_t *)bf_matcher_payload(matcher);
+    uint8_t eh_mask;
+
+    switch (ehdr) {
+    case IPPROTO_HOPOPTS:
+    case IPPROTO_ROUTING:
+    case IPPROTO_DSTOPTS:
+    case IPPROTO_FRAGMENT:
+    case IPPROTO_AH:
+    case IPPROTO_MH:
+        eh_mask = (BF_IPV6_EH_HOPOPTS(ehdr == IPPROTO_HOPOPTS) |
+                   BF_IPV6_EH_ROUTING(ehdr == IPPROTO_ROUTING) |
+                   BF_IPV6_EH_FRAGMENT(ehdr == IPPROTO_FRAGMENT) |
+                   BF_IPV6_EH_AH(ehdr == IPPROTO_AH) |
+                   BF_IPV6_EH_DSTOPTS(ehdr == IPPROTO_DSTOPTS) |
+                   BF_IPV6_EH_MH(ehdr == IPPROTO_MH));
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(ipv6_eh)));
+        EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
+                                     BPF_JEQ :
+                                     BPF_JNE,
+                                 BPF_REG_1, 0, 0));
+        break;
+    default:
+        /* check l4 protocols using `BPF_REG_8` */
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
+                                     BPF_JNE :
+                                     BPF_JEQ,
+                                 BPF_REG_8, ehdr, 0));
+        break;
+    }
+
+    return 0;
+}
+
+static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
+                                             const struct bf_matcher *matcher,
+                                             const struct bf_matcher_meta *meta)
+{
+    uint8_t dscp;
+    int r;
+
+    r = bf_stub_load_header(program, meta, BPF_REG_6);
+    if (r)
+        return r;
+
+    dscp = *(uint8_t *)bf_matcher_payload(matcher);
+
+    /* IPv6 DSCP (traffic class) spans bits 4-11 of the header:
+     * Byte 0: version (4 bits) | dscp_high (4 bits)
+     * Byte 1: dscp_low (4 bits) | flow_label_high (4 bits)
+     * Load 2 bytes, mask with 0x0ff0, compare against dscp << 4. */
+    EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, 0));
+    EMIT(program, BPF_ENDIAN(BPF_TO_BE, BPF_REG_1, 16));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0ff0));
+
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
+                                                                  BPF_JEQ,
+                    BPF_REG_1, (uint16_t)dscp << 4, 0));
+
+    return 0;
+}
 
 int bf_matcher_generate_packet(struct bf_program *program,
                                const struct bf_matcher *matcher)
 {
+    const struct bf_matcher_meta *meta;
+
     assert(program);
     assert(matcher);
+
+    meta = bf_matcher_get_meta(bf_matcher_get_type(matcher));
 
     switch (bf_matcher_get_type(matcher)) {
     case BF_MATCHER_META_IFACE:
@@ -41,31 +295,32 @@ int bf_matcher_generate_packet(struct bf_program *program,
                         "matcher '%s' is not supported by this flavor",
                         bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
     case BF_MATCHER_IP4_SADDR:
-    case BF_MATCHER_IP4_SNET:
     case BF_MATCHER_IP4_DADDR:
-    case BF_MATCHER_IP4_DNET:
     case BF_MATCHER_IP4_PROTO:
     case BF_MATCHER_IP4_DSCP:
-        return bf_matcher_generate_ip4(program, matcher);
     case BF_MATCHER_IP6_SADDR:
-    case BF_MATCHER_IP6_SNET:
     case BF_MATCHER_IP6_DADDR:
-    case BF_MATCHER_IP6_DNET:
-    case BF_MATCHER_IP6_NEXTHDR:
-    case BF_MATCHER_IP6_DSCP:
-        return bf_matcher_generate_ip6(program, matcher);
-    case BF_MATCHER_TCP_SPORT:
-    case BF_MATCHER_TCP_DPORT:
-    case BF_MATCHER_TCP_FLAGS:
-        return bf_matcher_generate_tcp(program, matcher);
-    case BF_MATCHER_UDP_SPORT:
-    case BF_MATCHER_UDP_DPORT:
-        return bf_matcher_generate_udp(program, matcher);
     case BF_MATCHER_ICMP_TYPE:
     case BF_MATCHER_ICMP_CODE:
     case BF_MATCHER_ICMPV6_TYPE:
     case BF_MATCHER_ICMPV6_CODE:
-        return bf_matcher_generate_icmp(program, matcher);
+        return _bf_matcher_pkt_load_and_cmp(program, matcher, meta);
+    case BF_MATCHER_IP4_SNET:
+    case BF_MATCHER_IP4_DNET:
+    case BF_MATCHER_IP6_SNET:
+    case BF_MATCHER_IP6_DNET:
+        return _bf_matcher_pkt_generate_net(program, matcher, meta);
+    case BF_MATCHER_TCP_SPORT:
+    case BF_MATCHER_TCP_DPORT:
+    case BF_MATCHER_UDP_SPORT:
+    case BF_MATCHER_UDP_DPORT:
+        return _bf_matcher_pkt_generate_port(program, matcher, meta);
+    case BF_MATCHER_TCP_FLAGS:
+        return _bf_matcher_pkt_generate_tcp_flags(program, matcher, meta);
+    case BF_MATCHER_IP6_NEXTHDR:
+        return _bf_matcher_pkt_generate_ip6_nexthdr(program, matcher);
+    case BF_MATCHER_IP6_DSCP:
+        return _bf_matcher_pkt_generate_ip6_dscp(program, matcher, meta);
     case BF_MATCHER_SET:
         return bf_matcher_generate_set(program, matcher);
     default:
