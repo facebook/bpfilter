@@ -3,42 +3,28 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
+#include "cgen/matcher/icmp.h"
+
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 #include <linux/icmp.h>
 #include <linux/icmpv6.h>
 #include <linux/in.h>
 
-#include <errno.h>
+#include <stddef.h>
 
 #include <bpfilter/matcher.h>
 
+#include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 
 static int _bf_matcher_generate_icmp_fields(struct bf_program *program,
                                             const struct bf_matcher *matcher,
                                             const size_t offset)
 {
-    const uint8_t value = *(uint8_t *)bf_matcher_payload(matcher);
-
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_6, offset));
-
-    switch (bf_matcher_get_op(matcher)) {
-    case BF_MATCHER_EQ:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JNE, BPF_REG_1, value, 0));
-        break;
-    case BF_MATCHER_NE:
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, value, 0));
-        break;
-    default:
-        return bf_err_r(-EINVAL, "unknown matcher operator '%s' (%d)",
-                        bf_matcher_op_to_str(bf_matcher_get_op(matcher)),
-                        bf_matcher_get_op(matcher));
-    }
-
-    return 0;
+    return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                        bf_matcher_payload(matcher), 1, BPF_REG_1);
 }
 
 static int _bf_matcher_generate_icmp6_fields(struct bf_program *program,
