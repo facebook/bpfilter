@@ -26,7 +26,7 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
                size_t n_comps)
 {
     _free_bf_set_ struct bf_set *_set = NULL;
-    uint32_t mask = 0;
+    uint64_t mask = 0;
 
     assert(set);
     assert(key);
