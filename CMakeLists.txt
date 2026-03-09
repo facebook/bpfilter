@@ -96,7 +96,7 @@ if (NOT ${NO_DOCS})
 endif ()
 
 if (NOT ${NO_TESTS})
-    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
+    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure;--label-exclude;fuzzing")
     enable_testing()
     add_subdirectory(tests)
 endif ()
