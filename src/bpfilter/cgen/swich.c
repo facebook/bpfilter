@@ -14,8 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 
 #include "cgen/jmp.h"

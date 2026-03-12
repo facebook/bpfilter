@@ -7,7 +7,7 @@
 
 #include <stddef.h>
 
-#include <bpfilter/list.h>
+#include <bpfilter/core/list.h>
 
 /**
  * @file elfstub.h

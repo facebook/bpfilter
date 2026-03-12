@@ -15,7 +15,7 @@
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
 
-#include "bpfilter/list.h"
+#include "bpfilter/core/list.h"
 
 int btf_setup_redirect_streams(void **state)
 {

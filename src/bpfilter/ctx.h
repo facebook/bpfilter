@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/list.h>
 
 #include "cgen/elfstub.h"
 
