@@ -7,9 +7,9 @@
 
 #include <stdint.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
 struct bf_chain;

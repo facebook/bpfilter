@@ -12,9 +12,9 @@
 #include <unistd.h>
 
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/list.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>

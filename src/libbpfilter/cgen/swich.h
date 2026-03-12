@@ -10,8 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/list.h>
 
 /**
  * @file swich.h

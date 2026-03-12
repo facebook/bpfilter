@@ -7,8 +7,8 @@
 #pragma once
 
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/list.h>
 #include <bpfilter/set.h>
 
 #define bfc_ruleset_default()                                                  \

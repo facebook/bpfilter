@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 #include <bpfilter/bpf_types.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/flavor.h>
-#include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
 /**

@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/list.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
 

@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/ctx.h>
-#include <bpfilter/list.h>
 
 struct bf_chain;
 struct bf_set;

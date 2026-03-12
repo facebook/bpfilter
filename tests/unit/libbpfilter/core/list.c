@@ -3,7 +3,7 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <bpfilter/list.h>
+#include <bpfilter/core/list.h>
 
 #include "fake.h"
 #include "test.h"
