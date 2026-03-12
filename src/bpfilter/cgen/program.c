@@ -711,6 +711,13 @@ static int _bf_program_load_log_map(struct bf_program *program)
     return 0;
 }
 
+static size_t _bf_set_elem_size;
+
+static int _bf_set_elem_cmp(const void *lhs, const void *rhs)
+{
+    return memcmp(lhs, rhs, _bf_set_elem_size);
+}
+
 static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 {
     char name[BPF_OBJ_NAME_LEN];
@@ -753,6 +760,9 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
             values[idx] = 1;
             ++idx;
         }
+
+        _bf_set_elem_size = set->elem_size;
+        qsort(keys, nelems, set->elem_size, _bf_set_elem_cmp);
 
         r = bf_bpf_map_update_batch(map->fd, keys, values, nelems, BPF_ANY);
         if (r)
