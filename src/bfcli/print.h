@@ -8,7 +8,7 @@
 
 #include <stdbool.h>
 
-#include <bpfilter/list.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/runtime.h>
 
 struct bf_chain;

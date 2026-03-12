@@ -13,7 +13,7 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 
-#include "bpfilter/list.h"
+#include "bpfilter/core/list.h"
 #include "chain.h"
 #include "ruleset.h"
 

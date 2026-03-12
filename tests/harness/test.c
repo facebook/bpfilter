@@ -18,7 +18,7 @@
 #include <bpfilter/rule.h>
 #include <bpfilter/set.h>
 
-#include "bpfilter/list.h"
+#include "bpfilter/core/list.h"
 
 void bft_assert_counter_eq(const char *chain_name, size_t rule_idx,
                            uint64_t packets, int64_t bytes)

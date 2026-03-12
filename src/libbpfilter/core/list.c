@@ -3,7 +3,7 @@
  * Copyright (c) 2022 Meta Platforms, Inc. and affiliates.
  */
 
-#include "bpfilter/list.h"
+#include "bpfilter/core/list.h"
 
 #include <errno.h>
 #include <stdlib.h>

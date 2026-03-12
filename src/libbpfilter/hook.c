@@ -17,10 +17,10 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "bpfilter/core/list.h"
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"
-#include "bpfilter/list.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 

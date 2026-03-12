@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/elfstub.h>
-#include <bpfilter/list.h>
 
 /**
  * @file ctx.h

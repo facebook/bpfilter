@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <bpfilter/list.h>
+#include <bpfilter/core/list.h>
 
 #include "helper.h"
 #include "ruleset.h"
