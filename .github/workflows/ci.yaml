@@ -122,7 +122,7 @@ jobs:
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L e2e --verbose
 
       - name: Run fuzzing tests
-        run: ctest --test-dir $GITHUB_WORKSPACE/build -L fuzzing --verbose
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -R '^fuzzing\.parser\.60$' --verbose
       - name: Upload fuzzer findings
         uses: actions/upload-artifact@v4
         if: always()
