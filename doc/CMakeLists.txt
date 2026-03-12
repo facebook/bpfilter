@@ -80,7 +80,6 @@ list(FILTER bf_srcs EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/external/.*")
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/usage/daemon.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
@@ -89,7 +88,6 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/tests.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/bpfilter/bpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/libbpfilter/libbpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/benchmarks/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coverage/index.rst

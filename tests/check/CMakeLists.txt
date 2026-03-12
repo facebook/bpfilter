@@ -6,7 +6,6 @@ find_program(CLANG_FORMAT_BIN NAMES clang-format-18 clang-format REQUIRED)
 
 file(GLOB_RECURSE bf_srcs
     ${CMAKE_SOURCE_DIR}/src/core/*.h            ${CMAKE_SOURCE_DIR}/src/core/*.c
-    ${CMAKE_SOURCE_DIR}/src/bpfilter/*.h        ${CMAKE_SOURCE_DIR}/src/bpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.h     ${CMAKE_SOURCE_DIR}/src/libbpfilter/*.c
     ${CMAKE_SOURCE_DIR}/src/bfcli/*.h           ${CMAKE_SOURCE_DIR}/src/bfcli/*.c
 )
@@ -30,7 +29,7 @@ add_test(NAME "check.iwyu"
     COMMAND
         /usr/bin/iwyu_tool.py
             -p ${CMAKE_BINARY_DIR}
-            ${CMAKE_SOURCE_DIR}/src/bpfilter/cgen/program.c
+            ${CMAKE_SOURCE_DIR}/src/libbpfilter/cgen/program.c
 )
 
 set_tests_properties("check.lint" PROPERTIES

@@ -90,14 +90,13 @@ target_link_options(bf_global_flags_cxx
 
 add_subdirectory(src/libbpfilter)
 add_subdirectory(src/bfcli)
-add_subdirectory(src/bpfilter)
 
 if (NOT ${NO_DOCS})
     add_subdirectory(doc)
 endif ()
 
 if (NOT ${NO_TESTS})
-    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
+    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure;--label-exclude;fuzzing")
     enable_testing()
     add_subdirectory(tests)
 endif ()

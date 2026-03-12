@@ -33,7 +33,7 @@ int bf_if_index_from_name(const char *name);
  *
  * This function copy the interface name into a static buffer, this would
  * probably be an issue for multi-threaded application, but thankfully bpfilter
- * is a single-threaded daemon.
+ * is single-threaded.
  *
  * @param index Index of the interface.
  * @return Pointer to a static buffer containing the interface name, or NULL

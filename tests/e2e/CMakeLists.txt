@@ -42,7 +42,7 @@ function(bf_add_e2e_test GROUP SOURCE)
 endfunction()
 
 add_custom_target(e2e_bin
-    DEPENDS setuserns libbpfilter bfcli bpfilter
+    DEPENDS setuserns libbpfilter bfcli
     COMMENT "Building end-to-end test binaries"
 )
 
@@ -62,13 +62,12 @@ bf_add_e2e_test(e2e cli/nf_inet_dual_stack.sh ROOT)
 bf_add_e2e_test(e2e cli/options_error.sh)
 bf_add_e2e_test(e2e cli/ruleset.sh ROOT)
 
-bf_add_e2e_test(e2e daemon/already_running.sh ROOT)
-bf_add_e2e_test(e2e daemon/host_to_netns.sh ROOT)
-bf_add_e2e_test(e2e daemon/netns_to_host.sh ROOT)
-bf_add_e2e_test(e2e daemon/pin_updated_chain.sh ROOT)
-bf_add_e2e_test(e2e daemon/restore_attached.sh ROOT)
-bf_add_e2e_test(e2e daemon/restore_non_attached.sh ROOT)
-bf_add_e2e_test(e2e daemon/sock_exists.sh ROOT)
+bf_add_e2e_test(e2e namespace/host_to_netns.sh ROOT)
+bf_add_e2e_test(e2e namespace/netns_to_host.sh ROOT)
+
+bf_add_e2e_test(e2e persistence/pin_updated_chain.sh ROOT)
+bf_add_e2e_test(e2e persistence/restore_attached.sh ROOT)
+bf_add_e2e_test(e2e persistence/restore_non_attached.sh ROOT)
 
 bf_add_e2e_test(e2e matchers/icmp_code.sh)
 bf_add_e2e_test(e2e matchers/icmp_type.sh)

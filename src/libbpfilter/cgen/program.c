@@ -23,6 +23,7 @@
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/counter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
@@ -55,7 +56,6 @@
 #include "cgen/stub.h"
 #include "cgen/tc.h"
 #include "cgen/xdp.h"
-#include "ctx.h"
 #include "filter.h"
 
 #define _BF_LOG_BUF_SIZE                                                       \

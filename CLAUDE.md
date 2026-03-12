@@ -5,9 +5,8 @@
 bpfilter is an eBPF-based packet filtering framework that translates filtering rules into optimized BPF programs. Licensed under GPLv2, maintained by Meta.
 
 **Components:**
-- `libbpfilter` - Core library with public API for filtering logic
-- `bpfilter` - Daemon that generates and manages BPF programs
-- `bfcli` - CLI for defining filtering rules
+- `libbpfilter` - Core library containing all filtering logic, BPF code generation, and program lifecycle management
+- `bfcli` - CLI for defining and managing filtering rules via `libbpfilter`
 
 **Requirements:** Linux 6.6+, libbpf 1.2+
 
@@ -17,13 +16,12 @@ bpfilter is an eBPF-based packet filtering framework that translates filtering r
 src/
 ├── libbpfilter/          # Core library (shared object)
 │   ├── include/bpfilter/ # Public API headers
-│   └── *.c               # Implementation (chain, matcher, rule, hook, set, bpf, btf...)
-├── bpfilter/             # Daemon
 │   ├── cgen/             # BPF code generation engine
 │   │   ├── matcher/      # Packet matcher codegen (ip4, ip6, tcp, udp, icmp, meta, set)
 │   │   └── prog/         # Program linking (link, map)
 │   ├── xlate.c           # Rule translation
 │   └── bpf/              # eBPF stub programs
+│   └── *.c               # Implementation (chain, matcher, rule, hook, set, bpf, btf, ctx...)
 ├── bfcli/                # CLI (parser.y, lexer.l, opts, print, chain, ruleset)
 └── external/             # External deps (mpack)
 
@@ -35,7 +33,7 @@ tests/
 └── harness/              # Test utilities (test.h, mock.h, fake.h)
 
 doc/
-├── usage/                # User guides (bfcli, daemon)
+├── usage/                # User guides (bfcli)
 └── developers/           # Dev docs (build, style, tests, modules/)
 ```
 
@@ -114,7 +112,7 @@ Use `#pragma once` for header guards. Prefer forward declarations over includes 
 
 ### Commit messages
 Format: `component: subcomponent: short description`
-- Components: `lib`, `daemon`, `cli`, `tests`, `build`, `tools`, `doc`
+- Components: `lib`, `cli`, `tests`, `build`, `tools`, `doc`
 - Lowercase, imperative mood, no period, under 72 chars
 - Description explains "why", code shows "what"
 - No reference to Claude or Claude as co-author
@@ -122,7 +120,7 @@ Format: `component: subcomponent: short description`
 Examples:
 ```
 lib: matcher: add meta.flow_hash matcher
-daemon: cgen: link: add support for dual-stack Netfilter chains
+lib: cgen: link: add support for dual-stack Netfilter chains
 tests: e2e: fix end-to-end tests leaving files behind
 ```
 
