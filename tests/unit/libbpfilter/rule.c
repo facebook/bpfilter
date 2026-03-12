@@ -5,7 +5,7 @@
 
 #include <bpfilter/rule.h>
 
-#include "bpfilter/list.h"
+#include "bpfilter/core/list.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/runtime.h"
 #include "fake.h"

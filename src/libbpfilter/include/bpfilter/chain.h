@@ -5,9 +5,9 @@
 
 #pragma once
 
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 #include <bpfilter/verdict.h>
 

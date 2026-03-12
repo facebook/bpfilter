@@ -26,7 +26,7 @@
 #include <bpfilter/counter.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/list.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>

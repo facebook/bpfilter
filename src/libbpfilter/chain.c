@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bpfilter/core/list.h"
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/hook.h"
-#include "bpfilter/list.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/rule.h"
