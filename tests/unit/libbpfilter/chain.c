@@ -141,6 +141,93 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
 }
 
+static void incompatible_matchers_disable_rule(void **state)
+{
+    (void)state;
+
+    // L3 conflict: IPv4 + IPv6 matchers.
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *rule = NULL;
+        uint32_t ip4_addr = 0;
+        uint8_t ip6_addr[16] = {};
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                                      &ip4_addr, sizeof(ip4_addr)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
+                                      ip6_addr, sizeof(ip6_addr)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+
+        assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                               BF_VERDICT_ACCEPT, NULL, &rules));
+        assert_true(rule->disabled);
+    }
+
+    // L4 conflict: TCP + UDP matchers.
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *rule = NULL;
+        uint16_t port = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                                      &port, sizeof(port)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
+                                      &port, sizeof(port)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+
+        assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                               BF_VERDICT_ACCEPT, NULL, &rules));
+        assert_true(rule->disabled);
+    }
+
+    // No conflict: same protocol at same layer (TCP sport + TCP dport).
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *rule = NULL;
+        uint16_t port = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                                      &port, sizeof(port)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                                      &port, sizeof(port)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+
+        assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                               BF_VERDICT_ACCEPT, NULL, &rules));
+        assert_false(rule->disabled);
+    }
+
+    // No conflict: different layers (IPv4 + TCP).
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *rule = NULL;
+        uint32_t ip4_addr = 0;
+        uint16_t port = 0;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                                      &ip4_addr, sizeof(ip4_addr)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                                      &port, sizeof(port)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+
+        assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                               BF_VERDICT_ACCEPT, NULL, &rules));
+        assert_false(rule->disabled);
+    }
+}
+
 static void get_set_by_name(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
@@ -159,6 +246,7 @@ int main(void)
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
+        cmocka_unit_test(incompatible_matchers_disable_rule),
         cmocka_unit_test(get_set_by_name),
     };
 
