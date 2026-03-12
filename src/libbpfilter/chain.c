@@ -14,6 +14,7 @@
 #include "bpfilter/hook.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"
+#include "bpfilter/matcher.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/rule.h"
 #include "bpfilter/set.h"
@@ -58,6 +59,58 @@ static int _bf_rule_references_empty_set(const struct bf_chain *chain,
     return 0;
 }
 
+/**
+ * @brief Check if a rule has matchers on the same layer but different
+ * protocols.
+ *
+ * A rule matching on e.g. both IPv4 source address and IPv6 destination
+ * address can never match a packet (a packet is either IPv4 or IPv6, not
+ * both). Same for layer 4 (e.g. TCP vs UDP). Such rules should be disabled.
+ *
+ * @param rule Rule to check.
+ * @return 0 if no conflict, 1 if the rule contains incompatible matchers.
+ */
+static int _bf_rule_has_incompatible_matchers(const struct bf_rule *rule)
+{
+    uint32_t layer_hdr_id[_BF_MATCHER_LAYER_MAX];
+
+    assert(rule);
+
+    for (int i = 0; i < _BF_MATCHER_LAYER_MAX; ++i)
+        layer_hdr_id[i] = (uint32_t)-1;
+
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+        const struct bf_matcher_meta *meta;
+
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
+            continue;
+
+        meta = bf_matcher_get_meta(bf_matcher_get_type(matcher));
+        if (!meta) {
+            return bf_err_r(
+                -ENOENT, "missing bf_matcher_meta for %s",
+                bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
+        }
+        if (meta->layer <= BF_MATCHER_NO_LAYER)
+            continue;
+
+        if (layer_hdr_id[meta->layer] == (uint32_t)-1) {
+            layer_hdr_id[meta->layer] = meta->hdr_id;
+            continue;
+        }
+
+        if (layer_hdr_id[meta->layer] != meta->hdr_id) {
+            bf_warn(
+                "rule %u has incompatible matchers on the same layer, rule will be disabled",
+                rule->index);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
     int r;
@@ -68,7 +121,7 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
     if (r < 0)
         return r;
 
-    rule->disabled = r;
+    rule->disabled = r || _bf_rule_has_incompatible_matchers(rule);
 
     if (rule->log && !rule->disabled)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
