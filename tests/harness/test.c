@@ -230,19 +230,14 @@ bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs)
 
 bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
 {
-    const struct bf_list_node *n0, *n1;
-
     if (bf_set_size(lhs) != bf_set_size(rhs))
         return false;
 
     if (lhs->elem_size != rhs->elem_size)
         return false;
 
-    n0 = bf_list_get_head(&lhs->elems);
-    n1 = bf_list_get_head(&rhs->elems);
-    for (; n0 || n1; n0 = bf_list_node_next(n0), n1 = bf_list_node_next(n1)) {
-        if (0 != memcmp(bf_list_node_get_data(n0), bf_list_node_get_data(n1),
-                        lhs->elem_size))
+    bf_set_foreach (lhs, elem) {
+        if (!bf_hashset_contains(&rhs->elems, elem))
             return false;
     }
 

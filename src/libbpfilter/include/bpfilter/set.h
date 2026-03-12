@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/core/list.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
 
@@ -54,7 +54,7 @@ struct bf_set
     size_t n_comps;
 
     /** Elements of the set. */
-    bf_list elems;
+    bf_hashset elems;
 
     /** Size of a single element. All elements have the same size, it's derived
      * from the key. */
@@ -73,15 +73,7 @@ struct bf_set
  *        (as `void *`). This variable will be created automatically.
  */
 #define bf_set_foreach(set, elem_var)                                          \
-    for (bf_list_node *_bf_set_node = (set)->elems.head,                       \
-                      *_bf_set_next = _bf_set_node ? _bf_set_node->next :      \
-                                                     NULL,                     \
-                      *_bf_set_brk = NULL;                                     \
-         _bf_set_node; _bf_set_node = _bf_set_brk ? NULL : _bf_set_next,       \
-                      _bf_set_next = _bf_set_node ? _bf_set_node->next : NULL) \
-        for (void *(elem_var) = (_bf_set_brk = (void *)1,                      \
-                                bf_list_node_get_data(_bf_set_node));          \
-             _bf_set_brk; _bf_set_brk = NULL)
+    bf_hashset_foreach (&(set)->elems, elem_var)
 
 /**
  * @brief Allocate and initialise a new set.

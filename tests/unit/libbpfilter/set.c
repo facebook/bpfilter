@@ -281,9 +281,9 @@ static void add_many_basic(void **state)
     assert_ok(bf_set_add_many(dest, &to_add));
 
     assert_int_equal(bf_set_size(dest), 3);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 2), elem3);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_true(bf_hashset_contains(&dest->elems, &elem2));
+    assert_true(bf_hashset_contains(&dest->elems, &elem3));
     assert_null(to_add);
 }
 
@@ -348,8 +348,9 @@ static void remove_many_basic(void **state)
     assert_ok(bf_set_remove_many(dest, &to_remove));
 
     assert_int_equal(bf_set_size(dest), 2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem3);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_false(bf_hashset_contains(&dest->elems, &elem2));
+    assert_true(bf_hashset_contains(&dest->elems, &elem3));
     assert_null(to_remove);
 }
 
@@ -378,8 +379,8 @@ static void remove_many_disjoint_sets(void **state)
 
     assert_ok(bf_set_remove_many(dest, &to_remove));
     assert_int_equal(bf_set_size(dest), 2);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 0), elem1);
-    assert_int_equal(*(uint32_t *)bf_list_get_at(&dest->elems, 1), elem2);
+    assert_true(bf_hashset_contains(&dest->elems, &elem1));
+    assert_true(bf_hashset_contains(&dest->elems, &elem2));
     assert_null(to_remove);
 }
 
