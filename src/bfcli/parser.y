@@ -160,8 +160,8 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
                     _free_bf_list_ bf_list *rules = $7;
                     int r;
 
-                    if ($5 >= _BF_TERMINAL_VERDICT_MAX)
-                        bf_parse_err("'%s' is not supported for chains\n", bf_verdict_to_str($5));
+                    if (!bf_verdict_is_valid_policy($5))
+                        bf_parse_err("'%s' is not a valid chain policy\n", bf_verdict_to_str($5));
 
                     if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
