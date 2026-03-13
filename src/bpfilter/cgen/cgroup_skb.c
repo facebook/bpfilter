@@ -147,12 +147,16 @@ static int _bf_cgroup_skb_gen_inline_matcher(struct bf_program *program,
  * @param verdict Verdict to convert. Must be valid.
  * @return Cgroup return code corresponding to the verdict, as an integer.
  */
-static int _bf_cgroup_skb_get_verdict(enum bf_verdict verdict)
+static int _bf_cgroup_skb_get_verdict(enum bf_verdict verdict, int *ret_code)
 {
+    assert(ret_code);
+
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
-        return 1;
+        *ret_code = 1;
+        return 0;
     case BF_VERDICT_DROP:
+        *ret_code = 0;
         return 0;
     default:
         return -ENOTSUP;
