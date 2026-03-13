@@ -44,17 +44,15 @@ int bf_redirect_dir_from_str(const char *str, enum bf_redirect_dir *dir);
  */
 enum bf_verdict
 {
-    /** Terminal verdicts that stop further packet processing. */
-    /** Accept the packet. */
+    /** Accept the packet. Terminal. */
     BF_VERDICT_ACCEPT,
-    /** Drop the packet. */
+    /** Drop the packet. Terminal. */
     BF_VERDICT_DROP,
-    /** Non-terminal verdicts that allow further packet processing. */
-    /** Continue processing the next rule. */
+    /** Continue processing the next rule. Non-terminal. */
     BF_VERDICT_CONTINUE,
-    /** Redirect the packet to another interface. */
+    /** Redirect the packet to another interface. Terminal. */
     BF_VERDICT_REDIRECT,
-    /** Pass the packet to the next BPF program.
+    /** Pass the packet to the next BPF program. Terminal.
      *
      * For TC, this maps to TCX_NEXT which defers to the next program in
      * the TCX link. For NF, XDP, and cgroup_skb, NEXT maps to the same

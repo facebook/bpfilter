@@ -40,10 +40,8 @@ int bf_redirect_dir_from_str(const char *str, enum bf_redirect_dir *dir)
 }
 
 static const char *_bf_verdict_strs[] = {
-    [BF_VERDICT_ACCEPT] = "ACCEPT",
-    [BF_VERDICT_DROP] = "DROP",
-    [BF_VERDICT_REDIRECT] = "REDIRECT",
-    [BF_VERDICT_CONTINUE] = "CONTINUE",
+    [BF_VERDICT_ACCEPT] = "ACCEPT",     [BF_VERDICT_DROP] = "DROP",
+    [BF_VERDICT_REDIRECT] = "REDIRECT", [BF_VERDICT_CONTINUE] = "CONTINUE",
     [BF_VERDICT_NEXT] = "NEXT",
 };
 static_assert_enum_mapping(_bf_verdict_strs, _BF_VERDICT_MAX);
