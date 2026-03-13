@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 /**
  * Redirect direction for the REDIRECT verdict.
  */
@@ -36,7 +38,9 @@ int bf_redirect_dir_from_str(const char *str, enum bf_redirect_dir *dir);
 
 /**
  * Verdict to apply for a rule or chain.
- * Chains can only use terminal verdicts, rules can use all verdicts.
+ *
+ * Only some verdicts are valid as chain policies (see
+ * `bf_verdict_is_valid_policy`). Rules can use all verdicts.
  */
 enum bf_verdict
 {
@@ -50,8 +54,14 @@ enum bf_verdict
     BF_VERDICT_CONTINUE,
     /** Redirect the packet to another interface. */
     BF_VERDICT_REDIRECT,
+    /** Pass the packet to the next BPF program.
+     *
+     * For TC, this maps to TCX_NEXT which defers to the next program in
+     * the TCX link. For NF, XDP, and cgroup_skb, NEXT maps to the same
+     * return code as ACCEPT since these hooks do not distinguish between
+     * "accept" and "pass to next program." */
+    BF_VERDICT_NEXT,
     _BF_VERDICT_MAX,
-    _BF_TERMINAL_VERDICT_MAX = BF_VERDICT_REDIRECT,
 };
 
 /**
@@ -70,3 +80,15 @@ const char *bf_verdict_to_str(enum bf_verdict verdict);
  * @return 0 on success, or negative errno value on error.
  */
 int bf_verdict_from_str(const char *str, enum bf_verdict *verdict);
+
+/**
+ * Check if a verdict is valid as a chain policy.
+ *
+ * Only ACCEPT, DROP, and NEXT are valid chain policies. CONTINUE is
+ * non-terminal and cannot be a default action. REDIRECT requires per-rule
+ * parameters (interface, direction) so it cannot be a policy either.
+ *
+ * @param verdict Verdict to check.
+ * @return true if the verdict is valid as a chain policy, false otherwise.
+ */
+bool bf_verdict_is_valid_policy(enum bf_verdict verdict);
