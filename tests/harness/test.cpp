@@ -71,10 +71,11 @@ void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
 
 namespace
 {
-// TCX_PASS/TCX_DROP are enum values in linux/bpf.h, but may conflict with
-// the C++ compilation depending on kernel headers version. Use literals.
+// TCX_PASS/TCX_DROP/TCX_NEXT are enum values in linux/bpf.h, but may conflict
+// with the C++ compilation depending on kernel headers version. Use literals.
 constexpr int kTcxPass = 0;
 constexpr int kTcxDrop = 2;
+constexpr int kTcxNext = -1;
 
 static int _bft_verdict(enum bf_hook hook, enum bf_verdict verdict)
 {
@@ -102,6 +103,23 @@ int bft_hook_accept(enum bf_hook hook)
 int bft_hook_drop(enum bf_hook hook)
 {
     return _bft_verdict(hook, BF_VERDICT_DROP);
+}
+
+int bft_hook_next(enum bf_hook hook)
+{
+    switch (bf_hook_to_flavor(hook)) {
+    case BF_FLAVOR_TC:
+        return kTcxNext;
+    case BF_FLAVOR_XDP:
+        return XDP_PASS;
+    case BF_FLAVOR_NF:
+        return NF_ACCEPT;
+    case BF_FLAVOR_CGROUP_SKB: // fallthrough
+    case BF_FLAVOR_CGROUP_SOCK_ADDR:
+        return 1;
+    default:
+        return -ENOTSUP;
+    }
 }
 
 int bft_matcher_test_setup(void **state)
