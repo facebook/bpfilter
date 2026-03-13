@@ -345,6 +345,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
+    case BF_VERDICT_NEXT:
         r = program->runtime.ops->get_verdict(rule->verdict, &ret_code);
         if (r)
             return r;

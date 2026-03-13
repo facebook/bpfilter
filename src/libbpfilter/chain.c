@@ -125,7 +125,8 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     if (hook >= _BF_HOOK_MAX)
         return bf_err_r(-EINVAL, "unknown hook type");
     if (!bf_verdict_is_valid_policy(policy))
-        return bf_err_r(-EINVAL, "invalid policy '%s'", bf_verdict_to_str(policy));
+        return bf_err_r(-EINVAL, "invalid policy '%s'",
+                        bf_verdict_to_str(policy));
 
     _chain = malloc(sizeof(*_chain));
     if (!_chain)

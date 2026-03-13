@@ -18,7 +18,6 @@
 #include <bpfilter/matcher.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/cgen.h"
 #include "cgen/matcher/meta.h"
 #include "cgen/matcher/packet.h"
 #include "cgen/program.h"
@@ -146,7 +145,8 @@ static int _bf_tc_gen_inline_redirect(struct bf_program *program,
  * Convert a standard verdict into a return value.
  *
  * @param verdict Verdict to convert. Must be valid.
- * @return TC return code corresponding to the verdict, as an integer.
+ * @param ret_code TC return code. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
 static int _bf_tc_get_verdict(enum bf_verdict verdict, int *ret_code)
 {
@@ -158,6 +158,9 @@ static int _bf_tc_get_verdict(enum bf_verdict verdict, int *ret_code)
         return 0;
     case BF_VERDICT_DROP:
         *ret_code = TCX_DROP;
+        return 0;
+    case BF_VERDICT_NEXT:
+        *ret_code = TCX_NEXT;
         return 0;
     default:
         return -ENOTSUP;
