@@ -159,13 +159,17 @@ static int _bf_nf_gen_inline_matcher(struct bf_program *program,
  * @param verdict Verdict to convert. Must be valid.
  * @return Netfilter return code corresponding to the verdict, as an integer.
  */
-static int _bf_nf_get_verdict(enum bf_verdict verdict)
+static int _bf_nf_get_verdict(enum bf_verdict verdict, int *ret_code)
 {
+    assert(ret_code);
+
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
-        return NF_ACCEPT;
+        *ret_code = NF_ACCEPT;
+        return 0;
     case BF_VERDICT_DROP:
-        return NF_DROP;
+        *ret_code = NF_DROP;
+        return 0;
     default:
         return -ENOTSUP;
     }
