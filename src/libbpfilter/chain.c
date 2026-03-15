@@ -73,14 +73,17 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
     if (rule->log && !rule->disabled)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
 
+    if (rule->log &&
+        bf_hook_to_flavor(chain->hook) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
+        return bf_err_r(-ENOTSUP, "logging is not supported by %s",
+                        bf_hook_to_str(chain->hook));
+    }
+
     if (bf_rule_mark_is_set(rule) &&
-        (chain->hook == BF_HOOK_XDP || chain->hook == BF_HOOK_NF_PRE_ROUTING ||
-         chain->hook == BF_HOOK_NF_POST_ROUTING ||
-         chain->hook == BF_HOOK_NF_FORWARD ||
-         chain->hook == BF_HOOK_NF_LOCAL_IN ||
-         chain->hook == BF_HOOK_NF_LOCAL_OUT)) {
-        return bf_err_r(-EINVAL,
-                        "XDP and Netfilter chains can't set packet mark");
+        bf_hook_to_flavor(chain->hook) != BF_FLAVOR_TC &&
+        bf_hook_to_flavor(chain->hook) != BF_FLAVOR_CGROUP_SKB) {
+        return bf_err_r(-EINVAL, "%s chains can't set packet mark",
+                        bf_hook_to_str(chain->hook));
     }
 
     bf_list_foreach (&rule->matchers, matcher_node) {
@@ -91,10 +94,6 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
         if (bf_matcher_get_type(matcher) == BF_MATCHER_IP6_NEXTHDR &&
             !rule->disabled)
             chain->flags |= BF_FLAG(BF_CHAIN_STORE_NEXTHDR);
-
-        // Set matchers are compatible with all hooks.
-        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
-            continue;
 
         // Ensure the matcher is compatible with the chain's hook.
         meta = bf_matcher_get_meta(bf_matcher_get_type(matcher));
