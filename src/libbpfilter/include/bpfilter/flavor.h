@@ -112,10 +112,12 @@ struct bf_flavor_ops
      * stop further packet processing. Non-terminal verdicts do not need return
      * codes and therefore do not need to be handled by get_verdict().
      *
-     * @return Flavor-specific verdict for `verdict`, or a negative errno
-     * value on failure.
+     * @param verdict Verdict to convert. Must be a terminal verdict.
+     * @param ret_code On success, set to the flavor-specific BPF return code.
+     *        Can't be NULL.
+     * @return 0 on success, or negative errno value on failure.
      */
-    int (*get_verdict)(enum bf_verdict verdict);
+    int (*get_verdict)(enum bf_verdict verdict, int *ret_code);
 
     /**
      * @brief Generate bytecode for a matcher. Required for all flavors.

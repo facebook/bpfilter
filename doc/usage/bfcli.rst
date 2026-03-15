@@ -340,7 +340,13 @@ With:
     - ``BF_HOOK_NF_LOCAL_OUT``: similar to ``nftables`` and ``iptables`` output hook.
     - ``BF_HOOK_NF_POST_ROUTING``: similar to ``nftables`` and ``iptables`` postrouting hook.
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
-  - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
+  - ``$POLICY``: action taken if no rule matches the packet:
+
+    - ``ACCEPT``: forward the packet to the kernel.
+    - ``DROP``: discard the packet.
+    - ``NEXT``: pass the packet to the next BPF program. For TC hooks, this maps to ``TCX_NEXT``, deferring the decision to the next program in the TCX link. For NF, XDP, and cgroup_skb hooks, ``NEXT`` behaves identically to ``ACCEPT`` since these hooks do not distinguish between "accept" and "pass to next program."
+
+    Note: ``CONTINUE`` and ``REDIRECT`` are not valid chain policies.
 
 ``$OPTIONS`` are hook-specific comma separated key value pairs. A given hook option can only be specified once:
 
@@ -391,13 +397,14 @@ With:
   - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required.
   - ``counter``: optional literal. If set, the filter will counter the number of packets and bytes matched by the rule.
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
-  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, or ``REDIRECT``.
+  - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, ``NEXT``, or ``REDIRECT``.
     - ``ACCEPT``: forward the packet to the kernel.
     - ``DROP``: discard the packet.
-    - ``CONTINUE``: continue processing subsequent rules.
+    - ``CONTINUE``: continue processing subsequent rules (non-terminal).
+    - ``NEXT``: stop rule processing and pass the packet to the next BPF program. For TC hooks, this returns ``TCX_NEXT``. For NF, XDP, and cgroup_skb hooks, this is equivalent to ``ACCEPT``.
     - ``REDIRECT $IFACE $DIR``: redirect the packet to interface ``$IFACE`` in direction ``$DIR``. ``$IFACE`` can be an interface name (e.g., "eth0") or an interface index (e.g., "2"). ``$DIR`` is either ``in`` for ingress or ``out`` for egress.
 
-In a chain, as soon as a rule matches a packet, its verdict is applied. If the verdict is ``ACCEPT``, ``DROP``, or ``REDIRECT``, the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
+In a chain, as soon as a rule matches a packet, its verdict is applied. If the verdict is ``ACCEPT``, ``DROP``, ``NEXT``, or ``REDIRECT``, the subsequent rules are not processed. Hence, the rules' order matters. If no rule matches the packet, the chain's policy is applied.
 
 Note ``CONTINUE`` means a packet can be counted more than once if multiple rules specify ``CONTINUE`` and ``counter``.
 
@@ -408,6 +415,10 @@ Note ``CONTINUE`` means a packet can be counted more than once if multiple rules
       - ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``: both ``in`` and ``out`` directions are supported.
 
     ``REDIRECT`` is **not** supported by Netfilter (``BF_HOOK_NF_*``) or cgroup_skb (``BF_HOOK_CGROUP_SKB_*``) hooks.
+
+.. note::
+
+    ``NEXT`` has distinct behavior only for TC hooks (``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``), where it maps to ``TCX_NEXT`` and defers to the next BPF program in the TCX link. For all other hooks (Netfilter, XDP, cgroup_skb), ``NEXT`` produces the same return code as ``ACCEPT``.
 
 Sets
 ~~~~

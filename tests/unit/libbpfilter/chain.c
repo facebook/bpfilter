@@ -141,6 +141,22 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
 }
 
+static void policy_validation(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+
+    (void)state;
+
+    assert_ok(bf_chain_new(&chain, "next", BF_HOOK_TC_EGRESS, BF_VERDICT_NEXT,
+                           NULL, NULL));
+    bf_chain_free(&chain);
+
+    assert_err(bf_chain_new(&chain, "bad", BF_HOOK_TC_EGRESS,
+                            BF_VERDICT_CONTINUE, NULL, NULL));
+    assert_err(bf_chain_new(&chain, "bad", BF_HOOK_TC_EGRESS,
+                            BF_VERDICT_REDIRECT, NULL, NULL));
+}
+
 static void get_set_by_name(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
@@ -159,6 +175,7 @@ int main(void)
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
+        cmocka_unit_test(policy_validation),
         cmocka_unit_test(get_set_by_name),
     };
 
