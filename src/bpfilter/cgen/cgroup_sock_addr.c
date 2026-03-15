@@ -1,0 +1,239 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ */
+
+#include "cgen/cgroup_sock_addr.h"
+
+#include <linux/bpf.h>
+#include <linux/bpf_common.h>
+#include <linux/if_ether.h>
+
+#include <assert.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/socket.h>
+
+#include <bpfilter/flavor.h>
+#include <bpfilter/logger.h>
+#include <bpfilter/matcher.h>
+#include <bpfilter/runtime.h>
+#include <bpfilter/verdict.h>
+
+#include "cgen/matcher/cmp.h"
+#include "cgen/matcher/meta.h"
+#include "cgen/program.h"
+#include "cgen/swich.h"
+#include "filter.h"
+
+// Forward definition to avoid header conflicts.
+uint16_t htons(uint16_t hostshort);
+
+static int _bf_cgroup_sock_addr_gen_inline_prologue(struct bf_program *program)
+{
+    int r;
+
+    assert(program);
+
+    /* `R6` = `bpf_sock_addr` context pointer. Unlike packet-based flavors where
+     * `R6` changes per header, the socket context is fixed so we set it once. */
+    EMIT(program, BPF_MOV64_REG(BPF_REG_6, BPF_REG_1));
+
+    // The counters stub reads `pkt_size` unconditionally; zero it out.
+    EMIT(program, BPF_ST_MEM(BPF_DW, BPF_REG_10, BF_PROG_CTX_OFF(pkt_size), 0));
+
+    /* Convert `bpf_sock_addr.family` to L3 protocol ID in `R7`, using the same
+     * `bf_swich` pattern as cgroup_skb. */
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_6,
+                              offsetof(struct bpf_sock_addr, family)));
+
+    {
+        _clean_bf_swich_ struct bf_swich swich =
+            bf_swich_get(program, BPF_REG_2);
+
+        EMIT_SWICH_OPTION(&swich, AF_INET,
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IP)));
+        EMIT_SWICH_OPTION(&swich, AF_INET6,
+                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IPV6)));
+        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_7, 0));
+
+        r = bf_swich_generate(&swich);
+        if (r)
+            return r;
+    }
+
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_8, BPF_REG_6,
+                              offsetof(struct bpf_sock_addr, protocol)));
+
+    return 0;
+}
+
+static int _bf_cgroup_sock_addr_gen_inline_epilogue(struct bf_program *program)
+{
+    (void)program;
+
+    return 0;
+}
+
+/**
+ * @brief Load a field from the `bpf_sock_addr` context into a register.
+ *
+ * `R6` must already point to the context. For 16-byte fields, the low
+ * 8 bytes go into `reg` and the high 8 bytes into `reg + 1`.
+ *
+ * @param program Program to emit into. Can't be NULL.
+ * @param offset Byte offset into `struct bpf_sock_addr`.
+ * @param size Field size in bytes: 1, 2, 4, 8, or 16.
+ * @param reg BPF register to load the value into.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_cgroup_sock_addr_load_field(struct bf_program *program,
+                                           size_t offset, size_t size, int reg)
+{
+    int bpf_size;
+
+    switch (size) {
+    case 1:
+        bpf_size = BPF_B;
+        break;
+    case 2:
+        bpf_size = BPF_H;
+        break;
+    case 4:
+        bpf_size = BPF_W;
+        break;
+    case 8:
+    case 16:
+        bpf_size = BPF_DW;
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    EMIT(program, BPF_LDX_MEM(bpf_size, reg, BPF_REG_6, offset));
+
+    if (size == 16)
+        EMIT(program, BPF_LDX_MEM(BPF_DW, reg + 1, BPF_REG_6, offset + 8));
+
+    return 0;
+}
+
+static int _bf_cgroup_sock_addr_load_and_cmp(struct bf_program *program,
+                                             const struct bf_matcher *matcher,
+                                             size_t offset, size_t size)
+{
+    int r;
+
+    r = _bf_cgroup_sock_addr_load_field(program, offset, size, BPF_REG_1);
+    if (r)
+        return r;
+
+    return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                        bf_matcher_payload(matcher), size, BPF_REG_1);
+}
+
+static int _bf_cgroup_sock_addr_generate_net(struct bf_program *program,
+                                             const struct bf_matcher *matcher,
+                                             size_t offset, size_t size)
+{
+    const uint32_t prefixlen = *(const uint32_t *)bf_matcher_payload(matcher);
+    const void *data =
+        (const uint8_t *)bf_matcher_payload(matcher) + sizeof(uint32_t);
+    int r;
+
+    r = _bf_cgroup_sock_addr_load_field(program, offset, size, BPF_REG_1);
+    if (r)
+        return r;
+
+    return bf_cmp_masked_value(program, bf_matcher_get_op(matcher), data,
+                               prefixlen, size, BPF_REG_1);
+}
+
+/* user_port is a __u32 in network byte order with the upper 16 bits
+ * guaranteed zero by the kernel ABI. Loaded as BPF_W so EQ/NE compare
+ * the full 32-bit register (safe because upper bits are zero). For range
+ * comparisons, BSWAP converts to host order (and zeroes the upper bits). */
+static int _bf_cgroup_sock_addr_generate_port(struct bf_program *program,
+                                              const struct bf_matcher *matcher)
+{
+    int r;
+
+    r = _bf_cgroup_sock_addr_load_field(
+        program, offsetof(struct bpf_sock_addr, user_port), 4, BPF_REG_1);
+    if (r)
+        return r;
+
+    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
+        uint16_t *ports = (uint16_t *)bf_matcher_payload(matcher);
+        EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
+        return bf_cmp_range(program, ports[0], ports[1], BPF_REG_1);
+    }
+
+    return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                        bf_matcher_payload(matcher), 2, BPF_REG_1);
+}
+
+static int
+_bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
+                                        const struct bf_matcher *matcher)
+{
+    assert(program);
+    assert(matcher);
+
+    switch (bf_matcher_get_type(matcher)) {
+    case BF_MATCHER_META_L3_PROTO:
+    case BF_MATCHER_META_L4_PROTO:
+    case BF_MATCHER_META_PROBABILITY:
+        return bf_matcher_generate_meta(program, matcher);
+    case BF_MATCHER_IP4_DADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, user_ip4), 4);
+    case BF_MATCHER_IP4_DNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, user_ip4), 4);
+    case BF_MATCHER_IP4_PROTO:
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_8));
+        return bf_cmp_value(program, bf_matcher_get_op(matcher),
+                            bf_matcher_payload(matcher), 1, BPF_REG_1);
+    case BF_MATCHER_IP6_DADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, user_ip6), 16);
+    case BF_MATCHER_IP6_DNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, user_ip6), 16);
+    case BF_MATCHER_META_DPORT:
+    case BF_MATCHER_TCP_DPORT:
+    case BF_MATCHER_UDP_DPORT:
+        return _bf_cgroup_sock_addr_generate_port(program, matcher);
+    default:
+        return bf_err_r(-ENOTSUP,
+                        "matcher '%s' not supported for cgroup_sock_addr",
+                        bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
+    }
+}
+
+/**
+ * @brief Convert a standard verdict into a return value.
+ *
+ * @param verdict Verdict to convert. Must be valid.
+ * @return Cgroup return code corresponding to the verdict, as an integer.
+ */
+static int _bf_cgroup_sock_addr_get_verdict(enum bf_verdict verdict)
+{
+    switch (verdict) {
+    case BF_VERDICT_ACCEPT:
+        return 1;
+    case BF_VERDICT_DROP:
+        return 0;
+    default:
+        return -ENOTSUP;
+    }
+}
+
+const struct bf_flavor_ops bf_flavor_ops_cgroup_sock_addr = {
+    .gen_inline_prologue = _bf_cgroup_sock_addr_gen_inline_prologue,
+    .gen_inline_epilogue = _bf_cgroup_sock_addr_gen_inline_epilogue,
+    .get_verdict = _bf_cgroup_sock_addr_get_verdict,
+    .gen_inline_matcher = _bf_cgroup_sock_addr_gen_inline_matcher,
+};

@@ -86,6 +86,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     struct bf_counter *counter;
     bf_list_node *counter_node, *policy_counter_node, *err_counter_node;
     bool need_comma = false;
+    bool is_pkt_hook;
 
     assert(chain);
     assert(counters);
@@ -101,6 +102,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     counter_node = bf_list_get_head(counters);
     err_counter_node = bf_list_get_tail(counters);
     policy_counter_node = bf_list_node_prev(err_counter_node);
+    is_pkt_hook = bf_hook_to_flavor(chain->hook) != BF_FLAVOR_CGROUP_SOCK_ADDR;
 
     (void)fprintf(stdout, "chain %s %s", chain->name,
                   bf_hook_to_str(chain->hook));
@@ -137,12 +139,21 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     (void)fprintf(stdout, " %s\n", bf_verdict_to_str(chain->policy));
 
     counter = bf_list_node_get_data(policy_counter_node);
-    (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
-                  counter->count, counter->size);
+    if (is_pkt_hook) {
+        (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
+                      counter->count, counter->size);
+    } else {
+        (void)fprintf(stdout, "    counters policy %lu calls; ",
+                      counter->count);
+    }
 
     counter = bf_list_node_get_data(err_counter_node);
-    (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->count,
-                  counter->size);
+    if (is_pkt_hook) {
+        (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->count,
+                      counter->size);
+    } else {
+        (void)fprintf(stdout, "error %lu calls\n", counter->count);
+    }
 
     // Loop over named sets
     bf_list_foreach (&chain->sets, set_node) {
@@ -270,8 +281,14 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
         if (rule->counters) {
             counter = bf_list_node_get_data(counter_node);
-            (void)fprintf(stdout, "        counters %lu packets %lu bytes\n",
-                          counter->count, counter->size);
+            if (is_pkt_hook) {
+                (void)fprintf(stdout,
+                              "        counters %lu packets %lu bytes\n",
+                              counter->count, counter->size);
+            } else {
+                (void)fprintf(stdout, "        counters %lu calls\n",
+                              counter->count);
+            }
         }
         counter_node = bf_list_node_next(counter_node);
 

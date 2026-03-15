@@ -40,6 +40,8 @@ enum bf_hook
     BF_HOOK_NF_LOCAL_OUT,
     BF_HOOK_NF_POST_ROUTING,
     BF_HOOK_TC_EGRESS,
+    BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+    BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6,
     _BF_HOOK_MAX,
 };
 
@@ -139,7 +141,7 @@ struct bf_hookopts
     // XDP and TC
     int ifindex;
 
-    // cgroup_skb
+    // cgroup_skb and cgroup_sock_addr
     const char *cgpath;
 
     // Netfilter

@@ -37,11 +37,11 @@
 #include <bpfilter/verdict.h>
 
 #include "cgen/cgroup_skb.h"
+#include "cgen/cgroup_sock_addr.h"
 #include "cgen/dump.h"
 #include "cgen/fixup.h"
 #include "cgen/handle.h"
 #include "cgen/jmp.h"
-#include "cgen/matcher/packet.h"
 #include "cgen/nf.h"
 #include "cgen/printer.h"
 #include "cgen/prog/link.h"
@@ -82,6 +82,7 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
         [BF_FLAVOR_NF] = &bf_flavor_ops_nf,
         [BF_FLAVOR_XDP] = &bf_flavor_ops_xdp,
         [BF_FLAVOR_CGROUP_SKB] = &bf_flavor_ops_cgroup_skb,
+        [BF_FLAVOR_CGROUP_SOCK_ADDR] = &bf_flavor_ops_cgroup_sock_addr,
     };
 
     static_assert_enum_mapping(flavor_ops, _BF_FLAVOR_MAX);
@@ -285,15 +286,40 @@ static int _bf_program_fixup(struct bf_program *program,
 static int _bf_program_generate_rule(struct bf_program *program,
                                      struct bf_rule *rule)
 {
+    uint32_t checked_layers = 0;
     int r;
 
     assert(program);
     assert(rule);
+    assert(program->runtime.ops->gen_inline_matcher);
 
     if (rule->disabled)
         return 0;
 
-    assert(program->runtime.ops->gen_inline_matcher);
+    bf_list_foreach (&rule->matchers, matcher_node) {
+        struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+        const struct bf_matcher_meta *meta =
+            bf_matcher_get_meta(bf_matcher_get_type(matcher));
+
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
+            continue;
+
+        if (!meta) {
+            return bf_err_r(-EINVAL, "missing meta for matcher type %d",
+                            bf_matcher_get_type(matcher));
+        }
+
+        if (checked_layers & BF_FLAG(meta->layer))
+            continue;
+
+        if (meta->layer == BF_MATCHER_LAYER_3 ||
+            meta->layer == BF_MATCHER_LAYER_4) {
+            r = bf_stub_rule_check_protocol(program, meta);
+            if (r)
+                return r;
+            checked_layers |= BF_FLAG(meta->layer);
+        }
+    }
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);

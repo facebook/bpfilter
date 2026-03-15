@@ -58,7 +58,7 @@ set             { return SET; }
 counter         { return COUNTER; }
 
     /* Hooks */
-BF_HOOK_[A-Z_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return HOOK; }
+BF_HOOK_[A-Z0-9_]+ { BEGIN(STATE_HOOK_OPTS); yylval.sval = strdup(yytext); return HOOK; }
 <STATE_HOOK_OPTS>{
     (\{|,) /* Ignore */
     \} { BEGIN(INITIAL); }

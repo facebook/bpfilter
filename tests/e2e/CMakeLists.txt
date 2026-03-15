@@ -111,5 +111,8 @@ bf_add_e2e_test(e2e rules/log.sh ROOT)
 bf_add_e2e_test(e2e rules/mark.sh ROOT)
 bf_add_e2e_test(e2e rules/redirect.sh ROOT)
 
+bf_add_e2e_test(e2e hooks/cgroup_sock_addr_connect4.sh ROOT)
+bf_add_e2e_test(e2e hooks/cgroup_sock_addr_connect6.sh ROOT)
+
 bf_add_e2e_test(e2e rulesets/rulesets.sh ROOT)
 
