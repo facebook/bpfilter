@@ -9,10 +9,10 @@
 #include <stdint.h>
 
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
-#include <bpfilter/list.h>
 #include <bpfilter/pack.h>
 
 #include "cgen/elfstub.h"
@@ -203,6 +203,7 @@ struct bf_program
 
     /* Bytecode */
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
+    /// @todo Replace img/img_size/img_cap with a bf_vector.
     struct bpf_insn *img;
     size_t img_size;
     size_t img_cap;

@@ -19,10 +19,10 @@
 
 #include <bpfilter/bpfilter.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/set.h>
 
