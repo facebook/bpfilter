@@ -643,6 +643,12 @@ IPv4
       - :rspan:`1` ``$PROTOCOL``
       - :rspan:`1` ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
     * - ``not``
+    * - :rspan:`1` DSCP
+      - :rspan:`1` ``ip4.dscp``
+      - ``eq``
+      - :rspan:`1` ``$DSCP``
+      - :rspan:`1` ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
+    * - ``not``
 
 
 IPv6
@@ -686,8 +692,14 @@ IPv6
     * - :rspan:`1` Next header
       - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
-      - :rspan:`3` ``$NEXT_HEADER``
-      - :rspan:`3` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
+      - :rspan:`1` ``$NEXT_HEADER``
+      - :rspan:`1` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
+    * - ``not``
+    * - :rspan:`1` DSCP
+      - :rspan:`1` ``ip6.dscp``
+      - ``eq``
+      - :rspan:`1` ``$DSCP``
+      - :rspan:`1` ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
     * - ``not``
 
 .. tip::
@@ -850,4 +862,5 @@ ICMPv6
 .. _ICMP type value: https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
 .. _ICMP code value: https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-codes
 .. _ICMPv6 type value: https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml#icmpv6-parameters-2
+.. _DSCP class name: https://www.iana.org/assignments/dscp-registry/dscp-registry.xhtml
 .. _ICMPv6 code value: https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml#icmpv6-parameters-3
