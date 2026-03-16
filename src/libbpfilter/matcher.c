@@ -835,6 +835,9 @@ void _bf_print_icmpv6_type(const void *payload)
 
 #define _BF_TCP_FLAGS_OFFSET 13
 
+static_assert(_BF_HOOK_MAX <= 8 * sizeof(uint32_t),
+              "too many hooks for unsupported_hooks bitmask");
+
 static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_IFACE] =
         {
