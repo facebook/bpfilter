@@ -209,7 +209,7 @@ ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); re
 ip4\.dscp       { BEGIN(STATE_MATCHER_IP4_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP4_DSCP>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    {int} {
+    {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
@@ -239,7 +239,7 @@ ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext)
 ip6\.dscp           { BEGIN(STATE_MATCHER_IP6_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_DSCP>{
     (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
-    {int} {
+    {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
