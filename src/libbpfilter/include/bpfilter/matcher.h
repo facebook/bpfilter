@@ -424,6 +424,9 @@ int bf_ethertype_from_str(const char *str, uint16_t *ethertype);
 const char *bf_ipproto_to_str(uint8_t ipproto);
 int bf_ipproto_from_str(const char *str, uint8_t *ipproto);
 
+const char *bf_dscp_class_to_str(uint8_t dscp);
+int bf_dscp_class_from_str(const char *str, uint8_t *dscp);
+
 const char *bf_icmp_type_to_str(uint8_t type);
 int bf_icmp_type_from_str(const char *str, uint8_t *type);
 

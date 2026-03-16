@@ -737,6 +737,9 @@ static int _bf_parse_dscp(enum bf_matcher_type type, enum bf_matcher_op op,
     assert(payload);
     assert(raw_payload);
 
+    if (!bf_dscp_class_from_str(raw_payload, payload))
+        return 0;
+
     if (!_bf_strtoul(raw_payload, &value) && value <= BF_DSCP_MAX) {
         *(uint8_t *)payload = (uint8_t)value;
         return 0;
@@ -744,15 +747,22 @@ static int _bf_parse_dscp(enum bf_matcher_type type, enum bf_matcher_op op,
 
     return bf_err_r(
         -EINVAL,
-        "\"%s %s\" expects a DSCP value (0-63) in decimal or hexadecimal notation, not '%s'",
+        "\"%s %s\" expects a DSCP value (0-63, decimal/hex) or class name, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
 static void _bf_print_dscp(const void *payload)
 {
+    const char *name;
+
     assert(payload);
 
-    (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
+    name = bf_dscp_class_to_str(*(uint8_t *)payload);
+
+    if (name)
+        (void)fprintf(stdout, "%s", name);
+    else
+        (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
 static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
@@ -1658,6 +1668,46 @@ int bf_ipproto_from_str(const char *str, uint8_t *ipproto)
     for (size_t i = 0; i <= UINT8_MAX; ++i) {
         if (bf_streq_i(str, _bf_ipproto_strs[i])) {
             *ipproto = (uint8_t)i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
+/* DSCP class name to codepoint mapping, based on the IANA DSCP
+ * registry (https://www.iana.org/assignments/dscp-registry).
+ * BE is an alias for CS0. */
+static const struct
+{
+    const char *name;
+    uint8_t dscp;
+} _bf_dscp_classes[] = {
+    {"cs0", 0},   {"cs1", 8},          {"cs2", 16},  {"cs3", 24},  {"cs4", 32},
+    {"cs5", 40},  {"cs6", 48},         {"cs7", 56},  {"af11", 10}, {"af12", 12},
+    {"af13", 14}, {"af21", 18},        {"af22", 20}, {"af23", 22}, {"af31", 26},
+    {"af32", 28}, {"af33", 30},        {"af41", 34}, {"af42", 36}, {"af43", 38},
+    {"ef", 46},   {"voice-admit", 44}, {"le", 1},    {"nqb", 45},  {"be", 0},
+};
+
+const char *bf_dscp_class_to_str(uint8_t dscp)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(_bf_dscp_classes); ++i) {
+        if (_bf_dscp_classes[i].dscp == dscp)
+            return _bf_dscp_classes[i].name;
+    }
+
+    return NULL;
+}
+
+int bf_dscp_class_from_str(const char *str, uint8_t *dscp)
+{
+    assert(str);
+    assert(dscp);
+
+    for (size_t i = 0; i < ARRAY_SIZE(_bf_dscp_classes); ++i) {
+        if (bf_streq_i(str, _bf_dscp_classes[i].name)) {
+            *dscp = _bf_dscp_classes[i].dscp;
             return 0;
         }
     }
