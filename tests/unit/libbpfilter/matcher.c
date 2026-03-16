@@ -381,6 +381,43 @@ static void ipproto_conversions(void **state)
     assert_err(bf_ipproto_from_str("invalid", &ipproto));
 }
 
+static void dscp_class_conversions(void **state)
+{
+    uint8_t dscp;
+
+    (void)state;
+
+    // Test to_str for known classes
+    assert_string_equal(bf_dscp_class_to_str(0), "cs0");
+    assert_string_equal(bf_dscp_class_to_str(46), "ef");
+
+    // Test to_str for values without a named class
+    assert_null(bf_dscp_class_to_str(63));
+    assert_null(bf_dscp_class_to_str(64));
+
+    // Test from_str
+    assert_ok(bf_dscp_class_from_str("ef", &dscp));
+    assert_int_equal(dscp, 46);
+
+    assert_ok(bf_dscp_class_from_str("af21", &dscp));
+    assert_int_equal(dscp, 18);
+
+    // Test BE alias and case insensitivity
+    assert_ok(bf_dscp_class_from_str("BE", &dscp));
+    assert_int_equal(dscp, 0);
+
+    assert_ok(bf_dscp_class_from_str("Af11", &dscp));
+    assert_int_equal(dscp, 10);
+
+    assert_ok(bf_dscp_class_from_str("VOICE-ADMIT", &dscp));
+    assert_int_equal(dscp, 44);
+
+    // Test invalid
+    assert_err(bf_dscp_class_from_str("cs8", &dscp));
+    assert_err(bf_dscp_class_from_str("af14", &dscp));
+    assert_err(bf_dscp_class_from_str("invalid", &dscp));
+}
+
 static void icmp_type_conversions(void **state)
 {
     uint8_t type;
@@ -1111,6 +1148,20 @@ static void ip6_dscp(void **state)
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
+    // Test with class name keyword
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "ef"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
+    bf_matcher_free(&matcher);
+
+    // Test with BE alias (case insensitive)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
+                                      BF_MATCHER_EQ, "BE"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
+    bf_matcher_free(&matcher);
+
     // Test print function via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
                                       BF_MATCHER_EQ, "0x20"));
@@ -1130,9 +1181,9 @@ static void ip6_dscp_invalid(void **state)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
                                        BF_MATCHER_EQ, "64"));
 
-    // Test with invalid string
+    // Test with invalid class name
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "not_a_number"));
+                                       BF_MATCHER_EQ, "cs8"));
 
     // Test with negative value
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
@@ -1573,6 +1624,20 @@ static void ip4_dscp(void **state)
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
+    // Test ip4.dscp with class name keyword
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                      BF_MATCHER_EQ, "ef"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
+    bf_matcher_free(&matcher);
+
+    // Test ip4.dscp with BE alias (case insensitive)
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                      BF_MATCHER_EQ, "BE"));
+    assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
+    bf_matcher_free(&matcher);
+
     // Test ip4.dscp print function
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
                                       BF_MATCHER_EQ, "0x3f"));
@@ -1588,6 +1653,10 @@ static void ip4_dscp(void **state)
     // Test ip4.dscp with invalid hex value (> 0x3f)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
                                        BF_MATCHER_EQ, "0x40"));
+
+    // Test ip4.dscp with invalid class name
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                       BF_MATCHER_EQ, "cs8"));
 
     // Test ip4.dscp with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
@@ -1738,6 +1807,7 @@ int main(void)
         cmocka_unit_test(tcp_flag_conversions),
         cmocka_unit_test(ethertype_conversions),
         cmocka_unit_test(ipproto_conversions),
+        cmocka_unit_test(dscp_class_conversions),
         cmocka_unit_test(icmp_type_conversions),
         cmocka_unit_test(icmpv6_type_conversions),
         cmocka_unit_test(get_meta),
