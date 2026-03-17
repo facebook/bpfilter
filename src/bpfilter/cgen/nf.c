@@ -130,31 +130,13 @@ static int _bf_nf_gen_inline_epilogue(struct bf_program *program)
 static int _bf_nf_gen_inline_matcher(struct bf_program *program,
                                      const struct bf_matcher *matcher)
 {
-    int offset;
-
     assert(program);
     assert(matcher);
 
     switch (bf_matcher_get_type(matcher)) {
     case BF_MATCHER_META_MARK:
-        EMIT(program,
-             BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
-        if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
-            return offset;
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
-        if ((offset = bf_btf_get_field_off("sk_buff", "mark")) < 0)
-            return offset;
-        EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_2, offset));
-
-        return bf_matcher_generate_meta_mark_cmp(program, matcher);
     case BF_MATCHER_META_FLOW_HASH:
-        EMIT(program,
-             BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
-        if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
-            return offset;
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_1, offset));
-
-        return bf_matcher_generate_meta_flow_hash_cmp(program, matcher);
+        return -ENOTSUP;
     default:
         return bf_matcher_generate_packet(program, matcher);
     }

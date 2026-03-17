@@ -132,10 +132,7 @@ static int _bf_cgroup_skb_gen_inline_matcher(struct bf_program *program,
 
         return bf_matcher_generate_meta_mark_cmp(program, matcher);
     case BF_MATCHER_META_FLOW_HASH:
-        EMIT(program,
-             BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
-
-        return bf_matcher_generate_meta_flow_hash_cmp(program, matcher);
+        return -ENOTSUP;
     default:
         return bf_matcher_generate_packet(program, matcher);
     }
