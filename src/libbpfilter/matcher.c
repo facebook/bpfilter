@@ -798,12 +798,19 @@ void _bf_print_icmpv6_type(const void *payload)
 static_assert(_BF_HOOK_MAX <= 8 * sizeof(uint32_t),
               "too many hooks for unsupported_hooks bitmask");
 
+// Comma-separated cgroup_sock_addr hook lists, for use inside `BF_FLAGS()`.
+#define _BF_HOOKS_CGROUP_SOCK_ADDR_IP4                                         \
+    BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4, BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4
+#define _BF_HOOKS_CGROUP_SOCK_ADDR_IP6                                         \
+    BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6, BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6
+#define _BF_HOOKS_CGROUP_SOCK_ADDR_ALL                                         \
+    _BF_HOOKS_CGROUP_SOCK_ADDR_IP4, _BF_HOOKS_CGROUP_SOCK_ADDR_IP6
+
 static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_IFACE] =
         {
             .layer = BF_MATCHER_NO_LAYER,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
@@ -833,8 +840,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_SPORT] =
         {
             .layer = BF_MATCHER_NO_LAYER,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
@@ -874,8 +880,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
         {
             .layer = BF_MATCHER_NO_LAYER,
             .unsupported_hooks =
-                BF_FLAGS(BF_HOOK_XDP, BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                         BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+                BF_FLAGS(BF_HOOK_XDP, _BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
@@ -892,8 +897,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                          BF_HOOK_CGROUP_SKB_EGRESS, BF_HOOK_NF_FORWARD,
                          BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
                          BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING,
-                         BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                         BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+                         _BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
@@ -910,8 +914,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .unsupported_hooks = BF_FLAGS(
                 BF_HOOK_NF_FORWARD, BF_HOOK_NF_LOCAL_IN, BF_HOOK_NF_LOCAL_OUT,
                 BF_HOOK_NF_POST_ROUTING, BF_HOOK_NF_PRE_ROUTING,
-                BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+                _BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
@@ -922,8 +925,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_SADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, saddr),
@@ -940,7 +942,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_DADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP6),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, daddr),
@@ -957,8 +959,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_SNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, saddr),
@@ -975,7 +976,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_DNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP6),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, daddr),
@@ -992,7 +993,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_PROTO] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP6),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct iphdr, protocol),
@@ -1009,8 +1010,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_DSCP] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct iphdr, tos),
@@ -1025,8 +1025,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_SADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
@@ -1043,7 +1042,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_DADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP4),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, daddr),
@@ -1060,8 +1059,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_SNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
@@ -1078,7 +1076,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_DNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP4),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, daddr),
@@ -1095,8 +1093,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_NEXTHDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct ipv6hdr, nexthdr),
@@ -1113,8 +1110,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_DSCP] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = 0,
@@ -1129,8 +1125,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_TCP_SPORT] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_TCP,
             .hdr_payload_size = sizeof(uint16_t),
             .hdr_payload_offset = offsetof(struct tcphdr, source),
@@ -1150,6 +1145,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_TCP_DPORT] =
         {
             .layer = BF_MATCHER_LAYER_4,
+            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4,
+                                          BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6),
             .hdr_id = IPPROTO_TCP,
             .hdr_payload_size = sizeof(uint16_t),
             .hdr_payload_offset = offsetof(struct tcphdr, dest),
@@ -1169,8 +1166,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_TCP_FLAGS] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_TCP,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = _BF_TCP_FLAGS_OFFSET,
@@ -1189,8 +1185,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_UDP_SPORT] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_UDP,
             .hdr_payload_size = sizeof(uint16_t),
             .hdr_payload_offset = offsetof(struct udphdr, source),
@@ -1229,8 +1224,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_ICMP_TYPE] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_ICMP,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct icmphdr, type),
@@ -1247,8 +1241,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_ICMP_CODE] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_ICMP,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct icmphdr, code),
@@ -1265,8 +1258,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_ICMPV6_TYPE] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_ICMPV6,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct icmp6hdr, icmp6_type),
@@ -1286,8 +1278,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_ICMPV6_CODE] =
         {
             .layer = BF_MATCHER_LAYER_4,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .hdr_id = IPPROTO_ICMPV6,
             .hdr_payload_size = sizeof(uint8_t),
             .hdr_payload_offset = offsetof(struct icmp6hdr, icmp6_code),
@@ -1304,8 +1295,7 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_SET] =
         {
             .layer = BF_MATCHER_NO_LAYER,
-            .unsupported_hooks = BF_FLAGS(BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
         },
 };
 
