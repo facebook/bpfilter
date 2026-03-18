@@ -40,10 +40,9 @@ int bf_redirect_dir_from_str(const char *str, enum bf_redirect_dir *dir)
 }
 
 static const char *_bf_verdict_strs[] = {
-    [BF_VERDICT_ACCEPT] = "ACCEPT",
-    [BF_VERDICT_DROP] = "DROP",
-    [BF_VERDICT_REDIRECT] = "REDIRECT",
-    [BF_VERDICT_CONTINUE] = "CONTINUE",
+    [BF_VERDICT_ACCEPT] = "ACCEPT",     [BF_VERDICT_DROP] = "DROP",
+    [BF_VERDICT_REDIRECT] = "REDIRECT", [BF_VERDICT_CONTINUE] = "CONTINUE",
+    [BF_VERDICT_NEXT] = "NEXT",
 };
 static_assert_enum_mapping(_bf_verdict_strs, _BF_VERDICT_MAX);
 
@@ -67,4 +66,16 @@ int bf_verdict_from_str(const char *str, enum bf_verdict *verdict)
     }
 
     return -EINVAL;
+}
+
+bool bf_verdict_is_valid_policy(enum bf_verdict verdict)
+{
+    switch (verdict) {
+    case BF_VERDICT_ACCEPT:
+    case BF_VERDICT_DROP:
+    case BF_VERDICT_NEXT:
+        return true;
+    default:
+        return false;
+    }
 }
