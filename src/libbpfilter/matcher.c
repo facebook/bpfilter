@@ -925,7 +925,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_SADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP6,
+                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, saddr),
@@ -959,7 +960,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP4_SNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP6,
+                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4),
             .hdr_id = ETH_P_IP,
             .hdr_payload_size = sizeof(uint32_t),
             .hdr_payload_offset = offsetof(struct iphdr, saddr),
@@ -1025,7 +1027,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_SADDR] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP4,
+                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
@@ -1059,7 +1062,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_IP6_SNET] =
         {
             .layer = BF_MATCHER_LAYER_3,
-            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_IP4,
+                                          BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6),
             .hdr_id = ETH_P_IPV6,
             .hdr_payload_size = sizeof(struct in6_addr),
             .hdr_payload_offset = offsetof(struct ipv6hdr, saddr),
