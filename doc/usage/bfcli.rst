@@ -342,10 +342,12 @@ With:
     - ``BF_HOOK_TC_EGRESS``: egress TC hook.
     - ``BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4``: cgroup hook for IPv4 ``connect()`` syscalls.
     - ``BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6``: cgroup hook for IPv6 ``connect()`` syscalls.
+    - ``BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4``: cgroup hook for IPv4 UDP ``sendmsg()`` syscalls.
+    - ``BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6``: cgroup hook for IPv6 UDP ``sendmsg()`` syscalls.
 
   .. note::
 
-      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``tcp.dport``, ``udp.dport``.
+      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``udp.dport``. Connect hooks additionally support ``tcp.dport``. Sendmsg hooks additionally support ``ip4.saddr``, ``ip4.snet``, ``ip6.saddr``, and ``ip6.snet``.
 
   - ``$POLICY``: action taken if no rule matches the packet, either ``ACCEPT`` forward the packet to the kernel, or ``DROP`` to discard it. Note while ``CONTINUE`` is a valid verdict for rules, it is not supported for chain policy.
 
@@ -396,7 +398,7 @@ Rules are defined such as:
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
   - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required. ``log`` is **not** supported by ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
-  - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of ``connect()`` calls.
+  - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of socket operations (``connect()`` or ``sendmsg()`` calls).
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, or ``REDIRECT``.
     - ``ACCEPT``: forward the packet to the kernel.
@@ -546,7 +548,7 @@ Meta
       - ``meta.probability``
       - ``eq``
       - ``$PROBABILITY``
-      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, probability applies at the connection level: each ``connect()`` call is independently accepted or dropped.
+      - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, probability applies per socket operation: each ``connect()`` or ``sendmsg()`` call is independently accepted or dropped.
     * - :rspan:`1` Mark
       - :rspan:`1` ``meta.mark``
       - ``eq``
