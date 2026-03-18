@@ -5,27 +5,31 @@
 
 #pragma once
 
+#include <bitset>
 #include <memory>
 #include <stdexcept>
 #include <vector>
-#include <bitset>
+
 #include "Matcher.hpp"
 
 extern "C" {
-    #include <bpfilter/rule.h>
-    #include <bpfilter/runtime.h>
-    #include <bpfilter/verdict.h>
+#include <bpfilter/rule.h>
+#include <bpfilter/runtime.h>
+#include <bpfilter/verdict.h>
 }
 
-namespace bf {
+namespace bf
+{
 
 using RuleLogBitset = std::bitset<_BF_PKTHDR_MAX>;
 
 class Rule
 {
 private:
-    struct deleter {
-        void operator()(bf_rule *ptr) {
+    struct deleter
+    {
+        void operator()(bf_rule *ptr)
+        {
             bf_rule_free(&ptr);
         }
     };
@@ -36,16 +40,23 @@ private:
     std::vector<Matcher> _matchers;
 
 public:
-    Rule(bf_verdict verdict, bool counters = false, RuleLogBitset log = {}, std::vector<Matcher> matchers = {}):
-        _verdict{verdict}, _counters{counters}, _log{log}, _matchers{std::move(matchers)} {}
+    Rule(bf_verdict verdict, bool counters = false, RuleLogBitset log = {},
+         std::vector<Matcher> matchers = {}):
+        _verdict {verdict},
+        _counters {counters},
+        _log {log},
+        _matchers {std::move(matchers)}
+    {}
 
-    Rule &operator<<(Matcher &&matcher) {
+    Rule &operator<<(Matcher &&matcher)
+    {
         _matchers.push_back(matcher);
 
         return *this;
     }
 
-    [[nodiscard]] std::unique_ptr<bf_rule, deleter> get() const {
+    [[nodiscard]] std::unique_ptr<bf_rule, deleter> get() const
+    {
         struct bf_rule *rule;
 
         int r = bf_rule_new(&rule);
@@ -58,7 +69,8 @@ public:
 
         for (const Matcher &matcher: _matchers) {
             const auto &payload = matcher.payload();
-            r = bf_rule_add_matcher(rule, matcher.type(), matcher.op(), payload.data(), payload.size());
+            r = bf_rule_add_matcher(rule, matcher.type(), matcher.op(),
+                                    payload.data(), payload.size());
             if (r != 0) {
                 bf_rule_free(&rule);
                 throw std::runtime_error("failed to add bf_matcher to bf_rule");
@@ -69,4 +81,4 @@ public:
     }
 };
 
-}
+} // namespace bf
