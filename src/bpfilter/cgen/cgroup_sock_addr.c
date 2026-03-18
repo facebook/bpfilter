@@ -216,6 +216,12 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_L4_PROTO:
     case BF_MATCHER_META_PROBABILITY:
         return bf_matcher_generate_meta(program, matcher);
+    case BF_MATCHER_IP4_SADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip4), 4);
+    case BF_MATCHER_IP4_SNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip4), 4);
     case BF_MATCHER_IP4_DADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, user_ip4), 4);
@@ -226,6 +232,12 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_8));
         return bf_cmp_value(program, bf_matcher_get_op(matcher),
                             bf_matcher_payload(matcher), 1, BPF_REG_1);
+    case BF_MATCHER_IP6_SADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip6), 16);
+    case BF_MATCHER_IP6_SNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip6), 16);
     case BF_MATCHER_IP6_DADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, user_ip6), 16);
