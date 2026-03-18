@@ -11,10 +11,6 @@ pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 add_executable(benchmark_bin EXCLUDE_FROM_ALL
     main.cpp
     benchmark.cpp benchmark.hpp
-    Matcher.hpp
-    Rule.hpp
-    Set.hpp
-    Chain.hpp
 )
 
 target_compile_options(benchmark_bin
@@ -33,6 +29,7 @@ target_link_libraries(benchmark_bin
         PkgConfig::git2
         benchmark::benchmark
         libbpfilter
+        harness_cxx
 )
 
 add_custom_target(benchmark

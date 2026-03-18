@@ -15,13 +15,11 @@
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <filesystem>
 #include <format>
-#include <fstream>
 #include <git2/commit.h>
 #include <git2/errors.h>
 #include <git2/global.h>
@@ -30,9 +28,7 @@
 #include <git2/repository.h>
 #include <git2/status.h>
 #include <git2/types.h>
-#include <initializer_list>
 #include <iostream> // NOLINT
-#include <optional>
 #include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>
 #include <sstream>
@@ -40,11 +36,8 @@
 #include <sys/personality.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <thread>
-#include <tuple>
 #include <unistd.h>
 #include <utility>
-#include <vector>
 
 namespace benchmark
 {
@@ -67,11 +60,8 @@ extern std::string FLAGS_benchmark_time_unit;
 extern int FLAGS_v;
 } // namespace benchmark
 
-namespace bf
+namespace bft
 {
-using TimePoint = std::chrono::steady_clock::time_point;
-using time = std::chrono::steady_clock;
-using seconds = std::chrono::seconds;
 
 constexpr int CGROUP_SKB_DROP = 0;
 constexpr int CGROUP_SKB_ACCEPT = 1;
@@ -88,17 +78,31 @@ constexpr std::array<uint8_t, 80> pkt_local_ip6_tcp {
     0x69, 0x7a, 0xb7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x50, 0x02, 0x20, 0x00, 0x9a, 0xbf, 0x00, 0x00};
 
-constexpr std::array<uint8_t, 42> pkt_local_ip4_icmp { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x40, 0x01, 0x68, 0xc7, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a, 0x0b, 0x08, 0x02, 0xf7, 0xfd, 0x00, 0x00, 0x00, 0x00 };
-constexpr std::array<uint8_t, 54> pkt_local_ip4_tcp { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x28, 0x00, 0x01, 0x00, 0x00, 0x40, 0x06, 0x68, 0xb6, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a, 0x0b, 0x00, 0x17, 0x00, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50, 0x02, 0x20, 0x00, 0x7d, 0x41, 0x00, 0x00 };
-constexpr std::array<uint8_t, 90> pkt_remote_ip6_eh { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xdd, 0x60, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00, 0x40, 0x54, 0x2c, 0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26, 0xb8, 0x7e, 0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4, 0x80, 0x25, 0x79, 0x74, 0x22, 0x99, 0xeb, 0x04, 0x2b, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3b, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00 };
+constexpr std::array<uint8_t, 42> pkt_local_ip4_icmp {
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00,
+    0x40, 0x01, 0x68, 0xc7, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a,
+    0x0b, 0x08, 0x02, 0xf7, 0xfd, 0x00, 0x00, 0x00, 0x00};
+constexpr std::array<uint8_t, 54> pkt_local_ip4_tcp {
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x08, 0x00, 0x45, 0x00, 0x00, 0x28, 0x00, 0x01, 0x00, 0x00,
+    0x40, 0x06, 0x68, 0xb6, 0x7f, 0x02, 0x0a, 0x0a, 0x7f, 0x02, 0x0a,
+    0x0b, 0x00, 0x17, 0x00, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x50, 0x02, 0x20, 0x00, 0x7d, 0x41, 0x00, 0x00};
+constexpr std::array<uint8_t, 90> pkt_remote_ip6_eh {
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x86, 0xdd, 0x60, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00, 0x40, 0x54, 0x2c,
+    0x1a, 0x31, 0xf9, 0x64, 0x94, 0x6c, 0x5a, 0x24, 0xe7, 0x1e, 0x4d, 0x26,
+    0xb8, 0x7e, 0x52, 0x32, 0x18, 0x5a, 0x52, 0xf9, 0x0a, 0xb4, 0x80, 0x25,
+    0x79, 0x74, 0x22, 0x99, 0xeb, 0x04, 0x2b, 0x00, 0x01, 0x04, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3b, 0x00,
+    0x01, 0x04, 0x00, 0x00, 0x00, 0x00};
 constexpr int progRunRepeat = 1000000;
 
 Config config = {};
 
 namespace
 {
-constexpr int waitForDaemonTimeoutS = 5;
-constexpr int waitForDaemonSleepMs = 10;
 constexpr int maxCommitHashLen = 7;
 
 enum
@@ -114,29 +118,67 @@ benchmarks will be skipped, and only the adhoc benchmark will be run. --adhoc \
 benchmarks won't create any output file.";
 
 constexpr std::array<struct argp_option, 8> options {{
-    {.name="cli", .key='c', .arg="CLI", .flags=0,
-     .doc="Path to the bfcli binary. Defaults to 'bfcli' in $PATH.", .group=0},
-    {.name="daemon", .key='d', .arg="DAEMON", .flags=0,
-     .doc="Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.", .group=0},
-    {.name="srcdir", .key='s', .arg="SOURCES_DIR", .flags=0,
-     .doc="Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
-     .group=0},
-    {.name="outfile", .key='o', .arg="OUTPUT_FILE", .flags=0,
-     .doc="Path to the JSON file to write the results to. Defaults to 'results.json'.",
-     .group=0},
-     {.name="filter", .key='f', .arg="FILTER", .flags=0,
-     .doc="Only run benchmarks matching the given FILTER (substring match).", .group=0},
-    {.name="no-daemon", .key=OPT_KEY_NO_DAEMON, .arg=nullptr, .flags=OPTION_ARG_OPTIONAL,
-     .doc="If set, the benchmark will assume a daemon is already running and won't start one.",
-     .group=0},
-     {.name="list", .key='l', .arg=nullptr, .doc="List all available benchmarks and exit.", .group=0},
-    {.name=nullptr},
+    {
+        .name = "cli",
+        .key = 'c',
+        .arg = "CLI",
+        .flags = 0,
+        .doc = "Path to the bfcli binary. Defaults to 'bfcli' in $PATH.",
+        .group = 0,
+    },
+    {
+        .name = "daemon",
+        .key = 'd',
+        .arg = "DAEMON",
+        .flags = 0,
+        .doc = "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.",
+        .group = 0,
+    },
+    {
+        .name = "srcdir",
+        .key = 's',
+        .arg = "SOURCES_DIR",
+        .flags = 0,
+        .doc =
+            "Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
+        .group = 0,
+    },
+    {
+        .name = "outfile",
+        .key = 'o',
+        .arg = "OUTPUT_FILE",
+        .flags = 0,
+        .doc =
+            "Path to the JSON file to write the results to. Defaults to 'results.json'.",
+        .group = 0,
+    },
+    {
+        .name = "filter",
+        .key = 'f',
+        .arg = "FILTER",
+        .flags = 0,
+        .doc =
+            "Only run benchmarks matching the given FILTER (substring match).",
+        .group = 0,
+    },
+    {
+        .name = "no-daemon",
+        .key = OPT_KEY_NO_DAEMON,
+        .arg = nullptr,
+        .flags = OPTION_ARG_OPTIONAL,
+        .doc =
+            "If set, the benchmark will assume a daemon is already running and won't start one.",
+        .group = 0,
+    },
+    {
+        .name = "list",
+        .key = 'l',
+        .arg = nullptr,
+        .doc = "List all available benchmarks and exit.",
+        .group = 0,
+    },
+    {.name = nullptr},
 }};
-
-inline char *errStr(int value)
-{
-    return ::std::strerror(::std::abs(value));
-}
 
 int optsParser(int key, char *arg, struct ::argp_state *state)
 {
@@ -154,7 +196,6 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
         break;
     case 's':
         config->srcdir = ::std::string(arg);
-
         break;
     case 'o':
         config->outfile = ::std::string(arg);
@@ -172,123 +213,6 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
     return 0;
 }
 
-int setFdNonBlock(Fd &fd)
-{
-    const int flags = fcntl(fd.get(), F_GETFL, 0);
-    if (flags < 0) {
-        err("failed to get current flags for FD {}: {}", fd.get(),
-            errStr(errno));
-        return -errno;
-    }
-
-    return fcntl(fd.get(), F_SETFL, flags | O_NONBLOCK);
-}
-
-::std::optional<::std::string> readFd(Fd &fd)
-{
-    ssize_t len;
-    std::array<char, 1024> buffer;
-    ::std::string data;
-
-    while ((len = read(fd.get(), buffer.data(), buffer.size())) >= 0)
-        data.append(buffer.data(), len);
-
-    if (len < 0 && errno != EAGAIN)
-        err("failed to read from file descriptor: {}", errStr(errno));
-
-    return data;
-}
-
-int exec(const ::std::string &bin, const ::std::vector<::std::string> &args,
-         Fd &stdoutFd, Fd &stderrFd)
-{
-    std::array<int, 2> stdout_pipe;
-    std::array<int, 2> stderr_pipe;
-    pid_t pid;
-
-    // Format the argv[] array properly
-    std::vector<const char *> args_;
-    args_.push_back(bin.c_str());
-    for (const auto &arg: args)
-        args_.push_back(arg.c_str());
-    args_.push_back(nullptr);
-
-    if (pipe(stdout_pipe.data()) != 0 || pipe(stderr_pipe.data()) != 0) {
-        err("failed to create pipes for '{}'", bin);
-        return -EINVAL;
-    }
-
-    pid = fork();
-    if (pid < 0) {
-        err("failed to fork '{}': {}", bin, errStr(errno));
-        return -errno;
-    }
-
-    // If we're the child
-    if (pid == 0) {
-        int r;
-
-        r = dup2(stdout_pipe[1], STDOUT_FILENO);
-        if (r < 0) {
-            err("failed to duplicate pipe to STDOUT_FILENOP for '{}': {}", bin,
-                errStr(errno));
-            return -errno;
-        }
-
-        r = dup2(stderr_pipe[1], STDERR_FILENO);
-        if (r < 0) {
-            err("failed to duplicate pipe to STDERR_FILENO for '{}': {}", bin,
-                errStr(errno));
-            return -errno;
-        }
-
-        close(stdout_pipe[0]);
-        close(stderr_pipe[0]);
-
-        (void)execvp(bin.c_str(), (char * const *)(args_.data()));
-
-        // If execvp returns, an error occurred
-        err("execvp() failed to '{}': {}", bin, errStr(errno));
-        return -errno;
-    }
-
-    // Send back the pipes FD and PID to the parent
-    stdoutFd = Fd(stdout_pipe[0]);
-    stderrFd = Fd(stderr_pipe[0]);
-
-    return pid;
-}
-
-::std::tuple<int, ::std::string, ::std::string>
-run(::std::string bin, const ::std::vector<::std::string> &args)
-{
-    Fd stdoutFd, stderrFd;
-
-    int pid = exec(bin, args, stdoutFd, stderrFd);
-    if (pid < 0) {
-        err("failed to exec '{}': {}", bin, errStr(pid));
-        return {pid, {}, {}};
-    }
-
-    if (setFdNonBlock(stdoutFd) < 0 || setFdNonBlock(stderrFd) < 0) {
-        err("failed to set FD non-blocking for '{}': {}", bin, errStr(errno));
-        return {-errno, {}, {}};
-    }
-
-    int status;
-    const int r = waitpid(pid, &status, 0);
-    if (r < 0) {
-        err("failed to wait for PID {}: {}", pid, errStr(errno));
-        return {-errno, {}, {}};
-    }
-
-    const auto logOut = readFd(stdoutFd);
-    const auto logErr = readFd(stderrFd);
-    const ::std::string noLog;
-
-    return {WEXITSTATUS(status), logOut ? *logOut : noLog,
-            logErr ? *logErr : noLog};
-}
 } // namespace
 
 int disableASLR(char **argv)
@@ -298,27 +222,25 @@ int disableASLR(char **argv)
 
     // Disable ASLR for the current process
     unsigned long curr_personality = personality(0xffffffff);
-    if (curr_personality == -1) {
-        err("failed to read current process personality: {}", -errno);
-        return -errno;
-    }
+    if (curr_personality == -1)
+        return bf_err_r(errno, "failed to read current process personality");
 
     // Is ASLR is already disabled, return and proceed to the benchmark
     if (curr_personality & ADDR_NO_RANDOMIZE)
         return 0;
 
-    unsigned long new_personality = personality(curr_personality | ADDR_NO_RANDOMIZE);
-    if (new_personality == -1) {
-        err("failed to set new process persionality: {}", -errno);
-        return -errno;
-    }
+    unsigned long new_personality =
+        personality(curr_personality | ADDR_NO_RANDOMIZE);
+    if (new_personality == -1)
+        return bf_err_r(errno, "failed to set new process personality");
 
     execv(argv[0], argv);
 
     return 0;
 }
 
-static std::string which(const std::string& cmd) {
+static std::string which(const std::string &cmd)
+{
     // If already a path, resolve directly
     if (cmd.find('/') != std::string::npos) {
         auto p = std::filesystem::absolute(cmd);
@@ -327,8 +249,9 @@ static std::string which(const std::string& cmd) {
         return {};
     }
 
-    const char* path_env = std::getenv("PATH");
-    if (!path_env) return {};
+    const char *path_env = std::getenv("PATH");
+    if (path_env == nullptr)
+        return {};
 
     std::istringstream ss(path_env);
     std::string dir;
@@ -345,35 +268,36 @@ static std::string which(const std::string& cmd) {
 
 int setup(std::span<char *> args)
 {
-    const struct argp argp = {.options=options.data(), .parser=optsParser, .args_doc=nullptr, .doc=help.c_str()};
+    const struct argp argp = {.options = options.data(),
+                              .parser = optsParser,
+                              .args_doc = nullptr,
+                              .doc = help.c_str()};
 
     const int r = argp_parse(&argp, static_cast<int>(args.size()), args.data(),
-                             0, nullptr, &::bf::config);
-    if (r != 0) {
-        err("failed to parse command line arguments: {}", errStr(r));
-        return r;
-    }
+                             0, nullptr, &::bft::config);
+    if (r != 0)
+        return bf_err_r(r, "failed to parse command line arguments");
 
     config.bfcli = which(config.bfcli);
     if (config.bfcli.empty()) {
-        err("bfcli binary '{}' not found", config.bfcli);
-        return -ENOENT;
+        return bf_err_r(-ENOENT, "bfcli binary '%s' not found",
+                        config.bfcli.c_str());
     }
 
     config.bpfilter = which(config.bpfilter);
     if (config.bpfilter.empty()) {
-        err("bpfilter binary '{}' not found", config.bpfilter);
-        return -ENOENT;
+        return bf_err_r(-ENOENT, "bpfilter binary '%s' not found",
+                        config.bpfilter.c_str());
     }
 
     config.outfile = ::std::filesystem::absolute(config.outfile);
     config.srcdir = ::std::filesystem::weakly_canonical(config.srcdir);
     if (!std::filesystem::exists(config.srcdir)) {
-        err("source directory '{}' does not exist", config.srcdir);
-        return -ENOENT;
+        return bf_err_r(-ENOENT, "source directory '%s' does not exist",
+                        config.srcdir.c_str());
     }
 
-    const ::bf::Sources srcs(::bf::config.srcdir);
+    const ::bft::Sources srcs(::bft::config.srcdir);
 
     if (srcs.isDirty()) {
         config.gitrev = srcs.getLastCommitHash() + "+";
@@ -412,10 +336,12 @@ void restorePermissions(::std::string outfile)
     if (uid && gid) {
         int r = chown(outfile.c_str(), atoi(uid), atoi(gid));
         if (r) {
-            ::std::cerr << "failed to restore output file permissiosn to SUDO_USER\n";
+            ::std::cerr
+                << "failed to restore output file permissions to SUDO_USER\n";
             return;
         }
-        ::std::cout << "sudo is used, output file permissions restored to " << uid << ":" << gid << "\n";
+        ::std::cout << "sudo is used, output file permissions restored to "
+                    << uid << ":" << gid << "\n";
     }
 }
 
@@ -424,16 +350,18 @@ Sources::Sources(::std::string path):
 {
     int r = git_libgit2_init();
     if (r < 0) {
-        const git_error *err = git_error_last();
-        abort("failed to initialize libgit2: {}/{}: {}", r, err->klass,
-              err->message);
+        const git_error *git_err = git_error_last();
+        throw std::runtime_error(
+            std::format("failed to initialize libgit2: {}/{}: {}", r,
+                        git_err->klass, git_err->message));
     }
 
     r = git_repository_open(&repo_, path_.c_str());
     if (r < 0) {
-        const git_error *err = git_error_last();
-        abort("failed to open Git repository: {}/{}: {}", r, err->klass,
-              err->message);
+        const git_error *git_err = git_error_last();
+        throw std::runtime_error(
+            std::format("failed to open Git repository: {}/{}: {}", r,
+                        git_err->klass, git_err->message));
     }
 }
 
@@ -450,9 +378,9 @@ Sources::~Sources()
 
     int r = git_reference_name_to_id(&oid, repo_, "HEAD");
     if (r < 0) {
-        const git_error *err = git_error_last();
-        err("failed to open Git repository: {}/{}: {}", r, err->klass,
-            err->message);
+        const git_error *git_err = git_error_last();
+        bf_err("failed to resolve HEAD: %d/%d: %s", r, git_err->klass,
+               git_err->message);
         return "";
     }
 
@@ -466,16 +394,17 @@ int64_t Sources::getLastCommitTime() const
 
     int r = git_reference_name_to_id(&oid, repo_, "HEAD");
     if (r < 0) {
-        const git_error *err = git_error_last();
-        err("failed to convert Git reference to ID: {}/{}: {}", r, err->klass,
-            err->message);
+        const git_error *git_err = git_error_last();
+        bf_err("failed to convert Git reference to ID: %d/%d: %s", r,
+               git_err->klass, git_err->message);
         return -1;
     }
 
     r = git_commit_lookup(&commit, repo_, &oid);
     if (r < 0) {
-        const git_error *err = git_error_last();
-        err("failed to get git commit: {}/{}: {}", r, err->klass, err->message);
+        const git_error *git_err = git_error_last();
+        bf_err("failed to get git commit: %d/%d: %s", r, git_err->klass,
+               git_err->message);
         return -1;
     }
 
@@ -494,9 +423,9 @@ bool Sources::isDirty() const
 
     int r = git_status_list_new(&status, repo_, &opts);
     if (r < 0) {
-        const git_error *err = git_error_last();
-        err("failed to get repository status: {}/{}: {}", r, err->klass,
-            err->message);
+        const git_error *git_err = git_error_last();
+        bf_err("failed to get repository status: %d/%d: %s", r, git_err->klass,
+               git_err->message);
         return true;
     }
 
@@ -506,412 +435,4 @@ bool Sources::isDirty() const
     return count != 0;
 }
 
-Fd::Fd(int fd):
-    fd_ {fd}
-{}
-
-Fd::Fd(Fd &&other) noexcept(false)
-{
-    if (fd_ != -1)
-        abort("calling ::bf::Fd(Fd &&) on an open file descriptor!");
-
-    fd_ = other.fd_;
-    other.fd_ = -1;
-}
-
-Fd &Fd::operator=(Fd &&other) noexcept(false)
-{
-    if (fd_ != -1)
-        abort("calling ::bf::Fd::operator=(Fd &&) on an open file descriptor!");
-
-    fd_ = other.fd_;
-    other.fd_ = -1;
-
-    return *this;
-}
-
-Fd::~Fd() noexcept(false)
-{
-    if (close() < 0)
-        abort("failed to close ::bf::Fd");
-}
-
-int Fd::get() const
-{
-    return fd_;
-}
-
-int Fd::close()
-{
-    if (fd_ == -1)
-        return 0;
-
-    if (::close(fd_) < 0) {
-        err("failed to close ::bf::Fd file descriptor: {}", errStr(errno));
-        return -errno;
-    }
-
-    fd_ = -1;
-
-    return 0;
-}
-
-Daemon::Options &Daemon::Options::transient()
-{
-    options_.emplace_back("--transient");
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::bufferLen(::std::size_t len)
-{
-    options_.emplace_back("--buffer-len");
-    options_.emplace_back(::std::to_string(len));
-    return *this;
-}
-
-Daemon::Options &Daemon::Options::verbose(const ::std::string &component)
-{
-    options_.emplace_back("--verbose");
-    options_.emplace_back(component);
-    return *this;
-}
-
-::std::vector<::std::string> Daemon::Options::get() const
-{
-    return options_;
-}
-
-Daemon::Daemon(::std::string path, Options options):
-    path_ {::std::move(path)},
-    options_ {::std::move(options)}
-{
-    if (start() < 0)
-        abort("failed to start bpfilter");
-}
-
-Daemon::Daemon(Daemon &&other) noexcept(false)
-{
-    if (pid_)
-        abort("calling ::bf::Daemon(::bf::Daemon &&) on an active daemon!");
-
-    other.pid_.swap(pid_);
-    stdoutFd_ = ::std::move(other.stdoutFd_);
-    stderrFd_ = ::std::move(other.stderrFd_);
-}
-
-Daemon &Daemon::operator=(Daemon &&other) noexcept(false)
-{
-    if (pid_)
-        abort(
-            "calling ::bf::Daemon::operator=(::fd::Daemon &&) on an active daemon!");
-
-    other.pid_.swap(pid_);
-    stdoutFd_ = ::std::move(other.stdoutFd_);
-    stderrFd_ = ::std::move(other.stderrFd_);
-
-    return *this;
-}
-
-Daemon::~Daemon() noexcept(false)
-{
-    if (stop() < 0)
-        abort("failed to stop bpfilter");
-}
-
-int Daemon::start()
-{
-    Fd stdoutFd, stderrFd;
-    int pid, r;
-
-    if (pid_)
-        abort("calling ::bf::Daemon::start() on an active daemon!");
-
-    pid = exec(path_, options_.get(), stdoutFd, stderrFd);
-    if (pid < 0) {
-        err("failed to start the daemon: {}", errStr(pid));
-        return pid;
-    }
-
-    if ((r = setFdNonBlock(stdoutFd)) < 0) {
-        err("failed to set non-blocking flag to the daemon's stdout FD: {}",
-            errStr(r));
-        return r;
-    }
-
-    if ((r = setFdNonBlock(stderrFd)) < 0) {
-        err("failed to set non-blocking flag to the daemon's stderr FD: {}",
-            errStr(r));
-        return r;
-    }
-
-    const TimePoint begin = time::now();
-
-    while (true) {
-        int status;
-
-        r = waitpid(pid, &status, WNOHANG);
-        if (r == -1) {
-            err("failed to wait on the deamon's PID {}: {}", pid,
-                errStr(errno));
-            return -errno;
-        }
-        if (r != 0) {
-            auto errLogs = readFd(stderrFd);
-            err("daemon seems to be dead! Err logs:\n{}",
-                errLogs ? *errLogs : "<no logs>");
-            return -ENOENT;
-        }
-
-        auto data = readFd(stderrFd);
-        if (data &&
-            data->find("waiting for requests...") != ::std::string::npos)
-            break;
-
-        if (std::chrono::duration_cast<seconds>(time::now() - begin).count() >
-            waitForDaemonTimeoutS) {
-            // Let's try to stop it just in case
-            kill(pid, SIGINT);
-            err("daemon is not showing up after {} seconds, aborting",
-                waitForDaemonTimeoutS);
-            return -EIO;
-        }
-
-        // Wait a bit for the daemon to be ready
-        ::std::this_thread::sleep_for(
-            std::chrono::milliseconds(waitForDaemonSleepMs));
-    }
-
-    pid_ = ::std::optional<int>(pid);
-    stdoutFd_ = std::move(stdoutFd);
-    stderrFd_ = std::move(stderrFd);
-
-    return 0;
-}
-
-int Daemon::stop()
-{
-    if (!pid_)
-        return 0;
-
-    int r = kill(*pid_, SIGINT);
-    if (r < 0) {
-        err("failed to send SIGINT signal to the daemon: {}", errStr(errno));
-        return -errno;
-    }
-
-    int status;
-    r = waitpid(*pid_, &status, 0);
-    if (r < 0) {
-        err("can't wait on the daemon: {}", errStr(errno));
-        return -errno;
-    }
-
-    return 0;
-}
-
-std::string Daemon::stdout()
-{
-    auto maybe = readFd(stdoutFd_);
-
-    return  maybe ? *maybe : "";
-}
-
-std::string Daemon::stderr()
-{
-    auto maybe = readFd(stderrFd_);
-
-    return  maybe ? *maybe : "";
-}
-
-Program::Program(std::string name):
-    name_ {::std::move(name)}
-{
-    if (open() < 0)
-        abort("failed to open BPF program '{}'", name_);
-}
-
-Program::Program(Program &&other) noexcept(false)
-{
-    if (fd_ != -1) {
-        abort("calling ::bf::Program(::bf::Program &&) on an open program!");
-    }
-
-    fd_ = other.fd_;
-    other.fd_ = -1;
-}
-
-Program &Program::operator=(Program &&other) noexcept(false)
-{
-    if (fd_ != -1) {
-        abort(
-            "calling ::bf::Program::operator=(::bf::Program &&) on an open program!");
-    }
-
-    fd_ = other.fd_;
-    other.fd_ = -1;
-
-    return *this;
-}
-
-Program::~Program() noexcept(false)
-{
-    if (close() < 0)
-        abort("failed to close ::bf::Program");
-}
-
-::std::size_t Program::nInsn() const
-{
-    struct bpf_prog_info prog_info = {};
-	uint32_t prog_info_len = sizeof(prog_info);
-	int r;
-
-	r = bpf_prog_get_info_by_fd(fd_, &prog_info, &prog_info_len);
-	if (r < 0)
-		return -EINVAL;
-
-    return prog_info.xlated_prog_len / sizeof(struct bpf_insn);
-}
-
-int Program::run(int expect, const std::span<const uint8_t> &pkt) const
-{
-    LIBBPF_OPTS(bpf_test_run_opts, opts, .data_in = (const void *)pkt.data(),
-                .data_size_in = (uint32_t)pkt.size(), .repeat = progRunRepeat);
-
-    const int r = bpf_prog_test_run_opts(fd_, &opts);
-    if (r < 0) {
-        err("BPF program test run failed: {}", errStr(r));
-        return r;
-    }
-
-    if (opts.retval != expect) {
-        err("unexpected test run return value: {}", opts.retval);
-        return -EINVAL;
-    }
-
-    return 0;
-}
-
-int Program::close()
-{
-    if (fd_ == -1)
-        return 0;
-
-    if (::close(fd_) < 0) {
-        err("failed to close ::bf::Program file descriptor: {}", errStr(errno));
-        return -errno;
-    }
-
-    fd_ = -1;
-
-    return 0;
-}
-
-int Program::open()
-{
-    uint32_t id = 0;
-    int r;
-
-    while (true) {
-        r = bpf_prog_get_next_id(id, &id);
-        if (r < 0) {
-            err("call to bpf_prog_get_next_id() failed: {}", errStr(r));
-            return r;
-        }
-
-        const int prog_fd = bpf_prog_get_fd_by_id(id);
-        if (prog_fd < 0) {
-            err("call to bpf_prog_get_fd_by_id() failed: {}", errStr(prog_fd));
-            return prog_fd;
-        }
-
-        struct bpf_prog_info info = {};
-        uint32_t len = sizeof(info);
-        r = bpf_prog_get_info_by_fd(prog_fd, &info, &len);
-        if (r < 0) {
-            ::close(prog_fd);
-            err("call to bpf_prog_get_info_by_fd() failed: {}", errStr(r));
-            return r;
-        }
-
-        if (::std::string(info.name) == "bf_prog") {
-            fd_ = prog_fd;
-            return 0;
-        }
-
-        ::close(prog_fd);
-    }
-}
-
-OldChain::OldChain(::std::string bin, ::std::string name):
-    bin_ {::std::move(bin)},
-    name_ {::std::move(name)}
-{}
-
-OldChain::OldChain(::std::initializer_list<::std::string> rules)
-{
-    rules_.insert(rules_.begin(), rules.begin(), rules.end());
-}
-
-OldChain &OldChain::operator<<(const ::std::string &rule)
-{
-    rules_.push_back(rule);
-    return *this;
-}
-
-OldChain &OldChain::repeat(const ::std::string &rule, ::std::size_t count)
-{
-    for (::std::size_t i = 0; i < count; ++i)
-        rules_.push_back(rule);
-
-    return *this;
-}
-
-void OldChain::insertRuleIPv4Set(unsigned int nIps)
-{
-    ::std::string rule = "rule (ip4.saddr) in {";
-
-    for (unsigned int i = 0; i < nIps; ++i) {
-        ::std::string ip;
-
-        rule +=
-            ::std::format("{}.{}.{}.{};", (i >> 24), (i >> 16) & 0xff,
-                          (i >> 8) & 0xff, i & 0xff);
-    }
-
-    rule += "} DROP";
-
-    *this << rule;
-}
-
-int OldChain::apply()
-{
-    ::std::string chain = "chain bf_benchmark BF_HOOK_XDP DROP ";
-
-    for (const auto &rule: rules_)
-        chain += rule + " ";
-
-    ::std::filesystem::path temp_file = ::std::filesystem::temp_directory_path() / "ruleset.bpfilter";
-    ::std::ofstream file(temp_file);
-    file << chain << ::std::endl;
-    file.close();
-
-    const ::std::vector<::std::string> args {"ruleset", "set", "--from-file",
-                                             temp_file.string()};
-
-    const auto [r, out, err] = run(bin_, args);
-    if (r != 0) {
-        abort("failed to exec '{}': {}\nError logs: {}", bin_, r, err);
-        return r;
-    }
-
-    ::std::filesystem::remove(temp_file);
-
-    return 0;
-}
-
-Program OldChain::getProgram() const
-{
-    return {name_};
-}
-
-} // namespace bf
+} // namespace bft

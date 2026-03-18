@@ -18,6 +18,31 @@ target_link_libraries(harness
         libbpfilter
 )
 
+add_library(harness_cxx EXCLUDE_FROM_ALL
+    STATIC
+        Daemon.hpp          Daemon.cpp
+        FileDescriptor.hpp  FileDescriptor.cpp
+        Chain.hpp
+        Matcher.hpp
+        Rule.hpp
+        Set.hpp
+)
+
+target_compile_options(harness_cxx
+    PRIVATE
+        -std=c++20
+)
+
+target_include_directories(harness_cxx
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(harness_cxx
+    PUBLIC
+        libbpfilter
+)
+
 add_library(mock EXCLUDE_FROM_ALL
     SHARED
         mock/btf__load_vmlinux_btf.c
