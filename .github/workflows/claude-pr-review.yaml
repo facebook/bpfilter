@@ -12,7 +12,7 @@ on:
     # _target gives forks access to upstream's secrets and identity.
     pull_request_target:
         types: [opened, synchronize]
-        branches: [main]
+        branches: [main, aws-bedrock-test]
 concurrency:
     group: claude-review-${{ github.event.pull_request.number }}
     cancel-in-progress: true
