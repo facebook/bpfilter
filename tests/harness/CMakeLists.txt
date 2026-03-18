@@ -22,6 +22,8 @@ add_library(harness_cxx EXCLUDE_FROM_ALL
     STATIC
         Daemon.hpp          Daemon.cpp
         FileDescriptor.hpp  FileDescriptor.cpp
+        Packet.hpp          Packet.cpp
+        test.hpp            test.cpp
         Chain.hpp
         Matcher.hpp
         Rule.hpp

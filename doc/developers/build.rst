@@ -103,7 +103,7 @@ A full configuration (without any part disabled) will provide the following targ
 
 - ``core``, ``bpfilter``, ``libbpfilter``, ``bfcli``: the ``bpfilter`` binaries.
 - ``test_bin``: build the binaries needed to run the tests (below).
-- ``test``: run all the tests. This command will run ``unit``, ``check``, ``e2e``, and ``integration`` targets. See :doc:`tests` for more information.
+- ``test``: run all the tests. This command will run ``unit``, ``check``, ``e2e``, ``functional``, and ``integration`` targets. See :doc:`tests` for more information.
 - ``fuzzing``: fuzz the CLI parser indefinitely. Use ``fuzzing_quick`` for a quick, 60-second fuzzing session.
 - ``check``: run ``clang-tidy`` and ``clang-format`` against the source files.
 - ``benchmarks``: run the benchmarks on ``bpfilter``.
