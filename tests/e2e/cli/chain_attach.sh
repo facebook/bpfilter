@@ -52,6 +52,22 @@ ${FROM_NS} bfcli chain attach --name chain_attach_csa4_1 --option cgpath=${CGROU
 ${FROM_NS} bfcli chain flush --name chain_attach_csa4_0
 ${FROM_NS} bfcli chain flush --name chain_attach_csa4_1
 
+# cgroup_sock_addr sendmsg
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_csm4_0 BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.dport eq 9990 DROP"
+${FROM_NS} bfcli chain load --from-str "chain chain_attach_csm4_1 BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT"
+${FROM_NS} bfcli chain attach --name chain_attach_csm4_0 --option cgpath=${CGROUP_PATH}
+${FROM_NS} bfcli chain attach --name chain_attach_csm4_1 --option cgpath=${CGROUP_PATH}
+(! ${FROM_NS} python3 -c "
+import os, socket
+with open('${CGROUP_PATH}/cgroup.procs', 'w') as f:
+    f.write(str(os.getpid()))
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.sendto(b'x', ('${HOST_IP_ADDR}', 9990))
+s.close()
+")
+${FROM_NS} bfcli chain flush --name chain_attach_csm4_0
+${FROM_NS} bfcli chain flush --name chain_attach_csm4_1
+
 # Netfilter
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} bfcli chain load --from-str "chain chain_attach_nf_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP"
