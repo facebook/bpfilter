@@ -42,6 +42,8 @@ enum bf_bpf_attach_type
     BF_BPF_CGROUP_INET_EGRESS = 1,
     BF_BPF_CGROUP_INET4_CONNECT = 10,
     BF_BPF_CGROUP_INET6_CONNECT = 11,
+    BF_BPF_CGROUP_UDP4_SENDMSG = 14,
+    BF_BPF_CGROUP_UDP6_SENDMSG = 15,
 };
 
 enum bf_bpf_map_type

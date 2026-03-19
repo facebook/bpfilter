@@ -238,7 +238,7 @@ struct bf_matcher_meta
     size_t hdr_payload_offset;
 
     /** Bitmask of unsupported hooks for this matcher. */
-    uint16_t unsupported_hooks;
+    uint32_t unsupported_hooks;
 
     /** Operator-specific parameters to process the user-specific data.
      * Undefined operators are considered unsupported. */

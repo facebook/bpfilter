@@ -81,6 +81,10 @@ static int _bf_cgroup_sock_addr_gen_inline_epilogue(struct bf_program *program)
  * `R6` must already point to the context. For 16-byte fields, the low
  * 8 bytes go into `reg` and the high 8 bytes into `reg + 1`.
  *
+ * When the field offset is not 8-byte aligned, 8- and 16-byte loads fall
+ * back to 4-byte reads packed via shift/or. This clobbers `reg + 1` for
+ * 8-byte loads and `reg + 2` for 16-byte loads.
+ *
  * @param program Program to emit into. Can't be NULL.
  * @param offset Byte offset into `struct bpf_sock_addr`.
  * @param size Field size in bytes: 1, 2, 4, 8, or 16.
@@ -103,11 +107,29 @@ static int _bf_cgroup_sock_addr_load_field(struct bf_program *program,
         EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_6, offset));
         break;
     case 8:
-        EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, offset));
+        if (offset % 8 == 0) {
+            EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, offset));
+        } else {
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_6, offset));
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg + 1, BPF_REG_6, offset + 4));
+            EMIT(program, BPF_ALU64_IMM(BPF_LSH, reg + 1, 32));
+            EMIT(program, BPF_ALU64_REG(BPF_OR, reg, reg + 1));
+        }
         break;
     case 16:
-        EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, offset));
-        EMIT(program, BPF_LDX_MEM(BPF_DW, reg + 1, BPF_REG_6, offset + 8));
+        if (offset % 8 == 0) {
+            EMIT(program, BPF_LDX_MEM(BPF_DW, reg, BPF_REG_6, offset));
+            EMIT(program, BPF_LDX_MEM(BPF_DW, reg + 1, BPF_REG_6, offset + 8));
+        } else {
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg, BPF_REG_6, offset));
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg + 2, BPF_REG_6, offset + 4));
+            EMIT(program, BPF_ALU64_IMM(BPF_LSH, reg + 2, 32));
+            EMIT(program, BPF_ALU64_REG(BPF_OR, reg, reg + 2));
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg + 1, BPF_REG_6, offset + 8));
+            EMIT(program, BPF_LDX_MEM(BPF_W, reg + 2, BPF_REG_6, offset + 12));
+            EMIT(program, BPF_ALU64_IMM(BPF_LSH, reg + 2, 32));
+            EMIT(program, BPF_ALU64_REG(BPF_OR, reg + 1, reg + 2));
+        }
         break;
     default:
         return -EINVAL;
@@ -194,6 +216,12 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_L4_PROTO:
     case BF_MATCHER_META_PROBABILITY:
         return bf_matcher_generate_meta(program, matcher);
+    case BF_MATCHER_IP4_SADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip4), 4);
+    case BF_MATCHER_IP4_SNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip4), 4);
     case BF_MATCHER_IP4_DADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, user_ip4), 4);
@@ -204,6 +232,12 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_8));
         return bf_cmp_value(program, bf_matcher_get_op(matcher),
                             bf_matcher_payload(matcher), 1, BPF_REG_1);
+    case BF_MATCHER_IP6_SADDR:
+        return _bf_cgroup_sock_addr_load_and_cmp(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip6), 16);
+    case BF_MATCHER_IP6_SNET:
+        return _bf_cgroup_sock_addr_generate_net(
+            program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip6), 16);
     case BF_MATCHER_IP6_DADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, user_ip6), 16);
