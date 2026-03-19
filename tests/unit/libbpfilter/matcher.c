@@ -1424,12 +1424,23 @@ static void error_paths_parse(void **state)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
                                        BF_MATCHER_EQ, "99999")); // Too large
 
+    // Test _bf_parse_l4_proto with valid hex values
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
+                                      BF_MATCHER_EQ, "0x06"));
+    bf_matcher_free(&matcher);
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
+                                      BF_MATCHER_EQ, "0x11"));
+    bf_matcher_free(&matcher);
+
     // Test _bf_parse_l4_proto error path with invalid protocol
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
                                        BF_MATCHER_EQ, "xyz"));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
                                        BF_MATCHER_EQ,
                                        "256")); // Too large for uint8_t
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
+                                       BF_MATCHER_EQ,
+                                       "0x100")); // Too large for uint8_t
 
     // Test _bf_parse_tcp_flags error path with invalid flag
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_FLAGS,
