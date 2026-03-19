@@ -64,57 +64,81 @@ struct bf_matcher
     uint8_t payload[];
 };
 
-int _bf_parse_int(enum bf_matcher_type type, enum bf_matcher_op op,
-                  void *payload, const char *raw_payload)
+/**
+ * @brief Parse a string into an unsigned long.
+ *
+ * Tries base-10 first. If that fails to consume the full string, retries
+ * as base-16 (accepts "0x" prefix). Returns -EINVAL if neither succeeds.
+ *
+ * @param str String to parse. Must not be NULL.
+ * @param value Parsed value. Must not be NULL.
+ * @return 0 on success, negative errno on failure.
+ */
+static int _bf_strtoul(const char *str, unsigned long *value)
 {
+    char *endptr;
+
+    assert(str);
+    assert(value);
+
+    if (*str == '\0')
+        return -EINVAL;
+
+    errno = 0;
+    *value = strtoul(str, &endptr, BF_BASE_10);
+    if (*endptr != '\0' || errno == ERANGE) {
+        errno = 0;
+        *value = strtoul(str, &endptr, BF_BASE_16);
+        if (*endptr != '\0' || errno == ERANGE)
+            return -EINVAL;
+    }
+
+    return 0;
+}
+
+static int _bf_parse_u32(enum bf_matcher_type type, enum bf_matcher_op op,
+                         void *payload, const char *raw_payload)
+{
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long value;
-    char *endptr;
-
-    value = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && value <= UINT32_MAX) {
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT32_MAX) {
         *(uint32_t *)payload = (uint32_t)value;
         return 0;
     }
 
-    value = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && value <= UINT32_MAX) {
-        *(uint32_t *)payload = (uint32_t)value;
-        return 0;
-    }
-
-    bf_err(
-        "\"%s %s\" expects a valid 32 bits integer value in decimal or hexadecimal notation, not '%s'",
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects a valid 32-bit value in decimal or hexadecimal notation, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
-void _bf_print_int(const void *payload)
+static void _bf_print_u32(const void *payload)
 {
     assert(payload);
 
     (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
 }
 
-#define BF_INT_RANGE_MAX_LEN 32 /* 4294967295-4294967295 */
+#define BF_U32_RANGE_MAX_LEN 32 /* 4294967295-4294967295 */
 
-int _bf_parse_int_range(enum bf_matcher_type type, enum bf_matcher_op op,
-                        void *payload, const char *raw_payload)
+static int _bf_parse_u32_range(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
 {
+    uint32_t *range;
+    char buf[BF_U32_RANGE_MAX_LEN];
+    char *first;
+    char *second;
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    uint32_t *range = (uint32_t *)payload;
-    unsigned long value;
-    char buf[BF_INT_RANGE_MAX_LEN];
-    char *first;
-    char *second;
-    char *endptr;
+    range = (uint32_t *)payload;
 
-    bf_strncpy(buf, BF_INT_RANGE_MAX_LEN, raw_payload);
+    bf_strncpy(buf, BF_U32_RANGE_MAX_LEN, raw_payload);
 
     if (!isdigit(*raw_payload))
         goto err;
@@ -126,20 +150,12 @@ int _bf_parse_int_range(enum bf_matcher_type type, enum bf_matcher_op op,
     if (!*second)
         goto err;
 
-    value = strtoul(first, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || value > UINT32_MAX) {
-        value = strtoul(first, &endptr, BF_BASE_16);
-        if (*endptr != '\0' || value > UINT32_MAX)
-            goto err;
-    }
+    if (_bf_strtoul(first, &value) || value > UINT32_MAX)
+        goto err;
     range[0] = (uint32_t)value;
 
-    value = strtoul(second, &endptr, BF_BASE_10);
-    if (*endptr != '\0' || value > UINT32_MAX) {
-        value = strtoul(second, &endptr, BF_BASE_16);
-        if (*endptr != '\0' || value > UINT32_MAX)
-            goto err;
-    }
+    if (_bf_strtoul(second, &value) || value > UINT32_MAX)
+        goto err;
     range[1] = (uint32_t)value;
 
     if (range[1] < range[0])
@@ -155,7 +171,7 @@ err:
     return -EINVAL;
 }
 
-void _bf_print_int_range(const void *payload)
+static void _bf_print_u32_range(const void *payload)
 {
     assert(payload);
 
@@ -201,34 +217,23 @@ void _bf_print_iface(const void *payload)
 int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
                        void *payload, const char *raw_payload)
 {
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long ethertype;
-    char *endptr;
-    int r;
-
-    r = bf_ethertype_from_str(raw_payload, payload);
-    if (!r)
+    if (!bf_ethertype_from_str(raw_payload, payload))
         return 0;
 
-    ethertype = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && ethertype <= UINT16_MAX) {
-        *(uint16_t *)payload = (uint16_t)ethertype;
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT16_MAX) {
+        *(uint16_t *)payload = (uint16_t)value;
         return 0;
     }
 
-    ethertype = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && ethertype <= UINT16_MAX) {
-        *(uint16_t *)payload = (uint16_t)ethertype;
-        return 0;
-    }
-
-    bf_err(
+    return bf_err_r(
+        -EINVAL,
         "\"%s %s\" expects an internet layer protocol name (e.g. \"IPv6\", case insensitive), or a valid decimal or hexadecimal IEEE 802 number, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
 void _bf_print_l3_proto(const void *payload)
@@ -671,35 +676,23 @@ void _bf_print_tcp_flags(const void *payload)
 static int _bf_parse_icmp_type(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long icmptype;
-    char *endptr;
-    int r;
-
-    r = bf_icmp_type_from_str(raw_payload, payload);
-    if (!r)
+    if (!bf_icmp_type_from_str(raw_payload, payload))
         return 0;
 
-    icmptype = strtoul(raw_payload, &endptr, BF_BASE_10);
-
-    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)icmptype;
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
-    icmptype = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)icmptype;
-        return 0;
-    }
-
-    bf_err(
-        "\"%s %s\" expects an ICMP type name (e.g. \"echo-reply\", case insensitive), or or a decimal or hexadecimal ICMP type value, not '%s'",
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects an ICMP type name (e.g. \"echo-reply\", case insensitive), or a decimal or hexadecimal ICMP type value, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
 void _bf_print_icmp_type(const void *payload)
@@ -717,29 +710,20 @@ void _bf_print_icmp_type(const void *payload)
 static int _bf_parse_icmp_code(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long code;
-    char *endptr;
-
-    code = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && code <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)code;
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
-    code = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && code <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)code;
-        return 0;
-    }
-
-    bf_err(
+    return bf_err_r(
+        -EINVAL,
         "\"%s %s\" expects a decimal or hexadecimal ICMP or ICMPv6 code value, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
 void _bf_print_icmp_code(const void *payload)
@@ -753,27 +737,19 @@ static int _bf_parse_u8(enum bf_matcher_type type, enum bf_matcher_op op,
                         void *payload, const char *raw_payload)
 {
     unsigned long value;
-    char *endptr;
 
     assert(payload);
     assert(raw_payload);
 
-    value = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && value <= UINT8_MAX) {
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
         *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
-    value = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && value <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)value;
-        return 0;
-    }
-
-    bf_err("\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
-           bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
 static void _bf_print_u8(const void *payload)
@@ -787,35 +763,23 @@ static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
                                  enum bf_matcher_op op, void *payload,
                                  const char *raw_payload)
 {
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long icmptype;
-    char *endptr;
-    int r;
-
-    r = bf_icmpv6_type_from_str(raw_payload, payload);
-    if (!r)
+    if (!bf_icmpv6_type_from_str(raw_payload, payload))
         return 0;
 
-    icmptype = strtoul(raw_payload, &endptr, BF_BASE_10);
-
-    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)icmptype;
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
-    icmptype = strtoul(raw_payload, &endptr, BF_BASE_16);
-    if (*endptr == '\0' && icmptype <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)icmptype;
-        return 0;
-    }
-
-    bf_err(
+    return bf_err_r(
+        -EINVAL,
         "\"%s %s\" expects an ICMPv6 type name (e.g. \"echo-reply\", case insensitive), or a decimal or hexadecimal ICMPv6 type value, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
 void _bf_print_icmpv6_type(const void *payload)
@@ -934,11 +898,11 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
-                                   _bf_parse_int, _bf_print_int),
+                                   _bf_parse_u32, _bf_print_u32),
                     BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
-                                   _bf_parse_int, _bf_print_int),
+                                   _bf_parse_u32, _bf_print_u32),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint32_t),
-                                   _bf_parse_int_range, _bf_print_int_range),
+                                   _bf_parse_u32_range, _bf_print_u32_range),
                 },
         },
     [BF_MATCHER_META_FLOW_PROBABILITY] =
