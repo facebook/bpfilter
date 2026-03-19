@@ -240,6 +240,32 @@ _bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_pkt_generate_ip4_dscp(struct bf_program *program,
+                                             const struct bf_matcher *matcher,
+                                             const struct bf_matcher_meta *meta)
+{
+    uint8_t dscp;
+    int r;
+
+    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    if (r)
+        return r;
+
+    dscp = *(uint8_t *)bf_matcher_payload(matcher);
+
+    /* IPv4 TOS byte: [DSCP 6b] [ECN 2b]. Mask with 0xfc to isolate
+     * the 6-bit DSCP field, then compare against dscp << 2. */
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0xfc));
+
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program,
+        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
+                                                                  BPF_JEQ,
+                    BPF_REG_1, (uint8_t)dscp << 2, 0));
+
+    return 0;
+}
+
 static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
                                              const struct bf_matcher *matcher,
                                              const struct bf_matcher_meta *meta)
@@ -253,19 +279,19 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
 
     dscp = *(uint8_t *)bf_matcher_payload(matcher);
 
-    /* IPv6 DSCP (traffic class) spans bits 4-11 of the header:
-     * Byte 0: version (4 bits) | dscp_high (4 bits)
-     * Byte 1: dscp_low (4 bits) | flow_label_high (4 bits)
-     * Load 2 bytes, mask with 0x0ff0, compare against dscp << 4. */
+    /* IPv6 DSCP occupies bits 6-11 of the header (big-endian view):
+     *   [version 4b] [DSCP 6b] [ECN 2b] [flow label (high 4b)]
+     * Load 2 bytes, convert to big-endian, mask with 0x0fc0 to isolate
+     * the 6-bit DSCP field, then compare against dscp << 6. */
     EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6, 0));
     EMIT(program, BPF_ENDIAN(BPF_TO_BE, BPF_REG_1, 16));
-    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0ff0));
+    EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0fc0));
 
     EMIT_FIXUP_JMP_NEXT_RULE(
         program,
         BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
                                                                   BPF_JEQ,
-                    BPF_REG_1, (uint16_t)dscp << 4, 0));
+                    BPF_REG_1, (uint16_t)dscp << 6, 0));
 
     return 0;
 }
@@ -294,10 +320,11 @@ int bf_matcher_generate_packet(struct bf_program *program,
         return bf_err_r(-ENOTSUP,
                         "matcher '%s' is not supported by this flavor",
                         bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
+    case BF_MATCHER_IP4_DSCP:
+        return _bf_matcher_pkt_generate_ip4_dscp(program, matcher, meta);
     case BF_MATCHER_IP4_SADDR:
     case BF_MATCHER_IP4_DADDR:
     case BF_MATCHER_IP4_PROTO:
-    case BF_MATCHER_IP4_DSCP:
     case BF_MATCHER_IP6_SADDR:
     case BF_MATCHER_IP6_DADDR:
     case BF_MATCHER_ICMP_TYPE:

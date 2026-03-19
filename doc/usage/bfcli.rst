@@ -523,7 +523,7 @@ Meta
       - ``meta.l4_proto``
       - ``eq``
       - ``$PROTOCOL``
-      - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal `internet protocol number`_.
+      - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
     * - :rspan:`2` Source port
       - :rspan:`2` ``meta.sport``
       - ``eq``
@@ -615,7 +615,7 @@ IPv4
       - :rspan:`1` ``ip4.proto``
       - ``eq``
       - :rspan:`1` ``$PROTOCOL``
-      - :rspan:`1` ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal `internet protocol number`_.
+      - :rspan:`1` ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
     * - ``not``
 
 
@@ -661,7 +661,7 @@ IPv6
       - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
       - :rspan:`3` ``$NEXT_HEADER``
-      - :rspan:`3` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal `internet protocol number`_.
+      - :rspan:`3` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
     * - ``not``
 
 .. tip::
