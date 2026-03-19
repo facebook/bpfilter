@@ -251,28 +251,23 @@ void _bf_print_l3_proto(const void *payload)
 int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
                        void *payload, const char *raw_payload)
 {
+    unsigned long value;
+
     assert(payload);
     assert(raw_payload);
 
-    unsigned long ipproto;
-    char *endptr;
-    int r;
-
-    r = bf_ipproto_from_str(raw_payload, payload);
-    if (!r)
+    if (!bf_ipproto_from_str(raw_payload, payload))
         return 0;
 
-    ipproto = strtoul(raw_payload, &endptr, BF_BASE_10);
-    if (*endptr == '\0' && ipproto <= UINT8_MAX) {
-        *(uint8_t *)payload = (uint8_t)ipproto;
+    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
+        *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
-    bf_err(
-        "\"%s %s\" expects a transport layer protocol name (e.g. \"ICMP\", case insensitive), or a valid decimal internet protocol number, not '%s'",
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects a transport layer protocol name (e.g. \"ICMP\", case insensitive), or a valid decimal or hexadecimal internet protocol number, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
-
-    return -EINVAL;
 }
 
 void _bf_print_l4_proto(const void *payload)
