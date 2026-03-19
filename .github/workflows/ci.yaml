@@ -178,6 +178,7 @@ jobs:
             BENCH_FAIL_ON=""
           fi
           tools/benchmarks/bfbencher \
+            history \
             --since 30bd49f \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \

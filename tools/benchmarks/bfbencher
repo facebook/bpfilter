@@ -1128,71 +1128,27 @@ def run_benchmarks(args: argparse.Namespace):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        prog="bfbencher",
-        description="Benchmark bpfilter performance across git commits.",
-    )
-
-    parser.add_argument(
-        "--since",
-        type=str,
-        help=f'oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
-        default=DEFAULT_FIRST_COMMIT_REF,
-    )
-    parser.add_argument(
-        "--include",
-        type=str,
-        action="append",
-        default=[],
-        help='include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
-    )
-    parser.add_argument(
-        "--until",
-        type=str,
-        help=f'newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
-        default=DEFAULT_LAST_COMMIT_REF,
-    )
-    parser.add_argument(
+    # Options shared across all subcommands.
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
         "--sources",
         type=pathlib.Path,
         help=f'path to the bpfilter sources directory. Defaults to "{DEFAULT_SOURCE_PATH}".',
         default=DEFAULT_SOURCE_PATH,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--host",
         type=str,
         help=f'host to run the benchmark on. bfbencher will connect to the host using SSH, copy the project sources on it, and run the benchmarks. Defaults to "{DEFAULT_HOST[0]}" (current host).',
         default=DEFAULT_HOST[0],
     )
-    parser.add_argument(
+    shared.add_argument(
         "--cache-dir",
         type=pathlib.Path,
         help=f"path to the directory containing the cached results. The cache is used to store benchmark results based on the hostname and the commit SHA, it is stored on the host running bfbencher. Defaults to {DEFAULT_CACHE_PATH}.",
         default=DEFAULT_CACHE_PATH,
     )
-    parser.add_argument(
-        "--report-template-path",
-        type=pathlib.Path,
-        help=f'path to the Jinja2 template use to generate the HTML report. Defaults to "{DEFAULT_REPORT_TEMPLATE_PATH}"',
-        default=DEFAULT_REPORT_TEMPLATE_PATH,
-    )
-    parser.add_argument(
-        "--report-path",
-        type=pathlib.Path,
-        help="path of the final HTML report.",
-    )
-    parser.add_argument(
-        "--pr-report-template-path",
-        type=pathlib.Path,
-        help=f'path to the Jinja2 template use to generate the HTML pull-request report. Defaults to "{DEFAULT_PR_REPORT_TEMPLATE_PATH}"',
-        default=DEFAULT_PR_REPORT_TEMPLATE_PATH,
-    )
-    parser.add_argument(
-        "--pr-report-path",
-        type=pathlib.Path,
-        help="path of the HTML summary report for pull requests (shows only significant changes).",
-    )
-    parser.add_argument(
+    shared.add_argument(
         "--retry",
         "-r",
         type=str,
@@ -1200,41 +1156,100 @@ def main():
         default=[],
         help='retry benchmarks for specific commits, ignoring cached results. Use "failed" to retry all failed commits, "all" to retry everything, or a commit ref to retry a specific commit. Can be specified multiple times.',
     )
-    parser.add_argument(
+    shared.add_argument(
         "--fail-on-significant-change",
         choices=["better", "worse", "any"],
         help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--bind-node",
         type=int,
         help="CPU and memory node to bind the benchmark to.",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--no-preempt",
         action="store_true",
-        help="if set, use chrt to run the bechmark with real-time scheduling policy at the highest priority. This option should reduce jitter as only kernel threads could preempt it.",
+        help="if set, use chrt to run the benchmark with real-time scheduling policy at the highest priority. This option should reduce jitter as only kernel threads could preempt it.",
         default=False,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--cpu-pin",
         type=int,
         help="if set, defines the CPU to pin the benchmark to. If the CPU is isolated, it will reduce variability between runs.",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--slice",
         type=str,
         help="systemd slice to run the benchmark into. Required if --cpu-pin is isolated at the systemd level.",
         default=None,
     )
 
+    parser = argparse.ArgumentParser(
+        prog="bfbencher",
+        description="Benchmark bpfilter performance across git commits.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    history_parser = subparsers.add_parser(
+        "history",
+        parents=[shared],
+        help="benchmark performance across a range of commits",
+        description="Benchmark bpfilter performance across a range of commits and report changes over time.",
+    )
+    history_parser.add_argument(
+        "--report-template-path",
+        type=pathlib.Path,
+        help=f'path to the Jinja2 template use to generate the HTML report. Defaults to "{DEFAULT_REPORT_TEMPLATE_PATH}"',
+        default=DEFAULT_REPORT_TEMPLATE_PATH,
+    )
+    history_parser.add_argument(
+        "--report-path",
+        type=pathlib.Path,
+        help="path of the final HTML report.",
+    )
+    history_parser.add_argument(
+        "--pr-report-template-path",
+        type=pathlib.Path,
+        help=f'path to the Jinja2 template use to generate the HTML pull-request report. Defaults to "{DEFAULT_PR_REPORT_TEMPLATE_PATH}"',
+        default=DEFAULT_PR_REPORT_TEMPLATE_PATH,
+    )
+    history_parser.add_argument(
+        "--pr-report-path",
+        type=pathlib.Path,
+        help="path of the HTML summary report for pull requests (shows only significant changes).",
+    )
+    history_parser.add_argument(
+        "--since",
+        type=str,
+        help=f'oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
+        default=DEFAULT_FIRST_COMMIT_REF,
+    )
+    history_parser.add_argument(
+        "--until",
+        type=str,
+        help=f'newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
+        default=DEFAULT_LAST_COMMIT_REF,
+    )
+    history_parser.add_argument(
+        "--include",
+        type=str,
+        action="append",
+        default=[],
+        help='include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
+    )
+
     args = parser.parse_args()
 
+    if args.command is None:
+        parser.print_help()
+        raise SystemExit(1)
+
     try:
-        run_benchmarks(args)
+        if args.command == "history":
+            run_benchmarks(args)
     except KeyboardInterrupt:
         renderer.log("Command interrupted by user")
         raise SystemExit(1)
