@@ -1072,15 +1072,15 @@ static void ip6_dscp(void **state)
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with decimal value 255 (maximum)
+    // Test with decimal value 63 (maximum DSCP)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "255"));
+                                      BF_MATCHER_EQ, "63"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with different DSCP value (e.g., 46 for EF)
+    // Test with DSCP value 46 (EF - Expedited Forwarding)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
                                       BF_MATCHER_EQ, "46"));
     assert_non_null(matcher);
@@ -1103,11 +1103,11 @@ static void ip6_dscp(void **state)
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with another hexadecimal value (0xff = 255)
+    // Test with hexadecimal value (0x3f = 63)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "0xff"));
+                                      BF_MATCHER_EQ, "0x3f"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
@@ -1126,9 +1126,9 @@ static void ip6_dscp_invalid(void **state)
 
     (void)state;
 
-    // Test with value > 255
+    // Test with value > 63
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "256"));
+                                       BF_MATCHER_EQ, "64"));
 
     // Test with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
@@ -1138,9 +1138,9 @@ static void ip6_dscp_invalid(void **state)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
                                        BF_MATCHER_EQ, "-1"));
 
-    // Test with value > 0xff in hex
+    // Test with value > 0x3f in hex
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "0x100"));
+                                       BF_MATCHER_EQ, "0x40"));
 }
 
 static void icmpv6_type(void **state)
@@ -1560,11 +1560,11 @@ static void ip4_dscp(void **state)
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
     bf_matcher_free(&matcher);
 
-    // Test ip4.dscp with maximum value (255)
+    // Test ip4.dscp with maximum value (63)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "255"));
+                                      BF_MATCHER_EQ, "63"));
     assert_non_null(matcher);
-    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 255);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with NE operator
@@ -1575,14 +1575,19 @@ static void ip4_dscp(void **state)
 
     // Test ip4.dscp print function
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "0xff"));
+                                      BF_MATCHER_EQ, "0x3f"));
     assert_non_null(matcher);
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test ip4.dscp with invalid value (> 255)
+    // Test ip4.dscp with invalid value (> 63)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "256"));
+                                       BF_MATCHER_EQ, "64"));
+
+    // Test ip4.dscp with invalid hex value (> 0x3f)
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
+                                       BF_MATCHER_EQ, "0x40"));
 
     // Test ip4.dscp with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,

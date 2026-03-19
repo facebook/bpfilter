@@ -36,6 +36,7 @@
 
 #define INET4_ADDRSTRLEN 16
 #define INET6_ADDRSTRLEN 46
+#define BF_DSCP_MAX 63
 
 #define BF_PAYLOAD_OPS(type, size, parser_cb, printer_cb)                      \
     [type] = {size, parser_cb, printer_cb}
@@ -728,30 +729,30 @@ void _bf_print_icmp_code(const void *payload)
     (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-static int _bf_parse_u8(enum bf_matcher_type type, enum bf_matcher_op op,
-                        void *payload, const char *raw_payload)
+static int _bf_parse_dscp(enum bf_matcher_type type, enum bf_matcher_op op,
+                          void *payload, const char *raw_payload)
 {
     unsigned long value;
 
     assert(payload);
     assert(raw_payload);
 
-    if (!_bf_strtoul(raw_payload, &value) && value <= UINT8_MAX) {
+    if (!_bf_strtoul(raw_payload, &value) && value <= BF_DSCP_MAX) {
         *(uint8_t *)payload = (uint8_t)value;
         return 0;
     }
 
     return bf_err_r(
         -EINVAL,
-        "\"%s %s\" expects a decimal or hexadecimal value (0-255), not '%s'",
+        "\"%s %s\" expects a DSCP value (0-63) in decimal or hexadecimal notation, not '%s'",
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-static void _bf_print_u8(const void *payload)
+static void _bf_print_dscp(const void *payload)
 {
     assert(payload);
 
-    (void)fprintf(stdout, "0x%02" PRIx8, *(uint8_t *)payload);
+    (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
 static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
@@ -1012,10 +1013,10 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .hdr_payload_offset = offsetof(struct iphdr, tos),
             .ops =
                 {
-                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t), _bf_parse_u8,
-                                   _bf_print_u8),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t), _bf_parse_u8,
-                                   _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_dscp, _bf_print_dscp),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_dscp, _bf_print_dscp),
                 },
         },
     [BF_MATCHER_IP6_SADDR] =
@@ -1116,10 +1117,10 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .hdr_payload_offset = 0,
             .ops =
                 {
-                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t), _bf_parse_u8,
-                                   _bf_print_u8),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t), _bf_parse_u8,
-                                   _bf_print_u8),
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_dscp, _bf_print_dscp),
+                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
+                                   _bf_parse_dscp, _bf_print_dscp),
                 },
         },
     [BF_MATCHER_TCP_SPORT] =
