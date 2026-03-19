@@ -1,0 +1,669 @@
+#!/usr/bin/env python3
+"""bfoptimize — LLM-driven BPF bytecode optimization loop for bpfilter."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import datetime
+import json
+import multiprocessing
+import os
+import pathlib
+import shutil
+import subprocess
+from typing import Any
+
+import anthropic
+import diskcache  # type: ignore[import-untyped]
+import git
+import numpy
+import rich.console
+import rich.table
+from claude_agent_sdk import (
+    AssistantMessage,
+    ClaudeAgentOptions,
+    ResultMessage,
+    TextBlock,
+    query,
+)
+
+DEFAULT_SOURCES = pathlib.Path(".")
+DEFAULT_BUILD_DIR = pathlib.Path("build")
+DEFAULT_CACHE_DIR = pathlib.Path(".cache/bfoptimize")
+DEFAULT_ITERATIONS = 10
+DEFAULT_MODEL = "claude-opus-4-6"
+DEFAULT_EFFORT = "high"
+CGEN_DIR = "src/libbpfilter/cgen"
+SHORT_SHA_LEN = 7
+
+console = rich.console.Console(log_path=False)
+
+
+# ---------------------------------------------------------------------------
+# History
+# ---------------------------------------------------------------------------
+
+
+class History:
+    """Persists attempt records and the current baseline SHA."""
+
+    def __init__(self, cache_dir: pathlib.Path) -> None:
+        self._path = cache_dir / "history.json"
+        self._data: dict[str, Any] = self._load()
+
+    def _load(self) -> dict[str, Any]:
+        if self._path.exists():
+            return json.loads(self._path.read_text())
+        return {"baseline_sha": None, "attempts": []}
+
+    def save(self) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(json.dumps(self._data, indent=2))
+
+    @property
+    def baseline_sha(self) -> str | None:
+        return self._data.get("baseline_sha")
+
+    @baseline_sha.setter
+    def baseline_sha(self, sha: str) -> None:
+        self._data["baseline_sha"] = sha
+
+    @property
+    def attempts(self) -> list[dict[str, Any]]:
+        return self._data.get("attempts", [])
+
+    def next_id(self) -> int:
+        attempts = self.attempts
+        return (attempts[-1]["id"] + 1) if attempts else 1
+
+    def add_attempt(self, attempt: dict[str, Any]) -> None:
+        self._data.setdefault("attempts", []).append(attempt)
+        self.save()
+
+    def summary(self) -> str:
+        attempts = self.attempts
+        if not attempts:
+            return "No previous attempts."
+        lines = ["Previous optimization attempts (do not repeat these):"]
+        for a in attempts:
+            delta = (
+                f"{a['delta_time_pct']:+.1f}%"
+                if a.get("delta_time_pct") is not None
+                else "N/A"
+            )
+            lines.append(
+                f"  #{a['id']} [{a['status']}] {a['description']} (weighted runtime delta: {delta})"
+            )
+        return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Source loading
+# ---------------------------------------------------------------------------
+
+
+def load_cgen_sources(sources_dir: pathlib.Path) -> str:
+    cgen_path = sources_dir / CGEN_DIR
+    parts: list[str] = []
+    for f in sorted(cgen_path.rglob("*.[ch]")):
+        rel = f.relative_to(sources_dir)
+        try:
+            content = f.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        parts.append(f"=== {rel} ===\n{content}")
+    return "\n\n".join(parts)
+
+
+def load_last_benchmark(cache_dir: pathlib.Path) -> str:
+    bench_path = cache_dir / "last_bench.json"
+    if not bench_path.exists():
+        return "No benchmark data available yet."
+    try:
+        data = json.loads(bench_path.read_text())
+        base = data.get("base", "?")[:SHORT_SHA_LEN]
+        ref = data.get("ref", "?")[:SHORT_SHA_LEN]
+        lines = [f"Last benchmark results ({base} → {ref}):"]
+        for b in data.get("benchmarks", []):
+            pct = b.get("delta_time_pct", 0)
+            lines.append(
+                f"  {b['name']}: base={b['base_time_ns']:.1f}ns"
+                f"  ref={b['ref_time_ns']:.1f}ns  delta={pct:+.1f}%"
+            )
+        return "\n".join(lines)
+    except Exception:
+        return "Benchmark data unavailable."
+
+
+# ---------------------------------------------------------------------------
+# Planning phase (extended thinking)
+# ---------------------------------------------------------------------------
+
+
+def plan_optimization(
+    client: anthropic.Anthropic,
+    cgen_sources: str,
+    history_summary: str,
+    benchmark_results: str,
+    cache_dir: pathlib.Path,
+    attempt_id: int,
+    model: str = DEFAULT_MODEL,
+    thinking: bool = True,
+    effort: str = DEFAULT_EFFORT,
+    context_1m: bool = False,
+    hint: str | None = None,
+) -> str:
+    prompt = f"""You are optimizing the BPF bytecode generation logic in the bpfilter project.
+
+The cgen directory generates BPF programs that run in the Linux kernel for packet filtering.
+Every nanosecond saved matters — these programs execute for every packet received by the host.
+
+## Source files in {CGEN_DIR}/
+
+{cgen_sources}
+
+## Current benchmark results
+
+{benchmark_results}
+
+## Optimization history
+
+{history_summary}
+
+## Task
+
+Propose exactly ONE concrete optimization to the cgen code. Describe:
+1. Which file(s) you will change and what specifically you will change
+2. Why this will reduce the runtime of the generated BPF programs
+3. Any risks or tricky edge cases to handle
+
+Be specific and actionable. Do not repeat any previously attempted optimization.
+Output only the optimization proposal — no code yet."""
+
+    if hint:
+        prompt += (
+            f"\n\n## Hint\n\n{hint}\n\n"
+            "This is a direction to consider, not a constraint — "
+            "you may propose a different optimization if you judge it more impactful."
+        )
+
+    stream_kwargs: dict[str, Any] = {
+        "model": model,
+        "max_tokens": 128000,
+        "messages": [{"role": "user", "content": prompt}],
+        "output_config": {"effort": effort},
+    }
+    if thinking:
+        stream_kwargs["thinking"] = {"type": "adaptive"}
+    if context_1m:
+        stream_kwargs["extra_headers"] = {"anthropic-beta": "context-1m-2025-08-07"}
+
+    with client.messages.stream(**stream_kwargs) as stream:
+        for event in stream:
+            if event.type == "content_block_delta":
+                if event.delta.type == "thinking_delta":
+                    console.print(event.delta.thinking, end="")
+                elif event.delta.type == "text_delta":
+                    console.print(event.delta.text, end="")
+        console.print("")
+        response = stream.get_final_message()
+
+    # Persist thinking blocks for post-hoc inspection
+    thinking_texts = [b.thinking for b in response.content if b.type == "thinking"]
+    if thinking_texts:
+        thinking_path = cache_dir / f"{attempt_id}-thinking.txt"
+        thinking_path.write_text("\n\n---\n\n".join(thinking_texts))  # type: ignore[arg-type]
+
+    return next(b.text for b in response.content if b.type == "text")  # type: ignore[union-attr]
+
+
+# ---------------------------------------------------------------------------
+# Execution phase (Agent SDK)
+# ---------------------------------------------------------------------------
+
+
+async def execute_optimization(
+    sources_dir: pathlib.Path,
+    build_dir: pathlib.Path,
+    optimization_plan: str,
+    baseline_sha: str,
+) -> str | None:
+    """Run the agent to implement the optimization. Returns new HEAD sha if committed."""
+    ncpus = multiprocessing.cpu_count()
+    abs_sources = sources_dir.resolve()
+    abs_build = build_dir.resolve()
+
+    prompt = f"""You are implementing a performance optimization to the bpfilter BPF bytecode generator.
+
+## Optimization to implement
+
+{optimization_plan}
+
+## Rules
+
+- Modify ONLY files under `{abs_sources}/{CGEN_DIR}/`. Do not touch any other files.
+- Build: cmake -S {abs_sources} -B {abs_build} -DNO_DOCS=1 -DNO_TESTS=1 -DNO_CHECKS=1 \
+-DCMAKE_BUILD_TYPE=release && make -C {abs_build} -j{ncpus} bpfilter
+- Test: make -C {abs_build} -j{ncpus} unit e2e integration
+- If tests pass: commit with `git -C {abs_sources} commit -am "daemon: cgen: <description>"`
+- If build or tests fail: diagnose and fix. If you cannot make tests pass, revert ALL your \
+changes with `git -C {abs_sources} checkout -- {abs_sources}/{CGEN_DIR}/` and exit without \
+committing.
+- The current baseline is {baseline_sha[:SHORT_SHA_LEN]}. Only commit when tests are green."""
+
+    async for message in query(
+        prompt=prompt,
+        options=ClaudeAgentOptions(
+            cwd=str(abs_sources),
+            permission_mode="bypassPermissions",
+            allowed_tools=["Read", "Edit", "Write", "Bash", "Glob", "Grep"],
+        ),
+    ):
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, TextBlock) and block.text.strip():
+                    console.log(f"[dim]{block.text.strip()[:200]}[/dim]")
+        elif isinstance(message, ResultMessage) and message.result:
+            console.log(f"Agent done: {message.result[:200]}")
+
+    repo = git.Repo(sources_dir)
+    new_sha = repo.head.commit.hexsha
+    return new_sha if new_sha != baseline_sha else None
+
+
+# ---------------------------------------------------------------------------
+# Benchmark step
+# ---------------------------------------------------------------------------
+
+
+def _benchmark_noise(bfbencher_cache_dir: pathlib.Path) -> dict[str, float]:
+    """Estimate per-benchmark noise (CV) from bfbencher's accumulated cache.
+
+    Iterates all cached commit results and computes the coefficient of variation
+    (MAD/median, normalised via the 1.4826 consistency factor) for each
+    benchmark.  Benchmarks with fewer than 3 data points are excluded so that
+    noise estimates are not based on a single outlier.
+
+    Returns a mapping from benchmark name to CV.  An empty dict is returned
+    when the cache is absent or unreadable.
+    """
+    series: dict[str, list[float]] = {}
+    try:
+        cache = diskcache.Cache(bfbencher_cache_dir)
+        for key in cache:
+            val = cache.get(key)
+            if not isinstance(val, dict) or not val.get("success"):
+                continue
+            for r in val.get("results", []):
+                name = r.get("name", "")
+                t = float(r.get("cpu_time", 0))
+                if t > 0:
+                    series.setdefault(name, []).append(t)
+        cache.close()
+    except Exception:
+        return {}
+
+    noise: dict[str, float] = {}
+    for name, times in series.items():
+        if len(times) < 3:
+            continue
+        arr = numpy.array(times)
+        median = float(numpy.median(arr))
+        if median == 0:
+            continue
+        mad = float(numpy.median(numpy.abs(arr - median)))
+        noise[name] = (mad * 1.4826) / median
+    return noise
+
+
+def run_benchmark(
+    sources_dir: pathlib.Path,
+    cache_dir: pathlib.Path,
+    bfbencher: pathlib.Path,
+    baseline_sha: str,
+    result_sha: str,
+    extra_args: list[str],
+    attempt_id: int,
+) -> float | None:
+    json_path = cache_dir / "last_bench.json"
+    cmd = [
+        str(bfbencher),
+        "compare",
+        baseline_sha,
+        result_sha,
+        "--sources",
+        str(sources_dir),
+        "--cache-dir",
+        str(cache_dir / "bfbencher"),
+        "--json-output",
+        str(json_path),
+        "--fail-on-benchmark-error",
+    ] + extra_args
+
+    console.log(f"Running bfbencher compare {baseline_sha[:SHORT_SHA_LEN]} → {result_sha[:SHORT_SHA_LEN]}")
+    result = subprocess.run(cmd, text=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
+    if result.returncode != 0:
+        console.log("[red]bfbencher compare failed[/red]")
+        return None
+
+    shutil.copy(json_path, cache_dir / f"bench-{attempt_id}.json")
+
+    try:
+        data = json.loads(json_path.read_text())
+        noise = _benchmark_noise(cache_dir / "bfbencher")
+
+        pairs: list[tuple[float, float]] = []
+        for b in data.get("benchmarks", []):
+            if b.get("delta_time_pct") is None:
+                continue
+            cv = noise.get(b["name"], 0.0)
+            # Weight = 1 / (1 + CV): high-noise benchmarks contribute less.
+            pairs.append((b["delta_time_pct"], 1.0 / (1.0 + cv)))
+
+        if not pairs:
+            return None
+
+        noisy = [(name, cv) for name, cv in noise.items() if cv > 0.01]
+        if noisy:
+            noisy_str = ", ".join(
+                f"{name} (CV={cv:.1%})" for name, cv in sorted(noisy, key=lambda x: -x[1])
+            )
+            console.log(f"[dim]Volatile benchmarks (down-weighted): {noisy_str}[/dim]")
+
+        total_weight = sum(w for _, w in pairs)
+        return sum(d * w for d, w in pairs) / total_weight
+    except Exception as e:
+        console.log(f"[red]Failed to parse benchmark output: {e}[/red]")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Summary table
+# ---------------------------------------------------------------------------
+
+
+def print_summary(history: History) -> None:
+    table = rich.table.Table(title="bfoptimize summary", show_header=True)
+    table.add_column("#", justify="right")
+    table.add_column("Status", justify="center")
+    table.add_column("Δ Runtime", justify="right")
+    table.add_column("Description", style="cyan")
+
+    for a in history.attempts:
+        status = a["status"]
+        color = (
+            "green"
+            if status == "accepted"
+            else "red"
+            if status == "rejected_bench"
+            else "yellow"
+        )
+        delta = (
+            f"{a['delta_time_pct']:+.1f}%"
+            if a.get("delta_time_pct") is not None
+            else "-"
+        )
+        table.add_row(
+            str(a["id"]),
+            f"[{color}]{status}[/{color}]",
+            delta,
+            a["description"][:80],
+        )
+
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
+
+
+async def run_optimize(args: argparse.Namespace) -> None:
+    args.cache_dir.mkdir(parents=True, exist_ok=True)
+    history = History(args.cache_dir)
+    client = anthropic.Anthropic()
+    repo = git.Repo(args.sources)
+
+    if history.baseline_sha is None:
+        history.baseline_sha = repo.head.commit.hexsha
+        history.save()
+
+    console.log(f"Baseline: {history.baseline_sha[:SHORT_SHA_LEN]}")
+
+    bfbencher = (args.sources / "tools/benchmarks/bfbencher").resolve()
+
+    bench_extra: list[str] = []
+    if args.host:
+        bench_extra += ["--host", args.host]
+    if args.bind_node is not None:
+        bench_extra += ["--bind-node", str(args.bind_node)]
+    if args.no_preempt:
+        bench_extra += ["--no-preempt"]
+    if args.cpu_pin is not None:
+        bench_extra += ["--cpu-pin", str(args.cpu_pin)]
+    if args.slice:
+        bench_extra += ["--slice", args.slice]
+
+    for i in range(args.iterations):
+        attempt_id = history.next_id()
+        console.log(
+            f"\n[bold cyan]─── Iteration {i + 1}/{args.iterations}"
+            f"  (attempt #{attempt_id}) ───[/bold cyan]"
+        )
+
+        baseline_sha = history.baseline_sha
+        assert baseline_sha is not None
+
+        # ── Plan ──────────────────────────────────────────────────────────
+        console.log("[bold]Planning...[/bold]")
+        cgen_sources = load_cgen_sources(args.sources)
+        benchmark_results = load_last_benchmark(args.cache_dir)
+        try:
+            plan = plan_optimization(
+                client,
+                cgen_sources,
+                history.summary(),
+                benchmark_results,
+                args.cache_dir,
+                attempt_id,
+                model=args.model,
+                thinking=args.thinking,
+                effort=args.effort,
+                context_1m=args.context_1m,
+                hint=args.hint,
+            )
+        except Exception as e:
+            console.log(f"[red]Planning failed: {e}[/red]")
+            continue
+
+        description = plan.strip().splitlines()[0][:120]
+        console.log(f"Proposal: {description}")
+
+        # ── Execute ───────────────────────────────────────────────────────
+        console.log("[bold]Executing...[/bold]")
+        try:
+            result_sha = await execute_optimization(
+                args.sources,
+                args.build_dir,
+                plan,
+                baseline_sha,
+            )
+        except Exception as e:
+            console.log(f"[red]Agent execution failed: {e}[/red]")
+            history.add_attempt(
+                {
+                    "id": attempt_id,
+                    "description": description,
+                    "status": "rejected_tests",
+                    "baseline_sha": baseline_sha,
+                    "result_sha": None,
+                    "delta_time_pct": None,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                }
+            )
+            continue
+
+        if result_sha is None:
+            console.log("[yellow]Agent did not commit — rejected_tests[/yellow]")
+            history.add_attempt(
+                {
+                    "id": attempt_id,
+                    "description": description,
+                    "status": "rejected_tests",
+                    "baseline_sha": baseline_sha,
+                    "result_sha": None,
+                    "delta_time_pct": None,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                }
+            )
+            continue
+
+        console.log(f"Agent committed: {result_sha[:SHORT_SHA_LEN]}")
+
+        # ── Benchmark ─────────────────────────────────────────────────────
+        console.log("[bold]Benchmarking...[/bold]")
+        delta = run_benchmark(
+            args.sources,
+            args.cache_dir,
+            bfbencher,
+            baseline_sha,
+            result_sha,
+            bench_extra,
+            attempt_id,
+        )
+
+        if delta is None or delta >= 0:
+            delta_str = f"{delta:+.1f}%" if delta is not None else "N/A"
+            console.log(f"[red]Rejected (bench): mean delta {delta_str}[/red]")
+            repo.git.reset("--hard", baseline_sha)
+            status = "rejected_bench"
+        else:
+            console.log(f"[green]Accepted: mean delta {delta:+.1f}%[/green]")
+            history.baseline_sha = result_sha
+            status = "accepted"
+
+        history.add_attempt(
+            {
+                "id": attempt_id,
+                "description": description,
+                "status": status,
+                "baseline_sha": baseline_sha,
+                "result_sha": result_sha,
+                "delta_time_pct": delta,
+                "timestamp": datetime.datetime.now().isoformat(),
+            }
+        )
+
+    print_summary(history)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="bfoptimize",
+        description="LLM-driven BPF bytecode optimization loop for bpfilter.",
+    )
+    parser.add_argument(
+        "--iterations",
+        "-n",
+        type=int,
+        default=DEFAULT_ITERATIONS,
+        help=f"number of optimization iterations to run (default: {DEFAULT_ITERATIONS})",
+    )
+    parser.add_argument(
+        "--sources",
+        type=pathlib.Path,
+        default=DEFAULT_SOURCES,
+        help=f'path to the bpfilter source directory (default: "{DEFAULT_SOURCES}")',
+    )
+    parser.add_argument(
+        "--build-dir",
+        type=pathlib.Path,
+        default=DEFAULT_BUILD_DIR,
+        help=f'cmake build directory (default: "{DEFAULT_BUILD_DIR}")',
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=pathlib.Path,
+        default=DEFAULT_CACHE_DIR,
+        help=f'directory for history and benchmark cache (default: "{DEFAULT_CACHE_DIR}")',
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=None,
+        help="remote host for benchmarking (passed through to bfbencher)",
+    )
+    parser.add_argument(
+        "--bind-node",
+        type=int,
+        default=None,
+        help="CPU/memory NUMA node to bind benchmarks to",
+    )
+    parser.add_argument(
+        "--no-preempt",
+        action="store_true",
+        default=False,
+        help="run benchmarks with real-time scheduling (chrt -f 99)",
+    )
+    parser.add_argument(
+        "--cpu-pin",
+        type=int,
+        default=None,
+        help="CPU to pin benchmark to",
+    )
+    parser.add_argument(
+        "--slice",
+        type=str,
+        default=None,
+        help="systemd slice for benchmark execution",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=DEFAULT_MODEL,
+        choices=["claude-opus-4-6", "claude-sonnet-4-6"],
+        help=f"Claude model to use for planning (default: {DEFAULT_MODEL})",
+    )
+    parser.add_argument(
+        "--thinking",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="enable adaptive thinking during planning (default: enabled)",
+    )
+    parser.add_argument(
+        "--effort",
+        type=str,
+        default=DEFAULT_EFFORT,
+        choices=["low", "medium", "high", "max"],
+        help=f"effort level for the planning call (default: {DEFAULT_EFFORT}; max is Opus only)",
+    )
+    parser.add_argument(
+        "--context-1m",
+        action="store_true",
+        default=False,
+        help="enable 1M context window beta (claude-opus-4-6 and claude-sonnet-4-6 only)",
+    )
+    parser.add_argument(
+        "--hint",
+        type=str,
+        default=None,
+        help="optional direction for the model (e.g. 'look into XXX'); it is provided as context but not enforced",
+    )
+
+    args = parser.parse_args()
+
+    try:
+        asyncio.run(run_optimize(args))
+    except KeyboardInterrupt:
+        console.log("Interrupted by user")
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
