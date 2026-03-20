@@ -53,6 +53,7 @@ class Stats:
         self.n_failures = 0
         self.n_cache_hits = 0
         self.n_cache_misses = 0
+        self.n_benchmark_errors = 0
 
     def success(self, from_cache: bool = False) -> None:
         if from_cache:
@@ -1235,6 +1236,13 @@ def _benchmark_commits(executor: Executor, args: argparse.Namespace) -> None:
             executor.log(f"could not find {ctx.results_path}")
             continue
 
+        for r in results:
+            if r.get("error_occurred"):
+                executor.stats.n_benchmark_errors += 1
+                executor.log(
+                    f"[red bold]benchmark error: {r['name']}: {r.get('error_message', '')}[/]"
+                )
+
         executor.add_results(ctx.commit, results)
         executor.log("Done!")
 
@@ -1287,6 +1295,9 @@ def run_benchmarks(args: argparse.Namespace):
             )
         report.print_report([20])
 
+    if args.fail_on_benchmark_error and executor.stats.n_benchmark_errors > 0:
+        raise SystemExit(1)
+
     if args.fail_on_significant_change:
         terms = [20]
         for benchmark in executor.results.sorted_benchmarks():
@@ -1320,6 +1331,9 @@ def run_compare(args: argparse.Namespace):
                 args.json_output, base_sha, ref_sha, executor.host
             )
 
+    if args.fail_on_benchmark_error and executor.stats.n_benchmark_errors > 0:
+        raise SystemExit(1)
+
 
 def main():
     # Options shared across all subcommands.
@@ -1349,6 +1363,12 @@ def main():
         action="append",
         default=[],
         help='retry benchmarks for specific commits, ignoring cached results. Use "failed" to retry all failed commits, "all" to retry everything, or a commit ref to retry a specific commit. Can be specified multiple times.',
+    )
+    shared.add_argument(
+        "--fail-on-benchmark-error",
+        action="store_true",
+        help="exit with non-zero status if any benchmark reports an error during execution",
+        default=False,
     )
     shared.add_argument(
         "--fail-on-significant-change",
