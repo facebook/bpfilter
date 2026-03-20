@@ -23,5 +23,5 @@ struct bf_program;
  * @param matcher Matcher to generate code for. Can't be NULL.
  * @return 0 on success, negative errno on error.
  */
-int bf_matcher_generate_packet(struct bf_program *program,
-                               const struct bf_matcher *matcher);
+int bf_packet_gen_inline_matcher(struct bf_program *program,
+                                 const struct bf_matcher *matcher);

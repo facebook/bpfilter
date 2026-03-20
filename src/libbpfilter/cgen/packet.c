@@ -3,7 +3,7 @@
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  */
 
-#include "cgen/matcher/packet.h"
+#include "cgen/packet.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -296,8 +296,8 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
     return 0;
 }
 
-int bf_matcher_generate_packet(struct bf_program *program,
-                               const struct bf_matcher *matcher)
+int bf_packet_gen_inline_matcher(struct bf_program *program,
+                                 const struct bf_matcher *matcher)
 {
     const struct bf_matcher_meta *meta;
 
