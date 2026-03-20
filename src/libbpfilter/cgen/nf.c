@@ -182,4 +182,5 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
     .get_verdict = _bf_nf_get_verdict,
     .gen_inline_matcher = _bf_nf_gen_inline_matcher,
+    .gen_inline_log = bf_packet_gen_inline_log,
 };
