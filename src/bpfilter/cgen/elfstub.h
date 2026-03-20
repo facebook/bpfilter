@@ -122,7 +122,7 @@ enum bf_elfstub_id
     /**
      * Log user-requested packet headers to a ring buffer.
      *
-     * `__u8 bf_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict, __u32 l3_l4_proto)`
+     * `__u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict, __u32 l3_l4_proto)`
      *
      * **Parameters**
      * - `ctx`: address of the `bf_runtime` context of the program.
@@ -133,7 +133,7 @@ enum bf_elfstub_id
      *
      * **Return** 0 on success, or 1 on error.
      */
-    BF_ELFSTUB_LOG,
+    BF_ELFSTUB_PKT_LOG,
 
     /**
      * Calculate flow hash from packet 5-tuple + IPv6 flow label.

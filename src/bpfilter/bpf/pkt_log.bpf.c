@@ -11,8 +11,8 @@
 
 #include "cgen/runtime.h"
 
-__u8 bf_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict,
-            __u32 l3_l4_proto)
+__u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers,
+                __u32 verdict, __u32 l3_l4_proto)
 {
     struct bf_log *log;
     __u16 l3_proto = (__u16)(l3_l4_proto >> 16);
