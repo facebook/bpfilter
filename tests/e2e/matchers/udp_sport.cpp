@@ -1,0 +1,213 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
+ */
+
+#include "Chain.hpp"
+#include "Matcher.hpp"
+#include "Rule.hpp"
+#include "Set.hpp"
+#include "test.hpp"
+
+extern "C" {
+#include <bpfilter/bpfilter.h>
+}
+
+/**
+ * Verify udp.sport eq matches UDP packets from the configured source port over
+ * both IPv4 and IPv6 and rejects non-matching ports. Also verifies the
+ * protocol guard: a TCP packet must not match a UDP rule.
+ */
+static void udp_sport_eq(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+
+    BFT_CHAIN_SET(bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ,
+                                           bft_port_be(12345))}));
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 12345, .dport = 53},
+        test->verdictDrop());
+
+    // UDP over IPv6 sport=12345 should also match -> DROP
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv6 {.saddr = "2001:db8::1", .daddr = "2001:db8::2"} /
+            bft::UDP {.sport = 12345, .dport = 53},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 54321, .dport = 53},
+        test->verdictAccept());
+
+    // TCP sport=12345 must not match a UDP rule (protocol guard) -> ACCEPT
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_udp_sport", 0, 2, -1);
+}
+
+/**
+ * Verify udp.sport ne does not match the configured source port but matches
+ * UDP packets from any other port. Also verifies the protocol guard: a TCP
+ * packet must not match a UDP rule.
+ */
+static void udp_sport_ne(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+
+    BFT_CHAIN_SET(bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE,
+                                           bft_port_be(12345))}));
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 12345, .dport = 53},
+        test->verdictAccept());
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 54321, .dport = 53},
+        test->verdictDrop());
+
+    // TCP sport=54321 must not match a UDP rule (protocol guard) -> ACCEPT
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 54321, .dport = 80},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_udp_sport", 0, 1, -1);
+}
+
+/**
+ * Verify udp.sport in {set} matches UDP packets whose source port is a member
+ * of the set and rejects those with source ports outside the set.
+ */
+static void udp_sport_in(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+
+    auto set = bf::Set({BF_MATCHER_UDP_SPORT});
+    set << bft_port_be(12345) << bft_port_be(53);
+
+    BFT_CHAIN_SET(bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
+                  << std::move(set)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
+                                           {0, 0, 0, 0})}));
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 12345, .dport = 53},
+        test->verdictDrop());
+
+    // UDP sport=53 is also in set -> DROP
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 53, .dport = 5353},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 54321, .dport = 53},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_udp_sport", 0, 2, -1);
+}
+
+/**
+ * Verify udp.sport range [min, max] matches UDP packets within the inclusive
+ * bounds and rejects those outside. Tests the minimum, midpoint, and maximum
+ * boundary values.
+ */
+static void udp_sport_range(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+
+    BFT_CHAIN_SET(
+        bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_UDP_SPORT, BF_MATCHER_RANGE,
+                                 bft_port_range(1000, 2000))}));
+
+    // UDP sport=1000 is at range minimum -> DROP
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 1000, .dport = 53},
+        test->verdictDrop());
+
+    // UDP sport=1500 is in range -> DROP
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 1500, .dport = 53},
+        test->verdictDrop());
+
+    // UDP sport=2000 is at range maximum -> DROP
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 2000, .dport = 53},
+        test->verdictDrop());
+
+    // UDP sport=999 is below range -> ACCEPT
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 999, .dport = 53},
+        test->verdictAccept());
+
+    // UDP sport=2001 is above range -> ACCEPT
+    bft_assert_prog_run(
+        "test_udp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::UDP {.sport = 2001, .dport = 53},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_udp_sport", 0, 3, -1);
+}
+
+int main()
+{
+    auto suite = MatcherTestsSuite(BF_MATCHER_UDP_SPORT);
+
+    suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ, udp_sport_eq);
+    suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE, udp_sport_ne);
+    suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_IN, udp_sport_in);
+    suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_RANGE,
+                         udp_sport_range);
+
+    return suite.run();
+}
