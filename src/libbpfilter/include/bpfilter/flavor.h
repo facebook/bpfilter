@@ -11,6 +11,7 @@
 
 struct bf_matcher;
 struct bf_program;
+struct bf_rule;
 
 /**
  * @file flavor.h
@@ -135,6 +136,18 @@ struct bf_flavor_ops
      */
     int (*gen_inline_matcher)(struct bf_program *program,
                               const struct bf_matcher *matcher);
+
+    /**
+     * @brief Generate bytecode for rule logging.
+     *
+     * Each flavor controls its own register setup and ELF stub selection.
+     *
+     * @param program Program being generated. Can't be NULL.
+     * @param rule Rule whose log action to generate. Can't be NULL.
+     * @return 0 on success, or negative errno on error.
+     */
+    int (*gen_inline_log)(struct bf_program *program,
+                          const struct bf_rule *rule);
 };
 
 /**

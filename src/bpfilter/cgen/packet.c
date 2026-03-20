@@ -3,7 +3,7 @@
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  */
 
-#include "cgen/matcher/packet.h"
+#include "cgen/packet.h"
 
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
@@ -17,11 +17,14 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/rule.h>
 
+#include "cgen/elfstub.h"
 #include "cgen/matcher/cmp.h"
 #include "cgen/matcher/meta.h"
 #include "cgen/matcher/set.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
 #include "filter.h"
 
@@ -270,8 +273,8 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
     return 0;
 }
 
-int bf_matcher_generate_packet(struct bf_program *program,
-                               const struct bf_matcher *matcher)
+int bf_packet_gen_inline_matcher(struct bf_program *program,
+                                 const struct bf_matcher *matcher)
 {
     const struct bf_matcher_meta *meta;
 
@@ -327,4 +330,26 @@ int bf_matcher_generate_packet(struct bf_program *program,
         return bf_err_r(-EINVAL, "unknown matcher type %d",
                         bf_matcher_get_type(matcher));
     }
+}
+
+int bf_packet_gen_inline_log(struct bf_program *program,
+                             const struct bf_rule *rule)
+{
+    assert(program);
+    assert(rule);
+
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, rule->index));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_4, rule->verdict));
+
+    // Pack l3_proto and l4_proto
+    EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_7));
+    EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_5, 16));
+    EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_5, BPF_REG_8));
+
+    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_LOG);
+
+    return 0;
 }
