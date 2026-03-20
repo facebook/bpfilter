@@ -78,21 +78,33 @@ enum bf_pkthdr
 };
 
 /**
+ * @brief Log entry type discriminator.
+ */
+enum bf_log_type
+{
+    /** Packet-based log entry (XDP, TC, NF, cgroup_skb). */
+    BF_LOG_TYPE_PACKET,
+
+    /** Socket address log entry (cgroup_sock_addr). */
+    BF_LOG_TYPE_SOCK_ADDR,
+
+    _BF_LOG_TYPE_MAX,
+};
+
+/**
  * @brief Log structure published by a chain when the `log` action is hit.
  *
  * The structure is published into a log buffer by the chain, when a hit rule
  * has a `log` action defined.
  *
- * Except for the raw packet headers (`l2hdr`, `l3hdr`, and `l4hdr`), all the
- * values are stored in host byteorder.
+ * For packet-based hooks, the `pkt` variant contains raw headers in network
+ * byteorder. For socket-based hooks, the `sock` variant contains process
+ * information. All other fields are stored in host byteorder.
  */
 struct bf_log
 {
-    /** Timestamp of the packet processing. */
+    /** Timestamp of the event. */
     __u64 ts;
-
-    /** Total size of the packet, including the payload. */
-    __u64 pkt_size;
 
     /** ID of the rule triggering the log. */
     __u32 rule_id;
@@ -106,20 +118,41 @@ struct bf_log
     /** Layer 4 (transport) protocol identifier. */
     __u8 l4_proto;
 
-    /** User-request headers, as defined in the rule. */
-    __u8 req_headers:4;
+    /** Log entry type. */
+    __u8 log_type;
 
-    /** Logged headers, as not all hooks can access all headers. */
-    __u8 headers:4;
+    union
+    {
+        struct
+        {
+            /** Total size of the packet, including the payload. */
+            __u64 pkt_size;
 
-    /** Layer 2 header. */
-    bf_aligned(8) __u8 l2hdr[BF_L2_SLICE_LEN];
+            /** User-requested headers, as defined in the rule. */
+            __u8 req_headers:4;
 
-    /** Layer 3 header. */
-    bf_aligned(8) __u8 l3hdr[BF_L3_SLICE_LEN];
+            /** Logged headers, as not all hooks can access all headers. */
+            __u8 headers:4;
 
-    /** Layer 4 header. */
-    bf_aligned(8) __u8 l4hdr[BF_L4_SLICE_LEN];
+            /** Layer 2 header. */
+            bf_aligned(8) __u8 l2hdr[BF_L2_SLICE_LEN];
+
+            /** Layer 3 header. */
+            bf_aligned(8) __u8 l3hdr[BF_L3_SLICE_LEN];
+
+            /** Layer 4 header. */
+            bf_aligned(8) __u8 l4hdr[BF_L4_SLICE_LEN];
+        } pkt;
+
+        struct
+        {
+            /** Root namespace PID (tgid) of the process. */
+            __u32 pid;
+
+            /** Process name. */
+            bf_aligned(8) __u8 comm[16];
+        } sock_addr;
+    };
 };
 
 struct bf_ip4_lpm_key
