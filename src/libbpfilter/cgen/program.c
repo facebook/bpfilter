@@ -364,7 +364,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_5, 16));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_5, BPF_REG_8));
 
-        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_LOG);
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_LOG);
     }
 
     if (rule->counters) {
