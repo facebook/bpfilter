@@ -265,12 +265,12 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
             (void)fprintf(stdout, "        log ");
 
-            for (enum bf_pkthdr hdr = 0; hdr < _BF_PKTHDR_MAX; ++hdr) {
-                if (!(log & BF_FLAG(hdr)))
+            for (enum bf_log_opt opt = 0; opt < _BF_LOG_OPT_MAX; ++opt) {
+                if (!(log & BF_FLAG(opt)))
                     continue;
 
-                log &= ~BF_FLAG(hdr);
-                (void)fprintf(stdout, "%s%s", bf_pkthdr_to_str(hdr),
+                log &= ~BF_FLAG(opt);
+                (void)fprintf(stdout, "%s%s", bf_log_opt_to_str(opt),
                               log ? "," : "\n");
             }
         }
@@ -384,7 +384,7 @@ static void _bf_chain_log_l2(const struct bf_log *log)
     struct ethhdr *ethhdr = (void *)log->payload.pkt.l2hdr;
     const char *ethertype;
 
-    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_LINK))) {
+    if (!(log->payload.pkt.headers & (1 << BF_LOG_OPT_LINK))) {
         (void)fprintf(stdout, "  Ethernet  : <unknown header>\n");
         return;
     }
@@ -419,7 +419,7 @@ static void _bf_chain_log_l3(const struct bf_log *log)
     char dst_addr[INET6_ADDRSTRLEN];
     const char *protocol;
 
-    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_INTERNET))) {
+    if (!(log->payload.pkt.headers & (1 << BF_LOG_OPT_INTERNET))) {
         (void)fprintf(stdout, "  Internet  : <unknown header>\n");
         return;
     }
@@ -491,7 +491,7 @@ static void _bf_chain_log_l4(const struct bf_log *log)
     struct udphdr *udphdr;
     const char *tcp_flags_str;
 
-    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_TRANSPORT))) {
+    if (!(log->payload.pkt.headers & (1 << BF_LOG_OPT_TRANSPORT))) {
         (void)fprintf(stdout, "  Transport : <unknown header>\n");
         return;
     }
@@ -579,10 +579,10 @@ void bfc_print_log(const struct bf_log *log)
 
     _bf_chain_log_header(log);
 
-    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_LINK))
+    if (log->payload.pkt.req_headers & (1 << BF_LOG_OPT_LINK))
         _bf_chain_log_l2(log);
-    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_INTERNET))
+    if (log->payload.pkt.req_headers & (1 << BF_LOG_OPT_INTERNET))
         _bf_chain_log_l3(log);
-    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_TRANSPORT))
+    if (log->payload.pkt.req_headers & (1 << BF_LOG_OPT_TRANSPORT))
         _bf_chain_log_l4(log);
 }
