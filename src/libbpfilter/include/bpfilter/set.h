@@ -8,8 +8,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/list.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
 
@@ -54,7 +54,7 @@ struct bf_set
     size_t n_comps;
 
     /** Elements of the set. */
-    bf_list elems;
+    bf_hashset elems;
 
     /** Size of a single element. All elements have the same size, it's derived
      * from the key. */
@@ -64,6 +64,16 @@ struct bf_set
      * use a LPM trie structure instead of the standard hash map. */
     bool use_trie;
 };
+
+/**
+ * @brief Iterate over the elements of a set.
+ *
+ * @param set Pointer to the set to iterate over. Must be non-NULL.
+ * @param elem_var Name of the variable containing the current element data
+ *        (as `void *`). This variable will be created automatically.
+ */
+#define bf_set_foreach(set, elem_var)                                          \
+    bf_hashset_foreach (&(set)->elems, elem_var)
 
 /**
  * @brief Allocate and initialise a new set.
@@ -125,6 +135,14 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
  * @return True if the set has no elements, false otherwise.
  */
 bool bf_set_is_empty(const struct bf_set *set);
+
+/**
+ * @brief Get the number of elements in a set.
+ *
+ * @param set Initialised set. Can't be NULL.
+ * @return Number of elements in the set.
+ */
+size_t bf_set_size(const struct bf_set *set);
 
 int bf_set_add_elem(struct bf_set *set, const void *elem);
 

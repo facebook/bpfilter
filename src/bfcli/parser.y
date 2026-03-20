@@ -9,7 +9,7 @@
     #include <stdlib.h>
     #include <stdbool.h>
 
-    #include <bpfilter/list.h>
+    #include <bpfilter/core/list.h>
     #include <bpfilter/if.h>
 
     #include "ruleset.h"
@@ -30,7 +30,7 @@
     #include <bpfilter/verdict.h>
     #include <bpfilter/hook.h>
     #include <bpfilter/matcher.h>
-    #include <bpfilter/list.h>
+    #include <bpfilter/core/list.h>
     #include <bpfilter/rule.h>
     #include <bpfilter/chain.h>
     #include <bpfilter/runtime.h>

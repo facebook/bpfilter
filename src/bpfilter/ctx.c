@@ -15,11 +15,11 @@
 #include <bpfilter/bpf.h>
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
-#include <bpfilter/list.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/ns.h>
 #include <bpfilter/pack.h>

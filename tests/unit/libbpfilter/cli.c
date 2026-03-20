@@ -7,9 +7,9 @@
 
 #include <bpfilter/bpfilter.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/hook.h>
-#include <bpfilter/list.h>
 
 #include "fake.h"
 #include "test.h"
