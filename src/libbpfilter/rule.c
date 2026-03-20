@@ -19,6 +19,34 @@
 #include "bpfilter/runtime.h"
 #include "bpfilter/verdict.h"
 
+static const char *_bf_log_type_strs[] = {
+    [BF_LOG_TYPE_PACKET] = "packet",
+    [BF_LOG_TYPE_SOCK_ADDR] = "sock_addr",
+};
+static_assert_enum_mapping(_bf_log_type_strs, _BF_LOG_TYPE_MAX);
+
+const char *bf_log_type_to_str(enum bf_log_type log_type)
+{
+    if (log_type < 0 || log_type >= _BF_LOG_TYPE_MAX)
+        return "<bf_log_type unknown>";
+
+    return _bf_log_type_strs[log_type];
+}
+
+int bf_log_type_from_str(const char *str, enum bf_log_type *log_type)
+{
+    assert(log_type);
+
+    for (int i = 0; i < _BF_LOG_TYPE_MAX; ++i) {
+        if (bf_streq_i(str, _bf_log_type_strs[i])) {
+            *log_type = (enum bf_log_type)i;
+            return 0;
+        }
+    }
+
+    return -EINVAL;
+}
+
 static const char *_bf_pkthdr_strs[] = {
     [BF_PKTHDR_LINK] = "link",
     [BF_PKTHDR_INTERNET] = "internet",

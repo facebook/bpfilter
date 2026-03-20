@@ -19,6 +19,25 @@
 #define BF_RULE_MARK_MASK (0x00000000ffffffffULL)
 
 /**
+ * @brief Return the string representation of a `bf_log_type` enumeration value.
+ *
+ * @param log_type `bf_log_type` enumeration value.
+ * @return A pointer to the C-string representation of `log_type`.
+ */
+const char *bf_log_type_to_str(enum bf_log_type log_type);
+
+/**
+ * @brief Return the `bf_log_type` enumeration value corresponding to a string.
+ *
+ * @param str String to get the corresponding `bf_log_type` enumeration value
+ *        for.
+ * @param log_type On success, contains the `bf_log_type` enumeration value
+ *        corresponding to `str`. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure.
+ */
+int bf_log_type_from_str(const char *str, enum bf_log_type *log_type);
+
+/**
  * @brief Return the string representation of a `bf_pkthdr` enumeration value.
  *
  * @param hdr `bf_pkthdr` enumeration value.

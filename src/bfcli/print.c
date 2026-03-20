@@ -373,17 +373,18 @@ static void _bf_chain_log_header(const struct bf_log *log)
         bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL), time_str,
         time.tv_nsec / BF_TIME_US,
         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), log->rule_id,
-        bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD), log->pkt_size,
+        bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD),
+        log->payload.pkt.pkt_size,
         bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
         bf_verdict_to_str((enum bf_verdict)log->verdict));
 }
 
 static void _bf_chain_log_l2(const struct bf_log *log)
 {
-    struct ethhdr *ethhdr = (void *)log->l2hdr;
+    struct ethhdr *ethhdr = (void *)log->payload.pkt.l2hdr;
     const char *ethertype;
 
-    if (!(log->headers & (1 << BF_PKTHDR_LINK))) {
+    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_LINK))) {
         (void)fprintf(stdout, "  Ethernet  : <unknown header>\n");
         return;
     }
@@ -418,14 +419,14 @@ static void _bf_chain_log_l3(const struct bf_log *log)
     char dst_addr[INET6_ADDRSTRLEN];
     const char *protocol;
 
-    if (!(log->headers & (1 << BF_PKTHDR_INTERNET))) {
+    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_INTERNET))) {
         (void)fprintf(stdout, "  Internet  : <unknown header>\n");
         return;
     }
 
     switch (log->l3_proto) {
     case ETH_P_IP:
-        iphdr = (struct iphdr *)&log->l3hdr[0];
+        iphdr = (struct iphdr *)&log->payload.pkt.l3hdr[0];
 
         inet_ntop(AF_INET, &iphdr->saddr, src_addr, sizeof(src_addr));
         inet_ntop(AF_INET, &iphdr->daddr, dst_addr, sizeof(dst_addr));
@@ -451,7 +452,7 @@ static void _bf_chain_log_l3(const struct bf_log *log)
         break;
 
     case ETH_P_IPV6:
-        ipv6hdr = (struct ipv6hdr *)log->l3hdr;
+        ipv6hdr = (struct ipv6hdr *)log->payload.pkt.l3hdr;
 
         inet_ntop(AF_INET6, &ipv6hdr->saddr, src_addr, sizeof(src_addr));
         inet_ntop(AF_INET6, &ipv6hdr->daddr, dst_addr, sizeof(dst_addr));
@@ -490,14 +491,14 @@ static void _bf_chain_log_l4(const struct bf_log *log)
     struct udphdr *udphdr;
     const char *tcp_flags_str;
 
-    if (!(log->headers & (1 << BF_PKTHDR_TRANSPORT))) {
+    if (!(log->payload.pkt.headers & (1 << BF_PKTHDR_TRANSPORT))) {
         (void)fprintf(stdout, "  Transport : <unknown header>\n");
         return;
     }
 
     switch (log->l4_proto) {
     case IPPROTO_TCP:
-        tcphdr = (struct tcphdr *)log->l4hdr;
+        tcphdr = (struct tcphdr *)log->payload.pkt.l4hdr;
         tcp_flags_str = _bf_tcp_flags_to_str(tcphdr);
 
         (void)fprintf(stdout, "  TCP       : %s%-5u%s → %s%-5u%s",
@@ -522,7 +523,7 @@ static void _bf_chain_log_l4(const struct bf_log *log)
         break;
 
     case IPPROTO_UDP:
-        udphdr = (struct udphdr *)log->l4hdr;
+        udphdr = (struct udphdr *)log->payload.pkt.l4hdr;
 
         (void)fprintf(stdout, "  UDP       : %s%-5u%s → %s%-5u%s [len=%u]\n",
                       bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_BOLD),
@@ -535,7 +536,7 @@ static void _bf_chain_log_l4(const struct bf_log *log)
         break;
 
     case IPPROTO_ICMP:
-        icmphdr = (struct icmphdr *)log->l4hdr;
+        icmphdr = (struct icmphdr *)log->payload.pkt.l4hdr;
 
         (void)fprintf(stdout, "  ICMP      : type=%-3u code=%-3u",
                       icmphdr->type, icmphdr->code);
@@ -550,7 +551,7 @@ static void _bf_chain_log_l4(const struct bf_log *log)
         break;
 
     case IPPROTO_ICMPV6:
-        icmp6hdr = (struct icmp6hdr *)log->l4hdr;
+        icmp6hdr = (struct icmp6hdr *)log->payload.pkt.l4hdr;
 
         (void)fprintf(stdout, "  ICMPv6    : type=%-3u code=%-3u",
                       icmp6hdr->icmp6_type, icmp6hdr->icmp6_code);
@@ -573,12 +574,15 @@ static void _bf_chain_log_l4(const struct bf_log *log)
 
 void bfc_print_log(const struct bf_log *log)
 {
+    if (log->log_type != BF_LOG_TYPE_PACKET)
+        return;
+
     _bf_chain_log_header(log);
 
-    if (log->req_headers & (1 << BF_PKTHDR_LINK))
+    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_LINK))
         _bf_chain_log_l2(log);
-    if (log->req_headers & (1 << BF_PKTHDR_INTERNET))
+    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_INTERNET))
         _bf_chain_log_l3(log);
-    if (log->req_headers & (1 << BF_PKTHDR_TRANSPORT))
+    if (log->payload.pkt.req_headers & (1 << BF_PKTHDR_TRANSPORT))
         _bf_chain_log_l4(log);
 }
