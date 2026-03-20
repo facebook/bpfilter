@@ -4,12 +4,13 @@
 add_subdirectory(harness)
 add_subdirectory(unit)
 add_subdirectory(e2e)
-add_subdirectory(fuzz)
+add_subdirectory(functional)
 add_subdirectory(integration)
+add_subdirectory(fuzz)
 add_subdirectory(check)
 
 add_custom_target(test_bin
-    DEPENDS unit_bin e2e_bin fuzz_parser
+    DEPENDS unit_bin e2e_bin functional_bin fuzz_parser
     COMMENT "Building all test binaries"
 )
 

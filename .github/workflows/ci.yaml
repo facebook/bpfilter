@@ -131,6 +131,9 @@ jobs:
           path: ${{ github.workspace }}/build/findings
           if-no-files-found: ignore
 
+      - name: Run functional tests
+        run: ctest --test-dir $GITHUB_WORKSPACE/build -L functional --verbose
+
       - name: Run integration tests
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
       - name: Run checks

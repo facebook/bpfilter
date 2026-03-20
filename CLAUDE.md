@@ -30,9 +30,10 @@ src/
 tests/
 ├── unit/                 # cmocka tests for libbpfilter API
 ├── e2e/                  # Bash scripts testing full filtering behavior
+├── functional/           # Matchers validation tests
 ├── integration/          # API stability tests
 ├── check/                # clang-tidy and clang-format validation
-└── harness/              # Test utilities (test.h, mock.h, fake.h)
+└── harness/              # Test utilities (test.h, mock.h, fake.h, C++ wrappers)
 
 doc/
 ├── usage/                # User guides (bfcli, daemon)
@@ -59,7 +60,7 @@ make -C build
 # Run all tests (build test_bin first)
 make -C build test_bin test
 
-# Run specific suite: unit, e2e, integration, check
+# Run specific suite: unit, e2e, functional, integration, check
 make -C build unit e2e integration check
 
 # Run specific test (path from tests/, replace / with .)

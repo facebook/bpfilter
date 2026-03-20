@@ -9,21 +9,24 @@
 #include <vector>
 
 extern "C" {
-    #include <bpfilter/chain.h>
-    #include <bpfilter/verdict.h>
-    #include <bpfilter/hook.h>
+#include <bpfilter/chain.h>
+#include <bpfilter/hook.h>
+#include <bpfilter/verdict.h>
 }
 
 #include "Rule.hpp"
 #include "Set.hpp"
 
-namespace bf {
+namespace bf
+{
 
 class Chain
 {
-protected:
-    struct deleter {
-        void operator()(bf_chain *ptr) {
+private:
+    struct deleter
+    {
+        void operator()(bf_chain *ptr)
+        {
             bf_chain_free(&ptr);
         }
     };
@@ -35,39 +38,54 @@ protected:
     std::vector<Rule> _rules;
 
 public:
-    Chain(std::string name, bf_hook hook, bf_verdict policy, std::vector<Set> sets={}, std::vector<Rule> rules={}):
-        _name{name}, _hook{hook}, _policy{policy}, _sets{std::move(sets)}, _rules{std::move(rules)} {}
+    Chain(std::string name, bf_hook hook, bf_verdict policy,
+          std::vector<Set> sets = {}, std::vector<Rule> rules = {}):
+        _name {std::move(name)},
+        _hook {hook},
+        _policy {policy},
+        _sets {std::move(sets)},
+        _rules {std::move(rules)}
+    {}
 
-    std::string name() const { return _name; }
+    [[nodiscard]] std::string name() const
+    {
+        return _name;
+    }
 
-    Chain &operator<<(Rule &&rule) {
+    Chain &operator<<(Rule &&rule)
+    {
         _rules.push_back(rule);
 
         return *this;
     }
 
-    Chain &operator<<(Rule &rule) {
+    Chain &operator<<(Rule &rule)
+    {
         _rules.push_back(rule);
 
         return *this;
     }
 
-    Chain &operator<<(Set &&set) {
+    Chain &operator<<(Set &&set)
+    {
         _sets.push_back(set);
 
         return *this;
     }
 
-    Chain &operator<<(Set &set) {
+    Chain &operator<<(Set &set)
+    {
         _sets.push_back(set);
 
         return *this;
     }
 
-    [[nodiscard]] std::unique_ptr<bf_chain, deleter> get() const {
+    [[nodiscard]] std::unique_ptr<bf_chain, deleter> get() const
+    {
         struct bf_chain *chain;
 
-        int r = bf_chain_new(&chain, _name.c_str(), _hook, _policy, nullptr, nullptr);
+        int r = bf_chain_new(&chain, _name.c_str(), _hook, _policy, nullptr,
+                             nullptr);
         if (r != 0)
             throw std::runtime_error("failed to create bf_chain");
 
@@ -97,4 +115,4 @@ public:
     }
 };
 
-}
+} // namespace bf
