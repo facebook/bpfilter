@@ -166,4 +166,5 @@ const struct bf_flavor_ops bf_flavor_ops_cgroup_skb = {
     .gen_inline_set_mark = _bf_cgroup_skb_gen_inline_set_mark,
     .get_verdict = _bf_cgroup_skb_get_verdict,
     .gen_inline_matcher = _bf_cgroup_skb_gen_inline_matcher,
+    .gen_inline_log = bf_packet_gen_inline_log,
 };
