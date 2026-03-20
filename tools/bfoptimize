@@ -341,7 +341,9 @@ def run_benchmark(
         "--fail-on-benchmark-error",
     ] + extra_args
 
-    console.log(f"Running bfbencher compare {baseline_sha[:SHORT_SHA_LEN]} → {result_sha[:SHORT_SHA_LEN]}")
+    console.log(
+        f"Running bfbencher compare {baseline_sha[:SHORT_SHA_LEN]} → {result_sha[:SHORT_SHA_LEN]}"
+    )
     result = subprocess.run(cmd, text=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
     if result.returncode != 0:
         console.log("[red]bfbencher compare failed[/red]")
@@ -367,7 +369,8 @@ def run_benchmark(
         noisy = [(name, cv) for name, cv in noise.items() if cv > 0.01]
         if noisy:
             noisy_str = ", ".join(
-                f"{name} (CV={cv:.1%})" for name, cv in sorted(noisy, key=lambda x: -x[1])
+                f"{name} (CV={cv:.1%})"
+                for name, cv in sorted(noisy, key=lambda x: -x[1])
             )
             console.log(f"[dim]Volatile benchmarks (down-weighted): {noisy_str}[/dim]")
 
@@ -431,7 +434,7 @@ async def run_optimize(args: argparse.Namespace) -> None:
 
     console.log(f"Baseline: {history.baseline_sha[:SHORT_SHA_LEN]}")
 
-    bfbencher = (args.sources / "tools/benchmarks/bfbencher").resolve()
+    bfbencher = (args.sources / "tests/benchmarks/bfbencher").resolve()
 
     bench_extra: list[str] = []
     if args.host:
