@@ -103,7 +103,7 @@
 %token SET
 %token LOG COUNTER MARK
 %token REDIRECT_TOKEN
-%token <sval> LOG_HEADERS
+%token <sval> LOG_OPTS
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
 %token <sval> STRING
@@ -320,7 +320,7 @@ rule            : RULE matchers rule_options rule_verdict
                 }
                 ;
 
-rule_option     : LOG LOG_HEADERS
+rule_option     : LOG LOG_OPTS
                 {
                     _cleanup_free_ char *in = $2;
                     char *tmp = in;
@@ -329,12 +329,12 @@ rule_option     : LOG LOG_HEADERS
                     uint8_t log = 0;
 
                     while ((token = strtok_r(tmp, ",", &saveptr))) {
-                        enum bf_pkthdr header;
+                        enum bf_log_opt opt;
 
-                        if (bf_pkthdr_from_str(token, &header) < 0)
-                            bf_parse_err("unknown packet header '%s'", token);
+                        if (bf_log_opt_from_str(token, &opt) < 0)
+                            bf_parse_err("unknown log option '%s'", token);
 
-                        log |= BF_FLAG(header);
+                        log |= BF_FLAG(opt);
 
                         tmp = NULL;
                     }

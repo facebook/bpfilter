@@ -15,8 +15,9 @@ static void to_from_str(void **state)
 {
     (void)state;
 
-    assert_enum_to_from_str(enum bf_pkthdr, bf_pkthdr_to_str,
-                            bf_pkthdr_from_str, BF_PKTHDR_LINK, _BF_PKTHDR_MAX);
+    assert_enum_to_from_str(enum bf_log_opt, bf_log_opt_to_str,
+                            bf_log_opt_from_str, BF_LOG_OPT_LINK,
+                            _BF_LOG_OPT_MAX);
 }
 
 static void new_and_free(void **state)
