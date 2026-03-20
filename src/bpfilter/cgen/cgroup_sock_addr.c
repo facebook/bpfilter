@@ -239,9 +239,23 @@ static int _bf_cgroup_sock_addr_get_verdict(enum bf_verdict verdict)
     }
 }
 
+static int _bf_cgroup_sock_addr_gen_inline_log(struct bf_program *program,
+                                               const struct bf_rule *rule)
+{
+    assert(program);
+    assert(rule);
+
+    (void)program;
+    (void)rule;
+
+    return bf_err_r(-ENOTSUP,
+                    "logging is not yet supported for cgroup_sock_addr");
+}
+
 const struct bf_flavor_ops bf_flavor_ops_cgroup_sock_addr = {
     .gen_inline_prologue = _bf_cgroup_sock_addr_gen_inline_prologue,
     .gen_inline_epilogue = _bf_cgroup_sock_addr_gen_inline_epilogue,
     .get_verdict = _bf_cgroup_sock_addr_get_verdict,
     .gen_inline_matcher = _bf_cgroup_sock_addr_gen_inline_matcher,
+    .gen_inline_log = _bf_cgroup_sock_addr_gen_inline_log,
 };

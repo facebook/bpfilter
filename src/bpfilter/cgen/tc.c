@@ -175,4 +175,5 @@ const struct bf_flavor_ops bf_flavor_ops_tc = {
     .gen_inline_redirect = _bf_tc_gen_inline_redirect,
     .get_verdict = _bf_tc_get_verdict,
     .gen_inline_matcher = _bf_tc_gen_inline_matcher,
+    .gen_inline_log = bf_packet_gen_inline_log,
 };
