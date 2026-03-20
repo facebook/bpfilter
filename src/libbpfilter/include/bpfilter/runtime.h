@@ -51,30 +51,25 @@ static_assert(BF_L4_SLICE_LEN % 8 == 0,
               "BF_L4_SLICE_LEN should be aligned to 8 bytes");
 
 /**
- * @brief Types of network packet headers.
+ * @brief Log options controlling which headers are captured in a log entry.
  */
-enum bf_pkthdr
+enum bf_log_opt
 {
-    /**
-     * Link layer header: Ethernet, ...
-     */
-    BF_PKTHDR_LINK,
+    /** Link layer data: Ethernet header. */
+    BF_LOG_OPT_LINK,
+
+    /** Internet layer data: IPv4/IPv6 header. */
+    BF_LOG_OPT_INTERNET,
 
     /**
-     * Internet header: IPv4, IPv6, ...
-     */
-    BF_PKTHDR_INTERNET,
-
-    /**
-     * Transport header: TCP, UDP, ...
+     * Transport layer data: TCP/UDP header.
      *
      * ICMPv6 is an internet layer (L3) header, but it's encapsulated inside an
-     * IPv6 packet, so it's considered a transport layer (L4) header in
-     * bpfilter.
+     * IPv6 packet, so it's considered layer 4 in bpfilter.
      */
-    BF_PKTHDR_TRANSPORT,
+    BF_LOG_OPT_TRANSPORT,
 
-    _BF_PKTHDR_MAX,
+    _BF_LOG_OPT_MAX,
 };
 
 /**

@@ -35,22 +35,22 @@ __u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers,
     log->pkt.req_headers = headers;
     log->pkt.headers = 0;
 
-    if (headers & (1 << BF_PKTHDR_LINK) && ctx->l2_hdr &&
+    if (headers & (1 << BF_LOG_OPT_LINK) && ctx->l2_hdr &&
         ctx->l2_size <= BF_L2_SLICE_LEN) {
         bpf_probe_read_kernel(log->pkt.l2hdr, ctx->l2_size, ctx->l2_hdr);
-        log->pkt.headers |= (1 << BF_PKTHDR_LINK);
+        log->pkt.headers |= (1 << BF_LOG_OPT_LINK);
     }
 
-    if (headers & (1 << BF_PKTHDR_INTERNET) && ctx->l3_hdr &&
+    if (headers & (1 << BF_LOG_OPT_INTERNET) && ctx->l3_hdr &&
         ctx->l3_size <= BF_L3_SLICE_LEN) {
         bpf_probe_read_kernel(log->pkt.l3hdr, ctx->l3_size, ctx->l3_hdr);
-        log->pkt.headers |= (1 << BF_PKTHDR_INTERNET);
+        log->pkt.headers |= (1 << BF_LOG_OPT_INTERNET);
     }
 
-    if (headers & (1 << BF_PKTHDR_TRANSPORT) && ctx->l4_hdr &&
+    if (headers & (1 << BF_LOG_OPT_TRANSPORT) && ctx->l4_hdr &&
         ctx->l4_size <= BF_L4_SLICE_LEN) {
         bpf_probe_read_kernel(log->pkt.l4hdr, ctx->l4_size, ctx->l4_hdr);
-        log->pkt.headers |= (1 << BF_PKTHDR_TRANSPORT);
+        log->pkt.headers |= (1 << BF_LOG_OPT_TRANSPORT);
     }
 
     bpf_ringbuf_submit(log, 0);
