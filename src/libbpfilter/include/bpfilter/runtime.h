@@ -7,10 +7,23 @@
 
 #define bf_aligned(x) __attribute__((aligned(x)))
 
+/**
+ * @brief Give an anonymous union or struct a name only for Doxygen.
+ *
+ * Allows anonymous unions/structs in code while keeping Doxygen's parser happy.
+ */
+#ifdef DOXYGEN
+#define BF_ANONYMOUS_MEMBER(name) name
+#else
+#define BF_ANONYMOUS_MEMBER(name)
+#endif
+
 // _Static_assert doesn't exist in C++
 #ifndef __cplusplus
 #define static_assert _Static_assert
 #endif
+
+#include <linux/in6.h>
 
 #include <asm/types.h>
 
@@ -50,6 +63,9 @@ static_assert(BF_L3_SLICE_LEN % 8 == 0,
 static_assert(BF_L4_SLICE_LEN % 8 == 0,
               "BF_L4_SLICE_LEN should be aligned to 8 bytes");
 
+/** Size of the process name buffer, matches TASK_COMM_LEN. */
+#define BF_COMM_LEN 16
+
 /**
  * @brief Types of network packet headers.
  */
@@ -78,35 +94,28 @@ enum bf_pkthdr
 };
 
 /**
- * @brief Log structure published by a chain when the `log` action is hit.
- *
- * The structure is published into a log buffer by the chain, when a hit rule
- * has a `log` action defined.
- *
- * Except for the raw packet headers (`l2hdr`, `l3hdr`, and `l4hdr`), all the
- * values are stored in host byteorder.
+ * @brief Log entry type discriminator.
  */
-struct bf_log
+enum bf_log_type
 {
-    /** Timestamp of the packet processing. */
-    __u64 ts;
+    /** Packet-based log entry (XDP, TC, NF, cgroup_skb). */
+    BF_LOG_TYPE_PACKET,
 
+    /** Socket address log entry (cgroup_sock_addr). */
+    BF_LOG_TYPE_SOCK_ADDR,
+
+    _BF_LOG_TYPE_MAX,
+};
+
+/**
+ * @brief Packet log payload fields (XDP, TC, NF, cgroup_skb).
+ */
+struct bf_log_pkt
+{
     /** Total size of the packet, including the payload. */
     __u64 pkt_size;
 
-    /** ID of the rule triggering the log. */
-    __u32 rule_id;
-
-    /** Verdict of the rule triggering the log. */
-    __u32 verdict;
-
-    /** Layer 3 (internet) protocol identifier. */
-    __u16 l3_proto;
-
-    /** Layer 4 (transport) protocol identifier. */
-    __u8 l4_proto;
-
-    /** User-request headers, as defined in the rule. */
+    /** User-requested headers, as defined in the rule. */
     __u8 req_headers:4;
 
     /** Logged headers, as not all hooks can access all headers. */
@@ -120,6 +129,70 @@ struct bf_log
 
     /** Layer 4 header. */
     bf_aligned(8) __u8 l4hdr[BF_L4_SLICE_LEN];
+};
+
+/**
+ * @brief Socket address log payload fields (cgroup_sock_addr).
+ */
+struct bf_log_sock_addr
+{
+    /** Root namespace PID (tgid) of the process. */
+    __u32 pid;
+
+    /** Destination port in host byteorder. */
+    __u16 dport;
+
+    /** Process name. */
+    bf_aligned(8) __u8 comm[BF_COMM_LEN];
+
+    /** Source address (4 bytes for IPv4, 16 for IPv6). */
+    bf_aligned(8) __u8 saddr[sizeof(struct in6_addr)];
+
+    /** Destination address (4 bytes for IPv4, 16 for IPv6). */
+    bf_aligned(8) __u8 daddr[sizeof(struct in6_addr)];
+};
+
+/**
+ * @brief Log structure published by a chain when the `log` action is hit.
+ *
+ * The structure is published into a log buffer by the chain, when a hit rule
+ * has a `log` action defined.
+ *
+ * All fields are stored in host byteorder unless noted otherwise.
+ */
+struct bf_log
+{
+    /** Timestamp of the event. */
+    __u64 ts;
+
+    /** ID of the rule triggering the log. */
+    __u32 rule_id;
+
+    /** Verdict of the rule triggering the log. */
+    __u32 verdict;
+
+    /** Layer 3 (internet) protocol identifier. */
+    __u16 l3_proto;
+
+    /** Layer 4 (transport) protocol identifier. */
+    __u8 l4_proto;
+
+    /** Log entry type. */
+    __u8 log_type;
+
+    /**
+     * Flavor-specific payload, discriminated by `log_type`.
+     *
+     * - `BF_LOG_TYPE_PACKET`: use `pkt` — raw packet headers in network
+     *   byteorder.
+     * - `BF_LOG_TYPE_SOCK_ADDR`: use `sock_addr` — socket address, port,
+     *   and process metadata.
+     */
+    union
+    {
+        struct bf_log_pkt pkt;
+        struct bf_log_sock_addr sock_addr;
+    } BF_ANONYMOUS_MEMBER(payload);
 };
 
 struct bf_ip4_lpm_key
