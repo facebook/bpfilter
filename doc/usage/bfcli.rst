@@ -1,7 +1,20 @@
 ``bfcli``
 =========
 
-``bfcli`` is a command line tool to communicate with the bpfilter daemon.
+``bfcli`` is the command line tool for defining and managing bpfilter filtering rules. It calls ``libbpfilter`` directly to generate, load, and manage BPF programs.
+
+Global options
+--------------
+
+The following options apply to all ``bfcli`` commands and must be specified before the object and action arguments.
+
+- ``--bpffs-path BPFFS_PATH``: path to the BPF filesystem directory. Defaults to ``/sys/fs/bpf``. bpfilter pins BPF objects under a ``bpfilter`` subdirectory at this path.
+- ``--with-bpf-token``: associate a BPF token to every ``bpf()`` system call. Required when running in user namespaces. The token is created from the bpffs at ``--bpffs-path``. Only supported for kernel v6.9+.
+- ``--verbose VERBOSE_FLAG``: enable verbose output. Can be specified multiple times. Supported values:
+
+  - ``debug``: enable debug logs.
+  - ``bpf``: insert log messages into BPF programs to log failed kernel function calls. View with ``bpftool prog tracelog`` or ``cat /sys/kernel/debug/tracing/trace_pipe``.
+  - ``bytecode``: dump a program's bytecode before loading it.
 
 Commands
 --------

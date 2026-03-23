@@ -3,14 +3,13 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "cgen/elfstub.h"
-
 #include <linux/bpf.h>
 
 #include <elf.h>
 #include <errno.h>
 
 #include <bpfilter/btf.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 

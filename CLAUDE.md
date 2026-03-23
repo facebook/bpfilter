@@ -22,7 +22,6 @@ src/
 │   ├── cgen/             # BPF code generation engine
 │   │   ├── matcher/      # Packet matcher codegen (ip4, ip6, tcp, udp, icmp, meta, set)
 │   │   └── prog/         # Program linking (link, map)
-│   ├── xlate.c           # Rule translation
 │   └── bpf/              # eBPF stub programs
 ├── bfcli/                # CLI (parser.y, lexer.l, opts, print, chain, ruleset)
 └── external/             # External deps (mpack)

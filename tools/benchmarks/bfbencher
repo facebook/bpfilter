@@ -709,32 +709,6 @@ def has_significant_change(
     return False
 
 
-class DaemonContext:
-    """Context manager for running the bpfilter daemon during benchmarks."""
-
-    def __init__(self, executor: Executor, daemon_path: pathlib.Path):
-        self._executor: Executor = executor
-        self._daemon_path: pathlib.Path = daemon_path
-
-    def __enter__(self) -> "DaemonContext":
-        cmd = [
-            "sudo",
-            "systemd-run",
-            "--unit",
-            "bpfilter",
-            str(self._daemon_path),
-            "--transient",
-        ]
-
-        if self._executor.run(cmd):
-            raise RuntimeError("failed to start daemon")
-
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._executor.run(["sudo", "systemctl", "stop", "bpfilter"], timeout=10)
-
-
 class BenchmarkContext:
     """Context manager for benchmarking a single commit."""
 
@@ -771,8 +745,8 @@ class BenchmarkContext:
         return self._executor.work_dir / "bpfilter"
 
     @property
-    def daemon_path(self) -> pathlib.Path:
-        return self.build_dir / "output/sbin/bpfilter"
+    def bfcli_path(self) -> pathlib.Path:
+        return self.build_dir / "output/sbin/bfcli"
 
     def configure(
         self, doc: bool = False, tests: bool = False, checks: bool = False
@@ -806,9 +780,6 @@ class BenchmarkContext:
 
         return self._executor.run_benchmark_cmd(f"Building {target}", self._commit, cmd)
 
-    def run_daemon(self) -> DaemonContext:
-        return DaemonContext(self._executor, self.daemon_path)
-
     def run_benchmark(
         self,
         bind_node: int | None = None,
@@ -819,10 +790,7 @@ class BenchmarkContext:
         cmd = [
             str(self.build_dir / "output/sbin/benchmark_bin"),
             "--cli",
-            str(self._executor.work_dir / "fake_bfcli.sh"),
-            "--daemon",
-            str(self._executor.work_dir / "fake_bpfilter.sh"),
-            "--no-daemon",
+            str(self.bfcli_path),
             "--srcdir",
             str(self.source_dir),
             "--outfile",
@@ -1061,28 +1029,21 @@ def run_benchmarks(args: argparse.Namespace):
         LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
     )
 
-    with open(executor._local_workdir / "fake_bfcli.sh", "w") as f:
-        f.write('#!/bin/bash\necho "This is not bfcli"')
-
-    with open(executor._local_workdir / "fake_bpfilter.sh", "w") as f:
-        f.write('#!/bin/bash\necho "This is not bpfilter"')
-
     with executor:
         for ctx in BenchmarkContext.commits(executor):
             if not ctx.configure():
                 continue
 
-            if not ctx.make("bpfilter"):
+            if not ctx.make("bfcli"):
                 continue
 
-            with ctx.run_daemon() as _:
-                if not ctx.make("benchmark_bin"):
-                    continue
+            if not ctx.make("benchmark_bin"):
+                continue
 
-                if not ctx.run_benchmark(
-                    args.bind_node, args.no_preempt, args.cpu_pin, args.slice
-                ):
-                    continue
+            if not ctx.run_benchmark(
+                args.bind_node, args.no_preempt, args.cpu_pin, args.slice
+            ):
+                continue
 
             results = ctx.results
             if not results:

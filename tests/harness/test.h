@@ -168,6 +168,3 @@ int bft_hook_accept(enum bf_hook hook);
  * @return The flavor-specific drop verdict (e.g. XDP_DROP, NF_DROP).
  */
 int bft_hook_drop(enum bf_hook hook);
-
-int bft_setup_daemon(void **state);
-int bft_teardown_daemon(void **state);

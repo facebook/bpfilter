@@ -9,9 +9,8 @@
 #include <stdint.h>
 
 #include <bpfilter/dump.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/list.h>
-
-#include "cgen/elfstub.h"
 
 /**
  * @file ctx.h
@@ -27,7 +26,6 @@
  */
 
 struct bf_cgen;
-struct bf_ns;
 
 enum bf_verbose
 {
@@ -40,14 +38,12 @@ enum bf_verbose
 /**
  * Initialise the global context.
  *
- * @param transient If true, don't persist state and unload programs on exit.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
  * @param verbose Bitmask of verbose flags.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_setup(bool transient, bool with_bpf_token, const char *bpffs_path,
-                 uint16_t verbose);
+int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose);
 
 /**
  * Teardown the global context.
@@ -107,18 +103,6 @@ int bf_ctx_set_cgen(struct bf_cgen *cgen);
 int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload);
 
 /**
- * Get the daemon's original namespaces.
- *
- * During the creation of the global context, the daemon will open a reference
- * to its namespaces. This is required to jump a a client's namespace on request
- * and come back to the original namespace afterward. This function returns a
- * pointer to the `bf_ns` object referencing the original namespaces.
- *
- * @return A `bf_ns` object pointer.
- */
-struct bf_ns *bf_ctx_get_ns(void);
-
-/**
  * Get the BPF token file descriptor.
  *
  * @return The BPF token file descriptor, or -1 if no token is used.
@@ -134,29 +118,12 @@ int bf_ctx_token(void);
 int bf_ctx_get_pindir_fd(void);
 
 /**
- * @brief Remove the pin directory.
- *
- * If the pin directory can't be removed, an error is printed. However, if it's
- * due to the directory not being empty, or not existing, no error is printed,
- * but the errno value is returned anyway. The called will know how to deal with
- * this situation.
- *
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_ctx_rm_pindir(void);
-
-/**
  * @brief Get a ELF stub from its ID.
  *
  * @param id ID of the ELF stub to retrieve.
  * @return The requested ELF stub.
  */
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);
-
-/**
- * @return true if transient mode is enabled.
- */
-bool bf_ctx_is_transient(void);
 
 /**
  * @return true if the given verbose flag is set.

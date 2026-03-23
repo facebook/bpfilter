@@ -147,9 +147,6 @@ static void accessors(void **state)
     expected_size = bf_request_size(request);
     assert_int_gt(expected_size, data_len);
 
-    // Test bf_request_ns (initially NULL)
-    assert_null(bf_request_ns(request));
-
     // Test bf_request_fd (initially 0)
     assert_int_equal(bf_request_fd(request), 0);
 }
@@ -157,15 +154,10 @@ static void accessors(void **state)
 static void setters(void **state)
 {
     _free_bf_request_ struct bf_request *request = NULL;
-    struct bf_ns *fake_ns = (struct bf_ns *)0xDEADBEEF;
 
     (void)state;
 
     assert_ok(bf_request_new(&request, BF_REQ_CHAIN_GET, NULL, 0));
-
-    // Test bf_request_set_ns
-    bf_request_set_ns(request, fake_ns);
-    assert_ptr_equal(bf_request_ns(request), fake_ns);
 
     // Test bf_request_set_fd
     bf_request_set_fd(request, 42);

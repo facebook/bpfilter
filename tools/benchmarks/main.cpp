@@ -20,6 +20,7 @@
 
 extern "C" {
 #include <bpfilter/bpfilter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/runtime.h>
@@ -27,7 +28,6 @@ extern "C" {
 }
 
 #include "Chain.hpp"
-#include "Daemon.hpp"
 #include "Matcher.hpp"
 #include "Rule.hpp"
 #include "Set.hpp"
@@ -654,23 +654,20 @@ int main(int argc, char *argv[])
 
     ::bft::restorePermissions(::bft::config.outfile);
 
-    ::std::optional<bft::Daemon> daemon;
-    if (::bft::config.runDaemon) {
-        daemon = bft::Daemon(::bft::config.bpfilter,
-                             bft::Daemon::Options().transient());
-    }
+    int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
+    if (r < 0)
+        return bf_err_r(r, "failed to initialise bpfilter context");
 
     try {
         ::benchmark::RunSpecifiedBenchmarks();
     } catch (const ::std::exception &e) {
-        if (daemon) {
-            std::cout << daemon->stderr();
-        }
         bf_err("failed to run benchmark: %s", e.what());
+        bf_ctx_teardown();
         return -1;
     }
 
     ::benchmark::Shutdown();
+    bf_ctx_teardown();
 
     return 0;
 }

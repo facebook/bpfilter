@@ -73,7 +73,6 @@ struct Config
 {
 public:
     ::std::string bfcli = "bfcli";
-    ::std::string bpfilter = "bpfilter";
     ::std::string srcdir = ".";
     ::std::string outfile = "results.json";
     ::std::string gitrev = "<unknown>";
@@ -81,7 +80,6 @@ public:
     int adhocRepeat = 1;
     const ::std::string adhocBenchName = "bf_adhoc";
     int64_t gitdate = 0;
-    bool runDaemon = true;
 
     Config() noexcept = default;
 };

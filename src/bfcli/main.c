@@ -6,13 +6,11 @@
 #include <argp.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include <bpfilter/bpfilter.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/list.h>
@@ -50,7 +48,18 @@ int main(int argc, char *argv[])
     if (r < 0)
         return r;
 
-    return opts.cmd->cb(&opts);
+    if (!opts.dry_run) {
+        r = bf_ctx_setup(opts.with_bpf_token, opts.bpffs_path, opts.verbose);
+        if (r < 0)
+            return r;
+    }
+
+    r = opts.cmd->cb(&opts);
+
+    if (!opts.dry_run)
+        bf_ctx_teardown();
+
+    return r;
 }
 
 void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)

@@ -14,17 +14,14 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <bpfilter/btf.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/io.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/ns.h>
 #include <bpfilter/request.h>
 #include <bpfilter/response.h>
 #include <bpfilter/version.h>
-
-#include "ctx.h"
 
 #define BF_DEFAULT_BPFFS_PATH "/sys/fs/bpf"
 
@@ -201,8 +198,7 @@ static int _bf_init(int argc, char *argv[])
     if (r)
         return bf_err_r(r, "failed to ensure runtime directory exists");
 
-    r = bf_ctx_setup(opts.transient, opts.with_bpf_token, opts.bpffs_path,
-                     opts.verbose);
+    r = bf_ctx_setup(opts.with_bpf_token, opts.bpffs_path, opts.verbose);
     if (r)
         return bf_err_r(r, "failed to setup context");
 
@@ -312,7 +308,6 @@ static int _bf_run(void)
         _cleanup_close_ int client_fd = -1;
         _free_bf_request_ struct bf_request *request = NULL;
         _free_bf_response_ struct bf_response *response = NULL;
-        _clean_bf_ns_ struct bf_ns ns = bf_ns_default();
 
         client_fd = accept(fd, NULL, NULL);
         if (client_fd < 0) {
@@ -334,19 +329,12 @@ static int _bf_run(void)
             continue;
         }
 
-        r = bf_ns_init(&ns, peer_cred.pid);
-        if (r) {
-            bf_err_r(r, "failed to open the client's namespaces, ignoring");
-            continue;
-        }
-
         r = bf_recv_request(client_fd, &request);
         if (r) {
             bf_err_r(r, "failed to receive request, ignoring");
             continue;
         }
 
-        bf_request_set_ns(request, &ns);
         bf_request_set_fd(request, client_fd);
 
         r = _bf_process_request(request, &response);
@@ -374,10 +362,6 @@ int main(int argc, char *argv[])
     argp_program_version = "bpfilter version " BF_VERSION;
     argp_program_bug_address = BF_CONTACT;
 
-    r = bf_btf_setup();
-    if (r < 0)
-        return bf_err_r(r, "failed to setup BTF module");
-
     r = _bf_init(argc, argv);
     if (r < 0)
         return bf_err_r(r, "failed to initialize bpfilter");
@@ -387,7 +371,6 @@ int main(int argc, char *argv[])
         return bf_err_r(r, "run() failed");
 
     bf_ctx_teardown();
-    bf_btf_teardown();
 
     return r;
 }

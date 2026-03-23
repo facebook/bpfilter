@@ -2,7 +2,7 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
-bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
     set myset (ip4.saddr) in {
         192.168.1.1;
         192.168.1.2
@@ -12,7 +12,7 @@ bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
         counter
         ACCEPT
 "
-bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
     set myset (ip4.saddr, ip4.proto) in {
         192.168.1.1, tcp;
         192.168.1.2, udp
@@ -23,14 +23,14 @@ bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
         ACCEPT
 "
 
-(! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr) eq { 192.168.1.1 }")
-(! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr, meta.ifindex) in { 192.168.1.1 }")
-(! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr, ip4.proto) in { 192.168.1.1 }")
-(! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr) eq { 192.168.1.1 }")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr, meta.ifindex) in { 192.168.1.1 }")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr, ip4.proto) in { 192.168.1.1 }")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
     set myset (ip4.saddr) in { 192.168.1.1 }
     rule (ip4.daddr) in myset
 ")
-(! bfcli ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
     set myset (ip4.saddr) in { 192.168.1.1 }
     rule (ip4.daddr) in my_set
 ")

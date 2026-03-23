@@ -8,8 +8,7 @@
 #include <stddef.h>
 
 #include <bpfilter/dump.h>
-
-#include "cgen/elfstub.h"
+#include <bpfilter/elfstub.h>
 
 /**
  * Field to fixup in a @c bpf_insn structure.
