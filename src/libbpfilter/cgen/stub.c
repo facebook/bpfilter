@@ -20,17 +20,17 @@
 #include <endian.h>
 #include <stddef.h>
 
+#include <bpfilter/ctx.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/elfstub.h"
 #include "cgen/jmp.h"
 #include "cgen/printer.h"
 #include "cgen/program.h"
 #include "cgen/swich.h"
-#include "ctx.h"
 #include "filter.h"
 
 #define _BF_LOW_EH_BITMASK 0x1801800000000801ULL

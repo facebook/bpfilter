@@ -3,113 +3,97 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include <errno.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#include <bpfilter/ctx.h>
 
 #include "bpfilter/chain.h"
 #include "bpfilter/counter.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/hook.h"
-#include "bpfilter/io.h"
 #include "bpfilter/list.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
-#include "bpfilter/request.h"
-#include "bpfilter/response.h"
 #include "bpfilter/set.h"
+#include "cgen/cgen.h"
+#include "cgen/handle.h"
+#include "cgen/prog/link.h"
+#include "cgen/prog/map.h"
+
+static int copy_hookopts(struct bf_hookopts **dest,
+                         const struct bf_hookopts *src)
+{
+    struct bf_hookopts *copy;
+
+    copy = bf_memdup(src, sizeof(*src));
+    if (!copy)
+        return -ENOMEM;
+
+    if (src->cgpath) {
+        copy->cgpath = strdup(src->cgpath);
+        if (!copy->cgpath) {
+            free(copy);
+            return -ENOMEM;
+        }
+    }
+
+    *dest = copy;
+
+    return 0;
+}
 
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
+    _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
-    _free_bf_rpack_ bf_rpack_t *pack = NULL;
-    bf_rpack_node_t root, node, child;
     int r;
 
-    r = bf_request_new(&request, BF_REQ_RULESET_GET, NULL, 0);
+    r = bf_ctx_get_cgens(&cgens);
     if (r < 0)
-        return bf_err_r(r, "failed to init request");
+        return bf_err_r(r, "failed to get cgen list");
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r < 0)
-        return bf_err_r(r, "failed to send a ruleset get request");
-
-    if (bf_response_status(response) != 0)
-        return bf_response_status(response);
-
-    r = bf_rpack_new(&pack, bf_response_data(response),
-                     bf_response_data_len(response));
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_obj(bf_rpack_root(pack), "ruleset", &root);
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_array(root, "chains", &node);
-    if (r)
-        return r;
-    bf_rpack_array_foreach (node, child) {
+    bf_list_foreach (&cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
         _free_bf_chain_ struct bf_chain *chain = NULL;
+        _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
+        _free_bf_list_ bf_list *cgen_counters = NULL;
 
-        r = bf_list_emplace(&_chains, bf_chain_new_from_pack, chain, child);
+        r = bf_chain_new_from_copy(&chain, cgen->chain);
+        if (r)
+            return bf_err_r(r, "failed to copy chain");
+
+        r = bf_list_add_tail(&_chains, chain);
         if (r)
             return r;
-    }
+        TAKE_PTR(chain);
 
-    r = bf_rpack_kv_array(root, "hookopts", &node);
-    if (r)
-        return r;
-    bf_rpack_array_foreach (node, child) {
-        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-
-        if (!bf_rpack_is_nil(child)) {
-            r = bf_list_emplace(&_hookopts, bf_hookopts_new_from_pack, hookopts,
-                                child);
-        } else {
-            r = bf_list_add_tail(&_hookopts, NULL);
-        }
-
-        if (r)
-            return r;
-    }
-
-    r = bf_rpack_kv_array(root, "counters", &node);
-    if (r)
-        return r;
-    bf_rpack_array_foreach (node, child) {
-        _free_bf_list_ bf_list *nested = NULL;
-        bf_rpack_node_t subchild;
-
-        if (!bf_rpack_is_array(child))
-            return -EDOM;
-
-        r = bf_list_new(&nested, &bf_list_ops_default(bf_counter_free, NULL));
-        if (r)
-            return r;
-
-        bf_rpack_array_foreach (child, subchild) {
-            _free_bf_counter_ struct bf_counter *counter = NULL;
-
-            r = bf_list_emplace(nested, bf_counter_new_from_pack, counter,
-                                subchild);
+        if (cgen->handle->link && cgen->handle->link->hookopts) {
+            r = copy_hookopts(&hookopts_copy, cgen->handle->link->hookopts);
             if (r)
-                return r;
+                return bf_err_r(r, "failed to copy hookopts");
         }
+        r = bf_list_add_tail(&_hookopts, hookopts_copy);
+        if (r)
+            return r;
+        TAKE_PTR(hookopts_copy);
 
-        r = bf_list_add_tail(&_counters, nested);
+        r = bf_list_new(&cgen_counters,
+                        &bf_list_ops_default(bf_counter_free, NULL));
         if (r)
             return r;
 
-        TAKE_PTR(nested);
+        r = bf_cgen_get_counters(cgen, cgen_counters);
+        if (r)
+            return r;
+
+        r = bf_list_add_tail(&_counters, cgen_counters);
+        if (r)
+            return r;
+        TAKE_PTR(cgen_counters);
     }
 
     *chains = bf_list_move(_chains);
@@ -121,10 +105,6 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 
 int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_wpack_ bf_wpack_t *pack = NULL;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
     struct bf_list_node *chain_node = bf_list_get_head(chains);
     struct bf_list_node *hookopts_node = bf_list_get_head(hookopts);
     int r;
@@ -132,185 +112,136 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     if (bf_list_size(chains) != bf_list_size(hookopts))
         return -EINVAL;
 
-    r = bf_wpack_new(&pack);
-    if (r)
-        return r;
+    bf_ctx_flush();
 
-    bf_wpack_open_array(pack, "ruleset");
     while (chain_node && hookopts_node) {
+        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _free_bf_chain_ struct bf_chain *chain_copy = NULL;
+        _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
         struct bf_chain *chain = bf_list_node_get_data(chain_node);
-        struct bf_hookopts *hookopts = bf_list_node_get_data(hookopts_node);
+        struct bf_hookopts *node_hookopts =
+            bf_list_node_get_data(hookopts_node);
 
-        bf_wpack_open_object(pack, NULL);
+        r = bf_chain_new_from_copy(&chain_copy, chain);
+        if (r)
+            goto err_load;
 
-        bf_wpack_open_object(pack, "chain");
-        bf_chain_pack(chain, pack);
-        bf_wpack_close_object(pack);
-
-        if (hookopts) {
-            bf_wpack_open_object(pack, "hookopts");
-            bf_hookopts_pack(hookopts, pack);
-            bf_wpack_close_object(pack);
-        } else {
-            bf_wpack_kv_nil(pack, "hookopts");
+        if (node_hookopts) {
+            r = copy_hookopts(&hookopts_copy, node_hookopts);
+            if (r)
+                goto err_load;
         }
 
-        bf_wpack_close_object(pack);
+        r = bf_cgen_new(&cgen, &chain_copy);
+        if (r)
+            goto err_load;
+
+        r = bf_cgen_set(cgen, hookopts_copy ? &hookopts_copy : NULL);
+        if (r) {
+            bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
+            goto err_load;
+        }
+
+        r = bf_ctx_set_cgen(cgen);
+        if (r) {
+            bf_cgen_unload(cgen);
+            goto err_load;
+        }
+
+        TAKE_PTR(cgen);
 
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);
     }
-    bf_wpack_close_array(pack);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_RULESET_SET, pack);
-    if (r)
-        return bf_err_r(r, "failed to create request for chain");
+    return 0;
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r)
-        return bf_err_r(r, "failed to send chain to the daemon");
-
-    return bf_response_status(response);
+err_load:
+    bf_ctx_flush();
+    return r;
 }
 
 int bf_ruleset_flush(void)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    int r;
+    bf_ctx_flush();
 
-    r = bf_request_new(&request, BF_REQ_RULESET_FLUSH, NULL, 0);
-    if (r)
-        return bf_err_r(r, "failed to create a ruleset flush request");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r)
-        return bf_err_r(r, "failed to send a ruleset flush request");
-
-    return bf_response_status(response);
+    return 0;
 }
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_wpack_ bf_wpack_t *pack = NULL;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
+    struct bf_cgen *old_cgen;
+    _free_bf_cgen_ struct bf_cgen *new_cgen = NULL;
+    _free_bf_chain_ struct bf_chain *chain_copy = NULL;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
     int r;
 
-    r = bf_wpack_new(&pack);
-    if (r)
-        return r;
+    assert(chain);
 
-    bf_wpack_open_object(pack, "chain");
-    r = bf_chain_pack(chain, pack);
+    r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
         return r;
-    bf_wpack_close_object(pack);
 
     if (hookopts) {
-        bf_wpack_open_object(pack, "hookopts");
-        r = bf_hookopts_pack(hookopts, pack);
+        r = copy_hookopts(&hookopts_copy, hookopts);
         if (r)
             return r;
-        bf_wpack_close_object(pack);
-    } else {
-        bf_wpack_kv_nil(pack, "hookopts");
     }
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_SET, pack);
+    r = bf_cgen_new(&new_cgen, &chain_copy);
     if (r)
-        return bf_err_r(r, "bf_chain_set: failed to create request");
+        return r;
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
+    old_cgen = bf_ctx_get_cgen(new_cgen->chain->name);
+    if (old_cgen)
+        (void)bf_ctx_delete_cgen(old_cgen, true);
 
-    r = bf_send(fd, request, &response, NULL);
+    r = bf_cgen_set(new_cgen, hookopts_copy ? &hookopts_copy : NULL);
     if (r)
-        return bf_err_r(r, "bf_chain_set: failed to send request");
+        return r;
 
-    return bf_response_status(response);
+    r = bf_ctx_set_cgen(new_cgen);
+    if (r) {
+        bf_cgen_unload(new_cgen);
+        return r;
+    }
+
+    TAKE_PTR(new_cgen);
+
+    return 0;
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
                  struct bf_hookopts **hookopts, bf_list *counters)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
-    bf_rpack_node_t child, array_node;
+    struct bf_cgen *cgen;
     int r;
 
-    r = bf_wpack_new(&wpack);
+    assert(name);
+    assert(chain);
+    assert(hookopts);
+    assert(counters);
+
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' not found", name);
+
+    r = bf_chain_new_from_copy(&_chain, cgen->chain);
     if (r)
         return r;
 
-    bf_wpack_kv_str(wpack, "name", name);
-    if (!bf_wpack_is_valid(wpack))
-        return -EINVAL;
-
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_GET, wpack);
-    if (r < 0)
-        return bf_err_r(r, "failed to init request");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r < 0)
-        return bf_err_r(r, "failed to send a ruleset get request");
-
-    if (bf_response_status(response) != 0)
-        return bf_response_status(response);
-
-    r = bf_rpack_new(&rpack, bf_response_data(response),
-                     bf_response_data_len(response));
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_obj(bf_rpack_root(rpack), "chain", &child);
-    if (r)
-        return r;
-    r = bf_chain_new_from_pack(&_chain, child);
-    if (r)
-        return r;
-
-    r = bf_rpack_kv_node(bf_rpack_root(rpack), "hookopts", &child);
-    if (r)
-        return r;
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_hookopts_new_from_pack(&_hookopts, child);
+    if (cgen->handle->link && cgen->handle->link->hookopts) {
+        r = copy_hookopts(&_hookopts, cgen->handle->link->hookopts);
         if (r)
             return r;
     }
 
-    r = bf_rpack_kv_array(bf_rpack_root(rpack), "counters", &child);
+    r = bf_cgen_get_counters(cgen, &_counters);
     if (r)
-        return r;
-    bf_rpack_array_foreach (child, array_node) {
-        _free_bf_counter_ struct bf_counter *counter = NULL;
-
-        r = bf_list_emplace(&_counters, bf_counter_new_from_pack, counter,
-                            array_node);
-        if (r)
-            return r;
-    }
+        return bf_err_r(r, "failed to get counters for '%s'", name);
 
     *chain = TAKE_PTR(_chain);
     *hookopts = TAKE_PTR(_hookopts);
@@ -321,252 +252,222 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 
 int bf_chain_prog_fd(const char *name)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _cleanup_close_ int prog_fd = -1;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    int r;
+    struct bf_cgen *cgen;
 
     if (!name)
         return -EINVAL;
 
-    r = bf_wpack_new(&wpack);
-    if (r)
-        return r;
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
-    bf_wpack_kv_str(wpack, "name", name);
-    if (!bf_wpack_is_valid(wpack))
-        return -EINVAL;
+    if (cgen->handle->prog_fd == -1)
+        return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_PROG_FD, wpack);
-    if (r < 0)
-        return bf_err_r(r, "failed to init request");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, &prog_fd);
-    if (r)
-        return bf_err_r(r, "failed to request prog FD from the daemon");
-
-    if (bf_response_status(response) != 0)
-        return bf_err_r(bf_response_status(response),
-                        "BF_REQ_CHAIN_PROG_FD failed");
-
-    return TAKE_FD(prog_fd);
+    return dup(cgen->handle->prog_fd);
 }
 
 int bf_chain_logs_fd(const char *name)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _cleanup_close_ int logs_fd = -1;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    int r;
+    struct bf_cgen *cgen;
 
     if (!name)
         return -EINVAL;
 
-    r = bf_wpack_new(&wpack);
-    if (r)
-        return r;
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
 
-    bf_wpack_kv_str(wpack, "name", name);
-    if (!bf_wpack_is_valid(wpack))
-        return -EINVAL;
+    if (!cgen->handle->lmap)
+        return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", name);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_LOGS_FD, wpack);
-    if (r < 0)
-        return bf_err_r(r, "failed to init request");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, &logs_fd);
-    if (r)
-        return bf_err_r(r, "failed to request logs FD from the daemon");
-
-    if (bf_response_status(response) != 0)
-        return bf_err_r(bf_response_status(response),
-                        "BF_REQ_CHAIN_LOGS failed");
-
-    return TAKE_FD(logs_fd);
+    return dup(cgen->handle->lmap->fd);
 }
 
 int bf_chain_load(struct bf_chain *chain)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+    _free_bf_chain_ struct bf_chain *chain_copy = NULL;
     int r;
 
-    r = bf_wpack_new(&wpack);
+    assert(chain);
+
+    if (bf_ctx_get_cgen(chain->name))
+        return bf_err_r(-EEXIST, "chain '%s' already exists", chain->name);
+
+    r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
         return r;
 
-    bf_wpack_open_object(wpack, "chain");
-    r = bf_chain_pack(chain, wpack);
+    r = bf_cgen_new(&cgen, &chain_copy);
     if (r)
         return r;
-    bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_LOAD, wpack);
+    r = bf_cgen_load(cgen);
     if (r)
-        return bf_err_r(r, "bf_chain_load: failed to create a new request");
+        return r;
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
+    r = bf_ctx_set_cgen(cgen);
+    if (r) {
+        bf_cgen_unload(cgen);
+        return bf_err_r(r, "failed to add cgen to the runtime context");
+    }
 
-    r = bf_send(fd, request, &response, NULL);
-    if (r)
-        return bf_err_r(r, "bf_chain_set: failed to send request");
+    TAKE_PTR(cgen);
 
-    return bf_response_status(response);
+    return 0;
 }
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    struct bf_cgen *cgen;
+    _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
     int r;
 
-    r = bf_wpack_new(&wpack);
+    assert(name);
+    assert(hookopts);
+
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
+
+    if (cgen->handle->link)
+        return bf_err_r(-EBUSY, "chain '%s' is already linked to a hook", name);
+
+    r = bf_hookopts_validate(hookopts, cgen->chain->hook);
+    if (r)
+        return bf_err_r(r, "failed to validate hook options");
+
+    r = copy_hookopts(&hookopts_copy, hookopts);
     if (r)
         return r;
 
-    bf_wpack_kv_str(wpack, "name", name);
-    bf_wpack_open_object(wpack, "hookopts");
-    r = bf_hookopts_pack(hookopts, wpack);
+    r = bf_cgen_attach(cgen, &hookopts_copy);
     if (r)
-        return r;
-    bf_wpack_close_object(wpack);
+        return bf_err_r(r, "failed to attach codegen to hook");
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_ATTACH, wpack);
-    if (r)
-        return bf_err_r(r, "bf_chain_attach: failed to create a new request");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r)
-        return bf_err_r(r, "bf_chain_attach: failed to send request");
-
-    return bf_response_status(response);
+    return 0;
 }
 
 int bf_chain_update(const struct bf_chain *chain)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
+    _free_bf_chain_ struct bf_chain *chain_copy = NULL;
+    struct bf_cgen *cgen;
+    int r;
+
+    assert(chain);
+
+    cgen = bf_ctx_get_cgen(chain->name);
+    if (!cgen)
+        return -ENOENT;
+
+    r = bf_chain_new_from_copy(&chain_copy, chain);
+    if (r)
+        return r;
+
+    r = bf_cgen_update(cgen, &chain_copy, 0);
+    if (r)
+        return r;
+
+    return 0;
+}
+
+static int copy_set(struct bf_set **dest, const struct bf_set *src)
+{
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
     int r;
 
     r = bf_wpack_new(&wpack);
     if (r)
         return r;
 
-    bf_wpack_open_object(wpack, "chain");
-    r = bf_chain_pack(chain, wpack);
+    bf_wpack_open_object(wpack, "set");
+    r = bf_set_pack(src, wpack);
     if (r)
         return r;
     bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_UPDATE, wpack);
+    r = bf_wpack_get_data(wpack, &data, &data_len);
     if (r)
-        return bf_err_r(r, "bf_chain_update: failed to create a new request");
+        return r;
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
+    r = bf_rpack_new(&rpack, data, data_len);
     if (r)
-        return bf_err_r(r, "bf_chain_update: failed to send request");
+        return r;
 
-    return bf_response_status(response);
+    bf_rpack_node_t child;
+    r = bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &child);
+    if (r)
+        return r;
+
+    return bf_set_new_from_pack(dest, child);
 }
 
 int bf_chain_update_set(const char *name, const struct bf_set *to_add,
                         const struct bf_set *to_remove)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_chain_ struct bf_chain *new_chain = NULL;
+    struct bf_set *dest_set = NULL;
+    struct bf_cgen *cgen;
+    _free_bf_set_ struct bf_set *add_copy = NULL;
+    _free_bf_set_ struct bf_set *remove_copy = NULL;
     int r;
 
     assert(name);
+    assert(to_add);
+    assert(to_remove);
 
-    r = bf_wpack_new(&wpack);
+    if (!bf_streq(to_add->name, to_remove->name))
+        return bf_err_r(-EINVAL, "to_add->name must match to_remove->name");
+
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
+
+    r = bf_chain_new_from_copy(&new_chain, cgen->chain);
     if (r)
         return r;
 
-    bf_wpack_kv_str(wpack, "name", name);
+    dest_set = bf_chain_get_set_by_name(new_chain, to_add->name);
+    if (!dest_set)
+        return bf_err_r(-ENOENT, "set '%s' does not exist", to_add->name);
 
-    bf_wpack_open_object(wpack, "to_add");
-    r = bf_set_pack(to_add, wpack);
+    r = copy_set(&add_copy, to_add);
     if (r)
         return r;
-    bf_wpack_close_object(wpack);
 
-    bf_wpack_open_object(wpack, "to_remove");
-    r = bf_set_pack(to_remove, wpack);
+    r = copy_set(&remove_copy, to_remove);
     if (r)
         return r;
-    bf_wpack_close_object(wpack);
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_UPDATE_SET, wpack);
+    r = bf_set_add_many(dest_set, &add_copy);
     if (r)
-        return bf_err_r(r,
-                        "bf_chain_update_set: failed to create a new request");
+        return bf_err_r(r, "failed to calculate set union");
 
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
+    r = bf_set_remove_many(dest_set, &remove_copy);
     if (r)
-        return bf_err_r(r, "bf_chain_update_set: failed to send request");
+        return bf_err_r(r, "failed to calculate set difference");
 
-    return bf_response_status(response);
+    r = bf_cgen_update(cgen, &new_chain,
+                       BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS));
+    if (r)
+        return bf_err_r(r, "failed to update chain with new set data");
+
+    return 0;
 }
 
 int bf_chain_flush(const char *name)
 {
-    _cleanup_close_ int fd = -1;
-    _free_bf_request_ struct bf_request *request = NULL;
-    _free_bf_response_ struct bf_response *response = NULL;
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    int r;
+    struct bf_cgen *cgen;
 
-    r = bf_wpack_new(&wpack);
-    if (r)
-        return r;
+    assert(name);
 
-    bf_wpack_kv_str(wpack, "name", name);
+    cgen = bf_ctx_get_cgen(name);
+    if (!cgen)
+        return -ENOENT;
 
-    r = bf_request_new_from_pack(&request, BF_REQ_CHAIN_FLUSH, wpack);
-    if (r)
-        return bf_err_r(r, "failed to create request for chain");
-
-    fd = bf_connect_to_daemon();
-    if (fd < 0)
-        return bf_err_r(fd, "failed to connect to the daemon");
-
-    r = bf_send(fd, request, &response, NULL);
-    if (r)
-        return bf_err_r(r, "failed to send chain to the daemon");
-
-    return bf_response_status(response);
+    return bf_ctx_delete_cgen(cgen, true);
 }

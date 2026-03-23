@@ -3,8 +3,6 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
-#include "ctx.h"
-
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,17 +13,17 @@
 #include <bpfilter/bpf.h>
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/io.h>
 #include <bpfilter/list.h>
 #include <bpfilter/logger.h>
-#include <bpfilter/ns.h>
 #include <bpfilter/pack.h>
 
 #include "cgen/cgen.h"
-#include "cgen/elfstub.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
@@ -37,18 +35,12 @@
  */
 struct bf_ctx
 {
-    /// Namespaces the daemon was started in.
-    struct bf_ns ns;
-
     /// BPF token file descriptor
     int token_fd;
 
     bf_list cgens;
 
     struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
-
-    /// If true, don't persist state and unload programs on exit.
-    bool transient;
 
     /// Pass a token to BPF system calls, obtained from bpffs.
     bool with_bpf_token;
@@ -94,13 +86,12 @@ static int _bf_ctx_gen_token(const char *bpffs_path)
  * On failure, @p ctx is left unchanged.
  *
  * @param ctx New context to create. Can't be NULL.
- * @param transient If true, don't persist state and unload programs on exit.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
  * @param verbose Bitmask of verbose flags.
  * @return 0 on success, negative errno value on failure.
  */
-static int _bf_ctx_new(struct bf_ctx **ctx, bool transient, bool with_bpf_token,
+static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
                        const char *bpffs_path, uint16_t verbose)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
@@ -113,14 +104,13 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool transient, bool with_bpf_token,
     if (!_ctx)
         return -ENOMEM;
 
-    _ctx->transient = transient;
+    r = bf_btf_setup();
+    if (r)
+        return bf_err_r(r, "failed to load vmlinux BTF");
+
     _ctx->with_bpf_token = with_bpf_token;
     _ctx->bpffs_path = bpffs_path;
     _ctx->verbose = verbose;
-
-    r = bf_ns_init(&_ctx->ns, getpid());
-    if (r)
-        return bf_err_r(r, "failed to initialise current bf_ns");
 
     _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
@@ -170,12 +160,13 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
     if (!*ctx)
         return;
 
-    bf_ns_clean(&(*ctx)->ns);
     closep(&(*ctx)->token_fd);
     bf_list_clean(&(*ctx)->cgens);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);
+
+    bf_btf_teardown();
 
     freep((void *)ctx);
 }
@@ -188,24 +179,6 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
     DUMP(prefix, "struct bf_ctx at %p", ctx);
 
     bf_dump_prefix_push(prefix);
-
-    // Namespaces
-    DUMP(prefix, "ns: struct bf_ns")
-    bf_dump_prefix_push(prefix);
-
-    DUMP(prefix, "net: struct bf_ns_info");
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "fd: %d", ctx->ns.net.fd);
-    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.net.inode);
-    bf_dump_prefix_pop(prefix);
-
-    DUMP(bf_dump_prefix_last(prefix), "mnt: struct bf_ns_info");
-    bf_dump_prefix_push(prefix);
-    DUMP(prefix, "fd: %d", ctx->ns.mnt.fd);
-    DUMP(bf_dump_prefix_last(prefix), "inode: %u", ctx->ns.mnt.inode);
-    bf_dump_prefix_pop(prefix);
-
-    bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "token_fd: %d", ctx->token_fd);
 
@@ -250,7 +223,7 @@ static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
  */
 static int _bf_ctx_get_cgens(const struct bf_ctx *ctx, bf_list *cgens)
 {
-    _clean_bf_list_ bf_list _cgens = bf_list_default_from(*cgens);
+    _clean_bf_list_ bf_list _cgens = bf_list_default(NULL, NULL);
     int r;
 
     assert(ctx);
@@ -402,24 +375,18 @@ static int _bf_ctx_discover(void)
     return 0;
 }
 
-int bf_ctx_setup(bool transient, bool with_bpf_token, const char *bpffs_path,
-                 uint16_t verbose)
+int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
-    _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
 
-    r = _bf_ctx_new(&_ctx, transient, with_bpf_token, bpffs_path, verbose);
+    r = _bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
-    _bf_global_ctx = TAKE_PTR(_ctx);
-
-    if (!bf_ctx_is_transient()) {
-        r = _bf_ctx_discover();
-        if (r) {
-            _bf_ctx_free(&_bf_global_ctx);
-            return bf_err_r(r, "failed to discover chains");
-        }
+    r = _bf_ctx_discover();
+    if (r) {
+        _bf_ctx_free(&_bf_global_ctx);
+        return bf_err_r(r, "failed to discover chains");
     }
 
     return 0;
@@ -444,41 +411,57 @@ static void _bf_ctx_flush(struct bf_ctx *ctx)
 
 void bf_ctx_flush(void)
 {
+    if (!_bf_global_ctx)
+        return;
+
     _bf_ctx_flush(_bf_global_ctx);
 }
 
 void bf_ctx_dump(prefix_t *prefix)
 {
+    if (!_bf_global_ctx)
+        return;
+
     _bf_ctx_dump(_bf_global_ctx, prefix);
 }
 
 struct bf_cgen *bf_ctx_get_cgen(const char *name)
 {
+    if (!_bf_global_ctx)
+        return NULL;
+
     return _bf_ctx_get_cgen(_bf_global_ctx, name);
 }
 
 int bf_ctx_get_cgens(bf_list *cgens)
 {
+    if (!_bf_global_ctx)
+        return bf_err_r(-EINVAL, "context is not initialized");
+
     return _bf_ctx_get_cgens(_bf_global_ctx, cgens);
 }
 
 int bf_ctx_set_cgen(struct bf_cgen *cgen)
 {
+    if (!_bf_global_ctx)
+        return bf_err_r(-EINVAL, "context is not initialized");
+
     return _bf_ctx_set_cgen(_bf_global_ctx, cgen);
 }
 
 int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload)
 {
-    return _bf_ctx_delete_cgen(_bf_global_ctx, cgen, unload);
-}
+    if (!_bf_global_ctx)
+        return bf_err_r(-EINVAL, "context is not initialized");
 
-struct bf_ns *bf_ctx_get_ns(void)
-{
-    return &_bf_global_ctx->ns;
+    return _bf_ctx_delete_cgen(_bf_global_ctx, cgen, unload);
 }
 
 int bf_ctx_token(void)
 {
+    if (!_bf_global_ctx)
+        return -1;
+
     return _bf_global_ctx->token_fd;
 }
 
@@ -486,6 +469,9 @@ int bf_ctx_get_pindir_fd(void)
 {
     _cleanup_close_ int bpffs_fd = -1;
     _cleanup_close_ int pindir_fd = -1;
+
+    if (!_bf_global_ctx)
+        return bf_err_r(-EINVAL, "context is not initialized");
 
     bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
     if (bpffs_fd < 0) {
@@ -502,35 +488,18 @@ int bf_ctx_get_pindir_fd(void)
     return TAKE_FD(pindir_fd);
 }
 
-int bf_ctx_rm_pindir(void)
-{
-    _cleanup_close_ int bpffs_fd = -1;
-    int r;
-
-    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
-    if (bpffs_fd < 0) {
-        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        _bf_global_ctx->bpffs_path);
-    }
-
-    r = bf_rmdir_at(bpffs_fd, "bpfilter", false);
-    if (r < 0 && r != -ENOTEMPTY && r != -ENOENT)
-        return bf_err_r(r, "failed to remove bpfilter bpffs directory");
-
-    return 0;
-}
-
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
 {
-    return _bf_global_ctx->stubs[id];
-}
+    if (!_bf_global_ctx)
+        return NULL;
 
-bool bf_ctx_is_transient(void)
-{
-    return _bf_global_ctx->transient;
+    return _bf_global_ctx->stubs[id];
 }
 
 bool bf_ctx_is_verbose(enum bf_verbose opt)
 {
+    if (!_bf_global_ctx)
+        return false;
+
     return _bf_global_ctx->verbose & BF_FLAG(opt);
 }

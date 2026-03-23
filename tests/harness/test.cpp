@@ -5,8 +5,6 @@
 
 #include "test.hpp"
 
-#include "Daemon.hpp"
-
 extern "C" {
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
@@ -124,29 +122,6 @@ int bft_matcher_test_teardown(void **state)
     int r = bf_ruleset_flush();
     if (r != 0)
         return bf_err_r(r, "failed to flush ruleset in test teardown");
-
-    return 0;
-}
-
-int bft_setup_daemon(void **state)
-{
-    try {
-        auto *daemon =
-            new bft::Daemon("bpfilter", bft::Daemon::Options().transient());
-        *state = daemon;
-    } catch (const std::exception &e) {
-        bf_err("failed to start daemon: %s", e.what());
-        return -1;
-    }
-
-    return 0;
-}
-
-int bft_teardown_daemon(void **state)
-{
-    auto *daemon = static_cast<bft::Daemon *>(*state);
-    delete daemon;
-    *state = nullptr;
 
     return 0;
 }

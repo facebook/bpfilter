@@ -17,7 +17,6 @@
 #include <utility>
 #include <vector>
 
-#include "Daemon.hpp"
 #include "Packet.hpp"
 #include "bpfilter/flavor.h"
 
@@ -36,6 +35,7 @@ extern "C" {
 
 #include <bpfilter/bpf.h>
 #include <bpfilter/bpfilter.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
@@ -352,7 +352,11 @@ public:
 
     int run()
     {
-        bft::Daemon daemon("bpfilter", bft::Daemon::Options().transient());
+        int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
+        if (r != 0) {
+            bf_err("failed to setup bpfilter context: %s", strerror(-r));
+            return 1;
+        }
 
         std::vector<CMUnitTest> tests;
         tests.reserve(_tests.size() + 1);
@@ -373,8 +377,9 @@ public:
                             .initial_state = static_cast<void *>(&test)});
         }
 
-        return _cmocka_run_group_tests(bf_matcher_type_to_str(_type),
-                                       tests.data(), tests.size(), nullptr,
-                                       nullptr);
+        r = _cmocka_run_group_tests(bf_matcher_type_to_str(_type), tests.data(),
+                                    tests.size(), nullptr, nullptr);
+        bf_ctx_teardown();
+        return r;
     }
 };

@@ -3,13 +3,12 @@
 . "$(dirname "$0")"/../e2e_test_util.sh
 
 make_sandbox
-start_bpfilter
 
 # Verify IPv4 connectivity before filtering
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 
 # Attach NF chain - this should create both inet4 and inet6 links
-${FROM_NS} bfcli chain set --from-str "chain nf_dual_0 BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT rule ip4.proto icmp counter DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain nf_dual_0 BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT rule ip4.proto icmp counter DROP"
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 
 # Verify that both inet4 and inet6 BPF links were created (bf_link + bf_link_extra)
@@ -21,7 +20,7 @@ if [ "${LINK_COUNT}" -ne 2 ]; then
 fi
 
 # Update the chain and verify both families remain attached
-${FROM_NS} bfcli chain update --name nf_dual_0 --from-str "chain nf_dual_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP"
+${FROM_NS} ${BFCLI} chain update --name nf_dual_0 --from-str "chain nf_dual_0 BF_HOOK_NF_LOCAL_IN ACCEPT rule ip4.proto icmp counter DROP"
 
 # IPv4 should still be blocked after update
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
@@ -35,7 +34,7 @@ if [ "${LINK_COUNT_AFTER}" -ne 2 ]; then
 fi
 
 # Flush the chain and verify connectivity is restored
-${FROM_NS} bfcli chain flush --name nf_dual_0
+${FROM_NS} ${BFCLI} chain flush --name nf_dual_0
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 
 # Verify links are removed after flush

@@ -21,6 +21,7 @@ target_compile_options(benchmark_bin
 target_include_directories(benchmark_bin
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/tests/harness
 )
 
 target_link_libraries(benchmark_bin
@@ -29,7 +30,6 @@ target_link_libraries(benchmark_bin
         PkgConfig::git2
         benchmark::benchmark
         libbpfilter
-        harness_cxx
 )
 
 add_custom_target(benchmark
@@ -41,10 +41,9 @@ add_custom_target(benchmark
         ${CMAKE_SOURCE_DIR}/tools/asroot
             $<TARGET_FILE:benchmark_bin>
                 --cli $<TARGET_FILE:bfcli>
-                --daemon $<TARGET_FILE:bpfilter>
                 --srcdir ${CMAKE_SOURCE_DIR}
                 --outfile ${CMAKE_BINARY_DIR}/benchmarks/{gitrev}.json
-    DEPENDS benchmark_bin bfcli bpfilter
+    DEPENDS benchmark_bin bfcli
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     USES_TERMINAL
     COMMENT "Running benchmarks"

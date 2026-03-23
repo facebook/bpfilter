@@ -17,10 +17,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bpfilter/elfstub.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
-#include "cgen/elfstub.h"
 #include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/runtime.h"

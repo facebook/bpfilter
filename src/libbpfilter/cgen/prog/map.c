@@ -18,11 +18,10 @@
 #include <bpfilter/bpf.h>
 #include <bpfilter/bpf_types.h>
 #include <bpfilter/btf.h>
+#include <bpfilter/ctx.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
-
-#include "ctx.h"
 
 #define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
 

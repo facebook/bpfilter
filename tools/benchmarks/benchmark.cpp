@@ -29,7 +29,6 @@
 #include <git2/status.h>
 #include <git2/types.h>
 #include <iostream> // NOLINT
-#include <signal.h> // NOLINT: otherwise kill() is not found
 #include <span>
 #include <sstream>
 #include <string>
@@ -109,7 +108,6 @@ enum
 {
     OPT_KEY_ADHOC,
     OPT_KEY_ADHOC_REPEAT,
-    OPT_KEY_NO_DAEMON,
 };
 
 const ::std::string help = "\v\
@@ -127,20 +125,12 @@ constexpr std::array<struct argp_option, 8> options {{
         .group = 0,
     },
     {
-        .name = "daemon",
-        .key = 'd',
-        .arg = "DAEMON",
-        .flags = 0,
-        .doc = "Path to the bpfilter binary. Defaults to 'bpfilter' in $PATH.",
-        .group = 0,
-    },
-    {
         .name = "srcdir",
         .key = 's',
         .arg = "SOURCES_DIR",
         .flags = 0,
         .doc =
-            "Path to the bpfilter sources folder used to build the CLI and the daemon. Defaults to the current directory.",
+            "Path to the bpfilter sources folder used to build bpfilter. Defaults to the current directory.",
         .group = 0,
     },
     {
@@ -162,15 +152,6 @@ constexpr std::array<struct argp_option, 8> options {{
         .group = 0,
     },
     {
-        .name = "no-daemon",
-        .key = OPT_KEY_NO_DAEMON,
-        .arg = nullptr,
-        .flags = OPTION_ARG_OPTIONAL,
-        .doc =
-            "If set, the benchmark will assume a daemon is already running and won't start one.",
-        .group = 0,
-    },
-    {
         .name = "list",
         .key = 'l',
         .arg = nullptr,
@@ -185,14 +166,8 @@ int optsParser(int key, char *arg, struct ::argp_state *state)
     auto *config = static_cast<Config *>(state->input);
 
     switch (key) {
-    case OPT_KEY_NO_DAEMON:
-        config->runDaemon = false;
-        break;
     case 'c':
         config->bfcli = ::std::filesystem::absolute(arg);
-        break;
-    case 'd':
-        config->bpfilter = ::std::string(arg);
         break;
     case 's':
         config->srcdir = ::std::string(arg);
@@ -284,12 +259,6 @@ int setup(std::span<char *> args)
                         config.bfcli.c_str());
     }
 
-    config.bpfilter = which(config.bpfilter);
-    if (config.bpfilter.empty()) {
-        return bf_err_r(-ENOENT, "bpfilter binary '%s' not found",
-                        config.bpfilter.c_str());
-    }
-
     config.outfile = ::std::filesystem::absolute(config.outfile);
     config.srcdir = ::std::filesystem::weakly_canonical(config.srcdir);
     if (!std::filesystem::exists(config.srcdir)) {
@@ -318,10 +287,8 @@ int setup(std::span<char *> args)
     ::benchmark::AddCustomContext("gitrev", config.gitrev);
     ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
     ::benchmark::AddCustomContext("bfcli", config.bfcli);
-    ::benchmark::AddCustomContext("bpfilter", config.bpfilter);
     ::benchmark::AddCustomContext("srcdir", config.srcdir);
     ::benchmark::AddCustomContext("outfile", config.outfile);
-    ::benchmark::AddCustomContext("runDaemon", config.runDaemon ? "yes" : "no");
     ::benchmark::FLAGS_benchmark_out = config.outfile;
     ::benchmark::FLAGS_benchmark_out_format = "json";
 

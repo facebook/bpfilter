@@ -11,7 +11,6 @@
 #include <bpfilter/pack.h>
 
 struct bf_dynbuf;
-struct bf_ns;
 
 #define _free_bf_request_ __attribute__((cleanup(bf_request_free)))
 
@@ -89,13 +88,11 @@ void bf_request_free(struct bf_request **request);
  */
 int bf_request_copy(struct bf_request **dest, const struct bf_request *src);
 
-struct bf_ns *bf_request_ns(const struct bf_request *request);
 enum bf_request_cmd bf_request_cmd(const struct bf_request *request);
 int bf_request_fd(const struct bf_request *request);
 const void *bf_request_data(const struct bf_request *request);
 size_t bf_request_data_len(const struct bf_request *request);
 
-void bf_request_set_ns(struct bf_request *request, struct bf_ns *ns);
 void bf_request_set_fd(struct bf_request *request, int fd);
 
 /**
