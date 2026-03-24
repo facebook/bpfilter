@@ -63,7 +63,7 @@ make -C build test_bin test
 make -C build unit e2e integration check
 
 # Run specific test (path from tests/, replace / with .)
-ctest --test-dir build --output-on-failure -R e2e.matchers.ip4
+ctest --test-dir build --output-on-failure -R e2e.parsing.ip4
 
 # Coverage and docs
 make -C build coverage
