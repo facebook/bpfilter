@@ -16,7 +16,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/counter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/ctx.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dump.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/dynbuf.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/elfstub.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/flavor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/helper.h
@@ -40,7 +39,6 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/counter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/dynbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/helper.c
