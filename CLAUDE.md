@@ -32,7 +32,7 @@ tests/
 ├── e2e/                  # Bash scripts testing full filtering behavior
 ├── integration/          # API stability tests
 ├── check/                # clang-tidy and clang-format validation
-└── harness/              # Test utilities (test.h, mock.h, fake.h)
+└── harness/              # Test utilities (test.h, mock.h, fake.h, C++ wrappers)
 
 doc/
 ├── usage/                # User guides (bfcli, daemon)
