@@ -41,8 +41,38 @@ function(bf_add_e2e_shell_test GROUP SOURCE)
     )
 endfunction()
 
+function(bf_add_e2e_c_test SOURCE)
+    set(source_wo_ext ${SOURCE})
+    cmake_path(REMOVE_EXTENSION source_wo_ext)
+    string(REPLACE "/" "." target_suffix "${source_wo_ext}")
+    set(target_name "e2e.${target_suffix}")
+
+    add_executable(${target_name} EXCLUDE_FROM_ALL ${SOURCE})
+
+    target_link_libraries(${target_name}
+        PRIVATE
+            bf_global_flags_cxx
+            libbpfilter
+            harness
+            harness_cxx
+            cmocka
+    )
+
+    add_dependencies(e2e_bin ${target_name})
+
+    add_test(NAME ${target_name}
+        COMMAND ${CMAKE_SOURCE_DIR}/tools/asroot $<TARGET_FILE:${target_name}>
+    )
+
+    set_tests_properties(${target_name}
+        PROPERTIES
+            LABELS "e2e"
+            ENVIRONMENT "PATH=${CMAKE_BINARY_DIR}/output/sbin:$ENV{PATH}"
+    )
+endfunction()
+
 add_custom_target(e2e_bin
-    DEPENDS setuserns libbpfilter bfcli bpfilter
+    DEPENDS setuserns libbpfilter bfcli bpfilter harness harness_cxx
     COMMENT "Building end-to-end test binaries"
 )
 
@@ -118,3 +148,4 @@ bf_add_e2e_shell_test(e2e hooks/cgroup_sock_addr_sendmsg6.sh ROOT)
 
 bf_add_e2e_shell_test(e2e rulesets/rulesets.sh ROOT)
 
+bf_add_e2e_c_test(matchers/icmp_code.cpp)

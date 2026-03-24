@@ -18,6 +18,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <bpfilter/hook.h>
+
 #include "fake.h"
 
 struct bf_set;
@@ -124,14 +126,48 @@ struct bft_sockets
 int bft_sockets_new(struct bft_sockets **sockets);
 void bft_sockets_free(struct bft_sockets **sockets);
 
+/**
+ * @brief Assert that a rule's counter matches expected values.
+ *
+ * Fetches the counters for `chain_name`, walks to the counter at
+ * `rule_idx`, and asserts that the packet count equals `packets`.
+ * If `bytes >= 0`, the byte count is also checked.
+ *
+ * @param chain_name Name of the chain to query. Can't be NULL.
+ * @param rule_idx Zero-based index of the rule whose counter to check.
+ * @param packets Expected packet count.
+ * @param bytes Expected byte count, or -1 to skip the check.
+ */
+void bft_assert_counter_eq(const char *chain_name, size_t rule_idx,
+                           uint64_t packets, int64_t bytes);
+
 int btf_setup_create_tmpdir(void **state);
 int bft_teardown_close_tmpdir(void **state);
 
 struct bft_tmpdir
 {
-    char template[1024];
+    char path_template[1024];
     char *dir_path;
 };
 
 int bft_tmpdir_new(struct bft_tmpdir **tmpdir);
 void bft_tmpdir_free(struct bft_tmpdir **tmpdir);
+
+/**
+ * @brief Return the BPF "accept" return value for the given hook.
+ *
+ * @param hook Hook to query.
+ * @return The flavor-specific accept verdict (e.g. XDP_PASS, NF_ACCEPT).
+ */
+int bft_hook_accept(enum bf_hook hook);
+
+/**
+ * @brief Return the BPF "drop" return value for the given hook.
+ *
+ * @param hook Hook to query.
+ * @return The flavor-specific drop verdict (e.g. XDP_DROP, NF_DROP).
+ */
+int bft_hook_drop(enum bf_hook hook);
+
+int bft_setup_daemon(void **state);
+int bft_teardown_daemon(void **state);
