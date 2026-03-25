@@ -187,41 +187,55 @@ jobs:
                       in the issue comments. If one exists, you will use it as the basis for
                       your `summary` in Phase 3.
 
-                      ## Phase 2: Parallel review subagents
+                      ## Phase 2: Independent parallel reviewers
 
                       Read `.claude/commands/review-pr.md` for the review checklist.
                       All build, test, coverage, and cleanup instructions do not apply — other CI workflows handle those.
                       Also skip the "Output format" and "Report" sections - they are not applicable here.
-                      For the remaining sections (Code review, Style, Documentation, Commit),
-                      launch subagents to review them in parallel. Group related sections
-                      as needed — use 2-8 subagents based on PR size and scope.
 
-                      Give each subagent the PR title, description, full patch, and the list of changed files.
+                      Launch a team of 5 independent review agents. Each agent reviews the ENTIRE PR
+                      independently across ALL remaining sections (Code review, Style, Documentation, Commit).
+
+                      CRITICAL: You MUST launch all 5 agents in a SINGLE assistant message containing
+                      5 parallel Agent tool calls. Do NOT use `run_in_background`. Do NOT launch them
+                      one at a time across multiple turns. All 5 must be foreground calls in one message
+                      so they run concurrently and you automatically wait for all of them to finish
+                      before proceeding.
+
+                      Give each agent a unique reviewer ID (reviewer-1 through reviewer-5) and pass them
+                      the PR title, description, full patch, and the list of changed files.
                       Tell them to look at the pre-patch repo for context, and to read
                       `.claude/commands/review-pr.md` and `doc/developers/style.rst` for review guidelines.
                       Tell them to skip the "Output format" and "Report" subsections in review-pr.md —
                       those are for the standalone slash-command, not for subagent output.
 
-                      Each subagent must return a JSON array of issues:
+                      Each agent works independently and must NOT communicate with other agents.
+                      Each agent must return a JSON array of issues:
                       `[{"file": "path", "line": <number> (optional), "severity": "must-fix|suggestion|nit", "body": "..."}]`
 
-                      `line` should be a line number from the NEW side of the diff **that appears inside
-                      a diff hunk** (i.e. a line that is shown in the patch output). GitHub's review
-                      comment API rejects lines outside the diff context, so never reference lines
-                      that are not visible in the patch. If you cannot determine a valid diff line,
-                      omit `line` — the comment will still appear in the tracking comment summary.
+                      Do NOT escape characters in `body`. Write plain markdown — no backslash
+                      escaping of `!` or other characters.
 
-                      Each subagent MUST verify its findings before returning them:
+                      `line` should be a line number from the NEW side of the diff **that appears
+                      inside a diff hunk**. GitHub rejects lines outside the diff context. If you
+                      cannot determine a valid diff line, omit `line`.
+
+                      Each agent MUST verify its findings before returning them and only return
+                      issues it is confident about:
                       - For style/convention claims, check at least 3 existing examples in the codebase to confirm
                         the pattern actually exists before flagging a violation.
                       - For "use X instead of Y" suggestions, confirm X actually exists and works for this case.
-                      - If unsure, don't include the issue.
+                      - If unsure about an issue, do NOT include it. Only return findings you are confident are real.
 
                       ## Phase 3: Collect, deduplicate, and summarize
 
-                      After ALL subagents complete:
-                      1. Collect all issues. Merge duplicates (same file, lines within 3 of each other, same problem).
-                      2. Drop low-confidence findings.
+                      After ALL 5 reviewers complete (do NOT proceed until every agent has returned):
+                      1. Collect all issues from all reviewers. Merge duplicates (same file, lines within 3 of each
+                         other, same problem). Keep ALL unique findings — each reviewer has already filtered out
+                         low-confidence issues, so everything that made it through is worth reporting.
+                         Issues found by multiple reviewers independently are higher confidence.
+                      2. Do NOT drop findings just because only one reviewer flagged them. A single reviewer
+                         catching a real issue is the whole point of having 5 independent reviewers.
                       3. For CLAUDE.md violations that appear in 3+ existing places in the codebase, do NOT include
                          them in `comments`. Instead, add them to the 'CLAUDE.md improvements' section of the summary.
                       4. Check the existing inline review comments fetched in Phase 1. Do NOT include a
@@ -294,9 +308,10 @@ jobs:
                   claude_args: |
                       --max-turns 100
                       --model us.anthropic.claude-opus-4-6-v1
+                      --effort max
                       --json-schema '${{ env.REVIEW_SCHEMA }}'
                       --allowedTools "
-                        Read,LS,Grep,Glob,Task,
+                        Read,LS,Grep,Glob,Task,Agent,
                         Bash(cat:*),Bash(test:*),Bash(printf:*),Bash(jq:*),Bash(head:*),Bash(tail:*),
                         Bash(git:*),Bash(gh:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(wc:*),
                         Bash(diff:*),Bash(sed:*),Bash(awk:*),Bash(sort:*),Bash(uniq:*),
