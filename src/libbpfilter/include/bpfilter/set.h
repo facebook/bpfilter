@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include <bpfilter/core/list.h>
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
@@ -54,7 +54,7 @@ struct bf_set
     size_t n_comps;
 
     /** Elements of the set. */
-    bf_list elems;
+    bf_hashset elems;
 
     /** Size of a single element. All elements have the same size, it's derived
      * from the key. */
@@ -125,6 +125,15 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
  * @return True if the set has no elements, false otherwise.
  */
 bool bf_set_is_empty(const struct bf_set *set);
+
+/**
+ * @brief Pre-allocate capacity for at least @p count elements.
+ *
+ * @param set Initialised set. Can't be NULL.
+ * @param count Expected number of elements.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_set_reserve(struct bf_set *set, size_t count);
 
 int bf_set_add_elem(struct bf_set *set, const void *elem);
 

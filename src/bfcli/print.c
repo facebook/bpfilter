@@ -171,16 +171,15 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         }
         (void)fprintf(stdout, ") in {\n");
 
-        bf_list_foreach (&set->elems, elem_node) {
+        bf_hashset_foreach (&set->elems, node) {
             uint32_t payload_idx = 0;
-            void *payload = bf_list_node_get_data(elem_node);
 
             (void)fprintf(stdout, "        ");
             for (size_t i = 0; i < set->n_comps; ++i) {
                 const struct bf_matcher_meta *meta =
                     bf_matcher_get_meta(set->key[i]);
 
-                meta->ops[BF_MATCHER_IN].print(payload + payload_idx);
+                meta->ops[BF_MATCHER_IN].print(node->data + payload_idx);
                 payload_idx += meta->ops[BF_MATCHER_IN].ref_payload_size;
 
                 if (i != set->n_comps - 1)
@@ -220,16 +219,15 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                 } else {
                     (void)fprintf(stdout, ") in {\n");
 
-                    bf_list_foreach (&set->elems, elem_node) {
+                    bf_hashset_foreach (&set->elems, node) {
                         uint32_t payload_idx = 0;
-                        void *payload = bf_list_node_get_data(elem_node);
 
                         (void)fprintf(stdout, "            ");
                         for (size_t i = 0; i < set->n_comps; ++i) {
                             const struct bf_matcher_meta *meta =
                                 bf_matcher_get_meta(set->key[i]);
 
-                            meta->ops[BF_MATCHER_IN].print(payload +
+                            meta->ops[BF_MATCHER_IN].print(node->data +
                                                            payload_idx);
                             payload_idx +=
                                 meta->ops[BF_MATCHER_IN].ref_payload_size;

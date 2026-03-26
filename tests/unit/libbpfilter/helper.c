@@ -356,12 +356,41 @@ static void overwrite_existing_file(void **state)
     assert_memory_equal(read_buf, second_data, strlen(second_data));
 }
 
+static void fnv1a_hash(void **state)
+{
+    uint32_t val_a = 42;
+    uint32_t val_b = 99;
+    uint8_t byte_a = 0x61;
+    uint64_t hash_a;
+    uint64_t hash_b;
+    uint64_t hash_ab;
+    uint64_t hash_ba;
+
+    (void)state;
+
+    // Zero length returns the initial hash unchanged
+    assert_true(bf_fnv1a(&val_a, 0, BF_FNV1A_INIT) == BF_FNV1A_INIT);
+    assert_true(bf_fnv1a(&byte_a, 1, BF_FNV1A_INIT) == 0xaf63dc4c8601ec8cULL);
+
+    hash_a = bf_fnv1a(&val_a, sizeof(val_a), BF_FNV1A_INIT);
+    hash_b = bf_fnv1a(&val_b, sizeof(val_b), BF_FNV1A_INIT);
+
+    assert_int_equal(hash_a, bf_fnv1a(&val_a, sizeof(val_a), BF_FNV1A_INIT));
+    assert_int_not_equal(hash_a, hash_b);
+
+    // Chaining: order matters for sequential hashing
+    hash_ab = bf_fnv1a(&val_b, sizeof(val_b), hash_a);
+    hash_ba = bf_fnv1a(&val_a, sizeof(val_a), hash_b);
+    assert_int_not_equal(hash_ab, hash_ba);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(close_fd),
         cmocka_unit_test(string_copy),
         cmocka_unit_test(realloc_mem),
+        cmocka_unit_test(fnv1a_hash),
         cmocka_unit_test(trim_left),
         cmocka_unit_test(trim_right),
         cmocka_unit_test(trim_both),
