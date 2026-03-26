@@ -1,0 +1,1174 @@
+#!/usr/bin/env python3
+"""bfoptimize-web — Local web UI for bfoptimize."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import pathlib
+import signal
+from typing import Any, AsyncGenerator
+
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
+from pydantic import BaseModel
+
+# ---------------------------------------------------------------------------
+# Global state
+# ---------------------------------------------------------------------------
+
+_process: asyncio.subprocess.Process | None = None
+_log_lines: list[str] = []
+_subscribers: list[asyncio.Queue[str | None]] = []
+
+# Updated at startup from CLI args; overridden per-run from POST /run body
+_cache_dir: pathlib.Path = pathlib.Path(".cache/bfoptimize")
+_sources_dir: pathlib.Path = pathlib.Path(".")
+_bfoptimize: pathlib.Path = pathlib.Path(__file__).parent / "bfoptimize"
+
+app = FastAPI()
+
+# ---------------------------------------------------------------------------
+# Request models
+# ---------------------------------------------------------------------------
+
+
+class RunRequest(BaseModel):
+    iterations: int = 10
+    sources: str = "."
+    build_dir: str = "build"
+    cache_dir: str = ".cache/bfoptimize"
+    host: str | None = None
+    bind_node: int | None = None
+    no_preempt: bool = False
+    cpu_pin: int | None = None
+    slice: str | None = None
+    model: str = "claude-opus-4-6"
+    thinking: bool = True
+    effort: str = "high"
+    context_1m: bool = False
+    hint: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_cmd(body: RunRequest) -> list[str]:
+    cmd = [
+        str(_bfoptimize),
+        "--iterations",
+        str(body.iterations),
+        "--sources",
+        body.sources,
+        "--build-dir",
+        body.build_dir,
+        "--cache-dir",
+        body.cache_dir,
+    ]
+    if body.host:
+        cmd += ["--host", body.host]
+    if body.bind_node is not None:
+        cmd += ["--bind-node", str(body.bind_node)]
+    if body.no_preempt:
+        cmd += ["--no-preempt"]
+    if body.cpu_pin is not None:
+        cmd += ["--cpu-pin", str(body.cpu_pin)]
+    if body.slice:
+        cmd += ["--slice", body.slice]
+    cmd += ["--model", body.model]
+    cmd += ["--thinking" if body.thinking else "--no-thinking"]
+    cmd += ["--effort", body.effort]
+    if body.context_1m:
+        cmd += ["--context-1m"]
+    if body.hint:
+        cmd += ["--hint", body.hint]
+    return cmd
+
+
+async def _broadcast_output(proc: asyncio.subprocess.Process) -> None:
+    assert proc.stdout is not None
+    async for raw in proc.stdout:
+        text = raw.decode(errors="replace").rstrip()
+        _log_lines.append(text)
+        for q in list(_subscribers):
+            await q.put(text)
+    await proc.wait()
+    for q in list(_subscribers):
+        await q.put(None)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index() -> str:
+    return HTML
+
+
+@app.post("/run", status_code=202)
+async def start_run(body: RunRequest) -> dict[str, str]:
+    global _process, _log_lines, _cache_dir, _sources_dir
+    if _process is not None and _process.returncode is None:
+        raise HTTPException(409, "Already running")
+    _cache_dir = pathlib.Path(body.cache_dir)
+    _sources_dir = pathlib.Path(body.sources)
+    _log_lines = []
+    cmd = _build_cmd(body)
+    _process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    asyncio.create_task(_broadcast_output(_process))
+    return {"status": "started"}
+
+
+@app.delete("/run")
+async def stop_run() -> dict[str, str]:
+    if _process is None or _process.returncode is not None:
+        raise HTTPException(404, "No running process")
+    _process.send_signal(signal.SIGTERM)
+    return {"status": "stopping"}
+
+
+@app.get("/stream")
+async def stream() -> StreamingResponse:
+    async def generator() -> AsyncGenerator[str, None]:
+        q: asyncio.Queue[str | None] = asyncio.Queue()
+        _subscribers.append(q)
+        try:
+            for line in list(_log_lines):
+                yield f"data: {line}\n\n"
+            if _process is None or _process.returncode is not None:
+                return
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                if item is None:
+                    break
+                yield f"data: {item}\n\n"
+        finally:
+            try:
+                _subscribers.remove(q)
+            except ValueError:
+                pass
+
+    return StreamingResponse(generator(), media_type="text/event-stream")
+
+
+@app.get("/history")
+async def get_history() -> Any:
+    path = _cache_dir / "history.json"
+    if not path.exists():
+        return {"baseline_sha": None, "attempts": []}
+    return json.loads(path.read_text())
+
+
+@app.delete("/history")
+async def reset_history() -> dict[str, str]:
+    import shutil
+
+    for p in _cache_dir.iterdir():
+        if p.is_dir():
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+    return {"status": "reset"}
+
+
+@app.get("/status")
+async def get_status() -> dict[str, Any]:
+    if _process is None:
+        return {"state": "idle", "returncode": None}
+    if _process.returncode is None:
+        return {"state": "running", "returncode": None}
+    return {"state": "stopped", "returncode": _process.returncode}
+
+
+@app.get("/bench/{bench_id}")
+async def get_bench(bench_id: int) -> Any:
+    path = _cache_dir / f"bench-{bench_id}.json"
+    if not path.exists():
+        raise HTTPException(404, "Bench data not found")
+    return json.loads(path.read_text())
+
+
+@app.get("/diff/{bench_id}")
+async def get_diff(bench_id: int) -> PlainTextResponse:
+    history_path = _cache_dir / "history.json"
+    if not history_path.exists():
+        raise HTTPException(404, "No history")
+    history = json.loads(history_path.read_text())
+    attempt = next(
+        (a for a in history.get("attempts", []) if a["id"] == bench_id), None
+    )
+    if attempt is None or not attempt.get("result_sha"):
+        raise HTTPException(404, "Attempt not found or has no result")
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        "-C",
+        str(_sources_dir.resolve()),
+        "diff",
+        attempt["baseline_sha"],
+        attempt["result_sha"],
+        "--",
+        "src/libbpfilter/cgen/",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await proc.communicate()
+    return PlainTextResponse(stdout.decode(errors="replace"))
+
+
+# ---------------------------------------------------------------------------
+# Embedded frontend
+# ---------------------------------------------------------------------------
+
+HTML = """<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bfoptimize</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+:root {
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --r: 10px; --r-sm: 6px; --r-lg: 14px; --dur: .2s;
+}
+[data-theme="dark"] {
+  --bg:#07090f; --surface:#0c0f1a; --card:#111420; --card-hi:#161a28;
+  --border:#1e2438; --border-hi:#252c42;
+  --accent:#818cf8; --accent-dim:rgba(129,140,248,.14);
+  --text:#e2e8f0; --text-2:#8892a4; --text-3:#3d4460;
+  --ok:#4ade80; --ok-bg:rgba(74,222,128,.10); --ok-glow:rgba(74,222,128,.30);
+  --err:#f87171; --err-bg:rgba(248,113,113,.10);
+  --warn:#fbbf24; --warn-bg:rgba(251,191,36,.10);
+  --log-bg:#040609; --shadow:0 4px 32px rgba(0,0,0,.55); --shadow-sm:0 2px 10px rgba(0,0,0,.4);
+  --code-bg:#040609; --code-fg:#6e7e9e;
+}
+[data-theme="light"] {
+  --bg:#f0f4f8; --surface:#f8fafc; --card:#fff; --card-hi:#f8fafc;
+  --border:#dde3ee; --border-hi:#c8d1e0;
+  --accent:#6366f1; --accent-dim:rgba(99,102,241,.10);
+  --text:#0f172a; --text-2:#4a5568; --text-3:#94a3b8;
+  --ok:#16a34a; --ok-bg:rgba(22,163,74,.08); --ok-glow:rgba(22,163,74,.25);
+  --err:#dc2626; --err-bg:rgba(220,38,38,.08);
+  --warn:#b45309; --warn-bg:rgba(180,83,9,.08);
+  --log-bg:#0d1117; --shadow:0 4px 24px rgba(0,0,0,.08); --shadow-sm:0 2px 8px rgba(0,0,0,.06);
+  --code-bg:#f6f8fa; --code-fg:#334155;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;
+     transition:background var(--dur),color var(--dur)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-3)}
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+.topbar{position:sticky;top:0;z-index:200;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;height:54px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  transition:background var(--dur),border-color var(--dur)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;
+  font-size:1.05rem;letter-spacing:-.02em}
+.brand-icon{width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,#6366f1 0%,#a78bfa 100%);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  box-shadow:0 2px 8px rgba(99,102,241,.4)}
+.brand-text{background:linear-gradient(135deg,var(--accent) 0%,#c084fc 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:.855rem;
+  font-weight:500;cursor:pointer;transition:all var(--dur);white-space:nowrap;outline:none}
+.btn svg{flex-shrink:0;display:block}
+.btn-start{background:linear-gradient(135deg,#5254e0 0%,#7c7ef5 100%);color:#fff;
+  box-shadow:0 2px 10px rgba(82,84,224,.35)}
+.btn-start:hover{background:linear-gradient(135deg,#4446d4 0%,#6c6ef0 100%);
+  box-shadow:0 4px 18px rgba(82,84,224,.45);transform:translateY(-1px)}
+.btn-start:active{transform:translateY(0)}
+.btn-stop{background:var(--err-bg);color:var(--err);
+  border:1px solid rgba(248,113,113,.2)}
+.btn-stop:hover{background:rgba(248,113,113,.2);border-color:rgba(248,113,113,.35)}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);
+  padding:5px 10px;font-size:.78rem}
+.btn-ghost:hover{background:var(--card-hi);color:var(--text)}
+
+/* ── Config overlay ──────────────────────────────────────────────────────── */
+.overlay-bg{display:none;position:fixed;inset:0;z-index:400;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.overlay-bg.open{display:block}
+.run-form{display:none;position:fixed;top:50%;left:50%;z-index:401;
+  transform:translate(-50%,-50%);
+  width:min(720px,calc(100vw - 40px));max-height:calc(100vh - 60px);overflow-y:auto;
+  background:var(--card);border:1px solid var(--border-hi);border-radius:var(--r-lg);
+  box-shadow:0 24px 64px rgba(0,0,0,.6);padding:24px}
+.run-form.open{display:block}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+.flbl{font-size:.7rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.06em}
+.fctl{padding:7px 10px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text);font-family:var(--font);font-size:.84rem;
+  outline:none;transition:border-color var(--dur),box-shadow var(--dur)}
+.fctl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.fctl::placeholder{color:var(--text-3)}
+.fchk{display:flex;align-items:center;gap:8px;padding:2px 0}
+.fchk input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+.fchk label{font-size:.82rem;color:var(--text-2);cursor:pointer}
+.hint-add{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;
+  font-size:.73rem;font-weight:600;cursor:pointer;border-radius:var(--r-sm);
+  background:var(--accent-dim);color:var(--accent);
+  border:1px solid rgba(129,140,248,.3);transition:all var(--dur)}
+.hint-add:hover{background:var(--accent);color:#fff}
+.hint-del{width:28px;height:28px;flex-shrink:0;border-radius:var(--r-sm);
+  background:var(--err-bg);color:var(--err);
+  border:1px solid rgba(248,113,113,.18);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all var(--dur)}
+.hint-del:hover{background:rgba(248,113,113,.22);border-color:rgba(248,113,113,.4)}
+
+/* ── Status pill ─────────────────────────────────────────────────────────── */
+.spill{display:flex;align-items:center;gap:7px;padding:5px 12px;
+  background:var(--card);border:1px solid var(--border);border-radius:99px;
+  font-size:.78rem;font-weight:500;color:var(--text-2);transition:all var(--dur)}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--text-3);
+  transition:background var(--dur),box-shadow var(--dur)}
+.sdot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);
+  animation:pulse 2.2s ease infinite}
+.sdot.done{background:var(--accent)}
+.sdot.fail{background:var(--err)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.65;transform:scale(1.15)}}
+
+/* ── Theme btn ───────────────────────────────────────────────────────────── */
+.tbtn{width:34px;height:34px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:transparent;color:var(--text-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all var(--dur)}
+.tbtn:hover{background:var(--card);color:var(--text);border-color:var(--border-hi)}
+.i-sun{display:none}.i-moon{display:block}
+[data-theme="light"] .i-sun{display:block}[data-theme="light"] .i-moon{display:none}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+main{max-width:1680px;margin:0 auto;padding:18px 20px;
+  display:flex;flex-direction:column;gap:14px}
+
+/* ── Metrics ─────────────────────────────────────────────────────────────── */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px 20px;transition:background var(--dur),border-color var(--dur)}
+.mval{font-size:1.95rem;font-weight:700;letter-spacing:-.04em;line-height:1;
+  margin-bottom:5px;transition:color var(--dur)}
+.mval.ok{color:var(--ok)}.mval.err{color:var(--err)}.mval.acc{color:var(--accent)}
+.mlbl{font-size:.72rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Panel ───────────────────────────────────────────────────────────────── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;transition:background var(--dur),border-color var(--dur)}
+.ph{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  transition:border-color var(--dur)}
+.ph-t{font-size:.74rem;font-weight:700;color:var(--text-2);
+  text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px}
+.ph-s{font-size:.71rem;color:var(--text-3)}
+.pb{padding:14px 16px}
+
+/* ── Two-col grid ────────────────────────────────────────────────────────── */
+.mgrid{display:grid;grid-template-columns:58fr 42fr;gap:14px;align-items:stretch;min-height:500px}
+@media(max-width:1100px){.mgrid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Live dot ────────────────────────────────────────────────────────────── */
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--text-3);transition:all var(--dur)}
+.ldot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);animation:pulse 2.2s ease infinite}
+
+/* ── Logs ────────────────────────────────────────────────────────────────── */
+#logs{font-family:var(--mono);font-size:.775rem;line-height:1.65;
+  background:var(--code-bg);color:var(--code-fg);padding:12px 14px;
+  height:420px;
+  overflow-y:auto;white-space:pre-wrap;word-break:break-all;
+  transition:background var(--dur),color var(--dur),box-shadow var(--dur)}
+#logs.on{box-shadow:inset 0 0 0 1px rgba(74,222,128,.12)}
+
+/* ── Pills ───────────────────────────────────────────────────────────────── */
+.pills{display:flex;flex-wrap:wrap;gap:7px;min-height:34px;padding-bottom:14px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;
+  border-radius:99px;border:1px solid var(--border);background:var(--bg);
+  color:var(--text-2);font-size:.775rem;font-weight:500;font-family:var(--mono);
+  cursor:pointer;transition:all .15s;animation:pop-in .22s ease both}
+.pill:hover{background:var(--card-hi);border-color:var(--accent);color:var(--text)}
+.pill.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pdelta{font-size:.72rem;opacity:.7}
+@keyframes pop-in{from{opacity:0;transform:scale(.85) translateY(5px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* ── Detail sections ─────────────────────────────────────────────────────── */
+.detail{margin-top:14px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.detail.hidden{display:none}
+.dh{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  font-size:.71rem;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.06em;transition:background var(--dur)}
+.dh-path{font-family:var(--mono);font-size:.71rem;color:var(--text-3);
+  font-weight:400;text-transform:none;letter-spacing:0}
+
+/* ── Compare table ───────────────────────────────────────────────────────── */
+.tw{overflow-x:auto}
+table.cmp{width:100%;border-collapse:collapse;font-size:.8rem}
+.cmp th{padding:8px 13px;text-align:right;font-size:.7rem;font-weight:700;
+  color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  white-space:nowrap;transition:background var(--dur)}
+.cmp th:first-child{text-align:left}
+.cmp td{padding:7px 13px;text-align:right;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:.78rem;color:var(--text-2);
+  white-space:nowrap;transition:background .1s}
+.cmp td:first-child{text-align:left;font-family:var(--font);font-weight:500;
+  color:var(--text);font-size:.8rem}
+.cmp tr:last-child td{border-bottom:none}
+.cmp tr:hover td{background:var(--card-hi)}
+.cmp td.g{color:var(--ok);background:var(--ok-bg)}
+.cmp td.b{color:var(--err);background:var(--err-bg)}
+
+/* ── Diff ────────────────────────────────────────────────────────────────── */
+#diff-pre{font-family:var(--mono);font-size:.775rem;line-height:1.7;
+  background:var(--code-bg);color:var(--code-fg);padding:10px 0;
+  max-height:560px;overflow:auto;
+  transition:background var(--dur),color var(--dur)}
+.dl{display:block;padding:0 14px;min-height:1.7em}
+.dl.add{background:rgba(74,222,128,.07);color:#4ade80}
+.dl.del{background:rgba(248,113,113,.07);color:#f87171}
+.dl.hunk{background:rgba(96,165,250,.05);color:#60a5fa}
+.dl.meta,.dl.fhdr{color:#3d4460}
+[data-theme="light"] .dl.add{background:rgba(22,163,74,.09);color:#166534}
+[data-theme="light"] .dl.del{background:rgba(220,38,38,.09);color:#991b1b}
+[data-theme="light"] .dl.hunk{background:rgba(37,99,235,.06);color:#1d4ed8}
+[data-theme="light"] .dl.meta,[data-theme="light"] .dl.fhdr{color:#64748b}
+
+/* ── Chart tooltip ───────────────────────────────────────────────────────── */
+#ctip{position:fixed;pointer-events:none;z-index:400;background:var(--card);
+  border:1px solid var(--border-hi);border-radius:var(--r);
+  padding:10px 14px;box-shadow:var(--shadow);
+  opacity:0;transition:opacity .1s;max-width:300px;min-width:160px}
+.ct-id{font-family:var(--mono);font-size:.7rem;color:var(--text-3);margin-bottom:4px}
+.ct-desc{font-size:.8rem;color:var(--text);line-height:1.45;margin-bottom:5px}
+.ct-delta{font-family:var(--mono);font-weight:700;font-size:.92rem}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.empty{display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:28px 20px;color:var(--text-3);font-size:.88rem;text-align:center;width:100%}
+.empty-icon{font-size:1.6rem;opacity:.35}
+</style>
+</head>
+<body>
+
+<div id="ctip"></div>
+<div class="overlay-bg" id="overlay-bg" onclick="closeForm()"></div>
+
+<!-- Config overlay -->
+<div class="run-form" id="run-form">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <span style="font-weight:700;font-size:1rem;color:var(--text)">Run configuration</span>
+    <button class="tbtn" onclick="closeForm()" title="Close" style="flex-shrink:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="fgrid">
+    <div class="fg"><label class="flbl">Iterations</label>
+      <input id="f-iter" type="number" class="fctl" value="10" min="1"></div>
+    <div class="fg"><label class="flbl">Sources</label>
+      <input id="f-src" type="text" class="fctl" value="."></div>
+    <div class="fg"><label class="flbl">Build dir</label>
+      <input id="f-build" type="text" class="fctl" value="build"></div>
+    <div class="fg"><label class="flbl">Cache dir</label>
+      <input id="f-cache" type="text" class="fctl" value=".cache/bfoptimize"></div>
+    <div class="fg"><label class="flbl">Host</label>
+      <input id="f-host" type="text" class="fctl" placeholder="localhost"></div>
+    <div class="fg"><label class="flbl">Bind node</label>
+      <input id="f-node" type="number" class="fctl" placeholder="&#8212;" min="0"></div>
+    <div class="fg"><label class="flbl">CPU pin</label>
+      <input id="f-cpu" type="number" class="fctl" placeholder="&#8212;" min="0"></div>
+    <div class="fg"><label class="flbl">Slice</label>
+      <input id="f-slice" type="text" class="fctl" placeholder="&#8212;"></div>
+    <div class="fg full">
+      <div class="fchk">
+        <input id="f-nopre" type="checkbox">
+        <label for="f-nopre">No preempt &mdash; RT scheduling</label>
+      </div>
+    </div>
+  </div>
+  <hr style="border-color:var(--border);margin:4px 0 10px">
+  <div class="fgrid">
+    <div class="fg full" style="color:var(--text-3);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Hints</div>
+    <div class="fg full">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="flbl" style="margin:0">Optional directions for the model <span style="font-weight:400;text-transform:none;letter-spacing:0">&mdash; it may ignore them if a better opportunity exists</span></span>
+        <button class="hint-add" onclick="addHint()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+      <div id="hints-list"></div>
+    </div>
+    <div class="fg full" style="color:var(--text-3);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 2px">Model</div>
+    <div class="fg full">
+      <label class="flbl">Model</label>
+      <select id="f-model" class="fctl">
+        <option value="claude-opus-4-6">Opus 4.6 &middot; 200K</option>
+        <option value="claude-opus-4-6-1m">Opus 4.6 &middot; 1M context</option>
+        <option value="claude-sonnet-4-6">Sonnet 4.6 &middot; 200K</option>
+        <option value="claude-sonnet-4-6-1m">Sonnet 4.6 &middot; 1M context</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="flbl">Effort</label>
+      <select id="f-effort" class="fctl">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high" selected>High</option>
+        <option value="max">Max (Opus only)</option>
+      </select>
+    </div>
+    <div class="fg" style="justify-content:flex-end">
+      <div class="fchk">
+        <input id="f-ultrathink" type="checkbox" checked>
+        <label for="f-ultrathink">Ultrathink (adaptive thinking)</label>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <button class="btn btn-ghost" onclick="closeForm()">Cancel</button>
+    <button class="btn btn-start" onclick="startRun()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      Start run
+    </button>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <span class="brand-text">bfoptimize</span>
+  </div>
+  <div class="topbar-right">
+    <div class="run-wrap">
+      <div class="run-group">
+        <button class="btn btn-start" onclick="startRun()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Start
+        </button>
+      </div>
+    </div>
+    <button class="tbtn" onclick="toggleForm(event)" title="Configuration">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="btn btn-stop" onclick="stopRun()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      Stop
+    </button>
+    <button class="tbtn" onclick="resetHistory()" title="Reset history">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+    </button>
+    <div class="spill">
+      <span class="sdot" id="sdot"></span>
+      <span id="stxt">Idle</span>
+    </div>
+    <button class="tbtn" onclick="toggleTheme()" title="Toggle light/dark">
+      <svg class="i-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="i-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="metrics">
+    <div class="metric"><div class="mval" id="m-tot">&#8212;</div><div class="mlbl">Attempts</div></div>
+    <div class="metric"><div class="mval" id="m-acc">&#8212;</div><div class="mlbl">Accepted</div></div>
+    <div class="metric"><div class="mval" id="m-rej">&#8212;</div><div class="mlbl">Rejected</div></div>
+    <div class="metric"><div class="mval" id="m-best">&#8212;</div><div class="mlbl">Best cumul. &#916;</div></div>
+  </div>
+
+  <div class="mgrid">
+    <div class="panel" style="display:flex;flex-direction:column">
+      <div class="ph">
+        <span class="ph-t">Runtime delta per attempt</span>
+        <span class="ph-s">negative = faster than baseline</span>
+      </div>
+      <div style="padding:10px 14px 14px;flex:1;min-height:0;position:relative">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column">
+      <div class="ph">
+        <span class="ph-t"><span class="ldot" id="ldot"></span>Output</span>
+        <button class="btn-ghost" onclick="clearLogs()">Clear</button>
+      </div>
+      <pre id="logs"></pre>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="ph-t">Benchmark history</span></div>
+    <div class="pb">
+      <div class="pills" id="pills">
+        <div class="empty" id="pills-empty">
+          <span class="empty-icon">&#9685;</span>
+          <span>No results yet &mdash; start a run to populate this section</span>
+        </div>
+      </div>
+      <div class="detail hidden" id="cmp-card">
+        <div class="dh"><span>Benchmark comparison</span></div>
+        <div class="tw">
+          <table class="cmp">
+            <thead><tr>
+              <th style="text-align:left">Benchmark</th>
+              <th>Base (ns)</th><th>Ref (ns)</th>
+              <th>&#916;Time (ns)</th><th>&#916;Time %</th>
+              <th>Base Insn</th><th>Ref Insn</th>
+              <th>&#916;Insn</th><th>&#916;Insn %</th>
+            </tr></thead>
+            <tbody id="cmp-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="detail hidden" id="diff-card">
+        <div class="dh">
+          <span>Code changes</span>
+          <span class="dh-path">src/libbpfilter/cgen/</span>
+        </div>
+        <pre id="diff-pre"></pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Form persistence (localStorage) ──────────────────────────────────────
+const _TEXT_IDS  = ['f-iter','f-src','f-build','f-cache','f-host','f-node','f-cpu','f-slice','f-model','f-effort'];
+const _CHECK_IDS = ['f-nopre','f-ultrathink'];
+function saveFormPrefs() {
+  const s = {};
+  _TEXT_IDS.forEach(id => { s[id] = document.getElementById(id).value; });
+  _CHECK_IDS.forEach(id => { s[id] = document.getElementById(id).checked; });
+  s.hints = Array.from(document.querySelectorAll('.hint-input')).map(el => el.value);
+  localStorage.setItem('bfo-form', JSON.stringify(s));
+}
+function loadFormPrefs() {
+  try {
+    const s = JSON.parse(localStorage.getItem('bfo-form') || '{}');
+    _TEXT_IDS.forEach(id => { if (s[id] != null) document.getElementById(id).value = s[id]; });
+    _CHECK_IDS.forEach(id => { if (s[id] != null) document.getElementById(id).checked = s[id]; });
+    if (Array.isArray(s.hints)) s.hints.forEach(h => addHint(h));
+  } catch (_) {}
+}
+
+// ── Hints ──────────────────────────────────────────────────────────────────
+function addHint(value = '') {
+  const list = document.getElementById('hints-list');
+  const row = document.createElement('div');
+  row.className = 'hint-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  row.innerHTML =
+    '<button class="hint-del" onclick="removeHint(this)" title="Remove hint">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
+    '</button>' +
+    '<input type="text" class="fctl hint-input" placeholder="e.g. look into XXX" style="flex:1">';
+  list.appendChild(row);
+  row.querySelector('.hint-input').value = value;
+  row.querySelector('.hint-input').addEventListener('input', saveFormPrefs);
+  saveFormPrefs();
+}
+function removeHint(btn) {
+  btn.closest('.hint-row').remove();
+  saveFormPrefs();
+}
+// Keep saveModelPrefs as an alias used in startRun
+const saveModelPrefs = saveFormPrefs;
+
+function _attachPersistence() {
+  _TEXT_IDS.forEach(id => document.getElementById(id).addEventListener('input', saveFormPrefs));
+  _CHECK_IDS.forEach(id => document.getElementById(id).addEventListener('change', saveFormPrefs));
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────
+let _theme = localStorage.getItem('bfo-theme') || 'dark';
+document.documentElement.setAttribute('data-theme', _theme);
+function toggleTheme() {
+  _theme = _theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', _theme);
+  localStorage.setItem('bfo-theme', _theme);
+  applyChartTheme();
+}
+
+// ── Chart palettes ────────────────────────────────────────────────────────
+const PAL = {
+  dark: {
+    grid:'rgba(30,36,56,.9)', tick:'#3d4460', axTitle:'#3d4460', legText:'#8892a4',
+    ptBorder:'#07090f', ok:'#4ade80', err:'#f87171', warn:'#fbbf24',
+    best:'#818cf8', bestFill:'rgba(129,140,248,.11)', base:'rgba(61,68,96,.55)',
+  },
+  light: {
+    grid:'#dde3ee', tick:'#94a3b8', axTitle:'#94a3b8', legText:'#4a5568',
+    ptBorder:'#f0f4f8', ok:'#16a34a', err:'#dc2626', warn:'#b45309',
+    best:'#6366f1', bestFill:'rgba(99,102,241,.09)', base:'rgba(148,163,184,.5)',
+  },
+};
+const p = () => PAL[_theme];
+
+// ── Chart ─────────────────────────────────────────────────────────────────
+let chart;
+function initChart() {
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
+  const ctx = document.getElementById('chart').getContext('2d');
+  const c = p();
+  chart = new Chart(ctx, {
+    data: { datasets: [
+      { type:'scatter', label:'Accepted (vs prev baseline)',
+        data:[], backgroundColor:c.ok, borderColor:c.ptBorder, borderWidth:2,
+        pointRadius:7, pointHoverRadius:10, order:2 },
+      { type:'scatter', label:'Rejected (bench)',
+        data:[], backgroundColor:c.err, borderColor:c.ptBorder, borderWidth:2,
+        pointRadius:7, pointHoverRadius:10, order:2 },
+      { type:'scatter', label:'Rejected (tests)',
+        data:[], backgroundColor:c.warn, borderColor:c.ptBorder, borderWidth:2,
+        pointRadius:7, pointHoverRadius:10, order:2 },
+      { type:'line', label:'Current best (cumul. vs initial)',
+        data:[], borderColor:c.best, backgroundColor:c.bestFill,
+        fill:'origin', pointRadius:0, stepped:'after', borderWidth:2.5, order:1 },
+      { type:'line', label:'y = 0',
+        data:[], borderColor:c.base, backgroundColor:'transparent',
+        pointRadius:0, borderDash:[5,5], borderWidth:1, order:3 },
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{ mode:'nearest', intersect:true },
+      scales:{
+        x:{ type:'linear',
+          title:{ display:true, text:'Attempt #', color:c.axTitle },
+          grid:{ color:c.grid }, ticks:{ color:c.tick, stepSize:1 },
+          border:{ color:c.grid } },
+        y:{ title:{ display:true, text:'\\u0394 Time % vs baseline', color:c.axTitle },
+          grid:{ color:c.grid }, ticks:{ color:c.tick, callback: v => v.toFixed(2) + '%' },
+          border:{ color:c.grid }, grace:'15%' },
+      },
+      plugins:{
+        legend:{ labels:{ color:c.legText, usePointStyle:true, pointStyle:'circle',
+          boxWidth:7, padding:16 } },
+        tooltip:{ enabled:false, external:customTip },
+      },
+    },
+  });
+}
+
+function applyChartTheme() {
+  if (!chart) return;
+  const c = p();
+  const ds = chart.data.datasets;
+  ds[0].backgroundColor=c.ok;   ds[0].borderColor=c.ptBorder;
+  ds[1].backgroundColor=c.err;  ds[1].borderColor=c.ptBorder;
+  ds[2].backgroundColor=c.warn; ds[2].borderColor=c.ptBorder;
+  ds[3].borderColor=c.best;     ds[3].backgroundColor=c.bestFill;
+  ds[4].borderColor=c.base;
+  const sc = chart.options.scales;
+  for (const ax of [sc.x, sc.y]) {
+    ax.grid.color=c.grid; ax.ticks.color=c.tick;
+    ax.title.color=c.axTitle; ax.border.color=c.grid;
+  }
+  chart.options.plugins.legend.labels.color = c.legText;
+  chart.update('none');
+}
+
+function updateChart(history) {
+  if (!chart) return;
+  const attempts = history.attempts || [];
+  let ds0=[],ds1=[],ds2=[],best=[],cum=0,lo=Infinity,hi=-Infinity;
+  for (const a of attempts) {
+    if (a.id < lo) lo = a.id;
+    if (a.id > hi) hi = a.id;
+    const pt = {x:a.id, y:a.delta_time_pct??0, id:a.id,
+                desc:a.description||'', status:a.status, cumul:null};
+    if (a.status==='accepted') {
+      if (a.delta_time_pct != null) cum += a.delta_time_pct;
+      pt.cumul = cum;
+      ds0.push(pt);
+      if (a.delta_time_pct != null) best.push({x:a.id, y:cum});
+    } else if (a.status==='rejected_bench') {
+      ds1.push(pt);
+    } else {
+      ds2.push({...pt, y:0});
+    }
+  }
+  if (best.length) {
+    best.unshift({x:0, y:0});
+    if (hi > best[best.length-1].x)
+      best.push({x:hi+.4, y:best[best.length-1].y});
+  }
+  chart.data.datasets[0].data=ds0; chart.data.datasets[1].data=ds1;
+  chart.data.datasets[2].data=ds2; chart.data.datasets[3].data=best;
+  chart.data.datasets[4].data = lo!==Infinity ? [{x:lo-.5,y:0},{x:hi+.5,y:0}] : [];
+  chart.update('none');
+}
+
+// ── Custom tooltip ────────────────────────────────────────────────────────
+function customTip({chart, tooltip}) {
+  const el = document.getElementById('ctip');
+  if (!tooltip.opacity || !tooltip.dataPoints?.length) { el.style.opacity='0'; return; }
+  const raw = tooltip.dataPoints[0].raw;
+  if (raw?.desc == null) { el.style.opacity='0'; return; }
+  const fmt = v => v!=null ? (v>0?'+':'')+v.toFixed(2)+'%' : 'N/A';
+  const clr = v => v==null||v===0 ? 'var(--text-3)' : v<0 ? 'var(--ok)' : 'var(--err)';
+  const margLine = `<div class="ct-delta" style="color:${clr(raw.y)}">${fmt(raw.y)} vs prev baseline</div>`;
+  const cumulLine = raw.cumul!=null
+    ? `<div class="ct-delta" style="color:${clr(raw.cumul)};font-size:.78rem">${fmt(raw.cumul)} cumul. vs initial</div>`
+    : '';
+  el.innerHTML =
+    `<div class="ct-id">#${raw.id} &mdash; ${raw.status||''}</div>` +
+    `<div class="ct-desc">${(raw.desc||'').substring(0,120)}</div>` +
+    margLine + cumulLine;
+  const r = chart.canvas.getBoundingClientRect();
+  el.style.left = (r.left + window.scrollX + tooltip.caretX + 14) + 'px';
+  el.style.top  = (r.top  + window.scrollY + tooltip.caretY - 44) + 'px';
+  el.style.opacity = '1';
+}
+
+// ── Metrics ───────────────────────────────────────────────────────────────
+function updateMetrics(history) {
+  const all = history.attempts || [];
+  const acc = all.filter(a => a.status==='accepted');
+  const rej = all.filter(a => a.status!=='accepted');
+  let cum = 0;
+  for (const a of acc) if (a.delta_time_pct != null) cum += a.delta_time_pct;
+  setM('m-tot', all.length, '');
+  setM('m-acc', acc.length, acc.length ? 'ok' : '');
+  setM('m-rej', rej.length, rej.length ? 'err' : '');
+  const bs = acc.length ? (cum>0?'+':'')+cum.toFixed(2)+'%' : '&#8212;';
+  setM('m-best', bs, acc.length ? (cum<0?'ok':cum>0?'err':'') : '');
+}
+function setM(id, val, cls) {
+  const el = document.getElementById(id);
+  el.innerHTML = val;
+  el.className = 'mval' + (cls ? ' '+cls : '');
+}
+
+// ── Pills ─────────────────────────────────────────────────────────────────
+let _pill = null;
+function updatePills(history) {
+  const wrap  = document.getElementById('pills');
+  const empty = document.getElementById('pills-empty');
+  const items = (history.attempts||[]).filter(a => a.result_sha);
+  if (items.length) empty.style.display='none';
+  for (const a of items) {
+    if (document.getElementById('pl-'+a.id)) continue;
+    const base = (a.baseline_sha||'').substring(0,7);
+    const ref  = a.result_sha.substring(0,7);
+    const dv   = a.delta_time_pct;
+    const dc   = dv!=null ? (dv>0?'+':'')+dv.toFixed(1)+'%' : null;
+    const dotC = a.status==='accepted' ? 'var(--ok)'
+               : a.status==='rejected_bench' ? 'var(--err)' : 'var(--warn)';
+    const btn  = document.createElement('button');
+    btn.type      = 'button';
+    btn.id        = 'pl-'+a.id;
+    btn.className = 'pill';
+    btn.innerHTML =
+      `<span class="pdot" style="background:${dotC}"></span>` +
+      `<span>#${a.id}&nbsp;${base}&rarr;${ref}</span>` +
+      (dc ? `<span class="pdelta">${dc}</span>` : '');
+    btn.onclick = () => selectPill(a.id);
+    wrap.insertBefore(btn, empty);
+  }
+  if (_pill != null) hlPill(_pill);
+}
+function hlPill(id) {
+  document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+  document.getElementById('pl-'+id)?.classList.add('active');
+}
+async function selectPill(id) {
+  _pill = id; hlPill(id);
+  document.getElementById('cmp-card').classList.add('hidden');
+  document.getElementById('diff-card').classList.add('hidden');
+  const [r1, r2] = await Promise.all([fetch('/bench/'+id), fetch('/diff/'+id)]);
+  if (r1.ok) renderCmp(await r1.json());
+  if (r2.ok) renderDiff(await r2.text());
+  document.getElementById('cmp-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ── Compare table ─────────────────────────────────────────────────────────
+function fmtNs(ns) {
+  if (ns == null) return '&#8212;';
+  const abs = Math.abs(ns);
+  if (abs < 1e3)  return ns.toFixed(2) + '&#8239;ns';
+  if (abs < 1e6)  return (ns/1e3).toFixed(2) + '&#8239;&#956;s';
+  return (ns/1e6).toFixed(2) + '&#8239;ms';
+}
+function fmtDns(ns) {
+  if (ns == null) return '&#8212;';
+  return (ns > 0 ? '+' : '') + fmtNs(ns);
+}
+function renderCmp(data) {
+  const tb  = document.getElementById('cmp-body');
+  const hdr = document.querySelector('#cmp-card .dh span');
+  tb.innerHTML = '';
+  const base = (data.base||'').substring(0,7);
+  const ref  = (data.ref||'').substring(0,7);
+  if (hdr && base && ref) hdr.textContent = `${base} \u2192 ${ref}`;
+  const benchmarks = data.benchmarks || [];
+  const sgn = v => v!=null&&v!==0 ? (v>0?'+':'') : '';
+  const cl  = v => v==null ? '' : v<0 ? ' class="g"' : v>0 ? ' class="b"' : '';
+  for (const b of benchmarks) {
+    tb.insertAdjacentHTML('beforeend',
+      `<tr><td>${b.name||'&#8212;'}</td>` +
+      `<td>${fmtNs(b.base_time_ns)}</td>` +
+      `<td>${fmtNs(b.ref_time_ns)}</td>` +
+      `<td${cl(b.delta_time_ns)}>${fmtDns(b.delta_time_ns)}</td>` +
+      `<td${cl(b.delta_time_pct)}>${b.delta_time_pct!=null?(b.delta_time_pct>0?'+':'')+b.delta_time_pct.toFixed(1)+'%':'&#8212;'}</td>` +
+      `<td>${b.base_insn??'&#8212;'}</td><td>${b.ref_insn??'&#8212;'}</td>` +
+      `<td${cl(b.delta_insn)}>${b.delta_insn!=null?sgn(b.delta_insn)+b.delta_insn:'&#8212;'}</td>` +
+      `<td${cl(b.delta_insn_pct)}>${b.delta_insn_pct!=null?(b.delta_insn_pct>0?'+':'')+b.delta_insn_pct.toFixed(1)+'%':'&#8212;'}</td></tr>`
+    );
+  }
+  // Summary row: mean ΔTime% across all benchmarks
+  const deltas = benchmarks.map(b => b.delta_time_pct).filter(v => v!=null);
+  if (deltas.length > 1) {
+    const mean = deltas.reduce((a,b)=>a+b,0) / deltas.length;
+    const cl2  = mean<0 ? ' class="g"' : mean>0 ? ' class="b"' : '';
+    tb.insertAdjacentHTML('beforeend',
+      `<tr style="border-top:2px solid var(--border-hi);font-weight:600">` +
+      `<td>Mean</td><td></td><td></td><td></td>` +
+      `<td${cl2}>${(mean>0?'+':'')+mean.toFixed(1)}%</td>` +
+      `<td></td><td></td><td></td><td></td></tr>`
+    );
+  }
+  document.getElementById('cmp-card').classList.remove('hidden');
+}
+
+// ── Diff ──────────────────────────────────────────────────────────────────
+function renderDiff(text) {
+  const pre = document.getElementById('diff-pre');
+  pre.innerHTML = '';
+  for (const line of text.split('\\n')) {
+    const s = document.createElement('span');
+    s.className = 'dl';
+    s.textContent = line;
+    if      (line.startsWith('diff ')||line.startsWith('index ')||
+             line.startsWith('old mode')||line.startsWith('new mode')) s.classList.add('meta');
+    else if (line.startsWith('--- ')||line.startsWith('+++ '))         s.classList.add('fhdr');
+    else if (line.startsWith('@@'))                                     s.classList.add('hunk');
+    else if (line.startsWith('+'))                                      s.classList.add('add');
+    else if (line.startsWith('-'))                                      s.classList.add('del');
+    pre.appendChild(s);
+  }
+  document.getElementById('diff-card').classList.remove('hidden');
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────
+const LOG_PATS = [
+  [/error|failed|rejected/i, 'color:var(--err)'],
+  [/warn/i,                  'color:var(--warn)'],
+  [/accepted|passed/i,       'color:var(--ok)'],
+  [/planning|executing|benchmarking/i, 'color:var(--accent)'],
+];
+function appendLog(line) {
+  const el = document.getElementById('logs');
+  const atBot = el.scrollTop + el.clientHeight >= el.scrollHeight - 22;
+  let style = '';
+  for (const [re, s] of LOG_PATS) if (re.test(line)) { style=s; break; }
+  if (style) {
+    const sp = document.createElement('span');
+    sp.setAttribute('style', style);
+    sp.textContent = line + '\\n';
+    el.appendChild(sp);
+  } else {
+    el.appendChild(document.createTextNode(line + '\\n'));
+  }
+  if (atBot) el.scrollTop = el.scrollHeight;
+}
+function clearLogs() { document.getElementById('logs').innerHTML=''; }
+
+// ── SSE ───────────────────────────────────────────────────────────────────
+let _es = null;
+function connectSSE() {
+  if (_es) { _es.close(); _es=null; }
+  _es = new EventSource('/stream');
+  _es.onmessage = e => appendLog(e.data);
+  _es.onerror   = async () => {
+    _es.close(); _es = null;
+    try {
+      const r = await fetch('/status');
+      const d = await r.json();
+      if (d.state === 'stopped') {
+        setStopped(d.returncode);
+        return;
+      }
+    } catch(_) {}
+    setRunning(false);
+  };
+}
+
+// ── Running state ─────────────────────────────────────────────────────────
+function setRunning(on) {
+  document.getElementById('sdot').className  = 'sdot' +(on?' on':'');
+  document.getElementById('stxt').textContent = on ? 'Running' : 'Idle';
+  document.getElementById('ldot').className  = 'ldot'+(on?' on':'');
+  document.getElementById('logs').className  = on ? 'on' : '';
+}
+function setStopped(code) {
+  const ok = code === 0;
+  document.getElementById('sdot').className  = 'sdot ' + (ok ? 'done' : 'fail');
+  document.getElementById('stxt').textContent = ok ? 'Done' : `Failed (exit ${code})`;
+  document.getElementById('ldot').className  = 'ldot';
+  document.getElementById('logs').className  = '';
+}
+
+// ── Config overlay ────────────────────────────────────────────────────────
+let _open = false;
+function toggleForm(e) {
+  e.stopPropagation(); _open ? closeForm() : openForm();
+}
+function openForm() {
+  _open = true;
+  document.getElementById('run-form').classList.add('open');
+  document.getElementById('overlay-bg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeForm() {
+  _open = false;
+  document.getElementById('run-form').classList.remove('open');
+  document.getElementById('overlay-bg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeForm(); });
+
+// ── Start / Stop ──────────────────────────────────────────────────────────
+async function startRun() {
+  const v  = id => document.getElementById(id).value;
+  const ni = id => v(id)!=='' ? parseInt(v(id)) : null;
+  const mv = v('f-model');
+  const c1m = mv.endsWith('-1m');
+  saveModelPrefs();
+  const body = {
+    iterations: parseInt(v('f-iter'))||10,
+    sources:    v('f-src')||'.',
+    build_dir:  v('f-build')||'build',
+    cache_dir:  v('f-cache')||'.cache/bfoptimize',
+    host:       v('f-host')||null,
+    bind_node:  ni('f-node'),
+    no_preempt: document.getElementById('f-nopre').checked,
+    cpu_pin:    ni('f-cpu'),
+    slice:      v('f-slice')||null,
+    model:      c1m ? mv.slice(0, -3) : mv,
+    thinking:   document.getElementById('f-ultrathink').checked,
+    effort:     v('f-effort'),
+    context_1m: c1m,
+    hint:       Array.from(document.querySelectorAll('.hint-input')).map(e=>e.value.trim()).filter(Boolean).join('\\n') || null,
+  };
+  try {
+    const r = await fetch('/run', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body),
+    });
+    if (r.ok) {
+      closeForm(); clearLogs(); setRunning(true); connectSSE(); startPoll();
+    } else {
+      const e = await r.json().catch(()=>({}));
+      alert('Start failed: '+(e.detail||r.status));
+    }
+  } catch(e) { alert('Start failed: '+e); }
+}
+async function stopRun() {
+  try { await fetch('/run',{method:'DELETE'}); } catch(_){}
+}
+async function resetHistory() {
+  if (!confirm('Reset history? This deletes history.json from the cache directory.')) return;
+  try {
+    await fetch('/history',{method:'DELETE'});
+    pollHistory();
+  } catch(e) { alert('Reset failed: '+e); }
+}
+
+// ── History polling ───────────────────────────────────────────────────────
+let _poll = null;
+async function pollHistory() {
+  try {
+    const r = await fetch('/history');
+    if (!r.ok) return;
+    const d = await r.json();
+    updateChart(d); updatePills(d); updateMetrics(d);
+  } catch(_){}
+}
+function startPoll() {
+  if (_poll) clearInterval(_poll);
+  _poll = setInterval(pollHistory, 3000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadFormPrefs(); _attachPersistence(); initChart(); connectSSE(); pollHistory(); startPoll();
+});
+</script>
+</body>
+</html>"""
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    global _cache_dir, _sources_dir
+
+    parser = argparse.ArgumentParser(
+        prog="bfoptimize-web",
+        description="Local web UI for bfoptimize.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="TCP port to listen on (default: 8080)",
+    )
+    parser.add_argument(
+        "--sources",
+        type=pathlib.Path,
+        default=pathlib.Path("."),
+        help='bpfilter source directory for git diff (default: ".")',
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=pathlib.Path,
+        default=pathlib.Path(".cache/bfoptimize"),
+        help='bfoptimize cache directory (default: ".cache/bfoptimize")',
+    )
+    args = parser.parse_args()
+
+    _cache_dir = args.cache_dir
+    _sources_dir = args.sources
+
+    uvicorn.run(app, host="127.0.0.1", port=args.port)
+
+
+if __name__ == "__main__":
+    main()

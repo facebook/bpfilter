@@ -82,7 +82,7 @@ jobs:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
       - name: Configure the build
-        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DNO_BENCHMARKS=1
+        run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
@@ -177,7 +177,8 @@ jobs:
             BENCH_INCLUDE=""
             BENCH_FAIL_ON=""
           fi
-          tools/benchmarks/bfbencher \
+          tests/benchmarks/bfbencher \
+            history \
             --since 30bd49f \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \

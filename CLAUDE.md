@@ -68,7 +68,7 @@ make -C build doc
 ```
 
 **Build options:**
-- `-DNO_DOCS=1`, `-DNO_TESTS=1`, `-DNO_CHECKS=1`, `-DNO_BENCHMARKS=1`
+- `-DNO_DOCS=1`, `-DNO_TESTS=1`, `-DNO_CHECKS=1`
 
 ## Code style
 
