@@ -18,8 +18,14 @@
 void bf_jmpctx_cleanup(struct bf_jmpctx *ctx)
 {
     if (ctx->program) {
-        struct bpf_insn *insn = &ctx->program->img[ctx->insn_idx];
-        size_t off = ctx->program->img_size - ctx->insn_idx - 1U;
+        struct bpf_insn *insn =
+            bf_vector_get(&ctx->program->img, ctx->insn_idx);
+        if (!insn) {
+            bf_abort("jump fixup references invalid instruction index %lu",
+                     ctx->insn_idx);
+        }
+
+        size_t off = ctx->program->img.size - ctx->insn_idx - 1U;
 
         if (off > SHRT_MAX)
             bf_warn("jump offset overflow: %ld", off);
