@@ -101,7 +101,7 @@ log             { BEGIN(STATE_LOG_OPTS); return LOG; }
     [0-9a-zA-Z]+(,[0-9a-zA-Z]+)* {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
-        return LOG_HEADERS;
+        return LOG_OPTS;
     }
 }
 

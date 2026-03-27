@@ -21,7 +21,7 @@ extern "C" {
 namespace bf
 {
 
-using RuleLogBitset = std::bitset<_BF_PKTHDR_MAX>;
+using RuleLogBitset = std::bitset<_BF_LOG_OPT_MAX>;
 
 class Rule
 {

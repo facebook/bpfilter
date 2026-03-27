@@ -24,7 +24,7 @@
 
 #include "cgen/jmp.h"
 #include "cgen/matcher/cmp.h"
-#include "cgen/matcher/packet.h"
+#include "cgen/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
@@ -149,7 +149,7 @@ static int _bf_nf_gen_inline_matcher(struct bf_program *program,
         return bf_cmp_value(program, bf_matcher_get_op(matcher),
                             bf_matcher_payload(matcher), 4, BPF_REG_1);
     default:
-        return bf_matcher_generate_packet(program, matcher);
+        return bf_packet_gen_inline_matcher(program, matcher);
     }
 }
 
@@ -176,4 +176,5 @@ const struct bf_flavor_ops bf_flavor_ops_nf = {
     .gen_inline_epilogue = _bf_nf_gen_inline_epilogue,
     .get_verdict = _bf_nf_get_verdict,
     .gen_inline_matcher = _bf_nf_gen_inline_matcher,
+    .gen_inline_log = bf_packet_gen_inline_log,
 };

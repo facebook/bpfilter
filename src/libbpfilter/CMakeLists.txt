@@ -64,7 +64,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/cmp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/cmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/packet.h    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/packet.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/packet.h             ${CMAKE_CURRENT_SOURCE_DIR}/cgen/packet.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.c
@@ -109,7 +109,7 @@ bf_target_add_elfstubs(libbpfilter
         "parse_ipv6_eh"
         "parse_ipv6_nh"
         "update_counters"
-        "log"
+        "pkt_log"
         "flow_hash"
 )
 

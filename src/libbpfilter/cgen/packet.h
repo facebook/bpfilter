@@ -7,6 +7,7 @@
 
 struct bf_matcher;
 struct bf_program;
+struct bf_rule;
 
 /**
  * @brief Generate bytecode for a packet-based matcher.
@@ -23,5 +24,18 @@ struct bf_program;
  * @param matcher Matcher to generate code for. Can't be NULL.
  * @return 0 on success, negative errno on error.
  */
-int bf_matcher_generate_packet(struct bf_program *program,
-                               const struct bf_matcher *matcher);
+int bf_packet_gen_inline_matcher(struct bf_program *program,
+                                 const struct bf_matcher *matcher);
+
+/**
+ * @brief Generate bytecode for packet-based rule logging.
+ *
+ * Sets up registers and calls the packet log ELF stub. Shared by all
+ * packet-based flavors (TC, NF, XDP, cgroup_skb).
+ *
+ * @param program Program being generated. Can't be NULL.
+ * @param rule Rule whose log action to generate. Can't be NULL.
+ * @return 0 on success, negative errno on error.
+ */
+int bf_packet_gen_inline_log(struct bf_program *program,
+                             const struct bf_rule *rule);
