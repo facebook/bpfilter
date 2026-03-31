@@ -279,12 +279,39 @@ static int _bf_program_fixup(struct bf_program *program,
     return 0;
 }
 
+static int _bf_program_check_proto(struct bf_program *program,
+                                   enum bf_matcher_type type,
+                                   uint32_t *checked_layers)
+{
+    assert(program);
+    assert(checked_layers);
+
+    const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
+
+    if (!meta)
+        return bf_err_r(-EINVAL, "missing meta for matcher type %d", type);
+
+    if (*checked_layers & BF_FLAG(meta->layer))
+        return 0;
+
+    if (meta->layer == BF_MATCHER_LAYER_2 ||
+        meta->layer == BF_MATCHER_LAYER_3 ||
+        meta->layer == BF_MATCHER_LAYER_4) {
+        int r = bf_stub_rule_check_protocol(program, meta);
+        if (r)
+            return r;
+        *checked_layers |= BF_FLAG(meta->layer);
+    }
+
+    return 0;
+}
+
 static int _bf_program_generate_rule(struct bf_program *program,
                                      struct bf_rule *rule)
 {
     uint32_t checked_layers = 0;
     int ret_code;
-    int r;
+    int r = 0;
 
     assert(program);
     assert(rule);
@@ -296,28 +323,27 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-        const struct bf_matcher_meta *meta =
-            bf_matcher_get_meta(bf_matcher_get_type(matcher));
 
-        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
-            continue;
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
+            const struct bf_set *set =
+                bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
 
-        if (!meta) {
-            return bf_err_r(-EINVAL, "missing meta for matcher type %d",
-                            bf_matcher_get_type(matcher));
+            if (!set) {
+                return bf_err_r(-ENOENT, "rule %u references non-existent set",
+                                rule->index);
+            }
+
+            for (size_t i = 0; i < set->n_comps && !r; ++i) {
+                r = _bf_program_check_proto(program, set->key[i],
+                                            &checked_layers);
+            }
+        } else {
+            r = _bf_program_check_proto(program, bf_matcher_get_type(matcher),
+                                        &checked_layers);
         }
 
-        if (checked_layers & BF_FLAG(meta->layer))
-            continue;
-
-        if (meta->layer == BF_MATCHER_LAYER_2 ||
-            meta->layer == BF_MATCHER_LAYER_3 ||
-            meta->layer == BF_MATCHER_LAYER_4) {
-            r = bf_stub_rule_check_protocol(program, meta);
-            if (r)
-                return r;
-            checked_layers |= BF_FLAG(meta->layer);
-        }
+        if (r)
+            return r;
     }
 
     bf_list_foreach (&rule->matchers, matcher_node) {
