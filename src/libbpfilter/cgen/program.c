@@ -65,12 +65,18 @@
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {
+    if (value == 0)
+        return 1;
+
     value--;
     value |= value >> 1;
     value |= value >> 2;
     value |= value >> 4;
     value |= value >> 8;
     value |= value >> 16;
+#if SIZE_MAX > 0xFFFFFFFFU
+    value |= value >> 32;
+#endif
 
     return ++value;
 }
