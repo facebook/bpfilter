@@ -36,6 +36,16 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_C
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule ip6.daddr eq ::1 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule ip6.dnet eq 2001:db8::/32 counter DROP")
 
+# Supported sets
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.daddr) in { 1.1.1.1; 2.2.2.2 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.dnet) in { 192.168.1.0/24; 10.0.0.0/8 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (tcp.dport) in { 80; 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.daddr, tcp.dport) in { 1.1.1.1, 80; 2.2.2.2, 443 } counter DROP"
+
+# Unsupported set components
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.saddr) in { 1.1.1.1 } counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (tcp.sport) in { 80 } counter DROP")
+
 make_sandbox
 
 CGROUP_PATH=/sys/fs/cgroup/bftest_${_TEST_NAME}
@@ -50,65 +60,106 @@ udp4_connect() {
     ${FROM_NS} bash -c "echo \$\$ > ${CGROUP_PATH}/cgroup.procs && echo > /dev/udp/$1/$2" 2>/dev/null
 }
 
+get_counter() {
+    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
+}
+
 # meta.l3_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.l4_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l4_proto eq tcp DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l4_proto eq tcp counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.probability
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.probability eq 100% DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.probability eq 100% counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.dport eq
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport eq 9990 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport eq 9990 counter DROP"
 (! udp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.dport range
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport range 9990-9995 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport range 9990-9995 counter DROP"
 (! udp4_connect ${HOST_IP_ADDR} 9990)
 (! udp4_connect ${HOST_IP_ADDR} 9995)
 udp4_connect ${HOST_IP_ADDR} 9996
+test "$(get_counter c 0)" = "2"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip4.daddr
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.daddr eq ${HOST_IP_ADDR} DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.daddr eq ${HOST_IP_ADDR} counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip4.dnet
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.dnet eq 10.0.0.0/8 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.dnet eq 10.0.0.0/8 counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip4.proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.proto eq tcp DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.proto eq tcp counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # tcp.dport
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule tcp.dport eq 9990 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule tcp.dport eq 9990 counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # udp.dport
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule udp.dport eq 9990 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule udp.dport eq 9990 counter DROP"
 (! udp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # Default policy DROP with explicit ACCEPT rule
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} DROP rule meta.dport eq 9990 ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} DROP rule meta.dport eq 9990 counter ACCEPT"
 udp4_connect ${HOST_IP_ADDR} 9990
 (! udp4_connect ${HOST_IP_ADDR} 9991)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# ip4.daddr hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.daddr) in { ${HOST_IP_ADDR} } counter DROP"
+(! udp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# ip4.dnet trie set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.dnet) in { 10.0.0.0/8 } counter DROP"
+(! udp4_connect ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# ip4.proto hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.proto) in { tcp } counter DROP"
+(! tcp4_connect ${HOST_IP_ADDR} 9990)
+udp4_connect ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# (ip4.daddr, udp.dport) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.daddr, udp.dport) in { ${HOST_IP_ADDR}, 9990 } counter DROP"
+(! udp4_connect ${HOST_IP_ADDR} 9990)
+udp4_connect ${HOST_IP_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush

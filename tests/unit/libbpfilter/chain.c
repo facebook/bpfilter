@@ -186,6 +186,38 @@ static void incompatible_matchers_disable_rule(void **state)
         assert_true(rule->disabled);
     }
 
+    // L3 conflict via set: ip4.daddr set + ip6.daddr matcher.
+    {
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list sets =
+            bf_list_default(bf_set_free, bf_set_pack);
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        _free_bf_set_ struct bf_set *set = NULL;
+        struct bf_rule *rule = NULL;
+
+        enum bf_matcher_type key[] = {BF_MATCHER_IP4_DADDR};
+
+        uint32_t set_index = 0;
+        uint8_t ip6_addr[16] = {};
+
+        assert_ok(bf_set_new(&set, "s", key, ARRAY_SIZE(key)));
+        assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
+        assert_ok(bf_list_add_tail(&sets, set));
+        set = NULL;
+
+        assert_ok(bf_rule_new(&rule));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                      &set_index, sizeof(set_index)));
+        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
+                                      ip6_addr, sizeof(ip6_addr)));
+        assert_ok(bf_list_add_tail(&rules, rule));
+
+        assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
+                               BF_VERDICT_ACCEPT, &sets, &rules));
+        assert_true(rule->disabled);
+    }
+
     // No conflict: same protocol at same layer (TCP sport + TCP dport).
     {
         _free_bf_chain_ struct bf_chain *chain = NULL;
@@ -244,6 +276,54 @@ static void policy_validation(void **state)
                             BF_VERDICT_REDIRECT, NULL, NULL));
 }
 
+static void set_component_unsupported_hook(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    _free_bf_set_ struct bf_set *set = NULL;
+    struct bf_rule *rule = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
+    uint32_t set_index = 0;
+
+    (void)state;
+
+    // Set component unsupported for hook: ip4.saddr on CONNECT4.
+    assert_ok(bf_set_new(&set, "s", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
+    assert_ok(bf_list_add_tail(&sets, set));
+    set = NULL;
+
+    assert_ok(bf_rule_new(&rule));
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_list_add_tail(&rules, rule));
+
+    assert_err(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                            BF_VERDICT_ACCEPT, &sets, &rules));
+
+    // Supported component: ip4.daddr on CONNECT4 should succeed.
+    bf_list_clean(&sets);
+    bf_list_clean(&rules);
+
+    enum bf_matcher_type daddr_key[] = {BF_MATCHER_IP4_DADDR};
+
+    assert_ok(bf_set_new(&set, "s2", daddr_key, ARRAY_SIZE(daddr_key)));
+    assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
+    assert_ok(bf_list_add_tail(&sets, set));
+    set = NULL;
+
+    assert_ok(bf_rule_new(&rule));
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index)));
+    assert_ok(bf_list_add_tail(&rules, rule));
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                           BF_VERDICT_ACCEPT, &sets, &rules));
+}
+
 static void get_set_by_name(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
@@ -264,6 +344,7 @@ int main(void)
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
         cmocka_unit_test(incompatible_matchers_disable_rule),
         cmocka_unit_test(policy_validation),
+        cmocka_unit_test(set_component_unsupported_hook),
         cmocka_unit_test(get_set_by_name),
     };
 

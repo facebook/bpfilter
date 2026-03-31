@@ -32,6 +32,15 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_S
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule ip4.saddr eq 10.0.0.1 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule ip4.snet eq 10.0.0.0/8 counter DROP")
 
+# Supported sets
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.daddr) in { ::1; ::2 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.dnet) in { fd00::/64 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.saddr, udp.dport) in { ::1, 53 } counter DROP"
+
+# Unsupported set components
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (tcp.dport) in { 80 } counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (tcp.sport) in { 80 } counter DROP")
+
 make_sandbox
 
 # Add IPv6 addresses on the veth pair
@@ -56,62 +65,96 @@ s.close()
 "
 }
 
+get_counter() {
+    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
+}
+
 # meta.l3_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv6 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv6 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.l4_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l4_proto eq udp DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l4_proto eq udp counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.probability
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.probability eq 100% DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.probability eq 100% counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.dport eq
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport eq 9990 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport eq 9990 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
 udp6_sendmsg ${HOST_IP6_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # meta.dport range
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport range 9990-9995 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.dport range 9990-9995 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9995)
 udp6_sendmsg ${HOST_IP6_ADDR} 9996
+test "$(get_counter c 0)" = "2"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip6.daddr
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.daddr eq ${HOST_IP6_ADDR} DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.daddr eq ${HOST_IP6_ADDR} counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip6.dnet
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.dnet eq fd00::/64 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.dnet eq fd00::/64 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip6.saddr
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.saddr eq ${NS_IP6_ADDR} DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.saddr eq ${NS_IP6_ADDR} counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # ip6.snet
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.snet eq fd00::/64 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule ip6.snet eq fd00::/64 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # udp.dport
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule udp.dport eq 9990 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule udp.dport eq 9990 counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
 udp6_sendmsg ${HOST_IP6_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # Default policy DROP with explicit ACCEPT rule
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} DROP rule meta.dport eq 9990 ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} DROP rule meta.dport eq 9990 counter ACCEPT"
 udp6_sendmsg ${HOST_IP6_ADDR} 9990
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9991)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# ip6.daddr hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.daddr) in { ${HOST_IP6_ADDR} } counter DROP"
+(! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# ip6.dnet trie set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.dnet) in { fd00::/64 } counter DROP"
+(! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
+${FROM_NS} ${BFCLI} ruleset flush
+
+# (ip6.saddr, udp.dport) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.saddr, udp.dport) in { ${NS_IP6_ADDR}, 9990 } counter DROP"
+(! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+udp6_sendmsg ${HOST_IP6_ADDR} 9991
+test "$(get_counter c 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
