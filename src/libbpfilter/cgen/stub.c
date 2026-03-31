@@ -439,40 +439,50 @@ int bf_stub_load_header(struct bf_program *program,
     return 0;
 }
 
+int bf_stub_load(struct bf_program *program, size_t src_offset, size_t size,
+                 int dst_offset)
+{
+    assert(program);
+
+    size_t src_off = src_offset;
+    int dst_off = dst_offset;
+    size_t remaining_size = size;
+
+    while (remaining_size) {
+        int bpf_size = BPF_B;
+        size_t copy_bytes = 1;
+
+        if (BF_ALIGNED_64(src_off) && BF_ALIGNED_64(dst_off) &&
+            remaining_size >= 8) {
+            bpf_size = BPF_DW;
+            copy_bytes = 8;
+        } else if (BF_ALIGNED_32(src_off) && BF_ALIGNED_32(dst_off) &&
+                   remaining_size >= 4) {
+            bpf_size = BPF_W;
+            copy_bytes = 4;
+        } else if (BF_ALIGNED_16(src_off) && BF_ALIGNED_16(dst_off) &&
+                   remaining_size >= 2) {
+            bpf_size = BPF_H;
+            copy_bytes = 2;
+        }
+
+        EMIT(program, BPF_LDX_MEM(bpf_size, BPF_REG_1, BPF_REG_6, src_off));
+        EMIT(program, BPF_STX_MEM(bpf_size, BPF_REG_10, BPF_REG_1, dst_off));
+
+        remaining_size -= copy_bytes;
+        src_off += copy_bytes;
+        dst_off += (int)copy_bytes;
+    }
+
+    return 0;
+}
+
 int bf_stub_stx_payload(struct bf_program *program,
                         const struct bf_matcher_meta *meta, size_t offset)
 {
     assert(program);
     assert(meta);
 
-    size_t remaining_size = meta->hdr_payload_size;
-    size_t src_offset = 0;
-    size_t dst_offset = offset;
-
-    while (remaining_size) {
-        int bpf_size = BPF_B;
-        size_t copy_bytes = 1;
-
-        if (BF_ALIGNED_64(offset) && remaining_size >= 8) {
-            bpf_size = BPF_DW;
-            copy_bytes = 8;
-        } else if (BF_ALIGNED_32(offset) && remaining_size >= 4) {
-            bpf_size = BPF_W;
-            copy_bytes = 4;
-        } else if (BF_ALIGNED_16(offset) && remaining_size >= 2) {
-            bpf_size = BPF_H;
-            copy_bytes = 2;
-        }
-
-        EMIT(program, BPF_LDX_MEM(bpf_size, BPF_REG_1, BPF_REG_6,
-                                  meta->hdr_payload_offset + src_offset));
-        EMIT(program, BPF_STX_MEM(bpf_size, BPF_REG_10, BPF_REG_1,
-                                  BF_PROG_SCR_OFF(dst_offset)));
-
-        remaining_size -= copy_bytes;
-        src_offset += copy_bytes;
-        dst_offset += copy_bytes;
-    }
-
-    return 0;
+    return bf_stub_load(program, meta->hdr_payload_offset,
+                        meta->hdr_payload_size, BF_PROG_SCR_OFF(offset));
 }
