@@ -61,6 +61,40 @@ static int _bf_rule_references_empty_set(const struct bf_chain *chain,
 }
 
 /**
+ * @brief Check a single matcher type against per-layer header tracking.
+ *
+ * @param type Matcher type to check.
+ * @param layer_hdr_id Per-layer header ID tracking array.
+ * @return 0 if compatible, 1 if incompatible, negative errno on error.
+ */
+static int _bf_rule_check_layer(enum bf_matcher_type type,
+                                uint32_t layer_hdr_id[_BF_MATCHER_LAYER_MAX])
+{
+    const struct bf_matcher_meta *meta;
+
+    assert(layer_hdr_id);
+
+    meta = bf_matcher_get_meta(type);
+    if (!meta) {
+        return bf_err_r(-EINVAL, "missing meta for '%s'",
+                        bf_matcher_type_to_str(type));
+    }
+
+    if (meta->layer <= BF_MATCHER_NO_LAYER)
+        return 0;
+
+    if (layer_hdr_id[meta->layer] == UINT32_MAX) {
+        layer_hdr_id[meta->layer] = meta->hdr_id;
+        return 0;
+    }
+
+    if (layer_hdr_id[meta->layer] != meta->hdr_id)
+        return 1;
+
+    return 0;
+}
+
+/**
  * @brief Check if a rule has matchers on the same layer but different
  * protocols.
  *
@@ -68,14 +102,17 @@ static int _bf_rule_references_empty_set(const struct bf_chain *chain,
  * address can never match a packet (a packet is either IPv4 or IPv6, not
  * both). Same for layer 4 (e.g. TCP vs UDP). Such rules should be disabled.
  *
+ * @param chain Chain containing the sets list.
  * @param rule Rule to check.
  * @return 0 if no conflict, 1 if the rule contains incompatible matchers, or
  *         a negative errno value on failure.
  */
-static int _bf_rule_has_incompatible_matchers(const struct bf_rule *rule)
+static int _bf_rule_has_incompatible_matchers(const struct bf_chain *chain,
+                                              const struct bf_rule *rule)
 {
     uint32_t layer_hdr_id[_BF_MATCHER_LAYER_MAX];
 
+    assert(chain);
     assert(rule);
 
     for (int i = 0; i < _BF_MATCHER_LAYER_MAX; ++i)
@@ -83,26 +120,27 @@ static int _bf_rule_has_incompatible_matchers(const struct bf_rule *rule)
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-        const struct bf_matcher_meta *meta;
+        int r = 0;
 
-        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET)
-            continue;
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
+            const struct bf_set *set =
+                bf_chain_get_set_for_matcher(chain, matcher);
 
-        meta = bf_matcher_get_meta(bf_matcher_get_type(matcher));
-        if (!meta) {
-            return bf_err_r(
-                -ENOENT, "missing bf_matcher_meta for %s",
-                bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
+            if (!set) {
+                return bf_err_r(-ENOENT, "rule %u references non-existent set",
+                                rule->index);
+            }
+
+            for (size_t i = 0; i < set->n_comps && !r; ++i)
+                r = _bf_rule_check_layer(set->key[i], layer_hdr_id);
+        } else {
+            r = _bf_rule_check_layer(bf_matcher_get_type(matcher),
+                                     layer_hdr_id);
         }
-        if (meta->layer <= BF_MATCHER_NO_LAYER)
-            continue;
 
-        if (layer_hdr_id[meta->layer] == UINT32_MAX) {
-            layer_hdr_id[meta->layer] = meta->hdr_id;
-            continue;
-        }
-
-        if (layer_hdr_id[meta->layer] != meta->hdr_id) {
+        if (r < 0)
+            return r;
+        if (r) {
             bf_warn(
                 "rule %u has incompatible matchers on the same layer, rule will be disabled",
                 rule->index);
@@ -125,7 +163,7 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
     rule->disabled = r;
 
     if (!rule->disabled) {
-        r = _bf_rule_has_incompatible_matchers(rule);
+        r = _bf_rule_has_incompatible_matchers(chain, rule);
         if (r < 0)
             return r;
 
@@ -169,6 +207,34 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
                 -ENOTSUP, "matcher %s is not compatible with %s",
                 bf_matcher_type_to_str(bf_matcher_get_type(matcher)),
                 bf_hook_to_str(chain->hook));
+        }
+
+        if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
+            const struct bf_set *set =
+                bf_chain_get_set_for_matcher(chain, matcher);
+
+            if (!set) {
+                return bf_err_r(-ENOENT, "rule %u references non-existent set",
+                                rule->index);
+            }
+
+            for (size_t i = 0; i < set->n_comps; ++i) {
+                const struct bf_matcher_meta *comp_meta =
+                    bf_matcher_get_meta(set->key[i]);
+
+                if (!comp_meta) {
+                    return bf_err_r(-EINVAL,
+                                    "missing meta for set component '%s'",
+                                    bf_matcher_type_to_str(set->key[i]));
+                }
+
+                if (comp_meta->unsupported_hooks & BF_FLAG(chain->hook)) {
+                    return bf_err_r(-ENOTSUP,
+                                    "set component '%s' not compatible with %s",
+                                    bf_matcher_type_to_str(set->key[i]),
+                                    bf_hook_to_str(chain->hook));
+                }
+            }
         }
     }
 
