@@ -117,5 +117,22 @@ int bf_stub_rule_check_protocol(struct bf_program *program,
 int bf_stub_load_header(struct bf_program *program,
                         const struct bf_matcher_meta *meta, int reg);
 
+/**
+ * @brief Copy bytes from `R6 + src_offset` to `R10 + dst_offset`.
+ *
+ * The access size per iteration is determined by checking alignment of both
+ * source and destination offsets (both advance each iteration), picking the
+ * largest width where both are aligned and remaining >= width.
+ *
+ * @param program Program to emit the instructions into. Can't be NULL.
+ * @param src_offset Byte offset from `R6` to start reading from.
+ * @param size Number of bytes to copy.
+ * @param dst_offset Byte offset from `R10` (stack pointer) to write to. Use
+ *        `BF_PROG_SCR_OFF()` for scratch area offsets.
+ * @return 0 on success, or negative error value on error.
+ */
+int bf_stub_load(struct bf_program *program, size_t src_offset, size_t size,
+                 int dst_offset);
+
 int bf_stub_stx_payload(struct bf_program *program,
                         const struct bf_matcher_meta *meta, size_t offset);
