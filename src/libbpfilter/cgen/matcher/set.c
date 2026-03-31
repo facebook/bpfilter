@@ -70,31 +70,12 @@ int bf_matcher_generate_set(struct bf_program *program,
     if (set->use_trie) {
         const struct bf_matcher_meta *meta = bf_matcher_get_meta(set->key[0]);
 
-        r = bf_stub_rule_check_protocol(program, meta);
-        if (r)
-            return bf_err_r(r, "failed to check for protocol");
-
         r = bf_stub_load_header(program, meta, BPF_REG_6);
         if (r)
             return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
 
         return bf_set_generate_trie_lookup(
             program, matcher, meta->hdr_payload_offset, meta->hdr_payload_size);
-    }
-
-    // Ensure the packet uses the required protocols
-    for (size_t i = 0; i < set->n_comps; ++i) {
-        enum bf_matcher_type type = set->key[i];
-        const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
-
-        if (!meta) {
-            return bf_err_r(-ENOENT, "meta for '%s' not found",
-                            bf_matcher_type_to_str(type));
-        }
-
-        r = bf_stub_rule_check_protocol(program, meta);
-        if (r)
-            return bf_err_r(r, "failed to check for protocol");
     }
 
     // Generate the bytecode to build the set key
