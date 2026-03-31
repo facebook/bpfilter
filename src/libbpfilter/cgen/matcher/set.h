@@ -46,6 +46,3 @@ int bf_set_generate_map_lookup(struct bf_program *program,
 int bf_set_generate_trie_lookup(struct bf_program *program,
                                 const struct bf_matcher *matcher,
                                 size_t src_offset, size_t addr_size);
-
-int bf_matcher_generate_set(struct bf_program *program,
-                            const struct bf_matcher *matcher);
