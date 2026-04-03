@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -183,8 +184,6 @@ enum bf_matcher_op
 {
     /// Test for equality.
     BF_MATCHER_EQ,
-    /// Test for inequality.
-    BF_MATCHER_NE,
     /// Test for partial subset match
     BF_MATCHER_ANY,
     /// Test for complete subset match
@@ -269,11 +268,12 @@ struct bf_matcher_meta
  *        @p type . Can be NULL but only if @p payload_len is 0, in which case
  *        there is no payload.
  * @param payload_len Length of the payload.
+ * @param negate If true, negate the comparison result.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
-                   size_t payload_len);
+                   size_t payload_len, bool negate);
 
 /**
  * @brief Allocate and initialise a new matcher from a raw payload (string).
@@ -284,11 +284,12 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
  * @param op Comparison operator.
  * @param payload Raw payload, as a string, to parse and populate the matcher
  *        with. Can't be NULL.
+ * @param negate If true, negate the comparison result.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_new_from_raw(struct bf_matcher **matcher,
                             enum bf_matcher_type type, enum bf_matcher_op op,
-                            const char *payload);
+                            const char *payload, bool negate);
 
 /**
  * @brief Allocate and initalize a new matcher from serialized data.
@@ -329,6 +330,7 @@ enum bf_matcher_op bf_matcher_get_op(const struct bf_matcher *matcher);
 const void *bf_matcher_payload(const struct bf_matcher *matcher);
 size_t bf_matcher_payload_len(const struct bf_matcher *matcher);
 size_t bf_matcher_len(const struct bf_matcher *matcher);
+bool bf_matcher_get_negate(const struct bf_matcher *matcher);
 
 /**
  * @brief Get meta structure for a given matcher type.

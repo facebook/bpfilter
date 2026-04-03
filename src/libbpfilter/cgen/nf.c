@@ -146,8 +146,8 @@ static int _bf_nf_gen_inline_matcher(struct bf_program *program,
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_2, offset));
 
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 4, BPF_REG_1);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 4,
+                            BPF_REG_1);
     default:
         return bf_packet_gen_inline_matcher(program, matcher);
     }

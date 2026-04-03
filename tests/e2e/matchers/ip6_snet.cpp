@@ -98,25 +98,15 @@ static void ip6_snet_eq(void **state)
         test->verdictDrop());
 
     bft_assert_counter_eq("test_ip6_snet", 0, 1, -1);
-}
 
-/**
- * Verify ip6.snet ne does not match when the IPv6 source address is within
- * the configured prefix but matches addresses outside it. Exercises /32, /128
- * (no-masking code path), and /0 (which covers all addresses, so NE /0 never
- * matches).
- */
-static void ip6_snet_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation: /32 not eq
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_snet", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                                 bft_ip6_lpm_key(32, "2001:db8::"))}));
+                    {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
+                                 bft_ip6_lpm_key(32, "2001:db8::"), true)}));
 
-    // saddr in subnet -> NE does not match -> ACCEPT
+    // saddr in subnet -> not eq does not match -> ACCEPT
     bft_assert_prog_run(
         "test_ip6_snet", test->hook(),
         bft::Ethernet() /
@@ -124,7 +114,7 @@ static void ip6_snet_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // saddr outside subnet -> NE matches -> DROP
+    // saddr outside subnet -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_ip6_snet", test->hook(),
         bft::Ethernet() /
@@ -134,14 +124,14 @@ static void ip6_snet_ne(void **state)
 
     bft_assert_counter_eq("test_ip6_snet", 0, 1, -1);
 
-    // /128 ne: saddr matching the exact host -> NE does not match -> ACCEPT;
-    // saddr differing by one bit -> NE matches -> DROP. Exercises the
+    // /128 not eq: saddr matching the exact host -> does not match ->
+    // ACCEPT; saddr differing by one bit -> matches -> DROP. Exercises the
     // no-masking code path.
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_snet", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                                 bft_ip6_lpm_key(128, "2001:db8::1"))}));
+                    {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
+                                 bft_ip6_lpm_key(128, "2001:db8::1"), true)}));
 
     bft_assert_prog_run(
         "test_ip6_snet", test->hook(),
@@ -159,11 +149,12 @@ static void ip6_snet_ne(void **state)
 
     bft_assert_counter_eq("test_ip6_snet", 0, 1, -1);
 
-    // /0 ne: /0 covers the entire address space; NE /0 never matches.
+    // /0 not eq: /0 covers the entire address space; not eq /0 never
+    // matches.
     BFT_CHAIN_SET(bf::Chain("test_ip6_snet", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_NE,
-                                           bft_ip6_lpm_key(0, "::"))}));
+                              {bf::Matcher(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ,
+                                           bft_ip6_lpm_key(0, "::"), true)}));
 
     bft_assert_prog_run(
         "test_ip6_snet", test->hook(),
@@ -224,7 +215,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP6_SNET);
 
     suite << MatcherTest(BF_MATCHER_IP6_SNET, BF_MATCHER_EQ, ip6_snet_eq);
-    suite << MatcherTest(BF_MATCHER_IP6_SNET, BF_MATCHER_NE, ip6_snet_ne);
     suite << MatcherTest(BF_MATCHER_IP6_SNET, BF_MATCHER_IN, ip6_snet_in);
 
     return suite.run();

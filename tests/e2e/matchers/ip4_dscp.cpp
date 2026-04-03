@@ -59,23 +59,14 @@ static void ip4_dscp_eq(void **state)
                         test->verdictDrop());
 
     bft_assert_counter_eq("test_ip4_dscp", 0, 2, -1);
-}
 
-/**
- * Verify ip4.dscp ne does not match packets whose DSCP field equals the
- * configured value, and matches all others. The matcher ignores the 2-bit ECN
- * field, so a packet with the same DSCP but non-zero ECN still does not match.
- */
-static void ip4_dscp_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(
-        bf::Chain("test_ip4_dscp", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP4_DSCP, BF_MATCHER_NE, {8})}));
+        bf::Chain("test_ip4_dscp", test->hook(), BF_VERDICT_ACCEPT) << bf::Rule(
+            BF_VERDICT_DROP, true, {},
+            {bf::Matcher(BF_MATCHER_IP4_DSCP, BF_MATCHER_EQ, {8}, true)}));
 
-    // tos=0x20 (DSCP=8) matches the reference value, NE does not fire -> ACCEPT
+    // tos=0x20 (DSCP=8) matches the reference value, not eq does not fire -> ACCEPT
     bft_assert_prog_run("test_ip4_dscp", test->hook(),
                         bft::Ethernet() /
                             bft::IPv4 {.saddr = "192.0.2.1",
@@ -84,7 +75,7 @@ static void ip4_dscp_ne(void **state)
                             bft::TCP {},
                         test->verdictAccept());
 
-    // tos=0 (DSCP=0) does not match the reference value, NE fires -> DROP
+    // tos=0 (DSCP=0) does not match the reference value, not eq fires -> DROP
     bft_assert_prog_run(
         "test_ip4_dscp", test->hook(),
         bft::Ethernet() /
@@ -110,7 +101,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP4_DSCP);
 
     suite << MatcherTest(BF_MATCHER_IP4_DSCP, BF_MATCHER_EQ, ip4_dscp_eq);
-    suite << MatcherTest(BF_MATCHER_IP4_DSCP, BF_MATCHER_NE, ip4_dscp_ne);
 
     return suite.run();
 }

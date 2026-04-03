@@ -60,24 +60,15 @@ static void ip6_dscp_eq(void **state)
                         test->verdictDrop());
 
     bft_assert_counter_eq("test_ip6_dscp", 0, 2, -1);
-}
 
-/**
- * Verify ip6.dscp ne does not match packets whose DSCP field equals the
- * configured value, and matches all others. The matcher ignores the 2-bit ECN
- * field, so a packet with the same DSCP but non-zero ECN still does not match.
- */
-static void ip6_dscp_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(
-        bf::Chain("test_ip6_dscp", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP6_DSCP, BF_MATCHER_NE, {8})}));
+        bf::Chain("test_ip6_dscp", test->hook(), BF_VERDICT_ACCEPT) << bf::Rule(
+            BF_VERDICT_DROP, true, {},
+            {bf::Matcher(BF_MATCHER_IP6_DSCP, BF_MATCHER_EQ, {8}, true)}));
 
-    // traffic_class=0x20 (DSCP=8) matches the reference value, NE does not
-    // fire -> ACCEPT
+    // traffic_class=0x20 (DSCP=8) matches the reference value, not eq does
+    // not fire -> ACCEPT
     bft_assert_prog_run("test_ip6_dscp", test->hook(),
                         bft::Ethernet() /
                             bft::IPv6 {.saddr = "2001:db8::1",
@@ -86,8 +77,8 @@ static void ip6_dscp_ne(void **state)
                             bft::TCP {},
                         test->verdictAccept());
 
-    // traffic_class=0 (DSCP=0) does not match the reference value, NE fires
-    // -> DROP
+    // traffic_class=0 (DSCP=0) does not match the reference value, not eq
+    // fires -> DROP
     bft_assert_prog_run("test_ip6_dscp", test->hook(),
                         bft::Ethernet() /
                             bft::IPv6 {.saddr = "2001:db8::1",
@@ -114,7 +105,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP6_DSCP);
 
     suite << MatcherTest(BF_MATCHER_IP6_DSCP, BF_MATCHER_EQ, ip6_dscp_eq);
-    suite << MatcherTest(BF_MATCHER_IP6_DSCP, BF_MATCHER_NE, ip6_dscp_ne);
 
     return suite.run();
 }

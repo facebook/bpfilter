@@ -103,25 +103,15 @@ static void ip4_dnet_eq(void **state)
         test->verdictDrop());
 
     bft_assert_counter_eq("test_ip4_dnet", 0, 1, -1);
-}
 
-/**
- * Verify ip4.dnet ne does not match when the destination address is within
- * the configured subnet but matches addresses outside it. Exercises /24, /32
- * (no-masking code path), and /0 (which covers all addresses, so NE /0 never
- * matches).
- */
-static void ip4_dnet_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // /24 not eq
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                                 bft_ip4_lpm_key(24, 192, 0, 2, 0))}));
+                    {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
+                                 bft_ip4_lpm_key(24, 192, 0, 2, 0), true)}));
 
-    // daddr=192.0.2.100 is in subnet -> NE does not match -> ACCEPT
+    // daddr=192.0.2.100 is in subnet -> not eq does not match -> ACCEPT
     bft_assert_prog_run(
         "test_ip4_dnet", test->hook(),
         bft::Ethernet() /
@@ -129,7 +119,7 @@ static void ip4_dnet_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // daddr=192.0.3.1 is not in subnet -> NE matches -> DROP
+    // daddr=192.0.3.1 is not in subnet -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_ip4_dnet", test->hook(),
         bft::Ethernet() /
@@ -139,12 +129,13 @@ static void ip4_dnet_ne(void **state)
 
     bft_assert_counter_eq("test_ip4_dnet", 0, 1, -1);
 
-    // /32 ne: daddr exactly matching the host -> NE does not match -> ACCEPT
+    // /32 not eq: daddr exactly matching the host -> does not match ->
+    // ACCEPT
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                                 bft_ip4_lpm_key(32, 192, 0, 2, 2))}));
+                    {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
+                                 bft_ip4_lpm_key(32, 192, 0, 2, 2), true)}));
 
     bft_assert_prog_run(
         "test_ip4_dnet", test->hook(),
@@ -153,7 +144,7 @@ static void ip4_dnet_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // daddr differs from the /32 host -> NE matches -> DROP
+    // daddr differs from the /32 host -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_ip4_dnet", test->hook(),
         bft::Ethernet() /
@@ -163,11 +154,13 @@ static void ip4_dnet_ne(void **state)
 
     bft_assert_counter_eq("test_ip4_dnet", 0, 1, -1);
 
-    // /0 ne: /0 covers the entire address space; NE /0 never matches.
-    BFT_CHAIN_SET(bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_NE,
-                                           bft_ip4_lpm_key(0, 0, 0, 0, 0))}));
+    // /0 not eq: /0 covers the entire address space; not eq /0 never
+    // matches.
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ,
+                                 bft_ip4_lpm_key(0, 0, 0, 0, 0), true)}));
 
     bft_assert_prog_run(
         "test_ip4_dnet", test->hook(),
@@ -229,7 +222,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP4_DNET);
 
     suite << MatcherTest(BF_MATCHER_IP4_DNET, BF_MATCHER_EQ, ip4_dnet_eq);
-    suite << MatcherTest(BF_MATCHER_IP4_DNET, BF_MATCHER_NE, ip4_dnet_ne);
     suite << MatcherTest(BF_MATCHER_IP4_DNET, BF_MATCHER_IN, ip4_dnet_in);
 
     return suite.run();

@@ -9,6 +9,8 @@
 #include <linux/bpf_common.h>
 
 #include <assert.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <bpfilter/logger.h>
@@ -16,6 +18,31 @@
 
 #include "cgen/jmp.h"
 #include "cgen/program.h"
+
+uint8_t bf_cmp_get_jmp_ins(const struct bf_matcher *matcher)
+{
+    bool continue_on_equal;
+
+    assert(matcher);
+
+    switch (bf_matcher_get_op(matcher)) {
+    case BF_MATCHER_EQ:
+    case BF_MATCHER_ALL:
+        continue_on_equal = true;
+        break;
+    case BF_MATCHER_ANY:
+    case BF_MATCHER_IN:
+        continue_on_equal = false;
+        break;
+    default:
+        bf_abort("invalid matcher op to get jmp instruction %d",
+                 bf_matcher_get_op(matcher));
+    }
+
+    continue_on_equal ^= bf_matcher_get_negate(matcher);
+
+    return continue_on_equal ? BPF_JNE : BPF_JEQ;
+}
 
 #define _BF_MASK_LAST_BYTE 15
 
@@ -70,14 +97,20 @@ static void _bf_prefix_to_mask(unsigned int prefixlen, uint8_t *mask,
         mask[prefixlen / 8] = (0xff << (8 - prefixlen % 8)) & 0xff;
 }
 
-int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
+int bf_cmp_value(struct bf_program *program, const struct bf_matcher *matcher,
                  const void *ref, unsigned int size, int reg)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
+    uint8_t jmp_op;
+
     assert(program);
+    assert(matcher);
     assert(ref);
 
-    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+    if (op != BF_MATCHER_EQ)
         return bf_err_r(-EINVAL, "unsupported operator %d", op);
+
+    jmp_op = bf_cmp_get_jmp_ins(matcher);
 
     switch (size) {
     case 1:
@@ -88,9 +121,7 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
         uint32_t val =
             (size == 1) ? *(const uint8_t *)ref : *(const uint16_t *)ref;
 
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program,
-            BPF_JMP_IMM(op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ, reg, val, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(jmp_op, reg, val, 0));
         break;
     }
     case 4: {
@@ -99,9 +130,8 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
         uint32_t val = *(const uint32_t *)ref;
 
         EMIT(program, BPF_MOV32_IMM(BPF_REG_2, val));
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_REG(op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ, reg,
-                                 BPF_REG_2, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_REG(jmp_op, reg, BPF_REG_2, 0));
         break;
     }
     case 8: {
@@ -113,9 +143,8 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
                                 _bf_read_u64(ref));
         if (r)
             return r;
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_REG(op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ, reg,
-                                 BPF_REG_2, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_REG(jmp_op, reg, BPF_REG_2, 0));
         break;
     }
     case 16: {
@@ -129,7 +158,7 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
         if (r)
             return r;
 
-        if (op == BF_MATCHER_EQ) {
+        if (jmp_op == BPF_JNE) {
             EMIT_FIXUP_JMP_NEXT_RULE(program,
                                      BPF_JMP_REG(BPF_JNE, reg, BPF_REG_3, 0));
 
@@ -140,12 +169,12 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
             EMIT_FIXUP_JMP_NEXT_RULE(
                 program, BPF_JMP_REG(BPF_JNE, reg + 1, BPF_REG_3, 0));
         } else {
-            /* NE: the address must differ in at least one half.
+            /* JEQ: the address must differ in at least one half.
              * If the first half differs, the matcher matched — jump
              * past the second half check and the unconditional
              * jump-to-next-rule. If the first half matches, check the
              * second half: if it also matches, the full address is
-             * equal, so the NE matcher fails — jump to next rule. */
+             * equal, so the matcher fails — jump to next rule. */
             _clean_bf_jmpctx_ struct bf_jmpctx j0 = bf_jmpctx_default();
             _clean_bf_jmpctx_ struct bf_jmpctx j1 = bf_jmpctx_default();
 
@@ -170,15 +199,21 @@ int bf_cmp_value(struct bf_program *program, enum bf_matcher_op op,
     return 0;
 }
 
-int bf_cmp_masked_value(struct bf_program *program, enum bf_matcher_op op,
-                        const void *ref, unsigned int prefixlen,
-                        unsigned int size, int reg)
+int bf_cmp_masked_value(struct bf_program *program,
+                        const struct bf_matcher *matcher, const void *ref,
+                        unsigned int prefixlen, unsigned int size, int reg)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
+    uint8_t jmp_op;
+
     assert(program);
+    assert(matcher);
     assert(ref);
 
-    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+    if (op != BF_MATCHER_EQ)
         return bf_err_r(-EINVAL, "unsupported operator %d", op);
+
+    jmp_op = bf_cmp_get_jmp_ins(matcher);
 
     switch (size) {
     case 4: {
@@ -195,9 +230,8 @@ int bf_cmp_masked_value(struct bf_program *program, enum bf_matcher_op op,
             EMIT(program, BPF_ALU32_REG(BPF_AND, BPF_REG_2, BPF_REG_3));
         }
 
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_REG(op == BF_MATCHER_EQ ? BPF_JNE : BPF_JEQ, reg,
-                                 BPF_REG_2, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_REG(jmp_op, reg, BPF_REG_2, 0));
         break;
     }
     case 16: {
@@ -233,7 +267,7 @@ int bf_cmp_masked_value(struct bf_program *program, enum bf_matcher_op op,
         if (r)
             return r;
 
-        if (op == BF_MATCHER_EQ) {
+        if (jmp_op == BPF_JNE) {
             EMIT_FIXUP_JMP_NEXT_RULE(program,
                                      BPF_JMP_REG(BPF_JNE, reg, BPF_REG_3, 0));
 
@@ -268,10 +302,22 @@ int bf_cmp_masked_value(struct bf_program *program, enum bf_matcher_op op,
     return 0;
 }
 
-int bf_cmp_range(struct bf_program *program, uint32_t min, uint32_t max,
-                 int reg)
+int bf_cmp_range(struct bf_program *program, const struct bf_matcher *matcher,
+                 uint32_t min, uint32_t max, int reg)
 {
     assert(program);
+    assert(matcher);
+
+    if (bf_matcher_get_negate(matcher)) {
+        _clean_bf_jmpctx_ struct bf_jmpctx j0 = bf_jmpctx_default();
+        _clean_bf_jmpctx_ struct bf_jmpctx j1 = bf_jmpctx_default();
+
+        j0 = bf_jmpctx_get(program, BPF_JMP32_IMM(BPF_JLT, reg, min, 0));
+        j1 = bf_jmpctx_get(program, BPF_JMP32_IMM(BPF_JGT, reg, max, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_A(0));
+
+        return 0;
+    }
 
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP32_IMM(BPF_JLT, reg, min, 0));
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP32_IMM(BPF_JGT, reg, max, 0));
@@ -279,17 +325,20 @@ int bf_cmp_range(struct bf_program *program, uint32_t min, uint32_t max,
     return 0;
 }
 
-int bf_cmp_bitfield(struct bf_program *program, enum bf_matcher_op op,
-                    uint32_t flags, int reg)
+int bf_cmp_bitfield(struct bf_program *program,
+                    const struct bf_matcher *matcher, uint32_t flags, int reg)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
+
     assert(program);
+    assert(matcher);
 
     if (op != BF_MATCHER_ANY && op != BF_MATCHER_ALL)
         return bf_err_r(-EINVAL, "unsupported operator %d", op);
 
     EMIT(program, BPF_ALU32_IMM(BPF_AND, reg, flags));
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP32_IMM(op == BF_MATCHER_ANY ? BPF_JEQ : BPF_JNE, reg,
+        program, BPF_JMP32_IMM(bf_cmp_get_jmp_ins(matcher), reg,
                                op == BF_MATCHER_ANY ? 0 : flags, 0));
 
     return 0;

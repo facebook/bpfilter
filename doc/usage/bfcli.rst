@@ -509,14 +509,14 @@ Matchers are defined such as:
 
 .. code:: shell
 
-    $TYPE [$OP] $PAYLOAD
+    $TYPE [not] [$OP] $PAYLOAD
 
 With:
   - ``$TYPE``: type of the matcher, defined which part of the processed network packet need to be compared against. All the exact matcher types are defined below.
+  - ``not``: optional comparison negation. When used, it prefixes an operator, e.g. ``tcp.sport not eq 80``, ``(ip4.saddr) not in foo``, or, with no operator, ``tcp.sport not 80`` (equivalent to ``tcp.sport not eq 80``).
   - ``$OP``: comparison operation, not all ``$TYPE`` of matchers support all the existing comparison operators:
 
-    - ``eq``: exact equality.
-    - ``not``: inequality.
+    - ``eq``: exact equality. This is the default if not ``$OP`` is provided.
     - ``any``: match the packet against a set of data defined as the payload. If any of the member of the payload set is found in the packet, the matcher is positive. For example, if you want to match all the ``icmp`` and ``udp`` packets: ``ip4.proto any icmp,udp``.
     - ``all``: match the packet against a set of data defined as the payload. If all the member of the payload set are found in the packet, the matcher is positive, even if the packet contains more than only the members defined in the payload. For example, to match all the packets containing *at least* the ``ACK`` TCP flag: ``tcp.flags all ACK``.
     - ``in``: matches the packet against a hashed set of reference values. Using the ``in`` operator is useful when the packet's data needs to be compared against a large set of different values. Let's say you want to filter 1000 different IPv4 addresses, you can either define 1000 ``ip4.saddr eq $IP`` matcher, in which case ``bpfilter`` will compare the packet against every IP one after the other. Or you can use ``(ip4.saddr) in {$IP0,IP1,...}`` in which case ``bpfilter`` will compare the packet's data against the hashed set as a whole in 1 operation.
@@ -553,21 +553,19 @@ Meta
       - ``eq``
       - ``$PROTOCOL``
       - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
-    * - :rspan:`2` Source port
-      - :rspan:`2` ``meta.sport``
+    * - :rspan:`1` Source port
+      - :rspan:`1` ``meta.sport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - ``$PORT`` must be a valid decimal port number.
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`2` Destination port
-      - :rspan:`2` ``meta.dport``
+    * - :rspan:`1` Destination port
+      - :rspan:`1` ``meta.dport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - ``$PORT`` must be a valid decimal port number.
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
@@ -576,18 +574,16 @@ Meta
       - ``eq``
       - ``$PROBABILITY``
       - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, probability applies per socket operation: each ``connect()`` or ``sendmsg()`` call is independently accepted or dropped.
-    * - :rspan:`1` Mark
-      - :rspan:`1` ``meta.mark``
+    * - Mark
+      - ``meta.mark``
       - ``eq``
-      - :rspan:`1` ``$MARK``
-      - :rspan:`1` ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` and ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
-    * - ``not``
-    * - :rspan:`2` Flow hash
-      - :rspan:`2` ``meta.flow_hash``
+      - ``$MARK``
+      - ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. Incompatible with ``BF_HOOK_XDP`` and ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
+    * - :rspan:`1` Flow hash
+      - :rspan:`1` ``meta.flow_hash``
       - ``eq``
-      - :rspan:`1` ``$HASH``
-      - :rspan:`1` ``$HASH`` must be a decimal or hexadecimal 32-bits integer. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
-    * - ``not``
+      - ``$HASH``
+      - ``$HASH`` must be a decimal or hexadecimal 32-bits integer. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` must be decimal or hexadecimal 32-bits integers, with ``$START <= $END``. Only compatible with ``BF_HOOK_TC_INGRESS`` and ``BF_HOOK_TC_EGRESS`` hooks.
@@ -610,48 +606,42 @@ IPv4
       - Operator
       - Payload
       - Notes
-    * - :rspan:`2` Source address
-      - :rspan:`2` ``ip4.saddr``
+    * - :rspan:`1` Source address
+      - :rspan:`1` ``ip4.saddr``
       - ``eq``
-      - :rspan:`1` ``$ADDR``
-      - :rspan:`5` ``$ADDR`` is an IPv4 address in dotted-decimal format, "ddd.ddd.ddd.ddd", where ddd is a decimal number of up to three digits in the range 0 to 255. To filter on an IPv4 network (using an IPv4 address and a subnet mask), see ``ip4.snet`` or ``ip4.dnet``.
-    * - ``not``
+      - ``$ADDR``
+      - :rspan:`3` ``$ADDR`` is an IPv4 address in dotted-decimal format, "ddd.ddd.ddd.ddd", where ddd is a decimal number of up to three digits in the range 0 to 255. To filter on an IPv4 network (using an IPv4 address and a subnet mask), see ``ip4.snet`` or ``ip4.dnet``.
     * - ``in``
       - ``{$ADDR[,...]}``
-    * - :rspan:`2` Destination address
-      - :rspan:`2` ``ip4.daddr``
+    * - :rspan:`1` Destination address
+      - :rspan:`1` ``ip4.daddr``
       - ``eq``
-      - :rspan:`1` ``$ADDR``
-    * - ``not``
+      - ``$ADDR``
     * - ``in``
       - ``{$ADDR[,...]}``
-    * - :rspan:`2` Source network
-      - :rspan:`2` ``ip4.snet``
+    * - :rspan:`1` Source network
+      - :rspan:`1` ``ip4.snet``
       - ``eq``
-      - :rspan:`1` ``$ADDR/$MASK``
-      - :rspan:`5` ``$ADDR`` is an IPv4 network address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255, ``$MASK`` is a subnet mask in the range 0 to 32.
-    * - ``not``
+      - ``$ADDR/$MASK``
+      - :rspan:`3` ``$ADDR`` is an IPv4 network address in dotted-decimal format, \"ddd.ddd.ddd.ddd\", where ddd is a decimal number of up to three digits in the range 0 to 255, ``$MASK`` is a subnet mask in the range 0 to 32.
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - :rspan:`2` Destination network
-      - :rspan:`2` ``ip4.dnet``
+    * - :rspan:`1` Destination network
+      - :rspan:`1` ``ip4.dnet``
       - ``eq``
-      - :rspan:`1` ``$ADDR/$MASK``
-    * - ``not``
+      - ``$ADDR/$MASK``
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - :rspan:`1` Protocol
-      - :rspan:`1` ``ip4.proto``
+    * - Protocol
+      - ``ip4.proto``
       - ``eq``
-      - :rspan:`1` ``$PROTOCOL``
-      - :rspan:`1` ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
-    * - ``not``
-    * - :rspan:`1` DSCP
-      - :rspan:`1` ``ip4.dscp``
+      - ``$PROTOCOL``
+      - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
+    * - DSCP
+      - ``ip4.dscp``
       - ``eq``
-      - :rspan:`1` ``$DSCP``
-      - :rspan:`1` ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
-    * - ``not``
+      - ``$DSCP``
+      - ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
 
 
 IPv6
@@ -667,48 +657,42 @@ IPv6
       - Operator
       - Payload
       - Notes
-    * - :rspan:`2` Source address
-      - :rspan:`2` ``ip6.saddr``
+    * - :rspan:`1` Source address
+      - :rspan:`1` ``ip6.saddr``
       - ``eq``
-      - :rspan:`1` ``$ADDR``
-      - :rspan:`5` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported). To filter on an IPv6 network (using an IPv6 address and a subnet mask), see ``ip6.snet`` or ``ip6.dnet``.
-    * - ``not``
+      - ``$ADDR``
+      - :rspan:`3` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported). To filter on an IPv6 network (using an IPv6 address and a subnet mask), see ``ip6.snet`` or ``ip6.dnet``.
     * - ``in``
       - ``{$ADDR[,...]}``
-    * - :rspan:`2` Destination address
-      - :rspan:`2` ``ip6.daddr``
+    * - :rspan:`1` Destination address
+      - :rspan:`1` ``ip6.daddr``
       - ``eq``
-      - :rspan:`1` ``$ADDR``
-    * - ``not``
+      - ``$ADDR``
     * - ``in``
       - ``{$ADDR[,...]}``
-    * - :rspan:`2` Source network
-      - :rspan:`2` ``ip6.snet``
+    * - :rspan:`1` Source network
+      - :rspan:`1` ``ip6.snet``
       - ``eq``
-      - :rspan:`1` ``$ADDR/$MASK``
-      - :rspan:`5` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported), ``$MASK`` is a subnet mask in the range 0 to 128.
-    * - ``not``
+      - ``$ADDR/$MASK``
+      - :rspan:`3` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported), ``$MASK`` is a subnet mask in the range 0 to 128.
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - :rspan:`2` Destination network
-      - :rspan:`2` ``ip6.dnet``
+    * - :rspan:`1` Destination network
+      - :rspan:`1` ``ip6.dnet``
       - ``eq``
-      - :rspan:`1` ``$ADDR/$MASK``
-    * - ``not``
+      - ``$ADDR/$MASK``
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - :rspan:`1` Next header
-      - :rspan:`1` ``ip6.nexthdr``
+    * - Next header
+      - ``ip6.nexthdr``
       - ``eq``
-      - :rspan:`1` ``$NEXT_HEADER``
-      - :rspan:`1` ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
-    * - ``not``
-    * - :rspan:`1` DSCP
-      - :rspan:`1` ``ip6.dscp``
+      - ``$NEXT_HEADER``
+      - ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
+    * - DSCP
+      - ``ip6.dscp``
       - ``eq``
-      - :rspan:`1` ``$DSCP``
-      - :rspan:`1` ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
-    * - ``not``
+      - ``$DSCP``
+      - ``$DSCP`` is a `DSCP class name`_ (e.g. "ef", "cs1", "af21", case insensitive) or a numeric value (0-63, decimal or hexadecimal). "be" is accepted as an alias for "cs0".
 
 .. tip::
 
@@ -727,34 +711,31 @@ TCP
       - Operator
       - Payload
       - Notes
-    * - :rspan:`3` Source port
-      - :rspan:`3` ``tcp.sport``
+    * - :rspan:`2` Source port
+      - :rspan:`2` ``tcp.sport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``in``
       - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`3` Destination port
-      - :rspan:`3` ``tcp.dport``
+    * - :rspan:`2` Destination port
+      - :rspan:`2` ``tcp.dport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``in``
       - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`3` Flags
-      - :rspan:`3` ``tcp.flags``
+    * - :rspan:`2` Flags
+      - :rspan:`2` ``tcp.flags``
       - ``eq``
-      - :rspan:`3` ``$FLAG[,...]``
-      - :rspan:`3` ``$FLAG`` is a comma-separated list of one or more TCP flags (``fin``, ``syn``, ``rst``, ``psh``, ``ack``, ``urg``, ``ece``, or ``cwr``). Flags are case-insensitive.
-    * - ``not``
+      - :rspan:`2` ``$FLAG[,...]``
+      - :rspan:`2` ``$FLAG`` is a comma-separated list of one or more TCP flags (``fin``, ``syn``, ``rst``, ``psh``, ``ack``, ``urg``, ``ece``, or ``cwr``). Flags are case-insensitive.
     * - ``any``
     * - ``all``
 
@@ -763,9 +744,14 @@ TCP
    The ``tcp.flags`` operators can be confusing, as they can be used to match all, some, or none of the flags available in the TCP header. This section aims to provide clarity to their exact behavior:
 
    - ``eq``: the TCP header must contain the exact same flags as defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn,ack``, but not ``syn,ack,fin`` nor ``rst``.
-   - ``not``: opposite of ``eq``, the TCP header must not contain the exact same flags as defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn,ack,fin`` or ``rst``, but not ``syn,ack``.
-   - ``any``: the TCP header must contain any of the flags defined in the rule. The matcher ``tcp.flags eq syn,ack`` will match ``syn``, or ``ack``, or ``syn,ack``, but not ``fin``.
+   - ``any``: the TCP header must contain any of the flags defined in the rule. The matcher ``tcp.flags any syn,ack`` will match ``syn``, or ``ack``, or ``syn,ack``, but not ``fin``.
    - ``all``: the TCP header must contain at least the flags defined in the rule. The matcher ``tcp.flags all syn,ack`` will match ``syn,ack,fin``, but not ``syn``, or ``ack,fin``.
+
+   Each operator can be negated with ``not`` to invert the match:
+
+   - ``not eq``: the TCP header must not contain the exact same flags. The matcher ``tcp.flags not eq syn`` will match ``ack``, or ``syn,ack``, but not ``syn`` alone.
+   - ``not any``: none of the specified flags may be present. The matcher ``tcp.flags not any syn,ack`` will match ``fin`` or ``rst``, but not ``syn``, ``ack``, or ``syn,ack``.
+   - ``not all``: not all of the specified flags are present. The matcher ``tcp.flags not all syn,ack`` will match ``syn`` or ``ack`` alone, but not ``syn,ack`` or ``syn,ack,fin``.
 
 
 UDP
@@ -781,23 +767,21 @@ UDP
       - Operator
       - Payload
       - Notes
-    * - :rspan:`3` Source port
-      - :rspan:`3` ``udp.sport``
+    * - :rspan:`2` Source port
+      - :rspan:`2` ``udp.sport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``in``
       - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`3` Destination port
-      - :rspan:`3` ``udp.dport``
+    * - :rspan:`2` Destination port
+      - :rspan:`2` ``udp.dport``
       - ``eq``
-      - :rspan:`1` ``$PORT``
-      - :rspan:`2` ``$PORT`` must be a valid decimal port number.
-    * - ``not``
+      - ``$PORT``
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
     * - ``in``
       - ``{$PORT[;...]}``
     * - ``range``
@@ -817,18 +801,16 @@ ICMP
       - Operator
       - Payload
       - Notes
-    * - :rspan:`1` Type
-      - :rspan:`1` ``icmp.type``
+    * - Type
+      - ``icmp.type``
       - ``eq``
-      - :rspan:`1` ``$TYPE``
-      - :rspan:`1` ``$TYPE`` is an ICMP type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMP type value`_.
-    * - ``not``
-    * - :rspan:`1` Code
-      - :rspan:`1` ``icmp.code``
+      - ``$TYPE``
+      - ``$TYPE`` is an ICMP type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMP type value`_.
+    * - Code
+      - ``icmp.code``
       - ``eq``
-      - :rspan:`1` ``$CODE``
-      - :rspan:`1` ``$CODE`` is a decimal or hexadecimal `ICMP code value`_.
-    * - ``not``
+      - ``$CODE``
+      - ``$CODE`` is a decimal or hexadecimal `ICMP code value`_.
 
 .. tip::
 
@@ -847,18 +829,16 @@ ICMPv6
       - Operator
       - Payload
       - Notes
-    * - :rspan:`1` Type
-      - :rspan:`1` ``icmpv6.type``
+    * - Type
+      - ``icmpv6.type``
       - ``eq``
-      - :rspan:`1` ``$TYPE``
-      - :rspan:`1` ``$TYPE`` is an ICMPv6 type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMPv6 type value`_.
-    * - ``not``
-    * - :rspan:`1` Code
-      - :rspan:`1` ``icmpv6.code``
+      - ``$TYPE``
+      - ``$TYPE`` is an ICMPv6 type name (e.g. "echo-reply", case insensitive), or a decimal or hexadecimal `ICMPv6 type value`_.
+    * - Code
+      - ``icmpv6.code``
       - ``eq``
-      - :rspan:`1` ``$CODE``
-      - :rspan:`1` ``$CODE`` is a decimal or hexadecimal `ICMPv6 code value`_.
-    * - ``not``
+      - ``$CODE``
+      - ``$CODE`` is a decimal or hexadecimal `ICMPv6 code value`_.
 
 .. tip::
 

@@ -109,7 +109,7 @@ static void add_matcher(void **state)
     assert_non_null(matcher0 = bft_matcher_dummy("hello", 6));
     assert_ok(bf_rule_add_matcher(
         rule, bf_matcher_get_type(matcher0), bf_matcher_get_op(matcher0),
-        bf_matcher_payload(matcher0), bf_matcher_payload_len(matcher0)));
+        bf_matcher_payload(matcher0), bf_matcher_payload_len(matcher0), false));
     assert_int_equal(bf_list_size(&rule->matchers), 1);
     assert_true(bft_matcher_equal(
         matcher0, bf_list_node_get_data(bf_list_get_tail(&rule->matchers))));
@@ -117,7 +117,7 @@ static void add_matcher(void **state)
     assert_non_null(matcher1 = bft_matcher_dummy("", 1));
     assert_ok(bf_rule_add_matcher(
         rule, bf_matcher_get_type(matcher1), bf_matcher_get_op(matcher1),
-        bf_matcher_payload(matcher1), bf_matcher_payload_len(matcher1)));
+        bf_matcher_payload(matcher1), bf_matcher_payload_len(matcher1), false));
     assert_int_equal(bf_list_size(&rule->matchers), 2);
     assert_true(bft_matcher_equal(
         matcher1, bf_list_node_get_data(bf_list_get_tail(&rule->matchers))));

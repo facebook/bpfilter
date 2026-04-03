@@ -21,7 +21,7 @@ static void new_and_free(void **state)
 
     // Create matcher with payload
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
-                             payload, sizeof(payload)));
+                             payload, sizeof(payload), false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_IP4_SADDR);
     assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
@@ -32,7 +32,7 @@ static void new_and_free(void **state)
     // Create matcher with small payload
     uint8_t proto = 6; // TCP
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                             &proto, sizeof(proto)));
+                             &proto, sizeof(proto), false));
     assert_non_null(matcher);
 }
 
@@ -44,7 +44,7 @@ static void new_with_payload(void **state)
     (void)state;
 
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
-                             &addr, sizeof(addr)));
+                             &addr, sizeof(addr), false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_payload_len(matcher), sizeof(addr));
     assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), addr);
@@ -57,20 +57,28 @@ static void getters(void **state)
 
     (void)state;
 
-    assert_ok(bf_matcher_new(&matcher, BF_MATCHER_TCP_DPORT, BF_MATCHER_NE,
-                             payload, sizeof(payload)));
+    assert_ok(bf_matcher_new(&matcher, BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                             payload, sizeof(payload), false));
 
     // Test all getters
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_TCP_DPORT);
-    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_NE);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
     assert_int_equal(bf_matcher_payload_len(matcher), sizeof(payload));
     assert_non_null(bf_matcher_payload(matcher));
     assert_true(bf_matcher_len(matcher) > 0);
+    assert_false(bf_matcher_get_negate(matcher));
 
     // Verify payload content
     const uint8_t *p = bf_matcher_payload(matcher);
     for (size_t i = 0; i < sizeof(payload); ++i)
         assert_int_equal(p[i], payload[i]);
+
+    bf_matcher_free(&matcher);
+
+    // Test negate=true at construction
+    assert_ok(bf_matcher_new(&matcher, BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                             payload, sizeof(payload), true));
+    assert_true(bf_matcher_get_negate(matcher));
 }
 
 static void pack_and_unpack(void **state)
@@ -87,7 +95,7 @@ static void pack_and_unpack(void **state)
 
     // Create and pack source matcher
     assert_ok(bf_matcher_new(&source, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
-                             &port, sizeof(port)));
+                             &port, sizeof(port), false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -114,7 +122,7 @@ static void pack_and_unpack_small_payload(void **state)
 
     // Create matcher with small payload
     assert_ok(bf_matcher_new(&source, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                             &proto, sizeof(proto)));
+                             &proto, sizeof(proto), false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -126,6 +134,63 @@ static void pack_and_unpack_small_payload(void **state)
     assert_true(bft_matcher_equal(source, destination));
 }
 
+static void pack_and_unpack_with_negate(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+    uint16_t port = htons(80);
+
+    (void)state;
+
+    // Create source matcher with negate=true
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                             &port, sizeof(port), true));
+    assert_true(bf_matcher_get_negate(source));
+
+    // Pack and unpack
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    // Verify negate round-trips correctly
+    assert_true(bf_matcher_get_negate(destination));
+    assert_true(bft_matcher_equal(source, destination));
+}
+
+static void unpack_without_negate_defaults_false(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    const void *data;
+    size_t data_len;
+    uint16_t port = htons(80);
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_int(wpack, "type", BF_MATCHER_TCP_SPORT);
+    bf_wpack_kv_int(wpack, "op", BF_MATCHER_EQ);
+    bf_wpack_kv_bin(wpack, "payload", &port, sizeof(port));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack)));
+
+    assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_TCP_SPORT);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
+    assert_false(bf_matcher_get_negate(matcher));
+    assert_int_equal(bf_matcher_payload_len(matcher), sizeof(port));
+    assert_memory_equal(bf_matcher_payload(matcher), &port, sizeof(port));
+}
+
 static void dump(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -135,7 +200,7 @@ static void dump(void **state)
     (void)state;
 
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
-                             payload, sizeof(payload)));
+                             payload, sizeof(payload), false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -148,7 +213,7 @@ static void dump_small_payload(void **state)
     (void)state;
 
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                             &proto, sizeof(proto)));
+                             &proto, sizeof(proto), false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -161,7 +226,7 @@ static void dump_ipv4_addr(void **state)
 
     // Test dumping IPv4 address matcher (tests _bf_print_ipv4_addr)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DADDR,
-                                      BF_MATCHER_EQ, "10.0.0.1"));
+                                      BF_MATCHER_EQ, "10.0.0.1", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -174,7 +239,7 @@ static void dump_ipv6_addr(void **state)
 
     // Test dumping IPv6 address matcher (tests _bf_print_ipv6_addr)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SADDR,
-                                      BF_MATCHER_EQ, "2001:db8::1"));
+                                      BF_MATCHER_EQ, "2001:db8::1", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -187,12 +252,12 @@ static void dump_port(void **state)
 
     // Test dumping port matcher (tests _bf_print_port)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_DPORT,
-                                      BF_MATCHER_EQ, "443"));
+                                      BF_MATCHER_EQ, "443", false));
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_UDP_SPORT,
-                                      BF_MATCHER_EQ, "53"));
+                                      BF_MATCHER_EQ, "53", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -205,12 +270,12 @@ static void dump_l4_proto(void **state)
 
     // Test dumping L4 protocol matcher (tests _bf_print_l4_proto)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "tcp"));
+                                      BF_MATCHER_EQ, "tcp", false));
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "icmp"));
+                                      BF_MATCHER_EQ, "icmp", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -224,7 +289,7 @@ static void dump_tcp_flags(void **state)
 
     // Test dumping TCP flags matcher (tests _bf_print_tcp_flags)
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY,
-                             &flags, sizeof(flags)));
+                             &flags, sizeof(flags), false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -237,7 +302,7 @@ static void dump_icmp_type(void **state)
 
     // Test dumping ICMP type matcher (tests _bf_print_icmp_type)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_TYPE,
-                                      BF_MATCHER_EQ, "echo-request"));
+                                      BF_MATCHER_EQ, "echo-request", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -250,12 +315,12 @@ static void dump_various_ops(void **state)
 
     // Test different operators
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_DPORT,
-                                      BF_MATCHER_NE, "80"));
+                                      BF_MATCHER_RANGE, "80-443", false));
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_IN, "udp"));
+                                      BF_MATCHER_IN, "udp", false));
     bf_matcher_dump(matcher, &prefix);
 }
 
@@ -492,7 +557,7 @@ static void get_ops(void **state)
     ops = bf_matcher_get_ops(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ);
     assert_non_null(ops);
 
-    ops = bf_matcher_get_ops(BF_MATCHER_TCP_DPORT, BF_MATCHER_NE);
+    ops = bf_matcher_get_ops(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE);
     assert_non_null(ops);
 
     // Not all combinations are valid, so some may return NULL
@@ -512,7 +577,7 @@ static void meta_iface(void **state)
 
     // Test with numeric interface index
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                      BF_MATCHER_EQ, "1"));
+                                      BF_MATCHER_EQ, "1", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_META_IFACE);
     assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
@@ -521,7 +586,7 @@ static void meta_iface(void **state)
 
     // Test with interface index as string
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                      BF_MATCHER_EQ, "42"));
+                                      BF_MATCHER_EQ, "42", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -534,15 +599,16 @@ static void meta_iface_invalid(void **state)
 
     // Test with invalid interface index (negative)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                       BF_MATCHER_EQ, "-1"));
+                                       BF_MATCHER_EQ, "-1", false));
 
     // Test with invalid interface index (too large)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                       BF_MATCHER_EQ, "999999999999"));
+                                       BF_MATCHER_EQ, "999999999999", false));
 
     // Test with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                       BF_MATCHER_EQ, "invalid_iface_name"));
+                                       BF_MATCHER_EQ, "invalid_iface_name",
+                                       false));
 }
 
 static void meta_l3_proto(void **state)
@@ -554,28 +620,29 @@ static void meta_l3_proto(void **state)
 
     // Test with IPv4 ethertype string
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                      BF_MATCHER_EQ, "ipv4"));
+                                      BF_MATCHER_EQ, "ipv4", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with IPv6 ethertype string
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                      BF_MATCHER_EQ, "ipv6"));
+                                      BF_MATCHER_EQ, "ipv6", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with decimal ethertype
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                      BF_MATCHER_EQ, "2048")); // 0x0800 (IPv4)
+                                      BF_MATCHER_EQ, "2048",
+                                      false)); // 0x0800 (IPv4)
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with hexadecimal ethertype
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                      BF_MATCHER_EQ, "0x86DD")); // IPv6
+                                      BF_MATCHER_EQ, "0x86DD", false)); // IPv6
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -589,7 +656,7 @@ static void meta_probability(void **state)
 
     // Test with 0%
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "0%"));
+                                      BF_MATCHER_EQ, "0%", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_payload_len(matcher), sizeof(float));
     assert_true(*(float *)bf_matcher_payload(matcher) == 0.0f);
@@ -598,7 +665,7 @@ static void meta_probability(void **state)
 
     // Test with 50%
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "50%"));
+                                      BF_MATCHER_EQ, "50%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) == 50.0f);
     bf_matcher_dump(matcher, &prefix);
@@ -606,7 +673,7 @@ static void meta_probability(void **state)
 
     // Test with 100%
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "100%"));
+                                      BF_MATCHER_EQ, "100%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) == 100.0f);
     bf_matcher_dump(matcher, &prefix);
@@ -614,7 +681,7 @@ static void meta_probability(void **state)
 
     // Test with floating-point value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "33.33%"));
+                                      BF_MATCHER_EQ, "33.33%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) > 33.32f);
     assert_true(*(float *)bf_matcher_payload(matcher) < 33.34f);
@@ -623,7 +690,7 @@ static void meta_probability(void **state)
 
     // Test with small floating-point value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "0.1%"));
+                                      BF_MATCHER_EQ, "0.1%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) > 0.09f);
     assert_true(*(float *)bf_matcher_payload(matcher) < 0.11f);
@@ -638,19 +705,19 @@ static void meta_probability_invalid(void **state)
 
     // Test with value over 100%
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                       BF_MATCHER_EQ, "101%"));
+                                       BF_MATCHER_EQ, "101%", false));
 
     // Test with value slightly over 100%
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                       BF_MATCHER_EQ, "100.01%"));
+                                       BF_MATCHER_EQ, "100.01%", false));
 
     // Test without % sign
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                       BF_MATCHER_EQ, "50"));
+                                       BF_MATCHER_EQ, "50", false));
 
     // Test with negative value
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                       BF_MATCHER_EQ, "-10%"));
+                                       BF_MATCHER_EQ, "-10%", false));
 }
 
 static void meta_probability_pack_unpack(void **state)
@@ -666,7 +733,7 @@ static void meta_probability_pack_unpack(void **state)
 
     // Test pack/unpack with integer percentage
     assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "50%"));
+                                      BF_MATCHER_EQ, "50%", false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -682,7 +749,7 @@ static void meta_probability_pack_unpack(void **state)
 
     // Test pack/unpack with floating-point percentage
     assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "33.33%"));
+                                      BF_MATCHER_EQ, "33.33%", false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -702,28 +769,28 @@ static void meta_sport_dport(void **state)
 
     // Test META_SPORT with EQ
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                      BF_MATCHER_EQ, "8080"));
+                                      BF_MATCHER_EQ, "8080", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test META_SPORT with NE
+    // Test META_SPORT with EQ
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                      BF_MATCHER_NE, "22"));
+                                      BF_MATCHER_EQ, "22", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test META_DPORT with EQ
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_DPORT,
-                                      BF_MATCHER_EQ, "443"));
+                                      BF_MATCHER_EQ, "443", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test META_DPORT with NE
+    // Test META_DPORT with EQ
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_DPORT,
-                                      BF_MATCHER_NE, "80"));
+                                      BF_MATCHER_EQ, "80", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -737,7 +804,7 @@ static void meta_sport_dport_range(void **state)
 
     // Test META_SPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                      BF_MATCHER_RANGE, "1024-65535"));
+                                      BF_MATCHER_RANGE, "1024-65535", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_payload_len(matcher), 2 * sizeof(uint16_t));
     bf_matcher_dump(matcher, &prefix);
@@ -745,14 +812,14 @@ static void meta_sport_dport_range(void **state)
 
     // Test META_DPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_DPORT,
-                                      BF_MATCHER_RANGE, "8000-9000"));
+                                      BF_MATCHER_RANGE, "8000-9000", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test single port range (min == max)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                      BF_MATCHER_RANGE, "80-80"));
+                                      BF_MATCHER_RANGE, "80-80", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -765,23 +832,23 @@ static void meta_sport_dport_range_invalid(void **state)
 
     // Test with reversed range (max < min)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                       BF_MATCHER_RANGE, "9000-8000"));
+                                       BF_MATCHER_RANGE, "9000-8000", false));
 
     // Test with missing end port
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                       BF_MATCHER_RANGE, "8000-"));
+                                       BF_MATCHER_RANGE, "8000-", false));
 
     // Test with missing start port
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                       BF_MATCHER_RANGE, "-9000"));
+                                       BF_MATCHER_RANGE, "-9000", false));
 
     // Test with no delimiter
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                       BF_MATCHER_RANGE, "8000"));
+                                       BF_MATCHER_RANGE, "8000", false));
 
     // Test with invalid port number
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                       BF_MATCHER_RANGE, "1024-70000"));
+                                       BF_MATCHER_RANGE, "1024-70000", false));
 }
 
 static void meta_mark(void **state)
@@ -793,7 +860,7 @@ static void meta_mark(void **state)
 
     // Test with decimal mark
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                      BF_MATCHER_EQ, "42"));
+                                      BF_MATCHER_EQ, "42", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 42);
     bf_matcher_dump(matcher, &prefix);
@@ -801,15 +868,15 @@ static void meta_mark(void **state)
 
     // Test with hexadecimal mark
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                      BF_MATCHER_EQ, "0x1234"));
+                                      BF_MATCHER_EQ, "0x1234", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 0x1234);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with NE operator
+    // Test with EQ operator
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                      BF_MATCHER_NE, "0"));
+                                      BF_MATCHER_EQ, "0", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -822,15 +889,15 @@ static void meta_mark_invalid(void **state)
 
     // Test with negative value
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                       BF_MATCHER_EQ, "-1"));
+                                       BF_MATCHER_EQ, "-1", false));
 
     // Test with value too large (> UINT32_MAX)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                       BF_MATCHER_EQ, "0x100000000"));
+                                       BF_MATCHER_EQ, "0x100000000", false));
 
     // Test with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                       BF_MATCHER_EQ, "not_a_number"));
+                                       BF_MATCHER_EQ, "not_a_number", false));
 }
 
 static void new_from_raw_ip4_addr(void **state)
@@ -841,7 +908,7 @@ static void new_from_raw_ip4_addr(void **state)
 
     // Test IPv4 address parsing
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SADDR,
-                                      BF_MATCHER_EQ, "192.168.1.1"));
+                                      BF_MATCHER_EQ, "192.168.1.1", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_IP4_SADDR);
     assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
@@ -849,7 +916,7 @@ static void new_from_raw_ip4_addr(void **state)
 
     // Test with CIDR notation (use SNET for network matching)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                      BF_MATCHER_IN, "10.0.0.0/8"));
+                                      BF_MATCHER_IN, "10.0.0.0/8", false));
     assert_non_null(matcher);
 }
 
@@ -861,12 +928,12 @@ static void new_from_raw_ip6_addr(void **state)
 
     // Test IPv6 address parsing
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DADDR,
-                                      BF_MATCHER_EQ, "::1"));
+                                      BF_MATCHER_EQ, "::1", false));
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DADDR,
-                                      BF_MATCHER_EQ, "2001:db8::1"));
+                                      BF_MATCHER_EQ, "2001:db8::1", false));
     assert_non_null(matcher);
 }
 
@@ -878,12 +945,12 @@ static void new_from_raw_port(void **state)
 
     // Test port parsing
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_DPORT,
-                                      BF_MATCHER_EQ, "80"));
+                                      BF_MATCHER_EQ, "80", false));
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_UDP_SPORT,
-                                      BF_MATCHER_EQ, "53"));
+                                      BF_MATCHER_EQ, "53", false));
     assert_non_null(matcher);
 }
 
@@ -895,18 +962,18 @@ static void new_from_raw_proto(void **state)
 
     // Test protocol parsing
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "tcp"));
+                                      BF_MATCHER_EQ, "tcp", false));
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "udp"));
+                                      BF_MATCHER_EQ, "udp", false));
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
     // Test with numeric value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "6"));
+                                      BF_MATCHER_EQ, "6", false));
     assert_non_null(matcher);
 }
 
@@ -918,15 +985,16 @@ static void new_from_raw_invalid(void **state)
 
     // Test invalid IPv4 address
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SADDR,
-                                       BF_MATCHER_EQ, "999.999.999.999"));
+                                       BF_MATCHER_EQ, "999.999.999.999",
+                                       false));
 
     // Test invalid port
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_DPORT,
-                                       BF_MATCHER_EQ, "99999"));
+                                       BF_MATCHER_EQ, "99999", false));
 
     // Test invalid protocol
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                       BF_MATCHER_EQ, "invalid_proto"));
+                                       BF_MATCHER_EQ, "invalid_proto", false));
 }
 
 static void ipv4_network_matchers(void **state)
@@ -938,28 +1006,28 @@ static void ipv4_network_matchers(void **state)
 
     // Test IP4_SNET
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                      BF_MATCHER_IN, "192.168.0.0/16"));
+                                      BF_MATCHER_IN, "192.168.0.0/16", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test IP4_DNET with /8
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DNET,
-                                      BF_MATCHER_EQ, "10.0.0.0/8"));
+                                      BF_MATCHER_EQ, "10.0.0.0/8", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with /32 (single host)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                      BF_MATCHER_NE, "127.0.0.1/32"));
+                                      BF_MATCHER_EQ, "127.0.0.1/32", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with /24
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DNET,
-                                      BF_MATCHER_IN, "172.16.0.0/12"));
+                                      BF_MATCHER_IN, "172.16.0.0/12", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -973,28 +1041,28 @@ static void ipv6_network_matchers(void **state)
 
     // Test IP6_SNET
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SNET,
-                                      BF_MATCHER_IN, "2001:db8::/32"));
+                                      BF_MATCHER_IN, "2001:db8::/32", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test IP6_DNET
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DNET,
-                                      BF_MATCHER_EQ, "fe80::/10"));
+                                      BF_MATCHER_EQ, "fe80::/10", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with /128 (single host)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SNET,
-                                      BF_MATCHER_NE, "::1/128"));
+                                      BF_MATCHER_EQ, "::1/128", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with abbreviated IPv6
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DNET,
-                                      BF_MATCHER_IN, "ff00::/8"));
+                                      BF_MATCHER_IN, "ff00::/8", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -1007,15 +1075,16 @@ static void ipv4_network_invalid(void **state)
 
     // Test with missing prefix length
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                       BF_MATCHER_IN, "192.168.0.0"));
+                                       BF_MATCHER_IN, "192.168.0.0", false));
 
     // Test with invalid prefix length (> 32)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                       BF_MATCHER_IN, "192.168.0.0/33"));
+                                       BF_MATCHER_IN, "192.168.0.0/33", false));
 
     // Test with invalid IP address
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DNET,
-                                       BF_MATCHER_IN, "999.999.999.999/8"));
+                                       BF_MATCHER_IN, "999.999.999.999/8",
+                                       false));
 }
 
 static void ipv6_network_invalid(void **state)
@@ -1026,15 +1095,15 @@ static void ipv6_network_invalid(void **state)
 
     // Test with missing prefix length
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SNET,
-                                       BF_MATCHER_IN, "2001:db8::1"));
+                                       BF_MATCHER_IN, "2001:db8::1", false));
 
     // Test with invalid prefix length (> 128)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SNET,
-                                       BF_MATCHER_IN, "2001:db8::/129"));
+                                       BF_MATCHER_IN, "2001:db8::/129", false));
 
     // Test with invalid IPv6 address
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DNET,
-                                       BF_MATCHER_IN, "gggg::/64"));
+                                       BF_MATCHER_IN, "gggg::/64", false));
 }
 
 static void icmp_code(void **state)
@@ -1046,21 +1115,21 @@ static void icmp_code(void **state)
 
     // Test ICMP code with decimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                      BF_MATCHER_EQ, "0"));
+                                      BF_MATCHER_EQ, "0", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with different code value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                      BF_MATCHER_NE, "3"));
+                                      BF_MATCHER_EQ, "3", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with hexadecimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                      BF_MATCHER_EQ, "0x0a"));
+                                      BF_MATCHER_EQ, "0x0a", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -1074,21 +1143,21 @@ static void icmpv6_code(void **state)
 
     // Test ICMPv6 code with decimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_CODE,
-                                      BF_MATCHER_EQ, "0"));
+                                      BF_MATCHER_EQ, "0", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with NE operator
+    // Test with EQ operator
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_CODE,
-                                      BF_MATCHER_NE, "1"));
+                                      BF_MATCHER_EQ, "1", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with hexadecimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_CODE,
-                                      BF_MATCHER_IN, "0x05"));
+                                      BF_MATCHER_IN, "0x05", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -1103,7 +1172,7 @@ static void ip6_dscp(void **state)
 
     // Test IPv6 DSCP with decimal value 0 (minimum)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "0"));
+                                      BF_MATCHER_EQ, "0", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
     bf_matcher_dump(matcher, &prefix);
@@ -1111,7 +1180,7 @@ static void ip6_dscp(void **state)
 
     // Test with decimal value 63 (maximum DSCP)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "63"));
+                                      BF_MATCHER_EQ, "63", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
@@ -1119,22 +1188,22 @@ static void ip6_dscp(void **state)
 
     // Test with DSCP value 46 (EF - Expedited Forwarding)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "46"));
+                                      BF_MATCHER_EQ, "46", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
-    // Test with NE operator
+    // Test with EQ operator
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_NE, "8"));
+                                      BF_MATCHER_EQ, "8", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with hexadecimal value (0x2e = 46)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "0x2e"));
+                                      BF_MATCHER_EQ, "0x2e", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
     bf_matcher_dump(matcher, &prefix);
@@ -1142,7 +1211,7 @@ static void ip6_dscp(void **state)
 
     // Test with hexadecimal value (0x3f = 63)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "0x3f"));
+                                      BF_MATCHER_EQ, "0x3f", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
@@ -1150,21 +1219,21 @@ static void ip6_dscp(void **state)
 
     // Test with class name keyword
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "ef"));
+                                      BF_MATCHER_EQ, "ef", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
     bf_matcher_free(&matcher);
 
     // Test with BE alias (case insensitive)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "BE"));
+                                      BF_MATCHER_EQ, "BE", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
     bf_matcher_free(&matcher);
 
     // Test print function via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                      BF_MATCHER_EQ, "0x20"));
+                                      BF_MATCHER_EQ, "0x20", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP6_DSCP, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1179,19 +1248,19 @@ static void ip6_dscp_invalid(void **state)
 
     // Test with value > 63
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "64"));
+                                       BF_MATCHER_EQ, "64", false));
 
     // Test with invalid class name
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "cs8"));
+                                       BF_MATCHER_EQ, "cs8", false));
 
     // Test with negative value
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "-1"));
+                                       BF_MATCHER_EQ, "-1", false));
 
     // Test with value > 0x3f in hex
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DSCP,
-                                       BF_MATCHER_EQ, "0x40"));
+                                       BF_MATCHER_EQ, "0x40", false));
 }
 
 static void icmpv6_type(void **state)
@@ -1203,7 +1272,7 @@ static void icmpv6_type(void **state)
 
     // Test ICMPv6 type with string name (tests _bf_parse_icmpv6_type)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_EQ, "echo-request"));
+                                      BF_MATCHER_EQ, "echo-request", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 128);
     bf_matcher_dump(matcher, &prefix);
@@ -1211,7 +1280,7 @@ static void icmpv6_type(void **state)
 
     // Test with echo-reply
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_EQ, "echo-reply"));
+                                      BF_MATCHER_EQ, "echo-reply", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 129);
     bf_matcher_dump(matcher, &prefix);
@@ -1219,23 +1288,23 @@ static void icmpv6_type(void **state)
 
     // Test with decimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_NE, "128"));
+                                      BF_MATCHER_EQ, "128", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with hexadecimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_IN,
-                                      "0x81")); // 129 (echo-reply)
+                                      BF_MATCHER_IN, "0x81",
+                                      false)); // 129 (echo-reply)
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with another named type
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_EQ,
-                                      "destination-unreachable"));
+                                      BF_MATCHER_EQ, "destination-unreachable",
+                                      false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 1);
     bf_matcher_dump(matcher, &prefix);
@@ -1250,7 +1319,7 @@ static void tcp_port_range(void **state)
 
     // Test TCP_SPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_SPORT,
-                                      BF_MATCHER_RANGE, "1024-2048"));
+                                      BF_MATCHER_RANGE, "1024-2048", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_payload_len(matcher), 2 * sizeof(uint16_t));
     bf_matcher_dump(matcher, &prefix);
@@ -1258,7 +1327,7 @@ static void tcp_port_range(void **state)
 
     // Test TCP_DPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_DPORT,
-                                      BF_MATCHER_RANGE, "80-443"));
+                                      BF_MATCHER_RANGE, "80-443", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -1272,14 +1341,14 @@ static void udp_port_range(void **state)
 
     // Test UDP_SPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_UDP_SPORT,
-                                      BF_MATCHER_RANGE, "5000-6000"));
+                                      BF_MATCHER_RANGE, "5000-6000", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test UDP_DPORT with RANGE
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_UDP_DPORT,
-                                      BF_MATCHER_RANGE, "53-53"));
+                                      BF_MATCHER_RANGE, "53-53", false));
     assert_non_null(matcher);
     bf_matcher_dump(matcher, &prefix);
 }
@@ -1293,7 +1362,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_iface via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_IFACE,
-                                      BF_MATCHER_EQ, "1"));
+                                      BF_MATCHER_EQ, "1", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_IFACE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1302,7 +1371,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_l3_proto via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                      BF_MATCHER_EQ, "ipv4"));
+                                      BF_MATCHER_EQ, "ipv4", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1311,7 +1380,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_l4_proto via ops (using META_L4_PROTO)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L4_PROTO,
-                                      BF_MATCHER_EQ, "tcp"));
+                                      BF_MATCHER_EQ, "tcp", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1320,7 +1389,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_l4_proto via ops (using IP4_PROTO)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "udp"));
+                                      BF_MATCHER_EQ, "udp", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1329,7 +1398,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_l4_port via ops (using TCP_SPORT)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_SPORT,
-                                      BF_MATCHER_EQ, "8080"));
+                                      BF_MATCHER_EQ, "8080", false));
     ops = bf_matcher_get_ops(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1338,7 +1407,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_l4_port_range via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_SPORT,
-                                      BF_MATCHER_RANGE, "1024-65535"));
+                                      BF_MATCHER_RANGE, "1024-65535", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1347,7 +1416,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_probability via ops (integer value)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "50%"));
+                                      BF_MATCHER_EQ, "50%", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1356,7 +1425,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_probability via ops (fractional value)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PROBABILITY,
-                                      BF_MATCHER_EQ, "33.33%"));
+                                      BF_MATCHER_EQ, "33.33%", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1364,8 +1433,9 @@ static void print_functions(void **state)
     bf_matcher_free(&matcher);
 
     // Test _bf_print_probability via ops (flow_probability, integer value)
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "50%", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1373,8 +1443,9 @@ static void print_functions(void **state)
     bf_matcher_free(&matcher);
 
     // Test _bf_print_probability via ops (flow_probability, fractional value)
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "33.33%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "33.33%", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1383,7 +1454,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_mark via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
-                                      BF_MATCHER_EQ, "0x1234"));
+                                      BF_MATCHER_EQ, "0x1234", false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_MARK, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1392,7 +1463,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_ipv4_addr via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SADDR,
-                                      BF_MATCHER_EQ, "192.168.1.1"));
+                                      BF_MATCHER_EQ, "192.168.1.1", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1401,7 +1472,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_ipv4_net via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_SNET,
-                                      BF_MATCHER_IN, "192.168.0.0/16"));
+                                      BF_MATCHER_IN, "192.168.0.0/16", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP4_SNET, BF_MATCHER_IN);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1410,7 +1481,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_ipv6_addr via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_SADDR,
-                                      BF_MATCHER_EQ, "2001:db8::1"));
+                                      BF_MATCHER_EQ, "2001:db8::1", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1419,7 +1490,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_ipv6_net via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_DNET,
-                                      BF_MATCHER_IN, "2001:db8::/32"));
+                                      BF_MATCHER_IN, "2001:db8::/32", false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP6_DNET, BF_MATCHER_IN);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1428,7 +1499,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_tcp_flags via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_FLAGS,
-                                      BF_MATCHER_ANY, "syn,ack"));
+                                      BF_MATCHER_ANY, "syn,ack", false));
     ops = bf_matcher_get_ops(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1437,7 +1508,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_icmp_type via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_TYPE,
-                                      BF_MATCHER_EQ, "echo-request"));
+                                      BF_MATCHER_EQ, "echo-request", false));
     ops = bf_matcher_get_ops(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1446,7 +1517,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_icmp_code via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                      BF_MATCHER_EQ, "3"));
+                                      BF_MATCHER_EQ, "3", false));
     ops = bf_matcher_get_ops(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1455,7 +1526,7 @@ static void print_functions(void **state)
 
     // Test _bf_print_icmpv6_type via ops
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                      BF_MATCHER_EQ, "echo-request"));
+                                      BF_MATCHER_EQ, "echo-request", false));
     ops = bf_matcher_get_ops(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1471,51 +1542,56 @@ static void error_paths_parse(void **state)
 
     // Test _bf_parse_l3_proto error path with completely invalid input
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                       BF_MATCHER_EQ, "not_a_protocol"));
+                                       BF_MATCHER_EQ, "not_a_protocol", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_L3_PROTO,
-                                       BF_MATCHER_EQ, "99999")); // Too large
+                                       BF_MATCHER_EQ, "99999",
+                                       false)); // Too large
 
     // Test _bf_parse_l4_proto with valid hex values
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "0x06"));
+                                      BF_MATCHER_EQ, "0x06", false));
     bf_matcher_free(&matcher);
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                      BF_MATCHER_EQ, "0x11"));
+                                      BF_MATCHER_EQ, "0x11", false));
     bf_matcher_free(&matcher);
 
     // Test _bf_parse_l4_proto error path with invalid protocol
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                       BF_MATCHER_EQ, "xyz"));
+                                       BF_MATCHER_EQ, "xyz", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                       BF_MATCHER_EQ,
-                                       "256")); // Too large for uint8_t
+                                       BF_MATCHER_EQ, "256",
+                                       false)); // Too large for uint8_t
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_PROTO,
-                                       BF_MATCHER_EQ,
-                                       "0x100")); // Too large for uint8_t
+                                       BF_MATCHER_EQ, "0x100",
+                                       false)); // Too large for uint8_t
 
     // Test _bf_parse_tcp_flags error path with invalid flag
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_FLAGS,
-                                       BF_MATCHER_ANY, "invalid_flag"));
+                                       BF_MATCHER_ANY, "invalid_flag", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_TCP_FLAGS,
-                                       BF_MATCHER_ANY, "syn,invalid,ack"));
+                                       BF_MATCHER_ANY, "syn,invalid,ack",
+                                       false));
 
     // Test _bf_parse_icmp_code error path with invalid code
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                       BF_MATCHER_EQ, "not_a_number"));
+                                       BF_MATCHER_EQ, "not_a_number", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_CODE,
-                                       BF_MATCHER_EQ, "256")); // Too large
+                                       BF_MATCHER_EQ, "256",
+                                       false)); // Too large
 
     // Test _bf_parse_icmp_type error path with invalid type
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_TYPE,
-                                       BF_MATCHER_EQ, "invalid-type"));
+                                       BF_MATCHER_EQ, "invalid-type", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMP_TYPE,
-                                       BF_MATCHER_EQ, "999")); // Too large
+                                       BF_MATCHER_EQ, "999",
+                                       false)); // Too large
 
     // Test _bf_parse_icmpv6_type error path with invalid type
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                       BF_MATCHER_EQ, "not-a-type"));
+                                       BF_MATCHER_EQ, "not-a-type", false));
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_ICMPV6_TYPE,
-                                       BF_MATCHER_EQ, "300")); // Too large
+                                       BF_MATCHER_EQ, "300",
+                                       false)); // Too large
 }
 
 static void error_paths_print(void **state)
@@ -1533,7 +1609,7 @@ static void error_paths_print(void **state)
 
     // Test _bf_print_iface error path with invalid ifindex (name lookup fails)
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_META_IFACE, BF_MATCHER_EQ,
-                             &invalid_ifindex, sizeof(invalid_ifindex)));
+                             &invalid_ifindex, sizeof(invalid_ifindex), false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_IFACE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1543,7 +1619,8 @@ static void error_paths_print(void **state)
 
     // Test _bf_print_l3_proto error path with unknown ethertype
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
-                             &unknown_ethertype, sizeof(unknown_ethertype)));
+                             &unknown_ethertype, sizeof(unknown_ethertype),
+                             false));
     ops = bf_matcher_get_ops(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1553,7 +1630,8 @@ static void error_paths_print(void **state)
 
     // Test _bf_print_l4_proto error path with unknown protocol
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
-                             &unknown_protocol, sizeof(unknown_protocol)));
+                             &unknown_protocol, sizeof(unknown_protocol),
+                             false));
     ops = bf_matcher_get_ops(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1563,7 +1641,8 @@ static void error_paths_print(void **state)
 
     // Test _bf_print_icmp_type error path with unknown type
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
-                             &unknown_icmp_type, sizeof(unknown_icmp_type)));
+                             &unknown_icmp_type, sizeof(unknown_icmp_type),
+                             false));
     ops = bf_matcher_get_ops(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1573,8 +1652,8 @@ static void error_paths_print(void **state)
 
     // Test _bf_print_icmpv6_type error path with unknown type
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ,
-                             &unknown_icmpv6_type,
-                             sizeof(unknown_icmpv6_type)));
+                             &unknown_icmpv6_type, sizeof(unknown_icmpv6_type),
+                             false));
     ops = bf_matcher_get_ops(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ);
     assert_non_null(ops);
     assert_non_null(ops->print);
@@ -1592,55 +1671,55 @@ static void ip4_dscp(void **state)
 
     // Test ip4.dscp with decimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "16"));
+                                      BF_MATCHER_EQ, "16", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_IP4_DSCP);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with hexadecimal value
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "0x10"));
+                                      BF_MATCHER_EQ, "0x10", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0x10);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with minimum value (0)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "0"));
+                                      BF_MATCHER_EQ, "0", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with maximum value (63)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "63"));
+                                      BF_MATCHER_EQ, "63", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_free(&matcher);
 
-    // Test ip4.dscp with NE operator
+    // Test ip4.dscp with EQ operator
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_NE, "8"));
+                                      BF_MATCHER_EQ, "8", false));
     assert_non_null(matcher);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with class name keyword
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "ef"));
+                                      BF_MATCHER_EQ, "ef", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 46);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp with BE alias (case insensitive)
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "BE"));
+                                      BF_MATCHER_EQ, "BE", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 0);
     bf_matcher_free(&matcher);
 
     // Test ip4.dscp print function
     assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                      BF_MATCHER_EQ, "0x3f"));
+                                      BF_MATCHER_EQ, "0x3f", false));
     assert_non_null(matcher);
     assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), 63);
     bf_matcher_dump(matcher, &prefix);
@@ -1648,23 +1727,23 @@ static void ip4_dscp(void **state)
 
     // Test ip4.dscp with invalid value (> 63)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "64"));
+                                       BF_MATCHER_EQ, "64", false));
 
     // Test ip4.dscp with invalid hex value (> 0x3f)
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "0x40"));
+                                       BF_MATCHER_EQ, "0x40", false));
 
     // Test ip4.dscp with invalid class name
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "cs8"));
+                                       BF_MATCHER_EQ, "cs8", false));
 
     // Test ip4.dscp with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "invalid"));
+                                       BF_MATCHER_EQ, "invalid", false));
 
     // Test ip4.dscp with negative value
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP4_DSCP,
-                                       BF_MATCHER_EQ, "-1"));
+                                       BF_MATCHER_EQ, "-1", false));
 }
 
 static void meta_flow_probability(void **state)
@@ -1675,8 +1754,9 @@ static void meta_flow_probability(void **state)
     (void)state;
 
     // Test with 0%
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "0%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "0%", false));
     assert_non_null(matcher);
     assert_int_equal(bf_matcher_get_type(matcher),
                      BF_MATCHER_META_FLOW_PROBABILITY);
@@ -1687,24 +1767,27 @@ static void meta_flow_probability(void **state)
     bf_matcher_free(&matcher);
 
     // Test with 50%
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "50%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) == 50.0f);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with 100%
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "100%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "100%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) == 100.0f);
     bf_matcher_dump(matcher, &prefix);
     bf_matcher_free(&matcher);
 
     // Test with floating-point value
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "33.33%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "33.33%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) > 33.32f);
     assert_true(*(float *)bf_matcher_payload(matcher) < 33.34f);
@@ -1712,8 +1795,9 @@ static void meta_flow_probability(void **state)
     bf_matcher_free(&matcher);
 
     // Test with small floating-point value
-    assert_ok(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "0.1%"));
+    assert_ok(bf_matcher_new_from_raw(&matcher,
+                                      BF_MATCHER_META_FLOW_PROBABILITY,
+                                      BF_MATCHER_EQ, "0.1%", false));
     assert_non_null(matcher);
     assert_true(*(float *)bf_matcher_payload(matcher) > 0.09f);
     assert_true(*(float *)bf_matcher_payload(matcher) < 0.11f);
@@ -1727,20 +1811,24 @@ static void meta_flow_probability_invalid(void **state)
     (void)state;
 
     // Test with value over 100%
-    assert_err(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "101%"));
+    assert_err(bf_matcher_new_from_raw(&matcher,
+                                       BF_MATCHER_META_FLOW_PROBABILITY,
+                                       BF_MATCHER_EQ, "101%", false));
 
     // Test with value slightly over 100%
-    assert_err(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "100.01%"));
+    assert_err(bf_matcher_new_from_raw(&matcher,
+                                       BF_MATCHER_META_FLOW_PROBABILITY,
+                                       BF_MATCHER_EQ, "100.01%", false));
 
     // Test without % sign
-    assert_err(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "50"));
+    assert_err(bf_matcher_new_from_raw(&matcher,
+                                       BF_MATCHER_META_FLOW_PROBABILITY,
+                                       BF_MATCHER_EQ, "50", false));
 
     // Test with negative value
-    assert_err(bf_matcher_new_from_raw(
-        &matcher, BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, "-10%"));
+    assert_err(bf_matcher_new_from_raw(&matcher,
+                                       BF_MATCHER_META_FLOW_PROBABILITY,
+                                       BF_MATCHER_EQ, "-10%", false));
 }
 
 static void meta_flow_probability_pack_unpack(void **state)
@@ -1756,7 +1844,7 @@ static void meta_flow_probability_pack_unpack(void **state)
 
     // Test pack/unpack for EQ operator with integer percentage
     assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_PROBABILITY,
-                                      BF_MATCHER_EQ, "50%"));
+                                      BF_MATCHER_EQ, "50%", false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -1772,7 +1860,7 @@ static void meta_flow_probability_pack_unpack(void **state)
 
     // Test pack/unpack with floating-point percentage
     assert_ok(bf_matcher_new_from_raw(&source, BF_MATCHER_META_FLOW_PROBABILITY,
-                                      BF_MATCHER_EQ, "33.33%"));
+                                      BF_MATCHER_EQ, "33.33%", false));
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_matcher_pack(source, wpack));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
@@ -1791,6 +1879,8 @@ int main(void)
         cmocka_unit_test(getters),
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(pack_and_unpack_small_payload),
+        cmocka_unit_test(pack_and_unpack_with_negate),
+        cmocka_unit_test(unpack_without_negate_defaults_false),
         cmocka_unit_test(dump),
         cmocka_unit_test(dump_small_payload),
         cmocka_unit_test(dump_ipv4_addr),

@@ -41,20 +41,13 @@ static void ip6_daddr_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_ip6_daddr", 0, 1, -1);
-}
 
-/**
- * Verify ip6.daddr ne does not match the configured IPv6 destination address
- * but matches all other addresses. Counter tracks only matching packets.
- */
-static void ip6_daddr_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
-    BFT_CHAIN_SET(bf::Chain("test_ip6_daddr", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_IP6_DADDR, BF_MATCHER_NE,
-                                           bft_ipv6_addr("2001:db8::2"))}));
+    // Negation
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip6_daddr", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
+                                 bft_ipv6_addr("2001:db8::2"), true)}));
 
     bft_assert_prog_run(
         "test_ip6_daddr", test->hook(),
@@ -121,7 +114,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP6_DADDR);
 
     suite << MatcherTest(BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ, ip6_daddr_eq);
-    suite << MatcherTest(BF_MATCHER_IP6_DADDR, BF_MATCHER_NE, ip6_daddr_ne);
     suite << MatcherTest(BF_MATCHER_IP6_DADDR, BF_MATCHER_IN, ip6_daddr_in);
 
     return suite.run();

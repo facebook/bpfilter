@@ -7,6 +7,7 @@
 
 #include <bpfilter/matcher.h>
 
+#include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
 
@@ -22,8 +23,8 @@ int bf_set_generate_map_lookup(struct bf_program *program,
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, key_offset));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
-    // Jump to the next rule if map_lookup_elem returned 0
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_0, 0, 0));
 
     return 0;
 }

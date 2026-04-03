@@ -22,6 +22,16 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
         counter
         ACCEPT
 "
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+    set myset (ip4.saddr) in {
+        192.168.1.1;
+        192.168.1.2
+    }
+    rule
+        (ip4.saddr) not in myset
+        counter
+        ACCEPT
+"
 
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr) eq { 192.168.1.1 }")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT set myset (ip4.saddr, meta.ifindex) in { 192.168.1.1 }")
