@@ -43,23 +43,15 @@ static void meta_l4_proto_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_l4_proto", 0, 1, -1);
-}
 
-/**
- * Verify meta.l4_proto ne does not match the configured protocol value but
- * matches packets with any other L4 protocol.
- */
-static void meta_l4_proto_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(
         bf::Chain("test_meta_l4_proto", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_META_L4_PROTO, BF_MATCHER_NE,
-                                 bft_u16_payload(6))}));
+                    {bf::Matcher(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
+                                 bft_u16_payload(6), true)}));
 
-    // TCP -> l4_proto=6 -> NE does not match -> ACCEPT
+    // TCP -> l4_proto=6 -> not eq does not match -> ACCEPT
     bft_assert_prog_run(
         "test_meta_l4_proto", test->hook(),
         bft::Ethernet() /
@@ -67,7 +59,7 @@ static void meta_l4_proto_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // UDP -> l4_proto=17 -> NE matches -> DROP
+    // UDP -> l4_proto=17 -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_meta_l4_proto", test->hook(),
         bft::Ethernet() /
@@ -84,8 +76,6 @@ int main()
 
     suite << MatcherTest(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
                          meta_l4_proto_eq);
-    suite << MatcherTest(BF_MATCHER_META_L4_PROTO, BF_MATCHER_NE,
-                         meta_l4_proto_ne);
 
     return suite.run();
 }

@@ -101,7 +101,7 @@
 %token CHAIN
 %token RULE
 %token SET
-%token LOG COUNTER MARK
+%token NEGATE LOG COUNTER MARK
 %token REDIRECT_TOKEN
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
@@ -125,6 +125,8 @@
 %type <matcher_type> matcher_type
 
 %type <matcher_op> matcher_op
+
+%type <bval> negate
 
 %type <void> sets
 %type <void> set
@@ -431,25 +433,25 @@ matchers        : matcher
                     $$ = TAKE_PTR($1);
                 }
                 ;
-matcher         : matcher_type matcher_op RAW_PAYLOAD
+matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                 {
                     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                    _cleanup_free_ const char *payload = $3;
+                    _cleanup_free_ const char *payload = $4;
                     int r;
 
-                    r = bf_matcher_new_from_raw(&matcher, $1, $2, payload);
+                    r = bf_matcher_new_from_raw(&matcher, $1, $3, payload, $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher\n");
 
                     $$ = TAKE_PTR(matcher);
                 }
-                | SET_TYPE matcher_op SET_RAW_PAYLOAD
+                | SET_TYPE negate matcher_op SET_RAW_PAYLOAD
                 {
                      _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                      _free_bf_set_ struct bf_set *set = NULL;
                     _cleanup_free_ const char *raw_key = $1;
-                    _cleanup_free_ const char *payload = $3;
-                    enum bf_matcher_op op = $2;
+                    _cleanup_free_ const char *payload = $4;
+                    enum bf_matcher_op op = $3;
                      uint32_t set_id = bf_list_size(&ruleset->sets);
                      int r;
 
@@ -466,23 +468,23 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
 
                      TAKE_PTR(set);
 
-                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
+                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id), $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher");
 
                      $$ = TAKE_PTR(matcher);
                 }
-                | SET_TYPE matcher_op STRING
+                | SET_TYPE negate matcher_op STRING
                 {
                     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
                     _cleanup_free_ const char *raw_key = $1;
-                    _cleanup_free_ const char *name = $3;
+                    _cleanup_free_ const char *name = $4;
                      uint32_t set_id = 0;
                     struct bf_set *found_set = NULL;
                     _free_bf_set_ struct bf_set *test_key = NULL;
                     int r;
 
-                    if ($2 != BF_MATCHER_IN)
+                    if ($3 != BF_MATCHER_IN)
                         bf_parse_err("only the 'in' operator is supported for sets");
 
                     r = bf_set_new_from_raw(&test_key, NULL, raw_key, "{}");
@@ -506,12 +508,15 @@ matcher         : matcher_type matcher_op RAW_PAYLOAD
                     if (found_set->n_comps != test_key->n_comps || memcmp(found_set->key, test_key->key, found_set->n_comps * sizeof(enum bf_matcher_type)))
                         bf_parse_err("using named set '%s', but key doesn't match", name);
 
-                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id));
+                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id), $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher");
 
                      $$ = TAKE_PTR(matcher);
                 }
+                ;
+negate          : %empty { $$ = false; }
+                | NEGATE { $$ = true; }
                 ;
 matcher_type    : MATCHER_TYPE
                 {

@@ -54,6 +54,7 @@ rule            { return RULE; }
 set             { return SET; }
 
     /* Keywords */
+not             { return NEGATE; }
 counter         { return COUNTER; }
 
     /* Hooks */
@@ -137,7 +138,7 @@ meta\.l4_proto  { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); r
 ip4\.proto      { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip6\.nexthdr    { BEGIN(STATE_MATCHER_L4_PROTO); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_L4_PROTO>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -158,7 +159,7 @@ meta\.flow_probability { BEGIN(STATE_MATCHER_META_PROBA); yylval.sval = strdup(y
 
 meta\.mark          { BEGIN(STATE_MATCHER_META_MARK); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_MARK>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -168,7 +169,7 @@ meta\.mark          { BEGIN(STATE_MATCHER_META_MARK); yylval.sval = strdup(yytex
 
 meta\.flow_hash     { BEGIN(STATE_MATCHER_META_FLOW_HASH); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_META_FLOW_HASH>{
-    (eq|not|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}(-{int})? {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -179,7 +180,7 @@ meta\.flow_hash     { BEGIN(STATE_MATCHER_META_FLOW_HASH); yylval.sval = strdup(
 ip4\.saddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.daddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IPV4_ADDR>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}\.{int}\.{int}\.{int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -190,7 +191,7 @@ ip4\.daddr       { BEGIN(STATE_MATCHER_IPV4_ADDR); yylval.sval = strdup(yytext);
 ip4\.snet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP4_NET>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}\.{int}\.{int}\.{int}\/{int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -200,7 +201,7 @@ ip4\.dnet       { BEGIN(STATE_MATCHER_IP4_NET); yylval.sval = strdup(yytext); re
 
 ip4\.dscp       { BEGIN(STATE_MATCHER_IP4_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP4_DSCP>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -210,7 +211,7 @@ ip4\.dscp       { BEGIN(STATE_MATCHER_IP4_DSCP); yylval.sval = strdup(yytext); r
 
 ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_ADDR>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-zA-Z0-9:]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -220,7 +221,7 @@ ip6\.(s|d)addr      { BEGIN(STATE_MATCHER_IP6_ADDR); yylval.sval = strdup(yytext
 
 ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_NET>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     [a-zA-Z0-9:\/]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -230,7 +231,7 @@ ip6\.(s|d)net       { BEGIN(STATE_MATCHER_IP6_NET); yylval.sval = strdup(yytext)
 
 ip6\.dscp           { BEGIN(STATE_MATCHER_IP6_DSCP); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_IP6_DSCP>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -242,7 +243,7 @@ meta\.(s|d)port { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
 tcp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_PORT>{
-    (eq|not|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}(-{int})? {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -252,7 +253,7 @@ udp\.(s|d)port  { BEGIN(STATE_MATCHER_PORT); yylval.sval = strdup(yytext); retur
 
 icmp(v6)?\.type { BEGIN(STATE_MATCHER_ICMP_TYPE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_ICMP_TYPE>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -262,7 +263,7 @@ icmp(v6)?\.type { BEGIN(STATE_MATCHER_ICMP_TYPE); yylval.sval = strdup(yytext); 
 
 icmp(v6)?\.code { BEGIN(STATE_MATCHER_ICMP_CODE); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_ICMP_CODE>{
-    (eq|not) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
@@ -272,7 +273,7 @@ icmp(v6)?\.code { BEGIN(STATE_MATCHER_ICMP_CODE); yylval.sval = strdup(yytext); 
 
 tcp\.flags      { BEGIN(STATE_MATCHER_TCP_FLAGS); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
 <STATE_MATCHER_TCP_FLAGS>{
-    (eq|not|any|all) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    (eq|any|all) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     ([a-zA-Z]+,?)+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);

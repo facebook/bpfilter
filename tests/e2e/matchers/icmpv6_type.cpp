@@ -53,20 +53,12 @@ static void icmpv6_type_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_icmpv6_type", 0, 1, -1);
-}
 
-/**
- * Verify that icmpv6.type ne N does not match a packet with type N
- * but matches packets with different types.
- */
-static void icmpv6_type_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_icmpv6_type", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
                               {bf::Matcher(BF_MATCHER_ICMPV6_TYPE,
-                                           BF_MATCHER_NE, {128})}));
+                                           BF_MATCHER_EQ, {128}, true)}));
 
     // ICMPv6 type=128 should not match -> ACCEPT
     bft_assert_prog_run(
@@ -144,7 +136,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_ICMPV6_TYPE);
 
     suite << MatcherTest(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ, icmpv6_type_eq);
-    suite << MatcherTest(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_NE, icmpv6_type_ne);
     suite << MatcherTest(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_IN, icmpv6_type_in);
 
     return suite.run();

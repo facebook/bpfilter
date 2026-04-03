@@ -51,22 +51,12 @@ static void meta_mark_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_mark", 0, 0, -1);
-}
 
-/**
- * Verify meta.mark ne does not match when the skb mark equals the configured
- * value but matches when it differs. BPF_PROG_TEST_RUN always provides
- * mark=0, so ne 0 never matches and ne 42 always matches.
- */
-static void meta_mark_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
-    // ne 0 should NOT match since mark=0
+    // not eq 0 should NOT match since mark=0
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_NE,
-                                           bft_u32_payload(0))}));
+                              {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_EQ,
+                                           bft_u32_payload(0), true)}));
 
     bft_assert_prog_run(
         "test_meta_mark", test->hook(),
@@ -77,11 +67,11 @@ static void meta_mark_ne(void **state)
 
     bft_assert_counter_eq("test_meta_mark", 0, 0, -1);
 
-    // ne 42 should match since mark=0 != 42
+    // not eq 42 should match since mark=0 != 42
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_NE,
-                                           bft_u32_payload(42))}));
+                              {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_EQ,
+                                           bft_u32_payload(42), true)}));
 
     bft_assert_prog_run(
         "test_meta_mark", test->hook(),
@@ -98,7 +88,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_META_MARK);
 
     suite << MatcherTest(BF_MATCHER_META_MARK, BF_MATCHER_EQ, meta_mark_eq);
-    suite << MatcherTest(BF_MATCHER_META_MARK, BF_MATCHER_NE, meta_mark_ne);
 
     return suite.run();
 }

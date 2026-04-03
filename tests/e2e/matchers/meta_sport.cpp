@@ -68,20 +68,12 @@ static void meta_sport_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_sport", 0, 3, -1);
-}
 
-/**
- * Verify meta.sport ne does not match the configured source port but matches
- * packets from any other port across both TCP and UDP.
- */
-static void meta_sport_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_NE,
-                                           bft_port_be(12345))}));
+                              {bf::Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_EQ,
+                                           bft_port_be(12345), true)}));
 
     bft_assert_prog_run(
         "test_meta_sport", test->hook(),
@@ -179,7 +171,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_META_SPORT);
 
     suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_EQ, meta_sport_eq);
-    suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_NE, meta_sport_ne);
     suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
                          meta_sport_range);
 

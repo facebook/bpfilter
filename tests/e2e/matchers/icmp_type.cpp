@@ -53,20 +53,12 @@ static void icmp_type_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_icmp_type", 0, 1, -1);
-}
 
-/**
- * Verify that icmp.type ne N does not match a packet with type N
- * but matches packets with different types.
- */
-static void icmp_type_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
-    BFT_CHAIN_SET(
-        bf::Chain("test_icmp_type", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE, {8})}));
+    // Negation
+    BFT_CHAIN_SET(bf::Chain("test_icmp_type", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ,
+                                           {8}, true)}));
 
     // ICMP type=8 should not match -> ACCEPT (policy)
     bft_assert_prog_run(
@@ -144,7 +136,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_ICMP_TYPE);
 
     suite << MatcherTest(BF_MATCHER_ICMP_TYPE, BF_MATCHER_EQ, icmp_type_eq);
-    suite << MatcherTest(BF_MATCHER_ICMP_TYPE, BF_MATCHER_NE, icmp_type_ne);
     suite << MatcherTest(BF_MATCHER_ICMP_TYPE, BF_MATCHER_IN, icmp_type_in);
 
     return suite.run();

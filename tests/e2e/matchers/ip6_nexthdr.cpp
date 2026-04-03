@@ -44,22 +44,14 @@ static void ip6_nexthdr_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_ip6_nexthdr", 0, 1, -1);
-}
 
-/**
- * Verify ip6.nexthdr ne does not match the configured next header value but
- * matches packets with any other next header.
- */
-static void ip6_nexthdr_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
+    // Negation
+    BFT_CHAIN_SET(bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_IP6_NEXTHDR,
+                                           BF_MATCHER_EQ, {6}, true)}));
 
-    BFT_CHAIN_SET(
-        bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_NE, {6})}));
-
-    // TCP -> nexthdr=6 -> NE does not match -> ACCEPT
+    // TCP -> nexthdr=6 -> not eq does not match -> ACCEPT
     bft_assert_prog_run(
         "test_ip6_nexthdr", test->hook(),
         bft::Ethernet() /
@@ -67,7 +59,7 @@ static void ip6_nexthdr_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // UDP -> nexthdr=17 -> NE matches -> DROP
+    // UDP -> nexthdr=17 -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_ip6_nexthdr", test->hook(),
         bft::Ethernet() /
@@ -129,7 +121,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP6_NEXTHDR);
 
     suite << MatcherTest(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ, ip6_nexthdr_eq);
-    suite << MatcherTest(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_NE, ip6_nexthdr_ne);
     suite << MatcherTest(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_IN, ip6_nexthdr_in);
 
     return suite.run();

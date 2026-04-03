@@ -137,11 +137,12 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
  *        type . Can be NULL but only if @p payload_len is 0, in which case
  *        there is no payload.
  * @param payload_len Length of the payload.
+ * @param negate If true, negate the matcher's comparison.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
                         enum bf_matcher_op op, const void *payload,
-                        size_t payload_len);
+                        size_t payload_len, bool negate);
 
 static inline void bf_rule_mark_set(struct bf_rule *rule, uint32_t mark)
 {

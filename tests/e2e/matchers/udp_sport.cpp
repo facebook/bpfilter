@@ -58,21 +58,12 @@ static void udp_sport_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_udp_sport", 0, 2, -1);
-}
 
-/**
- * Verify udp.sport ne does not match the configured source port but matches
- * UDP packets from any other port. Also verifies the protocol guard: a TCP
- * packet must not match a UDP rule.
- */
-static void udp_sport_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE,
-                                           bft_port_be(12345))}));
+                              {bf::Matcher(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ,
+                                           bft_port_be(12345), true)}));
 
     bft_assert_prog_run(
         "test_udp_sport", test->hook(),
@@ -204,7 +195,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_UDP_SPORT);
 
     suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_EQ, udp_sport_eq);
-    suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_NE, udp_sport_ne);
     suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_IN, udp_sport_in);
     suite << MatcherTest(BF_MATCHER_UDP_SPORT, BF_MATCHER_RANGE,
                          udp_sport_range);

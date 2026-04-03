@@ -155,8 +155,8 @@ static int _bf_cgroup_sock_addr_load_and_cmp(struct bf_program *program,
     if (r)
         return r;
 
-    return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                        bf_matcher_payload(matcher), size, BPF_REG_1);
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), size,
+                        BPF_REG_1);
 }
 
 static int _bf_cgroup_sock_addr_generate_net(struct bf_program *program,
@@ -177,8 +177,8 @@ static int _bf_cgroup_sock_addr_generate_net(struct bf_program *program,
     if (r)
         return r;
 
-    return bf_cmp_masked_value(program, bf_matcher_get_op(matcher), data,
-                               prefixlen, size, BPF_REG_1);
+    return bf_cmp_masked_value(program, matcher, data, prefixlen, size,
+                               BPF_REG_1);
 }
 
 /* `user_port` is a __u32 in network byte order with the upper 16 bits
@@ -201,11 +201,11 @@ static int _bf_cgroup_sock_addr_generate_port(struct bf_program *program,
     if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
         uint16_t *ports = (uint16_t *)bf_matcher_payload(matcher);
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        return bf_cmp_range(program, ports[0], ports[1], BPF_REG_1);
+        return bf_cmp_range(program, matcher, ports[0], ports[1], BPF_REG_1);
     }
 
-    return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                        bf_matcher_payload(matcher), 2, BPF_REG_1);
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 2,
+                        BPF_REG_1);
 }
 
 static ssize_t _bf_cgroup_sock_addr_ctx_offset(enum bf_matcher_type type)
@@ -338,8 +338,8 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
             program, matcher, offsetof(struct bpf_sock_addr, user_ip4), 4);
     case BF_MATCHER_IP4_PROTO:
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_8));
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 1, BPF_REG_1);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 1,
+                            BPF_REG_1);
     case BF_MATCHER_IP6_SADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip6), 16);

@@ -36,21 +36,14 @@ static void meta_flow_hash_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_fhash", 0, 0, -1);
-}
 
-/**
- * ne UINT32_MAX should match since flow_hash is very unlikely to be
- * UINT32_MAX. This verifies the ne codegen path.
- */
-static void meta_flow_hash_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // not eq UINT32_MAX should match since flow_hash is very unlikely to be
+    // UINT32_MAX
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fhash", test->hook(), BF_VERDICT_ACCEPT)
         << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_NE,
-                                 bft_u32_payload(UINT_MAX))}));
+                    {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_EQ,
+                                 bft_u32_payload(UINT_MAX), true)}));
 
     bft_assert_prog_run(
         "test_meta_fhash", test->hook(),
@@ -107,8 +100,6 @@ int main()
 
     suite << MatcherTest(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_EQ,
                          meta_flow_hash_eq);
-    suite << MatcherTest(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_NE,
-                         meta_flow_hash_ne);
     suite << MatcherTest(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE,
                          meta_flow_hash_range);
 

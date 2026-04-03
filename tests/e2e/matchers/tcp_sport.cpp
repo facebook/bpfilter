@@ -60,21 +60,12 @@ static void tcp_sport_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_sport", 0, 2, -1);
-}
 
-/**
- * Verify tcp.sport ne does not match the configured source port but matches
- * TCP packets from any other port. Also verifies the protocol guard: a UDP
- * packet must not match a TCP rule.
- */
-static void tcp_sport_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_sport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE,
-                                           bft_port_be(12345))}));
+                              {bf::Matcher(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                                           bft_port_be(12345), true)}));
 
     // TCP sport=12345 should not match -> ACCEPT
     bft_assert_prog_run(
@@ -203,6 +194,39 @@ static void tcp_sport_range(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_sport", 0, 3, -1);
+
+    // Try with negation
+    BFT_CHAIN_SET(
+        bf::Chain("test_tcp_sport", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_TCP_SPORT, BF_MATCHER_RANGE,
+                                 bft_port_range(1000, 2000), true)}));
+
+    // TCP sport=1500 is in range, but negated -> ACCEPT
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 1500, .dport = 80},
+        test->verdictAccept());
+
+    // TCP sport=999 is below range, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 999, .dport = 80},
+        test->verdictDrop());
+
+    // TCP sport=2001 is above range, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 2001, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_tcp_sport", 0, 2, -1);
 }
 
 int main()
@@ -210,7 +234,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_TCP_SPORT);
 
     suite << MatcherTest(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ, tcp_sport_eq);
-    suite << MatcherTest(BF_MATCHER_TCP_SPORT, BF_MATCHER_NE, tcp_sport_ne);
     suite << MatcherTest(BF_MATCHER_TCP_SPORT, BF_MATCHER_IN, tcp_sport_in);
     suite << MatcherTest(BF_MATCHER_TCP_SPORT, BF_MATCHER_RANGE,
                          tcp_sport_range);

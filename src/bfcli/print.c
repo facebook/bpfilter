@@ -201,6 +201,9 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             const struct bf_matcher_ops *ops = bf_matcher_get_ops(
                 bf_matcher_get_type(matcher), bf_matcher_get_op(matcher));
 
+            const bool negate = bf_matcher_get_negate(matcher);
+            const char *in_str = negate ? "not in" : "in";
+
             if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
                 struct bf_set *set =
                     bf_chain_get_set_for_matcher(chain, matcher);
@@ -215,9 +218,9 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                 }
 
                 if (set->name) {
-                    (void)fprintf(stdout, ") in %s", set->name);
+                    (void)fprintf(stdout, ") %s %s", in_str, set->name);
                 } else {
-                    (void)fprintf(stdout, ") in {\n");
+                    (void)fprintf(stdout, ") %s {\n", in_str);
 
                     bf_hashset_foreach (&set->elems, node) {
                         uint32_t payload_idx = 0;
@@ -244,7 +247,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                 (void)fprintf(
                     stdout, "        %s",
                     bf_matcher_type_to_str(bf_matcher_get_type(matcher)));
-                (void)fprintf(stdout, " %s ",
+                (void)fprintf(stdout, "%s %s ", negate ? " not" : "",
                               bf_matcher_op_to_str(bf_matcher_get_op(matcher)));
 
                 if (ops) {

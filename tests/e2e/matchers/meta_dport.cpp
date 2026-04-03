@@ -69,20 +69,12 @@ static void meta_dport_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_dport", 0, 3, -1);
-}
 
-/**
- * Verify meta.dport ne does not match the configured destination port but
- * matches packets to any other port across both TCP and UDP.
- */
-static void meta_dport_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_NE,
-                                           bft_port_be(80))}));
+                              {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_EQ,
+                                           bft_port_be(80), true)}));
 
     bft_assert_prog_run(
         "test_meta_dport", test->hook(),
@@ -180,7 +172,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_META_DPORT);
 
     suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_EQ, meta_dport_eq);
-    suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_NE, meta_dport_ne);
     suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
                          meta_dport_range);
 

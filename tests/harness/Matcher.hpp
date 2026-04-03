@@ -29,13 +29,15 @@ private:
     bf_matcher_type _type;
     bf_matcher_op _op;
     std::vector<uint8_t> _payload;
+    bool _negate;
 
 public:
     Matcher(bf_matcher_type type, bf_matcher_op op,
-            std::vector<uint8_t> payload):
+            std::vector<uint8_t> payload, bool negate = false):
         _type {type},
         _op {op},
-        _payload {std::move(payload)} {};
+        _payload {std::move(payload)},
+        _negate {negate} {};
 
     [[nodiscard]] bf_matcher_type type() const
     {
@@ -52,12 +54,17 @@ public:
         return _payload;
     }
 
+    [[nodiscard]] bool negate() const
+    {
+        return _negate;
+    }
+
     [[nodiscard]] std::unique_ptr<bf_matcher, deleter> get() const
     {
         struct bf_matcher *matcher = nullptr;
 
         int r = bf_matcher_new(&matcher, _type, _op, _payload.data(),
-                               _payload.size());
+                               _payload.size(), _negate);
         if (r != 0)
             throw std::runtime_error("failed to create bf_matcher");
 

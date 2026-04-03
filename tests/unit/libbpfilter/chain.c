@@ -124,13 +124,13 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_ok(bf_rule_new(&r0));
     r0->log = 1;
     assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
-                                  sizeof(set_index)));
+                                  sizeof(set_index), false));
     assert_ok(bf_list_add_tail(&rules, r0));
 
     set_index = 1;
     assert_ok(bf_rule_new(&r1));
     assert_ok(bf_rule_add_matcher(r1, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
-                                  sizeof(set_index)));
+                                  sizeof(set_index), false));
     assert_ok(bf_list_add_tail(&rules, r1));
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS, BF_VERDICT_ACCEPT,
@@ -156,9 +156,9 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
-                                      &ip4_addr, sizeof(ip4_addr)));
+                                      &ip4_addr, sizeof(ip4_addr), false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
-                                      ip6_addr, sizeof(ip6_addr)));
+                                      ip6_addr, sizeof(ip6_addr), false));
         assert_ok(bf_list_add_tail(&rules, rule));
 
         assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
@@ -176,9 +176,9 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
-                                      &port, sizeof(port)));
+                                      &port, sizeof(port), false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
-                                      &port, sizeof(port)));
+                                      &port, sizeof(port), false));
         assert_ok(bf_list_add_tail(&rules, rule));
 
         assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
@@ -207,9 +207,9 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                      &set_index, sizeof(set_index)));
+                                      &set_index, sizeof(set_index), false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
-                                      ip6_addr, sizeof(ip6_addr)));
+                                      ip6_addr, sizeof(ip6_addr), false));
         assert_ok(bf_list_add_tail(&rules, rule));
 
         assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
@@ -227,9 +227,9 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
-                                      &port, sizeof(port)));
+                                      &port, sizeof(port), false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
-                                      &port, sizeof(port)));
+                                      &port, sizeof(port), false));
         assert_ok(bf_list_add_tail(&rules, rule));
 
         assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
@@ -248,9 +248,9 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
-                                      &ip4_addr, sizeof(ip4_addr)));
+                                      &ip4_addr, sizeof(ip4_addr), false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
-                                      &port, sizeof(port)));
+                                      &port, sizeof(port), false));
         assert_ok(bf_list_add_tail(&rules, rule));
 
         assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS,
@@ -296,7 +296,7 @@ static void set_component_unsupported_hook(void **state)
 
     assert_ok(bf_rule_new(&rule));
     assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  &set_index, sizeof(set_index)));
+                                  &set_index, sizeof(set_index), false));
     assert_ok(bf_list_add_tail(&rules, rule));
 
     assert_err(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
@@ -314,7 +314,7 @@ static void set_component_unsupported_hook(void **state)
 
     assert_ok(bf_rule_new(&rule));
     assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  &set_index, sizeof(set_index)));
+                                  &set_index, sizeof(set_index), false));
     assert_ok(bf_list_add_tail(&rules, rule));
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,

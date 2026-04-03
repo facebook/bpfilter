@@ -59,6 +59,8 @@ struct bf_matcher
     enum bf_matcher_type type;
     /// Comparison operator.
     enum bf_matcher_op op;
+    /// Negate the comparison result.
+    bool negate;
     /// Total matcher size (including payload).
     size_t len;
     /// Payload to match the packet against (if any).
@@ -843,8 +845,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
-                                   _bf_parse_l4_proto, _bf_print_l4_proto),
                 },
         },
     [BF_MATCHER_META_SPORT] =
@@ -854,8 +854,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
@@ -868,8 +866,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
@@ -895,8 +891,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
                                    _bf_parse_mark, _bf_print_mark),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
-                                   _bf_parse_mark, _bf_print_mark),
                 },
         },
     [BF_MATCHER_META_FLOW_HASH] =
@@ -911,8 +905,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
-                                   _bf_parse_u32, _bf_print_u32),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
                                    _bf_parse_u32, _bf_print_u32),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint32_t),
                                    _bf_parse_u32_range, _bf_print_u32_range),
@@ -944,8 +936,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
                                    _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
-                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
                                    _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
                 },
@@ -960,8 +950,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
-                                   _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint32_t),
                                    _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
                                    _bf_parse_ipv4_addr, _bf_print_ipv4_addr),
@@ -979,8 +967,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip4_lpm_key),
                                    _bf_parse_ipv4_net, _bf_print_ipv4_net),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip4_lpm_key),
-                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip4_lpm_key),
                                    _bf_parse_ipv4_net, _bf_print_ipv4_net),
                 },
@@ -995,8 +981,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip4_lpm_key),
-                                   _bf_parse_ipv4_net, _bf_print_ipv4_net),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip4_lpm_key),
                                    _bf_parse_ipv4_net, _bf_print_ipv4_net),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip4_lpm_key),
                                    _bf_parse_ipv4_net, _bf_print_ipv4_net),
@@ -1013,8 +997,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_l4_proto, _bf_print_l4_proto),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
                 },
@@ -1030,8 +1012,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_dscp, _bf_print_dscp),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_dscp, _bf_print_dscp),
                 },
         },
     [BF_MATCHER_IP6_SADDR] =
@@ -1045,8 +1025,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct in6_addr),
-                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct in6_addr),
                                    _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct in6_addr),
                                    _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
@@ -1062,8 +1040,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct in6_addr),
-                                   _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct in6_addr),
                                    _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct in6_addr),
                                    _bf_parse_ipv6_addr, _bf_print_ipv6_addr),
@@ -1081,8 +1057,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip6_lpm_key),
                                    _bf_parse_ipv6_net, _bf_print_ipv6_net),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip6_lpm_key),
-                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip6_lpm_key),
                                    _bf_parse_ipv6_net, _bf_print_ipv6_net),
                 },
@@ -1097,8 +1071,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(struct bf_ip6_lpm_key),
-                                   _bf_parse_ipv6_net, _bf_print_ipv6_net),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(struct bf_ip6_lpm_key),
                                    _bf_parse_ipv6_net, _bf_print_ipv6_net),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(struct bf_ip6_lpm_key),
                                    _bf_parse_ipv6_net, _bf_print_ipv6_net),
@@ -1115,8 +1087,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_l4_proto, _bf_print_l4_proto),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
                 },
@@ -1132,8 +1102,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_dscp, _bf_print_dscp),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_dscp, _bf_print_dscp),
                 },
         },
     [BF_MATCHER_TCP_SPORT] =
@@ -1146,8 +1114,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
@@ -1168,8 +1134,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
@@ -1188,8 +1152,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_tcp_flags, _bf_print_tcp_flags),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_tcp_flags, _bf_print_tcp_flags),
                     BF_MATCHER_OPS(BF_MATCHER_ANY, sizeof(uint8_t),
                                    _bf_parse_tcp_flags, _bf_print_tcp_flags),
                     BF_MATCHER_OPS(BF_MATCHER_ALL, sizeof(uint8_t),
@@ -1207,8 +1169,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
@@ -1225,8 +1185,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
-                                   _bf_parse_l4_port, _bf_print_l4_port),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
@@ -1246,8 +1204,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_icmp_type, _bf_print_icmp_type),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_icmp_type, _bf_print_icmp_type),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_icmp_type, _bf_print_icmp_type),
                 },
@@ -1262,8 +1218,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
-                                   _bf_parse_icmp_code, _bf_print_icmp_code),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
                                    _bf_parse_icmp_code, _bf_print_icmp_code),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_icmp_code, _bf_print_icmp_code),
@@ -1281,9 +1235,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_icmpv6_type,
                                    _bf_print_icmpv6_type),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
-                                   _bf_parse_icmpv6_type,
-                                   _bf_print_icmpv6_type),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_icmpv6_type,
                                    _bf_print_icmpv6_type),
@@ -1299,8 +1250,6 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
-                                   _bf_parse_icmp_code, _bf_print_icmp_code),
-                    BF_MATCHER_OPS(BF_MATCHER_NE, sizeof(uint8_t),
                                    _bf_parse_icmp_code, _bf_print_icmp_code),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
                                    _bf_parse_icmp_code, _bf_print_icmp_code),
@@ -1335,7 +1284,7 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
 
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
-                   size_t payload_len)
+                   size_t payload_len, bool negate)
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
 
@@ -1348,6 +1297,7 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
 
     _matcher->type = type;
     _matcher->op = op;
+    _matcher->negate = negate;
     _matcher->len = sizeof(struct bf_matcher) + payload_len;
     bf_memcpy(_matcher->payload, payload, payload_len);
 
@@ -1358,7 +1308,7 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
 
 int bf_matcher_new_from_raw(struct bf_matcher **matcher,
                             enum bf_matcher_type type, enum bf_matcher_op op,
-                            const char *payload)
+                            const char *payload, bool negate)
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
     const struct bf_matcher_ops *ops;
@@ -1379,6 +1329,7 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
 
     _matcher->type = type;
     _matcher->op = op;
+    _matcher->negate = negate;
     _matcher->len = sizeof(*_matcher) + ops->ref_payload_size;
 
     r = ops->parse(_matcher->type, _matcher->op, &_matcher->payload, payload);
@@ -1397,6 +1348,7 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     enum bf_matcher_op op;
     const void *payload;
     size_t payload_len;
+    bool negate = false;
     int r;
 
     assert(matcher);
@@ -1409,11 +1361,17 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.op");
 
+    if (bf_rpack_kv_contains(node, "negate")) {
+        r = bf_rpack_kv_bool(node, "negate", &negate);
+        if (r)
+            return bf_rpack_key_err(r, "bf_matcher.negate");
+    }
+
     r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.payload");
 
-    r = bf_matcher_new(&_matcher, type, op, payload, payload_len);
+    r = bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
     if (r)
         return bf_err_r(r, "failed to create bf_matcher from pack");
 
@@ -1440,6 +1398,7 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
 
     bf_wpack_kv_int(pack, "type", matcher->type);
     bf_wpack_kv_int(pack, "op", matcher->op);
+    bf_wpack_kv_bool(pack, "negate", matcher->negate);
     bf_wpack_kv_bin(pack, "payload", matcher->payload,
                     matcher->len - sizeof(*matcher));
 
@@ -1457,6 +1416,7 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 
     DUMP(prefix, "type: %s", bf_matcher_type_to_str(matcher->type));
     DUMP(prefix, "op: %s", bf_matcher_op_to_str(matcher->op));
+    DUMP(prefix, "negate: %s", matcher->negate ? "true" : "false");
     DUMP(prefix, "len: %ld", matcher->len);
     DUMP(bf_dump_prefix_last(prefix), "payload:");
     bf_dump_prefix_push(prefix);
@@ -1495,6 +1455,12 @@ size_t bf_matcher_len(const struct bf_matcher *matcher)
 {
     assert(matcher);
     return matcher->len;
+}
+
+bool bf_matcher_get_negate(const struct bf_matcher *matcher)
+{
+    assert(matcher);
+    return matcher->negate;
 }
 
 static const char *_bf_matcher_type_strs[] = {
@@ -1557,9 +1523,9 @@ int bf_matcher_type_from_str(const char *str, enum bf_matcher_type *type)
 }
 
 static const char *_bf_matcher_ops_strs[] = {
-    [BF_MATCHER_EQ] = "eq",   [BF_MATCHER_NE] = "not",
-    [BF_MATCHER_ANY] = "any", [BF_MATCHER_ALL] = "all",
-    [BF_MATCHER_IN] = "in",   [BF_MATCHER_RANGE] = "range",
+    [BF_MATCHER_EQ] = "eq",       [BF_MATCHER_ANY] = "any",
+    [BF_MATCHER_ALL] = "all",     [BF_MATCHER_IN] = "in",
+    [BF_MATCHER_RANGE] = "range",
 };
 
 static_assert_enum_mapping(_bf_matcher_ops_strs, _BF_MATCHER_OP_MAX);

@@ -60,21 +60,12 @@ static void tcp_dport_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_dport", 0, 2, -1);
-}
 
-/**
- * Verify tcp.dport ne does not match the configured destination port but
- * matches TCP packets to any other port. Also verifies the protocol guard: a
- * UDP packet must not match a TCP rule.
- */
-static void tcp_dport_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_TCP_DPORT, BF_MATCHER_NE,
-                                           bft_port_be(80))}));
+                              {bf::Matcher(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                                           bft_port_be(80), true)}));
 
     // TCP dport=80 should not match -> ACCEPT
     bft_assert_prog_run(
@@ -210,7 +201,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_TCP_DPORT);
 
     suite << MatcherTest(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ, tcp_dport_eq);
-    suite << MatcherTest(BF_MATCHER_TCP_DPORT, BF_MATCHER_NE, tcp_dport_ne);
     suite << MatcherTest(BF_MATCHER_TCP_DPORT, BF_MATCHER_IN, tcp_dport_in);
     suite << MatcherTest(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE,
                          tcp_dport_range);

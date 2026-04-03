@@ -44,22 +44,14 @@ static void ip4_proto_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_ip4_proto", 0, 1, -1);
-}
 
-/**
- * Verify ip4.proto ne does not match the configured protocol value but matches
- * packets with any other protocol.
- */
-static void ip4_proto_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
+    // Negation
+    BFT_CHAIN_SET(bf::Chain("test_ip4_proto", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
+                                           {6}, true)}));
 
-    BFT_CHAIN_SET(
-        bf::Chain("test_ip4_proto", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
-                    {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE, {6})}));
-
-    // TCP -> protocol=6 -> NE does not match -> ACCEPT
+    // TCP -> protocol=6 -> not eq does not match -> ACCEPT
     bft_assert_prog_run(
         "test_ip4_proto", test->hook(),
         bft::Ethernet() /
@@ -67,7 +59,7 @@ static void ip4_proto_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    // UDP -> protocol=17 -> NE matches -> DROP
+    // UDP -> protocol=17 -> not eq matches -> DROP
     bft_assert_prog_run(
         "test_ip4_proto", test->hook(),
         bft::Ethernet() /
@@ -128,7 +120,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP4_PROTO);
 
     suite << MatcherTest(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, ip4_proto_eq);
-    suite << MatcherTest(BF_MATCHER_IP4_PROTO, BF_MATCHER_NE, ip4_proto_ne);
     suite << MatcherTest(BF_MATCHER_IP4_PROTO, BF_MATCHER_IN, ip4_proto_in);
 
     return suite.run();

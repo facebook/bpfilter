@@ -43,20 +43,12 @@ static void ip4_saddr_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_ip4_saddr", 0, 1, -1);
-}
 
-/**
- * Verify ip4.saddr ne does not match the configured source address but matches
- * all other addresses. Counter tracks only matching packets.
- */
-static void ip4_saddr_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
+    // Negation
     BFT_CHAIN_SET(bf::Chain("test_ip4_saddr", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
-                                           {192, 0, 2, 1})}));
+                              {bf::Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                                           {192, 0, 2, 1}, true)}));
 
     // saddr=192.0.2.1 should not match -> ACCEPT
     bft_assert_prog_run(
@@ -128,7 +120,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_IP4_SADDR);
 
     suite << MatcherTest(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ, ip4_saddr_eq);
-    suite << MatcherTest(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE, ip4_saddr_ne);
     suite << MatcherTest(BF_MATCHER_IP4_SADDR, BF_MATCHER_IN, ip4_saddr_in);
 
     return suite.run();

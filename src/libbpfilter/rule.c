@@ -203,14 +203,14 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
 
 int bf_rule_add_matcher(struct bf_rule *rule, enum bf_matcher_type type,
                         enum bf_matcher_op op, const void *payload,
-                        size_t payload_len)
+                        size_t payload_len, bool negate)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
     int r;
 
     assert(rule);
 
-    r = bf_matcher_new(&matcher, type, op, payload, payload_len);
+    r = bf_matcher_new(&matcher, type, op, payload, payload_len, negate);
     if (r)
         return r;
 

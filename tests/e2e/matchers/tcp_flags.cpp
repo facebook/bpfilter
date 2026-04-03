@@ -52,23 +52,14 @@ static void tcp_flags_eq(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_flags", 0, 2, -1);
-}
 
-/**
- * Verify tcp.flags ne does not match when the flags field equals the
- * configured value exactly but matches when the flags differ.
- */
-static void tcp_flags_ne(void **state)
-{
-    auto *test = static_cast<MatcherTest *>(*state);
-
-    // SYN = 0x02
+    // Try with negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, true, {},
-                              {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_NE,
-                                           {0x02})}));
+                              {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_EQ,
+                                           {0x02}, true)}));
 
-    // SYN only -> exact match for NE -> ACCEPT
+    // SYN only -> exact match, but negated -> ACCEPT
     bft_assert_prog_run(
         "test_tcp_flags", test->hook(),
         bft::Ethernet() /
@@ -76,12 +67,12 @@ static void tcp_flags_ne(void **state)
             bft::TCP {.sport = 12345, .dport = 80, .syn = true},
         test->verdictAccept());
 
-    // ACK only -> not equal -> DROP
+    // SYN+ACK -> not exact match, negated -> DROP
     bft_assert_prog_run(
         "test_tcp_flags", test->hook(),
         bft::Ethernet() /
             bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
-            bft::TCP {.sport = 12345, .dport = 80, .ack = true},
+            bft::TCP {.sport = 12345, .dport = 80, .syn = true, .ack = true},
         test->verdictDrop());
 
     bft_assert_counter_eq("test_tcp_flags", 0, 1, -1);
@@ -127,6 +118,30 @@ static void tcp_flags_any(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_flags", 0, 2, -1);
+
+    // Try with negation
+    BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY,
+                                           {0x12}, true)}));
+
+    // SYN only -> has SYN bit from mask, but negated -> ACCEPT
+    bft_assert_prog_run(
+        "test_tcp_flags", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 12345, .dport = 80, .syn = true},
+        test->verdictAccept());
+
+    // RST only -> no overlap with SYN|ACK, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_flags", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 12345, .dport = 80, .rst = true},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_tcp_flags", 0, 1, -1);
 }
 
 /**
@@ -173,6 +188,30 @@ static void tcp_flags_all(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_flags", 0, 2, -1);
+
+    // Try with negation
+    BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                              {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL,
+                                           {0x12}, true)}));
+
+    // SYN+ACK -> all bits present, but negated -> ACCEPT
+    bft_assert_prog_run(
+        "test_tcp_flags", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 12345, .dport = 80, .syn = true, .ack = true},
+        test->verdictAccept());
+
+    // SYN only -> missing ACK bit, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_flags", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 12345, .dport = 80, .syn = true},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_tcp_flags", 0, 1, -1);
 }
 
 int main()
@@ -180,7 +219,6 @@ int main()
     auto suite = MatcherTestsSuite(BF_MATCHER_TCP_FLAGS);
 
     suite << MatcherTest(BF_MATCHER_TCP_FLAGS, BF_MATCHER_EQ, tcp_flags_eq);
-    suite << MatcherTest(BF_MATCHER_TCP_FLAGS, BF_MATCHER_NE, tcp_flags_ne);
     suite << MatcherTest(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY, tcp_flags_any);
     suite << MatcherTest(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL, tcp_flags_all);
 
