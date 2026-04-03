@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <climits>
 #include <cstring>
-#include <format>
 #include <iostream>
 #include <iterator>
 #include <set>
@@ -208,8 +207,8 @@ private:
 
     void genName()
     {
-        _name = std::format("{}.{}[{}]", bf_matcher_type_to_str(_type),
-                            bf_matcher_op_to_str(_op), bf_hook_to_str(_hook));
+        _name = std::string(bf_matcher_type_to_str(_type)) + "." +
+                bf_matcher_op_to_str(_op) + "[" + bf_hook_to_str(_hook) + "]";
     }
 
 public:
