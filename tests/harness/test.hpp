@@ -342,8 +342,8 @@ public:
         const auto *check = static_cast<const CheckSet *>(*state);
 
         for (const auto &[hook, op]: *check) {
-            cm_print_error("missing e2e.matchers test: %s for '%s'\n",
-                           bf_hook_to_str(hook), bf_matcher_op_to_str(op));
+            print_error("missing e2e.matchers test: %s for '%s'\n",
+                        bf_hook_to_str(hook), bf_matcher_op_to_str(op));
         }
 
         assert_true(check->empty());
