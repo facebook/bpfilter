@@ -306,7 +306,9 @@ public:
     {
         std::vector<std::pair<enum bf_hook, enum bf_matcher_op>> new_tests;
 
-        if (bf_hook_to_flavor(test.hook()) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
+        // bf_hook_to_flavor() doesn't allow invalid hooks.
+        if (test.hook() != _BF_HOOK_MAX &&
+            bf_hook_to_flavor(test.hook()) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
             bf_warn(
                 "BF_FLAVOR_CGROUP_SOCK_ADDR hooks are not supported by MatcherTestsSuite, ignoring");
             return *this;
