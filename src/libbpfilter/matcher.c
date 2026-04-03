@@ -59,6 +59,8 @@ struct bf_matcher
     enum bf_matcher_type type;
     /// Comparison operator.
     enum bf_matcher_op op;
+    /// Negate the comparison result.
+    bool negate;
     /// Total matcher size (including payload).
     size_t len;
     /// Payload to match the packet against (if any).
@@ -1349,6 +1351,7 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
 
     _matcher->type = type;
     _matcher->op = op;
+    _matcher->negate = false;
     _matcher->len = sizeof(struct bf_matcher) + payload_len;
     bf_memcpy(_matcher->payload, payload, payload_len);
 
@@ -1380,6 +1383,7 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
 
     _matcher->type = type;
     _matcher->op = op;
+    _matcher->negate = false;
     _matcher->len = sizeof(*_matcher) + ops->ref_payload_size;
 
     r = ops->parse(_matcher->type, _matcher->op, &_matcher->payload, payload);
@@ -1398,6 +1402,7 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     enum bf_matcher_op op;
     const void *payload;
     size_t payload_len;
+    bool negate = false;
     int r;
 
     assert(matcher);
@@ -1410,6 +1415,12 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.op");
 
+    if (bf_rpack_kv_contains(node, "negate")) {
+        r = bf_rpack_kv_bool(node, "negate", &negate);
+        if (r)
+            return bf_rpack_key_err(r, "bf_matcher.negate");
+    }
+
     r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.payload");
@@ -1417,6 +1428,8 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     r = bf_matcher_new(&_matcher, type, op, payload, payload_len);
     if (r)
         return bf_err_r(r, "failed to create bf_matcher from pack");
+
+    bf_matcher_set_negate(_matcher, negate);
 
     *matcher = TAKE_PTR(_matcher);
 
@@ -1441,6 +1454,7 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
 
     bf_wpack_kv_int(pack, "type", matcher->type);
     bf_wpack_kv_int(pack, "op", matcher->op);
+    bf_wpack_kv_bool(pack, "negate", matcher->negate);
     bf_wpack_kv_bin(pack, "payload", matcher->payload,
                     matcher->len - sizeof(*matcher));
 
@@ -1458,6 +1472,7 @@ void bf_matcher_dump(const struct bf_matcher *matcher, prefix_t *prefix)
 
     DUMP(prefix, "type: %s", bf_matcher_type_to_str(matcher->type));
     DUMP(prefix, "op: %s", bf_matcher_op_to_str(matcher->op));
+    DUMP(prefix, "negate: %s", matcher->negate ? "true" : "false");
     DUMP(prefix, "len: %ld", matcher->len);
     DUMP(bf_dump_prefix_last(prefix), "payload:");
     bf_dump_prefix_push(prefix);
@@ -1496,6 +1511,18 @@ size_t bf_matcher_len(const struct bf_matcher *matcher)
 {
     assert(matcher);
     return matcher->len;
+}
+
+void bf_matcher_set_negate(struct bf_matcher *matcher, bool negate)
+{
+    assert(matcher);
+    matcher->negate = negate;
+}
+
+bool bf_matcher_get_negate(const struct bf_matcher *matcher)
+{
+    assert(matcher);
+    return matcher->negate;
 }
 
 static const char *_bf_matcher_type_strs[] = {

@@ -55,6 +55,7 @@ rule            { return RULE; }
 set             { return SET; }
 
     /* Keywords */
+!               { return NEGATE; }
 counter         { return COUNTER; }
 
     /* Hooks */

@@ -33,3 +33,7 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet not 1.1.1.1/0x75 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet not -1.1.1.1 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet not -1.1.1.1/1 counter DROP")
+
+# Negation
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet ! eq 192.168.0.0/24 counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule ip4.snet ! not 10.0.0.0/8 counter DROP"

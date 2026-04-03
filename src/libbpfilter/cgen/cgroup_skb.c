@@ -129,8 +129,8 @@ static int _bf_cgroup_skb_gen_inline_matcher(struct bf_program *program,
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_1,
                                   offsetof(struct __sk_buff, mark)));
 
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 4, BPF_REG_1);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 4,
+                            BPF_REG_1);
     default:
         return bf_packet_gen_inline_matcher(program, matcher);
     }

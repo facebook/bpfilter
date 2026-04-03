@@ -21,6 +21,7 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 
+#include "cgen/jmp.h"
 #include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/runtime.h"
@@ -32,10 +33,15 @@
 static int _bf_matcher_generate_meta_iface(struct bf_program *program,
                                            const struct bf_matcher *matcher)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
+
+    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
+
     EMIT(program,
          BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(ifindex)));
     EMIT_FIXUP_JMP_NEXT_RULE(
-        program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1,
+        program, BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_1,
                              *(uint32_t *)bf_matcher_payload(matcher), 0));
 
     return 0;
@@ -45,13 +51,22 @@ static int
 _bf_matcher_generate_meta_probability(struct bf_program *program,
                                       const struct bf_matcher *matcher)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     float proba = *(float *)bf_matcher_payload(matcher);
+    uint32_t threshold = (uint32_t)((double)UINT32_MAX * (proba / 100.0));
+
+    if (op != BF_MATCHER_EQ)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_prandom_u32));
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(BPF_JGT, BPF_REG_0,
-                    (uint32_t)((double)UINT32_MAX * (proba / 100.0)), 0));
+
+    if (bf_matcher_get_negate(matcher)) {
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JLE, BPF_REG_0, threshold, 0));
+    } else {
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_0, threshold, 0));
+    }
 
     return 0;
 }
@@ -61,6 +76,7 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
 {
     _clean_bf_swich_ struct bf_swich swich;
     uint16_t *port = (uint16_t *)bf_matcher_payload(matcher);
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     int r;
 
     // Load L4 header address into r6
@@ -90,20 +106,24 @@ static int _bf_matcher_generate_meta_port(struct bf_program *program,
     // If r1 == 0: no TCP nor UDP header found, jump to the next rule
     EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0));
 
-    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
+    if (op == BF_MATCHER_RANGE) {
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        return bf_cmp_range(program, port[0], port[1], BPF_REG_1);
+        return bf_cmp_range(program, matcher, port[0], port[1], BPF_REG_1);
     }
 
-    return bf_cmp_value(program, bf_matcher_get_op(matcher), port, 2,
-                        BPF_REG_1);
+    return bf_cmp_value(program, matcher, port, 2, BPF_REG_1);
 }
 
 static int
 _bf_matcher_generate_meta_flow_probability(struct bf_program *program,
                                            const struct bf_matcher *matcher)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     float proba = *(float *)bf_matcher_payload(matcher);
+    uint32_t threshold = (uint32_t)((double)UINT32_MAX * (proba / 100.0));
+
+    if (op != BF_MATCHER_EQ)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
 
     // Ensure L3 is IPv4 or IPv6, skip to next rule otherwise
     EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, htobe16(ETH_P_IP), 2));
@@ -140,10 +160,13 @@ _bf_matcher_generate_meta_flow_probability(struct bf_program *program,
     /* Compare the computed hash with the threshold based on probability.
      * The hash is uniformly distributed across 32 bits, so we compare against
      * UINT32_MAX * (proba / 100.0) to select the desired percentage of flows. */
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP32_IMM(BPF_JGT, BPF_REG_0,
-                      (uint32_t)((double)UINT32_MAX * (proba / 100.0)), 0));
+    if (bf_matcher_get_negate(matcher)) {
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP32_IMM(BPF_JLE, BPF_REG_0, threshold, 0));
+    } else {
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP32_IMM(BPF_JGT, BPF_REG_0, threshold, 0));
+    }
 
     return 0;
 }
@@ -155,12 +178,14 @@ int bf_matcher_generate_meta(struct bf_program *program,
     case BF_MATCHER_META_IFACE:
         return _bf_matcher_generate_meta_iface(program, matcher);
     case BF_MATCHER_META_L3_PROTO: {
-        uint16_t be_val = htobe16(*(uint16_t *)bf_matcher_payload(matcher));
-        return bf_cmp_value(program, BF_MATCHER_EQ, &be_val, 2, BPF_REG_7);
+        uint16_t be_val;
+
+        be_val = htobe16(*(uint16_t *)bf_matcher_payload(matcher));
+        return bf_cmp_value(program, matcher, &be_val, 2, BPF_REG_7);
     }
     case BF_MATCHER_META_L4_PROTO:
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 1, BPF_REG_8);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 1,
+                            BPF_REG_8);
     case BF_MATCHER_META_PROBABILITY:
         return _bf_matcher_generate_meta_probability(program, matcher);
     case BF_MATCHER_META_SPORT:

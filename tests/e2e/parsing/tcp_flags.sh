@@ -45,3 +45,9 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp
 ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags any fin,fin,syn counter DROP"
 
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags all fin,syn,rst,psh,ack,urg,ece,cwr,invalid counter DROP")
+
+# Negation
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags ! eq syn counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags ! not syn counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags ! any syn,ack counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule tcp.flags ! all syn,ack counter DROP"
