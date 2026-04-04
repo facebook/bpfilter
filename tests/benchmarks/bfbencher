@@ -36,8 +36,8 @@ DEFAULT_LAST_COMMIT_REF = "wip"
 DEFAULT_SOURCE_PATH = pathlib.Path(".")
 DEFAULT_CACHE_PATH = pathlib.Path(".cache/bfbencher")
 DEFAULT_USERNAME = getpass.getuser()
-DEFAULT_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/results.html.j2")
-DEFAULT_PR_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/summary.html.j2")
+DEFAULT_REPORT_TEMPLATE_PATH = pathlib.Path("tests/benchmarks/results.html.j2")
+DEFAULT_PR_REPORT_TEMPLATE_PATH = pathlib.Path("tests/benchmarks/summary.html.j2")
 DEFAULT_HOST = [socket.gethostname(), "localhost"]
 SHORT_SHA_LEN = 7
 
@@ -53,6 +53,7 @@ class Stats:
         self.n_failures = 0
         self.n_cache_hits = 0
         self.n_cache_misses = 0
+        self.n_benchmark_errors = 0
 
     def success(self, from_cache: bool = False) -> None:
         if from_cache:
@@ -108,6 +109,47 @@ class Renderer:
                 columns.append(format_delta(term_data["time"]))
                 columns.append(format_delta(term_data["nInsn"]))
             table.add_row(*columns)
+
+        self.console.print(table)
+
+    def print_compare_report(
+        self,
+        rows: list[Report.CompareRow],
+        base_sha: str,
+        ref_sha: str,
+    ) -> None:
+        def format_pct(pct: float) -> str:
+            color = "green" if pct < 0 else ("red" if pct > 0 else "white")
+            return f"[{color}]{pct:+.1f}%[/{color}]"
+
+        table = rich.table.Table(
+            title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
+            show_header=True,
+        )
+        table.add_column("Benchmark", style="cyan")
+        table.add_column("Base", justify="right")
+        table.add_column("Ref", justify="right")
+        table.add_column("ΔTime", justify="right")
+        table.add_column("ΔTime%", justify="right")
+        table.add_column("Base Insn", justify="right")
+        table.add_column("Ref Insn", justify="right")
+        table.add_column("ΔInsn", justify="right")
+        table.add_column("ΔInsn%", justify="right")
+
+        for row in rows:
+            table.add_row(
+                row.name,
+                row.base_time_str,
+                row.ref_time_str,
+                row.delta_time_str,
+                format_pct(row.delta_time_pct),
+                str(row.base_insn) if row.base_insn is not None else "-",
+                str(row.ref_insn) if row.ref_insn is not None else "-",
+                f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
+                format_pct(row.delta_insn_pct)
+                if row.delta_insn_pct is not None
+                else "-",
+            )
 
         self.console.print(table)
 
@@ -220,6 +262,10 @@ class Benchmark:
             "time": Analyzer(times[-1], times[-n - 1 : -1]),
             "nInsn": Analyzer(nInsns[-1], nInsns[-n - 1 : -1]) if nInsns else None,
         }
+
+    @property
+    def results(self) -> list[Result]:
+        return list(self._results)
 
     @property
     def last(self) -> Result | None:
@@ -548,9 +594,55 @@ class FilesystemSource:
         self._local = local_src_dir
 
         shutil.copytree(self._path, self._local, dirs_exist_ok=True)
+        self._detach_if_worktree()
         self._repo: git.Repo = git.Repo(self._local)
         self._retry_all: bool = False
         self._retry_failed: bool = False
+
+    def _detach_if_worktree(self) -> None:
+        """Convert a copied git worktree into a standalone repository.
+
+        In a git worktree the .git entry is a file containing a gitdir pointer
+        to the original repo's worktree-specific state. shutil.copytree copies
+        that file verbatim, so all git operations on the copy would modify the
+        original worktree's HEAD and index.  This method detects that case and
+        replaces the .git file with a self-contained .git directory built from
+        the worktree-specific state (HEAD, index) and the shared commondir
+        (objects, refs, config, …).
+        """
+        git_entry = self._local / ".git"
+        if not git_entry.is_file():
+            return
+
+        content = git_entry.read_text().strip()
+        if not content.startswith("gitdir:"):
+            return
+
+        wt_gitdir = pathlib.Path(content.split(":", 1)[1].strip())
+        if not wt_gitdir.is_absolute():
+            wt_gitdir = (self._local / wt_gitdir).resolve()
+
+        commondir_file = wt_gitdir / "commondir"
+        if commondir_file.exists():
+            commondir = (wt_gitdir / commondir_file.read_text().strip()).resolve()
+        else:
+            commondir = wt_gitdir
+
+        # Replace the .git pointer file with a full standalone git directory.
+        git_entry.unlink()
+        shutil.copytree(commondir, self._local / ".git")
+
+        # Drop worktrees/ — those entries are specific to the original repo.
+        worktrees_dir = self._local / ".git" / "worktrees"
+        if worktrees_dir.exists():
+            shutil.rmtree(worktrees_dir)
+
+        # Apply the worktree-specific HEAD and index, which track the state of
+        # this worktree and differ from the main worktree's equivalents.
+        for fname in ("HEAD", "index"):
+            src = wt_gitdir / fname
+            if src.exists():
+                shutil.copy2(src, self._local / ".git" / fname)
 
     @property
     def local(self) -> pathlib.Path:
@@ -749,7 +841,7 @@ class BenchmarkContext:
         return self.build_dir / "output/sbin/bfcli"
 
     def configure(
-        self, doc: bool = False, tests: bool = False, checks: bool = False
+        self, doc: bool = False, checks: bool = False
     ) -> bool:
         cmd: list[str] = [
             "cmake",
@@ -761,8 +853,6 @@ class BenchmarkContext:
 
         if not doc:
             cmd += ["-DNO_DOCS=1"]
-        if not tests:
-            cmd += ["-DNO_TESTS=1"]
         if not checks:
             cmd += ["-DNO_CHECKS=1"]
 
@@ -883,6 +973,23 @@ class Report:
         ]  # term -> {"time": ..., "nInsn": ...}
         runtime_ns: float = 0  # Runtime in nanoseconds for sorting
         insn_count: int = 0  # Instruction count for sorting
+
+    @dataclasses.dataclass
+    class CompareRow:
+        """Prepared data for a single benchmark row in compare mode."""
+
+        name: str
+        label: str
+        base_time_str: str
+        ref_time_str: str
+        delta_time_str: str
+        delta_time_pct: float
+        base_insn: int | None
+        ref_insn: int | None
+        delta_insn: int | None
+        delta_insn_pct: float | None
+        base_time_ns: float
+        ref_time_ns: float
 
     def __init__(self, history: History):
         self._history = history
@@ -1023,6 +1130,120 @@ class Report:
         rows = self._get_benchmark_rows(terms)
         renderer.print_report(rows, terms)
 
+    def _get_compare_rows(self, base_sha: str, ref_sha: str) -> list[CompareRow]:
+        rows = []
+        for benchmark in self._history.sorted_benchmarks():
+            base_result = next(
+                (r for r in benchmark.results if r.commit_sha == base_sha), None
+            )
+            ref_result = next(
+                (r for r in benchmark.results if r.commit_sha == ref_sha), None
+            )
+            if not base_result or not ref_result:
+                continue
+
+            base_ns: float = float(base_result.time.to("ns").magnitude)  # type: ignore[union-attr]
+            ref_ns: float = float(ref_result.time.to("ns").magnitude)  # type: ignore[union-attr]
+            delta_ns: float = ref_ns - base_ns
+            delta_pct: float = (delta_ns / base_ns * 100) if base_ns else 0.0
+
+            base_insn = int(base_result.nInsn) if base_result.nInsn else None
+            ref_insn = int(ref_result.nInsn) if ref_result.nInsn else None
+            if base_insn is not None and ref_insn is not None:
+                delta_insn: int | None = int(ref_insn) - int(base_insn)
+                delta_insn_pct: float | None = (
+                    (delta_insn / base_insn * 100) if base_insn else 0
+                )
+            else:
+                delta_insn = None
+                delta_insn_pct = None
+
+            rows.append(
+                Report.CompareRow(
+                    name=benchmark.name,
+                    label=benchmark.label,
+                    base_time_str=f"{base_result.time:~.2f}",  # type: ignore[union-attr]
+                    ref_time_str=f"{ref_result.time:~.2f}",  # type: ignore[union-attr]
+                    delta_time_str=f"{delta_ns:+.2f} ns",
+                    delta_time_pct=delta_pct,
+                    base_insn=base_insn,
+                    ref_insn=ref_insn,
+                    delta_insn=delta_insn,
+                    delta_insn_pct=delta_insn_pct,
+                    base_time_ns=base_ns,
+                    ref_time_ns=ref_ns,
+                )
+            )
+
+        return rows
+
+    def print_compare_report(self, base_sha: str, ref_sha: str) -> None:
+        rows = self._get_compare_rows(base_sha, ref_sha)
+        renderer.print_compare_report(rows, base_sha, ref_sha)
+
+    def write_compare_json(
+        self,
+        path: pathlib.Path,
+        base_sha: str,
+        ref_sha: str,
+        host: str,
+    ) -> None:
+        rows = self._get_compare_rows(base_sha, ref_sha)
+        data = {
+            "base": base_sha,
+            "ref": ref_sha,
+            "host": host,
+            "benchmarks": [
+                {
+                    "name": r.name,
+                    "base_time_ns": r.base_time_ns,
+                    "ref_time_ns": r.ref_time_ns,
+                    "delta_time_ns": r.ref_time_ns - r.base_time_ns,
+                    "delta_time_pct": r.delta_time_pct,
+                    "base_insn": r.base_insn,
+                    "ref_insn": r.ref_insn,
+                    "delta_insn": r.delta_insn,
+                    "delta_insn_pct": r.delta_insn_pct,
+                }
+                for r in rows
+            ],
+        }
+
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+
+
+def _benchmark_commits(executor: Executor, args: argparse.Namespace) -> None:
+    for ctx in BenchmarkContext.commits(executor):
+        if not ctx.configure():
+            continue
+
+        if not ctx.make("bfcli"):
+            continue
+
+        if not ctx.make("benchmark_bin"):
+            continue
+
+        if not ctx.run_benchmark(
+            args.bind_node, args.no_preempt, args.cpu_pin, args.slice
+        ):
+            continue
+
+        results = ctx.results
+        if not results:
+            executor.log(f"could not find {ctx.results_path}")
+            continue
+
+        for r in results:
+            if r.get("error_occurred"):
+                executor.stats.n_benchmark_errors += 1
+                executor.log(
+                    f"[red bold]benchmark error: {r['name']}: {r.get('error_message', '')}[/]"
+                )
+
+        executor.add_results(ctx.commit, results)
+        executor.log("Done!")
+
 
 def run_benchmarks(args: argparse.Namespace):
     executor = (
@@ -1072,6 +1293,9 @@ def run_benchmarks(args: argparse.Namespace):
             )
         report.print_report([20])
 
+    if args.fail_on_benchmark_error and executor.stats.n_benchmark_errors > 0:
+        raise SystemExit(1)
+
     if args.fail_on_significant_change:
         terms = [20]
         for benchmark in executor.results.sorted_benchmarks():
@@ -1081,72 +1305,56 @@ def run_benchmarks(args: argparse.Namespace):
                 raise SystemExit(1)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        prog="bfbencher",
-        description="Benchmark bpfilter performance across git commits.",
+def run_compare(args: argparse.Namespace):
+    source_repo = git.Repo(args.sources)
+    base_sha: str = source_repo.git.rev_parse(args.base)
+    ref_sha: str = source_repo.git.rev_parse(args.ref)
+
+    args.since = args.base
+    args.until = args.base
+    args.include = [args.ref]
+
+    executor = (
+        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
     )
 
-    parser.add_argument(
-        "--since",
-        type=str,
-        help=f'oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
-        default=DEFAULT_FIRST_COMMIT_REF,
-    )
-    parser.add_argument(
-        "--include",
-        type=str,
-        action="append",
-        default=[],
-        help='include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
-    )
-    parser.add_argument(
-        "--until",
-        type=str,
-        help=f'newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
-        default=DEFAULT_LAST_COMMIT_REF,
-    )
-    parser.add_argument(
+    with executor:
+        _benchmark_commits(executor, args)
+
+        report = Report(executor.results)
+        report.print_compare_report(base_sha, ref_sha)
+
+        if args.json_output:
+            report.write_compare_json(
+                args.json_output, base_sha, ref_sha, executor.host
+            )
+
+    if args.fail_on_benchmark_error and executor.stats.n_benchmark_errors > 0:
+        raise SystemExit(1)
+
+
+def main():
+    # Options shared across all subcommands.
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
         "--sources",
         type=pathlib.Path,
         help=f'path to the bpfilter sources directory. Defaults to "{DEFAULT_SOURCE_PATH}".',
         default=DEFAULT_SOURCE_PATH,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--host",
         type=str,
         help=f'host to run the benchmark on. bfbencher will connect to the host using SSH, copy the project sources on it, and run the benchmarks. Defaults to "{DEFAULT_HOST[0]}" (current host).',
         default=DEFAULT_HOST[0],
     )
-    parser.add_argument(
+    shared.add_argument(
         "--cache-dir",
         type=pathlib.Path,
         help=f"path to the directory containing the cached results. The cache is used to store benchmark results based on the hostname and the commit SHA, it is stored on the host running bfbencher. Defaults to {DEFAULT_CACHE_PATH}.",
         default=DEFAULT_CACHE_PATH,
     )
-    parser.add_argument(
-        "--report-template-path",
-        type=pathlib.Path,
-        help=f'path to the Jinja2 template use to generate the HTML report. Defaults to "{DEFAULT_REPORT_TEMPLATE_PATH}"',
-        default=DEFAULT_REPORT_TEMPLATE_PATH,
-    )
-    parser.add_argument(
-        "--report-path",
-        type=pathlib.Path,
-        help="path of the final HTML report.",
-    )
-    parser.add_argument(
-        "--pr-report-template-path",
-        type=pathlib.Path,
-        help=f'path to the Jinja2 template use to generate the HTML pull-request report. Defaults to "{DEFAULT_PR_REPORT_TEMPLATE_PATH}"',
-        default=DEFAULT_PR_REPORT_TEMPLATE_PATH,
-    )
-    parser.add_argument(
-        "--pr-report-path",
-        type=pathlib.Path,
-        help="path of the HTML summary report for pull requests (shows only significant changes).",
-    )
-    parser.add_argument(
+    shared.add_argument(
         "--retry",
         "-r",
         type=str,
@@ -1154,41 +1362,130 @@ def main():
         default=[],
         help='retry benchmarks for specific commits, ignoring cached results. Use "failed" to retry all failed commits, "all" to retry everything, or a commit ref to retry a specific commit. Can be specified multiple times.',
     )
-    parser.add_argument(
+    shared.add_argument(
+        "--fail-on-benchmark-error",
+        action="store_true",
+        help="exit with non-zero status if any benchmark reports an error during execution",
+        default=False,
+    )
+    shared.add_argument(
         "--fail-on-significant-change",
         choices=["better", "worse", "any"],
         help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--bind-node",
         type=int,
         help="CPU and memory node to bind the benchmark to.",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--no-preempt",
         action="store_true",
-        help="if set, use chrt to run the bechmark with real-time scheduling policy at the highest priority. This option should reduce jitter as only kernel threads could preempt it.",
+        help="if set, use chrt to run the benchmark with real-time scheduling policy at the highest priority. This option should reduce jitter as only kernel threads could preempt it.",
         default=False,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--cpu-pin",
         type=int,
         help="if set, defines the CPU to pin the benchmark to. If the CPU is isolated, it will reduce variability between runs.",
         default=None,
     )
-    parser.add_argument(
+    shared.add_argument(
         "--slice",
         type=str,
         help="systemd slice to run the benchmark into. Required if --cpu-pin is isolated at the systemd level.",
         default=None,
     )
 
+    parser = argparse.ArgumentParser(
+        prog="bfbencher",
+        description="Benchmark bpfilter performance across git commits.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    history_parser = subparsers.add_parser(
+        "history",
+        parents=[shared],
+        help="benchmark performance across a range of commits",
+        description="Benchmark bpfilter performance across a range of commits and report changes over time.",
+    )
+    history_parser.add_argument(
+        "--report-template-path",
+        type=pathlib.Path,
+        help=f'path to the Jinja2 template use to generate the HTML report. Defaults to "{DEFAULT_REPORT_TEMPLATE_PATH}"',
+        default=DEFAULT_REPORT_TEMPLATE_PATH,
+    )
+    history_parser.add_argument(
+        "--report-path",
+        type=pathlib.Path,
+        help="path of the final HTML report.",
+    )
+    history_parser.add_argument(
+        "--pr-report-template-path",
+        type=pathlib.Path,
+        help=f'path to the Jinja2 template use to generate the HTML pull-request report. Defaults to "{DEFAULT_PR_REPORT_TEMPLATE_PATH}"',
+        default=DEFAULT_PR_REPORT_TEMPLATE_PATH,
+    )
+    history_parser.add_argument(
+        "--pr-report-path",
+        type=pathlib.Path,
+        help="path of the HTML summary report for pull requests (shows only significant changes).",
+    )
+    history_parser.add_argument(
+        "--since",
+        type=str,
+        help=f'oldest commit to benchmark. Use "wip" to start from the uncommitted changes (committed as "bfbencher: WIP"). Must be older than --until, or the same. Defaults to "{DEFAULT_FIRST_COMMIT_REF}"',
+        default=DEFAULT_FIRST_COMMIT_REF,
+    )
+    history_parser.add_argument(
+        "--until",
+        type=str,
+        help=f'newest commit to benchmark. Use "wip" to include uncommitted changes (committed as "bfbencher: WIP"). Must be newer than --since, or the same. Defaults to "{DEFAULT_LAST_COMMIT_REF}"',
+        default=DEFAULT_LAST_COMMIT_REF,
+    )
+    history_parser.add_argument(
+        "--include",
+        type=str,
+        action="append",
+        default=[],
+        help='include an extra commit outside the range. Can be specified multiple times. Use "wip" to include uncommitted changes. Commits are sorted in git order with the range commits.',
+    )
+
+    compare_parser = subparsers.add_parser(
+        "compare",
+        parents=[shared],
+        help="compare performance between two specific commits",
+        description="Benchmark two specific commits and report the performance difference.",
+    )
+    compare_parser.add_argument(
+        "base",
+        type=str,
+        help='baseline commit ref. Use "wip" for uncommitted changes.',
+    )
+    compare_parser.add_argument(
+        "ref",
+        type=str,
+        help='commit ref to compare against the baseline. Use "wip" for uncommitted changes.',
+    )
+    compare_parser.add_argument(
+        "--json-output",
+        type=pathlib.Path,
+        help="write comparison results to a JSON file.",
+    )
+
     args = parser.parse_args()
 
+    if args.command is None:
+        parser.print_help()
+        raise SystemExit(1)
+
     try:
-        run_benchmarks(args)
+        if args.command == "history":
+            run_benchmarks(args)
+        elif args.command == "compare":
+            run_compare(args)
     except KeyboardInterrupt:
         renderer.log("Command interrupted by user")
         raise SystemExit(1)
