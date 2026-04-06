@@ -211,7 +211,8 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
 }
 
 int bf_map_new_from_set(struct bf_map **map, const char *name,
-                        const struct bf_set *set)
+                        const struct bf_set *set, size_t set_size,
+                        size_t value_size)
 {
     assert(map);
     assert(name);
@@ -220,7 +221,7 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
     return _bf_map_new(map, name, BF_MAP_TYPE_SET,
                        set->use_trie ? BF_BPF_MAP_TYPE_LPM_TRIE :
                                        BF_BPF_MAP_TYPE_HASH,
-                       set->elem_size, 1, bf_list_size(&set->elems));
+                       set->elem_size, value_size, set_size);
 }
 
 int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)

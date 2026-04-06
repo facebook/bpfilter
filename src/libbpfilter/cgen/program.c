@@ -705,7 +705,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 
         (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
                        (uint8_t)set_idx++);
-        r = bf_map_new_from_set(&map, name, set);
+        r = bf_map_new_from_set(&map, name, set, nelems, 1);
         if (r)
             return r;
 
