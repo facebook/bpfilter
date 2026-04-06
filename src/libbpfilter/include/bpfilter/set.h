@@ -127,6 +127,15 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix);
 bool bf_set_is_empty(const struct bf_set *set);
 
 /**
+ * @brief Check whether two sets have the same key format.
+ *
+ * @param lhs First set. Can't be NULL.
+ * @param rhs Second set. Can't be NULL.
+ * @return true if both sets have the same key components, false otherwise.
+ */
+bool bf_set_same_key(const struct bf_set *lhs, const struct bf_set *rhs);
+
+/**
  * @brief Pre-allocate capacity for at least `count` elements.
  *
  * @param set Initialised set. Can't be NULL.
