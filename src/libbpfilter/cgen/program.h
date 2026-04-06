@@ -168,13 +168,14 @@
  *
  * @param program Program to generate the bytecode for. Can't be NULL.
  * @param reg Register to store the set file descriptor in.
- * @param index Index of the set in the program.
+ * @param set Non-owning pointer to the referenced `bf_set`. The set must
+ *        live at least until `bf_program_load()` returns.
  */
-#define EMIT_LOAD_SET_FD_FIXUP(program, reg, index)                            \
+#define EMIT_LOAD_SET_FD_FIXUP(program, reg, set)                              \
     ({                                                                         \
         union bf_fixup_attr __attr;                                            \
         memset(&__attr, 0, sizeof(__attr));                                    \
-        __attr.set_index = (index);                                            \
+        __attr.set_ptr = (set);                                                \
         const struct bpf_insn ld_insn[2] = {BPF_LD_MAP_FD(reg, 0)};            \
         int __r = bf_program_emit_fixup((program), BF_FIXUP_TYPE_SET_MAP_FD,   \
                                         ld_insn[0], &__attr);                  \
@@ -189,6 +190,8 @@ struct bf_chain;
 struct bf_counter;
 struct bf_hookopts;
 struct bf_handle;
+struct bf_set;
+struct bf_set_group;
 
 struct bf_program
 {
@@ -206,6 +209,13 @@ struct bf_program
     uint32_t elfstubs_location[_BF_ELFSTUB_MAX];
     bf_vector img;
     bf_list fixups;
+
+    /** Non-empty sets from `runtime.chain->sets`, partitioned into groups
+     * that each back a single BPF map. Hash-keyed sets sharing a key
+     * format are placed in the same group; each LPM trie set sits in a
+     * group of its own. A set's position within a group is its bit index
+     * in the map's bitmask value. Not serialized. */
+    bf_list set_groups;
 
     /** Runtime data used to interact with the program and cache information.
      * This data is not serialized. */
@@ -253,6 +263,26 @@ int bf_program_emit_fixup(struct bf_program *program, enum bf_fixup_type type,
 int bf_program_emit_fixup_elfstub(struct bf_program *program,
                                   enum bf_elfstub_id id);
 int bf_program_generate(struct bf_program *program);
+
+/**
+ * @brief Get the bit position of a set within its group.
+ *
+ * Hash-keyed sets sharing a key format are grouped together and share a
+ * single BPF map; LPM trie sets each live in a group of size 1. Either
+ * way, each set's elements are stored in the group's map with a bitmask
+ * value where one bit identifies which set owns the element. This
+ * function returns that bit's position for `set` within its group (always
+ * 0 for LPM trie sets).
+ *
+ * @param program Program whose groups have been built. Can't be NULL.
+ * @param set Set to locate in the program's groups. Can't be NULL.
+ * @param bit_index Output: position of `set` within its group's bit layout.
+ *        Can't be NULL.
+ * @return 0 on success, `-ENOENT` if `set` is not part of any group (for
+ *         example, because it is empty).
+ */
+int bf_program_set_bit_index(const struct bf_program *program,
+                             const struct bf_set *set, size_t *bit_index);
 
 /**
  * Load the BPF program into the kernel.
