@@ -71,10 +71,13 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
  *        also as filename when pinning the map to the system. Can't be NULL or
  *        empty.
  * @param set Set to create the map from. Can't be NULL.
+ * @param n_elems Number of elements to reserve room for in the map.
+ * @param value_size Size (in bytes) of the value field.
  * @return 0 on success, or a negative error value on error.
  */
 int bf_map_new_from_set(struct bf_map **map, const char *name,
-                        const struct bf_set *set);
+                        const struct bf_set *set, size_t n_elems,
+                        size_t value_size);
 
 /**
  * @brief Allocate and initialize a new map from serialized data.
