@@ -10,6 +10,8 @@
 #include <bpfilter/dump.h>
 #include <bpfilter/elfstub.h>
 
+struct bf_set;
+
 /**
  * Field to fixup in a @c bpf_insn structure.
  */
@@ -44,7 +46,9 @@ enum bf_fixup_type
 
 union bf_fixup_attr
 {
-    size_t set_index;
+    /** Set referenced by a `BF_FIXUP_TYPE_SET_MAP_FD` fixup. The fixup
+     * holds a non-owning pointer to a set in the generator's chain. */
+    const struct bf_set *set_ptr;
     enum bf_elfstub_id elfstub_id;
 };
 
