@@ -453,31 +453,16 @@ int bf_set_reserve(struct bf_set *set, size_t count)
     return bf_hashset_reserve(&set->elems, count);
 }
 
-/**
- * @brief Check if two sets have the same key format.
- *
- * @param first First set. Can't be NULL.
- * @param second Second set. Can't be NULL.
- * @return 0 if sets have matching format, or -EINVAL on mismatch.
- */
-static int _bf_set_cmp_key_format(const struct bf_set *first,
-                                  const struct bf_set *second)
+bool bf_set_same_key(const struct bf_set *lhs, const struct bf_set *rhs)
 {
-    assert(first);
-    assert(second);
+    assert(lhs);
+    assert(rhs);
 
-    if (first->n_comps != second->n_comps) {
-        return bf_err_r(
-            -EINVAL,
-            "set key format mismatch: first set has %lu components, second has %lu",
-            first->n_comps, second->n_comps);
-    }
+    if (lhs->n_comps != rhs->n_comps)
+        return false;
 
-    if (memcmp(first->key, second->key,
-               first->n_comps * sizeof(enum bf_matcher_type)) != 0)
-        return bf_err_r(-EINVAL, "set key component type mismatch");
-
-    return 0;
+    return memcmp(lhs->key, rhs->key,
+                  lhs->n_comps * sizeof(enum bf_matcher_type)) == 0;
 }
 
 int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
@@ -488,9 +473,8 @@ int bf_set_add_many(struct bf_set *dest, struct bf_set **to_add)
     assert(to_add);
     assert(*to_add);
 
-    r = _bf_set_cmp_key_format(dest, *to_add);
-    if (r)
-        return r;
+    if (!bf_set_same_key(dest, *to_add))
+        return bf_err_r(-EINVAL, "set key format mismatch");
 
     bf_hashset_foreach (&(*to_add)->elems, elem) {
         _cleanup_free_ void *data = NULL;
@@ -519,9 +503,8 @@ int bf_set_remove_many(struct bf_set *dest, struct bf_set **to_remove)
     assert(to_remove);
     assert(*to_remove);
 
-    r = _bf_set_cmp_key_format(dest, *to_remove);
-    if (r)
-        return r;
+    if (!bf_set_same_key(dest, *to_remove))
+        return bf_err_r(-EINVAL, "set key format mismatch");
 
     bf_hashset_foreach (&(*to_remove)->elems, elem) {
         r = bf_hashset_delete(&dest->elems, elem->data);
