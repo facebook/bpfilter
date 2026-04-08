@@ -1,0 +1,28 @@
+id: double-pointer-output
+language: c
+severity: warning
+message: >-
+  Constructor bf_*_new() missing double-pointer output parameter.
+  Constructors must take a TYPE ** parameter to return the allocated object.
+note: >-
+  Change the output parameter to a double pointer (TYPE **) so the caller
+  receives ownership via TAKE_PTR() and cleanup attributes work correctly.
+rule:
+  kind: function_definition
+  has:
+    kind: function_declarator
+    has:
+      kind: identifier
+      regex: "^bf_\\w+_new$"
+  not:
+    has:
+      kind: function_declarator
+      has:
+        kind: parameter_list
+        has:
+          kind: parameter_declaration
+          has:
+            kind: pointer_declarator
+            has:
+              kind: pointer_declarator
+            stopBy: end

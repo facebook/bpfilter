@@ -1,0 +1,74 @@
+id: enum-sentinel-format
+snapshots:
+  ? |
+    enum bf_bpf_cmd
+    {
+        BF_BPF_PROG_LOAD = 5,
+        BF_BPF_MAP_LOOKUP_ELEM = 1,
+    };
+  : labels:
+    - source: |-
+        enum bf_bpf_cmd
+        {
+            BF_BPF_PROG_LOAD = 5,
+            BF_BPF_MAP_LOOKUP_ELEM = 1,
+        }
+      style: primary
+      start: 0
+      end: 77
+    - source: |-
+        {
+            BF_BPF_PROG_LOAD = 5,
+            BF_BPF_MAP_LOOKUP_ELEM = 1,
+        }
+      style: secondary
+      start: 16
+      end: 77
+  ? |
+    enum bf_chain_type
+    {
+        BF_CHAIN_TYPE_FILTER,
+        BF_CHAIN_TYPE_NAT,
+    };
+  : labels:
+    - source: |-
+        enum bf_chain_type
+        {
+            BF_CHAIN_TYPE_FILTER,
+            BF_CHAIN_TYPE_NAT,
+        }
+      style: primary
+      start: 0
+      end: 71
+    - source: |-
+        {
+            BF_CHAIN_TYPE_FILTER,
+            BF_CHAIN_TYPE_NAT,
+        }
+      style: secondary
+      start: 19
+      end: 71
+  ? |
+    enum bf_hook
+    {
+        BF_HOOK_XDP,
+        BF_HOOK_TC_INGRESS,
+    };
+  : labels:
+    - source: |-
+        enum bf_hook
+        {
+            BF_HOOK_XDP,
+            BF_HOOK_TC_INGRESS,
+        }
+      style: primary
+      start: 0
+      end: 57
+    - source: |-
+        {
+            BF_HOOK_XDP,
+            BF_HOOK_TC_INGRESS,
+        }
+      style: secondary
+      start: 13
+      end: 57

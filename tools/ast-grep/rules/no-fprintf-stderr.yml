@@ -1,0 +1,18 @@
+id: no-fprintf-stderr
+language: c
+severity: warning
+message: Use logging macros (bf_err, bf_warn, etc.) instead of fprintf(stderr, ...) or vfprintf(stderr, ...)
+note: "bpfilter has structured logging via bf_err(), bf_warn(), bf_info(), bf_dbg(). Direct fprintf(stderr) / vfprintf(stderr) bypasses log levels and formatting."
+rule:
+  any:
+    - pattern: fprintf(stderr, $$$)
+    - pattern: vfprintf(stderr, $$$)
+  not:
+    inside:
+      kind: function_definition
+      has:
+        kind: function_declarator
+        has:
+          kind: identifier
+          regex: "^(_bf_print_insn|bf_logger_).*"
+      stopBy: end

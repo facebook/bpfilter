@@ -51,6 +51,26 @@ set_tests_properties("check.checkstyle" PROPERTIES
     LABELS "check"
 )
 
+find_program(SG_BIN NAMES ast-grep)
+
+if(SG_BIN)
+    # ast-grep scan exits 0 when only warning/info/hint matches are found; it
+    # exits non-zero only on error-severity matches. All rules in this PR ship
+    # at warning severity, so the test runs informationally. Rules can be
+    # promoted individually with --error=<RULE_ID> as the codebase is cleaned up.
+    add_test(NAME "check.astgrep"
+        COMMAND
+            ${SG_BIN} scan
+                --config ${CMAKE_SOURCE_DIR}/tools/ast-grep/sgconfig.yml
+                ${CMAKE_SOURCE_DIR}/src/libbpfilter
+                ${CMAKE_SOURCE_DIR}/src/bfcli
+    )
+
+    set_tests_properties("check.astgrep" PROPERTIES
+        LABELS "check"
+    )
+endif()
+
 add_custom_target(fixstyle
     COMMAND
         ${CLANG_FORMAT_BIN}
