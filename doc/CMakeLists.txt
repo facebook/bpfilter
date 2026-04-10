@@ -67,7 +67,12 @@
 #]]
 
 find_package(Doxygen REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_program(SPHINX_BIN sphinx-build REQUIRED)
+
+set(bfcli_matcher_hook_compatibility
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/_generated/bfcli_matcher_hook_compatibility.rst
+)
 
 file(GLOB_RECURSE bf_srcs
 	${CMAKE_SOURCE_DIR}/src/*.h 			${CMAKE_SOURCE_DIR}/src/*.c
@@ -80,6 +85,7 @@ list(FILTER bf_srcs EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/external/.*")
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
+	${bfcli_matcher_hook_compatibility}
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
@@ -95,6 +101,24 @@ set(doc_srcs
 
 configure_file(Doxyfile.in Doxyfile)
 configure_file(conf.py.in conf.py)
+
+add_custom_command(
+	COMMAND
+		${Python3_EXECUTABLE}
+			${CMAKE_CURRENT_SOURCE_DIR}/generate_matcher_hook_compat.py
+			--matcher-c ${CMAKE_SOURCE_DIR}/src/libbpfilter/matcher.c
+			--matcher-h ${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/matcher.h
+			--hook-h ${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/hook.h
+			--output ${bfcli_matcher_hook_compatibility}
+	DEPENDS
+		${CMAKE_CURRENT_SOURCE_DIR}/generate_matcher_hook_compat.py
+		${CMAKE_SOURCE_DIR}/src/libbpfilter/matcher.c
+		${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/matcher.h
+		${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/hook.h
+	OUTPUT ${bfcli_matcher_hook_compatibility}
+	COMMENT "Generating bfcli matcher hook compatibility table"
+	VERBATIM
+)
 
 add_custom_command(
 	COMMAND Doxygen::doxygen -s -g ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.base >/dev/null

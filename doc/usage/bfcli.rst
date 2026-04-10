@@ -521,6 +521,15 @@ With:
 
   - ``$PAYLOAD``: payload to compare to the processed network packet. The exact payload format depends on ``$TYPE``.
 
+Hook Compatibility
+##################
+
+The matcher-to-hook compatibility table below is generated from
+``src/libbpfilter/matcher.c`` and reflects each matcher's
+``unsupported_hooks`` metadata.
+
+.. include:: _generated/bfcli_matcher_hook_compatibility.rst
+
 
 Meta
 ####
