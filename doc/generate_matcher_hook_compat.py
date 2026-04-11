@@ -4,8 +4,8 @@
 """Generate the bfcli matcher-to-hook compatibility table.
 
 The table is derived from the matcher metadata declared in
-src/libbpfilter/matcher.c. Each matcher's supported hooks are computed from
-the inverse of its `unsupported_hooks` bitmask.
+src/libbpfilter/matcher.c. Each matcher's unsupported hooks are extracted
+from its `unsupported_hooks` bitmask.
 """
 
 from __future__ import annotations
@@ -175,11 +175,23 @@ def _extract_unsupported_hooks(block: str) -> list[str]:
     ]
 
 
-def _expand_hooks(tokens: list[str], macros: dict[str, list[str]]) -> list[str]:
+def _expand_hooks(
+    tokens: list[str],
+    macros: dict[str, list[str]],
+    seen: set[str] | None = None,
+) -> list[str]:
+    if seen is None:
+        seen = set()
+
     expanded: list[str] = []
     for token in tokens:
         if token in macros:
-            expanded.extend(_expand_hooks(macros[token], macros))
+            if token in seen:
+                raise ValueError(f"circular hook macro reference: {token}")
+
+            expanded.extend(
+                _expand_hooks(macros[token], macros, seen | {token})
+            )
         else:
             expanded.append(token)
 
@@ -295,6 +307,16 @@ def main() -> int:
 
     if args.check:
         rendered = render(args.matcher_c, args.matcher_h, args.hook_h)
+        if not args.output.exists():
+            print(
+                (
+                    f"{args.output} does not exist; run without --check "
+                    "to generate it"
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
         current = _read(args.output)
         if current != rendered:
             print(f"{args.output} is out of date", file=sys.stderr)
