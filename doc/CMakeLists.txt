@@ -67,7 +67,6 @@
 #]]
 
 find_package(Doxygen REQUIRED)
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_program(SPHINX_BIN sphinx-build REQUIRED)
 
 set(bfcli_matcher_hook_compatibility
@@ -101,24 +100,6 @@ set(doc_srcs
 
 configure_file(Doxyfile.in Doxyfile)
 configure_file(conf.py.in conf.py)
-
-add_custom_command(
-	COMMAND
-		${Python3_EXECUTABLE}
-			${CMAKE_CURRENT_SOURCE_DIR}/generate_matcher_hook_compat.py
-			--matcher-c ${CMAKE_SOURCE_DIR}/src/libbpfilter/matcher.c
-			--matcher-h ${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/matcher.h
-			--hook-h ${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/hook.h
-			--output ${bfcli_matcher_hook_compatibility}
-	DEPENDS
-		${CMAKE_CURRENT_SOURCE_DIR}/generate_matcher_hook_compat.py
-		${CMAKE_SOURCE_DIR}/src/libbpfilter/matcher.c
-		${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/matcher.h
-		${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/hook.h
-	OUTPUT ${bfcli_matcher_hook_compatibility}
-	COMMENT "Generating bfcli matcher hook compatibility table"
-	VERBATIM
-)
 
 add_custom_command(
 	COMMAND Doxygen::doxygen -s -g ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.base >/dev/null

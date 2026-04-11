@@ -521,16 +521,6 @@ With:
 
   - ``$PAYLOAD``: payload to compare to the processed network packet. The exact payload format depends on ``$TYPE``.
 
-Hook Compatibility
-##################
-
-The matcher-to-hook compatibility table below is generated from
-``src/libbpfilter/matcher.c`` and reflects each matcher's
-``unsupported_hooks`` metadata.
-
-.. include:: _generated/bfcli_matcher_hook_compatibility.rst
-
-
 Meta
 ####
 
@@ -852,6 +842,18 @@ ICMPv6
 .. tip::
 
     The following ICMPv6 type name are recognized by bpfilter: destination-unreachable, packet-too-big, time-exceeded, echo-request, echo-reply, mld-listener-query, mld-listener-report, mld-listener-reduction, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, parameter-problem, mld2-listener-report.
+
+Hook Compatibility
+##################
+
+The matcher-to-hook compatibility table below is generated from
+``src/libbpfilter/matcher.c`` and reflects each matcher's
+``unsupported_hooks`` metadata.
+
+An unsupported list of ``None`` means the matcher is compatible with every
+hook.
+
+.. include:: _generated/bfcli_matcher_hook_compatibility.rst
 
 
 .. _IEEE 802 number: https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml cli,core: convert meta.l3_proto to new framework)
