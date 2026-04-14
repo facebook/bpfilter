@@ -236,8 +236,9 @@ static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
     bf_dbg_r(r, "driver mode not available");
 
     r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_SKB_MODE, 0, 0);
-    if (r >= 0)
+    if (r >= 0) {
         bf_info("attached XDP program in SKB mode");
+    }
 
     return r;
 }
