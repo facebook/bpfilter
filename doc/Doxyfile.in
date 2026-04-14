@@ -57,7 +57,8 @@ GENERATE_PERLMOD        = NO
 #---------------------------------------------------------------------------
 INCLUDE_PATH            = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests"
 MACRO_EXPANSION         = YES
-PREDEFINED              = bf_aligned(x)=
+PREDEFINED              = bf_aligned(x)= \
+                          DOXYGEN
 
 #---------------------------------------------------------------------------
 # Configuration options related to diagram generator tools

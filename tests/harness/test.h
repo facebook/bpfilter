@@ -168,3 +168,14 @@ int bft_hook_accept(enum bf_hook hook);
  * @return The flavor-specific drop verdict (e.g. XDP_DROP, NF_DROP).
  */
 int bft_hook_drop(enum bf_hook hook);
+
+/**
+ * @brief Return the BPF "next" return value for the given hook.
+ *
+ * Maps BF_VERDICT_NEXT to its flavor-specific return code: TCX_NEXT (-1) for
+ * TC, XDP_PASS for XDP, NF_ACCEPT for NF, and 1 for cgroup_skb.
+ *
+ * @param hook Hook to query.
+ * @return The flavor-specific next verdict.
+ */
+int bft_hook_next(enum bf_hook hook);

@@ -47,6 +47,7 @@
 static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
                                     const char *kfunc)
 {
+    int ret_code;
     int r;
 
     assert(program);
@@ -76,10 +77,11 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
         if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create a new dynamic pointer");
 
-        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT);
-        if (r < 0)
+        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
         EMIT(program, BPF_EXIT_INSN());
     }
 
@@ -102,6 +104,7 @@ int bf_stub_make_ctx_skb_dynptr(struct bf_program *program, int skb_reg)
 
 int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 {
+    int ret_code;
     int r;
 
     assert(program);
@@ -135,10 +138,11 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
         if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
 
-        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT);
-        if (r < 0)
+        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
         EMIT(program, BPF_EXIT_INSN());
     }
 
@@ -160,6 +164,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
     _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
+    int ret_code;
     int r;
 
     assert(program);
@@ -210,10 +215,11 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
 
-        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT);
-        if (r < 0)
+        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
         EMIT(program, BPF_EXIT_INSN());
     }
 
@@ -316,6 +322,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 int bf_stub_parse_l4_hdr(struct bf_program *program)
 {
     _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
+    int ret_code;
     int r;
 
     assert(program);
@@ -369,10 +376,11 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
         if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
 
-        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT);
-        if (r < 0)
+        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
         EMIT(program, BPF_EXIT_INSN());
     }
 

@@ -138,6 +138,7 @@ bf_add_e2e_shell_test(e2e rules/icmp_tc.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/icmp_xdp.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/log.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/mark.sh ROOT)
+bf_add_e2e_shell_test(e2e rules/next_tc.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/redirect.sh ROOT)
 
 bf_add_e2e_shell_test(e2e hooks/cgroup_sock_addr_connect4.sh ROOT)
@@ -146,6 +147,8 @@ bf_add_e2e_shell_test(e2e hooks/cgroup_sock_addr_sendmsg4.sh ROOT)
 bf_add_e2e_shell_test(e2e hooks/cgroup_sock_addr_sendmsg6.sh ROOT)
 
 bf_add_e2e_shell_test(e2e rulesets/rulesets.sh ROOT)
+
+bf_add_e2e_c_test(verdicts/next.cpp)
 
 bf_add_e2e_c_test(matchers/icmp_code.cpp)
 bf_add_e2e_c_test(matchers/icmp_type.cpp)

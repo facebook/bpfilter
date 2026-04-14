@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <climits>
 #include <cstring>
-#include <format>
 #include <iostream>
 #include <iterator>
 #include <set>
@@ -208,8 +207,8 @@ private:
 
     void genName()
     {
-        _name = std::format("{}.{}[{}]", bf_matcher_type_to_str(_type),
-                            bf_matcher_op_to_str(_op), bf_hook_to_str(_hook));
+        _name = std::string(bf_matcher_type_to_str(_type)) + "." +
+                bf_matcher_op_to_str(_op) + "[" + bf_hook_to_str(_hook) + "]";
     }
 
 public:
@@ -307,7 +306,9 @@ public:
     {
         std::vector<std::pair<enum bf_hook, enum bf_matcher_op>> new_tests;
 
-        if (bf_hook_to_flavor(test.hook()) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
+        // bf_hook_to_flavor() doesn't allow invalid hooks.
+        if (test.hook() != _BF_HOOK_MAX &&
+            bf_hook_to_flavor(test.hook()) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
             bf_warn(
                 "BF_FLAVOR_CGROUP_SOCK_ADDR hooks are not supported by MatcherTestsSuite, ignoring");
             return *this;
@@ -343,8 +344,8 @@ public:
         const auto *check = static_cast<const CheckSet *>(*state);
 
         for (const auto &[hook, op]: *check) {
-            cm_print_error("missing e2e.matchers test: %s for '%s'\n",
-                           bf_hook_to_str(hook), bf_matcher_op_to_str(op));
+            print_error("missing e2e.matchers test: %s for '%s'\n",
+                        bf_hook_to_str(hook), bf_matcher_op_to_str(op));
         }
 
         assert_true(check->empty());

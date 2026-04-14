@@ -293,6 +293,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
                                      struct bf_rule *rule)
 {
     uint32_t checked_layers = 0;
+    int ret_code;
     int r;
 
     assert(program);
@@ -363,7 +364,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_5, 16));
         EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_5, BPF_REG_8));
 
-        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_LOG);
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_LOG);
     }
 
     if (rule->counters) {
@@ -377,10 +378,11 @@ static int _bf_program_generate_rule(struct bf_program *program,
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
-        r = program->runtime.ops->get_verdict(rule->verdict);
-        if (r < 0)
+    case BF_VERDICT_NEXT:
+        r = program->runtime.ops->get_verdict(rule->verdict, &ret_code);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
         EMIT(program, BPF_EXIT_INSN());
         break;
     case BF_VERDICT_REDIRECT:
@@ -582,6 +584,7 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
 int bf_program_generate(struct bf_program *program)
 {
     const struct bf_chain *chain = program->runtime.chain;
+    int ret_code;
     int r;
 
     // Save the program's argument into the context.
@@ -629,10 +632,10 @@ int bf_program_generate(struct bf_program *program)
          BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
     EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-    r = program->runtime.ops->get_verdict(chain->policy);
-    if (r < 0)
+    r = program->runtime.ops->get_verdict(chain->policy, &ret_code);
+    if (r)
         return r;
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
     EMIT(program, BPF_EXIT_INSN());
 
     r = _bf_program_generate_elfstubs(program);
