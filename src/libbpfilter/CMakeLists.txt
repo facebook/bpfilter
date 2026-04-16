@@ -115,6 +115,7 @@ bf_target_add_elfstubs(libbpfilter
         "update_counters"
         "pkt_log"
         "flow_hash"
+        "sock_addr_log"
 )
 
 target_compile_definitions(libbpfilter
