@@ -7,6 +7,7 @@
 #   2. "review" - runs Claude with read-only permissions, produces structured JSON
 #   3. "post"   - reads the JSON and posts comments to the PR (write permissions)
 
+
 name: Claude PR Review
 on:
   issue_comment:
