@@ -40,7 +40,35 @@
  */
 #define BF_PROG_SCR_OFF(index)                                                 \
     (-(int)sizeof(struct bf_runtime) +                                         \
-     (int)offsetof(struct bf_runtime, scratch) + (index))
+     (int)offsetof(struct bf_runtime, scratch) + (int)(index))
+
+/**
+ * @brief Pre-read socket address fields for `cgroup_sock_addr` logging.
+ *
+ * The BPF verifier restricts which `bpf_sock_addr` context fields a program
+ * can access based on its attach type (e.g. `msg_src_ip4` is only valid for
+ * `UDP4_SENDMSG`, `user_ip4` only for IPv4 hooks). Because the `sock_addr_log`
+ * ELF stub is shared across all hook types, it cannot read these fields
+ * directly.
+ *
+ * Instead, the per-hook inline codegen pre-reads the permitted fields into
+ * this struct before calling the stub. The stub then copies from here into
+ * the log entry, avoiding any restricted context access.
+ */
+struct bf_runtime_sock_addr
+{
+    /** Source address (IPv4: first 4 bytes, IPv6: all 16). */
+    __u8 bf_aligned(8) saddr[16];
+
+    /** Destination address (IPv4: first 4 bytes, IPv6: all 16). */
+    __u8 bf_aligned(8) daddr[16];
+
+    /** Destination port in host byte order. */
+    __u16 bf_aligned(8) dport;
+};
+
+static_assert(sizeof(struct bf_runtime_sock_addr) <= 64,
+              "bf_runtime_sock_addr must fit in the scratch area");
 
 /**
  * @brief Runtime stack layout for the generated BPF programs.
