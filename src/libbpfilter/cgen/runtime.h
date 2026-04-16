@@ -43,6 +43,31 @@
      (int)offsetof(struct bf_runtime, scratch) + (index))
 
 /**
+ * @brief Pre-read socket address fields for `cgroup_sock_addr` logging.
+ *
+ * The BPF verifier restricts which `bpf_sock_addr` context fields a program
+ * can access based on its attach type (e.g. `msg_src_ip4` is only valid for
+ * `UDP4_SENDMSG`, `user_ip4` only for IPv4 hooks). Because the `sock_addr_log`
+ * ELF stub is shared across all hook types, it cannot read these fields
+ * directly.
+ *
+ * Instead, the per-hook inline codegen pre-reads the permitted fields into
+ * this struct before calling the stub. The stub then copies from here into
+ * the log entry, avoiding any restricted context access.
+ */
+struct bf_runtime_sock_addr
+{
+    /** Source address (IPv4: first 4 bytes, IPv6: all 16). */
+    __u8 bf_aligned(8) saddr[16];
+
+    /** Destination address (IPv4: first 4 bytes, IPv6: all 16). */
+    __u8 bf_aligned(8) daddr[16];
+
+    /** Destination port in host byte order. */
+    __u16 bf_aligned(8) dport;
+};
+
+/**
  * @brief Runtime stack layout for the generated BPF programs.
  *
  * This runtime context is located at `r10 - sizeof(struct bf_runtime)`, it is
@@ -123,6 +148,9 @@ struct bf_runtime
 
     /** Layer 4 header. */
     __u8 bf_aligned(8) l4[BF_L4_SLICE_LEN];
+
+    /** Pre-read socket address fields for cgroup_sock_addr logging. */
+    struct bf_runtime_sock_addr sock_addr;
 
     /** Scratch area. */
     __u8 bf_aligned(8) scratch[64];
