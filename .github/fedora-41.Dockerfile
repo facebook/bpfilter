@@ -16,6 +16,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     gcc-c++ \
     git-core \
     google-benchmark-devel \
+    include-what-you-use \
     iproute \
     iputils \
     jq \

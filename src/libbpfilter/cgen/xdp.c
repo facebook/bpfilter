@@ -14,7 +14,7 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/verdict.h>
 
-#include "cgen/matcher/packet.h"
+#include "cgen/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "filter.h"
@@ -136,5 +136,6 @@ const struct bf_flavor_ops bf_flavor_ops_xdp = {
     .gen_inline_epilogue = _bf_xdp_gen_inline_epilogue,
     .gen_inline_redirect = _bf_xdp_gen_inline_redirect,
     .get_verdict = _bf_xdp_get_verdict,
-    .gen_inline_matcher = bf_matcher_generate_packet,
+    .gen_inline_matcher = bf_packet_gen_inline_matcher,
+    .gen_inline_log = bf_packet_gen_inline_log,
 };

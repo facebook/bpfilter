@@ -40,7 +40,7 @@ Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.
 
 ### Install
 
-**bpfilter** is packaged for Fedora 40+, EPEL 9+ and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. The examples below uses Fedora 41.
+**bpfilter** is packaged for Fedora 40+, EPEL 9+ and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. The examples below use Fedora 41.
 
 ```shell
 # Fedora 40+ or CentOS Stream 9+ (with EPEL)
@@ -61,7 +61,7 @@ make -C $BUILD_DIR
 ### Usage
 
 ```shell
-# Count the number of ping coming to interface #2
+# Count the number of pings coming to interface #2
 sudo $BUILD_DIR/output/sbin/bfcli ruleset set --from-str "chain my_chain BF_HOOK_XDP{ifindex=2} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ```
 

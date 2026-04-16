@@ -23,6 +23,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/if.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/io.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/core/list.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/core/vector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/logger.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/matcher.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/pack.h
@@ -46,6 +47,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/if.c
     ${CMAKE_CURRENT_SOURCE_DIR}/io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/list.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
@@ -64,9 +66,9 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.h               ${CMAKE_CURRENT_SOURCE_DIR}/cgen/jmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/cmp.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/cmp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.h      ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/meta.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/packet.h    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/packet.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.h       ${CMAKE_CURRENT_SOURCE_DIR}/cgen/matcher/set.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.h                ${CMAKE_CURRENT_SOURCE_DIR}/cgen/nf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgen/packet.h            ${CMAKE_CURRENT_SOURCE_DIR}/cgen/packet.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/printer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.h           ${CMAKE_CURRENT_SOURCE_DIR}/cgen/program.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/link.h         ${CMAKE_CURRENT_SOURCE_DIR}/cgen/prog/link.c
