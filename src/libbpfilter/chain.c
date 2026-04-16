@@ -132,10 +132,12 @@ int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
         rule->disabled = r;
     }
 
-    if (rule->log_mode != BF_RULE_LOG_NONE &&
+    if (rule->log_mode == BF_RULE_LOG_PKT_HEADERS &&
         bf_hook_to_flavor(chain->hook) == BF_FLAVOR_CGROUP_SOCK_ADDR) {
-        return bf_err_r(-ENOTSUP, "logging is not supported by %s",
-                        bf_hook_to_str(chain->hook));
+        return bf_err_r(
+            -ENOTSUP,
+            "per-field log options are not supported by %s, use 'log'",
+            bf_hook_to_str(chain->hook));
     }
 
     if (rule->log_mode != BF_RULE_LOG_NONE && !rule->disabled)
