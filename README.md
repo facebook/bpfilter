@@ -15,7 +15,7 @@
 <p align="center">
     <a href="README.md#key-features">Key features</a> •
     <a href="README.md#quick-start">Quick start</a> •
-  <a href="https://bpfilter.io/">Documentation</a>
+    <a href="https://bpfilter.io/">Documentation</a>
 </p>
 
 <p align="center">
@@ -40,7 +40,7 @@ Want to know more about **bpfilter**? Check the [user's guide](https://bpfilter.
 
 ### Install
 
-**bpfilter** is packaged for Fedora 40+, EPEL 9+ and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. The examples below use Fedora 41.
+**bpfilter** is packaged for Fedora 40+, EPEL 9+, and supports Fedora 40+, CentOS Stream 9+, and Ubuntu 24.04+. The examples below use Fedora 41.
 
 ```shell
 # Fedora 40+ or CentOS Stream 9+ (with EPEL)
