@@ -135,6 +135,12 @@ jobs:
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L integration --verbose
       - name: Run checks
         run: ctest --test-dir $GITHUB_WORKSPACE/build -L check --verbose
+
+      - name: Run IWYU
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build-iwyu -DWITH_IWYU=1 -DNO_BENCHMARKS=1
+          make -C $GITHUB_WORKSPACE/build-iwyu -j `nproc`
       - name: Generate the coverage report
         run: make -C $GITHUB_WORKSPACE/build coverage
 
