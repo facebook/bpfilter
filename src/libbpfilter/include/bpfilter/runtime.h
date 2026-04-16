@@ -134,6 +134,9 @@ struct bf_log_pkt
     bf_aligned(8) __u8 l4hdr[BF_L4_SLICE_LEN];
 };
 
+/** Source address field was captured. */
+#define BF_LOG_SOCK_ADDR_SADDR (1U << 0)
+
 /**
  * @brief Socket address log payload fields (cgroup_sock_addr).
  */
@@ -144,6 +147,9 @@ struct bf_log_sock_addr
 
     /** Destination port in host byteorder. */
     __u16 dport;
+
+    /** Bitmask of conditional fields captured in this log entry. */
+    __u8 captured_fields;
 
     /** Process name. */
     bf_aligned(8) __u8 comm[BF_COMM_LEN];
