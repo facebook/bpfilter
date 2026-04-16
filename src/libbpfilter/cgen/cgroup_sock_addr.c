@@ -15,9 +15,12 @@
 #include <sys/socket.h>
 
 #include <bpfilter/chain.h>
+#include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
+#include <bpfilter/hook.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/rule.h>
 #include <bpfilter/runtime.h>
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
@@ -26,6 +29,7 @@
 #include "cgen/matcher/meta.h"
 #include "cgen/matcher/set.h"
 #include "cgen/program.h"
+#include "cgen/runtime.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
 #include "filter.h"
@@ -134,6 +138,48 @@ static int _bf_cgroup_sock_addr_load_field(struct bf_program *program,
             EMIT(program, BPF_ALU64_IMM(BPF_LSH, reg + 2, 32));
             EMIT(program, BPF_ALU64_REG(BPF_OR, reg + 1, reg + 2));
         }
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Store a register value at an offset from `BPF_REG_10`.
+ *
+ * Counterpart to `_bf_cgroup_sock_addr_load_field`. For 16-byte stores,
+ * `reg` holds the low 8 bytes and `reg + 1` the high 8 bytes, matching
+ * the layout produced by `_bf_cgroup_sock_addr_load_field`.
+ *
+ * @param program Program to emit into. Can't be NULL.
+ * @param offset Byte offset from `BPF_REG_10`.
+ * @param size Field size in bytes: 1, 2, 4, 8, or 16.
+ * @param reg BPF register holding the value to store.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_cgroup_sock_addr_store_field(struct bf_program *program,
+                                            int offset, size_t size, int reg)
+{
+    assert(program);
+
+    switch (size) {
+    case 1:
+        EMIT(program, BPF_STX_MEM(BPF_B, BPF_REG_10, reg, offset));
+        break;
+    case 2:
+        EMIT(program, BPF_STX_MEM(BPF_H, BPF_REG_10, reg, offset));
+        break;
+    case 4:
+        EMIT(program, BPF_STX_MEM(BPF_W, BPF_REG_10, reg, offset));
+        break;
+    case 8:
+        EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, reg, offset));
+        break;
+    case 16:
+        EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, reg, offset));
+        EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, reg + 1, offset + 8));
         break;
     default:
         return -EINVAL;
@@ -393,11 +439,91 @@ static int _bf_cgroup_sock_addr_get_verdict(enum bf_verdict verdict,
 static int _bf_cgroup_sock_addr_gen_inline_log(struct bf_program *program,
                                                const struct bf_rule *rule)
 {
-    (void)program;
-    (void)rule;
+    uint8_t captured_fields = 0;
+    bool has_saddr = false;
+    size_t addr_size = 0;
+    size_t saddr_off = 0;
+    size_t daddr_off = 0;
+    int r;
 
-    return bf_err_r(-ENOTSUP,
-                    "logging is not yet supported for cgroup_sock_addr");
+    assert(program);
+    assert(rule);
+
+    // Zero the staging area: connect hooks have no source address,
+    // and IPv4 hooks only write 4 of the 16 address bytes.
+    for (int i = 0; i < (int)sizeof(struct bf_runtime_sock_addr); i += 8)
+        EMIT(program, BPF_ST_MEM(BPF_DW, BPF_REG_10, BF_PROG_SCR_OFF(i), 0));
+
+    switch (program->runtime.chain->hook) {
+    case BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4:
+        has_saddr = true;
+        saddr_off = offsetof(struct bpf_sock_addr, msg_src_ip4);
+        __attribute__((fallthrough));
+    case BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4:
+        addr_size = 4;
+        daddr_off = offsetof(struct bpf_sock_addr, user_ip4);
+        break;
+    case BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6:
+        has_saddr = true;
+        saddr_off = offsetof(struct bpf_sock_addr, msg_src_ip6);
+        __attribute__((fallthrough));
+    case BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6:
+        addr_size = 16;
+        daddr_off = offsetof(struct bpf_sock_addr, user_ip6);
+        break;
+    default:
+        return bf_err_r(-ENOTSUP, "unexpected hook: %s",
+                        bf_hook_to_str(program->runtime.chain->hook));
+    }
+
+    if (has_saddr) {
+        captured_fields |= BF_LOG_SOCK_ADDR_SADDR;
+        r = _bf_cgroup_sock_addr_load_field(program, saddr_off, addr_size,
+                                            BPF_REG_1);
+        if (r)
+            return r;
+        r = _bf_cgroup_sock_addr_store_field(
+            program,
+            BF_PROG_SCR_OFF(offsetof(struct bf_runtime_sock_addr, saddr)),
+            addr_size, BPF_REG_1);
+        if (r)
+            return r;
+    }
+
+    r = _bf_cgroup_sock_addr_load_field(program, daddr_off, addr_size,
+                                        BPF_REG_1);
+    if (r)
+        return r;
+    r = _bf_cgroup_sock_addr_store_field(
+        program, BF_PROG_SCR_OFF(offsetof(struct bf_runtime_sock_addr, daddr)),
+        addr_size, BPF_REG_1);
+    if (r)
+        return r;
+
+    /* Destination port: valid for all cgroup_sock_addr hooks.
+     * user_port is __be32; BSWAP 16 converts to host order. */
+    r = _bf_cgroup_sock_addr_load_field(
+        program, offsetof(struct bpf_sock_addr, user_port), 4, BPF_REG_1);
+    if (r)
+        return r;
+    EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
+    r = _bf_cgroup_sock_addr_store_field(
+        program, BF_PROG_SCR_OFF(offsetof(struct bf_runtime_sock_addr, dport)),
+        2, BPF_REG_1);
+    if (r)
+        return r;
+
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, rule->index));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->verdict));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_4, BPF_REG_7));
+    EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_4, 16));
+    EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_4, BPF_REG_8));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_5, captured_fields));
+    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_SOCK_ADDR_LOG);
+
+    return 0;
 }
 
 const struct bf_flavor_ops bf_flavor_ops_cgroup_sock_addr = {
