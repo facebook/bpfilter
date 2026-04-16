@@ -20,14 +20,15 @@ concurrency:
 jobs:
     setup:
         runs-on: ubuntu-latest
-        if: >
-            (github.event_name == 'pull_request_target'
-              && contains(fromJSON('["OWNER","MEMBER"]'), github.event.pull_request.author_association))
-            ||
-            (github.event_name == 'issue_comment'
-              && github.event.issue.pull_request
-              && contains(github.event.comment.body, '@claude')
-              && contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association))
+        if: |
+          github.repository_owner == 'facebook' &&
+          ((github.event_name == 'pull_request_target' &&
+            github.event.pull_request.base.ref == 'main' &&
+            contains(fromJSON('["MEMBER","OWNER","COLLABORATOR"]'), github.event.pull_request.author_association))) ||
+          (github.event_name == 'issue_comment' &&
+            github.event.issue.pull_request &&
+            contains(github.event.comment.body, '@claude review') &&
+            contains(fromJSON('["MEMBER","OWNER","COLLABORATOR"]'), github.event.comment.author_association))
         env:
             PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         permissions:
