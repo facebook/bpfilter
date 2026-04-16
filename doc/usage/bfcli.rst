@@ -381,10 +381,14 @@ With:
      - Required by
      - Supported by
      - Notes
-   * - ``ifindex=$IFINDEX``
+   * - ``iface=$INTERFACE``
      - ``BF_HOOK_XDP``, ``BF_HOOK_TC``
      - N/A
-     - Interface index to attach the program to.
+     - Interface to attach the program to. ``$INTERFACE`` can be either an interface name (e.g. ``eth0``) or a numeric interface index. Interface names are resolved first; if resolution fails, the value is parsed as a numeric index.
+   * - ``ifindex=$IFINDEX``
+     - N/A
+     - ``BF_HOOK_XDP``, ``BF_HOOK_TC``
+     - Deprecated, use ``iface=`` instead. Only numeric interface indices are accepted. At most one of ``iface=`` or ``ifindex=`` may be set for a given chain.
    * - ``cgpath=$CGROUP_PATH``
      - ``BF_HOOK_CGROUP_SKB_*``, ``BF_HOOK_CGROUP_SOCK_ADDR_*``
      - N/A

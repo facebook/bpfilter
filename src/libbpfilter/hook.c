@@ -21,6 +21,7 @@
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/if.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 
@@ -206,6 +207,9 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
         return bf_err_r(-EEXIST, "ifindex= is defined multiple times");
 
+    bf_warn(
+        "hook option 'ifindex=' is deprecated, use 'iface=' instead; 'iface=' accepts either an interface name or a numeric index");
+
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
     if (errno != 0) {
@@ -215,6 +219,31 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
 
     if (ifindex > INT_MAX)
         return bf_err_r(-E2BIG, "ifindex is too big: %lu", ifindex);
+
+    hookopts->ifindex = (int)ifindex;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
+
+    return 0;
+}
+
+static int _bf_hookopts_iface_parse(struct bf_hookopts *hookopts,
+                                    const char *raw_opt)
+{
+    uint32_t ifindex;
+    int r;
+
+    assert(hookopts);
+    assert(raw_opt);
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX)) {
+        return bf_err_r(
+            -EEXIST,
+            "interface is defined multiple times (via 'iface=' or 'ifindex=')");
+    }
+
+    r = bf_if_index_from_str(raw_opt, &ifindex);
+    if (r)
+        return bf_err_r(r, "failed to parse iface from '%s'", raw_opt);
 
     hookopts->ifindex = (int)ifindex;
     hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
@@ -398,6 +427,19 @@ static struct bf_hookopts_ops
 
 static_assert_enum_mapping(_bf_hookopts_ops, _BF_HOOKOPTS_MAX);
 
+/* Alias table: alternative names that map to an existing bf_hookopts_type but
+ * use a different parser. The `type` field determines which bit in `used_opts`
+ * is set, so aliases share duplicate-detection and flavor
+ * requirement/support checks with their primary entry. */
+static struct bf_hookopts_ops _bf_hookopts_alias_ops[] = {
+    {.name = "iface",
+     .type = BF_HOOKOPTS_IFINDEX,
+     .required_by = 0,
+     .supported_by = BF_FLAGS(BF_FLAVOR_XDP, BF_FLAVOR_TC),
+     .parse = _bf_hookopts_iface_parse,
+     .dump = _bf_hookopts_ifindex_dump},
+};
+
 #define _bf_hookopts_is_required(type, flavor)                                 \
     (_bf_hookopts_ops[type].required_by & BF_FLAG(flavor))
 
@@ -412,6 +454,11 @@ static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         if (bf_streq(_bf_hookopts_ops[type].name, key))
             return &_bf_hookopts_ops[type];
+    }
+
+    for (size_t i = 0; i < ARRAY_SIZE(_bf_hookopts_alias_ops); ++i) {
+        if (bf_streq(_bf_hookopts_alias_ops[i].name, key))
+            return &_bf_hookopts_alias_ops[i];
     }
 
     return NULL;
