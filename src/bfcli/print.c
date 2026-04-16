@@ -109,7 +109,11 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     if (hookopts) {
         (void)fprintf(stdout, "{");
 
-        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX)) {
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE)) {
+            (void)fprintf(stdout, "%siface=%d", need_comma ? "," : "",
+                          hookopts->ifindex);
+            need_comma = true;
+        } else if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX)) {
             (void)fprintf(stdout, "%sifindex=%d", need_comma ? "," : "",
                           hookopts->ifindex);
             need_comma = true;
