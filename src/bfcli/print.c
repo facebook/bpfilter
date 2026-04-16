@@ -365,6 +365,8 @@ static void _bf_chain_log_header(const struct bf_log *log)
     struct timespec time;
     char time_str[64];
 
+    assert(log);
+
     // Convert timestamp to readable format
     time.tv_sec = (long)log->ts / BF_TIME_S;
     time.tv_nsec = (long)log->ts % BF_TIME_S;
@@ -372,15 +374,21 @@ static void _bf_chain_log_header(const struct bf_log *log)
     (void)strftime(time_str, sizeof(time_str), "%H:%M:%S",
                    localtime(&time.tv_sec));
 
-    (void)fprintf(
-        stdout,
-        "\n%s[%s.%06ld]%s Rule #%u matched %s%llu bytes%s with verdict %s\n",
-        bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL), time_str,
-        time.tv_nsec / BF_TIME_US,
-        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), log->rule_id,
-        bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD), log->pkt.pkt_size,
-        bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
-        bf_verdict_to_str((enum bf_verdict)log->verdict));
+    (void)fprintf(stdout, "\n%s[%s.%06ld]%s Rule #%u",
+                  bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_NORMAL),
+                  time_str, time.tv_nsec / BF_TIME_US,
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
+                  log->rule_id);
+
+    if (log->log_type == BF_LOG_TYPE_PACKET) {
+        (void)fprintf(stdout, " matched %s%llu bytes%s with",
+                      bf_logger_get_color(BF_COLOR_DEFAULT, BF_STYLE_BOLD),
+                      log->pkt.pkt_size,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+    }
+
+    (void)fprintf(stdout, " verdict %s\n",
+                  bf_verdict_to_str((enum bf_verdict)log->verdict));
 }
 
 static void _bf_chain_log_l2(const struct bf_log *log)
@@ -576,17 +584,107 @@ static void _bf_chain_log_l4(const struct bf_log *log)
     }
 }
 
+static void _bf_chain_log_sock_addr(const struct bf_log *log)
+{
+    char src_addr[INET6_ADDRSTRLEN];
+    char dst_addr[INET6_ADDRSTRLEN];
+    const char *protocol;
+    const char *label = NULL;
+    const char *color = NULL;
+    const char *l4_label;
+    int family = 0;
+
+    assert(log);
+
+    protocol = bf_ipproto_to_str(log->l4_proto);
+
+    if (log->l3_proto == ETH_P_IP) {
+        family = AF_INET;
+        label = "IPv4";
+        color = bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD);
+    } else if (log->l3_proto == ETH_P_IPV6) {
+        family = AF_INET6;
+        label = "IPv6";
+        color = bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_BOLD);
+    }
+
+    if (label) {
+        bool has_saddr =
+            log->sock_addr.captured_fields & BF_LOG_SOCK_ADDR_SADDR;
+
+        inet_ntop(family, log->sock_addr.daddr, dst_addr, sizeof(dst_addr));
+
+        if (has_saddr) {
+            inet_ntop(family, log->sock_addr.saddr, src_addr, sizeof(src_addr));
+            (void)fprintf(
+                stdout, "  %-10s: %s%s%s → %s%s%s", label, color, src_addr,
+                bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET), color,
+                dst_addr, bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+        } else {
+            (void)fprintf(stdout, "  %-10s: → %s%s%s", label, color, dst_addr,
+                          bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+        }
+
+        if (protocol) {
+            (void)fprintf(
+                stdout, " [%s%s%s]\n",
+                bf_logger_get_color(BF_COLOR_LIGHT_MAGENTA, BF_STYLE_BOLD),
+                protocol, bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+        } else {
+            (void)fprintf(stdout, " [proto=%u]\n", log->l4_proto);
+        }
+    } else {
+        (void)fprintf(stdout, "  Internet  : <unknown protocol 0x%04x>\n",
+                      log->l3_proto);
+    }
+
+    switch (log->l4_proto) {
+    case IPPROTO_TCP:
+        l4_label = "TCP";
+        break;
+    case IPPROTO_UDP:
+        l4_label = "UDP";
+        break;
+    default:
+        l4_label = "Transport";
+        break;
+    }
+
+    (void)fprintf(stdout, "  %-10s: → %s%-5u%s\n", l4_label,
+                  bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_BOLD),
+                  log->sock_addr.dport,
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+
+    (void)fprintf(stdout, "  PID       : %s%u%s\n",
+                  bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_BOLD),
+                  log->sock_addr.pid,
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+
+    (void)fprintf(stdout, "  Process   : %s%.*s%s\n",
+                  bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD),
+                  BF_COMM_LEN, log->sock_addr.comm,
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+}
+
 void bfc_print_log(const struct bf_log *log)
 {
-    if (log->log_type != BF_LOG_TYPE_PACKET)
-        return;
+    assert(log);
 
     _bf_chain_log_header(log);
 
-    if (log->pkt.req_headers & (1 << BF_LOG_OPT_LINK))
-        _bf_chain_log_l2(log);
-    if (log->pkt.req_headers & (1 << BF_LOG_OPT_INTERNET))
-        _bf_chain_log_l3(log);
-    if (log->pkt.req_headers & (1 << BF_LOG_OPT_TRANSPORT))
-        _bf_chain_log_l4(log);
+    switch (log->log_type) {
+    case BF_LOG_TYPE_PACKET:
+        if (log->pkt.req_headers & (1 << BF_LOG_OPT_LINK))
+            _bf_chain_log_l2(log);
+        if (log->pkt.req_headers & (1 << BF_LOG_OPT_INTERNET))
+            _bf_chain_log_l3(log);
+        if (log->pkt.req_headers & (1 << BF_LOG_OPT_TRANSPORT))
+            _bf_chain_log_l4(log);
+        break;
+    case BF_LOG_TYPE_SOCK_ADDR:
+        _bf_chain_log_sock_addr(log);
+        break;
+    default:
+        break;
+    }
 }
