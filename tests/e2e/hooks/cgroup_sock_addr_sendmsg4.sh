@@ -51,7 +51,7 @@ s.close()
 }
 
 # meta.l3_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 log DROP"
 (! udp4_sendmsg ${HOST_IP_ADDR} 9990)
 ${FROM_NS} ${BFCLI} ruleset flush
 
