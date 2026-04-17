@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -329,6 +330,8 @@ enum bf_matcher_op bf_matcher_get_op(const struct bf_matcher *matcher);
 const void *bf_matcher_payload(const struct bf_matcher *matcher);
 size_t bf_matcher_payload_len(const struct bf_matcher *matcher);
 size_t bf_matcher_len(const struct bf_matcher *matcher);
+void bf_matcher_set_negate(struct bf_matcher *matcher, bool negate);
+bool bf_matcher_get_negate(const struct bf_matcher *matcher);
 
 /**
  * @brief Get meta structure for a given matcher type.

@@ -100,8 +100,8 @@ static int _bf_tc_gen_inline_matcher(struct bf_program *program,
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_1,
                                   offsetof(struct __sk_buff, mark)));
 
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 4, BPF_REG_1);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 4,
+                            BPF_REG_1);
     case BF_MATCHER_META_FLOW_HASH:
         EMIT(program,
              BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
@@ -109,11 +109,11 @@ static int _bf_tc_gen_inline_matcher(struct bf_program *program,
 
         if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
             uint32_t *hash = (uint32_t *)bf_matcher_payload(matcher);
-            return bf_cmp_range(program, hash[0], hash[1], BPF_REG_0);
+            return bf_cmp_range(program, matcher, hash[0], hash[1], BPF_REG_0);
         }
 
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), 4, BPF_REG_0);
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 4,
+                            BPF_REG_0);
     default:
         return bf_packet_gen_inline_matcher(program, matcher);
     }

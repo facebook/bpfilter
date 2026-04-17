@@ -64,6 +64,31 @@ static void ip4_snet_eq(void **state)
 
     bft_assert_counter_eq("test_ip4_snet", 0, 3, -1);
 
+    // Try with negation: 192.0.2.0/24
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
+                                 bft_ip4_lpm_key(24, 192, 0, 2, 0), true)}));
+
+    // saddr=192.0.2.1 is in subnet, but negated -> ACCEPT
+    bft_assert_prog_run(
+        "test_ip4_snet", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictAccept());
+
+    // saddr=192.0.3.1 is not in subnet, negated -> DROP
+    bft_assert_prog_run(
+        "test_ip4_snet", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.3.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_ip4_snet", 0, 1, -1);
+
     // /32 (single host): mask=0xffffffff triggers the no-masking code path in
     // bf_cmp_masked_value(), comparing the address directly without AND.
     BFT_CHAIN_SET(

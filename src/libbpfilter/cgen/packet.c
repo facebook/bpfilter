@@ -130,9 +130,8 @@ static int _bf_matcher_pkt_load_and_cmp(struct bf_program *program,
     if (r)
         return r;
 
-    return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                        bf_matcher_payload(matcher), meta->hdr_payload_size,
-                        BPF_REG_1);
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher),
+                        meta->hdr_payload_size, BPF_REG_1);
 }
 
 static int _bf_matcher_pkt_generate_net(struct bf_program *program,
@@ -148,8 +147,8 @@ static int _bf_matcher_pkt_generate_net(struct bf_program *program,
     if (r)
         return r;
 
-    return bf_cmp_masked_value(program, bf_matcher_get_op(matcher), data,
-                               prefixlen, meta->hdr_payload_size, BPF_REG_1);
+    return bf_cmp_masked_value(program, matcher, data, prefixlen,
+                               meta->hdr_payload_size, BPF_REG_1);
 }
 
 static int _bf_matcher_pkt_generate_port(struct bf_program *program,
@@ -169,12 +168,11 @@ static int _bf_matcher_pkt_generate_port(struct bf_program *program,
          * reference value. This is a JLT/JGT comparison, we need to have the
          * MSB where the machine expects then. */
         EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        return bf_cmp_range(program, ports[0], ports[1], BPF_REG_1);
+        return bf_cmp_range(program, matcher, ports[0], ports[1], BPF_REG_1);
     }
 
-    return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                        bf_matcher_payload(matcher), meta->hdr_payload_size,
-                        BPF_REG_1);
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher),
+                        meta->hdr_payload_size, BPF_REG_1);
 }
 
 static int
@@ -191,13 +189,16 @@ _bf_matcher_pkt_generate_tcp_flags(struct bf_program *program,
     switch (bf_matcher_get_op(matcher)) {
     case BF_MATCHER_ANY:
     case BF_MATCHER_ALL:
-        return bf_cmp_bitfield(program, bf_matcher_get_op(matcher),
+        return bf_cmp_bitfield(program, matcher,
                                *(uint8_t *)bf_matcher_payload(matcher),
                                BPF_REG_1);
+    case BF_MATCHER_EQ:
+    case BF_MATCHER_NE:
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher),
+                            meta->hdr_payload_size, BPF_REG_1);
     default:
-        return bf_cmp_value(program, bf_matcher_get_op(matcher),
-                            bf_matcher_payload(matcher), meta->hdr_payload_size,
-                            BPF_REG_1);
+        return bf_err_r(-EINVAL, "unsupported operator %d",
+                        bf_matcher_get_op(matcher));
     }
 }
 
@@ -206,7 +207,14 @@ _bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
                                      const struct bf_matcher *matcher)
 {
     const uint8_t ehdr = *(uint8_t *)bf_matcher_payload(matcher);
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     uint8_t eh_mask;
+    uint8_t jmp_op;
+
+    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
+
+    jmp_op = bf_cmp_get_jmp_ins(matcher);
 
     switch (ehdr) {
     case IPPROTO_HOPOPTS:
@@ -224,19 +232,19 @@ _bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
                                   BF_PROG_CTX_OFF(ipv6_eh)));
         EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
+
+        /* Extension header check: after AND with eh_mask, a non-zero
+         * result means the header is present. For EQ (jmp_op=JNE),
+         * we want to skip if zero (not present), so we use the
+         * *opposite* opcode here. */
         EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
-                                     BPF_JEQ :
-                                     BPF_JNE,
+            program, BPF_JMP_IMM(jmp_op == BPF_JNE ? BPF_JEQ : BPF_JNE,
                                  BPF_REG_1, 0, 0));
         break;
     default:
         /* check l4 protocols using `BPF_REG_8` */
-        EMIT_FIXUP_JMP_NEXT_RULE(
-            program, BPF_JMP_IMM((bf_matcher_get_op(matcher) == BF_MATCHER_EQ) ?
-                                     BPF_JNE :
-                                     BPF_JEQ,
-                                 BPF_REG_8, ehdr, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(program,
+                                 BPF_JMP_IMM(jmp_op, BPF_REG_8, ehdr, 0));
         break;
     }
 
@@ -247,8 +255,12 @@ static int _bf_matcher_pkt_generate_ip4_dscp(struct bf_program *program,
                                              const struct bf_matcher *matcher,
                                              const struct bf_matcher_meta *meta)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     uint8_t dscp;
     int r;
+
+    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
 
     r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
     if (r)
@@ -260,11 +272,9 @@ static int _bf_matcher_pkt_generate_ip4_dscp(struct bf_program *program,
      * the 6-bit DSCP field, then compare against dscp << 2. */
     EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0xfc));
 
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
-                                                                  BPF_JEQ,
-                    BPF_REG_1, (uint8_t)dscp << 2, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program,
+                             BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_1,
+                                         (uint8_t)dscp << 2, 0));
 
     return 0;
 }
@@ -273,8 +283,12 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
                                              const struct bf_matcher *matcher,
                                              const struct bf_matcher_meta *meta)
 {
+    enum bf_matcher_op op = bf_matcher_get_op(matcher);
     uint8_t dscp;
     int r;
+
+    if (op != BF_MATCHER_EQ && op != BF_MATCHER_NE)
+        return bf_err_r(-EINVAL, "unsupported operator %d", op);
 
     r = bf_stub_load_header(program, meta, BPF_REG_6);
     if (r)
@@ -290,11 +304,9 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
     EMIT(program, BPF_ENDIAN(BPF_TO_BE, BPF_REG_1, 16));
     EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, 0x0fc0));
 
-    EMIT_FIXUP_JMP_NEXT_RULE(
-        program,
-        BPF_JMP_IMM(bf_matcher_get_op(matcher) == BF_MATCHER_EQ ? BPF_JNE :
-                                                                  BPF_JEQ,
-                    BPF_REG_1, (uint16_t)dscp << 6, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(program,
+                             BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_1,
+                                         (uint16_t)dscp << 6, 0));
 
     return 0;
 }

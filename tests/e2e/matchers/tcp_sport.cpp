@@ -203,6 +203,39 @@ static void tcp_sport_range(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_tcp_sport", 0, 3, -1);
+
+    // Try with negation
+    BFT_CHAIN_SET(
+        bf::Chain("test_tcp_sport", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, true, {},
+                    {bf::Matcher(BF_MATCHER_TCP_SPORT, BF_MATCHER_RANGE,
+                                 bft_port_range(1000, 2000), true)}));
+
+    // TCP sport=1500 is in range, but negated -> ACCEPT
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 1500, .dport = 80},
+        test->verdictAccept());
+
+    // TCP sport=999 is below range, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 999, .dport = 80},
+        test->verdictDrop());
+
+    // TCP sport=2001 is above range, negated -> DROP
+    bft_assert_prog_run(
+        "test_tcp_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "127.0.0.1", .daddr = "127.0.0.2"} /
+            bft::TCP {.sport = 2001, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_tcp_sport", 0, 2, -1);
 }
 
 int main()

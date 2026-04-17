@@ -66,11 +66,19 @@ static void getters(void **state)
     assert_int_equal(bf_matcher_payload_len(matcher), sizeof(payload));
     assert_non_null(bf_matcher_payload(matcher));
     assert_true(bf_matcher_len(matcher) > 0);
+    assert_false(bf_matcher_get_negate(matcher));
 
     // Verify payload content
     const uint8_t *p = bf_matcher_payload(matcher);
     for (size_t i = 0; i < sizeof(payload); ++i)
         assert_int_equal(p[i], payload[i]);
+
+    // Test negate setting/getting
+    bf_matcher_set_negate(matcher, true);
+    assert_true(bf_matcher_get_negate(matcher));
+
+    bf_matcher_set_negate(matcher, false);
+    assert_false(bf_matcher_get_negate(matcher));
 }
 
 static void pack_and_unpack(void **state)
@@ -124,6 +132,64 @@ static void pack_and_unpack_small_payload(void **state)
     assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
 
     assert_true(bft_matcher_equal(source, destination));
+}
+
+static void pack_and_unpack_with_negate(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *destination = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+    uint16_t port = htons(80);
+
+    (void)state;
+
+    // Create source matcher with negate=true
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ,
+                             &port, sizeof(port)));
+    bf_matcher_set_negate(source, true);
+    assert_true(bf_matcher_get_negate(source));
+
+    // Pack and unpack
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(source, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+
+    // Verify negate round-trips correctly
+    assert_true(bf_matcher_get_negate(destination));
+    assert_true(bft_matcher_equal(source, destination));
+}
+
+static void unpack_without_negate_defaults_false(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    const void *data;
+    size_t data_len;
+    uint16_t port = htons(80);
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_int(wpack, "type", BF_MATCHER_TCP_SPORT);
+    bf_wpack_kv_int(wpack, "op", BF_MATCHER_EQ);
+    bf_wpack_kv_bin(wpack, "payload", &port, sizeof(port));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack)));
+
+    assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_TCP_SPORT);
+    assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
+    assert_false(bf_matcher_get_negate(matcher));
+    assert_int_equal(bf_matcher_payload_len(matcher), sizeof(port));
+    assert_memory_equal(bf_matcher_payload(matcher), &port, sizeof(port));
 }
 
 static void dump(void **state)
@@ -1791,6 +1857,8 @@ int main(void)
         cmocka_unit_test(getters),
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(pack_and_unpack_small_payload),
+        cmocka_unit_test(pack_and_unpack_with_negate),
+        cmocka_unit_test(unpack_without_negate_defaults_false),
         cmocka_unit_test(dump),
         cmocka_unit_test(dump_small_payload),
         cmocka_unit_test(dump_ipv4_addr),

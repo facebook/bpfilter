@@ -506,9 +506,10 @@ Matchers are defined such as:
 
 .. code:: shell
 
-    $TYPE [$OP] $PAYLOAD
+    $TYPE [!] [$OP] $PAYLOAD
 
 With:
+  - ``!``: optional comparison negation. When used, it prefixes an operator, e.g. ``tcp.sport ! eq 80``, ``(ip4.saddr) ! in foo``, or, with no operator, ``tcp.sport ! 80`` (equivalent to ``tcp.sport not 80``).
   - ``$TYPE``: type of the matcher, defined which part of the processed network packet need to be compared against. All the exact matcher types are defined below.
   - ``$OP``: comparison operation, not all ``$TYPE`` of matchers support all the existing comparison operators:
 

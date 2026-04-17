@@ -108,18 +108,18 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
 
             id = 0;
             r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id));
+                                    sizeof(id), false);
             if (r)
                 return NULL;
 
             r = bf_rule_add_matcher(rule, BF_MATCHER_IP4_DADDR, BF_MATCHER_EQ,
-                                    &ip, sizeof(ip));
+                                    &ip, sizeof(ip), false);
             if (r)
                 return NULL;
 
             ++id;
             r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id));
+                                    sizeof(id), false);
             if (r)
                 return NULL;
 
@@ -160,7 +160,7 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
 
             ++id;
             r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id));
+                                    sizeof(id), false);
             if (r)
                 return NULL;
 

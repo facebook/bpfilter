@@ -9,6 +9,7 @@
 #include <bpfilter/matcher.h>
 #include <bpfilter/set.h>
 
+#include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
 
@@ -73,8 +74,8 @@ static int _bf_matcher_generate_set_trie(struct bf_program *program,
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(4)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
-    // Jump to the next rule if map_lookup_elem returned 0
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_0, 0, 0));
     return 0;
 }
 
@@ -83,6 +84,11 @@ int bf_matcher_generate_set(struct bf_program *program,
 {
     assert(program);
     assert(matcher);
+
+    if (bf_matcher_get_op(matcher) != BF_MATCHER_IN) {
+        return bf_err_r(-EINVAL, "unsupported operator %d",
+                        bf_matcher_get_op(matcher));
+    }
 
     const struct bf_set *set =
         bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
@@ -142,8 +148,8 @@ int bf_matcher_generate_set(struct bf_program *program,
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
 
-    // Jump to the next rule if map_lookup_elem returned 0
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+    EMIT_FIXUP_JMP_NEXT_RULE(
+        program, BPF_JMP_IMM(bf_cmp_get_jmp_ins(matcher), BPF_REG_0, 0, 0));
 
     return 0;
 }

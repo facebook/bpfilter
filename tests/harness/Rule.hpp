@@ -70,7 +70,8 @@ public:
         for (const Matcher &matcher: _matchers) {
             const auto &payload = matcher.payload();
             r = bf_rule_add_matcher(rule, matcher.type(), matcher.op(),
-                                    payload.data(), payload.size());
+                                    payload.data(), payload.size(),
+                                    matcher.negate());
             if (r != 0) {
                 bf_rule_free(&rule);
                 throw std::runtime_error("failed to add bf_matcher to bf_rule");

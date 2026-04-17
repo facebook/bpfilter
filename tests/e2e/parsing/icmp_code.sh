@@ -27,3 +27,7 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icm
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icmp.code not 257 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icmp.code not -0x01 counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icmp.code not -0xff counter DROP")
+
+# Negation
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icmp.code ! eq 3 counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule icmp.code ! not 3 counter DROP"

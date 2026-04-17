@@ -309,6 +309,7 @@ bool bft_matcher_equal(const struct bf_matcher *matcher0,
 {
     return bf_matcher_get_type(matcher0) == bf_matcher_get_type(matcher1) &&
            bf_matcher_get_op(matcher0) == bf_matcher_get_op(matcher1) &&
+           bf_matcher_get_negate(matcher0) == bf_matcher_get_negate(matcher1) &&
            bf_matcher_payload_len(matcher0) ==
                bf_matcher_payload_len(matcher1) &&
            0 == memcmp(bf_matcher_payload(matcher0),
