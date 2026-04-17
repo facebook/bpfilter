@@ -70,7 +70,7 @@ get_counter() {
 }
 
 # meta.l3_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv6 counter DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv6 log counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
 test "$(get_counter c 0)" = "1"
 
