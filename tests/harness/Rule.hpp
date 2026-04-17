@@ -36,14 +36,17 @@ private:
 
     bf_verdict _verdict;
     bool _counters;
+    bf_rule_log_mode _log_mode;
     RuleLogBitset _log;
     std::vector<Matcher> _matchers;
 
 public:
-    Rule(bf_verdict verdict, bool counters = false, RuleLogBitset log = {},
+    Rule(bf_verdict verdict, bool counters = false,
+         bf_rule_log_mode log_mode = BF_RULE_LOG_NONE, RuleLogBitset log = {},
          std::vector<Matcher> matchers = {}):
         _verdict {verdict},
         _counters {counters},
+        _log_mode {log_mode},
         _log {log},
         _matchers {std::move(matchers)}
     {}
@@ -63,7 +66,8 @@ public:
         if (r != 0)
             throw std::runtime_error("failed to create bf_rule");
 
-        rule->log = static_cast<uint8_t>(_log.to_ulong());
+        rule->log_mode = _log_mode;
+        rule->log_opts = static_cast<uint8_t>(_log.to_ulong());
         rule->counters = _counters;
         rule->verdict = _verdict;
 

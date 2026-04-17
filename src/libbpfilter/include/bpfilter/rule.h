@@ -19,6 +19,28 @@
 #define BF_RULE_MARK_MASK (0x00000000ffffffffULL)
 
 /**
+ * Logging mode for a rule.
+ */
+enum bf_rule_log_mode
+{
+    /** No logging. */
+    BF_RULE_LOG_NONE,
+    /** Log all available data for the hook type. */
+    BF_RULE_LOG_DEFAULT,
+    /** Log specific packet headers selected by the user. */
+    BF_RULE_LOG_PKT_HEADERS,
+    _BF_RULE_LOG_MODE_MAX,
+};
+
+/**
+ * @brief Return the string representation of a `bf_rule_log_mode` value.
+ *
+ * @param mode `bf_rule_log_mode` enumeration value.
+ * @return A pointer to the C-string representation of `mode`.
+ */
+const char *bf_rule_log_mode_to_str(enum bf_rule_log_mode mode);
+
+/**
  * @brief Return the string representation of a `bf_pkthdr` enumeration value.
  *
  * @param hdr `bf_pkthdr` enumeration value.
@@ -56,7 +78,8 @@ struct bf_rule
 {
     uint32_t index;
     bf_list matchers;
-    uint8_t log;
+    enum bf_rule_log_mode log_mode;
+    uint8_t log_opts;
 
     /** Mark to set to the packet's `sk_buff`. Only support for some hooks.
      * The leftmost 32 bits are set to 1 if a mark is defined, or 0 otherwise.
@@ -78,7 +101,7 @@ struct bf_rule
 
 static_assert(
     _BF_PKTHDR_MAX < 8,
-    "bf_pkthdr has more than 8 values, it won't fit in bf_rule.log's 8 bits");
+    "bf_pkthdr has more than 8 values, it won't fit in bf_rule.log_opts");
 
 /**
  * Allocated and initialise a new rule.

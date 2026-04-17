@@ -24,7 +24,7 @@ static void ip6_dnet_eq(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
                                  bft_ip6_lpm_key(32, "2001:db8::"))}));
 
@@ -57,7 +57,7 @@ static void ip6_dnet_eq(void **state)
     // /128 (single host): exercises the no-masking code path.
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
                                  bft_ip6_lpm_key(128, "2001:db8::2"))}));
 
@@ -81,7 +81,7 @@ static void ip6_dnet_eq(void **state)
 
     // /0 (match all): any destination address matches.
     BFT_CHAIN_SET(bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_EQ,
                                            bft_ip6_lpm_key(0, "::"))}));
 
@@ -108,7 +108,7 @@ static void ip6_dnet_ne(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                                  bft_ip6_lpm_key(32, "2001:db8::"))}));
 
@@ -133,7 +133,7 @@ static void ip6_dnet_ne(void **state)
     // no-masking code path.
     BFT_CHAIN_SET(
         bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                                  bft_ip6_lpm_key(128, "2001:db8::2"))}));
 
@@ -155,7 +155,7 @@ static void ip6_dnet_ne(void **state)
 
     // /0 ne: /0 covers the entire address space; NE /0 never matches.
     BFT_CHAIN_SET(bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP6_DNET, BF_MATCHER_NE,
                                            bft_ip6_lpm_key(0, "::"))}));
 
@@ -183,7 +183,7 @@ static void ip6_dnet_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 
