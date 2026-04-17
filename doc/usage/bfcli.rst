@@ -129,14 +129,17 @@ Print a chain.
 ``chain logs``
 ~~~~~~~~~~~~~~
 
-Print a chain's logged packets.
+Print a chain's log entries.
 
-bfcli will print the logged headers as they are published by the chain. Only the headers requested in the ``log`` action will be printed. Hit ``Ctrl+C`` to quit.
+bfcli will print log entries as they are published by the chain. Hit ``Ctrl+C`` to quit.
 
-For each logged packet, bfcli will print the receive timestamp and the packet size, followed by each requested layer (see the ``log`` action below). If one of the requested layer could not be processed by the chain, the corresponding output will be truncated.
+Every log entry begins with a shared header: the receive timestamp, the matching rule's index, and the applied verdict. The remaining fields depend on the hook type:
+
+- For packet-based hooks, the header also includes the matched packet size. It is followed by each requested layer's protocol headers (see the ``log`` action above). If a requested layer could not be processed by the chain, the corresponding output will be truncated.
+- For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, the entry includes source and destination addresses, destination port, process ID, and process name. Connect hooks do not have source address information, so the source address is shown as ``0.0.0.0`` or ``::``.
 
 **Options**
-  - ``--name NAME``: name of the chain to print the logged packets for.
+  - ``--name NAME``: name of the chain to print the log entries for.
 
 **Examples**
 
@@ -416,10 +419,10 @@ Rules are defined such as:
 
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
-  - ``log``: optional. Logging is not supported by ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks. Two forms are supported:
+  - ``log``: optional. Two forms are supported:
 
     - ``log $HEADERS``: log specific packet headers. ``$HEADERS`` is a comma-separated list of ``link`` (layer 2), ``internet`` (layer 3), and/or ``transport`` (layer 4). Only supported by packet-based hooks (XDP, TC, NF, cgroup_skb).
-    - ``log``: log all available data for the hook type. For packet-based hooks, this is equivalent to ``log link,internet,transport``.
+    - ``log``: log all available data for the hook type. For packet-based hooks, this is equivalent to ``log link,internet,transport``. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this records the process ID, process name, source and destination addresses, and destination port.
   - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of socket operations (``connect()`` or ``sendmsg()`` calls).
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, ``NEXT``, or ``REDIRECT``.
