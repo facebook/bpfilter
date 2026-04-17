@@ -45,6 +45,12 @@ enum bf_verdict
     BF_VERDICT_ACCEPT,
     /** Drop the packet. */
     BF_VERDICT_DROP,
+    /**
+     * Pass to the next BPF program. On TC, maps to TCX_NEXT. On NF, XDP,
+     * and cgroup_skb, maps to the same return code as ACCEPT since those
+     * hooks don't support program chaining.
+     */
+    BF_VERDICT_NEXT,
     /** Non-terminal verdicts that allow further packet processing. */
     /** Continue processing the next rule. */
     BF_VERDICT_CONTINUE,

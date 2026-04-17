@@ -106,13 +106,18 @@ static int _bf_xdp_gen_inline_redirect(struct bf_program *program,
     return 0;
 }
 
-static int _bf_xdp_get_verdict(enum bf_verdict verdict)
+static int _bf_xdp_get_verdict(enum bf_verdict verdict, int *retcode)
 {
+    assert(retcode);
+
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
-        return XDP_PASS;
+    case BF_VERDICT_NEXT:
+        *retcode = XDP_PASS;
+        return 0;
     case BF_VERDICT_DROP:
-        return XDP_DROP;
+        *retcode = XDP_DROP;
+        return 0;
     default:
         return -ENOTSUP;
     }

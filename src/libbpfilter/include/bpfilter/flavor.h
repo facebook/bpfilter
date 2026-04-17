@@ -113,10 +113,14 @@ struct bf_flavor_ops
      * stop further packet processing. Non-terminal verdicts do not need return
      * codes and therefore do not need to be handled by get_verdict().
      *
-     * @return Flavor-specific verdict for `verdict`, or a negative errno
-     * value on failure.
+     * @param verdict Terminal verdict to convert.
+     * @param retcode On success, the flavor-specific BPF return code. Can't
+     *        be NULL. The value may be negative (e.g. TCX_NEXT == -1), so
+     *        the caller must not use the return value of this function as the
+     *        BPF return code.
+     * @return 0 on success, negative errno if `verdict` is not supported.
      */
-    int (*get_verdict)(enum bf_verdict verdict);
+    int (*get_verdict)(enum bf_verdict verdict, int *retcode);
 };
 
 /**

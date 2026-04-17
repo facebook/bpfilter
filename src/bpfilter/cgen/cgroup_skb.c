@@ -139,12 +139,17 @@ static int _bf_cgroup_skb_gen_inline_get_skb(struct bf_program *program,
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _bf_cgroup_skb_get_verdict(enum bf_verdict verdict)
+static int _bf_cgroup_skb_get_verdict(enum bf_verdict verdict, int *retcode)
 {
+    assert(retcode);
+
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
-        return 1;
+    case BF_VERDICT_NEXT:
+        *retcode = 1;
+        return 0;
     case BF_VERDICT_DROP:
+        *retcode = 0;
         return 0;
     default:
         return -ENOTSUP;

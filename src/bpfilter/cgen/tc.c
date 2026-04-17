@@ -138,13 +138,20 @@ static int _bf_tc_gen_inline_redirect(struct bf_program *program,
  * @param verdict Verdict to convert. Must be valid.
  * @return TC return code corresponding to the verdict, as an integer.
  */
-static int _bf_tc_get_verdict(enum bf_verdict verdict)
+static int _bf_tc_get_verdict(enum bf_verdict verdict, int *retcode)
 {
+    assert(retcode);
+
     switch (verdict) {
     case BF_VERDICT_ACCEPT:
-        return TCX_PASS;
+        *retcode = TCX_PASS;
+        return 0;
     case BF_VERDICT_DROP:
-        return TCX_DROP;
+        *retcode = TCX_DROP;
+        return 0;
+    case BF_VERDICT_NEXT:
+        *retcode = TCX_NEXT;
+        return 0;
     default:
         return -ENOTSUP;
     }

@@ -410,12 +410,15 @@ static int _bf_program_generate_rule(struct bf_program *program,
     switch (rule->verdict) {
     case BF_VERDICT_ACCEPT:
     case BF_VERDICT_DROP:
-        r = program->runtime.ops->get_verdict(rule->verdict);
-        if (r < 0)
+    case BF_VERDICT_NEXT: {
+        int retcode;
+        r = program->runtime.ops->get_verdict(rule->verdict, &retcode);
+        if (r)
             return r;
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, retcode));
         EMIT(program, BPF_EXIT_INSN());
         break;
+    }
     case BF_VERDICT_REDIRECT:
         if (!program->runtime.ops->gen_inline_redirect) {
             return bf_err_r(-ENOTSUP, "redirect is not supported by %s hook",
@@ -662,11 +665,14 @@ int bf_program_generate(struct bf_program *program)
          BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
     EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-    r = program->runtime.ops->get_verdict(chain->policy);
-    if (r < 0)
-        return r;
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, r));
-    EMIT(program, BPF_EXIT_INSN());
+    {
+        int retcode;
+        r = program->runtime.ops->get_verdict(chain->policy, &retcode);
+        if (r)
+            return r;
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, retcode));
+        EMIT(program, BPF_EXIT_INSN());
+    }
 
     r = _bf_program_generate_elfstubs(program);
     if (r)
