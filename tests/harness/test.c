@@ -251,21 +251,17 @@ bool bft_counter_eq(const struct bf_counter *lhs, const struct bf_counter *rhs)
     return lhs->count == rhs->count && lhs->size == rhs->size;
 }
 
-bool bft_set_eq(const struct bf_set *lhs, const struct bf_set *rhs)
+bool bft_set_eq_ordered(const struct bf_set *lhs, const struct bf_set *rhs)
 {
-    const struct bf_list_node *n0, *n1;
-
-    if (bf_list_size(&lhs->elems) != bf_list_size(&rhs->elems))
+    if (bf_hashset_size(&lhs->elems) != bf_hashset_size(&rhs->elems))
         return false;
 
     if (lhs->elem_size != rhs->elem_size)
         return false;
 
-    n0 = bf_list_get_head(&lhs->elems);
-    n1 = bf_list_get_head(&rhs->elems);
-    for (; n0 || n1; n0 = bf_list_node_next(n0), n1 = bf_list_node_next(n1)) {
-        if (0 != memcmp(bf_list_node_get_data(n0), bf_list_node_get_data(n1),
-                        lhs->elem_size))
+    for (bf_hashset_elem *n0 = lhs->elems.head, *n1 = rhs->elems.head; n0 || n1;
+         n0 = n0 ? n0->next : NULL, n1 = n1 ? n1->next : NULL) {
+        if (!n0 || !n1 || memcmp(n0->data, n1->data, lhs->elem_size) != 0)
             return false;
     }
 
@@ -290,7 +286,7 @@ bool bft_chain_equal(const struct bf_chain *chain0,
            bft_list_eq(&chain0->rules, &chain1->rules,
                        (bft_list_eq_cb)bft_rule_equal) &&
            bft_list_eq(&chain0->sets, &chain1->sets,
-                       (bft_list_eq_cb)bft_set_eq);
+                       (bft_list_eq_cb)bft_set_eq_ordered);
 }
 
 bool bft_rule_equal(const struct bf_rule *rule0, const struct bf_rule *rule1)

@@ -22,6 +22,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/hook.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/if.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/io.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/core/hashset.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/core/list.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/core/vector.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/logger.h
@@ -46,6 +47,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/hook.c
     ${CMAKE_CURRENT_SOURCE_DIR}/if.c
     ${CMAKE_CURRENT_SOURCE_DIR}/io.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/hashset.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/list.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
