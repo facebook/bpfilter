@@ -260,8 +260,10 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             (void)fprintf(stdout, "\n");
         }
 
-        if (rule->log) {
-            uint8_t log = rule->log;
+        if (rule->log_mode == BF_RULE_LOG_DEFAULT) {
+            (void)fprintf(stdout, "        log\n");
+        } else if (rule->log_mode == BF_RULE_LOG_PKT_HEADERS) {
+            uint8_t log = rule->log_opts;
 
             (void)fprintf(stdout, "        log ");
 

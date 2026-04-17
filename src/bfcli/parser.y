@@ -64,7 +64,8 @@
     struct bf_rule_options {
         uint8_t flags;
 
-        uint8_t log;
+        enum bf_rule_log_mode log_mode;
+        uint8_t log_opts;
         bool counter;
         uint32_t mark;
     };
@@ -296,7 +297,8 @@ rule            : RULE matchers rule_options rule_verdict
                     if (bf_rule_new(&rule) < 0)
                         bf_parse_err("failed to create a new bf_rule\n");
 
-                    rule->log = $3.flags & BF_RULE_OPTION_LOG ? $3.log : 0;
+                    rule->log_mode = $3.flags & BF_RULE_OPTION_LOG ? $3.log_mode : BF_RULE_LOG_NONE;
+                    rule->log_opts = $3.flags & BF_RULE_OPTION_LOG ? $3.log_opts : 0;
                     rule->counters = $3.flags & BF_RULE_OPTION_COUNTER ? $3.counter : false;
 
                     if ($3.flags & BF_RULE_OPTION_MARK)
@@ -326,7 +328,7 @@ rule_option     : LOG LOG_HEADERS
                     char *tmp = in;
                     char *saveptr;
                     char *token;
-                    uint8_t log = 0;
+                    uint8_t log_opts = 0;
 
                     while ((token = strtok_r(tmp, ",", &saveptr))) {
                         enum bf_pkthdr header;
@@ -334,13 +336,14 @@ rule_option     : LOG LOG_HEADERS
                         if (bf_pkthdr_from_str(token, &header) < 0)
                             bf_parse_err("unknown packet header '%s'", token);
 
-                        log |= BF_FLAG(header);
+                        log_opts |= BF_FLAG(header);
 
                         tmp = NULL;
                     }
 
                     $$ = (struct bf_rule_options){
-                        .log = log,
+                        .log_mode = BF_RULE_LOG_PKT_HEADERS,
+                        .log_opts = log_opts,
                         .flags = BF_RULE_OPTION_LOG,
                     };
                 }
@@ -377,7 +380,8 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                         if ($1.flags & BF_RULE_OPTION_LOG)
                             bf_parse_err("duplicate keyword \"log\" in rule");
                         $1.flags |= BF_RULE_OPTION_LOG;
-                        $1.log = $2.log;
+                        $1.log_mode = $2.log_mode;
+                        $1.log_opts = $2.log_opts;
                     }
 
                     if ($2.flags & BF_RULE_OPTION_COUNTER) {

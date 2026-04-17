@@ -343,7 +343,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
         }
     }
 
-    if (rule->log) {
+    if (rule->log_opts) {
         r = program->runtime.ops->gen_inline_log(program, rule);
         if (r)
             return r;

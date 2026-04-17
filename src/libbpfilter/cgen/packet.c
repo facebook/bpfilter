@@ -368,7 +368,7 @@ int bf_packet_gen_inline_log(struct bf_program *program,
     EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_2, rule->index));
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log_opts));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_4, rule->verdict));
 
     // Pack l3_proto and l4_proto

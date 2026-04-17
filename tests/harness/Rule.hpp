@@ -63,7 +63,7 @@ public:
         if (r != 0)
             throw std::runtime_error("failed to create bf_rule");
 
-        rule->log = static_cast<uint8_t>(_log.to_ulong());
+        rule->log_opts = static_cast<uint8_t>(_log.to_ulong());
         rule->counters = _counters;
         rule->verdict = _verdict;
 
