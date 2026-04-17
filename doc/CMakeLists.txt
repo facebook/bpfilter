@@ -69,6 +69,10 @@
 find_package(Doxygen REQUIRED)
 find_program(SPHINX_BIN sphinx-build REQUIRED)
 
+set(bfcli_matcher_hook_compatibility
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/_generated/bfcli_matcher_hook_compatibility.rst
+)
+
 file(GLOB_RECURSE bf_srcs
 	${CMAKE_SOURCE_DIR}/src/*.h 			${CMAKE_SOURCE_DIR}/src/*.c
 	${CMAKE_SOURCE_DIR}/tests/harness/*.h	${CMAKE_SOURCE_DIR}/tests/harness/*.c
@@ -80,6 +84,7 @@ list(FILTER bf_srcs EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/external/.*")
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
+	${bfcli_matcher_hook_compatibility}
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
