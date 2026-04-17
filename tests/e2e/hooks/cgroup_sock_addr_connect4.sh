@@ -2,6 +2,14 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
+# Bare log accepted for sock_addr hooks
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 log counter DROP"
+
+# Per-field log options rejected for sock_addr hooks
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 log internet,transport counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 log link counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 log link,internet,transport counter DROP")
+
 # Supported matchers
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.l3_proto eq ipv4 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.l4_proto eq tcp counter DROP"
@@ -65,7 +73,7 @@ get_counter() {
 }
 
 # meta.l3_proto
-${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 counter DROP"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 log counter DROP"
 (! tcp4_connect ${HOST_IP_ADDR} 9990)
 test "$(get_counter c 0)" = "1"
 

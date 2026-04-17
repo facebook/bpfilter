@@ -5,6 +5,8 @@
 
 #include <bpfilter/chain.h>
 #include <bpfilter/core/list.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
 #include <bpfilter/pack.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/runtime.h>
@@ -321,6 +323,42 @@ static void set_component_unsupported_hook(void **state)
                            BF_VERDICT_ACCEPT, &sets, &rules));
 }
 
+static void sock_addr_log_flag(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    struct bf_rule *r0 = NULL;
+
+    (void)state;
+
+    assert_ok(bf_rule_new(&r0));
+    r0->log = BF_LOG_OPT_DEFAULT;
+    assert_ok(bf_list_add_tail(&rules, r0));
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                           BF_VERDICT_ACCEPT, NULL, &rules));
+
+    assert_false(r0->disabled);
+    assert_int_not_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
+static void invalid_log_opts_for_hook(void **state)
+{
+    (void)state;
+
+    // Per-field log options on a sock_addr hook
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    struct bf_rule *r0 = NULL;
+
+    assert_ok(bf_rule_new(&r0));
+    r0->log = BF_FLAG(BF_LOG_OPT_LINK);
+    assert_ok(bf_list_add_tail(&rules, r0));
+
+    assert_err(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                            BF_VERDICT_ACCEPT, NULL, &rules));
+}
+
 static void get_set_by_name(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
@@ -340,6 +378,8 @@ int main(void)
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
         cmocka_unit_test(incompatible_matchers_disable_rule),
+        cmocka_unit_test(sock_addr_log_flag),
+        cmocka_unit_test(invalid_log_opts_for_hook),
         cmocka_unit_test(policy_validation),
         cmocka_unit_test(set_component_unsupported_hook),
         cmocka_unit_test(get_set_by_name),
