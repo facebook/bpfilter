@@ -21,7 +21,7 @@
 %option nounput
 
 %s STATE_HOOK_OPTS
-%s STATE_LOG_OPTS
+%x STATE_LOG_OPTS
 %s STATE_MARK_OPTS
 %s STATE_REDIRECT_IFACE
 %s STATE_REDIRECT_DIR
@@ -98,6 +98,12 @@ mark            { BEGIN(STATE_MARK_OPTS); return MARK; }
     /* Logs */
 log             { BEGIN(STATE_LOG_OPTS); return LOG; }
 <STATE_LOG_OPTS>{
+    [ \t\n]     ;
+    "#".*       ;
+    (counter|mark|ACCEPT|DROP|CONTINUE|NEXT|REDIRECT) {
+        BEGIN(INITIAL);
+        yyless(0);
+    }
     [0-9a-zA-Z]+(,[0-9a-zA-Z]+)* {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);

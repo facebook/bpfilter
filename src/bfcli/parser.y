@@ -347,6 +347,13 @@ rule_option     : LOG LOG_HEADERS
                         .flags = BF_RULE_OPTION_LOG,
                     };
                 }
+                | LOG
+                {
+                    $$ = (struct bf_rule_options){
+                        .log_mode = BF_RULE_LOG_DEFAULT,
+                        .flags = BF_RULE_OPTION_LOG,
+                    };
+                }
                 | COUNTER
                 {
                     $$ = (struct bf_rule_options){
