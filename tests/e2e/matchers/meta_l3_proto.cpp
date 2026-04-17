@@ -24,7 +24,7 @@ static void meta_l3_proto_eq(void **state)
     // ETH_P_IP = 0x0800
     BFT_CHAIN_SET(
         bf::Chain("test_meta_l3_proto", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
                                  bft_u16_payload(0x0800))}));
 
@@ -49,7 +49,7 @@ static void meta_l3_proto_eq(void **state)
     // ETH_P_IPV6 = 0x86DD
     BFT_CHAIN_SET(
         bf::Chain("test_meta_l3_proto", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_L3_PROTO, BF_MATCHER_EQ,
                                  bft_u16_payload(0x86DD))}));
 

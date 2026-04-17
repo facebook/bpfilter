@@ -295,8 +295,9 @@ bool bft_chain_equal(const struct bf_chain *chain0,
 
 bool bft_rule_equal(const struct bf_rule *rule0, const struct bf_rule *rule1)
 {
-    return rule0->index == rule1->index && rule0->log_opts == rule1->log_opts &&
-           rule0->mark == rule1->mark && rule0->counters == rule1->counters &&
+    return rule0->index == rule1->index && rule0->log_mode == rule1->log_mode &&
+           rule0->log_opts == rule1->log_opts && rule0->mark == rule1->mark &&
+           rule0->counters == rule1->counters &&
            rule0->verdict == rule1->verdict &&
            rule0->redirect_ifindex == rule1->redirect_ifindex &&
            rule0->redirect_dir == rule1->redirect_dir &&

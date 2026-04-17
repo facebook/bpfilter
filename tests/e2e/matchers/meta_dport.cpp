@@ -23,7 +23,7 @@ static void meta_dport_eq(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_EQ,
                                            bft_port_be(80))}));
 
@@ -80,7 +80,7 @@ static void meta_dport_ne(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_NE,
                                            bft_port_be(80))}));
 
@@ -120,7 +120,7 @@ static void meta_dport_range(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
                                  bft_port_range(80, 443))}));
 

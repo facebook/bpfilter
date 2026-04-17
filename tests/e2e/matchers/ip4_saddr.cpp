@@ -22,7 +22,7 @@ static void ip4_saddr_eq(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_ip4_saddr", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
                                            {192, 0, 2, 1})}));
 
@@ -54,7 +54,7 @@ static void ip4_saddr_ne(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_ip4_saddr", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_NE,
                                            {192, 0, 2, 1})}));
 
@@ -92,7 +92,7 @@ static void ip4_saddr_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_ip4_saddr", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 

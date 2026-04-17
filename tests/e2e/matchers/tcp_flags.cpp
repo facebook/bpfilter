@@ -23,7 +23,7 @@ static void tcp_flags_eq(void **state)
 
     // SYN = 0x02
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_EQ,
                                            {0x02})}));
 
@@ -64,7 +64,7 @@ static void tcp_flags_ne(void **state)
 
     // SYN = 0x02
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_NE,
                                            {0x02})}));
 
@@ -98,7 +98,7 @@ static void tcp_flags_any(void **state)
 
     // SYN|ACK = 0x12
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ANY,
                                            {0x12})}));
 
@@ -140,7 +140,7 @@ static void tcp_flags_all(void **state)
 
     // SYN|ACK = 0x12
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL,
                                            {0x12})}));
 
