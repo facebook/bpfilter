@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   create-images:
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       matrix:
         host:
