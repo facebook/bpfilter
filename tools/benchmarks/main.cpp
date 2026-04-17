@@ -97,7 +97,7 @@ BENCHMARK(chain_policy_c);
 void single_rule__ip4_saddr(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
                               {0x7f, 0x02, 0x0a, 0x0a}),
@@ -131,13 +131,13 @@ void multiple_rules__ip4_saddr(::benchmark::State &state)
     uint32_t nrules = state.range(0);
     for (uint32_t i = 0; i < nrules - 1; ++i) {
         chain << Rule(
-            BF_VERDICT_DROP, false, {},
+            BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
             std::vector<Matcher> {
                 Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ, uint32ToIp4(i)),
             });
     }
 
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
                               {0x7f, 0x02, 0x0a, 0x0a}),
@@ -176,7 +176,7 @@ void single_rule__ip4_saddr__x_elem_set(::benchmark::State &state)
 
     s << std::vector<uint8_t> {0x7f, 0x02, 0x0a, 0x0a};
 
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
                   });
@@ -210,7 +210,7 @@ BENCHMARK(single_rule__ip4_saddr__x_elem_set)
 void single_rule__ip4_saddr_c(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, true, {},
+    chain << Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
                               {0x7f, 0x02, 0x0a, 0x0a}),
@@ -240,7 +240,7 @@ BENCHMARK(single_rule__ip4_saddr_c);
 void single_rule__ip4_saddr_l(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false,
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_PKT_HEADERS,
                   bf::RuleLogBitset().set(BF_PKTHDR_LINK),
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
@@ -271,7 +271,7 @@ BENCHMARK(single_rule__ip4_saddr_l);
 void single_rule__ip6_saddr(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                               {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -306,13 +306,13 @@ void multiple_rules__ip6_saddr(::benchmark::State &state)
     uint32_t nrules = state.range(0);
     for (uint32_t i = 0; i < nrules - 1; ++i) {
         chain << Rule(
-            BF_VERDICT_DROP, false, {},
+            BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
             std::vector<Matcher> {
                 Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ, uint32ToIp6(i)),
             });
     }
 
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                               {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -353,7 +353,7 @@ void single_rule__ip6_saddr__x_elem_set(::benchmark::State &state)
     s << std::vector<uint8_t> {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
                   });
@@ -387,7 +387,7 @@ BENCHMARK(single_rule__ip6_saddr__x_elem_set)
 void single_rule__ip6_saddr_c(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, true, {},
+    chain << Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                               {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -418,7 +418,7 @@ BENCHMARK(single_rule__ip6_saddr_c);
 void single_rule__ip6_saddr_l(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false,
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_PKT_HEADERS,
                   bf::RuleLogBitset().set(BF_PKTHDR_LINK),
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
@@ -451,7 +451,7 @@ void single_rule__ip6_nexthdr(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
     chain << Rule(
-        BF_VERDICT_DROP, false, {},
+        BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
         std::vector<Matcher> {
             Matcher(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ, {0x00, 0x00}),
         });
@@ -481,7 +481,7 @@ void single_rule__meta_sport_eq(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
     chain << Rule(
-        BF_VERDICT_DROP, false, {},
+        BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
         std::vector<Matcher> {
             Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_EQ, {0x00, 0x17}),
         });
@@ -510,7 +510,7 @@ BENCHMARK(single_rule__meta_sport_eq);
 void single_rule__meta_sport_range(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
                               {0x16, 0x00, 0x18, 0x00}),
@@ -541,7 +541,7 @@ void single_rule__tcp_sport(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
     chain << Rule(
-        BF_VERDICT_DROP, false, {},
+        BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
         std::vector<Matcher> {
             Matcher(BF_MATCHER_TCP_SPORT, BF_MATCHER_EQ, {0x00, 0x17}),
         });
@@ -573,7 +573,7 @@ void single_rule__meta_flow_hash(::benchmark::State &state)
     Chain chain("bf_benchmark", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT);
 
     // Match flow hash in full range 0-UINT32_MAX (little-endian uint32_t: min, max)
-    chain << Rule(BF_VERDICT_DROP, false, {},
+    chain << Rule(BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE,
                               {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff}),
@@ -612,7 +612,7 @@ void single_rule__meta_flow_probability(::benchmark::State &state)
     std::memcpy(payload.data(), &prob, sizeof(float));
 
     chain << Rule(
-        BF_VERDICT_DROP, false, {},
+        BF_VERDICT_DROP, false, BF_RULE_LOG_NONE, {},
         std::vector<Matcher> {
             Matcher(BF_MATCHER_META_FLOW_PROBABILITY, BF_MATCHER_EQ, payload),
         });

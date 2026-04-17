@@ -122,6 +122,7 @@ static void mixed_enabled_disabled_log_flag(void **state)
 
     set_index = 0;
     assert_ok(bf_rule_new(&r0));
+    r0->log_mode = BF_RULE_LOG_PKT_HEADERS;
     r0->log_opts = 1;
     assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
                                   sizeof(set_index)));

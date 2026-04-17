@@ -23,7 +23,7 @@ static void meta_mark_eq(void **state)
 
     // BPF_PROG_TEST_RUN gives mark=0; match eq 0
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_EQ,
                                            bft_u32_payload(0))}));
 
@@ -39,7 +39,7 @@ static void meta_mark_eq(void **state)
 
     // eq 42 should not match since mark is 0
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_EQ,
                                            bft_u32_payload(42))}));
 
@@ -64,7 +64,7 @@ static void meta_mark_ne(void **state)
 
     // ne 0 should NOT match since mark=0
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_NE,
                                            bft_u32_payload(0))}));
 
@@ -79,7 +79,7 @@ static void meta_mark_ne(void **state)
 
     // ne 42 should match since mark=0 != 42
     BFT_CHAIN_SET(bf::Chain("test_meta_mark", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_MARK, BF_MATCHER_NE,
                                            bft_u32_payload(42))}));
 
