@@ -1,0 +1,24 @@
+id: double-pointer-output
+snapshots:
+  ? |
+    int bf_chain_new(struct bf_chain *chain)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int bf_chain_new(struct bf_chain *chain)
+        {
+            return 0;
+        }
+      style: primary
+      start: 0
+      end: 58
+    - source: bf_chain_new
+      style: secondary
+      start: 4
+      end: 16
+    - source: bf_chain_new(struct bf_chain *chain)
+      style: secondary
+      start: 4
+      end: 40

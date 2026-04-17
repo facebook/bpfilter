@@ -1,0 +1,16 @@
+id: enum-bf-prefix
+language: c
+severity: warning
+message: >-
+  Enum tag does not follow naming convention.
+  Library enums must use bf_ prefix, CLI enums use bfc_ prefix.
+note: >-
+  Rename the enum to bf_<name> (libbpfilter) or bfc_<name> (bfcli).
+  Anonymous enums are allowed (the rule only fires on named enums).
+rule:
+  kind: enum_specifier
+  has:
+    field: name
+    kind: type_identifier
+    not:
+      regex: "^(bf_|bfc_)"

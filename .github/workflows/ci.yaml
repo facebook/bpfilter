@@ -110,6 +110,11 @@ jobs:
           key: tests-results-${{ github.run_id }}
       - name: Mount bpffs
         run: mount bpffs /sys/fs/bpf -t bpf
+      - name: Install ast-grep
+        run: |
+          dnf install -y pipx
+          pipx install --global ast-grep-cli
+          ast-grep --version
       - name: Configure the build
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DWITH_COVERAGE=1
       - name: Build tests

@@ -1,0 +1,26 @@
+id: doxygen-public-functions
+language: c
+severity: warning
+files:
+  - "**/*.h"
+message: >-
+  Public function declaration missing @brief tag.
+  Public functions should be preceded by a /** @brief ... */ comment.
+note: >-
+  Add a Doxygen comment with an explicit @brief tag before this declaration.
+  Exception: trivial getters/setters may skip documentation per style.rst.
+  This rule flags functions whose preceding comment lacks an explicit
+  @brief tag; implicit-brief Doxygen is also detected as missing.
+rule:
+  all:
+    - kind: declaration
+    - has:
+        kind: function_declarator
+        stopBy: end
+    - not:
+        has:
+          kind: storage_class_specifier
+    - not:
+        follows:
+          kind: comment
+          regex: "@brief"

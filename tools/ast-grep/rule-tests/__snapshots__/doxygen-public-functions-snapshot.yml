@@ -1,0 +1,54 @@
+id: doxygen-public-functions
+snapshots:
+  ? |
+    // This is not a Doxygen comment
+    int bf_set_add(struct bf_set *set, int value)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int bf_set_add(struct bf_set *set, int value)
+        {
+            return 0;
+        }
+      style: primary
+      start: 33
+      end: 96
+  ? |
+    // This is not a Doxygen comment
+    int bf_set_add(struct bf_set *set, int value);
+  : labels:
+    - source: int bf_set_add(struct bf_set *set, int value);
+      style: primary
+      start: 33
+      end: 79
+    - source: bf_set_add(struct bf_set *set, int value)
+      style: secondary
+      start: 37
+      end: 78
+  ? |
+    int bf_rule_free(void)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int bf_rule_free(void)
+        {
+            return 0;
+        }
+      style: primary
+      start: 0
+      end: 40
+  ? |
+    int bf_rule_free(void);
+  : labels:
+    - source: int bf_rule_free(void);
+      style: primary
+      start: 0
+      end: 23
+    - source: bf_rule_free(void)
+      style: secondary
+      start: 4
+      end: 22
