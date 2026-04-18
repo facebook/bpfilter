@@ -10,7 +10,8 @@ pkg_check_modules(git2 REQUIRED IMPORTED_TARGET libgit2)
 
 add_executable(benchmark_bin EXCLUDE_FROM_ALL
     main.cpp
-    benchmark.cpp benchmark.hpp
+    benchmark.cpp
+    benchmark.hpp
 )
 
 target_compile_options(benchmark_bin
