@@ -528,8 +528,9 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
         r = bf_link_update(old_handle->link, new_handle->prog_fd);
         if (r) {
             bf_err_r(r, "failed to update bf_link object with new program");
-            if (bf_handle_pin(old_handle, pindir_fd) < 0)
-                bf_err("failed to repin old handle, ignoring");
+            if (bf_handle_pin(old_handle, pindir_fd) < 0) {
+		                bf_err("failed to repin old handle, ignoring");
+            }
             return r;
         }
 

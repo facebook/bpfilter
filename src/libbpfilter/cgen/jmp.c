@@ -28,8 +28,9 @@ void bf_jmpctx_cleanup(struct bf_jmpctx *ctx)
 
         off = ctx->program->img.size - ctx->insn_idx - 1U;
 
-        if (off > SHRT_MAX)
+        if (off > SHRT_MAX) {
             bf_warn("jump offset overflow: %ld", off);
+    }
 
         insn->off = (int16_t)off;
     }

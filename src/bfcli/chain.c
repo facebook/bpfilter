@@ -190,8 +190,9 @@ int bfc_chain_load(const struct bfc_opts *opts)
     if (r)
         return r;
 
-    if (hookopts)
+    if (hookopts) {
         bf_warn("Hook options are ignored when loading a chain");
+    }
 
     if (!opts->dry_run) {
         r = bf_chain_load(chain);
@@ -235,8 +236,9 @@ int bfc_chain_update(const struct bfc_opts *opts)
     if (r)
         return r;
 
-    if (hookopts)
+    if (hookopts) {
         bf_warn("Hook options are ignored when updating a chain");
+    }
     if (!opts->dry_run) {
         r = bf_chain_update(chain);
         if (r == -ENOENT)
