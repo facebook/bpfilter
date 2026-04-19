@@ -24,7 +24,7 @@ static void meta_flow_hash_eq(void **state)
     // eq UINT32_MAX — extremely unlikely to match actual hash -> ACCEPT
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fhash", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_EQ,
                                  bft_u32_payload(UINT_MAX))}));
 
@@ -48,7 +48,7 @@ static void meta_flow_hash_ne(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fhash", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_NE,
                                  bft_u32_payload(UINT_MAX))}));
 
@@ -71,7 +71,7 @@ static void meta_flow_hash_range(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fhash", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE,
                                  bft_u32_range(0, UINT_MAX))}));
 
@@ -87,7 +87,7 @@ static void meta_flow_hash_range(void **state)
     // Range [UINT_MAX, UINT_MAX] should not match
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fhash", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_HASH, BF_MATCHER_RANGE,
                                  bft_u32_range(UINT_MAX, UINT_MAX))}));
 

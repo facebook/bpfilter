@@ -409,14 +409,17 @@ Rules are defined such as:
     rule
         [$MATCHER...]
         [$SET...]
-        [log link,internet,transport]
+        [log [$HEADERS]]
         [counter]
         [mark $MARK]
         $VERDICT
 
 With:
   - ``$MATCHER``: zero or more matchers. Matchers are defined later.
-  - ``log``: optional. If set, log the requested protocol headers. ``link`` will log the link (layer 2) header, ``internet`` with log the internet (layer 3) header, and ``transport`` will log the transport (layer 4) header. At least one header type is required. ``log`` is **not** supported by ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
+  - ``log``: optional. Logging is not supported by ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks. Two forms are supported:
+
+    - ``log $HEADERS``: log specific packet headers. ``$HEADERS`` is a comma-separated list of ``link`` (layer 2), ``internet`` (layer 3), and/or ``transport`` (layer 4). Only supported by packet-based hooks (XDP, TC, NF, cgroup_skb).
+    - ``log``: log all available data for the hook type. For packet-based hooks, this is equivalent to ``log link,internet,transport``.
   - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of socket operations (``connect()`` or ``sendmsg()`` calls).
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, ``NEXT``, or ``REDIRECT``.

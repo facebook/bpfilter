@@ -189,7 +189,8 @@ struct bf_rule *bft_rule_dummy(size_t n_matchers)
         return NULL;
 
     rule->index = 0;
-    rule->log = BF_FLAGS(BF_PKTHDR_INTERNET, BF_PKTHDR_TRANSPORT);
+    rule->log_mode = BF_RULE_LOG_PKT_HEADERS;
+    rule->log_opts = BF_FLAGS(BF_PKTHDR_INTERNET, BF_PKTHDR_TRANSPORT);
     rule->mark = 0x17;
     rule->counters = true;
     rule->verdict = BF_VERDICT_ACCEPT;

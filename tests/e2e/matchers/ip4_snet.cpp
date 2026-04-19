@@ -26,7 +26,7 @@ static void ip4_snet_eq(void **state)
     // 192.0.2.0/24
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
                                  bft_ip4_lpm_key(24, 192, 0, 2, 0))}));
 
@@ -68,7 +68,7 @@ static void ip4_snet_eq(void **state)
     // bf_cmp_masked_value(), comparing the address directly without AND.
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
                                  bft_ip4_lpm_key(32, 192, 0, 2, 1))}));
 
@@ -93,7 +93,7 @@ static void ip4_snet_eq(void **state)
     // /0 (match all): mask=0 causes both sides to AND to 0, matching every
     // source address.
     BFT_CHAIN_SET(bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_EQ,
                                            bft_ip4_lpm_key(0, 0, 0, 0, 0))}));
 
@@ -120,7 +120,7 @@ static void ip4_snet_ne(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
                                  bft_ip4_lpm_key(24, 192, 0, 2, 0))}));
 
@@ -145,7 +145,7 @@ static void ip4_snet_ne(void **state)
     // /32 ne: saddr exactly matching the host -> NE does not match -> ACCEPT
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
                                  bft_ip4_lpm_key(32, 192, 0, 2, 1))}));
 
@@ -168,7 +168,7 @@ static void ip4_snet_ne(void **state)
 
     // /0 ne: /0 covers the entire address space; NE /0 never matches.
     BFT_CHAIN_SET(bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_IP4_SNET, BF_MATCHER_NE,
                                            bft_ip4_lpm_key(0, 0, 0, 0, 0))}));
 
@@ -196,7 +196,7 @@ static void ip4_snet_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 

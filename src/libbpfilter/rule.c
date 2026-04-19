@@ -19,6 +19,21 @@
 #include "bpfilter/runtime.h"
 #include "bpfilter/verdict.h"
 
+static const char *_bf_rule_log_mode_strs[] = {
+    [BF_RULE_LOG_NONE] = "none",
+    [BF_RULE_LOG_DEFAULT] = "default",
+    [BF_RULE_LOG_PKT_HEADERS] = "pkt_headers",
+};
+static_assert_enum_mapping(_bf_rule_log_mode_strs, _BF_RULE_LOG_MODE_MAX);
+
+const char *bf_rule_log_mode_to_str(enum bf_rule_log_mode mode)
+{
+    if (mode < 0 || mode >= _BF_RULE_LOG_MODE_MAX)
+        return "<bf_rule_log_mode unknown>";
+
+    return _bf_rule_log_mode_strs[mode];
+}
+
 static const char *_bf_pkthdr_strs[] = {
     [BF_PKTHDR_LINK] = "link",
     [BF_PKTHDR_INTERNET] = "internet",
@@ -81,9 +96,14 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.index");
 
-    r = bf_rpack_kv_u8(node, "log", &_rule->log);
+    r = bf_rpack_kv_enum(node, "log_mode", &_rule->log_mode, 0,
+                         _BF_RULE_LOG_MODE_MAX);
     if (r)
-        return bf_rpack_key_err(r, "bf_rule.log");
+        return bf_rpack_key_err(r, "bf_rule.log_mode");
+
+    r = bf_rpack_kv_u8(node, "log_opts", &_rule->log_opts);
+    if (r)
+        return bf_rpack_key_err(r, "bf_rule.log_opts");
 
     r = bf_rpack_kv_bool(node, "counters", &_rule->counters);
     if (r)
@@ -148,7 +168,8 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
     assert(pack);
 
     bf_wpack_kv_u32(pack, "index", rule->index);
-    bf_wpack_kv_u8(pack, "log", rule->log);
+    bf_wpack_kv_enum(pack, "log_mode", rule->log_mode);
+    bf_wpack_kv_u8(pack, "log_opts", rule->log_opts);
     bf_wpack_kv_bool(pack, "counters", rule->counters);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);
@@ -184,7 +205,8 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     }
     bf_dump_prefix_pop(prefix);
 
-    DUMP(prefix, "log: %02x", rule->log);
+    DUMP(prefix, "log_mode: %s", bf_rule_log_mode_to_str(rule->log_mode));
+    DUMP(prefix, "log_opts: %02x", rule->log_opts);
     DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
     DUMP(prefix, "disabled: %s", rule->disabled ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);

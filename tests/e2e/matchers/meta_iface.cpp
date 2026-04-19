@@ -22,7 +22,7 @@ static void meta_iface_eq(void **state)
 
     // eq UINT32_MAX — no real interface has this index -> ACCEPT
     BFT_CHAIN_SET(bf::Chain("test_meta_iface", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                               {bf::Matcher(BF_MATCHER_META_IFACE, BF_MATCHER_EQ,
                                            bft_u32_payload(UINT_MAX))}));
 

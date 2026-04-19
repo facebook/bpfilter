@@ -24,7 +24,7 @@ static void meta_probability_eq(void **state)
     // 100.0f always matches
     BFT_CHAIN_SET(
         bf::Chain("test_meta_prob", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
                                  bft_float_payload(100.0f))}));
 
@@ -40,7 +40,7 @@ static void meta_probability_eq(void **state)
     // 0.0f should never match
     BFT_CHAIN_SET(
         bf::Chain("test_meta_prob", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, true, BF_RULE_LOG_NONE, {},
                     {bf::Matcher(BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ,
                                  bft_float_payload(0.0f))}));
 
