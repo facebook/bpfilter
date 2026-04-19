@@ -20,15 +20,15 @@ static int _bf_matcher_generate_set_trie(struct bf_program *program,
 
     const struct bf_set *set =
         bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
-    enum bf_matcher_type type = set->key[0];
-    const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
-    int r;
-
     if (!set) {
         return bf_err_r(-ENOENT, "set #%u not found in %s",
                         *(uint32_t *)bf_matcher_payload(matcher),
                         program->runtime.chain->name);
     }
+
+    enum bf_matcher_type type = set->key[0];
+    const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
+    int r;
 
     r = bf_stub_rule_check_protocol(program, meta);
     if (r)
