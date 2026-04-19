@@ -360,7 +360,7 @@ With:
 
   .. note::
 
-      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``udp.dport``. Connect hooks additionally support ``tcp.dport``. Sendmsg hooks additionally support ``ip4.saddr``, ``ip4.snet``, ``ip6.saddr``, and ``ip6.snet``.
+      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``udp.dport``. Connect hooks additionally support ``tcp.dport``. Sendmsg hooks additionally support ``ip4.saddr``, ``ip4.snet``, ``ip6.saddr``, and ``ip6.snet``. Sets are supported with the same per-component restrictions: each set key component must be a matcher supported by the chain's hook. Note that ``meta.dport`` and ``meta.sport`` are not supported in sets.
 
   - ``$POLICY``: action taken if no rule matches the packet:
 
@@ -664,16 +664,21 @@ IPv6
       - Operator
       - Payload
       - Notes
-    * - :rspan:`1` Source address
-      - :rspan:`1` ``ip6.saddr``
+    * - :rspan:`2` Source address
+      - :rspan:`2` ``ip6.saddr``
       - ``eq``
-      - :rspan:`3` ``$ADDR``
-      - :rspan:`3` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported). To filter on an IPv6 network (using an IPv6 address and a subnet mask), see ``ip6.snet`` or ``ip6.dnet``.
+      - :rspan:`1` ``$ADDR``
+      - :rspan:`5` ``$ADDR`` must be an IPv6 address composed of 8 hexadecimal numbers (abbreviations are supported). To filter on an IPv6 network (using an IPv6 address and a subnet mask), see ``ip6.snet`` or ``ip6.dnet``.
     * - ``not``
-    * - :rspan:`1` Destination address
-      - :rspan:`1` ``ip6.daddr``
+    * - ``in``
+      - ``{$ADDR[,...]}``
+    * - :rspan:`2` Destination address
+      - :rspan:`2` ``ip6.daddr``
       - ``eq``
+      - :rspan:`1` ``$ADDR``
     * - ``not``
+    * - ``in``
+      - ``{$ADDR[,...]}``
     * - :rspan:`2` Source network
       - :rspan:`2` ``ip6.snet``
       - ``eq``

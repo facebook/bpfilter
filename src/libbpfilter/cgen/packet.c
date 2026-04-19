@@ -14,11 +14,13 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <bpfilter/chain.h>
 #include <bpfilter/elfstub.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/rule.h>
+#include <bpfilter/set.h>
 
 #include "cgen/matcher/cmp.h"
 #include "cgen/matcher/meta.h"
@@ -299,6 +301,64 @@ static int _bf_matcher_pkt_generate_ip6_dscp(struct bf_program *program,
     return 0;
 }
 
+static int _bf_matcher_pkt_generate_set(struct bf_program *program,
+                                        const struct bf_matcher *matcher)
+{
+    assert(program);
+    assert(matcher);
+
+    const struct bf_set *set =
+        bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
+    size_t offset = 0;
+    int r;
+
+    if (!set) {
+        return bf_err_r(-ENOENT, "set #%u not found in %s",
+                        *(uint32_t *)bf_matcher_payload(matcher),
+                        program->runtime.chain->name);
+    }
+
+    if (set->use_trie) {
+        const struct bf_matcher_meta *meta = bf_matcher_get_meta(set->key[0]);
+
+        if (!meta) {
+            return bf_err_r(-EINVAL, "missing meta for '%s'",
+                            bf_matcher_type_to_str(set->key[0]));
+        }
+
+        r = bf_stub_load_header(program, meta, BPF_REG_6);
+        if (r)
+            return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
+
+        return bf_set_generate_trie_lookup(
+            program, matcher, meta->hdr_payload_offset, meta->hdr_payload_size);
+    }
+
+    for (size_t i = 0; i < set->n_comps; ++i) {
+        enum bf_matcher_type type = set->key[i];
+        const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
+
+        if (!meta) {
+            return bf_err_r(-EINVAL, "missing meta for '%s'",
+                            bf_matcher_type_to_str(type));
+        }
+
+        r = bf_stub_load_header(program, meta, BPF_REG_6);
+        if (r)
+            return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
+
+        r = bf_stub_stx_payload(program, meta, offset);
+        if (r) {
+            return bf_err_r(r,
+                            "failed to generate bytecode to load packet data");
+        }
+
+        offset += meta->hdr_payload_size;
+    }
+
+    return bf_set_generate_map_lookup(program, matcher, BF_PROG_SCR_OFF(0));
+}
+
 int bf_packet_gen_inline_matcher(struct bf_program *program,
                                  const struct bf_matcher *matcher)
 {
@@ -352,7 +412,7 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_IP6_DSCP:
         return _bf_matcher_pkt_generate_ip6_dscp(program, matcher, meta);
     case BF_MATCHER_SET:
-        return bf_matcher_generate_set(program, matcher);
+        return _bf_matcher_pkt_generate_set(program, matcher);
     default:
         return bf_err_r(-EINVAL, "unknown matcher type %d",
                         bf_matcher_get_type(matcher));

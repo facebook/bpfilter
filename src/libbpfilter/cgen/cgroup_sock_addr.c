@@ -14,15 +14,19 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include <bpfilter/chain.h>
 #include <bpfilter/flavor.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/runtime.h>
+#include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/matcher/cmp.h"
 #include "cgen/matcher/meta.h"
+#include "cgen/matcher/set.h"
 #include "cgen/program.h"
+#include "cgen/stub.h"
 #include "cgen/swich.h"
 #include "filter.h"
 
@@ -204,6 +208,110 @@ static int _bf_cgroup_sock_addr_generate_port(struct bf_program *program,
                         bf_matcher_payload(matcher), 2, BPF_REG_1);
 }
 
+static ssize_t _bf_cgroup_sock_addr_ctx_offset(enum bf_matcher_type type)
+{
+    switch (type) {
+    case BF_MATCHER_IP4_SADDR:
+    case BF_MATCHER_IP4_SNET:
+        return offsetof(struct bpf_sock_addr, msg_src_ip4);
+    case BF_MATCHER_IP4_DADDR:
+    case BF_MATCHER_IP4_DNET:
+        return offsetof(struct bpf_sock_addr, user_ip4);
+    case BF_MATCHER_IP6_SADDR:
+    case BF_MATCHER_IP6_SNET:
+        return offsetof(struct bpf_sock_addr, msg_src_ip6);
+    case BF_MATCHER_IP6_DADDR:
+    case BF_MATCHER_IP6_DNET:
+        return offsetof(struct bpf_sock_addr, user_ip6);
+    case BF_MATCHER_IP4_PROTO:
+        return offsetof(struct bpf_sock_addr, protocol);
+    case BF_MATCHER_TCP_DPORT:
+    case BF_MATCHER_UDP_DPORT:
+        return offsetof(struct bpf_sock_addr, user_port);
+    default:
+        return -ENOTSUP;
+    }
+}
+
+static int _bf_cgroup_sock_addr_generate_set(struct bf_program *program,
+                                             const struct bf_matcher *matcher)
+{
+    const struct bf_set *set;
+    size_t offset = 0;
+    int r;
+
+    assert(program);
+    assert(matcher);
+
+    set = bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
+    if (!set) {
+        return bf_err_r(-ENOENT, "set #%u not found in %s",
+                        *(uint32_t *)bf_matcher_payload(matcher),
+                        program->runtime.chain->name);
+    }
+
+    if (set->use_trie) {
+        const struct bf_matcher_meta *meta = bf_matcher_get_meta(set->key[0]);
+        ssize_t ctx_off = _bf_cgroup_sock_addr_ctx_offset(set->key[0]);
+
+        if (!meta) {
+            return bf_err_r(-EINVAL, "missing meta for set component '%s'",
+                            bf_matcher_type_to_str(set->key[0]));
+        }
+
+        if (ctx_off < 0) {
+            return bf_err_r(
+                (int)ctx_off,
+                "set component '%s' not supported for cgroup_sock_addr",
+                bf_matcher_type_to_str(set->key[0]));
+        }
+
+        return bf_set_generate_trie_lookup(program, matcher, (size_t)ctx_off,
+                                           meta->hdr_payload_size);
+    }
+
+    for (size_t i = 0; i < set->n_comps; ++i) {
+        enum bf_matcher_type type = set->key[i];
+        const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
+        ssize_t ctx_off = _bf_cgroup_sock_addr_ctx_offset(type);
+
+        if (!meta) {
+            return bf_err_r(-EINVAL, "missing meta for set component '%s'",
+                            bf_matcher_type_to_str(type));
+        }
+
+        if (ctx_off < 0) {
+            return bf_err_r(
+                (int)ctx_off,
+                "set component '%s' not supported for cgroup_sock_addr",
+                bf_matcher_type_to_str(type));
+        }
+
+        /* The BPF verifier enforces specific ctx access widths on
+         * `bpf_sock_addr` fields. `bf_stub_load()` reads
+         * `meta->hdr_payload_size` bytes from ctx:
+         *   - Ports (`hdr_payload_size == 2`): `user_port` is a 4-byte
+         *     `__u32`, but the 2-byte narrow read is accepted and rewritten
+         *     to the NBO port value.
+         *   - Protocol (`hdr_payload_size == 1`): only 4-byte reads are
+         *     allowed, so a 1-byte `bf_stub_load()` would be rejected. Reuse
+         *     `BPF_REG_8`, which the prologue loaded with a 4-byte read. */
+        if (type == BF_MATCHER_IP4_PROTO) {
+            EMIT(program, BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_8,
+                                      BF_PROG_SCR_OFF(offset)));
+        } else {
+            r = bf_stub_load(program, (size_t)ctx_off, meta->hdr_payload_size,
+                             BF_PROG_SCR_OFF(offset));
+            if (r)
+                return r;
+        }
+
+        offset += meta->hdr_payload_size;
+    }
+
+    return bf_set_generate_map_lookup(program, matcher, BF_PROG_SCR_OFF(0));
+}
+
 static int
 _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
                                         const struct bf_matcher *matcher)
@@ -248,6 +356,8 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_TCP_DPORT:
     case BF_MATCHER_UDP_DPORT:
         return _bf_cgroup_sock_addr_generate_port(program, matcher);
+    case BF_MATCHER_SET:
+        return _bf_cgroup_sock_addr_generate_set(program, matcher);
     default:
         return bf_err_r(-ENOTSUP,
                         "matcher '%s' not supported for cgroup_sock_addr",
