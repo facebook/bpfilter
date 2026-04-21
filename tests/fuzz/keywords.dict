@@ -132,7 +132,7 @@
 "ipv4"
 "ipv6"
 
-# Log headers (bf_pkthdr)
+# Log headers (bf_log_opt)
 "link"
 "internet"
 "transport"

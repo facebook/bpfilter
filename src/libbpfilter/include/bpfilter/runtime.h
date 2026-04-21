@@ -69,17 +69,17 @@ static_assert(BF_L4_SLICE_LEN % 8 == 0,
 /**
  * @brief Types of network packet headers.
  */
-enum bf_pkthdr
+enum bf_log_opt
 {
     /**
      * Link layer header: Ethernet, ...
      */
-    BF_PKTHDR_LINK,
+    BF_LOG_OPT_LINK,
 
     /**
      * Internet header: IPv4, IPv6, ...
      */
-    BF_PKTHDR_INTERNET,
+    BF_LOG_OPT_INTERNET,
 
     /**
      * Transport header: TCP, UDP, ...
@@ -88,9 +88,9 @@ enum bf_pkthdr
      * IPv6 packet, so it's considered a transport layer (L4) header in
      * bpfilter.
      */
-    BF_PKTHDR_TRANSPORT,
+    BF_LOG_OPT_TRANSPORT,
 
-    _BF_PKTHDR_MAX,
+    _BF_LOG_OPT_MAX,
 };
 
 /**

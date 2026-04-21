@@ -19,28 +19,28 @@
 #include "bpfilter/runtime.h"
 #include "bpfilter/verdict.h"
 
-static const char *_bf_pkthdr_strs[] = {
-    [BF_PKTHDR_LINK] = "link",
-    [BF_PKTHDR_INTERNET] = "internet",
-    [BF_PKTHDR_TRANSPORT] = "transport",
+static const char *_bf_log_opt_strs[] = {
+    [BF_LOG_OPT_LINK] = "link",
+    [BF_LOG_OPT_INTERNET] = "internet",
+    [BF_LOG_OPT_TRANSPORT] = "transport",
 };
-static_assert_enum_mapping(_bf_pkthdr_strs, _BF_PKTHDR_MAX);
+static_assert_enum_mapping(_bf_log_opt_strs, _BF_LOG_OPT_MAX);
 
-const char *bf_pkthdr_to_str(enum bf_pkthdr hdr)
+const char *bf_log_opt_to_str(enum bf_log_opt hdr)
 {
-    if (hdr < 0 || hdr >= _BF_PKTHDR_MAX)
-        return "<bf_pkthdr unknown>";
+    if (hdr < 0 || hdr >= _BF_LOG_OPT_MAX)
+        return "<bf_log_opt unknown>";
 
-    return _bf_pkthdr_strs[hdr];
+    return _bf_log_opt_strs[hdr];
 }
 
-int bf_pkthdr_from_str(const char *str, enum bf_pkthdr *hdr)
+int bf_log_opt_from_str(const char *str, enum bf_log_opt *hdr)
 {
     assert(hdr);
 
-    for (int i = 0; i < _BF_PKTHDR_MAX; ++i) {
-        if (bf_streq_i(str, _bf_pkthdr_strs[i])) {
-            *hdr = (enum bf_pkthdr)i;
+    for (int i = 0; i < _BF_LOG_OPT_MAX; ++i) {
+        if (bf_streq_i(str, _bf_log_opt_strs[i])) {
+            *hdr = (enum bf_log_opt)i;
             return 0;
         }
     }
