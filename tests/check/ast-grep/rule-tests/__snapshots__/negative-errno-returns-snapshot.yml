@@ -1,0 +1,58 @@
+id: negative-errno-returns
+snapshots:
+  ? |
+    int bf_arg_parse(const char *s)
+    {
+        return E2BIG;
+    }
+  : labels:
+    - source: return E2BIG;
+      style: primary
+      start: 38
+      end: 51
+    - source: E2BIG
+      style: secondary
+      start: 45
+      end: 50
+  ? |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return ENOMEM;
+    }
+  : labels:
+    - source: return ENOMEM;
+      style: primary
+      start: 48
+      end: 62
+    - source: ENOMEM
+      style: secondary
+      start: 55
+      end: 61
+  ? |
+    int bf_io_read(int fd)
+    {
+        return EIO;
+    }
+  : labels:
+    - source: return EIO;
+      style: primary
+      start: 29
+      end: 40
+    - source: EIO
+      style: secondary
+      start: 36
+      end: 39
+  ? |
+    int bf_rule_load(struct bf_rule *rule)
+    {
+        return EINVAL;
+    }
+  : labels:
+    - source: return EINVAL;
+      style: primary
+      start: 45
+      end: 59
+    - source: EINVAL
+      style: secondary
+      start: 52
+      end: 58
