@@ -1,0 +1,42 @@
+id: enum-bf-prefix
+snapshots:
+  ? |
+    enum filter_type
+    {
+        FILTER_ACCEPT,
+        _FILTER_MAX,
+    };
+  : labels:
+    - source: |-
+        enum filter_type
+        {
+            FILTER_ACCEPT,
+            _FILTER_MAX,
+        }
+      style: primary
+      start: 0
+      end: 56
+    - source: filter_type
+      style: secondary
+      start: 5
+      end: 16
+  ? |
+    enum hook
+    {
+        HOOK_XDP,
+        _HOOK_MAX,
+    };
+  : labels:
+    - source: |-
+        enum hook
+        {
+            HOOK_XDP,
+            _HOOK_MAX,
+        }
+      style: primary
+      start: 0
+      end: 42
+    - source: hook
+      style: secondary
+      start: 5
+      end: 9

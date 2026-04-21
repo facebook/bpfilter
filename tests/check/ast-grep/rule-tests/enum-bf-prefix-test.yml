@@ -1,0 +1,32 @@
+id: enum-bf-prefix
+valid:
+  - |
+    enum bf_hook
+    {
+        BF_HOOK_XDP,
+        _BF_HOOK_MAX,
+    };
+  - |
+    enum bfc_action
+    {
+        BFC_ACTION_ACCEPT,
+        _BFC_ACTION_MAX,
+    };
+  - |
+    enum
+    {
+        _BFC_DEPRECATED_FOO = 100,
+    };
+invalid:
+  - |
+    enum hook
+    {
+        HOOK_XDP,
+        _HOOK_MAX,
+    };
+  - |
+    enum filter_type
+    {
+        FILTER_ACCEPT,
+        _FILTER_MAX,
+    };
