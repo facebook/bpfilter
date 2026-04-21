@@ -1,0 +1,23 @@
+id: single-line-comment-style
+valid:
+  - |
+    // This is a correct single-line comment
+    int x = 0;
+  - |
+    /* SPDX-License-Identifier: GPL-2.0-only */
+    int x = 0;
+  - |
+    /*
+     * This is a correct multi-line comment
+     * spanning multiple lines.
+     */
+    int x = 0;
+  - |
+    /**
+     * @brief Doxygen comment is fine.
+     */
+    int bf_foo(void);
+invalid:
+  - |
+    /* This should be a // comment */
+    int x = 0;
