@@ -1,0 +1,18 @@
+id: free-function-pattern
+valid:
+  - |
+    void bf_chain_free(struct bf_chain **chain)
+    {
+        return;
+    }
+invalid:
+  - |
+    int bf_chain_free(struct bf_chain **chain)
+    {
+        return 0;
+    }
+  - |
+    void bf_chain_free(struct bf_chain *chain)
+    {
+        return;
+    }
