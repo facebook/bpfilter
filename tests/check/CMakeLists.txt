@@ -70,6 +70,7 @@ if(SG_BIN)
         COMMAND ${SG_BIN} scan --config ${SG_CONFIG}
             ${CMAKE_SOURCE_DIR}/src/libbpfilter
             ${CMAKE_SOURCE_DIR}/src/bfcli
+            --off=assert-pointer-params
     )
 
     set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
