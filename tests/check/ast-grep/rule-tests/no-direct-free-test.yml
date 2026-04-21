@@ -1,0 +1,36 @@
+id: no-direct-free
+valid:
+  - |
+    void caller(struct bf_chain **chain)
+    {
+        BF_FREEP(chain);
+    }
+  - |
+    static inline void bf_freep(void *ptr)
+    {
+        free(*(void **)ptr);
+        *(void **)ptr = NULL;
+    }
+  - |
+    void bf_list_free(bf_list **list)
+    {
+        free(*list);
+        *list = NULL;
+    }
+  - |
+    static void _bf_swich_option_free(struct bf_swich_option **option)
+    {
+        free(*option);
+        *option = NULL;
+    }
+  - |
+    void bf_swich_cleanup(struct bf_swich *swich)
+    {
+        free(swich->default_opt);
+    }
+invalid:
+  - |
+    void process(char *buf)
+    {
+        free(buf);
+    }
