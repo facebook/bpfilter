@@ -73,6 +73,7 @@ if(SG_BIN)
             --off=assert-pointer-params
             --off=doxygen-prefer-backticks
             --off=doxygen-public-functions
+            --off=no-direct-free
     )
 
     set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
