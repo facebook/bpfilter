@@ -1,0 +1,12 @@
+id: spdx-license-header
+snapshots:
+  ? |
+    #include <stdio.h>
+    int main(void) { return 0; }
+  : labels:
+    - source: |
+        #include <stdio.h>
+        int main(void) { return 0; }
+      style: primary
+      start: 0
+      end: 48
