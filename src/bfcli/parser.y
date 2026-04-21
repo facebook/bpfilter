@@ -329,9 +329,9 @@ rule_option     : LOG LOG_HEADERS
                     uint8_t log = 0;
 
                     while ((token = strtok_r(tmp, ",", &saveptr))) {
-                        enum bf_pkthdr header;
+                        enum bf_log_opt header;
 
-                        if (bf_pkthdr_from_str(token, &header) < 0)
+                        if (bf_log_opt_from_str(token, &header) < 0)
                             bf_parse_err("unknown packet header '%s'", token);
 
                         log |= BF_FLAG(header);
