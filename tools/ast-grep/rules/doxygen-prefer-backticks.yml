@@ -1,0 +1,11 @@
+id: doxygen-prefer-backticks
+language: c
+severity: warning
+message: >-
+  Prefer `name` over @p name, @ref name, and @c name in Doxygen comments.
+note: >-
+  Replace @p name, @ref name, and @c name with `name` for readability.
+  This migration is gradual; many existing comments still use the old forms.
+rule:
+  kind: comment
+  regex: "@(p|ref|c)\\s"
