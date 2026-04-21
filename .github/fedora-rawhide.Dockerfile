@@ -28,6 +28,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora --nodocs --setopt=install_weak_deps=
     libgit2-devel \
     libpfm-devel \
     libtool \
+    pipx \
     procps-ng \
     python3-breathe \
     python3-dateutil \
@@ -39,3 +40,6 @@ RUN dnf --disablerepo=* --enablerepo=fedora --nodocs --setopt=install_weak_deps=
     sed \
     xxd && \
     dnf clean all -y
+
+RUN pipx install --global ast-grep-cli && \
+    ast-grep --version
