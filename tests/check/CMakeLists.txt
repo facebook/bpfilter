@@ -74,6 +74,7 @@ if(SG_BIN)
             --off=doxygen-prefer-backticks
             --off=doxygen-public-functions
             --off=no-direct-free
+            --off=single-line-comment-style
     )
 
     set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
