@@ -1,0 +1,12 @@
+id: negative-errno-returns
+language: c
+severity: error
+message: Error returns must be negative (e.g. -ENOMEM, not ENOMEM)
+note: >-
+  bpfilter uses negative errno convention: return -ENOMEM, not ENOMEM.
+  See doc/developers/style.rst.
+rule:
+  kind: return_statement
+  has:
+    kind: identifier
+    regex: "^E[A-Z0-9]{2,}$"
