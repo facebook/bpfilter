@@ -1,0 +1,58 @@
+id: bf-prefix-public-functions
+valid:
+  - |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return 0;
+    }
+  - |
+    int bfc_parse(const char *input)
+    {
+        return 0;
+    }
+  - |
+    int main(int argc, const char **argv)
+    {
+        return 0;
+    }
+  - |
+    void closep(int *fd)
+    {
+        return;
+    }
+  - |
+    static inline void bf_freep(void *ptr)
+    {
+        free(*(void **)ptr);
+    }
+  - |
+    static int helper(int x)
+    {
+        return x + 1;
+    }
+  - |
+    void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
+    {
+        return;
+    }
+  - |
+    void _bf_ctx_free(struct bf_ctx **ctx)
+    {
+        return;
+    }
+  - |
+    int _bfc_opts_get_cmd(int object, int action)
+    {
+        return 0;
+    }
+invalid:
+  - |
+    int my_func(void)
+    {
+        return 0;
+    }
+  - |
+    void process_packet(struct pkt *p)
+    {
+        return;
+    }
