@@ -1,0 +1,14 @@
+id: fd-init-minus-one
+language: c
+severity: error
+message: >-
+  Variable with _cleanup_close_ not initialized to -1.
+  File descriptors using cleanup attributes must be initialized to -1
+  (the neutral/invalid value) to prevent closing fd 0 (stdin) on error paths.
+note: >-
+  Change the declaration to: _cleanup_close_ int fd = -1;
+rule:
+  kind: declaration
+  regex: "_cleanup_close_"
+  not:
+    regex: "=\\s*-\\s*1\\s*;"
