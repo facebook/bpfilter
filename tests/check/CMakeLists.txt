@@ -72,6 +72,7 @@ if(SG_BIN)
             ${CMAKE_SOURCE_DIR}/src/bfcli
             --off=assert-pointer-params
             --off=doxygen-prefer-backticks
+            --off=doxygen-public-functions
     )
 
     set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
