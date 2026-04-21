@@ -1,0 +1,23 @@
+id: struct-bf-prefix
+valid:
+  - |
+    struct bf_chain
+    {
+        int count;
+    };
+  - |
+    struct bfc_opts
+    {
+        int argc;
+    };
+invalid:
+  - |
+    struct chain
+    {
+        int count;
+    };
+  - |
+    struct filter_rule
+    {
+        int id;
+    };
