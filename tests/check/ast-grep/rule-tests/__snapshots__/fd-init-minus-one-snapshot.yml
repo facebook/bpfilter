@@ -1,0 +1,22 @@
+id: fd-init-minus-one
+snapshots:
+  ? |
+    void foo(void)
+    {
+        _cleanup_close_ int fd = 0;
+    }
+  : labels:
+    - source: _cleanup_close_ int fd = 0;
+      style: primary
+      start: 21
+      end: 48
+  ? |
+    void foo(void)
+    {
+        _cleanup_close_ int fd;
+    }
+  : labels:
+    - source: _cleanup_close_ int fd;
+      style: primary
+      start: 21
+      end: 44
