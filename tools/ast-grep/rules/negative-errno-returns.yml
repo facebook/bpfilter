@@ -1,0 +1,10 @@
+id: negative-errno-returns
+language: c
+severity: error
+message: Error returns must be negative (e.g. -ENOMEM, not ENOMEM)
+note: "bpfilter uses negative errno convention: return -ENOMEM, not ENOMEM. See error-handling standard."
+rule:
+  kind: return_statement
+  has:
+    kind: identifier
+    regex: "^E[A-Z]{3,}$"
