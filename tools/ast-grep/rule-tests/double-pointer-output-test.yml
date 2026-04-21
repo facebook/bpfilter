@@ -1,0 +1,18 @@
+id: double-pointer-output
+valid:
+  - |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return 0;
+    }
+  - |
+    int bf_set_new(struct bf_set **set, const char *name)
+    {
+        return 0;
+    }
+invalid:
+  - |
+    int bf_chain_new(struct bf_chain *chain)
+    {
+        return 0;
+    }
