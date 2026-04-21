@@ -1,0 +1,21 @@
+id: no-ifndef-guards
+valid:
+  - |
+    #pragma once
+    struct bf_chain;
+    int bf_chain_new(struct bf_chain **chain);
+  - |
+    #pragma once
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+    int bf_init(void);
+    #ifdef __cplusplus
+    }
+    #endif
+invalid:
+  - |
+    #ifndef BF_CHAIN_H
+    #define BF_CHAIN_H
+    struct bf_chain;
+    #endif

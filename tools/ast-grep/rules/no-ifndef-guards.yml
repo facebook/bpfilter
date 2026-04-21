@@ -1,0 +1,16 @@
+id: no-ifndef-guards
+language: c
+severity: error
+files:
+  - "**/*.h"
+message: Use #pragma once instead of #ifndef/#define include guards
+note: "bpfilter uses #pragma once exclusively for header guards."
+rule:
+  kind: preproc_ifdef
+  regex: "^#ifndef\\b"
+  not:
+    has:
+      kind: identifier
+      regex: "^__"
+  inside:
+    kind: translation_unit
