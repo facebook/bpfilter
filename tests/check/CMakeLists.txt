@@ -71,6 +71,7 @@ if(SG_BIN)
             ${CMAKE_SOURCE_DIR}/src/libbpfilter
             ${CMAKE_SOURCE_DIR}/src/bfcli
             --off=assert-pointer-params
+            --off=doxygen-prefer-backticks
     )
 
     set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
