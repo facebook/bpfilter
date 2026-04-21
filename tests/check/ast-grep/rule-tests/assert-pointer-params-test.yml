@@ -1,0 +1,61 @@
+id: assert-pointer-params
+valid:
+  - |
+    int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+    {
+        assert(chain);
+        assert(rule);
+        return 0;
+    }
+  - |
+    int bf_set_size(int count)
+    {
+        return count;
+    }
+  - |
+    static int _helper(struct bf_chain *chain)
+    {
+        return 0;
+    }
+  - |
+    int main(int argc, const char **argv)
+    {
+        return 0;
+    }
+  - |
+    int bf_hook_opts_set(struct bf_hookopts *opts, const char *name)
+    {
+        assert(opts);
+        assert(name);
+        opts->name = name;
+        return 0;
+    }
+  - |
+    void closep(int *fd)
+    {
+        return;
+    }
+  - |
+    void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
+    {
+        return;
+    }
+invalid:
+  - |
+    int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+    {
+        return 0;
+    }
+  - |
+    void bf_rule_free(struct bf_rule **rule)
+    {
+        return;
+    }
+# Known limitation: the rule flags only functions with zero assert() calls.
+# A function with multiple pointer parameters but only some asserted will
+# pass silently. The following case is a known-pass (documented limitation):
+#   int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+#   {
+#       assert(chain);
+#       return 0;
+#   }
