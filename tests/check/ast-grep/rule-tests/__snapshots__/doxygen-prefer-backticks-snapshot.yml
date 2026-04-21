@@ -1,0 +1,36 @@
+id: doxygen-prefer-backticks
+snapshots:
+  ? |
+    /**
+     * @brief Free a map object.
+     *
+     * @param map @ref bf_map object to free.
+     */
+    void bf_map_free(struct bf_map **map);
+  : labels:
+    - source: |-
+        /**
+         * @brief Free a map object.
+         *
+         * @param map @ref bf_map object to free.
+         */
+      style: primary
+      start: 0
+      end: 81
+  ? |
+    /**
+     * @brief Manage BPF object references.
+     *
+     * @ref bf_handle is used to manage references.
+     */
+    int bf_handle_new(void);
+  : labels:
+    - source: |-
+        /**
+         * @brief Manage BPF object references.
+         *
+         * @ref bf_handle is used to manage references.
+         */
+      style: primary
+      start: 0
+      end: 98
