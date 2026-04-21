@@ -39,4 +39,5 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     xxd && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --break-system-packages linuxdoc
+RUN pip install --break-system-packages linuxdoc ast-grep-cli && \
+    ast-grep --version
