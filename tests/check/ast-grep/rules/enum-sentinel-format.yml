@@ -1,0 +1,37 @@
+id: enum-sentinel-format
+language: c
+severity: error
+message: >-
+  Enum missing _MAX sentinel value.
+  All enums should have a _BF_*_MAX or _BFC_*_MAX sentinel for bounds checking.
+note: >-
+  Add a sentinel like _BF_<ENUM>_MAX as the last enumerator.
+  Anonymous enums are allowed (the rule only fires on named enums).
+  Exceptions: bitmask enums (bf_color, bf_style), kernel ABI mirror enums
+  (bf_nf_inet_hooks, bf_bpf_cmd, bf_bpf_prog_type, bf_bpf_attach_type,
+  bf_bpf_map_type), and negative-indexed sentinel enums (bf_counter_type)
+  do not require sentinels.
+rule:
+  kind: enum_specifier
+  all:
+    - has:
+        field: name
+        kind: type_identifier
+    - has:
+        kind: enumerator_list
+    - not:
+        has:
+          kind: enumerator_list
+          has:
+            kind: enumerator
+            has:
+              kind: identifier
+              regex: "^_B(F|FC)_.*_MAX$"
+    # Excluded enums: bitmask enums (bf_color, bf_style), kernel ABI mirrors
+    # that must match an external numbering (bf_nf_inet_hooks, bf_bpf_*), and
+    # negative-indexed sentinel enums (bf_counter_type). Add new entries only
+    # when an enum legitimately cannot have a _BF_*_MAX trailing sentinel.
+    - not:
+        has:
+          kind: type_identifier
+          regex: "^(bf_color|bf_style|bf_nf_inet_hooks|bf_bpf_cmd|bf_bpf_prog_type|bf_bpf_attach_type|bf_bpf_map_type|bf_counter_type)$"
