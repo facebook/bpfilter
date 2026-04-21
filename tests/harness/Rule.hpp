@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <bitset>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -21,8 +20,6 @@ extern "C" {
 namespace bf
 {
 
-using RuleLogBitset = std::bitset<_BF_LOG_OPT_MAX>;
-
 class Rule
 {
 private:
@@ -36,11 +33,11 @@ private:
 
     bf_verdict _verdict;
     bool _counters;
-    RuleLogBitset _log;
+    uint8_t _log;
     std::vector<Matcher> _matchers;
 
 public:
-    Rule(bf_verdict verdict, bool counters = false, RuleLogBitset log = {},
+    Rule(bf_verdict verdict, bool counters = false, uint8_t log = 0,
          std::vector<Matcher> matchers = {}):
         _verdict {verdict},
         _counters {counters},
@@ -63,7 +60,7 @@ public:
         if (r != 0)
             throw std::runtime_error("failed to create bf_rule");
 
-        rule->log = static_cast<uint8_t>(_log.to_ulong());
+        rule->log = _log;
         rule->counters = _counters;
         rule->verdict = _verdict;
 

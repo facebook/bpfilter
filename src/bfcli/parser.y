@@ -103,7 +103,6 @@
 %token SET
 %token LOG COUNTER MARK
 %token REDIRECT_TOKEN
-%token <sval> LOG_HEADERS
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
 %token <sval> STRING
@@ -139,6 +138,7 @@
 %type <list> rules
 %destructor { bf_list_free(&$$); } rules
 
+%type <u8> log_headers
 %type <rule_options> rule_option
 %type <rule_options> rule_options
 %type <rule> rule
@@ -320,27 +320,17 @@ rule            : RULE matchers rule_options rule_verdict
                 }
                 ;
 
-rule_option     : LOG LOG_HEADERS
+rule_option     : LOG
                 {
-                    _cleanup_free_ char *in = $2;
-                    char *tmp = in;
-                    char *saveptr;
-                    char *token;
-                    uint8_t log = 0;
-
-                    while ((token = strtok_r(tmp, ",", &saveptr))) {
-                        enum bf_log_opt header;
-
-                        if (bf_log_opt_from_str(token, &header) < 0)
-                            bf_parse_err("unknown packet header '%s'", token);
-
-                        log |= BF_FLAG(header);
-
-                        tmp = NULL;
-                    }
-
                     $$ = (struct bf_rule_options){
-                        .log = log,
+                        .log = BF_LOG_OPT_DEFAULT,
+                        .flags = BF_RULE_OPTION_LOG,
+                    };
+                }
+                | LOG log_headers
+                {
+                    $$ = (struct bf_rule_options){
+                        .log = $2,
                         .flags = BF_RULE_OPTION_LOG,
                     };
                 }
@@ -396,6 +386,28 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
 
                     $$ = $1;
                 }
+
+log_headers     : STRING
+                {
+                    _cleanup_free_ const char *name = $1;
+                    enum bf_log_opt header;
+
+                    if (bf_log_opt_from_str(name, &header) < 0)
+                        bf_parse_err("unknown packet header '%s'", name);
+
+                    $$ = BF_FLAG(header);
+                }
+                | log_headers ',' STRING
+                {
+                    _cleanup_free_ const char *name = $3;
+                    enum bf_log_opt header;
+
+                    if (bf_log_opt_from_str(name, &header) < 0)
+                        bf_parse_err("unknown packet header '%s'", name);
+
+                    $$ = $1 | BF_FLAG(header);
+                }
+                ;
 
 matchers        : matcher
                 {

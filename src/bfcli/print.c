@@ -261,17 +261,21 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
         }
 
         if (rule->log) {
-            uint8_t log = rule->log;
+            if (rule->log == BF_LOG_OPT_DEFAULT) {
+                (void)fprintf(stdout, "        log\n");
+            } else {
+                uint8_t log = rule->log;
 
-            (void)fprintf(stdout, "        log ");
+                (void)fprintf(stdout, "        log ");
 
-            for (enum bf_log_opt hdr = 0; hdr < _BF_LOG_OPT_MAX; ++hdr) {
-                if (!(log & BF_FLAG(hdr)))
-                    continue;
+                for (enum bf_log_opt hdr = 0; hdr < _BF_LOG_OPT_MAX; ++hdr) {
+                    if (!(log & BF_FLAG(hdr)))
+                        continue;
 
-                log &= ~BF_FLAG(hdr);
-                (void)fprintf(stdout, "%s%s", bf_log_opt_to_str(hdr),
-                              log ? "," : "\n");
+                    log &= ~BF_FLAG(hdr);
+                    (void)fprintf(stdout, "%s%s", bf_log_opt_to_str(hdr),
+                                  log ? "," : "\n");
+                }
             }
         }
 
