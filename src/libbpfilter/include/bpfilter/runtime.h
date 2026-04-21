@@ -67,7 +67,7 @@ static_assert(BF_L4_SLICE_LEN % 8 == 0,
 #define BF_COMM_LEN 16
 
 /**
- * @brief Types of network packet headers.
+ * @brief Log option identifiers for per-rule logging.
  */
 enum bf_log_opt
 {
@@ -91,6 +91,9 @@ enum bf_log_opt
     BF_LOG_OPT_TRANSPORT,
 
     _BF_LOG_OPT_MAX,
+
+    /** Log all available data for the hook type. */
+    BF_LOG_OPT_DEFAULT = 0xFF,
 };
 
 /**

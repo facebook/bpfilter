@@ -240,8 +240,7 @@ BENCHMARK(single_rule__ip4_saddr_c);
 void single_rule__ip4_saddr_l(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false,
-                  bf::RuleLogBitset().set(BF_LOG_OPT_LINK),
+    chain << Rule(BF_VERDICT_DROP, false, BF_FLAG(BF_LOG_OPT_LINK),
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
                               {0x7f, 0x02, 0x0a, 0x0a}),
@@ -418,8 +417,7 @@ BENCHMARK(single_rule__ip6_saddr_c);
 void single_rule__ip6_saddr_l(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
-    chain << Rule(BF_VERDICT_DROP, false,
-                  bf::RuleLogBitset().set(BF_LOG_OPT_LINK),
+    chain << Rule(BF_VERDICT_DROP, false, BF_FLAG(BF_LOG_OPT_LINK),
                   std::vector<Matcher> {
                       Matcher(BF_MATCHER_IP6_SADDR, BF_MATCHER_EQ,
                               {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

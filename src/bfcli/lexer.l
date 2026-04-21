@@ -21,7 +21,6 @@
 %option nounput
 
 %s STATE_HOOK_OPTS
-%s STATE_LOG_OPTS
 %s STATE_MARK_OPTS
 %s STATE_REDIRECT_IFACE
 %s STATE_REDIRECT_DIR
@@ -96,14 +95,7 @@ mark            { BEGIN(STATE_MARK_OPTS); return MARK; }
 }
 
     /* Logs */
-log             { BEGIN(STATE_LOG_OPTS); return LOG; }
-<STATE_LOG_OPTS>{
-    [0-9a-zA-Z]+(,[0-9a-zA-Z]+)* {
-        BEGIN(INITIAL);
-        yylval.sval = strdup(yytext);
-        return LOG_HEADERS;
-    }
-}
+log             { return LOG; }
 
     /* Sets */
 \([ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)([ \t\n\r\f\v]*,[ \t\n\r\f\v]*([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+))*[ \t\n\r\f\v]*\) {
