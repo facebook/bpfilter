@@ -1,0 +1,24 @@
+id: fd-init-minus-one
+valid:
+  - |
+    void foo(void)
+    {
+        _cleanup_close_ int fd = -1;
+    }
+  - |
+    void foo(void)
+    {
+        _cleanup_close_ int mnt_fd = -1;
+        _cleanup_close_ int bpffs_fd = -1;
+    }
+invalid:
+  - |
+    void foo(void)
+    {
+        _cleanup_close_ int fd = 0;
+    }
+  - |
+    void foo(void)
+    {
+        _cleanup_close_ int fd;
+    }
