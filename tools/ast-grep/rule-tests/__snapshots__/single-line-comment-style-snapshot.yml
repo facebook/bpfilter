@@ -1,0 +1,10 @@
+id: single-line-comment-style
+snapshots:
+  ? |
+    /* This should be a // comment */
+    int x = 0;
+  : labels:
+    - source: /* This should be a // comment */
+      style: primary
+      start: 0
+      end: 33
