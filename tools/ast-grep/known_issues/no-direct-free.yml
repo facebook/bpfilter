@@ -1,0 +1,15 @@
+# Known issues for ast-grep rule `no-direct-free`.
+#
+# Suppressed during check.astgrep so only NEW violations fail CI. Regenerate
+# this file (and all siblings) by running: make -C build astgrep-known-issues
+#
+# Schema: list of
+#   file:        path relative to repo root
+#   textSha:     first 12 hex chars of sha256(match.text)
+#   occurrence:  0-based index among identical (file, textSha) matches
+#
+# Do not hand-edit — the directory is regenerated deterministically.
+
+- file: src/libbpfilter/cli.c
+  textSha: eceeb1550f93
+  occurrence: 0

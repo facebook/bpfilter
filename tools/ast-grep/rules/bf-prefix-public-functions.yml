@@ -1,0 +1,20 @@
+id: bf-prefix-public-functions
+language: c
+severity: error
+message: >-
+  Non-static function does not follow naming convention.
+  Public library functions must use bf_ prefix, CLI functions bfc_ prefix.
+  Internal/static functions use leading underscore (_bf_, _bfc_).
+note: >-
+  Rename this function with the appropriate prefix: bf_ for libbpfilter,
+  bfc_ for CLI utilities, or make it static if it is internal.
+rule:
+  all:
+    - matches: is-public-function
+    - not:
+        has:
+          kind: function_declarator
+          has:
+            kind: identifier
+            regex: "^(_?bf_|_?bfc_|main|closep|freep|yy\\w+)"
+          stopBy: end

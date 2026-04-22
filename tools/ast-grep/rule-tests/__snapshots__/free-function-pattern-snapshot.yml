@@ -1,0 +1,46 @@
+id: free-function-pattern
+snapshots:
+  ? |
+    int bf_chain_free(struct bf_chain **chain)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int bf_chain_free(struct bf_chain **chain)
+        {
+            return 0;
+        }
+      style: primary
+      start: 0
+      end: 60
+    - source: bf_chain_free
+      style: secondary
+      start: 4
+      end: 17
+    - source: bf_chain_free(struct bf_chain **chain)
+      style: secondary
+      start: 4
+      end: 42
+  ? |
+    void bf_chain_free(struct bf_chain *chain)
+    {
+        return;
+    }
+  : labels:
+    - source: |-
+        void bf_chain_free(struct bf_chain *chain)
+        {
+            return;
+        }
+      style: primary
+      start: 0
+      end: 58
+    - source: bf_chain_free
+      style: secondary
+      start: 5
+      end: 18
+    - source: bf_chain_free(struct bf_chain *chain)
+      style: secondary
+      start: 5
+      end: 42

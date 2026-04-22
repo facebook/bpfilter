@@ -1,0 +1,30 @@
+# Known issues for ast-grep rule `single-line-comment-style`.
+#
+# Suppressed during check.astgrep so only NEW violations fail CI. Regenerate
+# this file (and all siblings) by running: make -C build astgrep-known-issues
+#
+# Schema: list of
+#   file:        path relative to repo root
+#   textSha:     first 12 hex chars of sha256(match.text)
+#   occurrence:  0-based index among identical (file, textSha) matches
+#
+# Do not hand-edit — the directory is regenerated deterministically.
+
+- file: src/libbpfilter/bpf/parse_ipv6_nh.bpf.c
+  textSha: b33f93d6db3d
+  occurrence: 0
+- file: src/libbpfilter/cgen/packet.c
+  textSha: ff9eca23825a
+  occurrence: 0
+- file: src/libbpfilter/cgen/program.c
+  textSha: d19ae8633583
+  occurrence: 0
+- file: src/libbpfilter/cgen/program.h
+  textSha: 2a86cf74b14a
+  occurrence: 0
+- file: src/libbpfilter/helper.c
+  textSha: 0096a7b428af
+  occurrence: 0
+- file: src/libbpfilter/matcher.c
+  textSha: bd6edaf8304b
+  occurrence: 0
