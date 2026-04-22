@@ -10,6 +10,7 @@
 
 #include <bpfilter/dump.h>
 #include <bpfilter/helper.h>
+#include <bpfilter/set.h>
 
 int bf_fixup_new(struct bf_fixup **fixup, enum bf_fixup_type type,
                  size_t insn_offset, const union bf_fixup_attr *attr)
@@ -74,7 +75,8 @@ void bf_fixup_dump(const struct bf_fixup *fixup, prefix_t *prefix)
         // No specific value to dump
         break;
     case BF_FIXUP_TYPE_SET_MAP_FD:
-        DUMP(prefix, "set_index: %lu", fixup->attr.set_index);
+        DUMP(prefix, "set: %s",
+             fixup->attr.set_ptr ? fixup->attr.set_ptr->name : "(null)");
         break;
     default:
         DUMP(prefix, "unsupported bf_fixup_type: %d", fixup->type);
