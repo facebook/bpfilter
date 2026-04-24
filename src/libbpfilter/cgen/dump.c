@@ -41,7 +41,8 @@ static void _bf_print_insn(void *private_data, const char *fmt, ...)
                   bf_logger_get_color(BF_COLOR_BLUE, BF_STYLE_BOLD), "debug",
                   bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
                   *(bfdd->prefix), bfdd->idx);
-    (void)vfprintf(stderr, fmt, args);
+    (void)vfprintf(stderr, fmt,
+                   args); // NOLINT(clang-analyzer-valist.Uninitialized)
     va_end(args);
 }
 
