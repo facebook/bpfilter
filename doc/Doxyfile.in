@@ -58,6 +58,7 @@ GENERATE_PERLMOD        = NO
 INCLUDE_PATH            = "@CMAKE_SOURCE_DIR@/src" "@CMAKE_SOURCE_DIR@/tests"
 MACRO_EXPANSION         = YES
 PREDEFINED              = bf_aligned(x)= \
+                          __attribute__(x)= \
                           DOXYGEN
 
 #---------------------------------------------------------------------------
