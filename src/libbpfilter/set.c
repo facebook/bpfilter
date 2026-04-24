@@ -466,11 +466,12 @@ static int _bf_set_cmp_key_format(const struct bf_set *first,
     assert(first);
     assert(second);
 
-    if (first->n_comps != second->n_comps)
+    if (first->n_comps != second->n_comps) {
         return bf_err_r(
             -EINVAL,
             "set key format mismatch: first set has %lu components, second has %lu",
             first->n_comps, second->n_comps);
+    }
 
     if (memcmp(first->key, second->key,
                first->n_comps * sizeof(enum bf_matcher_type)) != 0)

@@ -383,10 +383,11 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
             if ((int)opts->action < 0)
                 argp_error(state, "unknown action '%s'", arg);
             opts->cmd = _bfc_opts_get_cmd(opts->object, opts->action);
-            if (!opts->cmd)
+            if (!opts->cmd) {
                 argp_error(state, "object '%s' does not support action '%s'",
                            bfc_object_to_str(opts->object),
                            bfc_action_to_str(opts->action));
+            }
             _bfc_action_argv_idx = state->next - 1;
             state->next = state->argc;
         } else {
