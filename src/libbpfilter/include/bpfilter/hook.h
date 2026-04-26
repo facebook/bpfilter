@@ -153,6 +153,7 @@ struct bf_hookopts
 
 enum bf_hookopts_type
 {
+    BF_HOOKOPTS_IFACE,
     BF_HOOKOPTS_IFINDEX,
     BF_HOOKOPTS_CGPATH,
     BF_HOOKOPTS_FAMILY,
