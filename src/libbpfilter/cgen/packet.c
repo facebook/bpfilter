@@ -376,6 +376,7 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_SPORT:
     case BF_MATCHER_META_DPORT:
     case BF_MATCHER_META_FLOW_PROBABILITY:
+    case BF_MATCHER_META_RATELIMIT:
         return bf_matcher_generate_meta(program, matcher);
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
