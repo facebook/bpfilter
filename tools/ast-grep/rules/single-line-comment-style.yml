@@ -1,0 +1,17 @@
+id: single-line-comment-style
+language: c
+severity: warning
+message: >-
+  Single-line comments should use // style, not /* */ style.
+note: >-
+  Replace /* comment */ with // comment. Reserve /* */ for multi-line comments.
+rule:
+  all:
+    - kind: comment
+    - regex: "^/\\*[^*!]"
+    - not:
+        regex: "\\n"
+    - not:
+        regex: "SPDX"
+    - not:
+        regex: "NOLINT"

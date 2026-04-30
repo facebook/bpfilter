@@ -1,0 +1,26 @@
+id: no-direct-free
+language: c
+severity: warning
+message: >-
+  Direct call to free() detected. Use freep() or a typed bf_*_free() cleanup
+  function instead to prevent double-free via cleanup attributes.
+note: >-
+  Replace free(ptr) with the appropriate cleanup function.
+  Use freep((void *)&ptr) for generic allocations,
+  or bf_X_free(&obj) for typed objects.
+  Exempt callers: freep, bf_*_free / _bf_*_free, and bf_*_cleanup /
+  _bf_*_cleanup.
+rule:
+  kind: call_expression
+  has:
+    kind: identifier
+    regex: "^free$"
+  not:
+    inside:
+      kind: function_definition
+      stopBy: end
+      has:
+        kind: function_declarator
+        has:
+          kind: identifier
+          regex: "^(freep|bf_\\w+_free|_bf_\\w+_free|bf_\\w+_cleanup|_bf_\\w+_cleanup)$"

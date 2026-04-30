@@ -1,0 +1,7 @@
+id: is-public-function
+language: c
+rule:
+  kind: function_definition
+  not:
+    has:
+      kind: storage_class_specifier

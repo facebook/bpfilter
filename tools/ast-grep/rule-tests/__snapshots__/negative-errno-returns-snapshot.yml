@@ -1,0 +1,30 @@
+id: negative-errno-returns
+snapshots:
+  ? |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return ENOMEM;
+    }
+  : labels:
+    - source: return ENOMEM;
+      style: primary
+      start: 48
+      end: 62
+    - source: ENOMEM
+      style: secondary
+      start: 55
+      end: 61
+  ? |
+    int bf_rule_load(struct bf_rule *rule)
+    {
+        return EINVAL;
+    }
+  : labels:
+    - source: return EINVAL;
+      style: primary
+      start: 45
+      end: 59
+    - source: EINVAL
+      style: secondary
+      start: 52
+      end: 58
