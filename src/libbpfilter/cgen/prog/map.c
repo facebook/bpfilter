@@ -114,6 +114,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
     case BF_MAP_TYPE_LOG:
+    case BF_MAP_TYPE_RATELIMIT:
     case BF_MAP_TYPE_CTX:
         // No BTF data available for these map types
         return NULL;
@@ -194,6 +195,8 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
         [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
+        [BF_MAP_TYPE_RATELIMIT] =
+            BF_BPF_MAP_TYPE_ARRAY, // Not sure if ARRAY or RINGBUF
         [BF_MAP_TYPE_CTX] = BF_BPF_MAP_TYPE_ARRAY,
     };
 
@@ -310,6 +313,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
         [BF_MAP_TYPE_COUNTERS] = "BF_MAP_TYPE_COUNTERS",
         [BF_MAP_TYPE_PRINTER] = "BF_MAP_TYPE_PRINTER",
         [BF_MAP_TYPE_LOG] = "BF_MAP_TYPE_LOG",
+        [BF_MAP_TYPE_RATELIMIT] = "BF_MAP_TYPE_RATELIMIT",
         [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
         [BF_MAP_TYPE_CTX] = "BF_MAP_TYPE_CTX",
     };

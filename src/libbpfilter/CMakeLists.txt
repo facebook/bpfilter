@@ -117,6 +117,7 @@ bf_target_add_elfstubs(libbpfilter
         "pkt_log"
         "flow_hash"
         "sock_addr_log"
+        "ratelimit"
 )
 
 target_compile_definitions(libbpfilter

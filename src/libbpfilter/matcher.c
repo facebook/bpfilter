@@ -408,6 +408,32 @@ static void _bf_print_probability(const void *payload)
         (void)fprintf(stdout, "%g%%", proba);
 }
 
+static int _bf_parse_ratelimit(enum bf_matcher_type type, enum bf_matcher_op op,
+                               void *payload, const char *raw_payload)
+{
+    assert(payload);
+    assert(raw_payload);
+
+    int r;
+
+    r = bf_if_index_from_str(raw_payload, (uint32_t *)payload);
+    if (r) {
+        return bf_err_r(
+            r, "\"%s %s\" Blabla error message something something, not '%s'",
+            bf_matcher_type_to_str(type), bf_matcher_op_to_str(op),
+            raw_payload);
+    }
+
+    return 0;
+}
+
+static void _bf_print_ratelimit(const void *payload)
+{
+    assert(payload);
+
+    (void)fprintf(stdout, "%" PRIu32, *(uint32_t *)payload);
+}
+
 static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
                           void *payload, const char *raw_payload)
 {
@@ -922,6 +948,16 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
                                    _bf_parse_probability,
                                    _bf_print_probability),
+                },
+        },
+    [BF_MATCHER_META_RATELIMIT] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            // Not sure if we need unsupported_hooks
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_ratelimit, _bf_print_ratelimit),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
@@ -1473,6 +1509,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_META_MARK] = "meta.mark",
     [BF_MATCHER_META_FLOW_HASH] = "meta.flow_hash",
     [BF_MATCHER_META_FLOW_PROBABILITY] = "meta.flow_probability",
+    [BF_MATCHER_META_RATELIMIT] = "meta.ratelimit",
     [BF_MATCHER_IP4_SADDR] = "ip4.saddr",
     [BF_MATCHER_IP4_SNET] = "ip4.snet",
     [BF_MATCHER_IP4_DADDR] = "ip4.daddr",
