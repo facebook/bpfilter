@@ -34,6 +34,12 @@ option(NO_TESTS "Disable unit, end-to-end, and integration tests" 0)
 option(NO_CHECKS "Disable the check target (clang-tidy and clang-format" 0)
 option(NO_BENCHMARKS "Disable the benchmark" 0)
 option(WITH_COVERAGE "Build with code coverage support. Disabled by default" 0)
+option(WITH_IWYU "Build with include-what-you-use checks. Disabled by default" 0)
+
+if (WITH_IWYU)
+    find_program(IWYU_BIN NAMES include-what-you-use iwyu REQUIRED)
+    set(CMAKE_C_INCLUDE_WHAT_YOU_USE "${IWYU_BIN};-Xiwyu;--error")
+endif ()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

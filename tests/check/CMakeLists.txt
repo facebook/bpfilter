@@ -27,13 +27,6 @@ add_test(NAME "check.lint"
             ${bf_srcs}
 )
 
-add_test(NAME "check.iwyu"
-    COMMAND
-        /usr/bin/iwyu_tool.py
-            -p ${CMAKE_BINARY_DIR}
-            ${CMAKE_SOURCE_DIR}/src/libbpfilter/cgen/program.c
-)
-
 set_tests_properties("check.lint" PROPERTIES
     LABELS "check"
 )
