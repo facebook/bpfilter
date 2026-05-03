@@ -147,6 +147,7 @@ enum bfc_opts_option_id
     BFC_OPT_SET_ADD,
     BFC_OPT_SET_REMOVE,
     BFC_OPT_DRY_RUN,
+    BFC_OPT_NO_SET_CONTENT,
     _BFC_OPT_MAX,
 };
 
@@ -169,7 +170,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli ruleset get",
         .object = BFC_OBJECT_RULESET,
         .action = BFC_ACTION_GET,
-        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION),
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_NO_SET_CONTENT),
         .doc = "Print the ruleset.\vPrint the current ruleset.",
         .cb = bfc_ruleset_get,
     },
@@ -202,7 +204,7 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_GET,
         .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
-                               BFC_OPT_CHAIN_NAME),
+                               BFC_OPT_CHAIN_NAME, BFC_OPT_NO_SET_CONTENT),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME),
         .doc =
             "Print an existing chain\vRequest the chain --name and print it.",
@@ -481,7 +483,16 @@ static void _bfc_opts_dry_run(struct argp_state *state, const char *arg,
     opts->dry_run = true;
 };
 
-struct bfc_opts_opt
+static void _bfc_opts_no_set_content(struct argp_state *state, const char *arg,
+                                     struct bfc_opts *opts)
+{
+    (void)state;
+    (void)arg;
+
+    opts->no_set_content = true;
+};
+
+static struct bfc_opts_opt
 {
     enum bfc_opts_option_id id;
     int key;
@@ -597,6 +608,15 @@ struct bfc_opts_opt
         .arg = NULL,
         .doc = "dry-run",
         .parser = _bfc_opts_dry_run,
+    },
+    {
+        .id = BFC_OPT_NO_SET_CONTENT,
+        .key = BFC_OPT_LONG_FLAG_ONLY(BFC_OPT_NO_SET_CONTENT),
+        .name = "no-set-content",
+        .arg = NULL,
+        .doc = "Omit set elements from the output, print only the element "
+               "count.",
+        .parser = _bfc_opts_no_set_content,
     },
 };
 

@@ -24,9 +24,11 @@ struct bf_hookopts;
  *        first to entries in the list to be the policy and error counters.
  *        Then, every rule should have an entry in the list in the order they
  *        are defined, even if the rule doesn't have counters enabled.
+ * @param no_set_content If true, the content of named and anonymous sets is
+ *        omitted from the output. Only the element count is printed.
  */
 void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
-                    bf_list *counters);
+                    bf_list *counters, bool no_set_content);
 
 /**
  * Print ruleset information and counters to the console.
@@ -34,8 +36,11 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
  * @param chains List of chains to print.
  * @param hookopts List of hookoptions to print.
  * @param counters List of counters to print.
+ * @param no_set_content If true, the content of named and anonymous sets is
+ *        omitted from the output. Only the element count is printed.
  */
-int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters);
+int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters,
+                     bool no_set_content);
 
 /**
  * @brief Print a logged packet published by a rule.
