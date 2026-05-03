@@ -51,13 +51,13 @@ int bfc_ruleset_get(const struct bfc_opts *opts)
     _clean_bf_list_ bf_list counters = bf_list_default(bf_list_free, NULL);
     int r;
 
-    (void)opts;
+    assert(opts);
 
     r = bf_ruleset_get(&chains, &hookopts, &counters);
     if (r < 0)
         return bf_err_r(r, "failed to request ruleset");
 
-    r = bfc_ruleset_dump(&chains, &hookopts, &counters);
+    r = bfc_ruleset_dump(&chains, &hookopts, &counters, opts->no_set_content);
     if (r)
         return bf_err_r(r, "failed to dump ruleset");
 

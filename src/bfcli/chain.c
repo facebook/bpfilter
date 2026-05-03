@@ -123,7 +123,7 @@ int bfc_chain_get(const struct bfc_opts *opts)
     if (r)
         return bf_err_r(r, "unknown error");
 
-    bfc_chain_dump(chain, hookopts, &counters);
+    bfc_chain_dump(chain, hookopts, &counters, opts->no_set_content);
 
     return 0;
 }

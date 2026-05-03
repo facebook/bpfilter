@@ -47,6 +47,9 @@ Chains with valid hook options defined are attached to their hook. Chains withou
 
 Print the ruleset: request all the chains and rules with counters values.
 
+**Options**
+  - ``--no-set-content``: omit set elements from the output. Sets are still printed with their name (if named) and key, but their content is replaced with the number of elements they contain. Useful when sets are large enough that printing every element makes the output unreadable.
+
 **Example**
 
 .. code:: shell
@@ -115,6 +118,7 @@ Print a chain.
 
 **Options**
   - ``--name NAME``: name of the chain to print.
+  - ``--no-set-content``: omit set elements from the output. Sets are still printed with their name (if named) and key, but their content is replaced with the number of elements they contain. Useful when sets are large enough that printing every element makes the output unreadable.
 
 **Examples**
 
@@ -125,6 +129,15 @@ Print a chain.
     $ sudo bfcli chain get --name my_input_chain
       chain my_input_chain BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT
           counters policy 1161 packets 149423 bytes; error 0 packets 0 bytes
+
+    $ # Print a chain with a large set, eliding the set's content
+    $ sudo bfcli chain get --name my_filter --no-set-content
+      chain my_filter BF_HOOK_XDP{ifindex=2} ACCEPT
+          counters policy 0 packets 0 bytes; error 0 packets 0 bytes
+          set blocklist (ip4.saddr) in { /* 4096 elements, content elided */ }
+          rule
+              (ip4.saddr) in blocklist
+              DROP
 
 ``chain logs``
 ~~~~~~~~~~~~~~

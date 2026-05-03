@@ -80,6 +80,7 @@ struct bfc_opts
     bf_list set_remove;
 
     bool dry_run;
+    bool no_set_content;
 
     bool with_bpf_token;
     const char *bpffs_path;
