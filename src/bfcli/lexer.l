@@ -31,6 +31,7 @@
 %s STATE_MATCHER_META_FLOW_HASH
 %s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
+%s STATE_MATCHER_META_RATELIMIT
 %s STATE_MATCHER_IPV4_ADDR
 %s STATE_MATCHER_IP4_NET
 %s STATE_MATCHER_IP4_DSCP
@@ -171,6 +172,16 @@ meta\.flow_hash     { BEGIN(STATE_MATCHER_META_FLOW_HASH); yylval.sval = strdup(
 <STATE_MATCHER_META_FLOW_HASH>{
     (eq|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}(-{int})? {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+meta\.ratelimit  { BEGIN(STATE_MATCHER_META_RATELIMIT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_RATELIMIT>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int}|[0-9a-zA-Z-]+ {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;

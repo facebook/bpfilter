@@ -51,6 +51,9 @@ struct bf_handle
     /** Log map. NULL if not created. */
     struct bf_map *lmap;
 
+    /** Ratelimit map. NULL if not created. */
+    struct bf_map *rmap;
+
     /** List of set maps. If a set is empty in the chain, NULL is inserted in
      * this list instead of a `bf_map` to preserve sets indexes. */
     bf_list sets;

@@ -61,6 +61,7 @@
 #define _BF_COUNTER_MAP_NAME "bf_cmap"
 #define _BF_PRINTER_MAP_NAME "bf_pmap"
 #define _BF_LOG_MAP_NAME "bf_lmap"
+#define _BF_RATELIMIT_MAP_NAME "bf_rmap"
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {
@@ -248,6 +249,10 @@ static int _bf_program_fixup(struct bf_program *program,
         case BF_FIXUP_TYPE_LOG_MAP_FD:
             insn_type = BF_FIXUP_INSN_IMM;
             value = program->handle->lmap->fd;
+            break;
+        case BF_FIXUP_TYPE_RATELIMIT_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = program->handle->rmap->fd;
             break;
         case BF_FIXUP_TYPE_SET_MAP_FD:
             map = bf_list_get_at(&program->handle->sets, fixup->attr.set_index);
@@ -707,6 +712,32 @@ static int _bf_program_load_log_map(struct bf_program *program)
     return 0;
 }
 
+static int _bf_program_load_ratelimit_map(struct bf_program *program)
+{
+    _cleanup_free_ void *pstr = NULL;
+    uint32_t key = 0;
+    struct bf_ratelimit val = {.current = 0, .last_time = 0};
+    int r;
+
+    assert(program);
+
+    r = bf_map_new(&program->handle->rmap, _BF_RATELIMIT_MAP_NAME,
+                   BF_MAP_TYPE_RATELIMIT, sizeof(uint32_t),
+                   sizeof(struct bf_ratelimit), 1);
+    if (r)
+        return bf_err_r(r, "failed to create the ratelimit bf_map object");
+
+    r = bf_map_set_elem(program->handle->rmap, &key, &val);
+    if (r)
+        return bf_err_r(r, "failed to set ratelimit map elem");
+
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_RATELIMIT_MAP_FD);
+    if (r)
+        return bf_err_r(r, "failed to fixup ratelimit map FD");
+
+    return 0;
+}
+
 static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 {
     char name[BPF_OBJ_NAME_LEN];
@@ -788,6 +819,10 @@ int bf_program_load(struct bf_program *prog)
     r = _bf_program_load_log_map(prog);
     if (r)
         return bf_err_r(r, "failed to load the log map");
+
+    r = _bf_program_load_ratelimit_map(prog);
+    if (r)
+        return bf_err_r(r, "failed to load the ratelimit map");
 
     if (bf_ctx_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
