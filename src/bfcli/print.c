@@ -34,6 +34,8 @@
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
+#include "bpfilter/core/hashset.h"
+
 struct bfc_chain_opts;
 
 #define INET6_ADDRSTRLEN 46
@@ -81,7 +83,7 @@ static void bf_dump_hex_local(const void *data, size_t len)
 }
 
 void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
-                    bf_list *counters)
+                    bf_list *counters, bool no_set_content)
 {
     struct bf_counter *counter;
     bf_list_node *counter_node, *policy_counter_node, *err_counter_node;
@@ -169,6 +171,14 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             if (i != set->n_comps - 1)
                 (void)fprintf(stdout, ", ");
         }
+
+        if (no_set_content) {
+            (void)fprintf(stdout,
+                          ") in { /* %zu elements, content elided */ }\n",
+                          bf_hashset_size(&set->elems));
+            continue;
+        }
+
         (void)fprintf(stdout, ") in {\n");
 
         bf_hashset_foreach (&set->elems, node) {
@@ -219,6 +229,10 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
                 if (set->name) {
                     (void)fprintf(stdout, ") %s %s", in_str, set->name);
+                } else if (no_set_content) {
+                    (void)fprintf(stdout,
+                                  ") in { /* %zu elements, content elided */ }",
+                                  bf_hashset_size(&set->elems));
                 } else {
                     (void)fprintf(stdout, ") %s {\n", in_str);
 
@@ -308,7 +322,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     }
 }
 
-int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters)
+int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters,
+                     bool no_set_content)
 {
     struct bf_list_node *chain_node;
     struct bf_list_node *hookopts_node;
@@ -330,7 +345,7 @@ int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters)
     while (chain_node) {
         bfc_chain_dump(bf_list_node_get_data(chain_node),
                        bf_list_node_get_data(hookopts_node),
-                       bf_list_node_get_data(counter_node));
+                       bf_list_node_get_data(counter_node), no_set_content);
 
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);

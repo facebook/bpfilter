@@ -83,6 +83,7 @@ add_custom_target(e2e
 )
 
 bf_add_e2e_shell_test(e2e cli/chain_attach.sh ROOT)
+bf_add_e2e_shell_test(e2e cli/chain_get_no_set_content.sh ROOT)
 bf_add_e2e_shell_test(e2e cli/chain_load.sh ROOT)
 bf_add_e2e_shell_test(e2e cli/chain_set.sh ROOT)
 bf_add_e2e_shell_test(e2e cli/chain_update.sh ROOT)
