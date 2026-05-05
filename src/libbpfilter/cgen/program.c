@@ -22,6 +22,7 @@
 #include <bpfilter/bpf.h>
 #include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/ctx.h>
@@ -902,6 +903,16 @@ static int _bf_program_load_log_map(struct bf_program *program)
     return 0;
 }
 
+static uint64_t _bf_dedup_hash(const void *data, void *ctx)
+{
+    return bf_fnv1a(data, *(const size_t *)ctx, bf_fnv1a_init());
+}
+
+static bool _bf_dedup_equal(const void *lhs, const void *rhs, void *ctx)
+{
+    return memcmp(lhs, rhs, *(const size_t *)ctx) == 0;
+}
+
 /**
  * @brief Load set maps, one BPF map per `bf_set_group`.
  *
@@ -910,6 +921,9 @@ static int _bf_program_load_log_map(struct bf_program *program)
  * their own single-set group. Each group collapses to one BPF map whose
  * value is a bitmask: bit `i` of byte `i / CHAR_BIT` identifies the `i`-th
  * set in the group.
+ *
+ * Per-group keys and bitmask values are prepared in user space so a single
+ * `bf_bpf_map_update_batch()` call populates the map on the kernel side.
  *
  * Group ownership of the created maps is transferred to `handle->sets`;
  * the `bf_set_group::map` pointer is a non-owning back-reference used by
@@ -928,47 +942,89 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         const struct bf_set *key_set =
             bf_list_node_get_data(bf_list_get_head(&group->sets));
         size_t n_sets = bf_list_size(&group->sets);
+        size_t i = 0;
+        _cleanup_free_ uint8_t *keys = NULL;
+        size_t key_size = key_set->elem_size;
+        _cleanup_free_ uint8_t *values = NULL;
         size_t value_size = (n_sets + CHAR_BIT - 1) / CHAR_BIT;
-        size_t total_elems = 0;
-        size_t bit_idx = 0;
+        const bf_hashset_ops dedup_ops = {
+            .hash = _bf_dedup_hash,
+            .equal = _bf_dedup_equal,
+            // The dedup hashset borrows elements from `bf_set`s.
+            .free = NULL,
+        };
+        _clean_bf_hashset_ bf_hashset unique_elements =
+            bf_hashset_default(&dedup_ops, &key_size);
+        size_t n_total_elems = 0;
+        size_t n_unique_elems;
         _free_bf_map_ struct bf_map *new_map = NULL;
-        _cleanup_free_ uint8_t *value = NULL;
         struct bf_map *map_ref;
 
-        /* Keys present in multiple sets will share a single map entry, so
-         * the actual entry count may be smaller, but we can err on the
-         * safe side. */
+        // Upper-bound the set capacity to avoid incremental rehashing.
         bf_list_foreach (&group->sets, set_node) {
             const struct bf_set *set = bf_list_node_get_data(set_node);
-            total_elems += bf_hashset_size(&set->elems);
+
+            n_total_elems += bf_hashset_size(&set->elems);
         }
 
-        (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
-                       (uint16_t)map_idx++);
-
-        r = bf_map_new_from_set(&new_map, name, key_set, total_elems,
-                                value_size);
+        r = bf_hashset_reserve(&unique_elements, n_total_elems);
         if (r)
-            return r;
+            return bf_err_r(r, "failed to reserve dedup hashset capacity");
 
-        value = malloc(value_size);
-        if (!value)
-            return -ENOMEM;
-
+        // Find all unique elements across all sets in this group.
         bf_list_foreach (&group->sets, set_node) {
             const struct bf_set *set = bf_list_node_get_data(set_node);
 
             bf_hashset_foreach (&set->elems, elem) {
-                memset(value, 0, value_size);
-                (void)bf_bpf_map_lookup_elem(new_map->fd, elem->data, value);
-                value[bit_idx / CHAR_BIT] |=
-                    (uint8_t)(1U << (bit_idx % CHAR_BIT));
-                r = bf_map_set_elem(new_map, elem->data, value);
-                if (r)
-                    return bf_err_r(r, "failed to add set element to the map");
+                void *to_add = elem->data;
+                r = bf_hashset_add(&unique_elements, &to_add);
+                if (r && r != -EEXIST)
+                    return bf_err_r(r, "failed to dedup element");
             }
-            ++bit_idx;
         }
+        n_unique_elems = bf_hashset_size(&unique_elements);
+
+        // Compute bf_map keys and values for batch insertion.
+        keys = calloc(n_unique_elems, key_size);
+        if (!keys)
+            return bf_err_r(-ENOMEM, "failed to allocate map keys");
+
+        values = calloc(n_unique_elems, value_size);
+        if (!values)
+            return bf_err_r(-ENOMEM, "failed to allocate map values");
+
+        bf_hashset_foreach (&unique_elements, hentry) {
+            size_t bit_idx = 0;
+
+            // Compute the key.
+            memcpy(keys + (i * key_size), hentry->data, key_size);
+
+            // Compute the value (bitmask).
+            bf_list_foreach (&group->sets, set_node) {
+                const struct bf_set *set = bf_list_node_get_data(set_node);
+
+                if (bf_hashset_contains(&set->elems, hentry->data)) {
+                    values[(i * value_size) + (bit_idx / CHAR_BIT)] |=
+                        (uint8_t)(1U << (bit_idx % CHAR_BIT));
+                }
+                ++bit_idx;
+            }
+            ++i;
+        }
+
+        // Create the BPF map from the computed keys and values.
+        (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
+                       (uint16_t)map_idx++);
+
+        r = bf_map_new_from_set(&new_map, name, key_set, n_unique_elems,
+                                value_size);
+        if (r)
+            return r;
+
+        r = bf_bpf_map_update_batch(new_map->fd, keys, values, n_unique_elems,
+                                    BPF_ANY);
+        if (r)
+            return bf_err_r(r, "failed to add set elements to the map");
 
         map_ref = new_map;
         r = bf_list_push(&new_prog->handle->sets, (void **)&new_map);
