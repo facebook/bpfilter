@@ -89,7 +89,7 @@ bf_add_c_test(unit libbpfilter/if.c)
 bf_add_c_test(unit libbpfilter/io.c)
 bf_add_c_test(unit libbpfilter/core/hashset.c)
 bf_add_c_test(unit libbpfilter/core/list.c)
-# bf_add_c_test(unit libbpfilter/core/lock.c) Requires global lock to be replaced
+bf_add_c_test(unit libbpfilter/core/lock.c)
 bf_add_c_test(unit libbpfilter/core/vector.c)
 bf_add_c_test(unit libbpfilter/logger.c)
 bf_add_c_test(unit libbpfilter/matcher.c)

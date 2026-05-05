@@ -15,6 +15,7 @@
 struct bf_chain;
 struct bf_handle;
 struct bf_hookopts;
+struct bf_lock;
 
 #define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
@@ -51,15 +52,15 @@ int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
 /**
  * @brief Allocate and initialize a codegen from a pinned context map.
  *
- * Opens the `bf_ctx` context map pinned in the directory referenced by
- * `dir_fd`, reads the serialized cgen data, and deserializes it.
+ * Opens the `bf_ctx` context map pinned in the chain directory referenced by
+ * `lock`, reads the serialized cgen data, and deserializes it.
  *
  * @param cgen Codegen to allocate and initialize. Can't be NULL.
- * @param dir_fd File descriptor of the chain's bpffs pin directory. Must be
- *        valid.
+ * @param lock Lock providing the chain directory file descriptor. Must hold
+ *        a valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, int dir_fd);
+int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, struct bf_lock *lock);
 
 /**
  * Free a codegen.
@@ -90,9 +91,12 @@ int bf_cgen_pack(const struct bf_cgen *cgen, bf_wpack_t *pack);
  *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
  * @param hookopts Hook options.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts);
+int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts,
+                struct bf_lock *lock);
 
 /**
  * Create and load a `bf_program` into the kernel.
@@ -102,9 +106,11 @@ int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts);
  * loaded into the kernel.
  *
  * @param cgen Codegen to load into the kernel. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_load(struct bf_cgen *cgen);
+int bf_cgen_load(struct bf_cgen *cgen, struct bf_lock *lock);
 
 /**
  * Attach a loaded program to a hook.
@@ -116,9 +122,12 @@ int bf_cgen_load(struct bf_cgen *cgen);
  *
  * @param cgen Codegen to attach to the kernel. Can't be NULL.
  * @param hookopts Hook options. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_cgen_attach(struct bf_cgen *cgen, struct bf_hookopts **hookopts);
+int bf_cgen_attach(struct bf_cgen *cgen, struct bf_hookopts **hookopts,
+                   struct bf_lock *lock);
 
 /**
  * Flags to control the behavior of `bf_cgen_update`.
@@ -145,10 +154,12 @@ enum bf_cgen_update_flags
  * @param new_chain Chain containing the new rules, sets, and policy.
  *        Can't be NULL.
  * @param flags Flags to control update behavior. 0 if no flags.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
-                   uint32_t flags);
+                   uint32_t flags, struct bf_lock *lock);
 
 /**
  * Detach a program from the kernel.
@@ -163,8 +174,10 @@ void bf_cgen_detach(struct bf_cgen *cgen);
  * Unload a program from the kernel.
  *
  * @param cgen Codege to unload. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  */
-void bf_cgen_unload(struct bf_cgen *cgen);
+void bf_cgen_unload(struct bf_cgen *cgen, struct bf_lock *lock);
 
 void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix);
 

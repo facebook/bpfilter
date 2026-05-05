@@ -23,6 +23,8 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/pack.h>
 
+#include "core/lock.h"
+
 static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook);
 
 int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook,
@@ -305,23 +307,21 @@ int bf_link_update(struct bf_link *link, int prog_fd)
     return r;
 }
 
-int bf_link_pin(struct bf_link *link, int dir_fd)
+int bf_link_pin(struct bf_link *link, struct bf_lock *lock)
 {
     int r;
 
     assert(link);
+    assert(lock);
 
-    if (dir_fd < 0)
-        return bf_err_r(-EINVAL, "directory file descriptor is invalid");
-
-    r = bf_bpf_obj_pin("bf_link", link->fd, dir_fd);
+    r = bf_bpf_obj_pin("bf_link", link->fd, lock->chain_fd);
     if (r)
         return bf_err_r(r, "failed to pin BPF link");
 
     if (link->fd_extra >= 0) {
-        r = bf_bpf_obj_pin("bf_link_extra", link->fd_extra, dir_fd);
+        r = bf_bpf_obj_pin("bf_link_extra", link->fd_extra, lock->chain_fd);
         if (r) {
-            bf_link_unpin(link, dir_fd);
+            bf_link_unpin(link, lock);
             return bf_err_r(r, "failed to pin extra BPF link");
         }
     }
@@ -329,27 +329,22 @@ int bf_link_pin(struct bf_link *link, int dir_fd)
     return 0;
 }
 
-void bf_link_unpin(struct bf_link *link, int dir_fd)
+void bf_link_unpin(struct bf_link *link, struct bf_lock *lock)
 {
     int r;
 
-    assert(link);
-
-    if (dir_fd < 0) {
-        bf_err_r(-EINVAL, "directory file descriptor is invalid");
-        return;
-    }
+    assert(lock);
 
     (void)link;
 
-    r = unlinkat(dir_fd, "bf_link", 0);
+    r = unlinkat(lock->chain_fd, "bf_link", 0);
     if (r < 0 && errno != ENOENT) {
         // Do not warn on ENOENT, we want the file to be gone!
         bf_warn_r(errno,
                   "failed to unlink BPF link, assuming the link is not pinned");
     }
 
-    r = unlinkat(dir_fd, "bf_link_extra", 0);
+    r = unlinkat(lock->chain_fd, "bf_link_extra", 0);
     if (r < 0 && errno != ENOENT) {
         // Do not warn on ENOENT, we want the file to be gone!
         bf_warn_r(

@@ -21,6 +21,7 @@
 #include "cgen/handle.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
+#include "core/lock.h"
 
 static int copy_hookopts(struct bf_hookopts **dest,
                          const struct bf_hookopts *src)
@@ -44,15 +45,59 @@ static int copy_hookopts(struct bf_hookopts **dest,
     return 0;
 }
 
+/**
+ * @brief Unload every chain currently pinned in the pin directory.
+ *
+ * The caller must already hold a `BF_LOCK_WRITE` lock on the pin directory
+ * (typically via `bf_lock_init(BF_LOCK_WRITE)`). For each chain entry, a
+ * per-chain `BF_LOCK_WRITE` lock is acquired (so the chain dir is removed
+ * by `bf_lock_release_chain` after unload).
+ */
+static int _bf_ruleset_flush(struct bf_lock *lock)
+{
+    _free_bf_list_ bf_list *cgens = NULL;
+    int r;
+
+    assert(lock);
+
+    r = bf_ctx_get_cgens(lock, &cgens);
+    if (r)
+        return bf_err_r(r, "failed to discover chains during flush");
+
+    bf_list_foreach (cgens, cgen_node) {
+        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
+
+        r = bf_lock_acquire_chain(lock, cgen->chain->name, BF_LOCK_WRITE,
+                                  false);
+        if (r) {
+            bf_warn_r(
+                r,
+                "failed to acquire WRITE lock on chain '%s' during flush, skipping",
+                cgen->chain->name);
+            continue;
+        }
+
+        bf_cgen_unload(cgen, lock);
+        bf_lock_release_chain(lock);
+    }
+
+    return 0;
+}
+
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_list_ bf_list *cgens = NULL;
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
     int r;
 
-    r = bf_ctx_get_cgens(&cgens);
+    r = bf_lock_init(&lock, BF_LOCK_READ);
+    if (r)
+        return bf_err_r(r, "failed to acquire READ lock for ruleset get");
+
+    r = bf_ctx_get_cgens(&lock, &cgens);
     if (r < 0)
         return bf_err_r(r, "failed to get cgen list");
 
@@ -105,6 +150,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 
 int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     struct bf_list_node *chain_node = bf_list_get_head(chains);
     struct bf_list_node *hookopts_node = bf_list_get_head(hookopts);
     int r;
@@ -112,7 +158,13 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     if (bf_list_size(chains) != bf_list_size(hookopts))
         return -EINVAL;
 
-    bf_ctx_flush();
+    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    if (r)
+        return bf_err_r(r, "failed to acquire WRITE lock for ruleset set");
+
+    r = _bf_ruleset_flush(&lock);
+    if (r)
+        return r;
 
     while (chain_node && hookopts_node) {
         _free_bf_cgen_ struct bf_cgen *cgen = NULL;
@@ -136,11 +188,22 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
         if (r)
             goto err_load;
 
-        r = bf_cgen_set(cgen, hookopts_copy ? &hookopts_copy : NULL);
+        r = bf_lock_acquire_chain(&lock, cgen->chain->name, BF_LOCK_WRITE,
+                                  true);
         if (r) {
-            bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
+            bf_err_r(r, "failed to acquire WRITE lock on chain '%s'",
+                     cgen->chain->name);
             goto err_load;
         }
+
+        r = bf_cgen_set(cgen, hookopts_copy ? &hookopts_copy : NULL, &lock);
+        if (r) {
+            bf_err_r(r, "failed to set chain '%s'", cgen->chain->name);
+            bf_lock_release_chain(&lock);
+            goto err_load;
+        }
+
+        bf_lock_release_chain(&lock);
 
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);
@@ -149,19 +212,25 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     return 0;
 
 err_load:
-    bf_ctx_flush();
+    _bf_ruleset_flush(&lock);
     return r;
 }
 
 int bf_ruleset_flush(void)
 {
-    bf_ctx_flush();
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
+    int r;
 
-    return 0;
+    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    if (r)
+        return bf_err_r(r, "failed to acquire WRITE lock for ruleset flush");
+
+    return _bf_ruleset_flush(&lock);
 }
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *old_cgen = NULL;
     _free_bf_cgen_ struct bf_cgen *new_cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
@@ -169,6 +238,32 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
     int r;
 
     assert(chain);
+
+    /* bf_chain_set is a namespace mutator: the previous chain (if any) is
+     * destroyed and a fresh one is published under the same name. Take
+     * pindir WRITE for the whole operation so the flush-then-load
+     * sequence is atomic w.r.t. every other libbpfilter caller. */
+    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    if (r)
+        return r;
+
+    /* Unload any pre-existing chain under this name, and remove its pindir
+     * entry so stage-and-rename can publish the new one. */
+    r = bf_lock_acquire_chain(&lock, chain->name, BF_LOCK_WRITE, false);
+    if (r == 0) {
+        r = bf_ctx_get_cgen(&lock, &old_cgen);
+        if (r && r != -ENOENT) {
+            bf_lock_release_chain(&lock);
+            return r;
+        }
+        if (old_cgen)
+            bf_cgen_unload(old_cgen, &lock);
+        /* Release drops the chain flock and (because we held WRITE)
+         * removes the now-empty chain dir. */
+        bf_lock_release_chain(&lock);
+    } else if (r != -ENOENT) {
+        return r;
+    }
 
     r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
@@ -184,18 +279,18 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
     if (r)
         return r;
 
-    r = bf_ctx_get_cgen(new_cgen->chain->name, &old_cgen);
-    if (r && r != -ENOENT)
+    /* Create the new chain dir via stage-and-rename (I3). */
+    r = bf_lock_acquire_chain(&lock, chain->name, BF_LOCK_WRITE, true);
+    if (r)
         return r;
-    if (old_cgen)
-        bf_cgen_unload(old_cgen);
 
-    return bf_cgen_set(new_cgen, hookopts_copy ? &hookopts_copy : NULL);
+    return bf_cgen_set(new_cgen, hookopts_copy ? &hookopts_copy : NULL, &lock);
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
                  struct bf_hookopts **hookopts, bf_list *counters)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
@@ -207,7 +302,11 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     assert(hookopts);
     assert(counters);
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -234,12 +333,17 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 
 int bf_chain_prog_fd(const char *name)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(name);
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -251,12 +355,17 @@ int bf_chain_prog_fd(const char *name)
 
 int bf_chain_logs_fd(const char *name)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(name);
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -268,17 +377,20 @@ int bf_chain_logs_fd(const char *name)
 
 int bf_chain_load(struct bf_chain *chain)
 {
-    _free_bf_cgen_ struct bf_cgen *existing = NULL;
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
     int r;
 
     assert(chain);
 
-    r = bf_ctx_get_cgen(chain->name, &existing);
-    if (r == 0)
-        return bf_err_r(-EEXIST, "chain '%s' already exists", chain->name);
-    if (r != -ENOENT)
+    /* chain_load is a namespace mutator: pindir WRITE + chain WRITE on the
+     * staged inode. Stage-and-rename (I3) returns `-EEXIST` if another
+     * creator already claimed the name, which replaces the former
+     * check-then-create sequence atomically. */
+    r = bf_lock_init_for_chain(&lock, chain->name, BF_LOCK_WRITE, BF_LOCK_WRITE,
+                               true);
+    if (r)
         return r;
 
     r = bf_chain_new_from_copy(&chain_copy, chain);
@@ -289,11 +401,12 @@ int bf_chain_load(struct bf_chain *chain)
     if (r)
         return r;
 
-    return bf_cgen_load(cgen);
+    return bf_cgen_load(cgen, &lock);
 }
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
     int r;
@@ -301,7 +414,11 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
     assert(name);
     assert(hookopts);
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_WRITE, false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -316,7 +433,7 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
     if (r)
         return r;
 
-    r = bf_cgen_attach(cgen, &hookopts_copy);
+    r = bf_cgen_attach(cgen, &hookopts_copy, &lock);
     if (r)
         return bf_err_r(r, "failed to attach codegen to hook");
 
@@ -325,13 +442,19 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 
 int bf_chain_update(const struct bf_chain *chain)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(chain);
 
-    r = bf_ctx_get_cgen(chain->name, &cgen);
+    r = bf_lock_init_for_chain(&lock, chain->name, BF_LOCK_READ, BF_LOCK_WRITE,
+                               false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -339,7 +462,7 @@ int bf_chain_update(const struct bf_chain *chain)
     if (r)
         return r;
 
-    return bf_cgen_update(cgen, &chain_copy, 0);
+    return bf_cgen_update(cgen, &chain_copy, 0, &lock);
 }
 
 static int copy_set(struct bf_set **dest, const struct bf_set *src)
@@ -379,6 +502,7 @@ static int copy_set(struct bf_set **dest, const struct bf_set *src)
 int bf_chain_update_set(const char *name, const struct bf_set *to_add,
                         const struct bf_set *to_remove)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_chain_ struct bf_chain *new_chain = NULL;
     struct bf_set *dest_set = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
@@ -393,7 +517,11 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
     if (!bf_streq(to_add->name, to_remove->name))
         return bf_err_r(-EINVAL, "to_add->name must match to_remove->name");
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_WRITE, false);
+    if (r)
+        return r;
+
+    r = bf_ctx_get_cgen(&lock, &cgen);
     if (r)
         return r;
 
@@ -422,7 +550,7 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
         return bf_err_r(r, "failed to calculate set difference");
 
     r = bf_cgen_update(cgen, &new_chain,
-                       BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS));
+                       BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS), &lock);
     if (r)
         return bf_err_r(r, "failed to update chain with new set data");
 
@@ -431,16 +559,24 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
 
 int bf_chain_flush(const char *name)
 {
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(name);
 
-    r = bf_ctx_get_cgen(name, &cgen);
+    /* chain_flush removes the chain dir from the pindir namespace, so it
+     * needs pindir WRITE (I2). */
+    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_WRITE, BF_LOCK_WRITE,
+                               false);
     if (r)
         return r;
 
-    bf_cgen_unload(cgen);
+    r = bf_ctx_get_cgen(&lock, &cgen);
+    if (r)
+        return r;
+
+    bf_cgen_unload(cgen, &lock);
 
     return 0;
 }

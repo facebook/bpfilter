@@ -27,6 +27,7 @@
  */
 
 struct bf_cgen;
+struct bf_lock;
 
 enum bf_verbose
 {
@@ -59,27 +60,20 @@ void bf_ctx_teardown(void);
 void bf_ctx_dump(prefix_t *prefix);
 
 /**
- * @brief Unload all the existing chains.
+ * @brief Load a codegen from a chain pinned in bpffs.
  *
- * Equivalent to calling `bf_ctx_get_cgens` followed by
- * `bf_cgen_unload` on every entry.
- */
-void bf_ctx_flush(void);
-
-/**
- * @brief Load a codegen from bpffs by name.
+ * Reads and deserializes the persisted context map from the chain
+ * directory referenced by `lock` (the caller must have already acquired
+ * the chain via `bf_lock_acquire_chain`). On success `*cgen` is set to
+ * a newly-allocated codegen owned by the caller (use `_free_bf_cgen_`).
  *
- * Opens `{bpffs}/bpfilter/{name}/` and deserializes the persisted context
- * map into a fresh `bf_cgen`. On success `*cgen` is set to a
- * newly-allocated codegen owned by the caller (use `_free_bf_cgen_`).
- *
- * @param name Name of the codegen to load. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Must
+ *        hold a valid `chain_fd`. Can't be NULL.
  * @param cgen Output pointer to the loaded codegen. Can't be NULL. Left
  *        unchanged on failure.
- * @return 0 on success, `-ENOENT` if no chain exists with the given name,
- *         or another negative errno value on failure.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_get_cgen(const char *name, struct bf_cgen **cgen);
+int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen);
 
 /**
  * @brief Discover and load all codegens persisted under `{bpffs}/bpfilter/`.
@@ -87,16 +81,21 @@ int bf_ctx_get_cgen(const char *name, struct bf_cgen **cgen);
  * The function allocates a new heap list with owning ops
  * (`bf_cgen_free`/`bf_cgen_pack`); on success the caller owns it and
  * must release it with `bf_list_free` (commonly via `_free_bf_list_`).
- * Per-entry deserialisation failures are logged and the offending chain
- * is skipped.
+ * For each chain entry it acquires a `BF_LOCK_READ` chain lock via
+ * `bf_lock_acquire_chain` for the duration of the deserialise step,
+ * then releases it before moving to the next chain. Per-entry failures
+ * are logged and the offending chain is skipped.
  *
+ * @param lock Lock that must already hold the pin directory locked
+ *        (e.g. via `bf_lock_init(BF_LOCK_READ)` or `BF_LOCK_WRITE`).
+ *        Must not currently hold a chain lock. Can't be NULL.
  * @param cgens Output pointer to the allocated list. Can't be NULL.
  *        Must point to a `NULL` `bf_list *` on entry. Left unchanged on
  *        failure.
  * @return 0 on success, or a negative errno value on setup failure
  *         (cannot open pin directory, allocation failure).
  */
-int bf_ctx_get_cgens(bf_list **cgens);
+int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens);
 
 /**
  * Get the BPF token file descriptor.
@@ -104,14 +103,6 @@ int bf_ctx_get_cgens(bf_list **cgens);
  * @return The BPF token file descriptor, or -1 if no token is used.
  */
 int bf_ctx_token(void);
-
-/**
- * @brief Return a file descriptor to bpfilter's pin directory.
- *
- * @return File descriptor to bpfilter's pin directory, or a negative errno
- *         value on failure.
- */
-int bf_ctx_get_pindir_fd(void);
 
 /**
  * @brief Get a ELF stub from its ID.

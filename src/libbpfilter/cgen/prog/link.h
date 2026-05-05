@@ -12,6 +12,8 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/pack.h>
 
+struct bf_lock;
+
 /**
  * BPF link object.
  */
@@ -116,17 +118,17 @@ int bf_link_update(struct bf_link *link, int prog_fd);
  * @brief Pin the link to the system.
  *
  * @param link Link to pin. Can't be NULL.
- * @param dir_fd File descriptor of the directory to pin the link into. Must be
- *        a valid file descriptor.
+ * @param lock Lock providing the chain directory file descriptor to pin the
+ *        link into. Must hold a valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_link_pin(struct bf_link *link, int dir_fd);
+int bf_link_pin(struct bf_link *link, struct bf_lock *lock);
 
 /**
  * @brief Unpin the link from the system.
  *
- * @param link Link to unpin. Can't be NULL.
- * @param dir_fd File descriptor of the directory to unpin the link from. Must
- *        be a valid file descriptor.
+ * @param link Link to unpin.
+ * @param lock Lock providing the chain directory file descriptor to unpin the
+ *        link from. Must hold a valid `chain_fd`. Can't be NULL.
  */
-void bf_link_unpin(struct bf_link *link, int dir_fd);
+void bf_link_unpin(struct bf_link *link, struct bf_lock *lock);
