@@ -22,6 +22,7 @@
 
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
+#include "core/lock.h"
 
 #define _BF_LINK_NAME "bf_link"
 
@@ -45,18 +46,19 @@ int bf_handle_new(struct bf_handle **handle, const char *prog_name)
     return 0;
 }
 
-int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
+int bf_handle_new_from_pack(struct bf_handle **handle, struct bf_lock *lock,
                             bf_rpack_node_t node)
 {
     _free_bf_handle_ struct bf_handle *_handle = NULL;
     _cleanup_free_ char *name = NULL;
     bf_rpack_node_t child, array_node;
+    int dir_fd;
     int r;
 
     assert(handle);
+    assert(lock);
 
-    if (dir_fd < 0)
-        return bf_err_r(-EBADFD, "invalid directory FD");
+    dir_fd = lock->chain_fd;
 
     r = bf_rpack_kv_str(node, "prog_name", &name);
     if (r)
@@ -262,11 +264,15 @@ void bf_handle_dump(const struct bf_handle *handle, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 }
 
-int bf_handle_pin(struct bf_handle *handle, int dir_fd)
+int bf_handle_pin(struct bf_handle *handle, struct bf_lock *lock)
 {
+    int dir_fd;
     int r;
 
     assert(handle);
+    assert(lock);
+
+    dir_fd = lock->chain_fd;
 
     r = bf_bpf_obj_pin(handle->prog_name, handle->prog_fd, dir_fd);
     if (r) {
@@ -312,7 +318,7 @@ int bf_handle_pin(struct bf_handle *handle, int dir_fd)
     }
 
     if (handle->link) {
-        r = bf_link_pin(handle->link, dir_fd);
+        r = bf_link_pin(handle->link, lock);
         if (r) {
             bf_err_r(r, "failed to pin BPF link");
             goto err_unpin_all;
@@ -322,13 +328,18 @@ int bf_handle_pin(struct bf_handle *handle, int dir_fd)
     return 0;
 
 err_unpin_all:
-    bf_handle_unpin(handle, dir_fd);
+    bf_handle_unpin(handle, lock);
     return r;
 }
 
-void bf_handle_unpin(struct bf_handle *handle, int dir_fd)
+void bf_handle_unpin(struct bf_handle *handle, struct bf_lock *lock)
 {
+    int dir_fd;
+
     assert(handle);
+    assert(lock);
+
+    dir_fd = lock->chain_fd;
 
     if (handle->cmap)
         bf_map_unpin(handle->cmap, dir_fd);
@@ -347,7 +358,7 @@ void bf_handle_unpin(struct bf_handle *handle, int dir_fd)
     }
 
     if (handle->link)
-        bf_link_unpin(handle->link, dir_fd);
+        bf_link_unpin(handle->link, lock);
 
     unlinkat(dir_fd, handle->prog_name, 0);
 }

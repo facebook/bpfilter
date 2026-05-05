@@ -13,6 +13,7 @@
 #include <bpfilter/pack.h>
 
 struct bf_link;
+struct bf_lock;
 struct bf_map;
 struct bf_counter;
 
@@ -72,12 +73,12 @@ int bf_handle_new(struct bf_handle **handle, const char *prog_name);
  * @brief Allocate and initialize a bf_handle from serialized data.
  *
  * @param handle `bf_handle` object to allocate and initialize. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the pinned objects.
- *        Must be a valid file descriptor.
+ * @param lock Lock providing the chain directory file descriptor of the
+ *        pinned objects. Must hold a valid `chain_fd`. Can't be NULL.
  * @param node Node containing the serialized handle data.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_handle_new_from_pack(struct bf_handle **handle, int dir_fd,
+int bf_handle_new_from_pack(struct bf_handle **handle, struct bf_lock *lock,
                             bf_rpack_node_t node);
 
 /**
@@ -111,24 +112,26 @@ void bf_handle_dump(const struct bf_handle *handle, prefix_t *prefix);
 /**
  * @brief Pin the BPF objects to the filesystem.
  *
- * Pins the program and all maps/link to the directory specified by `dir_fd`.
- * The link is only pinned if the program is attached.
+ * Pins the program and all maps/link to the chain directory referenced by
+ * `lock`. The link is only pinned if the program is attached.
  *
  * @param handle Handle containing the BPF objects to pin. Can't be NULL.
- * @param dir_fd File descriptor of the directory to pin into.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_handle_pin(struct bf_handle *handle, int dir_fd);
+int bf_handle_pin(struct bf_handle *handle, struct bf_lock *lock);
 
 /**
  * @brief Unpin the BPF objects from the filesystem.
  *
- * Unpins all BPF objects from the directory. This function never fails.
+ * Unpins all BPF objects from the chain directory. This function never fails.
  *
  * @param handle Handle containing the BPF objects to unpin. Can't be NULL.
- * @param dir_fd File descriptor of the directory containing the pins.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
  */
-void bf_handle_unpin(struct bf_handle *handle, int dir_fd);
+void bf_handle_unpin(struct bf_handle *handle, struct bf_lock *lock);
 
 /**
  * @brief Get a counter value from the handle's counters map.

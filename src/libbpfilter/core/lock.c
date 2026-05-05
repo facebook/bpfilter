@@ -253,14 +253,19 @@ static int _bf_lock_open_existing(int pindir_fd, const char *name,
 int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode)
 {
     _clean_bf_lock_ struct bf_lock _lock = bf_lock_default();
+    const char *bpffs_path;
     int r;
 
     assert(lock);
 
-    _lock.bpffs_fd = bf_opendir(bf_ctx_get_bpffs_path());
+    bpffs_path = bf_ctx_get_bpffs_path();
+    if (!bpffs_path)
+        return bf_err_r(-EINVAL, "context is not initialized");
+
+    _lock.bpffs_fd = bf_opendir(bpffs_path);
     if (_lock.bpffs_fd < 0) {
         return bf_err_r(_lock.bpffs_fd, "failed to open bpffs at %s",
-                        bf_ctx_get_bpffs_path());
+                        bpffs_path);
     }
 
     /* Create the pin directory lazily. Per I1, it is never removed by the
@@ -268,8 +273,7 @@ int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode)
     _lock.pindir_fd = bf_opendir_at(_lock.bpffs_fd, "bpfilter", true);
     if (_lock.pindir_fd < 0) {
         return bf_err_r(_lock.pindir_fd,
-                        "failed to open pin directory %s/bpfilter",
-                        bf_ctx_get_bpffs_path());
+                        "failed to open pin directory %s/bpfilter", bpffs_path);
     }
 
     r = _bf_flock(_lock.pindir_fd, mode);

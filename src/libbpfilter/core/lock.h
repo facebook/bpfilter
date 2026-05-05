@@ -44,20 +44,12 @@
  * Operations on the pin directory and the chain directories should follow
  * this locking policy:
  *
- *    Operation              | Object  | Pindir lock | Chain dir lock
- *    -----------------------|---------|-------------|---------------------------
- *    `bf_ruleset_get`       | Ruleset | `READ`      | `READ` (per chain, in loop)
- *    `bf_ruleset_flush`     | Ruleset | `WRITE`     | `WRITE` (per chain, in loop)
- *    `bf_ruleset_set`       | Ruleset | `WRITE`     | `WRITE` (per chain, in loop)
- *    `bf_chain_get`         | Chain   | `READ`      | `READ`
- *    `bf_chain_prog_fd`     | Chain   | `READ`      | `READ`
- *    `bf_chain_logs_fd`     | Chain   | `READ`      | `READ`
- *    `bf_chain_attach`      | Chain   | `READ`      | `WRITE`
- *    `bf_chain_update`      | Chain   | `READ`      | `WRITE`
- *    `bf_chain_update_set`  | Chain   | `READ`      | `WRITE`
- *    `bf_chain_load`        | Chain   | `WRITE`     | `WRITE` (on staged)
- *    `bf_chain_set`         | Chain   | `WRITE`     | `WRITE` (on staged)
- *    `bf_chain_flush`       | Chain   | `WRITE`     | `WRITE`
+ *    Operation  | Object  | Pindir lock | Chain dir lock
+ *    -----------|---------|-------------|---------------------------
+ *    Read       | Ruleset | `READ`      | `READ` (per chain, in loop)
+ *    Read       | Chain   | `READ`      | `READ`
+ *    Write      | Ruleset | `WRITE`     | `WRITE` (per chain, in loop)
+ *    Write      | Chain   | `READ`      | `WRITE`
  *
  * Rationale:
  *  - Pindir `WRITE` is required for any operation that mutates the pin
@@ -102,6 +94,11 @@
  *    cannot step on each other: the loser's `renameat2()` returns `EEXIST`
  *    and it rolls back its own staging directory. The winner's chain
  *    directory is never touched by the loser's cleanup.
+ *
+ * Ruleset-level operations iterate over every chain and must take a chain
+ * lock around each per-chain step (using `bf_lock_acquire_chain` /
+ * `bf_lock_release_chain`): the pindir lock alone does not protect against
+ * a chain-level writer that holds only the chain's own `WRITE` lock.
  *
  * # API
  */

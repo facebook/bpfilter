@@ -25,6 +25,7 @@
 #include <bpfilter/pack.h>
 
 #include "cgen/cgen.h"
+#include "core/lock.h"
 
 #define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
 
@@ -38,8 +39,6 @@ struct bf_ctx
 {
     /// BPF token file descriptor
     int token_fd;
-
-    int lock_fd;
 
     struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
 
@@ -112,7 +111,6 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     _ctx->with_bpf_token = with_bpf_token;
     _ctx->bpffs_path = bpffs_path;
     _ctx->verbose = verbose;
-    _ctx->lock_fd = -1;
 
     _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
@@ -161,7 +159,6 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     closep(&(*ctx)->token_fd);
-    closep(&(*ctx)->lock_fd);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);
@@ -196,28 +193,84 @@ static void _bf_free_dir(DIR **dir)
 
 #define _free_dir_ __attribute__((__cleanup__(_bf_free_dir)))
 
+/**
+ * @brief Sweep leftover staging directories from a previous run.
+ *
+ * `core/lock.c` creates uniquely-named `.staging.*` directories while
+ * publishing new chain dirs via `renameat2(RENAME_NOREPLACE)`. If a
+ * process crashes between the `mkdirat` and the `renameat2`, the staging
+ * dir is orphaned.
+ *
+ * This function walks the pindir under `BF_LOCK_WRITE` and removes any
+ * `.staging.*` entry whose `flock(LOCK_EX | LOCK_NB)` succeeds (meaning
+ * nobody currently owns it). Live staging dirs are left alone.
+ *
+ * Runs once from `bf_ctx_setup()`. Non-fatal: a failure to sweep only
+ * leaves garbage behind, it does not compromise correctness.
+ */
+static void _bf_ctx_sweep_staging(void)
+{
+    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
+    _free_dir_ DIR *dir = NULL;
+    struct dirent *entry;
+    int iter_fd;
+    int r;
+
+    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    if (r) {
+        bf_warn_r(r, "failed to lock pindir for staging sweep, skipping");
+        return;
+    }
+
+    iter_fd = dup(lock.pindir_fd);
+    if (iter_fd < 0) {
+        bf_warn_r(-errno, "failed to dup pindir fd for staging sweep");
+        return;
+    }
+
+    dir = fdopendir(iter_fd);
+    if (!dir) {
+        close(iter_fd);
+        bf_warn_r(-errno, "failed to fdopendir pindir for staging sweep");
+        return;
+    }
+
+    while ((entry = readdir(dir))) {
+        _cleanup_close_ int stage_fd = -1;
+
+        if (!bf_strneq(entry->d_name, BF_LOCK_STAGING_PREFIX,
+                       sizeof(BF_LOCK_STAGING_PREFIX) - 1))
+            continue;
+
+        if (entry->d_type != DT_DIR && entry->d_type != DT_UNKNOWN)
+            continue;
+
+        stage_fd = openat(lock.pindir_fd, entry->d_name, O_DIRECTORY);
+        if (stage_fd < 0)
+            continue;
+
+        /* LOCK_NB: if the staging dir is still live, skip it. */
+        if (flock(stage_fd, LOCK_EX | LOCK_NB) < 0)
+            continue;
+
+        if (bf_rmdir_at(lock.pindir_fd, entry->d_name, true)) {
+            bf_warn("failed to sweep orphan staging dir '%s'", entry->d_name);
+        } else {
+            bf_dbg("removed left-over staging directory '%s'", entry->d_name);
+        }
+    }
+}
+
 int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
-    _cleanup_close_ int pindir_fd = -1;
     int r;
 
     r = _bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
-    pindir_fd = bf_ctx_get_pindir_fd();
-    if (pindir_fd < 0) {
-        _bf_ctx_free(&_bf_global_ctx);
-        return bf_err_r(pindir_fd, "failed to get pin directory FD");
-    }
-
-    r = flock(pindir_fd, LOCK_EX | LOCK_NB);
-    if (r) {
-        _bf_ctx_free(&_bf_global_ctx);
-        return bf_err_r(-errno, "failed to lock pin directory");
-    }
-
-    _bf_global_ctx->lock_fd = TAKE_FD(pindir_fd);
+    /* Reclaim any orphan staging directory left by a previous crash. */
+    _bf_ctx_sweep_staging();
 
     return 0;
 }
@@ -225,24 +278,6 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 void bf_ctx_teardown(void)
 {
     _bf_ctx_free(&_bf_global_ctx);
-}
-
-void bf_ctx_flush(void)
-{
-    _free_bf_list_ bf_list *cgens = NULL;
-    int r;
-
-    if (!_bf_global_ctx)
-        return;
-
-    r = bf_ctx_get_cgens(&cgens);
-    if (r) {
-        bf_warn_r(r, "failed to discover chains during flush");
-        return;
-    }
-
-    bf_list_foreach (cgens, cgen_node)
-        bf_cgen_unload(bf_list_node_get_data(cgen_node));
 }
 
 void bf_ctx_dump(prefix_t *prefix)
@@ -253,45 +288,36 @@ void bf_ctx_dump(prefix_t *prefix)
     _bf_ctx_dump(_bf_global_ctx, prefix);
 }
 
-int bf_ctx_get_cgen(const char *name, struct bf_cgen **cgen)
+int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
-    _cleanup_close_ int pindir_fd = -1;
-    _cleanup_close_ int chain_fd = -1;
     int r;
 
-    assert(name);
+    assert(lock);
     assert(cgen);
 
     if (!_bf_global_ctx)
         return bf_err_r(-EINVAL, "context is not initialized");
 
-    pindir_fd = bf_ctx_get_pindir_fd();
-    if (pindir_fd < 0)
-        return pindir_fd;
-
-    chain_fd = bf_opendir_at(pindir_fd, name, false);
-    if (chain_fd < 0)
-        return chain_fd;
-
-    r = bf_cgen_new_from_dir_fd(&_cgen, chain_fd);
+    r = bf_cgen_new_from_dir_fd(&_cgen, lock);
     if (r)
-        return bf_err_r(r, "failed to load chain '%s' from bpffs", name);
+        return bf_err_r(r, "failed to load chain '%s' from bpffs",
+                        lock->chain_name ? lock->chain_name : "(unknown)");
 
     *cgen = TAKE_PTR(_cgen);
 
     return 0;
 }
 
-int bf_ctx_get_cgens(bf_list **cgens)
+int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
 {
     _free_bf_list_ bf_list *_cgens = NULL;
-    _cleanup_close_ int pindir_fd = -1;
     _free_dir_ DIR *dir = NULL;
     struct dirent *entry;
     int iter_fd;
     int r;
 
+    assert(lock);
     assert(cgens);
 
     if (!_bf_global_ctx)
@@ -301,13 +327,9 @@ int bf_ctx_get_cgens(bf_list **cgens)
     if (r)
         return bf_err_r(r, "failed to allocate cgen list");
 
-    pindir_fd = bf_ctx_get_pindir_fd();
-    if (pindir_fd < 0)
-        return bf_err_r(pindir_fd, "failed to get pin directory FD");
-
-    /* fdopendir() takes ownership of the fd: dup so pindir_fd remains valid
-     * for openat() calls inside the loop. */
-    iter_fd = dup(pindir_fd);
+    /* fdopendir() takes ownership of the fd: dup so lock->pindir_fd remains
+     * valid for further uses. */
+    iter_fd = dup(lock->pindir_fd);
     if (iter_fd < 0)
         return bf_err_r(-errno, "failed to dup pin directory fd");
 
@@ -320,7 +342,6 @@ int bf_ctx_get_cgens(bf_list **cgens)
 
     while (true) {
         _free_bf_cgen_ struct bf_cgen *cgen = NULL;
-        _cleanup_close_ int chain_fd = -1;
 
         errno = 0;
         entry = readdir(dir);
@@ -337,19 +358,27 @@ int bf_ctx_get_cgens(bf_list **cgens)
         if (entry->d_type != DT_DIR)
             continue;
 
-        chain_fd = openat(pindir_fd, entry->d_name, O_DIRECTORY);
-        if (chain_fd < 0) {
-            bf_warn_r(errno, "failed to open chain directory '%s', skipping",
+        /* Skip in-flight staging directories owned by concurrent writers. */
+        if (bf_strneq(entry->d_name, BF_LOCK_STAGING_PREFIX,
+                      sizeof(BF_LOCK_STAGING_PREFIX) - 1))
+            continue;
+
+        r = bf_lock_acquire_chain(lock, entry->d_name, BF_LOCK_READ, false);
+        if (r) {
+            bf_warn_r(r, "failed to acquire READ lock on chain '%s', skipping",
                       entry->d_name);
             continue;
         }
 
-        r = bf_cgen_new_from_dir_fd(&cgen, chain_fd);
+        r = bf_cgen_new_from_dir_fd(&cgen, lock);
         if (r) {
             bf_warn_r(r, "failed to restore chain '%s', skipping",
                       entry->d_name);
+            bf_lock_release_chain(lock);
             continue;
         }
+
+        bf_lock_release_chain(lock);
 
         r = bf_list_push(_cgens, (void **)&cgen);
         if (r) {
@@ -372,29 +401,6 @@ int bf_ctx_token(void)
     return _bf_global_ctx->token_fd;
 }
 
-int bf_ctx_get_pindir_fd(void)
-{
-    _cleanup_close_ int bpffs_fd = -1;
-    _cleanup_close_ int pindir_fd = -1;
-
-    if (!_bf_global_ctx)
-        return bf_err_r(-EINVAL, "context is not initialized");
-
-    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
-    if (bpffs_fd < 0) {
-        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        _bf_global_ctx->bpffs_path);
-    }
-
-    pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", true);
-    if (pindir_fd < 0) {
-        return bf_err_r(pindir_fd, "failed to open pin directory %s/bpfilter",
-                        _bf_global_ctx->bpffs_path);
-    }
-
-    return TAKE_FD(pindir_fd);
-}
-
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
 {
     if (!_bf_global_ctx)
@@ -413,5 +419,8 @@ bool bf_ctx_is_verbose(enum bf_verbose opt)
 
 const char *bf_ctx_get_bpffs_path(void)
 {
+    if (!_bf_global_ctx)
+        return NULL;
+
     return _bf_global_ctx->bpffs_path;
 }
