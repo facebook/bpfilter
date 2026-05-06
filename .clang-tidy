@@ -123,4 +123,4 @@ CheckOptions:
     value: true
   # Allow specific masks
   - key: readability-magic-numbers.IgnoredIntegerValues
-    value: 255;65535;100
+    value: 3;255;65535;100

@@ -125,3 +125,8 @@ const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);
  * @return true if the given verbose flag is set.
  */
 bool bf_ctx_is_verbose(enum bf_verbose opt);
+
+/**
+ * @return Path to the configured BPF filesystem.
+ */
+const char *bf_ctx_get_bpffs_path(void);

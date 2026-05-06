@@ -39,7 +39,11 @@ function(bf_add_c_test GROUP SOURCE)
     )
 
     add_dependencies(unit_bin ${target_name})
-    target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(${target_name}
+      PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src/libbpfilter
+    )
 
     add_test(NAME ${target_name}
         COMMAND $<TARGET_FILE:${target_name}>
@@ -85,6 +89,7 @@ bf_add_c_test(unit libbpfilter/if.c)
 bf_add_c_test(unit libbpfilter/io.c)
 bf_add_c_test(unit libbpfilter/core/hashset.c)
 bf_add_c_test(unit libbpfilter/core/list.c)
+# bf_add_c_test(unit libbpfilter/core/lock.c) Requires global lock to be replaced
 bf_add_c_test(unit libbpfilter/core/vector.c)
 bf_add_c_test(unit libbpfilter/logger.c)
 bf_add_c_test(unit libbpfilter/matcher.c)

@@ -6,6 +6,7 @@ Modules
    :caption: Modules
 
    libbpfilter/libbpfilter
+   core/index
 
 ``bpfilter`` is composed of multiple modules depending on each other. Splitting the project in different modules allows for the source code to be efficiently reused:
 
