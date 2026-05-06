@@ -41,8 +41,6 @@ struct bf_ctx
 
     int lock_fd;
 
-    bf_list cgens;
-
     struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
 
     /// Pass a token to BPF system calls, obtained from bpffs.
@@ -136,8 +134,6 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
         _ctx->token_fd = TAKE_FD(token_fd);
     }
 
-    _ctx->cgens = bf_list_default(bf_cgen_free, bf_cgen_pack);
-
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
         r = bf_elfstub_new(&_ctx->stubs[id], id);
         if (r)
@@ -166,7 +162,6 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
 
     closep(&(*ctx)->token_fd);
     closep(&(*ctx)->lock_fd);
-    bf_list_clean(&(*ctx)->cgens);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);
@@ -187,96 +182,7 @@ static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
 
     DUMP(prefix, "token_fd: %d", ctx->token_fd);
 
-    // Codegens
-    DUMP(bf_dump_prefix_last(prefix), "cgens: bf_list<struct bf_cgen>[%lu]",
-         bf_list_size(&ctx->cgens));
-    bf_dump_prefix_push(prefix);
-    bf_list_foreach (&ctx->cgens, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        if (bf_list_is_tail(&ctx->cgens, cgen_node))
-            bf_dump_prefix_last(prefix);
-
-        bf_cgen_dump(cgen, prefix);
-    }
     bf_dump_prefix_pop(prefix);
-
-    bf_dump_prefix_pop(prefix);
-}
-
-/**
- * See @ref bf_ctx_get_cgen for details.
- */
-static struct bf_cgen *_bf_ctx_get_cgen(const struct bf_ctx *ctx,
-                                        const char *name)
-{
-    assert(ctx);
-    assert(name);
-
-    bf_list_foreach (&ctx->cgens, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        if (bf_streq(cgen->chain->name, name))
-            return cgen;
-    }
-
-    return NULL;
-}
-
-/**
- * See @ref bf_ctx_get_cgens for details.
- */
-static int _bf_ctx_get_cgens(const struct bf_ctx *ctx, bf_list *cgens)
-{
-    _clean_bf_list_ bf_list _cgens = bf_list_default(NULL, NULL);
-    int r;
-
-    assert(ctx);
-    assert(cgens);
-
-    bf_list_foreach (&ctx->cgens, cgen_node) {
-        r = bf_list_add_tail(&_cgens, bf_list_node_get_data(cgen_node));
-        if (r)
-            return r;
-    }
-
-    *cgens = bf_list_move(_cgens);
-
-    return 0;
-}
-
-/**
- * See @ref bf_ctx_set_cgen for details.
- */
-static int _bf_ctx_set_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen)
-{
-    assert(ctx);
-    assert(cgen);
-
-    if (_bf_ctx_get_cgen(ctx, cgen->chain->name))
-        return bf_err_r(-EEXIST, "codegen already exists in context");
-
-    return bf_list_add_tail(&ctx->cgens, cgen);
-}
-
-static int _bf_ctx_delete_cgen(struct bf_ctx *ctx, struct bf_cgen *cgen,
-                               bool unload)
-{
-    bf_list_foreach (&ctx->cgens, cgen_node) {
-        struct bf_cgen *_cgen = bf_list_node_get_data(cgen_node);
-
-        if (_cgen != cgen)
-            continue;
-
-        if (unload)
-            bf_cgen_unload(_cgen);
-
-        bf_list_delete(&ctx->cgens, cgen_node);
-
-        return 0;
-    }
-
-    return -ENOENT;
 }
 
 static void _bf_free_dir(DIR **dir)
@@ -289,96 +195,6 @@ static void _bf_free_dir(DIR **dir)
 }
 
 #define _free_dir_ __attribute__((__cleanup__(_bf_free_dir)))
-
-/**
- * @brief Discover and restore chains from bpffs context maps.
- *
- * Iterates subdirectories under `{bpffs}/bpfilter/`, deserializing each
- * chain's `bf_ctx` context map into a `bf_cgen` and adding it to the
- * global context. The global context must already be initialized via
- * `bf_ctx_setup` before calling this function.
- *
- * @return 0 on success, or a negative errno value on failure.
- */
-static int _bf_ctx_discover(void)
-{
-    _cleanup_close_ int bpffs_fd = -1;
-    _cleanup_close_ int pindir_fd = -1;
-    _free_dir_ DIR *dir = NULL;
-    struct dirent *entry;
-    int iter_fd;
-    int r;
-
-    bpffs_fd = bf_opendir(_bf_global_ctx->bpffs_path);
-    if (bpffs_fd < 0) {
-        return bf_err_r(bpffs_fd, "failed to open bpffs at %s",
-                        _bf_global_ctx->bpffs_path);
-    }
-
-    pindir_fd = bf_opendir_at(bpffs_fd, "bpfilter", false);
-    if (pindir_fd < 0) {
-        if (pindir_fd == -ENOENT) {
-            bf_info("no bpfilter pin directory found, nothing to discover");
-            return 0;
-        }
-        return bf_err_r(pindir_fd, "failed to open pin directory");
-    }
-
-    /* fdopendir() takes ownership of the fd: dup so pindir_fd remains valid
-     * for openat() calls inside the loop. */
-    iter_fd = dup(pindir_fd);
-    if (iter_fd < 0)
-        return bf_err_r(-errno, "failed to dup pin directory fd");
-
-    dir = fdopendir(iter_fd);
-    if (!dir) {
-        r = -errno;
-        close(iter_fd);
-        return bf_err_r(r, "failed to open pin directory for iteration");
-    }
-
-    for (;;) {
-        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
-        _cleanup_close_ int chain_fd = -1;
-
-        errno = 0;
-        entry = readdir(dir);
-        if (!entry)
-            break;
-
-        if (bf_streq(entry->d_name, ".") || bf_streq(entry->d_name, ".."))
-            continue;
-
-        if (entry->d_type != DT_DIR)
-            continue;
-
-        chain_fd = openat(pindir_fd, entry->d_name, O_DIRECTORY);
-        if (chain_fd < 0) {
-            bf_warn("failed to open chain directory '%s', skipping",
-                    entry->d_name);
-            continue;
-        }
-
-        r = bf_cgen_new_from_dir_fd(&cgen, chain_fd);
-        if (r) {
-            bf_warn("failed to restore chain '%s', skipping", entry->d_name);
-            continue;
-        }
-
-        bf_info("discovered chain '%s'", entry->d_name);
-
-        r = bf_list_push(&_bf_global_ctx->cgens, (void **)&cgen);
-        if (r) {
-            bf_warn("failed to add restored chain '%s' to context, skipping",
-                    entry->d_name);
-        }
-    }
-
-    if (errno)
-        return bf_err_r(-errno, "failed to read pin directory");
-
-    return 0;
-}
 
 int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
@@ -401,12 +217,6 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
         return bf_err_r(-errno, "failed to lock pin directory");
     }
 
-    r = _bf_ctx_discover();
-    if (r) {
-        _bf_ctx_free(&_bf_global_ctx);
-        return bf_err_r(r, "failed to discover chains");
-    }
-
     _bf_global_ctx->lock_fd = TAKE_FD(pindir_fd);
 
     return 0;
@@ -417,24 +227,22 @@ void bf_ctx_teardown(void)
     _bf_ctx_free(&_bf_global_ctx);
 }
 
-static void _bf_ctx_flush(struct bf_ctx *ctx)
-{
-    assert(ctx);
-
-    bf_list_foreach (&ctx->cgens, cgen_node) {
-        struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-
-        bf_cgen_unload(cgen);
-        bf_list_delete(&ctx->cgens, cgen_node);
-    }
-}
-
 void bf_ctx_flush(void)
 {
+    _free_bf_list_ bf_list *cgens = NULL;
+    int r;
+
     if (!_bf_global_ctx)
         return;
 
-    _bf_ctx_flush(_bf_global_ctx);
+    r = bf_ctx_get_cgens(&cgens);
+    if (r) {
+        bf_warn_r(r, "failed to discover chains during flush");
+        return;
+    }
+
+    bf_list_foreach (cgens, cgen_node)
+        bf_cgen_unload(bf_list_node_get_data(cgen_node));
 }
 
 void bf_ctx_dump(prefix_t *prefix)
@@ -445,36 +253,115 @@ void bf_ctx_dump(prefix_t *prefix)
     _bf_ctx_dump(_bf_global_ctx, prefix);
 }
 
-struct bf_cgen *bf_ctx_get_cgen(const char *name)
+int bf_ctx_get_cgen(const char *name, struct bf_cgen **cgen)
 {
-    if (!_bf_global_ctx)
-        return NULL;
+    _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
+    _cleanup_close_ int pindir_fd = -1;
+    _cleanup_close_ int chain_fd = -1;
+    int r;
 
-    return _bf_ctx_get_cgen(_bf_global_ctx, name);
-}
+    assert(name);
+    assert(cgen);
 
-int bf_ctx_get_cgens(bf_list *cgens)
-{
-    if (!_bf_global_ctx)
-        return bf_err_r(-EINVAL, "context is not initialized");
-
-    return _bf_ctx_get_cgens(_bf_global_ctx, cgens);
-}
-
-int bf_ctx_set_cgen(struct bf_cgen *cgen)
-{
     if (!_bf_global_ctx)
         return bf_err_r(-EINVAL, "context is not initialized");
 
-    return _bf_ctx_set_cgen(_bf_global_ctx, cgen);
+    pindir_fd = bf_ctx_get_pindir_fd();
+    if (pindir_fd < 0)
+        return pindir_fd;
+
+    chain_fd = bf_opendir_at(pindir_fd, name, false);
+    if (chain_fd < 0)
+        return chain_fd;
+
+    r = bf_cgen_new_from_dir_fd(&_cgen, chain_fd);
+    if (r)
+        return bf_err_r(r, "failed to load chain '%s' from bpffs", name);
+
+    *cgen = TAKE_PTR(_cgen);
+
+    return 0;
 }
 
-int bf_ctx_delete_cgen(struct bf_cgen *cgen, bool unload)
+int bf_ctx_get_cgens(bf_list **cgens)
 {
+    _free_bf_list_ bf_list *_cgens = NULL;
+    _cleanup_close_ int pindir_fd = -1;
+    _free_dir_ DIR *dir = NULL;
+    struct dirent *entry;
+    int iter_fd;
+    int r;
+
+    assert(cgens);
+
     if (!_bf_global_ctx)
         return bf_err_r(-EINVAL, "context is not initialized");
 
-    return _bf_ctx_delete_cgen(_bf_global_ctx, cgen, unload);
+    r = bf_list_new(&_cgens, &bf_list_ops_default(bf_cgen_free, bf_cgen_pack));
+    if (r)
+        return bf_err_r(r, "failed to allocate cgen list");
+
+    pindir_fd = bf_ctx_get_pindir_fd();
+    if (pindir_fd < 0)
+        return bf_err_r(pindir_fd, "failed to get pin directory FD");
+
+    /* fdopendir() takes ownership of the fd: dup so pindir_fd remains valid
+     * for openat() calls inside the loop. */
+    iter_fd = dup(pindir_fd);
+    if (iter_fd < 0)
+        return bf_err_r(-errno, "failed to dup pin directory fd");
+
+    dir = fdopendir(iter_fd);
+    if (!dir) {
+        r = -errno;
+        close(iter_fd);
+        return bf_err_r(r, "failed to open pin directory for iteration");
+    }
+
+    while (true) {
+        _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+        _cleanup_close_ int chain_fd = -1;
+
+        errno = 0;
+        entry = readdir(dir);
+        if (!entry && errno != 0) {
+            bf_warn_r(errno, "readdir failed, returning partial results");
+            break;
+        }
+        if (!entry)
+            break;
+
+        if (bf_streq(entry->d_name, ".") || bf_streq(entry->d_name, ".."))
+            continue;
+
+        if (entry->d_type != DT_DIR)
+            continue;
+
+        chain_fd = openat(pindir_fd, entry->d_name, O_DIRECTORY);
+        if (chain_fd < 0) {
+            bf_warn_r(errno, "failed to open chain directory '%s', skipping",
+                      entry->d_name);
+            continue;
+        }
+
+        r = bf_cgen_new_from_dir_fd(&cgen, chain_fd);
+        if (r) {
+            bf_warn_r(r, "failed to restore chain '%s', skipping",
+                      entry->d_name);
+            continue;
+        }
+
+        r = bf_list_push(_cgens, (void **)&cgen);
+        if (r) {
+            bf_warn_r(r, "failed to push chain '%s' to list, skipping",
+                      entry->d_name);
+            continue;
+        }
+    }
+
+    *cgens = TAKE_PTR(_cgens);
+
+    return 0;
 }
 
 int bf_ctx_token(void)
