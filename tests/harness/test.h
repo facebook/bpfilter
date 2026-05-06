@@ -182,3 +182,32 @@ int bft_hook_drop(enum bf_hook hook);
  * @return The flavor-specific next verdict.
  */
 int bft_hook_next(enum bf_hook hook);
+
+/**
+ * @brief Initialize the global test `bf_ctx`.
+ *
+ * @pre
+ * - `state` is not NULL.
+ * @post
+ * - On success: `*state` is a pointer to a valid heap-allocated `bft_tmpdir`
+ *   object, and the global `bf_ctx` has been initalized with the temporary
+ *   directory.
+ * - On failure: `*state` is unchanged.
+ *
+ * @param state Pointer to a custom object, provided by CMocka.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bft_setup_ctx(void **state);
+
+/**
+ * @brief Cleanup the global test `bf_ctx`.
+ *
+ * @pre
+ * - `state` is not NULL, `*state` points to a valid `bft_tmpdir`.
+ * @post
+ * - The `bft_tmpdir` has been deallocated, `*state` is NULL.
+ *
+ * @param state Pointer to a custom test object, provided by CMocka.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bft_teardown_ctx(void **state);

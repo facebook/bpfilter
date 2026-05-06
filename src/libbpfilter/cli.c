@@ -46,7 +46,7 @@ static int copy_hookopts(struct bf_hookopts **dest,
 
 int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 {
-    _clean_bf_list_ bf_list cgens = bf_list_default(NULL, NULL);
+    _free_bf_list_ bf_list *cgens = NULL;
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
@@ -56,7 +56,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
     if (r < 0)
         return bf_err_r(r, "failed to get cgen list");
 
-    bf_list_foreach (&cgens, cgen_node) {
+    bf_list_foreach (cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
         _free_bf_chain_ struct bf_chain *chain = NULL;
         _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
@@ -142,14 +142,6 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
             goto err_load;
         }
 
-        r = bf_ctx_set_cgen(cgen);
-        if (r) {
-            bf_cgen_unload(cgen);
-            goto err_load;
-        }
-
-        TAKE_PTR(cgen);
-
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);
     }
@@ -170,7 +162,7 @@ int bf_ruleset_flush(void)
 
 int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 {
-    struct bf_cgen *old_cgen;
+    _free_bf_cgen_ struct bf_cgen *old_cgen = NULL;
     _free_bf_cgen_ struct bf_cgen *new_cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
@@ -192,23 +184,13 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
     if (r)
         return r;
 
-    old_cgen = bf_ctx_get_cgen(new_cgen->chain->name);
+    r = bf_ctx_get_cgen(new_cgen->chain->name, &old_cgen);
+    if (r && r != -ENOENT)
+        return r;
     if (old_cgen)
-        (void)bf_ctx_delete_cgen(old_cgen, true);
+        bf_cgen_unload(old_cgen);
 
-    r = bf_cgen_set(new_cgen, hookopts_copy ? &hookopts_copy : NULL);
-    if (r)
-        return r;
-
-    r = bf_ctx_set_cgen(new_cgen);
-    if (r) {
-        bf_cgen_unload(new_cgen);
-        return r;
-    }
-
-    TAKE_PTR(new_cgen);
-
-    return 0;
+    return bf_cgen_set(new_cgen, hookopts_copy ? &hookopts_copy : NULL);
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
@@ -217,7 +199,7 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
     _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(name);
@@ -225,9 +207,9 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     assert(hookopts);
     assert(counters);
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return bf_err_r(-ENOENT, "chain '%s' not found", name);
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
     r = bf_chain_new_from_copy(&_chain, cgen->chain);
     if (r)
@@ -252,14 +234,14 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
 
 int bf_chain_prog_fd(const char *name)
 {
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+    int r;
 
-    if (!name)
-        return -EINVAL;
+    assert(name);
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
     if (cgen->handle->prog_fd == -1)
         return bf_err_r(-ENODEV, "chain '%s' has no loaded program", name);
@@ -269,14 +251,14 @@ int bf_chain_prog_fd(const char *name)
 
 int bf_chain_logs_fd(const char *name)
 {
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+    int r;
 
-    if (!name)
-        return -EINVAL;
+    assert(name);
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return bf_err_r(-ENOENT, "failed to find chain '%s'", name);
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
     if (!cgen->handle->lmap)
         return bf_err_r(-ENOENT, "chain '%s' has no logs buffer", name);
@@ -286,14 +268,18 @@ int bf_chain_logs_fd(const char *name)
 
 int bf_chain_load(struct bf_chain *chain)
 {
+    _free_bf_cgen_ struct bf_cgen *existing = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
     int r;
 
     assert(chain);
 
-    if (bf_ctx_get_cgen(chain->name))
+    r = bf_ctx_get_cgen(chain->name, &existing);
+    if (r == 0)
         return bf_err_r(-EEXIST, "chain '%s' already exists", chain->name);
+    if (r != -ENOENT)
+        return r;
 
     r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
@@ -303,33 +289,21 @@ int bf_chain_load(struct bf_chain *chain)
     if (r)
         return r;
 
-    r = bf_cgen_load(cgen);
-    if (r)
-        return r;
-
-    r = bf_ctx_set_cgen(cgen);
-    if (r) {
-        bf_cgen_unload(cgen);
-        return bf_err_r(r, "failed to add cgen to the runtime context");
-    }
-
-    TAKE_PTR(cgen);
-
-    return 0;
+    return bf_cgen_load(cgen);
 }
 
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 {
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
     int r;
 
     assert(name);
     assert(hookopts);
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
     if (cgen->handle->link)
         return bf_err_r(-EBUSY, "chain '%s' is already linked to a hook", name);
@@ -352,24 +326,20 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
 int bf_chain_update(const struct bf_chain *chain)
 {
     _free_bf_chain_ struct bf_chain *chain_copy = NULL;
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(chain);
 
-    cgen = bf_ctx_get_cgen(chain->name);
-    if (!cgen)
-        return -ENOENT;
+    r = bf_ctx_get_cgen(chain->name, &cgen);
+    if (r)
+        return r;
 
     r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
         return r;
 
-    r = bf_cgen_update(cgen, &chain_copy, 0);
-    if (r)
-        return r;
-
-    return 0;
+    return bf_cgen_update(cgen, &chain_copy, 0);
 }
 
 static int copy_set(struct bf_set **dest, const struct bf_set *src)
@@ -411,7 +381,7 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
 {
     _free_bf_chain_ struct bf_chain *new_chain = NULL;
     struct bf_set *dest_set = NULL;
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     _free_bf_set_ struct bf_set *add_copy = NULL;
     _free_bf_set_ struct bf_set *remove_copy = NULL;
     int r;
@@ -423,9 +393,9 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
     if (!bf_streq(to_add->name, to_remove->name))
         return bf_err_r(-EINVAL, "to_add->name must match to_remove->name");
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return bf_err_r(-ENOENT, "chain '%s' does not exist", name);
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
     r = bf_chain_new_from_copy(&new_chain, cgen->chain);
     if (r)
@@ -461,13 +431,16 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
 
 int bf_chain_flush(const char *name)
 {
-    struct bf_cgen *cgen;
+    _free_bf_cgen_ struct bf_cgen *cgen = NULL;
+    int r;
 
     assert(name);
 
-    cgen = bf_ctx_get_cgen(name);
-    if (!cgen)
-        return -ENOENT;
+    r = bf_ctx_get_cgen(name, &cgen);
+    if (r)
+        return r;
 
-    return bf_ctx_delete_cgen(cgen, true);
+    bf_cgen_unload(cgen);
+
+    return 0;
 }

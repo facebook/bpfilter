@@ -312,3 +312,33 @@ bool bft_matcher_equal(const struct bf_matcher *matcher0,
                        bf_matcher_payload(matcher1),
                        bf_matcher_payload_len(matcher0));
 }
+
+int bft_setup_ctx(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+    int r;
+
+    r = bft_tmpdir_new(&tmpdir);
+    if (r)
+        return r;
+
+    r = bf_ctx_setup(false, tmpdir->dir_path, BF_FLAG(BF_VERBOSE_DEBUG));
+    if (r)
+        return r;
+
+    *state = TAKE_PTR(tmpdir);
+
+    return 0;
+}
+
+int bft_teardown_ctx(void **state)
+{
+    struct bft_tmpdir *tmpdir = *state;
+
+    bf_ctx_teardown();
+    bft_tmpdir_free(&tmpdir);
+
+    *state = NULL;
+
+    return 0;
+}
