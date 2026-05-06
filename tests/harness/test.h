@@ -150,6 +150,8 @@ struct bft_tmpdir
     char *dir_path;
 };
 
+#define _free_bft_tmpdir_ __attribute__((cleanup(bft_tmpdir_free)))
+
 int bft_tmpdir_new(struct bft_tmpdir **tmpdir);
 void bft_tmpdir_free(struct bft_tmpdir **tmpdir);
 
