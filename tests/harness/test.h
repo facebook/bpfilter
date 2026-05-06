@@ -63,6 +63,7 @@ struct bf_counter;
             0);                                                                \
     } while (0)
 #define assert_fd_empty(fd) assert_int_equal(fd, -1)
+#define assert_fd(fd) assert_int_gte(fd, 0)
 
 #define assert_rule_equal(rule0, rule1)                                        \
     do {                                                                       \
