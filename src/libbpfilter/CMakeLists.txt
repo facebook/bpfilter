@@ -49,6 +49,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/hashset.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/list.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/lock.h             ${CMAKE_CURRENT_SOURCE_DIR}/core/lock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/core/vector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/logger.c
     ${CMAKE_CURRENT_SOURCE_DIR}/matcher.c

@@ -410,3 +410,8 @@ bool bf_ctx_is_verbose(enum bf_verbose opt)
 
     return _bf_global_ctx->verbose & BF_FLAG(opt);
 }
+
+const char *bf_ctx_get_bpffs_path(void)
+{
+    return _bf_global_ctx->bpffs_path;
+}

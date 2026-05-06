@@ -88,6 +88,8 @@ set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/style.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/tests.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/core/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/core/locking.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/modules/libbpfilter/libbpfilter.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/benchmarks/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/external/coverage/index.rst

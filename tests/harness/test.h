@@ -14,7 +14,9 @@
 // clang-format on
 
 #include <linux/kcmp.h>
+#include <linux/limits.h>
 
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -31,6 +33,27 @@ struct bf_counter;
 #define assert_int_gte(expr, ref) assert_true((expr) >= (ref))
 #define assert_int_lt(expr, ref) assert_true((expr) < (ref))
 #define assert_int_lte(expr, ref) assert_true((expr) <= (ref))
+
+#define assert_dir_exists(tmpdir, name)                                        \
+    do {                                                                       \
+        char _path[PATH_MAX];                                                  \
+        struct stat _st;                                                       \
+                                                                               \
+        (void)snprintf(_path, sizeof(_path), "%s/%s", (tmpdir)->dir_path,      \
+                       (name));                                                \
+        assert_int_equal(stat(_path, &_st), 0);                                \
+        assert_true(S_ISDIR(_st.st_mode));                                     \
+    } while (0)
+
+#define assert_dir_not_exists(tmpdir, name)                                    \
+    do {                                                                       \
+        char _path[PATH_MAX];                                                  \
+        struct stat _st;                                                       \
+                                                                               \
+        (void)snprintf(_path, sizeof(_path), "%s/%s", (tmpdir)->dir_path,      \
+                       (name));                                                \
+        assert_int_not_equal(stat(_path, &_st), 0);                            \
+    } while (0)
 
 #define assert_enum_to_str(type, to_str, first, max)                           \
     do {                                                                       \
