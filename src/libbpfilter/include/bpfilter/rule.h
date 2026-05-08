@@ -63,7 +63,9 @@ struct bf_rule
      * See `bf_rule_mark_is_set`. */
     uint64_t mark;
 
-    bool counters;
+    /** If set, the rule records matched elements count, and `bf_rule::counters`
+     * is valid. */
+    uint8_t has_counters:1;
 
     /** If true, skip this rule during flag calculation and code generation. */
     bool disabled;

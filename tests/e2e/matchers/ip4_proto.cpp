@@ -24,7 +24,7 @@ static void ip4_proto_eq(void **state)
     // IPPROTO_TCP = 6
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_proto", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, {6})}));
 
     // TCP packet -> protocol=6 -> DROP
@@ -47,7 +47,7 @@ static void ip4_proto_eq(void **state)
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_ip4_proto", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                                            {6}, true)}));
 
@@ -84,7 +84,7 @@ static void ip4_proto_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_ip4_proto", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 

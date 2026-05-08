@@ -23,7 +23,7 @@ static void udp_dport_eq(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
                                            bft_port_be(53))}));
 
@@ -61,7 +61,7 @@ static void udp_dport_eq(void **state)
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
                                            bft_port_be(53), true)}));
 
@@ -103,7 +103,7 @@ static void udp_dport_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 
@@ -143,7 +143,7 @@ static void udp_dport_range(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_UDP_DPORT, BF_MATCHER_RANGE,
                                  bft_port_range(50, 100))}));
 

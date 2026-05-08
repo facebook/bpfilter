@@ -299,7 +299,7 @@ rule            : RULE matchers rule_options rule_verdict
                         bf_parse_err("failed to create a new bf_rule\n");
 
                     rule->log = $3.flags & BF_RULE_OPTION_LOG ? $3.log : 0;
-                    rule->counters = $3.flags & BF_RULE_OPTION_COUNTER ? $3.counter : false;
+                    rule->has_counters = $3.flags & BF_RULE_OPTION_COUNTER ? 1 : 0;
 
                     if ($3.flags & BF_RULE_OPTION_MARK)
                         bf_rule_mark_set(rule, $3.mark);

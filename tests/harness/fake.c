@@ -191,7 +191,7 @@ struct bf_rule *bft_rule_dummy(size_t n_matchers)
     rule->index = 0;
     rule->log = BF_FLAGS(BF_LOG_OPT_INTERNET, BF_LOG_OPT_TRANSPORT);
     rule->mark = 0x17;
-    rule->counters = true;
+    rule->has_counters = 1;
     rule->verdict = BF_VERDICT_ACCEPT;
 
     for (size_t i = 0; i < n_matchers; ++i) {

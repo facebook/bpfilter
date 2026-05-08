@@ -6,12 +6,14 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
 #include "Matcher.hpp"
 
 extern "C" {
+#include <bpfilter/counter.h>
 #include <bpfilter/rule.h>
 #include <bpfilter/runtime.h>
 #include <bpfilter/verdict.h>
@@ -32,13 +34,14 @@ private:
     };
 
     bf_verdict _verdict;
-    bool _counters;
+    std::optional<struct bf_counter> _counters;
     uint8_t _log;
     std::vector<Matcher> _matchers;
 
 public:
-    Rule(bf_verdict verdict, bool counters = false, uint8_t log = 0,
-         std::vector<Matcher> matchers = {}):
+    Rule(bf_verdict verdict,
+         std::optional<struct bf_counter> counters = std::nullopt,
+         uint8_t log = 0, std::vector<Matcher> matchers = {}):
         _verdict {verdict},
         _counters {counters},
         _log {log},
@@ -61,7 +64,7 @@ public:
             throw std::runtime_error("failed to create bf_rule");
 
         rule->log = _log;
-        rule->counters = _counters;
+        rule->has_counters = _counters.has_value();
         rule->verdict = _verdict;
 
         for (const Matcher &matcher: _matchers) {

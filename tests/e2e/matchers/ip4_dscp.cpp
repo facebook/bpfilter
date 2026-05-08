@@ -28,7 +28,7 @@ static void ip4_dscp_eq(void **state)
     // DSCP 8 (CS1): raw 6-bit value, maps to TOS byte 0x20 when ECN=0
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_dscp", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_IP4_DSCP, BF_MATCHER_EQ, {8})}));
 
     // tos=0x20 (DSCP=8, ECN=0) matches -> DROP
@@ -63,7 +63,7 @@ static void ip4_dscp_eq(void **state)
     // Negation
     BFT_CHAIN_SET(
         bf::Chain("test_ip4_dscp", test->hook(), BF_VERDICT_ACCEPT) << bf::Rule(
-            BF_VERDICT_DROP, true, {},
+            BF_VERDICT_DROP, bf_counter(), {},
             {bf::Matcher(BF_MATCHER_IP4_DSCP, BF_MATCHER_EQ, {8}, true)}));
 
     // tos=0x20 (DSCP=8) matches the reference value, not eq does not fire -> ACCEPT

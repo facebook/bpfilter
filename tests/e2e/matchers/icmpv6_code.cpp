@@ -25,7 +25,7 @@ static void icmpv6_code_eq(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_icmpv6_code", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_ICMPV6_CODE, BF_MATCHER_EQ, {3})}));
 
     // ICMPv6 code=3 should match -> DROP
@@ -56,7 +56,7 @@ static void icmpv6_code_eq(void **state)
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_icmpv6_code", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_ICMPV6_CODE,
                                            BF_MATCHER_EQ, {3}, true)}));
 
@@ -100,7 +100,7 @@ static void icmpv6_code_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_icmpv6_code", test->hook(), BF_VERDICT_ACCEPT)
                   << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 

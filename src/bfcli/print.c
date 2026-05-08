@@ -298,7 +298,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             (void)fprintf(stdout, "        mark 0x%x\n",
                           bf_rule_mark_get(rule));
 
-        if (rule->counters) {
+        if (rule->has_counters) {
             counter = bf_list_node_get_data(counter_node);
             if (is_pkt_hook) {
                 (void)fprintf(stdout,
