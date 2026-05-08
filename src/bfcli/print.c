@@ -83,27 +83,13 @@ static void bf_dump_hex_local(const void *data, size_t len)
 }
 
 void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
-                    bf_list *counters, bool no_set_content)
+                    bool no_set_content)
 {
-    struct bf_counter *counter;
-    bf_list_node *counter_node, *policy_counter_node, *err_counter_node;
     bool need_comma = false;
     bool is_pkt_hook;
 
     assert(chain);
-    assert(counters);
 
-    if (bf_list_size(counters) != bf_list_size(&chain->rules) + 2) {
-        bf_err(
-            "chain %s is corrupted: total number of counters doesn't match the number of rules and chain counters",
-            chain->name);
-        return;
-    }
-
-    // Last counter is the error counter, the chain counter is second to last
-    counter_node = bf_list_get_head(counters);
-    err_counter_node = bf_list_get_tail(counters);
-    policy_counter_node = bf_list_node_prev(err_counter_node);
     is_pkt_hook = bf_hook_to_flavor(chain->hook) != BF_FLAVOR_CGROUP_SOCK_ADDR;
 
     (void)fprintf(stdout, "chain %s %s", chain->name,
@@ -140,21 +126,20 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
     (void)fprintf(stdout, " %s\n", bf_verdict_to_str(chain->policy));
 
-    counter = bf_list_node_get_data(policy_counter_node);
     if (is_pkt_hook) {
         (void)fprintf(stdout, "    counters policy %lu packets %lu bytes; ",
-                      counter->count, counter->size);
+                      chain->policy_counters.count,
+                      chain->policy_counters.size);
     } else {
         (void)fprintf(stdout, "    counters policy %lu calls; ",
-                      counter->count);
+                      chain->policy_counters.count);
     }
 
-    counter = bf_list_node_get_data(err_counter_node);
     if (is_pkt_hook) {
-        (void)fprintf(stdout, "error %lu packets %lu bytes\n", counter->count,
-                      counter->size);
+        (void)fprintf(stdout, "error %lu packets %lu bytes\n",
+                      chain->error_counters.count, chain->error_counters.size);
     } else {
-        (void)fprintf(stdout, "error %lu calls\n", counter->count);
+        (void)fprintf(stdout, "error %lu calls\n", chain->error_counters.count);
     }
 
     // Loop over named sets
@@ -299,17 +284,15 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
                           bf_rule_mark_get(rule));
 
         if (rule->has_counters) {
-            counter = bf_list_node_get_data(counter_node);
             if (is_pkt_hook) {
                 (void)fprintf(stdout,
                               "        counters %lu packets %lu bytes\n",
-                              counter->count, counter->size);
+                              rule->counters.count, rule->counters.size);
             } else {
                 (void)fprintf(stdout, "        counters %lu calls\n",
-                              counter->count);
+                              rule->counters.count);
             }
         }
-        counter_node = bf_list_node_next(counter_node);
 
         if (rule->verdict == BF_VERDICT_REDIRECT) {
             (void)fprintf(stdout, "        REDIRECT %u %s\n",
@@ -322,34 +305,26 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     }
 }
 
-int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters,
-                     bool no_set_content)
+int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bool no_set_content)
 {
     struct bf_list_node *chain_node;
     struct bf_list_node *hookopts_node;
-    struct bf_list_node *counter_node;
 
     assert(chains);
     assert(hookopts);
-    assert(counters);
 
     if (bf_list_size(chains) != bf_list_size(hookopts))
-        return -EINVAL;
-    if (bf_list_size(counters) != bf_list_size(chains))
         return -EINVAL;
 
     chain_node = bf_list_get_head(chains);
     hookopts_node = bf_list_get_head(hookopts);
-    counter_node = bf_list_get_head(counters);
 
     while (chain_node) {
         bfc_chain_dump(bf_list_node_get_data(chain_node),
-                       bf_list_node_get_data(hookopts_node),
-                       bf_list_node_get_data(counter_node), no_set_content);
+                       bf_list_node_get_data(hookopts_node), no_set_content);
 
         chain_node = bf_list_node_next(chain_node);
         hookopts_node = bf_list_node_next(hookopts_node);
-        counter_node = bf_list_node_next(counter_node);
     }
 
     return 0;

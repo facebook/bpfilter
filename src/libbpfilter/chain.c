@@ -257,7 +257,7 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
         return bf_err_r(-EINVAL, "invalid policy '%s'",
                         bf_verdict_to_str(policy));
 
-    _chain = malloc(sizeof(*_chain));
+    _chain = calloc(1, sizeof(*_chain));
     if (!_chain)
         return -ENOMEM;
 
@@ -406,6 +406,18 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
 
         bf_rule_dump(bf_list_node_get_data(rule_node), prefix);
     }
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "policy_counters: struct bf_counter");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "count: %lu", chain->policy_counters.count);
+    DUMP(prefix, "size: %lu", chain->policy_counters.size);
+    bf_dump_prefix_pop(prefix);
+
+    DUMP(prefix, "error_counters: struct bf_counter");
+    bf_dump_prefix_push(prefix);
+    DUMP(prefix, "count: %lu", chain->error_counters.count);
+    DUMP(prefix, "size: %lu", chain->error_counters.size);
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);

@@ -23,6 +23,7 @@
 #include <bpfilter/hook.h>
 #include <bpfilter/logger.h>
 #include <bpfilter/pack.h>
+#include <bpfilter/rule.h>
 
 #include "cgen/dump.h"
 #include "cgen/handle.h"
@@ -248,6 +249,42 @@ void bf_cgen_dump(const struct bf_cgen *cgen, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     bf_dump_prefix_pop(prefix);
+}
+
+int bf_cgen_load_counters(struct bf_cgen *cgen)
+{
+    int r;
+
+    assert(cgen);
+
+    bf_list_foreach (&cgen->chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        if (!rule->has_counters)
+            continue;
+
+        r = bf_cgen_get_counter(cgen, rule->index, &rule->counters);
+        if (r) {
+            return bf_err_r(r, "failed to load counter for rule %u",
+                            rule->index);
+        }
+    }
+
+    r = bf_cgen_get_counter(cgen, BF_COUNTER_POLICY,
+                            &cgen->chain->policy_counters);
+    if (r) {
+        return bf_err_r(r, "failed to load policy counters for '%s'",
+                        cgen->chain->name);
+    }
+
+    r = bf_cgen_get_counter(cgen, BF_COUNTER_ERRORS,
+                            &cgen->chain->error_counters);
+    if (r) {
+        return bf_err_r(r, "failed to load error counters for '%s'",
+                        cgen->chain->name);
+    }
+
+    return 0;
 }
 
 int bf_cgen_get_counter(const struct bf_cgen *cgen,
@@ -532,45 +569,4 @@ void bf_cgen_unload(struct bf_cgen *cgen, struct bf_lock *lock)
     unlinkat(lock->chain_fd, _BF_CTX_PIN_NAME, 0);
     bf_handle_unpin(cgen->handle, lock);
     bf_handle_unload(cgen->handle);
-}
-
-int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters)
-{
-    bf_list _counters;
-    int r;
-
-    assert(cgen);
-    assert(counters);
-
-    _counters = bf_list_default_from(*counters);
-
-    /* Iterate over all the rules, then the policy counter (size(rules)) and
-     * the errors counters (sizeof(rules) + 1)*/
-    for (size_t i = 0; i < bf_list_size(&cgen->chain->rules) + 2; ++i) {
-        _free_bf_counter_ struct bf_counter *counter = NULL;
-        ssize_t idx = (ssize_t)i;
-
-        if (i == bf_list_size(&cgen->chain->rules))
-            idx = BF_COUNTER_POLICY;
-        else if (i == bf_list_size(&cgen->chain->rules) + 1)
-            idx = BF_COUNTER_ERRORS;
-
-        r = bf_counter_new(&counter, 0, 0);
-        if (r)
-            return r;
-
-        r = bf_cgen_get_counter(cgen, idx, counter);
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&_counters, counter);
-        if (r)
-            return r;
-
-        TAKE_PTR(counter);
-    }
-
-    *counters = bf_list_move(_counters);
-
-    return 0;
 }

@@ -193,6 +193,39 @@ enum bf_counter_type
 };
 
 /**
+ * @brief Load the chain's counters from the BPF counters map.
+ *
+ * Refresh `cgen->chain` with the current counter values stored in the BPF
+ * counters map:
+ * - Rule counters are loaded into `bf_rule.counters` for rules with
+ *   `has_counters == 1` only; rules with `has_counters == 0` are left
+ *   untouched.
+ * - The chain's policy and error counters are always loaded into
+ *   `bf_chain.policy_counters` and `bf_chain.error_counters`, regardless of
+ *   any rule's `has_counters` value.
+ *
+ * On failure, `cgen->chain` may be partially updated: counters loaded before
+ * the failing lookup retain their new values, the others are left unchanged.
+ * Callers that need transactional semantics must snapshot the chain before
+ * the call.
+ *
+ * @pre
+ * - `cgen` is not NULL.
+ * - `cgen->handle->cmap` is populated, i.e. the chain has been loaded into
+ *   the kernel. Calling this function on a cgen without a counters map
+ *   returns an error.
+ * @post
+ * - On success: every rule with `has_counters == 1` has its `counters` field
+ *   refreshed, and the chain's `policy_counters` and `error_counters` are
+ *   refreshed.
+ * - On failure: `cgen->chain` may be partially updated (see above).
+ *
+ * @param cgen Codegen to load counters for.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_cgen_load_counters(struct bf_cgen *cgen);
+
+/**
  * Get packets and bytes counter at a specific index.
  *
  * Counters are referenced by their index in the counters map or the enum
@@ -211,21 +244,3 @@ enum bf_counter_type
 int bf_cgen_get_counter(const struct bf_cgen *cgen,
                         enum bf_counter_type counter_idx,
                         struct bf_counter *counter);
-
-/**
- * Get the counters for all the rules.
- *
- * Create a new `bf_counter` structure for each rule (and the policy/error
- * counters) and add it to the list.
- *
- * The caller owns the `bf_counter` in the list and is responsible for freeing
- * it.
- *
- * A `bf_counter` object will be created even if the rule has no counter
- * define, but it will be empty.
- *
- * @param cgen Codegen to fetch the counters for. Can't be NULL.
- * @param counters List of counters, filled by the function. Can't be NULL.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_cgen_get_counters(const struct bf_cgen *cgen, bf_list *counters);

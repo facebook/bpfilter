@@ -86,9 +86,17 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.log");
 
-    r = bf_rpack_kv_bool(node, "has_counters", &has_counters);
-    if (r)
-        return bf_rpack_key_err(r, "bf_rule.has_counters");
+    if (bf_rpack_kv_contains(node, "has_counters")) {
+        r = bf_rpack_kv_bool(node, "has_counters", &has_counters);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.has_counters");
+    } else if (bf_rpack_kv_contains(node, "counters")) {
+        r = bf_rpack_kv_bool(node, "counters", &has_counters);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.counters");
+    } else {
+        return bf_err_r(-ENOENT, "missing bf_rule counters flag in pack");
+    }
     _rule->has_counters = has_counters;
 
     r = bf_rpack_kv_u64(node, "mark", &_rule->mark);
@@ -187,7 +195,16 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "log: %02x", rule->log);
+
     DUMP(prefix, "has_counters: %s", rule->has_counters ? "yes" : "no");
+    if (rule->has_counters) {
+        DUMP(prefix, "counters: struct bf_counter");
+        bf_dump_prefix_push(prefix);
+        DUMP(prefix, "count: %lu", rule->counters.count);
+        DUMP(prefix, "size: %lu", rule->counters.size);
+        bf_dump_prefix_pop(prefix);
+    }
+
     DUMP(prefix, "disabled: %s", rule->disabled ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
     DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));

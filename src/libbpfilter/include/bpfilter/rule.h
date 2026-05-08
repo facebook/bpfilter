@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <bpfilter/core/list.h>
+#include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/matcher.h>
 #include <bpfilter/pack.h>
@@ -66,6 +67,14 @@ struct bf_rule
     /** If set, the rule records matched elements count, and `bf_rule::counters`
      * is valid. */
     uint8_t has_counters:1;
+
+    /** Element and size counters for matched traffic. Only valid if
+     * `has_counters == 1`. This field is used when reading a chain, not when
+     * creating it. This field is not serialized.
+     *
+     * @todo Use this field to allow users to initialize the rule's counters
+     * to a specific value. */
+    struct bf_counter counters;
 
     /** If true, skip this rule during flag calculation and code generation. */
     bool disabled;
