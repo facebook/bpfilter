@@ -22,7 +22,7 @@ static void meta_sport_eq(void **state)
     auto *test = static_cast<MatcherTest *>(*state);
 
     BFT_CHAIN_SET(bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_EQ,
                                            bft_port_be(12345))}));
 
@@ -71,7 +71,7 @@ static void meta_sport_eq(void **state)
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_EQ,
                                            bft_port_be(12345), true)}));
 
@@ -111,7 +111,7 @@ static void meta_sport_range(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
                                  bft_port_range(1000, 2000))}));
 

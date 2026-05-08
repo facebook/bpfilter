@@ -69,6 +69,7 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
 {
     _free_bf_rule_ struct bf_rule *_rule = NULL;
     bf_rpack_node_t m_nodes, m_node;
+    bool has_counters;
     int r;
 
     assert(rule);
@@ -85,9 +86,10 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.log");
 
-    r = bf_rpack_kv_bool(node, "counters", &_rule->counters);
+    r = bf_rpack_kv_bool(node, "has_counters", &has_counters);
     if (r)
-        return bf_rpack_key_err(r, "bf_rule.counters");
+        return bf_rpack_key_err(r, "bf_rule.has_counters");
+    _rule->has_counters = has_counters;
 
     r = bf_rpack_kv_u64(node, "mark", &_rule->mark);
     if (r)
@@ -149,7 +151,7 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
 
     bf_wpack_kv_u32(pack, "index", rule->index);
     bf_wpack_kv_u8(pack, "log", rule->log);
-    bf_wpack_kv_bool(pack, "counters", rule->counters);
+    bf_wpack_kv_bool(pack, "has_counters", rule->has_counters);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);
     bf_wpack_kv_u32(pack, "redirect_ifindex", rule->redirect_ifindex);
@@ -185,7 +187,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "log: %02x", rule->log);
-    DUMP(prefix, "counters: %s", rule->counters ? "yes" : "no");
+    DUMP(prefix, "has_counters: %s", rule->has_counters ? "yes" : "no");
     DUMP(prefix, "disabled: %s", rule->disabled ? "yes" : "no");
     DUMP(prefix, "mark: 0x%" PRIx64, rule->mark);
     DUMP(prefix, "verdict: %s", bf_verdict_to_str(rule->verdict));

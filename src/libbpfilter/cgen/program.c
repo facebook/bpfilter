@@ -565,7 +565,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
             return r;
     }
 
-    if (rule->counters) {
+    if (rule->has_counters) {
         EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
         EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
         EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);

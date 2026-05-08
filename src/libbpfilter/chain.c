@@ -297,8 +297,8 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     enum bf_hook hook;
     enum bf_verdict policy;
     bf_rpack_node_t array, array_node;
-    bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
-    bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
     int r;
 
     r = bf_rpack_kv_str(node, "name", &name);

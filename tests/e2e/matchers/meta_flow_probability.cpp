@@ -25,7 +25,7 @@ static void meta_flow_probability_eq(void **state)
     // 100.0f always matches
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fprob", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_PROBABILITY,
                                  BF_MATCHER_EQ, bft_float_payload(100.0f))}));
 
@@ -41,7 +41,7 @@ static void meta_flow_probability_eq(void **state)
     // 0.0f should never match
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fprob", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_PROBABILITY,
                                  BF_MATCHER_EQ, bft_float_payload(0.0f))}));
 
@@ -56,7 +56,7 @@ static void meta_flow_probability_eq(void **state)
 
     // Negated 100.0f should never match
     BFT_CHAIN_SET(bf::Chain("test_meta_fprob", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_META_FLOW_PROBABILITY,
                                            BF_MATCHER_EQ,
                                            bft_float_payload(100.0f), true)}));
@@ -72,7 +72,7 @@ static void meta_flow_probability_eq(void **state)
 
     // Negated 0.0f should always match
     BFT_CHAIN_SET(bf::Chain("test_meta_fprob", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_META_FLOW_PROBABILITY,
                                            BF_MATCHER_EQ,
                                            bft_float_payload(0.0f), true)}));
@@ -91,7 +91,7 @@ static void meta_flow_probability_eq(void **state)
     // not fire even at 100% probability.
     BFT_CHAIN_SET(
         bf::Chain("test_meta_fprob", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_META_FLOW_PROBABILITY,
                                  BF_MATCHER_EQ, bft_float_payload(100.0f))}));
 

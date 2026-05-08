@@ -26,7 +26,7 @@ static void icmp_code_eq(void **state)
 
     BFT_CHAIN_SET(
         bf::Chain("test_icmp_code", test->hook(), BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ, {3})}));
 
     // ICMP code=3 should match the rule -> DROP
@@ -57,7 +57,7 @@ static void icmp_code_eq(void **state)
 
     // Try with negation
     BFT_CHAIN_SET(bf::Chain("test_icmp_code", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
                                            {3}, true)}));
 
@@ -89,7 +89,7 @@ static void icmp_code_eq(void **state)
     bft_assert_counter_eq("test_icmp_code", 0, 1, -1);
 
     BFT_CHAIN_SET(bf::Chain("test_icmp_code", test->hook(), BF_VERDICT_ACCEPT)
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_ICMP_CODE, BF_MATCHER_EQ,
                                            {3}, true)}));
 
@@ -133,7 +133,7 @@ static void icmp_code_in(void **state)
 
     BFT_CHAIN_SET(bf::Chain("test_icmp_code", test->hook(), BF_VERDICT_ACCEPT)
                   << set
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0})}));
 
@@ -166,7 +166,7 @@ static void icmp_code_in(void **state)
     // Try with negation
     BFT_CHAIN_SET(bf::Chain("test_icmp_code", test->hook(), BF_VERDICT_ACCEPT)
                   << set
-                  << bf::Rule(BF_VERDICT_DROP, true, {},
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                               {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
                                            {0, 0, 0, 0}, true)}));
 

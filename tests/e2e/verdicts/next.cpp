@@ -46,7 +46,7 @@ static void next_rule_verdict(void **state)
         // IPPROTO_TCP = 6
         BFT_CHAIN_SET(
             bf::Chain("test_next", hook, BF_VERDICT_DROP) << bf::Rule(
-                BF_VERDICT_NEXT, false, {},
+                BF_VERDICT_NEXT, std::nullopt, {},
                 {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, {6})}));
 
         bft_assert_prog_run("test_next", hook,
@@ -77,7 +77,7 @@ static void next_policy(void **state)
         // IPPROTO_TCP = 6
         BFT_CHAIN_SET(
             bf::Chain("test_next", hook, BF_VERDICT_NEXT) << bf::Rule(
-                BF_VERDICT_DROP, false, {},
+                BF_VERDICT_DROP, std::nullopt, {},
                 {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, {6})}));
 
         bft_assert_prog_run("test_next", hook,
@@ -105,9 +105,9 @@ static void next_is_terminal(void **state)
     // IPPROTO_TCP = 6
     BFT_CHAIN_SET(
         bf::Chain("test_next_term", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT)
-        << bf::Rule(BF_VERDICT_NEXT, true, {},
+        << bf::Rule(BF_VERDICT_NEXT, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, {6})})
-        << bf::Rule(BF_VERDICT_DROP, true, {},
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
                     {bf::Matcher(BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ, {6})}));
 
     bft_assert_prog_run("test_next_term", BF_HOOK_TC_INGRESS,
