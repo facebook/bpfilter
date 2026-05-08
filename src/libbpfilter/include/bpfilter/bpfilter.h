@@ -45,10 +45,9 @@ struct bf_hookopts;
  *
  * @param chains List of `bf_chain` to be filled.
  * @param hookopts List of hook options objects.
- * @param counters List of `bf_counter` to be filled.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters);
+int bf_ruleset_get(bf_list *chains, bf_list *hookopts);
 
 /**
  * @brief Load a ruleset.
@@ -96,14 +95,11 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts);
  * @param hookopts On success, contains a pointer to the chain's hook options if
  *        the chain is attached, NULL otherwise. The caller is responsible for
  *        freeing it. Can't be NULL.
- * @param counters On success, the list contains the counters for every rule of
- *        the chain, and the policy and error counters. The caller is
- *        responsible for freeing it. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
  */
 int bf_chain_get(const char *name, struct bf_chain **chain,
-                 struct bf_hookopts **hookopts, bf_list *counters);
+                 struct bf_hookopts **hookopts);
 
 /**
  * @brief Get the file descriptor of a chain's program.

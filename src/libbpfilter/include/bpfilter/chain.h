@@ -6,6 +6,7 @@
 #pragma once
 
 #include <bpfilter/core/list.h>
+#include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/pack.h>
@@ -52,6 +53,12 @@ struct bf_chain
     enum bf_verdict policy;
     bf_list sets;
     bf_list rules;
+
+    /// Policy counters. Not serialized.
+    struct bf_counter policy_counters;
+
+    /// Error counters. Not serialized.
+    struct bf_counter error_counters;
 };
 
 /**

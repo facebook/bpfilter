@@ -84,13 +84,12 @@ static int _bf_ruleset_flush(struct bf_lock *lock)
     return 0;
 }
 
-int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
+int bf_ruleset_get(bf_list *chains, bf_list *hookopts)
 {
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_list_ bf_list *cgens = NULL;
     _clean_bf_list_ bf_list _chains = bf_list_default_from(*chains);
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
-    _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
     int r;
 
     r = bf_lock_init(&lock, BF_LOCK_READ);
@@ -103,18 +102,18 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
 
     bf_list_foreach (cgens, cgen_node) {
         struct bf_cgen *cgen = bf_list_node_get_data(cgen_node);
-        _free_bf_chain_ struct bf_chain *chain = NULL;
         _free_bf_hookopts_ struct bf_hookopts *hookopts_copy = NULL;
-        _free_bf_list_ bf_list *cgen_counters = NULL;
 
-        r = bf_chain_new_from_copy(&chain, cgen->chain);
-        if (r)
-            return bf_err_r(r, "failed to copy chain");
+        r = bf_cgen_load_counters(cgen);
+        if (r) {
+            return bf_err_r(r, "failed to read counters for '%s'",
+                            cgen->chain->name);
+        }
 
-        r = bf_list_add_tail(&_chains, chain);
+        // cgen will be destroyed, we can steal the chain
+        r = bf_list_push(&_chains, (void **)&cgen->chain);
         if (r)
             return r;
-        TAKE_PTR(chain);
 
         if (cgen->handle->link && cgen->handle->link->hookopts) {
             r = copy_hookopts(&hookopts_copy, cgen->handle->link->hookopts);
@@ -125,25 +124,10 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts, bf_list *counters)
         if (r)
             return r;
         TAKE_PTR(hookopts_copy);
-
-        r = bf_list_new(&cgen_counters,
-                        &bf_list_ops_default(bf_counter_free, NULL));
-        if (r)
-            return r;
-
-        r = bf_cgen_get_counters(cgen, cgen_counters);
-        if (r)
-            return r;
-
-        r = bf_list_add_tail(&_counters, cgen_counters);
-        if (r)
-            return r;
-        TAKE_PTR(cgen_counters);
     }
 
     *chains = bf_list_move(_chains);
     *hookopts = bf_list_move(_hookopts);
-    *counters = bf_list_move(_counters);
 
     return 0;
 }
@@ -288,19 +272,17 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
 }
 
 int bf_chain_get(const char *name, struct bf_chain **chain,
-                 struct bf_hookopts **hookopts, bf_list *counters)
+                 struct bf_hookopts **hookopts)
 {
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *_hookopts = NULL;
-    _clean_bf_list_ bf_list _counters = bf_list_default_from(*counters);
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
     assert(name);
     assert(chain);
     assert(hookopts);
-    assert(counters);
 
     r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
     if (r)
@@ -310,9 +292,14 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     if (r)
         return r;
 
-    r = bf_chain_new_from_copy(&_chain, cgen->chain);
-    if (r)
-        return r;
+    r = bf_cgen_load_counters(cgen);
+    if (r) {
+        return bf_err_r(r, "failed to load counters for '%s'",
+                        cgen->chain->name);
+    }
+
+    // cgen will be destroyed, we can steal the chain
+    _chain = TAKE_PTR(cgen->chain);
 
     if (cgen->handle->link && cgen->handle->link->hookopts) {
         r = copy_hookopts(&_hookopts, cgen->handle->link->hookopts);
@@ -320,13 +307,8 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
             return r;
     }
 
-    r = bf_cgen_get_counters(cgen, &_counters);
-    if (r)
-        return bf_err_r(r, "failed to get counters for '%s'", name);
-
     *chain = TAKE_PTR(_chain);
     *hookopts = TAKE_PTR(_hookopts);
-    *counters = bf_list_move(_counters);
 
     return 0;
 }

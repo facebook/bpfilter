@@ -28,12 +28,10 @@ static void ruleset_get(void **state)
         // Empty ruleset
         _clean_bf_list_ bf_list chains = bf_list_default(NULL, NULL);
         _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, NULL);
-        _clean_bf_list_ bf_list counters = bf_list_default(NULL, NULL);
 
-        assert_ok(bf_ruleset_get(&chains, &hookopts, &counters));
+        assert_ok(bf_ruleset_get(&chains, &hookopts));
         assert_int_equal(bf_list_size(&chains), 0);
         assert_int_equal(bf_list_size(&hookopts), 0);
-        assert_int_equal(bf_list_size(&counters), 0);
     }
 
     {
@@ -41,7 +39,6 @@ static void ruleset_get(void **state)
         struct bft_tmpdir *tmpdir = *state;
         _clean_bf_list_ bf_list chains = bf_list_default(NULL, NULL);
         _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, NULL);
-        _clean_bf_list_ bf_list counters = bf_list_default(NULL, NULL);
         char path[PATH_MAX];
 
         /* A chain dir with no `bf_ctx` map looks valid to readdir() but cannot be
@@ -54,10 +51,9 @@ static void ruleset_get(void **state)
                        tmpdir->dir_path);
         assert_ok(mkdir(path, 0755));
 
-        assert_ok(bf_ruleset_get(&chains, &hookopts, &counters));
+        assert_ok(bf_ruleset_get(&chains, &hookopts));
         assert_int_equal(bf_list_size(&chains), 0);
         assert_int_equal(bf_list_size(&hookopts), 0);
-        assert_int_equal(bf_list_size(&counters), 0);
     }
 }
 
@@ -96,11 +92,10 @@ static void chain_get(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    _clean_bf_list_ struct bf_list counters = bf_list_default(NULL, NULL);
 
     (void)state;
 
-    assert_err(bf_chain_get("invalid_chain", &chain, &hookopts, &counters));
+    assert_err(bf_chain_get("invalid_chain", &chain, &hookopts));
 }
 
 static void chain_prog_fd(void **state)

@@ -25,18 +25,18 @@ void bft_assert_counter_eq(const char *chain_name, size_t rule_idx,
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hopts = NULL;
-    _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
-    struct bf_counter *counter;
+    struct bf_rule *rule;
 
     assert_non_null(chain_name);
 
-    assert_ok(bf_chain_get(chain_name, &chain, &hopts, &counters));
+    assert_ok(bf_chain_get(chain_name, &chain, &hopts));
 
-    counter = bf_list_get_at(&counters, rule_idx);
-    assert_non_null(counter);
-    assert_int_equal(packets, counter->count);
+    rule = bf_list_get_at(&chain->rules, rule_idx);
+    assert_non_null(rule);
+    assert_true(rule->has_counters);
+    assert_int_equal(packets, rule->counters.count);
     if (bytes >= 0)
-        assert_int_equal((uint64_t)bytes, counter->size);
+        assert_int_equal((uint64_t)bytes, rule->counters.size);
 }
 
 int btf_setup_redirect_streams(void **state)

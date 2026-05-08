@@ -114,16 +114,15 @@ int bfc_chain_get(const struct bfc_opts *opts)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
     int r;
 
-    r = bf_chain_get(opts->name, &chain, &hookopts, &counters);
+    r = bf_chain_get(opts->name, &chain, &hookopts);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)
         return bf_err_r(r, "unknown error");
 
-    bfc_chain_dump(chain, hookopts, &counters, opts->no_set_content);
+    bfc_chain_dump(chain, hookopts, opts->no_set_content);
 
     return 0;
 }
@@ -272,7 +271,6 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
     _free_bf_set_ struct bf_set *to_remove = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    _clean_bf_list_ bf_list counters = bf_list_default(bf_counter_free, NULL);
     struct bf_set *dest_set = NULL;
     int r;
 
@@ -280,7 +278,7 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
         return bf_err_r(-EINVAL, "no elements to add or remove");
 
     // Fetch dest_set to get key format
-    r = bf_chain_get(opts->name, &chain, &hookopts, &counters);
+    r = bf_chain_get(opts->name, &chain, &hookopts);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)

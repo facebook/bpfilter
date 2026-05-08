@@ -22,11 +22,11 @@ void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
 }
 
 // Stub for ruleset dumping - not used during parsing
-int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bf_list *counters)
+int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bool no_set_content)
 {
     (void)chains;
     (void)hookopts;
-    (void)counters;
+    (void)no_set_content;
 
     return 0;
 }
