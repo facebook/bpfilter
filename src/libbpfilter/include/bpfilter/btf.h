@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+struct btf;
+
 struct bf_btf
 {
     struct btf *btf;
@@ -16,64 +18,63 @@ struct bf_btf
 };
 
 /**
- * Load current kernel's BTF data.
+ * @brief Get BTF ID of a kernel function.
  *
- * This function has to be called early, so BPF program generation can access
- * kernel's BTF data and use the kfunc's BTF ID.
+ * @pre
+ *  - `btf` is not NULL.
+ *  - `name` is not NULL.
  *
- * @return 0 on success, or negative errno value on failure.
- */
-int bf_btf_setup(void);
-
-/**
- * Free current kernel's BTF data.
- */
-void bf_btf_teardown(void);
-
-/**
- * Get BTF ID of a kernel function.
- *
- * Linux' BTF data must be loaded with @ref bf_btf_setup before calling this
- * function.
- *
+ * @param btf Loaded kernel BTF object.
  * @param name Name of the kernel function.
  * @return BTF ID on success, or negative errno value on failure.
  */
-int bf_btf_get_id(const char *name);
+int bf_btf_get_id(const struct btf *btf, const char *name);
 
 /**
- * Get a type name from a BTF ID from the kernel BTF data.
+ * @brief Get a type name from a BTF ID from the kernel BTF data.
  *
- * Linux BTF data must be loaded with @ref bf_btf_setup before calling this
- * function. If @c id is invalid, or not part of the kernel's BTF data, @c NULL
- * is returned.
+ * @pre
+ *  - `btf` is not NULL.
  *
+ * @param btf Loaded kernel BTF object.
  * @param id Type ID to look for.
- * @return Name of the type represented by @c id or @c NULL .
+ * @return Name of the type represented by @p id, or NULL if @p id is
+ *         invalid or not part of @p btf.
  */
-const char *bf_btf_get_name(int id);
+const char *bf_btf_get_name(const struct btf *btf, int id);
 
 /**
- * Check if BPF token is supported by the current system.
+ * @brief Check if BPF token is supported by the current system.
  *
- * Read the kernel's BTF data to check if `prog_token_fd` is a valid field, if
- * so it is assume BPF token is supported by the current kernel.
+ * Read the kernel's BTF data to check if `prog_token_fd` is a valid field;
+ * if so, BPF token is assumed to be supported by the current kernel.
  *
+ * @pre
+ *  - `btf` is not NULL.
+ *
+ * @param btf Loaded kernel BTF object.
  * @return 0 on success, or a negative errno value on failure, including:
- * - `-ENOENT`: `prog_token_fd` can't be found, meaning BPF token is likely
- *   unsupported.
+ *         `-ENOENT` if `prog_token_fd` can't be found (BPF token likely
+ *         unsupported).
  */
-int bf_btf_kernel_has_token(void);
+int bf_btf_kernel_has_token(const struct btf *btf);
 
 /**
- * Get the offset of a field in a kernel structure.
+ * @brief Get the offset of a field in a kernel structure.
  *
- * Use Linux' BTF data to find the offset of a specific field in a structure.
- * This function will fail if the offset of a bitfield is requested.
+ * Use the kernel BTF data to find the offset of a specific field in a
+ * structure. Fails if the offset of a bitfield is requested.
  *
- * @param struct_name Name of the structure to find the offset in. Can't be
- *        NULL.
- * @param field_name Name of the field to get the offset of. Can't be NULL.
- * @return Offset of @p field_name if found, negative error value on failure.
+ * @pre
+ *  - `btf` is not NULL.
+ *  - `struct_name` is not NULL.
+ *  - `field_name` is not NULL.
+ *
+ * @param btf Loaded kernel BTF object.
+ * @param struct_name Name of the structure to find the offset in.
+ * @param field_name Name of the field to get the offset of.
+ * @return Offset of @p field_name (in bytes) if found, or a negative errno
+ *         value on failure.
  */
-int bf_btf_get_field_off(const char *struct_name, const char *field_name);
+int bf_btf_get_field_off(const struct btf *btf, const char *struct_name,
+                         const char *field_name);

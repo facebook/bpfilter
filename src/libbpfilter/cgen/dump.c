@@ -19,6 +19,7 @@
 #include <bpfilter/logger.h>
 
 #include "cgen/program.h"
+#include "core/ctx.h"
 #include "disasm.h"
 
 #define SYM_MAX_NAME 256
@@ -26,6 +27,7 @@
 struct bf_dump_data
 {
     prefix_t *prefix;
+    const struct btf *btf;
     char scratch_buff[SYM_MAX_NAME + 8];
     unsigned long address_call_base;
     size_t idx;
@@ -56,7 +58,7 @@ static const char *_bf_print_call(void *private_data,
                        insn->imm);
     } else {
         (void)snprintf(bfdd->scratch_buff, sizeof(bfdd->scratch_buff), "%s",
-                       bf_btf_get_name(insn->imm));
+                       bf_btf_get_name(bfdd->btf, insn->imm));
     }
 
     return bfdd->scratch_buff;
@@ -92,6 +94,7 @@ void bf_program_dump_bytecode(const struct bf_program *program)
     prefix_t prefix = {};
     struct bf_dump_data bfdd = {
         .prefix = &prefix,
+        .btf = program->ctx->btf,
     };
     struct bpf_insn_cbs callbacks = {
         .cb_print = _bf_print_insn,

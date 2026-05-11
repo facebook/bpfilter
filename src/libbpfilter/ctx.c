@@ -5,6 +5,7 @@
 
 #include "core/ctx.h"
 
+#include <bpf/btf.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -38,6 +39,7 @@ static struct bf_ctx *_bf_global_ctx = NULL;
         .stubs = {0},                                                          \
         .with_bpf_token = false,                                               \
         .bpffs_path = NULL,                                                    \
+        .btf = NULL,                                                           \
     })
 
 static void _bf_ctx_cleanup(struct bf_ctx *ctx);
@@ -106,10 +108,14 @@ static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
     if (!_ctx.bpffs_path)
         return -ENOMEM;
 
+    _ctx.btf = btf__load_vmlinux_btf();
+    if (!_ctx.btf)
+        return bf_err_r(-errno, "failed to load vmlinux BTF");
+
     if (_ctx.with_bpf_token) {
         _cleanup_close_ int token_fd = -1;
 
-        r = bf_btf_kernel_has_token();
+        r = bf_btf_kernel_has_token(_ctx.btf);
         if (r == -ENOENT) {
             return bf_err_r(
                 r,
@@ -126,7 +132,7 @@ static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
     }
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
-        r = bf_elfstub_new(&_ctx.stubs[id], id);
+        r = bf_elfstub_new(&_ctx.stubs[id], _ctx.btf, id);
         if (r)
             return bf_err_r(r, "failed to create ELF stub ID %u", id);
     }
@@ -161,6 +167,9 @@ static void _bf_ctx_cleanup(struct bf_ctx *ctx)
 
     freep((void *)&ctx->bpffs_path);
 
+    btf__free(ctx->btf);
+    ctx->btf = NULL;
+
     *ctx = bf_ctx_default();
 }
 
@@ -173,28 +182,15 @@ int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
     assert(ctx);
     assert(bpffs_path);
 
-    /* vmlinux BTF is a process-wide resource (single static in btf.c) but
-     * its lifetime is currently coupled to the context. Pair setup/teardown
-     * with the heap-owning constructor/destructor so the swap-style
-     * _bf_ctx_init can run a cleanup on its local without tearing down the
-     * BTF the live context will rely on. */
-    r = bf_btf_setup();
-    if (r)
-        return bf_err_r(r, "failed to load vmlinux BTF");
-
     _ctx = malloc(sizeof(*_ctx));
-    if (!_ctx) {
-        bf_btf_teardown();
+    if (!_ctx)
         return -ENOMEM;
-    }
 
     *_ctx = bf_ctx_default();
 
     r = _bf_ctx_init(_ctx, with_bpf_token, bpffs_path, verbose);
-    if (r) {
-        bf_btf_teardown();
+    if (r)
         return r;
-    }
 
     *ctx = TAKE_PTR(_ctx);
 
@@ -209,7 +205,6 @@ void bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     _bf_ctx_cleanup(*ctx);
-    bf_btf_teardown();
     freep((void *)ctx);
 }
 

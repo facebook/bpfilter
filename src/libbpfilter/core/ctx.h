@@ -10,6 +10,8 @@
 
 #include <bpfilter/elfstub.h>
 
+struct btf;
+
 /**
  * @file core/ctx.h
  *
@@ -34,6 +36,9 @@ struct bf_ctx
 
     /// Path to the bpffs mountpoint, owned by the context.
     char *bpffs_path;
+
+    /// vmlinux BTF object, owned by the context.
+    struct btf *btf;
 };
 
 /**

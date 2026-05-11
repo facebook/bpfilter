@@ -22,6 +22,7 @@
 #include "cgen/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
+#include "core/ctx.h"
 #include "filter.h"
 
 static int _bf_tc_gen_inline_prologue(struct bf_program *program)
@@ -44,7 +45,8 @@ static int _bf_tc_gen_inline_prologue(struct bf_program *program)
      * @c ingress_ifindex will contain @c 1 but @c ifindex will contains @c 2 .
      * For egress, only @c ifindex is used.
      */
-    if ((r = bf_btf_get_field_off("__sk_buff", "ifindex")) < 0)
+    if ((r = bf_btf_get_field_off(program->ctx->btf, "__sk_buff", "ifindex")) <
+        0)
         return r;
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, r));
     EMIT(program,

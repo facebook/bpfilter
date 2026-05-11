@@ -23,6 +23,7 @@
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
+#include "core/ctx.h"
 #include "filter.h"
 #include "linux/bpf.h"
 
@@ -51,7 +52,8 @@ static int _bf_cgroup_skb_gen_inline_prologue(struct bf_program *program)
      * @c ingress_ifindex will contain @c 1 but @c ifindex will contains @c 2 .
      * For egress, only @c ifindex is used.
      */
-    if ((r = bf_btf_get_field_off("__sk_buff", "ifindex")) < 0)
+    if ((r = bf_btf_get_field_off(program->ctx->btf, "__sk_buff", "ifindex")) <
+        0)
         return r;
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, r));
     EMIT(program,
@@ -61,7 +63,8 @@ static int _bf_cgroup_skb_gen_inline_prologue(struct bf_program *program)
      * so we can't parse it and discover the L3 protocol ID.
      * Instead, we use the __sk_buff.family value and convert it to the
      * corresponding ethertype. */
-    if ((offset = bf_btf_get_field_off("__sk_buff", "family")) < 0)
+    if ((offset = bf_btf_get_field_off(program->ctx->btf, "__sk_buff",
+                                       "family")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
 

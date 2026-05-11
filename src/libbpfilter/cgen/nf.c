@@ -28,6 +28,7 @@
 #include "cgen/program.h"
 #include "cgen/stub.h"
 #include "cgen/swich.h"
+#include "core/ctx.h"
 #include "filter.h"
 
 #define BF_NF_PRIO_EVEN 2
@@ -50,20 +51,24 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     assert(program);
 
     // Copy the ifindex from to bpf_nf_ctx.state.{in,out}.ifindex the runtime context
-    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "state")) < 0)
+    if ((offset = bf_btf_get_field_off(program->ctx->btf, "bpf_nf_ctx",
+                                       "state")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
     if (_bf_nf_hook_is_ingress(program->runtime.chain->hook)) {
-        if ((offset = bf_btf_get_field_off("nf_hook_state", "in")) < 0)
+        if ((offset = bf_btf_get_field_off(program->ctx->btf, "nf_hook_state",
+                                           "in")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, offset));
     } else {
-        if ((offset = bf_btf_get_field_off("nf_hook_state", "out")) < 0)
+        if ((offset = bf_btf_get_field_off(program->ctx->btf, "nf_hook_state",
+                                           "out")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, offset));
     }
 
-    if ((offset = bf_btf_get_field_off("net_device", "ifindex")) < 0)
+    if ((offset = bf_btf_get_field_off(program->ctx->btf, "net_device",
+                                       "ifindex")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_4, BPF_REG_3, offset));
     EMIT(program,
@@ -73,7 +78,8 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
      * so we can't parse it and discover the L3 protocol ID.
      * Instead, we use the __sk_buff.family value and convert it to the
      * corresponding ethertype. */
-    if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
+    if ((offset = bf_btf_get_field_off(program->ctx->btf, "nf_hook_state",
+                                       "pf")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_3, BPF_REG_2, offset));
 
@@ -95,10 +101,12 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset), 0));
 
     // Calculate the packet size (+ETH_HLEN) and store it into the runtime context
-    if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+    if ((offset =
+             bf_btf_get_field_off(program->ctx->btf, "bpf_nf_ctx", "skb")) < 0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_1, offset));
-    if ((offset = bf_btf_get_field_off("sk_buff", "len")) < 0)
+    if ((offset = bf_btf_get_field_off(program->ctx->btf, "sk_buff", "len")) <
+        0)
         return offset;
     EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, ETH_HLEN));
@@ -139,10 +147,12 @@ static int _bf_nf_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_MARK:
         EMIT(program,
              BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(arg)));
-        if ((offset = bf_btf_get_field_off("bpf_nf_ctx", "skb")) < 0)
+        if ((offset = bf_btf_get_field_off(program->ctx->btf, "bpf_nf_ctx",
+                                           "skb")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, offset));
-        if ((offset = bf_btf_get_field_off("sk_buff", "mark")) < 0)
+        if ((offset = bf_btf_get_field_off(program->ctx->btf, "sk_buff",
+                                           "mark")) < 0)
             return offset;
         EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_1, BPF_REG_2, offset));
 

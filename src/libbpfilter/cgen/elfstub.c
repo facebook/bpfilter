@@ -43,7 +43,7 @@ static void _bf_printk_str_free(struct bf_printk_str **pstr)
     freep((void *)pstr);
 }
 
-static int _bf_elfstub_prepare(struct bf_elfstub *stub,
+static int _bf_elfstub_prepare(struct bf_elfstub *stub, const struct btf *btf,
                                const struct bf_rawstub *raw)
 {
     const Elf64_Ehdr *ehdr = raw->elf;
@@ -145,7 +145,7 @@ static int _bf_elfstub_prepare(struct bf_elfstub *stub,
                 uint32_t name_idx = symbols[sym_idx].st_name;
                 if (name_idx < symstrtab->sh_size) {
                     const char *name = &sym_strtab[name_idx];
-                    int id = bf_btf_get_id(name);
+                    int id = bf_btf_get_id(btf, name);
                     if (id < 0)
                         return bf_err_r(id, "function %s not found", name);
 
@@ -183,12 +183,14 @@ static int _bf_elfstub_prepare(struct bf_elfstub *stub,
     return 0;
 }
 
-int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id)
+int bf_elfstub_new(struct bf_elfstub **stub, const struct btf *btf,
+                   enum bf_elfstub_id id)
 {
     _free_bf_elfstub_ struct bf_elfstub *_stub = NULL;
     int r;
 
     assert(stub);
+    assert(btf);
 
     _stub = calloc(1, sizeof(*_stub));
     if (!_stub)
@@ -196,7 +198,7 @@ int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id)
 
     _stub->strs = bf_list_default(_bf_printk_str_free, NULL);
 
-    r = _bf_elfstub_prepare(_stub, &_bf_rawstubs[id]);
+    r = _bf_elfstub_prepare(_stub, btf, &_bf_rawstubs[id]);
     if (r)
         return r;
 

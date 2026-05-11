@@ -698,7 +698,7 @@ int bf_program_emit_kfunc_call(struct bf_program *program, const char *name)
     assert(program);
     assert(name);
 
-    r = bf_btf_get_id(name);
+    r = bf_btf_get_id(program->ctx->btf, name);
     if (r < 0)
         return r;
 

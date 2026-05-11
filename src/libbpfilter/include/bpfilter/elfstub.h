@@ -70,6 +70,7 @@
  */
 
 struct bpf_insn;
+struct btf;
 
 /**
  * @brief Identifiers for the ELF stubs.
@@ -197,13 +198,15 @@ struct bf_elfstub
  *
  * The corresponding raw ELF stub will be read, its text section will be copied
  * into the final ELF, and the calls to kfuncs will be relocated according to
- * the host's kernel.
+ * the host's kernel BTF.
  *
  * @param stub ELF stub to allocate and initialize. Can't be NULL.
+ * @param btf Kernel BTF used to resolve kfunc call IDs. Can't be NULL.
  * @param id Identifier of the raw ELF stub to initialize.
  * @return 0 on success, or negative errno value on failure.
  */
-int bf_elfstub_new(struct bf_elfstub **stub, enum bf_elfstub_id id);
+int bf_elfstub_new(struct bf_elfstub **stub, const struct btf *btf,
+                   enum bf_elfstub_id id);
 
 /**
  * Deinitialise and deallocate an ELF stub.
