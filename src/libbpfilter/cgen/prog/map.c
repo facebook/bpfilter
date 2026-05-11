@@ -86,6 +86,8 @@ static int _bf_btf_load(struct bf_btf *btf, int token_fd)
  *
  * @param map Map to create the BTF data for. @c map.type will define the
  *        exact content of the BTF object. Can't be NULL.
+ * @param token_fd BPF token file descriptor passed to the kernel BTF-load
+ *        syscall. `-1` if no token is to be used.
  * @return A @ref bf_btf structure on success, or NULL on error. The
  *         @ref bf_btf structure is owned by the caller.
  */

@@ -64,7 +64,7 @@ Naming conventions
 Functions and variables
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-- Lowercase with underscores: ``bf_chain_new()``, ``bf_ctx_setup()``
+- Lowercase with underscores: ``bf_chain_new()``, ``bf_ctx_new()``
 - Prefix with module name: ``bf_chain_*``, ``bf_program_*``, ``bf_ctx_*``
 - Static functions and variables use leading underscore: ``_bf_ctx_free()``
 - CLI utilities use ``bfc_`` prefix: ``bfc_parse_file()``
