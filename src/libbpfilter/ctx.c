@@ -11,7 +11,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
 #include <unistd.h>
 
 #include <bpfilter/bpf.h>
@@ -238,74 +237,6 @@ static void _bf_free_dir(DIR **dir)
 
 #define _free_dir_ __attribute__((__cleanup__(_bf_free_dir)))
 
-/**
- * @brief Sweep leftover staging directories from a previous run.
- *
- * `core/lock.c` creates uniquely-named `.staging.*` directories while
- * publishing new chain dirs via `renameat2(RENAME_NOREPLACE)`. If a
- * process crashes between the `mkdirat` and the `renameat2`, the staging
- * dir is orphaned.
- *
- * This function walks the pindir under `BF_LOCK_WRITE` and removes any
- * `.staging.*` entry whose `flock(LOCK_EX | LOCK_NB)` succeeds (meaning
- * nobody currently owns it). Live staging dirs are left alone.
- *
- * Runs once from `bf_ctx_setup()`. Non-fatal: a failure to sweep only
- * leaves garbage behind, it does not compromise correctness.
- */
-static void _bf_ctx_sweep_staging(void)
-{
-    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
-    _free_dir_ DIR *dir = NULL;
-    struct dirent *entry;
-    int iter_fd;
-    int r;
-
-    r = bf_lock_init(&lock, BF_LOCK_WRITE);
-    if (r) {
-        bf_warn_r(r, "failed to lock pindir for staging sweep, skipping");
-        return;
-    }
-
-    iter_fd = dup(lock.pindir_fd);
-    if (iter_fd < 0) {
-        bf_warn_r(-errno, "failed to dup pindir fd for staging sweep");
-        return;
-    }
-
-    dir = fdopendir(iter_fd);
-    if (!dir) {
-        close(iter_fd);
-        bf_warn_r(-errno, "failed to fdopendir pindir for staging sweep");
-        return;
-    }
-
-    while ((entry = readdir(dir))) {
-        _cleanup_close_ int stage_fd = -1;
-
-        if (!bf_strneq(entry->d_name, BF_LOCK_STAGING_PREFIX,
-                       sizeof(BF_LOCK_STAGING_PREFIX) - 1))
-            continue;
-
-        if (entry->d_type != DT_DIR && entry->d_type != DT_UNKNOWN)
-            continue;
-
-        stage_fd = openat(lock.pindir_fd, entry->d_name, O_DIRECTORY);
-        if (stage_fd < 0)
-            continue;
-
-        /* LOCK_NB: if the staging dir is still live, skip it. */
-        if (flock(stage_fd, LOCK_EX | LOCK_NB) < 0)
-            continue;
-
-        if (bf_rmdir_at(lock.pindir_fd, entry->d_name, true)) {
-            bf_warn("failed to sweep orphan staging dir '%s'", entry->d_name);
-        } else {
-            bf_dbg("removed left-over staging directory '%s'", entry->d_name);
-        }
-    }
-}
-
 int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
     int r;
@@ -313,9 +244,6 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
     r = bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
-
-    /* Reclaim any orphan staging directory left by a previous crash. */
-    _bf_ctx_sweep_staging();
 
     return 0;
 }
