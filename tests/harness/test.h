@@ -24,8 +24,19 @@
 
 #include "fake.h"
 
+struct bf_ctx;
 struct bf_set;
 struct bf_counter;
+
+/**
+ * @brief Module-level borrowed context used by the test harness helpers.
+ *
+ * Defined in `test.c`. Test entry points (e.g. `MatcherTestsSuite::run` or
+ * a `main()` that constructs a `bf_ctx` for a suite) assign this so that
+ * `bft_assert_counter_eq` and `bft_assert_prog_run` can resolve chains
+ * without each caller threading the context manually.
+ */
+extern const struct bf_ctx *bft_matcher_ctx;
 
 #define assert_ok(expr) assert_true((expr) == 0)
 #define assert_err(expr) assert_true((expr) < 0)
@@ -216,30 +227,60 @@ int bft_hook_drop(enum bf_hook hook);
 int bft_hook_next(enum bf_hook hook);
 
 /**
- * @brief Initialize the global test `bf_ctx`.
+ * @brief Pair of a temporary bpffs directory and the `bf_ctx` constructed
+ * over it. Stored as the cmocka test state by `bft_setup_ctx_state`.
+ */
+struct bft_ctx_state
+{
+    struct bft_tmpdir *tmpdir;
+    struct bf_ctx *ctx;
+};
+
+/**
+ * @brief Initialize a test `bf_ctx` over a fresh temporary directory.
  *
  * @pre
  * - `state` is not NULL.
  * @post
- * - On success: `*state` is a pointer to a valid heap-allocated `bft_tmpdir`
- *   object, and the global `bf_ctx` has been initalized with the temporary
- *   directory.
+ * - On success: `*state` is a pointer to a freshly allocated
+ *   `struct bft_ctx_state` containing the constructed context and the
+ *   backing temporary directory.
  * - On failure: `*state` is unchanged.
  *
  * @param state Pointer to a custom object, provided by CMocka.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bft_setup_ctx(void **state);
+int bft_setup_ctx_state(void **state);
 
 /**
- * @brief Cleanup the global test `bf_ctx`.
+ * @brief Cleanup the test `bf_ctx` and its temporary directory.
  *
  * @pre
- * - `state` is not NULL, `*state` points to a valid `bft_tmpdir`.
+ * - `state` is not NULL, `*state` points to a valid `bft_ctx_state`.
  * @post
- * - The `bft_tmpdir` has been deallocated, `*state` is NULL.
+ * - The state has been deallocated, `*state` is NULL.
  *
  * @param state Pointer to a custom test object, provided by CMocka.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bft_teardown_ctx(void **state);
+int bft_teardown_ctx_state(void **state);
+
+/**
+ * @brief Return the `bf_ctx` from a `bft_ctx_state` cmocka state.
+ *
+ * @param state Pointer captured by cmocka; must point to a valid
+ *        `bft_ctx_state`.
+ * @return The borrowed `bf_ctx` pointer.
+ */
+static inline const struct bf_ctx *bft_state_ctx(void *state)
+{
+    return ((const struct bft_ctx_state *)state)->ctx;
+}
+
+/**
+ * @brief Return the temporary directory from a `bft_ctx_state` cmocka state.
+ */
+static inline struct bft_tmpdir *bft_state_tmpdir(void *state)
+{
+    return ((struct bft_ctx_state *)state)->tmpdir;
+}

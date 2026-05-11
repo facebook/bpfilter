@@ -41,7 +41,7 @@ static void next_rule_verdict(void **state)
     (void)state;
 
     for (auto hook: kTestableHooks) {
-        assert_int_equal(0, bf_ruleset_flush());
+        assert_int_equal(0, bf_ruleset_flush(bft_matcher_ctx));
 
         // IPPROTO_TCP = 6
         BFT_CHAIN_SET(
@@ -72,7 +72,7 @@ static void next_policy(void **state)
     (void)state;
 
     for (auto hook: kTestableHooks) {
-        assert_int_equal(0, bf_ruleset_flush());
+        assert_int_equal(0, bf_ruleset_flush(bft_matcher_ctx));
 
         // IPPROTO_TCP = 6
         BFT_CHAIN_SET(
@@ -120,11 +120,13 @@ static void next_is_terminal(void **state)
 
 int main()
 {
-    int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
+    _free_bf_ctx_ struct bf_ctx *ctx = nullptr;
+    int r = bf_ctx_new(&ctx, false, "/sys/fs/bpf");
     if (r != 0) {
         bf_err("failed to setup bpfilter context: %s", strerror(-r));
         return 1;
     }
+    bft_matcher_ctx = ctx;
 
     const std::vector<CMUnitTest> tests = {
         cmocka_unit_test_setup_teardown(next_rule_verdict,
@@ -139,6 +141,6 @@ int main()
 
     r = _cmocka_run_group_tests("NEXT verdict", tests.data(), tests.size(),
                                 nullptr, nullptr);
-    bf_ctx_teardown();
+    bft_matcher_ctx = nullptr;
     return r;
 }

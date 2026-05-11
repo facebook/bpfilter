@@ -81,7 +81,7 @@ static int _bfc_get_chain_from_ruleset(const struct bfc_ruleset *ruleset,
     return 0;
 }
 
-int bfc_chain_set(const struct bfc_opts *opts)
+int bfc_chain_set(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
@@ -100,7 +100,7 @@ int bfc_chain_set(const struct bfc_opts *opts)
         return r;
 
     if (!opts->dry_run) {
-        r = bf_chain_set(chain, hookopts);
+        r = bf_chain_set(ctx, chain, hookopts);
         if (r)
             return bf_err_r(r, "unknown error");
     } else {
@@ -110,13 +110,13 @@ int bfc_chain_set(const struct bfc_opts *opts)
     return 0;
 }
 
-int bfc_chain_get(const struct bfc_opts *opts)
+int bfc_chain_get(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     int r;
 
-    r = bf_chain_get(opts->name, &chain, &hookopts);
+    r = bf_chain_get(ctx, opts->name, &chain, &hookopts);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)
@@ -139,13 +139,13 @@ static int _bf_handle_rb_log(void *ctx, void *data, size_t data_size)
     return 0;
 }
 
-int bfc_chain_logs(const struct bfc_opts *opts)
+int bfc_chain_logs(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     _cleanup_close_ int fd = -1;
     struct ring_buffer *rb;
     int r;
 
-    fd = bf_chain_logs_fd(opts->name);
+    fd = bf_chain_logs_fd(ctx, opts->name);
     if (fd < 0) {
         return bf_err_r(fd, "failed to request '%s' logs buffer FD",
                         opts->name);
@@ -171,7 +171,7 @@ int bfc_chain_logs(const struct bfc_opts *opts)
     return r;
 }
 
-int bfc_chain_load(const struct bfc_opts *opts)
+int bfc_chain_load(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
@@ -193,7 +193,7 @@ int bfc_chain_load(const struct bfc_opts *opts)
         bf_warn("Hook options are ignored when loading a chain");
 
     if (!opts->dry_run) {
-        r = bf_chain_load(chain);
+        r = bf_chain_load(ctx, chain);
         if (r)
             return bf_err_r(r, "unknown error");
     } else {
@@ -203,11 +203,11 @@ int bfc_chain_load(const struct bfc_opts *opts)
     return 0;
 }
 
-int bfc_chain_attach(const struct bfc_opts *opts)
+int bfc_chain_attach(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     int r;
 
-    r = bf_chain_attach(opts->name, &opts->hookopts);
+    r = bf_chain_attach(ctx, opts->name, &opts->hookopts);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)
@@ -216,7 +216,7 @@ int bfc_chain_attach(const struct bfc_opts *opts)
     return r;
 }
 
-int bfc_chain_update(const struct bfc_opts *opts)
+int bfc_chain_update(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     struct bf_chain *chain = NULL;
     struct bf_hookopts *hookopts = NULL;
@@ -237,7 +237,7 @@ int bfc_chain_update(const struct bfc_opts *opts)
     if (hookopts)
         bf_warn("Hook options are ignored when updating a chain");
     if (!opts->dry_run) {
-        r = bf_chain_update(chain);
+        r = bf_chain_update(ctx, chain);
         if (r == -ENOENT)
             return bf_err_r(r, "chain '%s' not found", chain->name);
         if (r == -ENOLINK)
@@ -252,11 +252,11 @@ int bfc_chain_update(const struct bfc_opts *opts)
     return r;
 }
 
-int bfc_chain_flush(const struct bfc_opts *opts)
+int bfc_chain_flush(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     int r;
 
-    r = bf_chain_flush(opts->name);
+    r = bf_chain_flush(ctx, opts->name);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)
@@ -265,7 +265,7 @@ int bfc_chain_flush(const struct bfc_opts *opts)
     return r;
 }
 
-int bfc_chain_update_set(const struct bfc_opts *opts)
+int bfc_chain_update_set(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     _free_bf_set_ struct bf_set *to_add = NULL;
     _free_bf_set_ struct bf_set *to_remove = NULL;
@@ -278,7 +278,7 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
         return bf_err_r(-EINVAL, "no elements to add or remove");
 
     // Fetch dest_set to get key format
-    r = bf_chain_get(opts->name, &chain, &hookopts);
+    r = bf_chain_get(ctx, opts->name, &chain, &hookopts);
     if (r == -ENOENT)
         return bf_err_r(r, "chain '%s' not found", opts->name);
     if (r)
@@ -313,7 +313,7 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
             return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
     }
 
-    r = bf_chain_update_set(opts->name, to_add, to_remove);
+    r = bf_chain_update_set(ctx, opts->name, to_add, to_remove);
     if (r)
         return bf_err_r(r, "failed to update set '%s' in chain '%s'",
                         opts->set_name, opts->name);

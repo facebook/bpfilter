@@ -40,14 +40,3 @@ struct bf_ctx
     /// vmlinux BTF object, owned by the context.
     struct btf *btf;
 };
-
-/**
- * @brief Return the legacy global context.
- *
- * Transitional bridge used by the public API entry points in `cli.c`
- * while the global context is being phased out. Returns the same pointer
- * that `bf_ctx_setup()` populated, or NULL if no setup has occurred.
- *
- * @return Pointer to the global context, or NULL.
- */
-struct bf_ctx *_bf_ctx_global(void);

@@ -30,9 +30,6 @@
 #include "cgen/cgen.h"
 #include "core/lock.h"
 
-/// Global runtime context. Populated by `bf_ctx_setup`; hidden in this TU.
-static struct bf_ctx *_bf_global_ctx = NULL;
-
 #define bf_ctx_default()                                                       \
     ((struct bf_ctx) {                                                         \
         .token_fd = -1,                                                        \
@@ -87,20 +84,16 @@ static int _bf_ctx_gen_token(const char *bpffs_path)
  * @param ctx Pre-allocated context to populate.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint.
- * @param verbose Bitmask of verbose flags. Applied to the process-wide
- *        logger configuration via `bf_logger_set_verbose()`.
  * @return 0 on success, or a negative errno value on failure.
  */
 static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
-                        const char *bpffs_path, uint16_t verbose)
+                        const char *bpffs_path)
 {
     _clean_bf_ctx_ struct bf_ctx _ctx = bf_ctx_default();
     int r;
 
     assert(ctx);
     assert(bpffs_path);
-
-    bf_logger_set_verbose(verbose);
 
     _ctx.with_bpf_token = with_bpf_token;
 
@@ -173,8 +166,7 @@ static void _bf_ctx_cleanup(struct bf_ctx *ctx)
     *ctx = bf_ctx_default();
 }
 
-int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
-               uint16_t verbose)
+int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
@@ -188,7 +180,7 @@ int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
 
     *_ctx = bf_ctx_default();
 
-    r = _bf_ctx_init(_ctx, with_bpf_token, bpffs_path, verbose);
+    r = _bf_ctx_init(_ctx, with_bpf_token, bpffs_path);
     if (r)
         return r;
 
@@ -208,16 +200,10 @@ void bf_ctx_free(struct bf_ctx **ctx)
     freep((void *)ctx);
 }
 
-struct bf_ctx *_bf_ctx_global(void)
+void bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
 {
-    return _bf_global_ctx;
-}
+    assert(ctx);
 
-/**
- * See @ref bf_ctx_dump for details.
- */
-static void _bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix)
-{
     DUMP(prefix, "struct bf_ctx at %p", ctx);
 
     bf_dump_prefix_push(prefix);
@@ -238,42 +224,17 @@ static void _bf_free_dir(DIR **dir)
 
 #define _free_dir_ __attribute__((__cleanup__(_bf_free_dir)))
 
-int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
-{
-    int r;
-
-    r = bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
-    if (r)
-        return bf_err_r(r, "failed to create new context");
-
-    return 0;
-}
-
-void bf_ctx_teardown(void)
-{
-    bf_ctx_free(&_bf_global_ctx);
-}
-
-void bf_ctx_dump(prefix_t *prefix)
-{
-    if (!_bf_global_ctx)
-        return;
-
-    _bf_ctx_dump(_bf_global_ctx, prefix);
-}
-
-int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen)
+int bf_ctx_get_cgen(const struct bf_ctx *ctx, struct bf_lock *lock,
+                    struct bf_cgen **cgen)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
     int r;
 
+    assert(ctx);
     assert(lock);
     assert(cgen);
 
-    if (!_bf_global_ctx)
-        return bf_err_r(-EINVAL, "context is not initialized");
-
-    r = bf_cgen_new_from_dir_fd(&_cgen, _bf_global_ctx, lock);
+    r = bf_cgen_new_from_dir_fd(&_cgen, ctx, lock);
     if (r)
         return bf_err_r(r, "failed to load chain '%s' from bpffs",
                         lock->chain_name ? lock->chain_name : "(unknown)");
@@ -283,7 +244,8 @@ int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen)
     return 0;
 }
 
-int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
+int bf_ctx_get_cgens(const struct bf_ctx *ctx, struct bf_lock *lock,
+                     bf_list **cgens)
 {
     _free_bf_list_ bf_list *_cgens = NULL;
     _free_dir_ DIR *dir = NULL;
@@ -291,11 +253,9 @@ int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
     int iter_fd;
     int r;
 
+    assert(ctx);
     assert(lock);
     assert(cgens);
-
-    if (!_bf_global_ctx)
-        return bf_err_r(-EINVAL, "context is not initialized");
 
     r = bf_list_new(&_cgens, &bf_list_ops_default(bf_cgen_free, bf_cgen_pack));
     if (r)
@@ -344,7 +304,7 @@ int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
             continue;
         }
 
-        r = bf_cgen_new_from_dir_fd(&cgen, _bf_global_ctx, lock);
+        r = bf_cgen_new_from_dir_fd(&cgen, ctx, lock);
         if (r) {
             bf_warn_r(r, "failed to restore chain '%s', skipping",
                       entry->d_name);
@@ -365,28 +325,4 @@ int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
     *cgens = TAKE_PTR(_cgens);
 
     return 0;
-}
-
-int bf_ctx_token(void)
-{
-    if (!_bf_global_ctx)
-        return -1;
-
-    return _bf_global_ctx->token_fd;
-}
-
-const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
-{
-    if (!_bf_global_ctx)
-        return NULL;
-
-    return _bf_global_ctx->stubs[id];
-}
-
-const char *bf_ctx_get_bpffs_path(void)
-{
-    if (!_bf_global_ctx)
-        return NULL;
-
-    return _bf_global_ctx->bpffs_path;
 }

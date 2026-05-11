@@ -27,10 +27,11 @@ struct bfc_ruleset
     bf_list hookopts;
 };
 
+struct bf_ctx;
 struct bfc_opts;
 
 void bfc_ruleset_clean(struct bfc_ruleset *ruleset);
 
-int bfc_ruleset_set(const struct bfc_opts *opts);
-int bfc_ruleset_get(const struct bfc_opts *opts);
-int bfc_ruleset_flush(const struct bfc_opts *opts);
+int bfc_ruleset_set(const struct bfc_opts *opts, const struct bf_ctx *ctx);
+int bfc_ruleset_get(const struct bfc_opts *opts, const struct bf_ctx *ctx);
+int bfc_ruleset_flush(const struct bfc_opts *opts, const struct bf_ctx *ctx);

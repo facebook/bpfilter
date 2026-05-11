@@ -21,7 +21,7 @@ void bfc_ruleset_clean(struct bfc_ruleset *ruleset)
     bf_list_clean(&ruleset->sets);
 }
 
-int bfc_ruleset_set(const struct bfc_opts *opts)
+int bfc_ruleset_set(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     _clean_bfc_ruleset_ struct bfc_ruleset ruleset = bfc_ruleset_default();
     int r;
@@ -34,7 +34,7 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
         return bf_err_r(r, "failed to parse ruleset");
 
     if (!opts->dry_run) {
-        r = bf_ruleset_set(&ruleset.chains, &ruleset.hookopts);
+        r = bf_ruleset_set(ctx, &ruleset.chains, &ruleset.hookopts);
         if (r)
             bf_err_r(r, "failed to set ruleset");
     } else {
@@ -44,7 +44,7 @@ int bfc_ruleset_set(const struct bfc_opts *opts)
     return r;
 }
 
-int bfc_ruleset_get(const struct bfc_opts *opts)
+int bfc_ruleset_get(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     _clean_bf_list_ bf_list chains = bf_list_default(bf_chain_free, NULL);
     _clean_bf_list_ bf_list hookopts = bf_list_default(bf_hookopts_free, NULL);
@@ -52,7 +52,7 @@ int bfc_ruleset_get(const struct bfc_opts *opts)
 
     assert(opts);
 
-    r = bf_ruleset_get(&chains, &hookopts);
+    r = bf_ruleset_get(ctx, &chains, &hookopts);
     if (r < 0)
         return bf_err_r(r, "failed to request ruleset");
 
@@ -63,9 +63,9 @@ int bfc_ruleset_get(const struct bfc_opts *opts)
     return 0;
 }
 
-int bfc_ruleset_flush(const struct bfc_opts *opts)
+int bfc_ruleset_flush(const struct bfc_opts *opts, const struct bf_ctx *ctx)
 {
     (void)opts;
 
-    return bf_ruleset_flush();
+    return bf_ruleset_flush(ctx);
 }

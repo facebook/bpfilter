@@ -29,14 +29,14 @@ static void ruleset_get(void **state)
         _clean_bf_list_ bf_list chains = bf_list_default(NULL, NULL);
         _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, NULL);
 
-        assert_ok(bf_ruleset_get(&chains, &hookopts));
+        assert_ok(bf_ruleset_get(bft_state_ctx(*state), &chains, &hookopts));
         assert_int_equal(bf_list_size(&chains), 0);
         assert_int_equal(bf_list_size(&hookopts), 0);
     }
 
     {
         // Skip corrupt chains
-        struct bft_tmpdir *tmpdir = *state;
+        struct bft_tmpdir *tmpdir = bft_state_tmpdir(*state);
         _clean_bf_list_ bf_list chains = bf_list_default(NULL, NULL);
         _clean_bf_list_ bf_list hookopts = bf_list_default(NULL, NULL);
         char path[PATH_MAX];
@@ -51,7 +51,7 @@ static void ruleset_get(void **state)
                        tmpdir->dir_path);
         assert_ok(mkdir(path, 0755));
 
-        assert_ok(bf_ruleset_get(&chains, &hookopts));
+        assert_ok(bf_ruleset_get(bft_state_ctx(*state), &chains, &hookopts));
         assert_int_equal(bf_list_size(&chains), 0);
         assert_int_equal(bf_list_size(&hookopts), 0);
     }
@@ -68,7 +68,7 @@ static void ruleset_set(void **state)
 
     // Mismatched list sizes should fail
     assert_ok(bf_list_add_tail(&chains, bft_chain_dummy(false)));
-    assert_err(bf_ruleset_set(&chains, &hookopts));
+    assert_err(bf_ruleset_set(bft_state_ctx(*state), &chains, &hookopts));
 }
 
 static void ruleset_flush(void **state)
@@ -76,7 +76,7 @@ static void ruleset_flush(void **state)
     (void)state;
 
     // Empty ruleset
-    assert_ok(bf_ruleset_flush());
+    assert_ok(bf_ruleset_flush(bft_state_ctx(*state)));
 }
 
 static void chain_set(void **state)
@@ -85,7 +85,7 @@ static void chain_set(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_set(chain, NULL));
+    assert_err(bf_chain_set(bft_state_ctx(*state), chain, NULL));
 }
 
 static void chain_get(void **state)
@@ -95,21 +95,22 @@ static void chain_get(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_get("invalid_chain", &chain, &hookopts));
+    assert_err(
+        bf_chain_get(bft_state_ctx(*state), "invalid_chain", &chain, &hookopts));
 }
 
 static void chain_prog_fd(void **state)
 {
     (void)state;
 
-    assert_err(bf_chain_prog_fd("invalid_chain"));
+    assert_err(bf_chain_prog_fd(bft_state_ctx(*state), "invalid_chain"));
 }
 
 static void chain_logs_fd(void **state)
 {
     (void)state;
 
-    assert_err(bf_chain_logs_fd("invalid_chain"));
+    assert_err(bf_chain_logs_fd(bft_state_ctx(*state), "invalid_chain"));
 }
 
 static void chain_load(void **state)
@@ -118,7 +119,7 @@ static void chain_load(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_load(chain));
+    assert_err(bf_chain_load(bft_state_ctx(*state), chain));
 }
 
 static void chain_attach(void **state)
@@ -127,7 +128,8 @@ static void chain_attach(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_attach("invalid_chain", &hookopts));
+    assert_err(
+        bf_chain_attach(bft_state_ctx(*state), "invalid_chain", &hookopts));
 }
 
 static void chain_update(void **state)
@@ -136,7 +138,7 @@ static void chain_update(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_update(chain));
+    assert_err(bf_chain_update(bft_state_ctx(*state), chain));
 }
 
 static void chain_update_set(void **state)
@@ -146,43 +148,44 @@ static void chain_update_set(void **state)
 
     (void)state;
 
-    assert_err(bf_chain_update_set("invalid_name", set0, set1));
+    assert_err(
+        bf_chain_update_set(bft_state_ctx(*state), "invalid_name", set0, set1));
 }
 
 static void chain_flush(void **state)
 {
     (void)state;
 
-    assert_err(bf_chain_flush("invalid_chain"));
+    assert_err(bf_chain_flush(bft_state_ctx(*state), "invalid_chain"));
 }
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(ruleset_get, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(ruleset_set, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(ruleset_flush, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_set, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_get, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_prog_fd, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_logs_fd, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_load, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_attach, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_update, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_update_set, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(chain_flush, bft_setup_ctx,
-                                        bft_teardown_ctx),
+        cmocka_unit_test_setup_teardown(ruleset_get, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(ruleset_set, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(ruleset_flush, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_set, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_get, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_prog_fd, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_logs_fd, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_load, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_attach, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_update, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_update_set, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(chain_flush, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

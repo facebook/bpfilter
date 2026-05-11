@@ -39,7 +39,7 @@ void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
 
     static_assert(sizeof(nf_hook_state_ctx) == 48);
 
-    fd = bf_chain_prog_fd(chain_name);
+    fd = bf_chain_prog_fd(bft_matcher_ctx, chain_name);
     assert_true(fd >= 0);
 
     if (bf_hook_to_flavor(hook) == BF_FLAVOR_NF) {
@@ -126,7 +126,7 @@ int bft_matcher_test_setup(void **state)
 {
     (void)state;
 
-    int r = bf_ruleset_flush();
+    int r = bf_ruleset_flush(bft_matcher_ctx);
     if (r != 0)
         return bf_err_r(r, "failed to flush ruleset in test setup");
 
@@ -137,7 +137,7 @@ int bft_matcher_test_teardown(void **state)
 {
     (void)state;
 
-    int r = bf_ruleset_flush();
+    int r = bf_ruleset_flush(bft_matcher_ctx);
     if (r != 0)
         return bf_err_r(r, "failed to flush ruleset in test teardown");
 

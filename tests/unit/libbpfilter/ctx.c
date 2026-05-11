@@ -13,36 +13,27 @@
 
 #include <bpfilter/core/list.h>
 #include <bpfilter/ctx.h>
+#include <bpfilter/logger.h>
 
 #include "core/lock.h"
 #include "test.h"
-
-static void no_setup(void **state)
-{
-    (void)state;
-
-    /* The legacy global-form accessors return safe defaults when no
-     * context has been registered via `bf_ctx_setup`. */
-    assert_int_equal(bf_ctx_token(), -1);
-    assert_null(bf_ctx_get_elfstub(0));
-}
 
 static void get_cgens_empty(void **state)
 {
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_list_ bf_list *cgens = NULL;
+    const struct bf_ctx *ctx = bft_state_ctx(*state);
 
-    (void)state;
-
-    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
-    assert_ok(bf_ctx_get_cgens(&lock, &cgens));
+    assert_ok(
+        bf_lock_init(&lock, bft_state_tmpdir(*state)->dir_path, BF_LOCK_READ));
+    assert_ok(bf_ctx_get_cgens(ctx, &lock, &cgens));
     assert_non_null(cgens);
     assert_int_equal(bf_list_size(cgens), 0);
 }
 
 static void get_cgens_skips_corrupt(void **state)
 {
-    struct bft_tmpdir *tmpdir = *state;
+    struct bft_tmpdir *tmpdir = bft_state_tmpdir(*state);
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_list_ bf_list *cgens = NULL;
     char pindir_path[PATH_MAX];
@@ -69,15 +60,16 @@ static void get_cgens_skips_corrupt(void **state)
                    tmpdir->dir_path);
     assert_fd(fd = open(file_path, O_CREAT | O_WRONLY, 0644));
 
-    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
-    assert_ok(bf_ctx_get_cgens(&lock, &cgens));
+    assert_ok(
+        bf_lock_init(&lock, bft_state_tmpdir(*state)->dir_path, BF_LOCK_READ));
+    assert_ok(bf_ctx_get_cgens(bft_state_ctx(*state), &lock, &cgens));
     assert_non_null(cgens);
     assert_int_equal(bf_list_size(cgens), 0);
 }
 
 static void get_cgen_corrupt_returns_error(void **state)
 {
-    struct bft_tmpdir *tmpdir = *state;
+    struct bft_tmpdir *tmpdir = bft_state_tmpdir(*state);
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     struct bf_cgen *cgen = NULL;
     char pindir_path[PATH_MAX];
@@ -93,9 +85,10 @@ static void get_cgen_corrupt_returns_error(void **state)
 
     /* Chain dir exists but the `bf_ctx` map is missing: bf_cgen_new_from_dir_fd
      * fails, and the error must be propagated (not swallowed as -ENOENT). */
-    assert_ok(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "broken",
-                                     BF_LOCK_READ, BF_LOCK_READ, false));
-    assert_err(bf_ctx_get_cgen(&lock, &cgen));
+    assert_ok(bf_lock_init_for_chain(&lock, bft_state_tmpdir(*state)->dir_path,
+                                     "broken", BF_LOCK_READ, BF_LOCK_READ,
+                                     false));
+    assert_err(bf_ctx_get_cgen(bft_state_ctx(*state), &lock, &cgen));
     assert_null(cgen);
 }
 
@@ -103,7 +96,7 @@ static void verbose_flags(void **state)
 {
     (void)state;
 
-    /* `bft_setup_ctx()` configures BF_VERBOSE_DEBUG through the
+    /* `bft_setup_ctx_state()` configures BF_VERBOSE_DEBUG through the
      * process-wide logger; verify the other flags are off. */
     assert_true(bf_logger_is_verbose(BF_VERBOSE_DEBUG));
     assert_false(bf_logger_is_verbose(BF_VERBOSE_BPF));
@@ -118,7 +111,7 @@ static void new_and_free_roundtrip(void **state)
     (void)state;
 
     assert_ok(bft_tmpdir_new(&tmpdir));
-    assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path, 0));
+    assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path));
     assert_non_null(ctx);
 
     bf_ctx_free(&ctx);
@@ -140,7 +133,7 @@ static void free_cleanup_attribute(void **state)
     /* _free_bf_ctx_ runs bf_ctx_free at scope exit; no leaks expected. */
     {
         _free_bf_ctx_ struct bf_ctx *ctx = NULL;
-        assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path, 0));
+        assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path));
         assert_non_null(ctx);
     }
 }
@@ -148,15 +141,16 @@ static void free_cleanup_attribute(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(no_setup),
-        cmocka_unit_test_setup_teardown(get_cgens_empty, bft_setup_ctx,
-                                        bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(get_cgens_skips_corrupt, bft_setup_ctx,
-                                        bft_teardown_ctx),
+        cmocka_unit_test_setup_teardown(get_cgens_empty, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(get_cgens_skips_corrupt,
+                                        bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
         cmocka_unit_test_setup_teardown(get_cgen_corrupt_returns_error,
-                                        bft_setup_ctx, bft_teardown_ctx),
-        cmocka_unit_test_setup_teardown(verbose_flags, bft_setup_ctx,
-                                        bft_teardown_ctx),
+                                        bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
+        cmocka_unit_test_setup_teardown(verbose_flags, bft_setup_ctx_state,
+                                        bft_teardown_ctx_state),
         cmocka_unit_test(new_and_free_roundtrip),
         cmocka_unit_test(free_cleanup_attribute),
     };

@@ -20,6 +20,8 @@
 
 #include "bpfilter/core/list.h"
 
+const struct bf_ctx *bft_matcher_ctx = NULL;
+
 void bft_assert_counter_eq(const char *chain_name, size_t rule_idx,
                            uint64_t packets, int64_t bytes)
 {
@@ -27,9 +29,10 @@ void bft_assert_counter_eq(const char *chain_name, size_t rule_idx,
     _free_bf_hookopts_ struct bf_hookopts *hopts = NULL;
     struct bf_rule *rule;
 
+    assert_non_null(bft_matcher_ctx);
     assert_non_null(chain_name);
 
-    assert_ok(bf_chain_get(chain_name, &chain, &hopts));
+    assert_ok(bf_chain_get(bft_matcher_ctx, chain_name, &chain, &hopts));
 
     rule = bf_list_get_at(&chain->rules, rule_idx);
     assert_non_null(rule);
@@ -314,30 +317,45 @@ bool bft_matcher_equal(const struct bf_matcher *matcher0,
                        bf_matcher_payload_len(matcher0));
 }
 
-int bft_setup_ctx(void **state)
+int bft_setup_ctx_state(void **state)
 {
     _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+    _free_bf_ctx_ struct bf_ctx *ctx = NULL;
+    struct bft_ctx_state *_state;
     int r;
 
     r = bft_tmpdir_new(&tmpdir);
     if (r)
         return r;
 
-    r = bf_ctx_setup(false, tmpdir->dir_path, BF_FLAG(BF_VERBOSE_DEBUG));
+    bf_logger_set_verbose(BF_FLAG(BF_VERBOSE_DEBUG));
+
+    r = bf_ctx_new(&ctx, false, tmpdir->dir_path);
     if (r)
         return r;
 
-    *state = TAKE_PTR(tmpdir);
+    _state = malloc(sizeof(*_state));
+    if (!_state)
+        return -ENOMEM;
+
+    _state->tmpdir = TAKE_PTR(tmpdir);
+    _state->ctx = TAKE_PTR(ctx);
+
+    *state = _state;
 
     return 0;
 }
 
-int bft_teardown_ctx(void **state)
+int bft_teardown_ctx_state(void **state)
 {
-    struct bft_tmpdir *tmpdir = *state;
+    struct bft_ctx_state *_state = *state;
 
-    bf_ctx_teardown();
-    bft_tmpdir_free(&tmpdir);
+    if (!_state)
+        return 0;
+
+    bf_ctx_free(&_state->ctx);
+    bft_tmpdir_free(&_state->tmpdir);
+    free(_state);
 
     *state = NULL;
 

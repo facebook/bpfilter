@@ -6,11 +6,9 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stdint.h>
 
 #include <bpfilter/core/list.h>
 #include <bpfilter/dump.h>
-#include <bpfilter/elfstub.h>
 
 /**
  * @file ctx.h
@@ -19,8 +17,8 @@
  *
  * `struct bf_ctx` is an opaque, user-managed object obtained via
  * `bf_ctx_new()` and released via `bf_ctx_free()`. Each context carries
- * its own bpffs path, BPF token state and verbose-flag mask, so multiple
- * contexts may coexist within a single process.
+ * its own bpffs path, BPF token state, ELF stubs and vmlinux BTF, so
+ * multiple contexts may coexist within a single process.
  *
  * Chain state is persisted in per-chain bpffs context maps and loaded on
  * demand by `bf_ctx_get_cgen()` and `bf_ctx_get_cgens()`; the context does
@@ -50,11 +48,10 @@ struct bf_lock;
  * @param ctx Output pointer to the new context.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint.
- * @param verbose Bitmask of verbose flags.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
-               uint16_t verbose);
+int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
+               const char *bpffs_path);
 
 /**
  * @brief Free a runtime context.
@@ -73,26 +70,12 @@ void bf_ctx_free(struct bf_ctx **ctx);
 #define _free_bf_ctx_ __attribute__((cleanup(bf_ctx_free)))
 
 /**
- * Initialise the global context.
+ * @brief Dump the runtime context.
  *
- * @param with_bpf_token If true, create a BPF token from bpffs.
- * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
- * @param verbose Bitmask of verbose flags.
- * @return 0 on success, or a negative errno value on failure.
- */
-int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose);
-
-/**
- * Teardown the global context.
- */
-void bf_ctx_teardown(void);
-
-/**
- * Dump the global context.
- *
+ * @param ctx Runtime context. Can't be NULL.
  * @param prefix Prefix to use for the dump.
  */
-void bf_ctx_dump(prefix_t *prefix);
+void bf_ctx_dump(const struct bf_ctx *ctx, prefix_t *prefix);
 
 /**
  * @brief Load a codegen from a chain pinned in bpffs.
@@ -102,13 +85,16 @@ void bf_ctx_dump(prefix_t *prefix);
  * the chain via `bf_lock_acquire_chain`). On success `*cgen` is set to
  * a newly-allocated codegen owned by the caller (use `_free_bf_cgen_`).
  *
+ * @param ctx Runtime context the new codegen will hold a borrowed pointer
+ *        to. Can't be NULL.
  * @param lock Lock providing the chain directory file descriptor. Must
  *        hold a valid `chain_fd`. Can't be NULL.
  * @param cgen Output pointer to the loaded codegen. Can't be NULL. Left
  *        unchanged on failure.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen);
+int bf_ctx_get_cgen(const struct bf_ctx *ctx, struct bf_lock *lock,
+                    struct bf_cgen **cgen);
 
 /**
  * @brief Discover and load all codegens persisted under `{bpffs}/bpfilter/`.
@@ -121,6 +107,8 @@ int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen);
  * then releases it before moving to the next chain. Per-entry failures
  * are logged and the offending chain is skipped.
  *
+ * @param ctx Runtime context the new codegens will hold a borrowed pointer
+ *        to. Can't be NULL.
  * @param lock Lock that must already hold the pin directory locked
  *        (e.g. via `bf_lock_init(BF_LOCK_READ)` or `BF_LOCK_WRITE`).
  *        Must not currently hold a chain lock. Can't be NULL.
@@ -130,24 +118,5 @@ int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen);
  * @return 0 on success, or a negative errno value on setup failure
  *         (cannot open pin directory, allocation failure).
  */
-int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens);
-
-/**
- * Get the BPF token file descriptor.
- *
- * @return The BPF token file descriptor, or -1 if no token is used.
- */
-int bf_ctx_token(void);
-
-/**
- * @brief Get a ELF stub from its ID.
- *
- * @param id ID of the ELF stub to retrieve.
- * @return The requested ELF stub.
- */
-const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);
-
-/**
- * @return Path to the configured BPF filesystem.
- */
-const char *bf_ctx_get_bpffs_path(void);
+int bf_ctx_get_cgens(const struct bf_ctx *ctx, struct bf_lock *lock,
+                     bf_list **cgens);

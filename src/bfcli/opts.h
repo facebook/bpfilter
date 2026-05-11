@@ -10,6 +10,8 @@
 
 #include <bpfilter/hook.h>
 
+struct bf_ctx;
+
 /**
  * @file opts.h
  *
@@ -95,7 +97,7 @@ struct bfc_opts_cmd
     uint32_t valid_opts;
     uint32_t required_opts;
     const char *doc;
-    int (*cb)(const struct bfc_opts *opts);
+    int (*cb)(const struct bfc_opts *opts, const struct bf_ctx *ctx);
 };
 
 /**

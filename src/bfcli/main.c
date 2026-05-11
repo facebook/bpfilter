@@ -35,6 +35,7 @@ static void _bfc_print_version(FILE *stream, struct argp_state *state)
 int main(int argc, char *argv[])
 {
     _clean_bfc_opts_ struct bfc_opts opts = bfc_opts_default();
+    _free_bf_ctx_ struct bf_ctx *ctx = NULL;
     int r;
 
     argp_program_version_hook = &_bfc_print_version;
@@ -46,18 +47,15 @@ int main(int argc, char *argv[])
     if (r < 0)
         return r;
 
+    bf_logger_set_verbose(opts.verbose);
+
     if (!opts.dry_run) {
-        r = bf_ctx_setup(opts.with_bpf_token, opts.bpffs_path, opts.verbose);
+        r = bf_ctx_new(&ctx, opts.with_bpf_token, opts.bpffs_path);
         if (r < 0)
             return r;
     }
 
-    r = opts.cmd->cb(&opts);
-
-    if (!opts.dry_run)
-        bf_ctx_teardown();
-
-    return r;
+    return opts.cmd->cb(&opts, ctx);
 }
 
 void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)

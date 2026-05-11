@@ -22,32 +22,35 @@ struct bf_hookopts;
  *
  * **Lifecycle**
  *
- * Every caller must initialise the library before using any other function,
- * and tear it down when done:
+ * Every caller obtains a runtime context with `bf_ctx_new()` and releases
+ * it with `bf_ctx_free()` (or the `_free_bf_ctx_` cleanup attribute):
  *
  * @code{.c}
- * int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
+ * _free_bf_ctx_ struct bf_ctx *ctx = NULL;
+ *
+ * int r = bf_ctx_new(&ctx, false, "/sys/fs/bpf");
  * if (r < 0)
  *     // handle error
  *
- * // use bf_ruleset_*, bf_chain_*, ...
- *
- * bf_ctx_teardown();
+ * // use bf_ruleset_*, bf_chain_*, ... passing `ctx` as first argument
  * @endcode
  *
- * `bf_ctx_setup` and `bf_ctx_teardown` are declared in `<bpfilter/ctx.h>`,
- * which is included by this header. Calling any API function before
- * `bf_ctx_setup` succeeds returns `-EINVAL`.
+ * `bf_ctx_new()` / `bf_ctx_free()` are declared in `<bpfilter/ctx.h>`, which is
+ * included by this header. Multiple contexts may coexist within a single
+ * process; each carries its own bpffs path, BPF token state, ELF stubs,
+ * and vmlinux BTF.
  */
 
 /**
  * @brief Get the current ruleset.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param chains List of `bf_chain` to be filled.
  * @param hookopts List of hook options objects.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_ruleset_get(bf_list *chains, bf_list *hookopts);
+int bf_ruleset_get(const struct bf_ctx *ctx, bf_list *chains,
+                   bf_list *hookopts);
 
 /**
  * @brief Load a ruleset.
@@ -59,19 +62,22 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts);
  * mapped 1 to 1. If a chain shouldn't be attached, the corresponding entry
  * in `hookopts` should be NULL.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param chains List of chains to define. Can't be NULL.
  * @param hookopts List of hook options to attach the chains in `chain`. Can't
  *        be NULL.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_ruleset_set(bf_list *chains, bf_list *hookopts);
+int bf_ruleset_set(const struct bf_ctx *ctx, bf_list *chains,
+                   bf_list *hookopts);
 
 /**
  * @brief Remove the current ruleset.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_ruleset_flush(void);
+int bf_ruleset_flush(const struct bf_ctx *ctx);
 
 /**
  * @brief Set a chain.
@@ -79,16 +85,19 @@ int bf_ruleset_flush(void);
  * If a chain with the same name already exists, it is detached and unloaded.
  * The new chain is loaded, and attached if hook options are defined.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param chain Chain to set. Can't be NULL.
  * @param hookopts Hook options to attach the chain. If NULL, the chain is not
  *        attached.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts);
+int bf_chain_set(const struct bf_ctx *ctx, struct bf_chain *chain,
+                 struct bf_hookopts *hookopts);
 
 /**
  * @brief Get a chain.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param name Name of the chain to look for. Can't be NULL.
  * @param chain On success, contains a pointer to the chain. The caller is
  *        responsible for freeing it. Can't be NULL.
@@ -98,8 +107,8 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts);
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
  */
-int bf_chain_get(const char *name, struct bf_chain **chain,
-                 struct bf_hookopts **hookopts);
+int bf_chain_get(const struct bf_ctx *ctx, const char *name,
+                 struct bf_chain **chain, struct bf_hookopts **hookopts);
 
 /**
  * @brief Get the file descriptor of a chain's program.
@@ -111,61 +120,69 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
  * API will be disabled for non-tests use cases.
  *
  * @pre
+ * - `ctx` is not NULL.
  * - `name` is a non-NULL pointer to a C-string.
  *
+ * @param ctx Runtime context.
  * @param name Name of the chain to get the program from.
  * @return File descriptor of the chain's program, or a negative error value
  *         on failure. The caller owns the file descriptor and must close it.
  */
-int bf_chain_prog_fd(const char *name);
+int bf_chain_prog_fd(const struct bf_ctx *ctx, const char *name);
 
 /**
  * @brief Get the file descriptor of a chain's logs buffer.
  *
  * @pre
+ * - `ctx` is not NULL.
  * - `name` is a non-NULL pointer to a C-string.
  *
+ * @param ctx Runtime context.
  * @param name Name of the chain to get the log buffer from.
  * @return File descriptor of the chain's logs buffer, or a negative error
  *         value on failure. The caller owns the file descriptor and must
  *         close it.
  */
-int bf_chain_logs_fd(const char *name);
+int bf_chain_logs_fd(const struct bf_ctx *ctx, const char *name);
 
 /**
  * @brief Load a chain.
  *
  * If a chain with the same name already exists, `-EEXIST` is returned.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param chain Chain to load. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_chain_load(struct bf_chain *chain);
+int bf_chain_load(const struct bf_ctx *ctx, struct bf_chain *chain);
 
 /**
  * @brief Attach a chain.
  *
  * If the chain doesn't exist, `-ENOENT` is returned.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param name Name of the chain to attach. Can't be NULL.
  * @param hookopts Hook options to attach the chain. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
  * - `-EBUSY`: chain is already attached.
  */
-int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts);
+int bf_chain_attach(const struct bf_ctx *ctx, const char *name,
+                    const struct bf_hookopts *hookopts);
 
 /**
  * @brief Update an attached chain.
  *
  * The chain to update must exist and be attached to a hook.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param chain Chain to update. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
  * - `-ENOLINK`: the chain to update is not attached.
  */
-int bf_chain_update(const struct bf_chain *chain);
+int bf_chain_update(const struct bf_ctx *ctx, const struct bf_chain *chain);
 
 /**
  * @brief Update a named set in an existing chain using delta operations.
@@ -176,6 +193,7 @@ int bf_chain_update(const struct bf_chain *chain);
  * `to_remove` has elements that already aren't present in the program,
  * these elements are ignored.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param name Name of the chain containing the set. Can't be NULL.
  * @param to_add Set containing elements to add. The set name and key format
  *        must match the existing set in the chain. Can't be NULL.
@@ -185,14 +203,16 @@ int bf_chain_update(const struct bf_chain *chain);
  * - `-ENOENT`: no chain found for this name or set not found in chain.
  * - `-EINVAL`: set key format doesn't match existing set.
  */
-int bf_chain_update_set(const char *name, const struct bf_set *to_add,
+int bf_chain_update_set(const struct bf_ctx *ctx, const char *name,
+                        const struct bf_set *to_add,
                         const struct bf_set *to_remove);
 
 /**
  * @brief Remove a chain.
  *
+ * @param ctx Runtime context. Can't be NULL.
  * @param name Name of the chain to flush. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
  */
-int bf_chain_flush(const char *name);
+int bf_chain_flush(const struct bf_ctx *ctx, const char *name);
