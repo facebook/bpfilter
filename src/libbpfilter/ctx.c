@@ -109,8 +109,11 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
         return bf_err_r(r, "failed to load vmlinux BTF");
 
     _ctx->with_bpf_token = with_bpf_token;
-    _ctx->bpffs_path = bpffs_path;
     _ctx->verbose = verbose;
+
+    _ctx->bpffs_path = strdup(bpffs_path);
+    if (!_ctx->bpffs_path)
+        return -ENOMEM;
 
     _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
@@ -159,6 +162,7 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     closep(&(*ctx)->token_fd);
+    freep((void *)&(*ctx)->bpffs_path);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);

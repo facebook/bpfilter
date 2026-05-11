@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -27,7 +28,54 @@ static void no_setup(void **state)
     assert_int_equal(bf_lock_init(&lock, BF_LOCK_READ), -EINVAL);
     assert_int_equal(bf_ctx_token(), -1);
     assert_null(bf_ctx_get_elfstub(0));
+    assert_null(bf_ctx_get_bpffs_path());
     assert_false(bf_ctx_is_verbose(BF_VERBOSE_DEBUG));
+}
+
+static void bpffs_path_matches_setup(void **state)
+{
+    struct bft_tmpdir *tmpdir = *state;
+    const char *path;
+
+    /* The accessor must return the path the caller passed to bf_ctx_setup. */
+    path = bf_ctx_get_bpffs_path();
+    assert_non_null(path);
+    assert_string_equal(path, tmpdir->dir_path);
+}
+
+static void bpffs_path_is_owned_copy(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+    char path_buf[PATH_MAX];
+    const char *stored;
+
+    (void)state;
+
+    /* This test runs without the bft_setup_ctx fixture so we control the
+     * lifetime of the bpffs_path buffer passed to bf_ctx_setup. */
+    assert_ok(bft_tmpdir_new(&tmpdir));
+
+    /* Copy the bpffs path into a local mutable buffer, then hand it to
+     * bf_ctx_setup. */
+    (void)snprintf(path_buf, sizeof(path_buf), "%s", tmpdir->dir_path);
+    assert_ok(bf_ctx_setup(false, path_buf, BF_FLAG(BF_VERBOSE_DEBUG)));
+
+    /* Stomp on the caller's buffer. The ctx must hold its own strdup'd copy:
+     * before this fix, ctx->bpffs_path aliased the caller's storage and the
+     * accessor would return the corrupted contents (or worse, dangling memory
+     * once the caller's buffer went out of scope). */
+    memset(path_buf, 'X', sizeof(path_buf) - 1);
+    path_buf[sizeof(path_buf) - 1] = '\0';
+
+    stored = bf_ctx_get_bpffs_path();
+    assert_non_null(stored);
+    assert_ptr_not_equal(stored, path_buf);
+    assert_string_equal(stored, tmpdir->dir_path);
+
+    /* Tear down before the tmpdir cleanup so the ctx releases its copy while
+     * the bpffs path is still on disk. ASan/leak detectors would flag a
+     * missing free here, exercising the matching freep() in _bf_ctx_free. */
+    bf_ctx_teardown();
 }
 
 static void get_cgens_empty(void **state)
@@ -115,6 +163,9 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(no_setup),
+        cmocka_unit_test(bpffs_path_is_owned_copy),
+        cmocka_unit_test_setup_teardown(bpffs_path_matches_setup, bft_setup_ctx,
+                                        bft_teardown_ctx),
         cmocka_unit_test_setup_teardown(get_cgens_empty, bft_setup_ctx,
                                         bft_teardown_ctx),
         cmocka_unit_test_setup_teardown(get_cgens_skips_corrupt, bft_setup_ctx,
