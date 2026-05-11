@@ -250,17 +250,14 @@ static int _bf_lock_open_existing(int pindir_fd, const char *name,
         name, BF_LOCK_MAX_RETRIES);
 }
 
-int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode)
+int bf_lock_init(struct bf_lock *lock, const char *bpffs_path,
+                 enum bf_lock_mode mode)
 {
     _clean_bf_lock_ struct bf_lock _lock = bf_lock_default();
-    const char *bpffs_path;
     int r;
 
     assert(lock);
-
-    bpffs_path = bf_ctx_get_bpffs_path();
-    if (!bpffs_path)
-        return bf_err_r(-EINVAL, "context is not initialized");
+    assert(bpffs_path);
 
     _lock.bpffs_fd = bf_opendir(bpffs_path);
     if (_lock.bpffs_fd < 0) {
@@ -287,14 +284,15 @@ int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode)
     return 0;
 }
 
-int bf_lock_init_for_chain(struct bf_lock *lock, const char *name,
-                           enum bf_lock_mode pindir_mode,
+int bf_lock_init_for_chain(struct bf_lock *lock, const char *bpffs_path,
+                           const char *name, enum bf_lock_mode pindir_mode,
                            enum bf_lock_mode chain_mode, bool create)
 {
     _clean_bf_lock_ struct bf_lock _lock = bf_lock_default();
     int r;
 
     assert(lock);
+    assert(bpffs_path);
     assert(name);
 
     if (create && pindir_mode != BF_LOCK_WRITE) {
@@ -303,7 +301,7 @@ int bf_lock_init_for_chain(struct bf_lock *lock, const char *name,
             "creating a chain requires BF_LOCK_WRITE on the pin directory");
     }
 
-    r = bf_lock_init(&_lock, pindir_mode);
+    r = bf_lock_init(&_lock, bpffs_path, pindir_mode);
     if (r)
         return r;
 

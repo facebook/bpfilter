@@ -188,6 +188,7 @@
 
 struct bf_chain;
 struct bf_counter;
+struct bf_ctx;
 struct bf_hookopts;
 struct bf_handle;
 struct bf_set;
@@ -195,6 +196,11 @@ struct bf_set_group;
 
 struct bf_program
 {
+    /// Runtime context the program was generated for. Borrowed pointer
+    /// used to reach context-level state (token fd, ELF stubs, verbose
+    /// flags) during generation and load.
+    const struct bf_ctx *ctx;
+
     enum bf_flavor flavor;
 
     /// Log messages printer
@@ -235,14 +241,24 @@ struct bf_program
 /**
  * @brief Allocate and initialize a new `bf_program` object.
  *
- * @param program `bf_program` object to allocate and initialize. Can't be NULL.
- * @param chain Chain the program is generated from. Can't be NULL.
+ * @pre
+ *  - `program` is not NULL.
+ *  - `ctx` is not NULL.
+ *  - `chain` is not NULL.
+ *  - `handle` is not NULL.
+ * @post
+ *  - On success: `*program` stores `ctx` as a borrowed pointer.
+ *  - On failure: `*program` is unchanged.
+ *
+ * @param program `bf_program` object to allocate and initialize.
+ * @param ctx Runtime context the program will hold a borrowed pointer to.
+ * @param chain Chain the program is generated from.
  * @param handle Handle to store BPF object references in. The program borrows
- *        this pointer (non-owning). Can't be NULL.
+ *        this pointer (non-owning).
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
-                   struct bf_handle *handle);
+int bf_program_new(struct bf_program **program, const struct bf_ctx *ctx,
+                   const struct bf_chain *chain, struct bf_handle *handle);
 
 void bf_program_free(struct bf_program **program);
 

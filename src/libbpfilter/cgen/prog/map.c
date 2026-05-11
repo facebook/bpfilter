@@ -60,7 +60,7 @@ static void _bf_btf_free(struct bf_btf **btf)
     freep((void *)btf);
 }
 
-static int _bf_btf_load(struct bf_btf *btf)
+static int _bf_btf_load(struct bf_btf *btf, int token_fd)
 {
     union bpf_attr attr = {};
     const void *raw;
@@ -72,7 +72,7 @@ static int _bf_btf_load(struct bf_btf *btf)
     if (!raw)
         return bf_err_r(errno, "failed to request BTF raw data");
 
-    r = bf_bpf_btf_load(raw, attr.btf_size, bf_ctx_token());
+    r = bf_bpf_btf_load(raw, attr.btf_size, token_fd);
     if (r < 0)
         return r;
 
@@ -89,7 +89,7 @@ static int _bf_btf_load(struct bf_btf *btf)
  * @return A @ref bf_btf structure on success, or NULL on error. The
  *         @ref bf_btf structure is owned by the caller.
  */
-static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
+static struct bf_btf *_bf_map_make_btf(const struct bf_map *map, int token_fd)
 {
     _free_bf_btf_ struct bf_btf *btf = NULL;
     struct btf *kbtf;
@@ -122,7 +122,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         return NULL;
     }
 
-    r = _bf_btf_load(btf);
+    r = _bf_btf_load(btf, token_fd);
     if (r) {
         bf_warn_r(r, "failed to load BTF data for %s, ignoring", map->name);
         return NULL;
@@ -131,7 +131,7 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
     return TAKE_PTR(btf);
 }
 
-static int _bf_map_new(struct bf_map **map, const char *name,
+static int _bf_map_new(struct bf_map **map, int token_fd, const char *name,
                        enum bf_map_type type, enum bf_bpf_map_type bpf_type,
                        size_t key_size, size_t value_size, size_t n_elems)
 {
@@ -173,11 +173,10 @@ static int _bf_map_new(struct bf_map **map, const char *name,
 
     bf_strncpy(_map->name, BPF_OBJ_NAME_LEN, name);
 
-    btf = _bf_map_make_btf(_map);
+    btf = _bf_map_make_btf(_map, token_fd);
 
-    fd =
-        bf_bpf_map_create(_map->name, _map->bpf_type, _map->key_size,
-                          _map->value_size, _map->n_elems, btf, bf_ctx_token());
+    fd = bf_bpf_map_create(_map->name, _map->bpf_type, _map->key_size,
+                           _map->value_size, _map->n_elems, btf, token_fd);
     if (fd < 0)
         return bf_err_r(fd, "bf_map %s: failed to create map", name);
 
@@ -187,8 +186,9 @@ static int _bf_map_new(struct bf_map **map, const char *name,
     return 0;
 }
 
-int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
-               size_t key_size, size_t value_size, size_t n_elems)
+int bf_map_new(struct bf_map **map, int token_fd, const char *name,
+               enum bf_map_type type, size_t key_size, size_t value_size,
+               size_t n_elems)
 {
     static enum bf_bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
         [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
@@ -206,11 +206,11 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
             "use bf_map_new_from_set() to create a bf_map from a bf_set");
     }
 
-    return _bf_map_new(map, name, type, _map_type_to_bpf[type], key_size,
-                       value_size, n_elems);
+    return _bf_map_new(map, token_fd, name, type, _map_type_to_bpf[type],
+                       key_size, value_size, n_elems);
 }
 
-int bf_map_new_from_set(struct bf_map **map, const char *name,
+int bf_map_new_from_set(struct bf_map **map, int token_fd, const char *name,
                         const struct bf_set *set, size_t n_elems,
                         size_t value_size)
 {
@@ -218,7 +218,7 @@ int bf_map_new_from_set(struct bf_map **map, const char *name,
     assert(name);
     assert(set);
 
-    return _bf_map_new(map, name, BF_MAP_TYPE_SET,
+    return _bf_map_new(map, token_fd, name, BF_MAP_TYPE_SET,
                        set->use_trie ? BF_BPF_MAP_TYPE_LPM_TRIE :
                                        BF_BPF_MAP_TYPE_HASH,
                        set->elem_size, value_size, n_elems);

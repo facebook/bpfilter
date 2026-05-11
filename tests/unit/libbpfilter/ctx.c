@@ -19,12 +19,10 @@
 
 static void no_setup(void **state)
 {
-    _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
-
     (void)state;
 
-    /* All ctx accessors must reject calls made before bf_ctx_setup. */
-    assert_int_equal(bf_lock_init(&lock, BF_LOCK_READ), -EINVAL);
+    /* The legacy global-form accessors return safe defaults when no
+     * context has been registered via `bf_ctx_setup`. */
     assert_int_equal(bf_ctx_token(), -1);
     assert_null(bf_ctx_get_elfstub(0));
 }
@@ -36,7 +34,7 @@ static void get_cgens_empty(void **state)
 
     (void)state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     assert_ok(bf_ctx_get_cgens(&lock, &cgens));
     assert_non_null(cgens);
     assert_int_equal(bf_list_size(cgens), 0);
@@ -71,7 +69,7 @@ static void get_cgens_skips_corrupt(void **state)
                    tmpdir->dir_path);
     assert_fd(fd = open(file_path, O_CREAT | O_WRONLY, 0644));
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     assert_ok(bf_ctx_get_cgens(&lock, &cgens));
     assert_non_null(cgens);
     assert_int_equal(bf_list_size(cgens), 0);
@@ -95,8 +93,8 @@ static void get_cgen_corrupt_returns_error(void **state)
 
     /* Chain dir exists but the `bf_ctx` map is missing: bf_cgen_new_from_dir_fd
      * fails, and the error must be propagated (not swallowed as -ENOENT). */
-    assert_ok(bf_lock_init_for_chain(&lock, "broken", BF_LOCK_READ,
-                                     BF_LOCK_READ, false));
+    assert_ok(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "broken",
+                                     BF_LOCK_READ, BF_LOCK_READ, false));
     assert_err(bf_ctx_get_cgen(&lock, &cgen));
     assert_null(cgen);
 }

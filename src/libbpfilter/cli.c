@@ -21,6 +21,7 @@
 #include "cgen/handle.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
+#include "core/ctx.h"
 #include "core/lock.h"
 
 static int copy_hookopts(struct bf_hookopts **dest,
@@ -92,7 +93,7 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts)
     _clean_bf_list_ bf_list _hookopts = bf_list_default_from(*hookopts);
     int r;
 
-    r = bf_lock_init(&lock, BF_LOCK_READ);
+    r = bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ);
     if (r)
         return bf_err_r(r, "failed to acquire READ lock for ruleset get");
 
@@ -142,7 +143,7 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
     if (bf_list_size(chains) != bf_list_size(hookopts))
         return -EINVAL;
 
-    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    r = bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE);
     if (r)
         return bf_err_r(r, "failed to acquire WRITE lock for ruleset set");
 
@@ -168,7 +169,7 @@ int bf_ruleset_set(bf_list *chains, bf_list *hookopts)
                 goto err_load;
         }
 
-        r = bf_cgen_new(&cgen, &chain_copy);
+        r = bf_cgen_new(&cgen, _bf_ctx_global(), &chain_copy);
         if (r)
             goto err_load;
 
@@ -205,7 +206,7 @@ int bf_ruleset_flush(void)
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     int r;
 
-    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    r = bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE);
     if (r)
         return bf_err_r(r, "failed to acquire WRITE lock for ruleset flush");
 
@@ -227,7 +228,7 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
      * destroyed and a fresh one is published under the same name. Take
      * pindir WRITE for the whole operation so the flush-then-load
      * sequence is atomic w.r.t. every other libbpfilter caller. */
-    r = bf_lock_init(&lock, BF_LOCK_WRITE);
+    r = bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE);
     if (r)
         return r;
 
@@ -259,7 +260,7 @@ int bf_chain_set(struct bf_chain *chain, struct bf_hookopts *hookopts)
             return r;
     }
 
-    r = bf_cgen_new(&new_cgen, &chain_copy);
+    r = bf_cgen_new(&new_cgen, _bf_ctx_global(), &chain_copy);
     if (r)
         return r;
 
@@ -284,7 +285,8 @@ int bf_chain_get(const char *name, struct bf_chain **chain,
     assert(chain);
     assert(hookopts);
 
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_READ, BF_LOCK_READ, false);
     if (r)
         return r;
 
@@ -321,7 +323,8 @@ int bf_chain_prog_fd(const char *name)
 
     assert(name);
 
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_READ, BF_LOCK_READ, false);
     if (r)
         return r;
 
@@ -343,7 +346,8 @@ int bf_chain_logs_fd(const char *name)
 
     assert(name);
 
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_READ, false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_READ, BF_LOCK_READ, false);
     if (r)
         return r;
 
@@ -370,8 +374,8 @@ int bf_chain_load(struct bf_chain *chain)
      * staged inode. Stage-and-rename (I3) returns `-EEXIST` if another
      * creator already claimed the name, which replaces the former
      * check-then-create sequence atomically. */
-    r = bf_lock_init_for_chain(&lock, chain->name, BF_LOCK_WRITE, BF_LOCK_WRITE,
-                               true);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), chain->name,
+                               BF_LOCK_WRITE, BF_LOCK_WRITE, true);
     if (r)
         return r;
 
@@ -379,7 +383,7 @@ int bf_chain_load(struct bf_chain *chain)
     if (r)
         return r;
 
-    r = bf_cgen_new(&cgen, &chain_copy);
+    r = bf_cgen_new(&cgen, _bf_ctx_global(), &chain_copy);
     if (r)
         return r;
 
@@ -396,7 +400,8 @@ int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts)
     assert(name);
     assert(hookopts);
 
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_WRITE, false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_READ, BF_LOCK_WRITE, false);
     if (r)
         return r;
 
@@ -431,8 +436,8 @@ int bf_chain_update(const struct bf_chain *chain)
 
     assert(chain);
 
-    r = bf_lock_init_for_chain(&lock, chain->name, BF_LOCK_READ, BF_LOCK_WRITE,
-                               false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), chain->name,
+                               BF_LOCK_READ, BF_LOCK_WRITE, false);
     if (r)
         return r;
 
@@ -499,7 +504,8 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
     if (!bf_streq(to_add->name, to_remove->name))
         return bf_err_r(-EINVAL, "to_add->name must match to_remove->name");
 
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_READ, BF_LOCK_WRITE, false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_READ, BF_LOCK_WRITE, false);
     if (r)
         return r;
 
@@ -549,8 +555,8 @@ int bf_chain_flush(const char *name)
 
     /* chain_flush removes the chain dir from the pindir namespace, so it
      * needs pindir WRITE (I2). */
-    r = bf_lock_init_for_chain(&lock, name, BF_LOCK_WRITE, BF_LOCK_WRITE,
-                               false);
+    r = bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), name,
+                               BF_LOCK_WRITE, BF_LOCK_WRITE, false);
     if (r)
         return r;
 

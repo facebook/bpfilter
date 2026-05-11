@@ -49,6 +49,8 @@ struct bf_map
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
  *        success, `*map` points to a valid `bf_map`. On failure,
  *        `*map` remain unchanged.
+ * @param token_fd BPF token file descriptor passed to the kernel
+ *        map-creation syscall. `-1` if no token is to be used.
  * @param name Name of the map. Will be used as the name of the BPF object, but
  *        also as filename when pinning the map to the system. Can't be NULL or
  *        empty.
@@ -58,8 +60,9 @@ struct bf_map
  * @param n_elems Number of elements to reserve room for in the map.
  * @return 0 on success, or a negative errno value on error.
  */
-int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
-               size_t key_size, size_t value_size, size_t n_elems);
+int bf_map_new(struct bf_map **map, int token_fd, const char *name,
+               enum bf_map_type type, size_t key_size, size_t value_size,
+               size_t n_elems);
 
 /**
  * @brief Allocate and initialise a new BPF map object, from a set.
@@ -67,6 +70,8 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
  * @param map BPF map object to allocate and initialize. Can't be NULL. On
  *        success, `*map` points to a valid `bf_map`. On failure, `*map`
  *        remain unchanged. Can't be NULL.
+ * @param token_fd BPF token file descriptor passed to the kernel
+ *        map-creation syscall. `-1` if no token is to be used.
  * @param name Name of the map. Will be used as the name of the BPF object, but
  *        also as filename when pinning the map to the system. Can't be NULL or
  *        empty.
@@ -75,7 +80,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
  * @param value_size Size (in bytes) of the value field.
  * @return 0 on success, or a negative error value on error.
  */
-int bf_map_new_from_set(struct bf_map **map, const char *name,
+int bf_map_new_from_set(struct bf_map **map, int token_fd, const char *name,
                         const struct bf_set *set, size_t n_elems,
                         size_t value_size);
 

@@ -187,19 +187,21 @@ struct bf_lock
  * bpffs mount.
  *
  * @pre
- *  - The runtime context has been initialized.
+ *  - `bpffs_path` is not NULL.
  *  - `lock` is not NULL, and contains sane defaults (see `bf_lock_default()`).
  * @post
- *  - On success: `lock` holds a valid file descriptor on the bpffs, a valid
- *    file descriptor on the pin directory, and an `flock(2)` of mode `mode`
- *    on the pin directory. `lock->pindir_lock == mode`.
+ *  - On success: `lock` holds a valid file descriptor on the bpffs, a
+ *    valid file descriptor on the pin directory, and an `flock(2)` of
+ *    mode `mode` on the pin directory. `lock->pindir_lock == mode`.
  *  - On failure: `lock` is unchanged.
  *
  * @param lock Handle to populate. Must be initialised via `bf_lock_default()`.
+ * @param bpffs_path Filesystem path to the bpffs mountpoint.
  * @param mode Lock mode for the pin directory.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode);
+int bf_lock_init(struct bf_lock *lock, const char *bpffs_path,
+                 enum bf_lock_mode mode);
 
 /**
  * @brief Open and lock the pin directory and a chain directory.
@@ -217,7 +219,7 @@ int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode);
  * `bf_lock_acquire_chain()` instead.
  *
  * @pre
- *  - The runtime context has been initialized.
+ *  - `bpffs_path` is not NULL.
  *  - `lock` is not NULL, and contains sane defaults (see `bf_lock_default()`).
  *  - `name` is not NULL.
  *  - `create == true` implies `pindir_mode == BF_LOCK_WRITE` and
@@ -229,6 +231,7 @@ int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode);
  *  - On failure: `lock` is unchanged.
  *
  * @param lock Lock object to initialize.
+ * @param bpffs_path Filesystem path to the bpffs mountpoint.
  * @param name Name of the chain to lock.
  * @param pindir_mode Lock mode for the pin directory.
  * @param chain_mode Lock mode for the chain directory.
@@ -237,8 +240,8 @@ int bf_lock_init(struct bf_lock *lock, enum bf_lock_mode mode);
  *        `chain_mode == BF_LOCK_WRITE`.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_lock_init_for_chain(struct bf_lock *lock, const char *name,
-                           enum bf_lock_mode pindir_mode,
+int bf_lock_init_for_chain(struct bf_lock *lock, const char *bpffs_path,
+                           const char *name, enum bf_lock_mode pindir_mode,
                            enum bf_lock_mode chain_mode, bool create);
 
 /**

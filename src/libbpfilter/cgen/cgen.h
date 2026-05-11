@@ -13,6 +13,7 @@
 #include <bpfilter/pack.h>
 
 struct bf_chain;
+struct bf_ctx;
 struct bf_handle;
 struct bf_hookopts;
 struct bf_lock;
@@ -27,6 +28,11 @@ struct bf_lock;
  */
 struct bf_cgen
 {
+    /// Runtime context the cgen was created with. Borrowed pointer used to
+    /// reach context-level state (token fd, ELF stubs, verbose flags) from
+    /// the generated `bf_program`.
+    const struct bf_ctx *ctx;
+
     /// Chain containing the rules, sets, and policy.
     struct bf_chain *chain;
 
@@ -38,16 +44,27 @@ struct bf_cgen
 };
 
 /**
- * Allocate and initialise a new codegen.
+ * @brief Allocate and initialise a new codegen.
  *
- * @param cgen Codegen to allocate and initialise. Can't be NULL.
+ * @pre
+ *  - `cgen` is not NULL.
+ *  - `ctx` is not NULL and has been initialized.
+ *  - `chain` is not NULL and `*chain` points to a valid `bf_chain`.
+ * @post
+ *  - On success: `*cgen` owns the chain (`*chain == NULL`) and stores
+ *    `ctx` as a borrowed pointer.
+ *  - On failure: `*cgen` and `*chain` are unchanged.
+ *
+ * @param cgen Codegen to allocate and initialise.
+ * @param ctx Runtime context the new codegen will hold a borrowed pointer
+ *        to.
  * @param chain Chain containing the codegen's rules, sets, and policy. On
- *        success, the new codegen will take ownership of the chain, and
- *        @c *chain will be NULL. Can't be NULL, and @c *chain must point to
- *        a valid @ref bf_chain .
- * @return 0 on success, or negative errno value on failure.
+ *        success, the new codegen takes ownership of the chain and
+ *        `*chain` is set to NULL.
+ * @return 0 on success, or a negative errno value on failure.
  */
-int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
+int bf_cgen_new(struct bf_cgen **cgen, const struct bf_ctx *ctx,
+                struct bf_chain **chain);
 
 /**
  * @brief Allocate and initialize a codegen from a pinned context map.
@@ -55,12 +72,22 @@ int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain);
  * Opens the `bf_ctx` context map pinned in the chain directory referenced by
  * `lock`, reads the serialized cgen data, and deserializes it.
  *
- * @param cgen Codegen to allocate and initialize. Can't be NULL.
- * @param lock Lock providing the chain directory file descriptor. Must hold
- *        a valid `chain_fd`. Can't be NULL.
+ * @pre
+ *  - `cgen` is not NULL.
+ *  - `ctx` is not NULL.
+ *  - `lock` is not NULL and has a valid `chain_fd`.
+ * @post
+ *  - On success: `*cgen` stores `ctx` as a borrowed pointer.
+ *  - On failure: `*cgen` is unchanged.
+ *
+ * @param cgen Codegen to allocate and initialize.
+ * @param ctx Runtime context the new codegen will hold a borrowed pointer
+ *        to.
+ * @param lock Lock providing the chain directory file descriptor.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, struct bf_lock *lock);
+int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, const struct bf_ctx *ctx,
+                            struct bf_lock *lock);
 
 /**
  * Free a codegen.

@@ -213,6 +213,11 @@ void bf_ctx_free(struct bf_ctx **ctx)
     freep((void *)ctx);
 }
 
+struct bf_ctx *_bf_ctx_global(void)
+{
+    return _bf_global_ctx;
+}
+
 /**
  * See @ref bf_ctx_dump for details.
  */
@@ -273,7 +278,7 @@ int bf_ctx_get_cgen(struct bf_lock *lock, struct bf_cgen **cgen)
     if (!_bf_global_ctx)
         return bf_err_r(-EINVAL, "context is not initialized");
 
-    r = bf_cgen_new_from_dir_fd(&_cgen, lock);
+    r = bf_cgen_new_from_dir_fd(&_cgen, _bf_global_ctx, lock);
     if (r)
         return bf_err_r(r, "failed to load chain '%s' from bpffs",
                         lock->chain_name ? lock->chain_name : "(unknown)");
@@ -344,7 +349,7 @@ int bf_ctx_get_cgens(struct bf_lock *lock, bf_list **cgens)
             continue;
         }
 
-        r = bf_cgen_new_from_dir_fd(&cgen, lock);
+        r = bf_cgen_new_from_dir_fd(&cgen, _bf_global_ctx, lock);
         if (r) {
             bf_warn_r(r, "failed to restore chain '%s', skipping",
                       entry->d_name);

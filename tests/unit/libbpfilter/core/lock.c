@@ -52,7 +52,7 @@ static void init_success_post_state(void **state)
     struct bft_tmpdir *tmpdir = *state;
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     assert_fd(lock.bpffs_fd);
     assert_fd(lock.pindir_fd);
     assert_int_equal(lock.pindir_lock, BF_LOCK_READ);
@@ -73,9 +73,9 @@ static void init_failure_preserves_lock(void **state)
     (void)state;
 
     /* Hold WRITE on the pindir so a second WRITE init will fail. */
-    assert_ok(bf_lock_init(&holder, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&holder, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
 
-    assert_err(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_err(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
 
     /* lock is unchanged (still in default state). */
     assert_int_equal(lock.bpffs_fd, -1);
@@ -96,10 +96,11 @@ static void pindir_lock_matrix(void **state)
         _clean_bf_lock_ struct bf_lock lock1 = bf_lock_default();
         _clean_bf_lock_ struct bf_lock lock2 = bf_lock_default();
 
-        assert_ok(bf_lock_init(&lock1, BF_LOCK_WRITE));
-        assert_err(bf_lock_init(&lock2, BF_LOCK_WRITE));
-        assert_err(bf_lock_init(&lock2, BF_LOCK_READ));
-        assert_ok(bf_lock_init(&lock2, BF_LOCK_NONE));
+        assert_ok(bf_lock_init(&lock1, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
+        assert_err(
+            bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
+        assert_err(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
+        assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_NONE));
     }
 
     {
@@ -107,10 +108,11 @@ static void pindir_lock_matrix(void **state)
         _clean_bf_lock_ struct bf_lock lock1 = bf_lock_default();
         _clean_bf_lock_ struct bf_lock lock2 = bf_lock_default();
 
-        assert_ok(bf_lock_init(&lock1, BF_LOCK_READ));
-        assert_err(bf_lock_init(&lock2, BF_LOCK_WRITE));
-        assert_ok(bf_lock_init(&lock2, BF_LOCK_READ));
-        assert_ok(bf_lock_init(&lock2, BF_LOCK_NONE));
+        assert_ok(bf_lock_init(&lock1, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
+        assert_err(
+            bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
+        assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_NONE));
     }
 
     {
@@ -119,12 +121,12 @@ static void pindir_lock_matrix(void **state)
         _clean_bf_lock_ struct bf_lock lock2 = bf_lock_default();
         _clean_bf_lock_ struct bf_lock lock3 = bf_lock_default();
 
-        assert_ok(bf_lock_init(&lock1, BF_LOCK_NONE));
+        assert_ok(bf_lock_init(&lock1, bf_ctx_get_bpffs_path(), BF_LOCK_NONE));
 
-        assert_ok(bf_lock_init(&lock2, BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
         bf_lock_cleanup(&lock2);
 
-        assert_ok(bf_lock_init(&lock2, BF_LOCK_READ));
+        assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
         bf_lock_cleanup(&lock2);
     }
 }
@@ -138,7 +140,7 @@ static void pindir_survives_repeated_cycles(void **state)
     for (int i = 0; i < 5; ++i) {
         struct bf_lock lock = bf_lock_default();
 
-        assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+        assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
         bf_lock_cleanup(&lock);
         assert_dir_exists(tmpdir, "bpfilter");
     }
@@ -168,7 +170,7 @@ static void acquire_chain_double_rejects(void **state)
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     struct bft_tmpdir *tmpdir = *state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     assert_ok(bf_lock_acquire_chain(&lock, "first", BF_LOCK_WRITE, true));
     assert_dir_exists(tmpdir, "bpfilter/first");
 
@@ -186,7 +188,7 @@ static void acquire_chain_create(void **state)
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     struct bft_tmpdir *tmpdir = *state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
 
     // Acquire with READ and create=true fails
     assert_err(bf_lock_acquire_chain(&lock, "c", BF_LOCK_READ, true));
@@ -210,7 +212,7 @@ static void acquire_chain_missing_fails(void **state)
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     struct bft_tmpdir *tmpdir = *state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     assert_err(bf_lock_acquire_chain(&lock, "absent", BF_LOCK_READ, false));
     assert_dir_not_exists(tmpdir, "bpfilter/absent");
 }
@@ -229,15 +231,15 @@ static void chain_read_compatible_read(void **state)
 
     {
         _clean_bf_lock_ struct bf_lock prep = bf_lock_default();
-        assert_ok(bf_lock_init(&prep, BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&prep, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
         assert_ok(bf_lock_acquire_chain(&prep, "shared", BF_LOCK_WRITE, true));
         (void)mknodat(prep.chain_fd, "keepalive", S_IFREG | 0644, 0);
     }
 
-    assert_ok(bf_lock_init_for_chain(&lock1, "shared", BF_LOCK_READ,
-                                     BF_LOCK_READ, false));
-    assert_ok(bf_lock_init_for_chain(&lock2, "shared", BF_LOCK_READ,
-                                     BF_LOCK_READ, false));
+    assert_ok(bf_lock_init_for_chain(&lock1, bf_ctx_get_bpffs_path(), "shared",
+                                     BF_LOCK_READ, BF_LOCK_READ, false));
+    assert_ok(bf_lock_init_for_chain(&lock2, bf_ctx_get_bpffs_path(), "shared",
+                                     BF_LOCK_READ, BF_LOCK_READ, false));
 }
 
 /* Two locks on DIFFERENT chains are compatible, even when both hold WRITE.
@@ -254,7 +256,7 @@ static void chain_lock_isolates_per_chain(void **state)
     /* Materialise both chains so they can be opened with create=false. */
     {
         _clean_bf_lock_ struct bf_lock prep = bf_lock_default();
-        assert_ok(bf_lock_init(&prep, BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&prep, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
         assert_ok(bf_lock_acquire_chain(&prep, "alpha", BF_LOCK_WRITE, true));
         (void)mknodat(prep.chain_fd, "keepalive", S_IFREG | 0644, 0);
 
@@ -263,15 +265,15 @@ static void chain_lock_isolates_per_chain(void **state)
         (void)mknodat(prep.chain_fd, "keepalive", S_IFREG | 0644, 0);
     }
 
-    assert_ok(bf_lock_init_for_chain(&lock_a, "alpha", BF_LOCK_READ,
-                                     BF_LOCK_WRITE, false));
+    assert_ok(bf_lock_init_for_chain(&lock_a, bf_ctx_get_bpffs_path(), "alpha",
+                                     BF_LOCK_READ, BF_LOCK_WRITE, false));
     assert_string_equal(lock_a.chain_name, "alpha");
     assert_int_equal(lock_a.chain_lock, BF_LOCK_WRITE);
 
     /* Independent chain: WRITE on "beta" must not contend with WRITE on
      * "alpha". */
-    assert_ok(bf_lock_init_for_chain(&lock_b, "beta", BF_LOCK_READ,
-                                     BF_LOCK_WRITE, false));
+    assert_ok(bf_lock_init_for_chain(&lock_b, bf_ctx_get_bpffs_path(), "beta",
+                                     BF_LOCK_READ, BF_LOCK_WRITE, false));
     assert_string_equal(lock_b.chain_name, "beta");
     assert_int_equal(lock_b.chain_lock, BF_LOCK_WRITE);
 }
@@ -298,7 +300,7 @@ static void release_chain_idempotent(void **state)
     assert_int_equal(lock.chain_lock, BF_LOCK_NONE);
 
     /* Initialised lock with no chain held: still a no-op, twice. */
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     bf_lock_release_chain(&lock);
     bf_lock_release_chain(&lock);
     assert_fd(lock.pindir_fd);
@@ -325,7 +327,7 @@ static void release_then_reacquire(void **state)
 
     (void)state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
 
     assert_ok(bf_lock_acquire_chain(&lock, "first", BF_LOCK_WRITE, true));
     assert_string_equal(lock.chain_name, "first");
@@ -360,13 +362,13 @@ static void chain_lock_none_acquire_and_release(void **state)
     /* Pre-create the chain dir; we'll open it with chain mode == NONE. */
     {
         _clean_bf_lock_ struct bf_lock prep = bf_lock_default();
-        assert_ok(bf_lock_init(&prep, BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&prep, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
         assert_ok(
             bf_lock_acquire_chain(&prep, "none_chain", BF_LOCK_WRITE, true));
         (void)mknodat(prep.chain_fd, "keepalive", S_IFREG | 0644, 0);
     }
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     assert_ok(bf_lock_acquire_chain(&lock, "none_chain", BF_LOCK_NONE, false));
 
     /* Because chain_lock != WRITE, release must NOT remove the chain dir,
@@ -382,7 +384,7 @@ static void release_no_chain_is_noop(void **state)
 
     (void)state;
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     bf_lock_release_chain(&lock);
 
     /* Pindir state untouched. */
@@ -399,7 +401,7 @@ static void release_write_removes_empty_chain(void **state)
     struct bft_tmpdir *tmpdir = *state;
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     assert_ok(bf_lock_acquire_chain(&lock, "empty", BF_LOCK_WRITE, true));
     assert_dir_exists(tmpdir, "bpfilter/empty");
 
@@ -422,7 +424,7 @@ static void release_write_keeps_nonempty_chain(void **state)
     struct bft_tmpdir *tmpdir = *state;
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     assert_ok(bf_lock_acquire_chain(&lock, "populated", BF_LOCK_WRITE, true));
     /* Populate so rmdir returns ENOTEMPTY and no-ops. */
     (void)mknodat(lock.chain_fd, "inside", S_IFREG | 0644, 0);
@@ -445,13 +447,13 @@ static void release_read_keeps_chain(void **state)
      * observe via the "chain stays" invariant. */
     {
         _clean_bf_lock_ struct bf_lock prep = bf_lock_default();
-        assert_ok(bf_lock_init(&prep, BF_LOCK_WRITE));
+        assert_ok(bf_lock_init(&prep, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
         assert_ok(bf_lock_acquire_chain(&prep, "reader", BF_LOCK_WRITE, true));
         (void)mknodat(prep.chain_fd, "keepalive", S_IFREG | 0644, 0);
     }
 
-    assert_ok(bf_lock_init_for_chain(&lock, "reader", BF_LOCK_READ,
-                                     BF_LOCK_READ, false));
+    assert_ok(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "reader",
+                                     BF_LOCK_READ, BF_LOCK_READ, false));
 
     bf_lock_release_chain(&lock);
     assert_dir_exists(tmpdir, "bpfilter/reader");
@@ -473,7 +475,7 @@ static void cleanup_idempotent(void **state)
     assert_int_equal(lock.bpffs_fd, -1);
     assert_int_equal(lock.pindir_fd, -1);
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_READ));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_READ));
     bf_lock_cleanup(&lock);
     bf_lock_cleanup(&lock);
 
@@ -494,10 +496,10 @@ static void cleanup_releases_pindir_lock(void **state)
 
     (void)state;
 
-    assert_ok(bf_lock_init(&lock1, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock1, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     bf_lock_cleanup(&lock1);
 
-    assert_ok(bf_lock_init(&lock2, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock2, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
 }
 
 /* Cleanup on a lock holding a chain WRITE lock releases both locks and
@@ -507,7 +509,7 @@ static void cleanup_with_chain_lock(void **state)
     struct bft_tmpdir *tmpdir = *state;
     struct bf_lock lock = bf_lock_default();
 
-    assert_ok(bf_lock_init(&lock, BF_LOCK_WRITE));
+    assert_ok(bf_lock_init(&lock, bf_ctx_get_bpffs_path(), BF_LOCK_WRITE));
     assert_ok(bf_lock_acquire_chain(&lock, "c", BF_LOCK_WRITE, true));
     assert_dir_exists(tmpdir, "bpfilter/c");
 
@@ -532,9 +534,9 @@ static void init_for_chain_create_needs_write_pindir(void **state)
 
     (void)state;
 
-    assert_int_equal(
-        bf_lock_init_for_chain(&lock, "c", BF_LOCK_READ, BF_LOCK_WRITE, true),
-        -EINVAL);
+    assert_int_equal(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "c",
+                                            BF_LOCK_READ, BF_LOCK_WRITE, true),
+                     -EINVAL);
     assert_int_equal(lock.bpffs_fd, -1);
     assert_int_equal(lock.pindir_fd, -1);
     assert_int_equal(lock.chain_fd, -1);
@@ -548,9 +550,9 @@ static void init_for_chain_create_needs_write_chain(void **state)
 
     (void)state;
 
-    assert_int_equal(
-        bf_lock_init_for_chain(&lock, "c", BF_LOCK_WRITE, BF_LOCK_READ, true),
-        -EINVAL);
+    assert_int_equal(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "c",
+                                            BF_LOCK_WRITE, BF_LOCK_READ, true),
+                     -EINVAL);
     assert_int_equal(lock.bpffs_fd, -1);
     assert_int_equal(lock.pindir_fd, -1);
 }
@@ -562,8 +564,8 @@ static void init_for_chain_success(void **state)
 
     (void)state;
 
-    assert_ok(bf_lock_init_for_chain(&lock, "both", BF_LOCK_WRITE,
-                                     BF_LOCK_WRITE, true));
+    assert_ok(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(), "both",
+                                     BF_LOCK_WRITE, BF_LOCK_WRITE, true));
     assert_fd(lock.bpffs_fd);
     assert_fd(lock.pindir_fd);
     assert_int_equal(lock.pindir_lock, BF_LOCK_WRITE);
@@ -580,7 +582,8 @@ static void init_for_chain_failure_preserves_lock(void **state)
     (void)state;
 
     /* Missing chain, create=false. */
-    assert_int_equal(bf_lock_init_for_chain(&lock, "absent", BF_LOCK_READ,
+    assert_int_equal(bf_lock_init_for_chain(&lock, bf_ctx_get_bpffs_path(),
+                                            "absent", BF_LOCK_READ,
                                             BF_LOCK_READ, false),
                      -ENOENT);
     assert_int_equal(lock.bpffs_fd, -1);

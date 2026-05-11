@@ -30,6 +30,7 @@
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
+#include "core/ctx.h"
 #include "core/lock.h"
 
 #define _BF_PROG_NAME "bf_prog"
@@ -72,8 +73,8 @@ static int _bf_cgen_persist(const struct bf_cgen *cgen, int dir_fd)
     if (r)
         return bf_err_r(r, "failed to get data from bf_cgen wpack");
 
-    r = bf_map_new(&map, _BF_CTX_PIN_NAME, BF_MAP_TYPE_CTX, sizeof(uint32_t),
-                   data_len, 1);
+    r = bf_map_new(&map, cgen->ctx->token_fd, _BF_CTX_PIN_NAME, BF_MAP_TYPE_CTX,
+                   sizeof(uint32_t), data_len, 1);
     if (r)
         return bf_err_r(r, "failed to create context map");
 
@@ -98,19 +99,23 @@ static int _bf_cgen_persist(const struct bf_cgen *cgen, int dir_fd)
     return 0;
 }
 
-static int _bf_cgen_new_from_pack(struct bf_cgen **cgen, struct bf_lock *lock,
-                                  bf_rpack_node_t node)
+static int _bf_cgen_new_from_pack(struct bf_cgen **cgen,
+                                  const struct bf_ctx *ctx,
+                                  struct bf_lock *lock, bf_rpack_node_t node)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
     bf_rpack_node_t child;
     int r;
 
     assert(cgen);
+    assert(ctx);
     assert(lock);
 
     _cgen = calloc(1, sizeof(*_cgen));
     if (!_cgen)
         return -ENOMEM;
+
+    _cgen->ctx = ctx;
 
     r = bf_rpack_kv_obj(node, "chain", &child);
     if (r)
@@ -133,7 +138,8 @@ static int _bf_cgen_new_from_pack(struct bf_cgen **cgen, struct bf_lock *lock,
     return 0;
 }
 
-int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, struct bf_lock *lock)
+int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, const struct bf_ctx *ctx,
+                            struct bf_lock *lock)
 {
     _free_bf_rpack_ bf_rpack_t *pack = NULL;
     _cleanup_close_ int map_fd = -1;
@@ -143,6 +149,7 @@ int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, struct bf_lock *lock)
     int r;
 
     assert(cgen);
+    assert(ctx);
     assert(lock);
 
     r = bf_bpf_obj_get(_BF_CTX_PIN_NAME, lock->chain_fd, &map_fd);
@@ -168,25 +175,28 @@ int bf_cgen_new_from_dir_fd(struct bf_cgen **cgen, struct bf_lock *lock)
     if (r)
         return bf_err_r(r, "failed to create rpack for bf_cgen");
 
-    r = _bf_cgen_new_from_pack(cgen, lock, bf_rpack_root(pack));
+    r = _bf_cgen_new_from_pack(cgen, ctx, lock, bf_rpack_root(pack));
     if (r)
         return bf_err_r(r, "failed to deserialize cgen from context map");
 
     return 0;
 }
 
-int bf_cgen_new(struct bf_cgen **cgen, struct bf_chain **chain)
+int bf_cgen_new(struct bf_cgen **cgen, const struct bf_ctx *ctx,
+                struct bf_chain **chain)
 {
     _free_bf_cgen_ struct bf_cgen *_cgen = NULL;
     int r;
 
     assert(cgen);
+    assert(ctx);
     assert(chain);
 
     _cgen = calloc(1, sizeof(*_cgen));
     if (!_cgen)
         return -ENOMEM;
 
+    _cgen->ctx = ctx;
     _cgen->chain = TAKE_PTR(*chain);
 
     r = bf_handle_new(&_cgen->handle, _BF_PROG_NAME);
@@ -317,7 +327,7 @@ int bf_cgen_set(struct bf_cgen *cgen, struct bf_hookopts **hookopts,
     assert(cgen);
     assert(lock);
 
-    r = bf_program_new(&prog, cgen->chain, cgen->handle);
+    r = bf_program_new(&prog, cgen->ctx, cgen->chain, cgen->handle);
     if (r < 0)
         return r;
 
@@ -357,7 +367,7 @@ int bf_cgen_load(struct bf_cgen *cgen, struct bf_lock *lock)
     assert(cgen);
     assert(lock);
 
-    r = bf_program_new(&prog, cgen->chain, cgen->handle);
+    r = bf_program_new(&prog, cgen->ctx, cgen->chain, cgen->handle);
     if (r < 0)
         return r;
 
@@ -484,7 +494,7 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
     if (r)
         return r;
 
-    r = bf_program_new(&new_prog, *new_chain, new_handle);
+    r = bf_program_new(&new_prog, cgen->ctx, *new_chain, new_handle);
     if (r < 0)
         return bf_err_r(r, "failed to create a new bf_program");
 

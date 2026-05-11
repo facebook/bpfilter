@@ -50,6 +50,7 @@
 #include "cgen/stub.h"
 #include "cgen/tc.h"
 #include "cgen/xdp.h"
+#include "core/ctx.h"
 #include "filter.h"
 
 #define _BF_LOG_BUF_SIZE                                                       \
@@ -252,13 +253,14 @@ static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
     return flavor_ops[flavor];
 }
 
-int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
-                   struct bf_handle *handle)
+int bf_program_new(struct bf_program **program, const struct bf_ctx *ctx,
+                   const struct bf_chain *chain, struct bf_handle *handle)
 {
     _free_bf_program_ struct bf_program *_program = NULL;
     int r;
 
     assert(program);
+    assert(ctx);
     assert(chain);
     assert(handle);
 
@@ -266,6 +268,7 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
     if (!_program)
         return -ENOMEM;
 
+    _program->ctx = ctx;
     _program->flavor = bf_hook_to_flavor(chain->hook);
     _program->runtime.ops = bf_flavor_ops_get(_program->flavor);
     _program->runtime.chain = chain;
@@ -630,7 +633,7 @@ static int _bf_program_generate_elfstubs(struct bf_program *program)
 
         bf_dbg("generate ELF stub for ID %d", fixup->attr.elfstub_id);
 
-        elfstub = bf_ctx_get_elfstub(fixup->attr.elfstub_id);
+        elfstub = program->ctx->stubs[fixup->attr.elfstub_id];
         if (!elfstub) {
             return bf_err_r(-ENOENT, "no ELF stub found for ID %d",
                             fixup->attr.elfstub_id);
@@ -842,8 +845,9 @@ static int _bf_program_load_printer_map(struct bf_program *program)
     if (r)
         return bf_err_r(r, "failed to assemble printer map string");
 
-    r = bf_map_new(&program->handle->pmap, _BF_PRINTER_MAP_NAME,
-                   BF_MAP_TYPE_PRINTER, sizeof(uint32_t), pstr_len, 1);
+    r = bf_map_new(&program->handle->pmap, program->ctx->token_fd,
+                   _BF_PRINTER_MAP_NAME, BF_MAP_TYPE_PRINTER, sizeof(uint32_t),
+                   pstr_len, 1);
     if (r)
         return bf_err_r(r, "failed to create the printer bf_map object");
 
@@ -864,8 +868,8 @@ static int _bf_program_load_counters_map(struct bf_program *program)
 
     assert(program);
 
-    r = bf_map_new(&program->handle->cmap, _BF_COUNTER_MAP_NAME,
-                   BF_MAP_TYPE_COUNTERS, sizeof(uint32_t),
+    r = bf_map_new(&program->handle->cmap, program->ctx->token_fd,
+                   _BF_COUNTER_MAP_NAME, BF_MAP_TYPE_COUNTERS, sizeof(uint32_t),
                    sizeof(struct bf_counter),
                    bf_list_size(&program->runtime.chain->rules) + 2);
     if (r)
@@ -888,8 +892,8 @@ static int _bf_program_load_log_map(struct bf_program *program)
     if (!(program->runtime.chain->flags & BF_FLAG(BF_CHAIN_LOG)))
         return 0;
 
-    r = bf_map_new(&program->handle->lmap, _BF_LOG_MAP_NAME, BF_MAP_TYPE_LOG, 0,
-                   0, _BF_LOG_MAP_SIZE);
+    r = bf_map_new(&program->handle->lmap, program->ctx->token_fd,
+                   _BF_LOG_MAP_NAME, BF_MAP_TYPE_LOG, 0, 0, _BF_LOG_MAP_SIZE);
     if (r)
         return bf_err_r(r, "failed to create the log bf_map object");
 
@@ -944,8 +948,8 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
                        (uint16_t)map_idx++);
 
-        r = bf_map_new_from_set(&new_map, name, key_set, total_elems,
-                                value_size);
+        r = bf_map_new_from_set(&new_map, new_prog->ctx->token_fd, name,
+                                key_set, total_elems, value_size);
         if (r)
             return r;
 
@@ -1017,7 +1021,7 @@ int bf_program_load(struct bf_program *prog)
                          prog->img.data, prog->img.size,
                          bf_hook_to_bpf_attach_type(prog->runtime.chain->hook),
                          log_buf, log_buf ? _BF_LOG_BUF_SIZE : 0,
-                         bf_ctx_token(), &prog->handle->prog_fd);
+                         prog->ctx->token_fd, &prog->handle->prog_fd);
     if (r) {
         return bf_err_r(r, "failed to load bf_program (%lu insns):\n%s\nerrno:",
                         prog->img.size, log_buf ? log_buf : "<NO LOG BUFFER>");
