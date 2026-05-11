@@ -34,7 +34,4 @@ struct bf_ctx
 
     /// Path to the bpffs mountpoint, owned by the context.
     char *bpffs_path;
-
-    /// Verbose flag bitmask.
-    uint16_t verbose;
 };

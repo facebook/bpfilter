@@ -27,7 +27,6 @@ static void no_setup(void **state)
     assert_int_equal(bf_lock_init(&lock, BF_LOCK_READ), -EINVAL);
     assert_int_equal(bf_ctx_token(), -1);
     assert_null(bf_ctx_get_elfstub(0));
-    assert_false(bf_ctx_is_verbose(BF_VERBOSE_DEBUG));
 }
 
 static void get_cgens_empty(void **state)
@@ -106,9 +105,11 @@ static void verbose_flags(void **state)
 {
     (void)state;
 
-    assert_true(bf_ctx_is_verbose(BF_VERBOSE_DEBUG));
-    assert_false(bf_ctx_is_verbose(BF_VERBOSE_BPF));
-    assert_false(bf_ctx_is_verbose(BF_VERBOSE_BYTECODE));
+    /* `bft_setup_ctx()` configures BF_VERBOSE_DEBUG through the
+     * process-wide logger; verify the other flags are off. */
+    assert_true(bf_logger_is_verbose(BF_VERBOSE_DEBUG));
+    assert_false(bf_logger_is_verbose(BF_VERBOSE_BPF));
+    assert_false(bf_logger_is_verbose(BF_VERBOSE_BYTECODE));
 }
 
 static void new_and_free_roundtrip(void **state)

@@ -1001,7 +1001,7 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return bf_err_r(r, "failed to load the log map");
 
-    if (bf_ctx_is_verbose(BF_VERBOSE_DEBUG)) {
+    if (bf_logger_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
         if (!log_buf) {
             return bf_err_r(-ENOMEM,
@@ -1009,7 +1009,7 @@ int bf_program_load(struct bf_program *prog)
         }
     }
 
-    if (bf_ctx_is_verbose(BF_VERBOSE_BYTECODE))
+    if (bf_logger_is_verbose(BF_VERBOSE_BYTECODE))
         bf_program_dump_bytecode(prog);
 
     r = bf_bpf_prog_load(prog->handle->prog_name,

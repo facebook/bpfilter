@@ -16,6 +16,9 @@ static bool _bf_can_print_color = false;
  * be ignored (not printed). */
 static enum bf_log_level _bf_log_level = BF_LOG_INFO;
 
+/** Process-wide verbose flag bitmask. */
+static uint16_t _bf_verbose;
+
 void bf_logger_setup(void)
 {
     _bf_can_print_color = isatty(fileno(stdout)) && isatty(fileno(stderr));
@@ -98,4 +101,19 @@ enum bf_log_level bf_log_level_from_str(const char *str)
     }
 
     return -EINVAL;
+}
+
+void bf_logger_set_verbose(uint16_t mask)
+{
+    _bf_verbose = mask;
+}
+
+uint16_t bf_logger_get_verbose(void)
+{
+    return _bf_verbose;
+}
+
+bool bf_logger_is_verbose(enum bf_verbose opt)
+{
+    return (_bf_verbose & BF_FLAG(opt)) != 0;
 }

@@ -38,7 +38,6 @@ static struct bf_ctx *_bf_global_ctx = NULL;
         .stubs = {0},                                                          \
         .with_bpf_token = false,                                               \
         .bpffs_path = NULL,                                                    \
-        .verbose = 0,                                                          \
     })
 
 static void _bf_ctx_cleanup(struct bf_ctx *ctx);
@@ -86,7 +85,8 @@ static int _bf_ctx_gen_token(const char *bpffs_path)
  * @param ctx Pre-allocated context to populate.
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint.
- * @param verbose Bitmask of verbose flags.
+ * @param verbose Bitmask of verbose flags. Applied to the process-wide
+ *        logger configuration via `bf_logger_set_verbose()`.
  * @return 0 on success, or a negative errno value on failure.
  */
 static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
@@ -98,8 +98,9 @@ static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
     assert(ctx);
     assert(bpffs_path);
 
+    bf_logger_set_verbose(verbose);
+
     _ctx.with_bpf_token = with_bpf_token;
-    _ctx.verbose = verbose;
 
     _ctx.bpffs_path = strdup(bpffs_path);
     if (!_ctx.bpffs_path)
@@ -380,14 +381,6 @@ const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id)
         return NULL;
 
     return _bf_global_ctx->stubs[id];
-}
-
-bool bf_ctx_is_verbose(enum bf_verbose opt)
-{
-    if (!_bf_global_ctx)
-        return false;
-
-    return _bf_global_ctx->verbose & BF_FLAG(opt);
 }
 
 const char *bf_ctx_get_bpffs_path(void)

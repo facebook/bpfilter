@@ -5,9 +5,28 @@
 
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h> // NOLINT: fprintf is used
 
 #include <bpfilter/helper.h>
+
+/**
+ * @brief Verbose flags controlling optional debug output emitted by the
+ * library.
+ *
+ * The mask is process-wide configuration (see `bf_logger_set_verbose()`)
+ * rather than per-context state, since the same code paths consult these
+ * flags from many call sites that would otherwise have to thread the
+ * runtime context.
+ */
+enum bf_verbose
+{
+    BF_VERBOSE_DEBUG,
+    BF_VERBOSE_BPF,
+    BF_VERBOSE_BYTECODE,
+    _BF_VERBOSE_MAX,
+};
 
 enum bf_color
 {
@@ -219,3 +238,23 @@ const char *bf_log_level_to_str(enum bf_log_level level);
  *         otherwise.
  */
 enum bf_log_level bf_log_level_from_str(const char *str);
+
+/**
+ * @brief Set the process-wide verbose flag bitmask.
+ *
+ * @param mask Bitmask of `BF_FLAG(BF_VERBOSE_*)` values.
+ */
+void bf_logger_set_verbose(uint16_t mask);
+
+/**
+ * @brief Return the current process-wide verbose flag bitmask.
+ */
+uint16_t bf_logger_get_verbose(void);
+
+/**
+ * @brief Test whether a verbose flag is set in the process-wide mask.
+ *
+ * @param opt Flag to test.
+ * @return `true` if the flag is set, `false` otherwise.
+ */
+bool bf_logger_is_verbose(enum bf_verbose opt);

@@ -31,14 +31,6 @@ struct bf_cgen;
 struct bf_ctx;
 struct bf_lock;
 
-enum bf_verbose
-{
-    BF_VERBOSE_DEBUG,
-    BF_VERBOSE_BPF,
-    BF_VERBOSE_BYTECODE,
-    _BF_VERBOSE_MAX,
-};
-
 /**
  * @brief Allocate and initialise a new runtime context.
  *
@@ -154,11 +146,6 @@ int bf_ctx_token(void);
  * @return The requested ELF stub.
  */
 const struct bf_elfstub *bf_ctx_get_elfstub(enum bf_elfstub_id id);
-
-/**
- * @return true if the given verbose flag is set.
- */
-bool bf_ctx_is_verbose(enum bf_verbose opt);
 
 /**
  * @return Path to the configured BPF filesystem.

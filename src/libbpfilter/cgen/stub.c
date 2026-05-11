@@ -74,7 +74,7 @@ static int _bf_stub_make_ctx_dynptr(struct bf_program *program, int arg_reg,
              BPF_MOV32_IMM(BPF_REG_3, bf_program_error_counter_idx(program)));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-        if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
+        if (bf_logger_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create a new dynamic pointer");
 
         r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
@@ -135,7 +135,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
              BPF_MOV32_IMM(BPF_REG_3, bf_program_error_counter_idx(program)));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-        if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
+        if (bf_logger_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L2 dynamic pointer slice");
 
         r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
@@ -212,7 +212,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
              BPF_MOV32_IMM(BPF_REG_3, bf_program_error_counter_idx(program)));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-        if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
+        if (bf_logger_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L3 dynamic pointer slice");
 
         r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
@@ -373,7 +373,7 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
              BPF_MOV32_IMM(BPF_REG_3, bf_program_error_counter_idx(program)));
         EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-        if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
+        if (bf_logger_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
 
         r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
