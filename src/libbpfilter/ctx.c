@@ -3,11 +3,14 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include "core/ctx.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/file.h>
 #include <unistd.h>
 
@@ -27,35 +30,21 @@
 #include "cgen/cgen.h"
 #include "core/lock.h"
 
-#define _free_bf_ctx_ __attribute__((cleanup(_bf_ctx_free)))
-
-/**
- * @struct bf_ctx
- *
- * bpfilter working context. Only one context is used during the library's
- * lifetime.
- */
-struct bf_ctx
-{
-    /// BPF token file descriptor
-    int token_fd;
-
-    struct bf_elfstub *stubs[_BF_ELFSTUB_MAX];
-
-    /// Pass a token to BPF system calls, obtained from bpffs.
-    bool with_bpf_token;
-
-    /// Path to the bpffs to pin the BPF objects into.
-    const char *bpffs_path;
-
-    /// Verbose flags.
-    uint16_t verbose;
-};
-
-static void _bf_ctx_free(struct bf_ctx **ctx);
-
-/// Global runtime context. Hidden in this translation unit.
+/// Global runtime context. Populated by `bf_ctx_setup`; hidden in this TU.
 static struct bf_ctx *_bf_global_ctx = NULL;
+
+#define bf_ctx_default()                                                       \
+    ((struct bf_ctx) {                                                         \
+        .token_fd = -1,                                                        \
+        .stubs = {0},                                                          \
+        .with_bpf_token = false,                                               \
+        .bpffs_path = NULL,                                                    \
+        .verbose = 0,                                                          \
+    })
+
+static void _bf_ctx_cleanup(struct bf_ctx *ctx);
+
+#define _clean_bf_ctx_ __attribute__((cleanup(_bf_ctx_cleanup)))
 
 static int _bf_ctx_gen_token(const char *bpffs_path)
 {
@@ -81,18 +70,102 @@ static int _bf_ctx_gen_token(const char *bpffs_path)
 }
 
 /**
- * Create and initialize a new context.
+ * @brief Populate an empty context with the requested configuration.
  *
- * On failure, @p ctx is left unchanged.
+ * Performs the actual work (BTF load, BPF token creation, ELF stubs) on a
+ * locally-owned stack `bf_ctx`, then atomically swaps the populated state
+ * into `ctx` on success.
  *
- * @param ctx New context to create. Can't be NULL.
+ * @pre
+ *  - `ctx` is not NULL and is in the `bf_ctx_default` state.
+ *  - `bpffs_path` is not NULL.
+ * @post
+ *  - On success: `ctx` owns the BPF token (if requested), the ELF stubs,
+ *    a heap copy of `bpffs_path`, and a vmlinux BTF reference.
+ *  - On failure: `ctx` is unchanged.
+ *
+ * @param ctx Pre-allocated context to populate.
  * @param with_bpf_token If true, create a BPF token from bpffs.
- * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
+ * @param bpffs_path Path to the bpffs mountpoint.
  * @param verbose Bitmask of verbose flags.
- * @return 0 on success, negative errno value on failure.
+ * @return 0 on success, or a negative errno value on failure.
  */
-static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
-                       const char *bpffs_path, uint16_t verbose)
+static int _bf_ctx_init(struct bf_ctx *ctx, bool with_bpf_token,
+                        const char *bpffs_path, uint16_t verbose)
+{
+    _clean_bf_ctx_ struct bf_ctx _ctx = bf_ctx_default();
+    int r;
+
+    assert(ctx);
+    assert(bpffs_path);
+
+    _ctx.with_bpf_token = with_bpf_token;
+    _ctx.verbose = verbose;
+
+    _ctx.bpffs_path = strdup(bpffs_path);
+    if (!_ctx.bpffs_path)
+        return -ENOMEM;
+
+    if (_ctx.with_bpf_token) {
+        _cleanup_close_ int token_fd = -1;
+
+        r = bf_btf_kernel_has_token();
+        if (r == -ENOENT) {
+            return bf_err_r(
+                r,
+                "--with-bpf-token requested, but this kernel doesn't support BPF token");
+        }
+        if (r)
+            return bf_err_r(r, "failed to check for BPF token support");
+
+        token_fd = _bf_ctx_gen_token(_ctx.bpffs_path);
+        if (token_fd < 0)
+            return bf_err_r(token_fd, "failed to generate a BPF token");
+
+        _ctx.token_fd = TAKE_FD(token_fd);
+    }
+
+    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
+        r = bf_elfstub_new(&_ctx.stubs[id], id);
+        if (r)
+            return bf_err_r(r, "failed to create ELF stub ID %u", id);
+    }
+
+    bf_swap(*ctx, _ctx);
+
+    return 0;
+}
+
+/**
+ * @brief Release the resources owned by a context in place.
+ *
+ * Does not free the container. After the call, `ctx` is back to the
+ * `bf_ctx_default()` state and may be safely re-initialised or cleaned-up again
+ * (idempotent).
+ *
+ * @pre
+ *  - `ctx` is not NULL.
+ * @post
+ *  - `ctx` is in the `bf_ctx_default` state.
+ *
+ * @param ctx Context to clean up.
+ */
+static void _bf_ctx_cleanup(struct bf_ctx *ctx)
+{
+    assert(ctx);
+
+    closep(&ctx->token_fd);
+
+    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
+        bf_elfstub_free(&ctx->stubs[id]);
+
+    freep((void *)&ctx->bpffs_path);
+
+    *ctx = bf_ctx_default();
+}
+
+int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
+               uint16_t verbose)
 {
     _free_bf_ctx_ struct bf_ctx *_ctx = NULL;
     int r;
@@ -100,42 +173,27 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     assert(ctx);
     assert(bpffs_path);
 
-    _ctx = calloc(1, sizeof(*_ctx));
-    if (!_ctx)
-        return -ENOMEM;
-
+    /* vmlinux BTF is a process-wide resource (single static in btf.c) but
+     * its lifetime is currently coupled to the context. Pair setup/teardown
+     * with the heap-owning constructor/destructor so the swap-style
+     * _bf_ctx_init can run a cleanup on its local without tearing down the
+     * BTF the live context will rely on. */
     r = bf_btf_setup();
     if (r)
         return bf_err_r(r, "failed to load vmlinux BTF");
 
-    _ctx->with_bpf_token = with_bpf_token;
-    _ctx->bpffs_path = bpffs_path;
-    _ctx->verbose = verbose;
-
-    _ctx->token_fd = -1;
-    if (_ctx->with_bpf_token) {
-        _cleanup_close_ int token_fd = -1;
-
-        r = bf_btf_kernel_has_token();
-        if (r == -ENOENT) {
-            bf_err(
-                "--with-bpf-token requested, but this kernel doesn't support BPF token");
-            return r;
-        }
-        if (r)
-            return bf_err_r(r, "failed to check for BPF token support");
-
-        token_fd = _bf_ctx_gen_token(_ctx->bpffs_path);
-        if (token_fd < 0)
-            return bf_err_r(token_fd, "failed to generate a BPF token");
-
-        _ctx->token_fd = TAKE_FD(token_fd);
+    _ctx = malloc(sizeof(*_ctx));
+    if (!_ctx) {
+        bf_btf_teardown();
+        return -ENOMEM;
     }
 
-    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id) {
-        r = bf_elfstub_new(&_ctx->stubs[id], id);
-        if (r)
-            return bf_err_r(r, "failed to create ELF stub ID %u", id);
+    *_ctx = bf_ctx_default();
+
+    r = _bf_ctx_init(_ctx, with_bpf_token, bpffs_path, verbose);
+    if (r) {
+        bf_btf_teardown();
+        return r;
     }
 
     *ctx = TAKE_PTR(_ctx);
@@ -143,28 +201,15 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     return 0;
 }
 
-/**
- * Free a context.
- *
- * If @p ctx points to a NULL pointer, this function does nothing. Once
- * the function returns, @p ctx points to a NULL pointer.
- *
- * @param ctx Context to free. Can't be NULL.
- */
-static void _bf_ctx_free(struct bf_ctx **ctx)
+void bf_ctx_free(struct bf_ctx **ctx)
 {
     assert(ctx);
 
     if (!*ctx)
         return;
 
-    closep(&(*ctx)->token_fd);
-
-    for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
-        bf_elfstub_free(&(*ctx)->stubs[id]);
-
+    _bf_ctx_cleanup(*ctx);
     bf_btf_teardown();
-
     freep((void *)ctx);
 }
 
@@ -265,7 +310,7 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
     int r;
 
-    r = _bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
+    r = bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");
 
@@ -277,7 +322,7 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 
 void bf_ctx_teardown(void)
 {
-    _bf_ctx_free(&_bf_global_ctx);
+    bf_ctx_free(&_bf_global_ctx);
 }
 
 void bf_ctx_dump(prefix_t *prefix)

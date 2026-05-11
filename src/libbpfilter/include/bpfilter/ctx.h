@@ -15,18 +15,20 @@
 /**
  * @file ctx.h
  *
- * Global runtime context for `bpfilter`.
+ * Runtime context for `bpfilter`.
  *
- * This file contains the definition of the `bf_ctx` structure, which is
- * the main structure used to store the runtime context.
+ * `struct bf_ctx` is an opaque, user-managed object obtained via
+ * `bf_ctx_new()` and released via `bf_ctx_free()`. Each context carries
+ * its own bpffs path, BPF token state and verbose-flag mask, so multiple
+ * contexts may coexist within a single process.
  *
- * All the public `bf_ctx_*` functions manipulate a private global context.
  * Chain state is persisted in per-chain bpffs context maps and loaded on
- * demand by `bf_ctx_get_cgen()` and `bf_ctx_get_cgens()`; the global
- * context does not cache them.
+ * demand by `bf_ctx_get_cgen()` and `bf_ctx_get_cgens()`; the context does
+ * not cache them.
  */
 
 struct bf_cgen;
+struct bf_ctx;
 struct bf_lock;
 
 enum bf_verbose
@@ -36,6 +38,47 @@ enum bf_verbose
     BF_VERBOSE_BYTECODE,
     _BF_VERBOSE_MAX,
 };
+
+/**
+ * @brief Allocate and initialise a new runtime context.
+ *
+ * On success, `*ctx` points to a freshly allocated context. The caller owns
+ * the pointer and must release it with `bf_ctx_free()` (or via the
+ * `_free_bf_ctx_` cleanup attribute). The context owns a heap copy of
+ * `bpffs_path`; the caller may free or modify the input string after the
+ * call returns.
+ *
+ * @pre
+ *  - `ctx` is not NULL.
+ *  - `bpffs_path` is not NULL.
+ * @post
+ *  - On success: `*ctx` points to a fully-initialised context.
+ *  - On failure: `*ctx` is unchanged.
+ *
+ * @param ctx Output pointer to the new context.
+ * @param with_bpf_token If true, create a BPF token from bpffs.
+ * @param bpffs_path Path to the bpffs mountpoint.
+ * @param verbose Bitmask of verbose flags.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token, const char *bpffs_path,
+               uint16_t verbose);
+
+/**
+ * @brief Free a runtime context.
+ *
+ * If `*ctx` is NULL, the call is a no-op.
+ *
+ * @pre
+ *  - `ctx` is not NULL.
+ * @post
+ *  - `*ctx == NULL`.
+ *
+ * @param ctx Context to free.
+ */
+void bf_ctx_free(struct bf_ctx **ctx);
+
+#define _free_bf_ctx_ __attribute__((cleanup(bf_ctx_free)))
 
 /**
  * Initialise the global context.

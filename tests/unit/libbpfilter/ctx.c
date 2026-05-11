@@ -111,6 +111,41 @@ static void verbose_flags(void **state)
     assert_false(bf_ctx_is_verbose(BF_VERBOSE_BYTECODE));
 }
 
+static void new_and_free_roundtrip(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+    struct bf_ctx *ctx = NULL;
+
+    (void)state;
+
+    assert_ok(bft_tmpdir_new(&tmpdir));
+    assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path, 0));
+    assert_non_null(ctx);
+
+    bf_ctx_free(&ctx);
+    assert_null(ctx);
+
+    /* bf_ctx_free is a no-op on a NULL pointer. */
+    bf_ctx_free(&ctx);
+    assert_null(ctx);
+}
+
+static void free_cleanup_attribute(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+
+    (void)state;
+
+    assert_ok(bft_tmpdir_new(&tmpdir));
+
+    /* _free_bf_ctx_ runs bf_ctx_free at scope exit; no leaks expected. */
+    {
+        _free_bf_ctx_ struct bf_ctx *ctx = NULL;
+        assert_ok(bf_ctx_new(&ctx, false, tmpdir->dir_path, 0));
+        assert_non_null(ctx);
+    }
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -123,6 +158,8 @@ int main(void)
                                         bft_setup_ctx, bft_teardown_ctx),
         cmocka_unit_test_setup_teardown(verbose_flags, bft_setup_ctx,
                                         bft_teardown_ctx),
+        cmocka_unit_test(new_and_free_roundtrip),
+        cmocka_unit_test(free_cleanup_attribute),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

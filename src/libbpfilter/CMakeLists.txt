@@ -39,7 +39,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/chain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cli.c
     ${CMAKE_CURRENT_SOURCE_DIR}/counter.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/ctx.h              ${CMAKE_CURRENT_SOURCE_DIR}/ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cgen/elfstub.c
     ${CMAKE_CURRENT_SOURCE_DIR}/flavor.c
