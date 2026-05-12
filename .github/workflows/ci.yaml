@@ -31,6 +31,7 @@ jobs:
           - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
           - { name: fedora, version: "41" }
@@ -69,6 +70,7 @@ jobs:
           - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
           - { name: fedora, version: "41" }
@@ -96,7 +98,7 @@ jobs:
           - { name: 4-core-ubuntu-arm, arch: arm64 }
     runs-on: [ "${{ matrix.host.name }}" ]
     container:
-      image: ghcr.io/facebook/bpfilter:fedora-43-${{ matrix.host.arch }}
+      image: ghcr.io/facebook/bpfilter:fedora-44-${{ matrix.host.arch }}
       options: --privileged
     name: "Test: ${{ matrix.host.arch }}"
     steps:
@@ -201,7 +203,7 @@ jobs:
     needs: [ test, benchmark ]
     timeout-minutes: 5
     runs-on: [ "8-core-ubuntu" ]
-    container: ghcr.io/facebook/bpfilter:fedora-43-x64
+    container: ghcr.io/facebook/bpfilter:fedora-44-x64
     name: "Documentation"
     steps:
       - name: Checkout bpfilter
