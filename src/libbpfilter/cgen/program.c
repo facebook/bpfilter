@@ -1037,15 +1037,6 @@ int bf_program_get_counter(const struct bf_program *program,
     return bf_handle_get_counter(program->handle, counter_idx, counter);
 }
 
-int bf_cgen_set_counters(struct bf_program *program,
-                         const struct bf_counter *counters)
-{
-    (void)program;
-    (void)counters;
-
-    return -ENOTSUP;
-}
-
 size_t bf_program_chain_counter_idx(const struct bf_program *program)
 {
     return bf_list_size(&program->runtime.chain->rules);

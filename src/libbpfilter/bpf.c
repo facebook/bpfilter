@@ -165,12 +165,12 @@ int bf_bpf_prog_run(int prog_fd, const void *pkt, size_t pkt_len,
 
     attr.test.prog_fd = prog_fd;
     attr.test.data_size_in = pkt_len;
-    attr.test.data_in = ((unsigned long long)(pkt));
+    attr.test.data_in = (unsigned long long)pkt;
     attr.test.repeat = 1;
 
     if (ctx_len) {
         attr.test.ctx_size_in = ctx_len;
-        attr.test.ctx_in = ((unsigned long long)(ctx));
+        attr.test.ctx_in = (unsigned long long)ctx;
     }
 
     r = bf_bpf(BF_BPF_PROG_TEST_RUN, &attr);

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <bpfilter/bpfilter.h>
 #include <bpfilter/ctx.h>
 
 #include "bpfilter/chain.h"

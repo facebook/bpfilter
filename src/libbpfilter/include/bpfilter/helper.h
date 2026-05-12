@@ -14,6 +14,9 @@
 #include <string.h>
 #include <strings.h>
 
+/* Forward declaration: <string.h> only exposes strerrordesc_np() under
+ * _GNU_SOURCE, which we don't define globally. */
+// NOLINTNEXTLINE(readability-redundant-declaration,readability-inconsistent-declaration-parameter-name)
 extern const char *strerrordesc_np(int errnum);
 
 #define _BF_APPLY0(t, s, dummy)

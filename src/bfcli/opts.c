@@ -61,7 +61,7 @@ static const char *bfc_object_to_str(enum bfc_object object)
     return _bfc_object_strs[object];
 }
 
-enum bfc_object bfc_object_from_str(const char *str)
+static enum bfc_object _bfc_object_from_str(const char *str)
 {
     assert(str);
 
@@ -90,7 +90,7 @@ static const char *bfc_action_to_str(enum bfc_action action)
     return _bfc_action_strs[action];
 }
 
-enum bfc_action bfc_action_from_str(const char *str)
+static enum bfc_action _bfc_action_from_str(const char *str)
 {
     assert(str);
 
@@ -320,8 +320,8 @@ static void _bfc_opts_version(struct argp_state *state, const char *arg,
     exit(0);
 };
 
-const struct bfc_opts_cmd *_bfc_opts_get_cmd(enum bfc_object object,
-                                             enum bfc_action action)
+static const struct bfc_opts_cmd *_bfc_opts_get_cmd(enum bfc_object object,
+                                                    enum bfc_action action)
 {
     for (size_t i = 0; i < ARRAY_SIZE(_bfc_opts_cmds); ++i) {
         if (_bfc_opts_cmds[i].object == object &&
@@ -377,11 +377,11 @@ static error_t _bfc_opts_parser(int key, char *arg, struct argp_state *state)
     }
     case ARGP_KEY_ARG:
         if (state->arg_num == 0) {
-            opts->object = bfc_object_from_str(arg);
+            opts->object = _bfc_object_from_str(arg);
             if ((int)opts->object < 0)
                 argp_error(state, "unknown object '%s'", arg);
         } else if (state->arg_num == 1) {
-            opts->action = bfc_action_from_str(arg);
+            opts->action = _bfc_action_from_str(arg);
             if ((int)opts->action < 0)
                 argp_error(state, "unknown action '%s'", arg);
             opts->cmd = _bfc_opts_get_cmd(opts->object, opts->action);

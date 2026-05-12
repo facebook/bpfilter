@@ -15,7 +15,9 @@
 #include "lexer.h"
 #include "parser.h"
 
-// To speed up parsing very large rulesets, we can increase YY_READ_BUF_SIZE
+/* To speed up parsing very large rulesets, we can increase YY_READ_BUF_SIZE.
+ * Referenced by the generated lexer; cannot be static. */
+// NOLINTNEXTLINE(misc-use-internal-linkage)
 int yy_read_buf_size;
 
 #define _BF_LEX_MIN_BUF_POW 14

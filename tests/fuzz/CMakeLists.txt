@@ -44,6 +44,8 @@ target_include_directories(fuzz_parser
         ${CMAKE_BINARY_DIR}/src/bfcli/include
 )
 
+# Vendored kernel headers are SYSTEM so clang-tidy's --system-headers=false
+# default skips the reserved identifiers they use.
 target_include_directories(fuzz_parser SYSTEM
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/external

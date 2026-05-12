@@ -58,6 +58,10 @@
 # - readability-function-cognitive-complexity
 #   Functions generating BPF bytecode will trigger this rule anytime, but they're
 #   not that complex due to heavy use of macros.
+# - readability-implicit-bool-conversion
+#   Implicit bool<->int conversions are idiomatic C (e.g. returning int from
+#   `cond ? 0 : -EINVAL` where `cond` is bool). The check has no option to
+#   suppress just the bool->int direction, which produces most of the noise.
 # - readability-isolate-declaration
 #   Rely on manual check: it's uncommon in bpfilter for multiple variable to be
 #   defined on a single line, but it's sometimes for the better.
@@ -97,6 +101,7 @@ Checks: >
   readability-*,
     -readability-enum-initial-value,
     -readability-function-cognitive-complexity,
+    -readability-implicit-bool-conversion,
     -readability-isolate-declaration,
     -readability-suspicious-call-argument,
 

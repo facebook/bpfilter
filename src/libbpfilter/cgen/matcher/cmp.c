@@ -94,7 +94,7 @@ static void _bf_prefix_to_mask(unsigned int prefixlen, uint8_t *mask,
     memset(mask, 0x00, mask_len);
     memset(mask, 0xff, prefixlen / 8);
     if (prefixlen % 8)
-        mask[prefixlen / 8] = (0xff << (8 - prefixlen % 8)) & 0xff;
+        mask[prefixlen / 8] = (0xff << (8 - (prefixlen % 8))) & 0xff;
 }
 
 int bf_cmp_value(struct bf_program *program, const struct bf_matcher *matcher,

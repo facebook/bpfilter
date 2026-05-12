@@ -133,6 +133,8 @@ target_include_directories(libbpfilter
         ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
+# Vendored kernel headers are SYSTEM so clang-tidy's --system-headers=false
+# default skips the reserved identifiers they use.
 target_include_directories(libbpfilter SYSTEM
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/external/include

@@ -3,6 +3,8 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include "cgen/xdp.h"
+
 #include <linux/bpf.h>
 #include <linux/bpf_common.h>
 
