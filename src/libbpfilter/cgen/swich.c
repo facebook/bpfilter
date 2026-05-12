@@ -118,7 +118,6 @@ void bf_swich_cleanup(struct bf_swich *swich)
 
     bf_list_clean(&swich->options);
     _bf_swich_option_free(&swich->default_opt);
-    free(swich->default_opt);
 }
 
 int bf_swich_add_option(struct bf_swich *swich, uint32_t imm,

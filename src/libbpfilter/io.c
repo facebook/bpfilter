@@ -97,6 +97,7 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive)
         _cleanup_close_ int child_fd = -1;
         _free_dir_ DIR *dir = NULL;
         struct dirent *entry;
+        int dir_fd;
 
         child_fd = openat(parent_fd, dir_name, O_DIRECTORY);
         if (child_fd < 0) {
@@ -107,6 +108,13 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive)
         dir = fdopendir(child_fd);
         if (!dir)
             return bf_err_r(errno, "failed to open DIR from file descriptor");
+        /* fdopendir takes ownership of the FD, let's prevent double-close in
+         * case of multithreading and FD reuse */
+        TAKE_FD(child_fd);
+
+        dir_fd = dirfd(dir);
+        if (dir_fd < 0)
+            return bf_err_r(errno, "failed to retrieve FD after fdopendir");
 
         while ((entry = readdir(dir))) {
             struct stat stat;
@@ -114,16 +122,16 @@ int bf_rmdir_at(int parent_fd, const char *dir_name, bool recursive)
             if (bf_streq(entry->d_name, ".") || bf_streq(entry->d_name, ".."))
                 continue;
 
-            if (fstatat(child_fd, entry->d_name, &stat, 0) < 0) {
+            if (fstatat(dir_fd, entry->d_name, &stat, 0) < 0) {
                 return bf_err_r(errno,
                                 "failed to fstatat() file '%s' for removal",
                                 entry->d_name);
             }
 
             if (S_ISDIR(stat.st_mode))
-                r = bf_rmdir_at(child_fd, entry->d_name, true);
+                r = bf_rmdir_at(dir_fd, entry->d_name, true);
             else
-                r = unlinkat(child_fd, entry->d_name, 0) == 0 ? 0 : -errno;
+                r = unlinkat(dir_fd, entry->d_name, 0) == 0 ? 0 : -errno;
             if (r)
                 return bf_err_r(r, "failed to remove '%s'", entry->d_name);
         }

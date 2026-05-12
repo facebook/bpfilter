@@ -57,6 +57,8 @@ int bfc_parse_file(const char *file, struct bfc_ruleset *ruleset)
     else if (r == 2)
         r = bf_err_r(-ENOMEM, "failed to parse rules, not enough memory");
 
+    (void)fclose(rules);
+
     return r;
 }
 

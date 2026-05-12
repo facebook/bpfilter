@@ -289,6 +289,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
 
 void bf_program_free(struct bf_program **program)
 {
+    assert(program);
+
     if (!*program)
         return;
 
