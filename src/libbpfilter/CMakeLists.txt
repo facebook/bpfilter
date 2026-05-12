@@ -128,10 +128,14 @@ target_compile_definitions(libbpfilter
 target_include_directories(libbpfilter
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src/external/include
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/include
+)
+
+target_include_directories(libbpfilter SYSTEM
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/external/include
 )
 
 target_link_libraries(libbpfilter
