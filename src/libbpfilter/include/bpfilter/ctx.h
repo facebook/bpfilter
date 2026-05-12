@@ -40,6 +40,10 @@ enum bf_verbose
 /**
  * Initialise the global context.
  *
+ * Only one global context may exist at a time. Calling `bf_ctx_setup` while
+ * a context is already initialised returns `-EBUSY` and leaves the existing
+ * context untouched; the caller must `bf_ctx_teardown` first to re-initialise.
+ *
  * @param with_bpf_token If true, create a BPF token from bpffs.
  * @param bpffs_path Path to the bpffs mountpoint. Can't be NULL.
  * @param verbose Bitmask of verbose flags.
