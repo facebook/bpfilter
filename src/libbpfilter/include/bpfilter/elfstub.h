@@ -170,6 +170,19 @@ enum bf_elfstub_id
      */
     BF_ELFSTUB_SOCK_ADDR_LOG,
 
+    /** 
+     * Check if `limit` packets have already been seen in the last unit of time
+     * 
+     * `__u8 bf_ratelimit(void *map, __u32 limit)`
+     *
+     * **Parameters**
+     * - `map`: address of the ratelimit map.
+     * - `limit`: number of packets allowed to pass in one unit of time.
+     *
+     * **Return** 0 if in the allowed limit (inclusive), or 1 if over the limit.
+     */
+    BF_ELFSTUB_RATELIMIT,
+
     _BF_ELFSTUB_MAX,
 };
 

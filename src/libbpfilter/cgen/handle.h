@@ -52,6 +52,9 @@ struct bf_handle
     /** Log map. NULL if not created. */
     struct bf_map *lmap;
 
+    /** Ratelimit map. NULL if not created. */
+    struct bf_map *rmap;
+
     /** List of set maps. Contains at most one map for each unique key
      * format. */
     bf_list sets;
