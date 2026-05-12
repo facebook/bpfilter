@@ -67,7 +67,7 @@ target_compile_options(bf_global_flags
         $<$<CONFIG:release>:-O2>
 )
 target_include_directories(bf_global_flags
-    INTERFACE
+    SYSTEM INTERFACE
         ${CMAKE_SOURCE_DIR}/src/external
 )
 target_link_options(bf_global_flags

@@ -37,13 +37,17 @@ target_compile_definitions(fuzz_parser
 target_include_directories(fuzz_parser
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/bfcli
-        ${CMAKE_SOURCE_DIR}/src/external
-        ${CMAKE_SOURCE_DIR}/src/external/include
         ${CMAKE_SOURCE_DIR}/src/libbpfilter
         ${CMAKE_SOURCE_DIR}/src/libbpfilter/include
         ${CMAKE_BINARY_DIR}/src/libbpfilter/include
         ${CMAKE_BINARY_DIR}/src/libbpfilter/elfstubs/src
         ${CMAKE_BINARY_DIR}/src/bfcli/include
+)
+
+target_include_directories(fuzz_parser SYSTEM
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/external
+        ${CMAKE_SOURCE_DIR}/src/external/include
 )
 
 target_link_options(fuzz_parser
