@@ -144,55 +144,15 @@ Only use ``assert()`` for pointer values. For other validation, use ``if ()`` wi
 Memory management
 -----------------
 
-Cleanup attributes
-^^^^^^^^^^^^^^^^^^
+See :doc:`memory` for the full reference on memory and resource management conventions: cleanup attributes (``_free_*``, ``_clean_*``, ``_cleanup_free_``, ``_cleanup_close_``), the cleanup-function contract, ownership transfer with ``TAKE_PTR`` / ``TAKE_FD`` / ``TAKE_STRUCT``, the file-descriptor sentinel, the output-parameter contract, memory-helper semantics, container destructors, and common pitfalls.
 
-Use ``__attribute__((cleanup))`` extensively. Two naming conventions:
+In short:
 
-- ``_free_*``: cleanup dynamically allocated objects
-- ``_clean_*``: cleanup objects with automatic storage duration
+- Use ``__attribute__((cleanup))`` extensively. ``_free_*`` for heap-allocated objects, ``_clean_*`` for stack-allocated values with non-trivial teardown.
+- Cleanup functions take a double pointer, are a no-op when ``*ptr == NULL``, and set ``*ptr`` to ``NULL`` after freeing.
+- Use ``TAKE_PTR`` / ``TAKE_FD`` / ``TAKE_STRUCT`` whenever an owning local escapes (into an output parameter or a struct field).
+- ``int bf_x_new(struct bf_x **out, ...)`` returns ``0`` or negative errno, and leaves ``*out`` unchanged on failure.
 
-.. code:: c
-
-    #define _free_bf_chain_ __attribute__((cleanup(_bf_chain_free)))
-
-    void example(void)
-    {
-        _free_bf_chain_ struct bf_chain *chain = NULL;
-
-        r = bf_chain_new(&chain);
-        if (r)
-            return r;
-
-        // chain is automatically freed when function returns
-    }
-
-Cleanup functions
-^^^^^^^^^^^^^^^^^
-
-Cleanup functions take double pointers, are no-op if ``*ptr`` is ``NULL`` (already freed), and set ``*ptr`` to ``NULL`` after freeing:
-
-.. code:: c
-
-    static void _bf_chain_free(struct bf_chain **chain)
-    {
-        if (!*chain)
-            return;
-
-        free(*chain);
-        *chain = NULL;
-    }
-
-Ownership transfer
-^^^^^^^^^^^^^^^^^^
-
-Use ``TAKE_PTR()`` to transfer ownership:
-
-.. code:: c
-
-    *out = TAKE_PTR(local);  // local becomes NULL, *out takes ownership
-
-Use ``TAKE_FD()`` for file descriptors, ``TAKE_STRUCT()`` for struct values.
 
 
 Error handling and logging
@@ -259,7 +219,8 @@ Not every function needs documentation. Skip documentation for trivial getters/s
 For documented functions:
 
 - First line is a brief description with ``@brief`` tag
-- Use ``@param`` for parameters, ``@return`` for return values
+- Use ``@param`` for parameters, ``@return`` for return values. To reference a parameter in a comment, do not use ``@p``, use backticks instead.
+- For pre-requirements to a function or a parameter, use ``@pre``, keep ``@param`` to describe what a parameter is, not what's required from it. Use ``@post`` for post requirements: what the caller can expect once the function succeeds, or fails.
 - Use backticks to reference function, variable, and parameter names
 - Use ``@code{.c}`` for examples
 
@@ -352,4 +313,3 @@ Examples:
     build: create targets to run tests suites individually
 
 Use the commit description to explain why the change is necessary. The "what" is taken care of by the code changes. Details about a specific algorithm or complex changes should be documented in the code.
-
