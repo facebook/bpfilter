@@ -57,7 +57,7 @@ Use ``__attribute__((cleanup))`` to release owned resources at scope exit. Four 
    * - Macro
      - Used for
    * - :c:macro:`_cleanup_free_`
-     - Raw heap pointers freed via ``free()`` (the destructor is :c:func:`freep`)
+     - Raw heap pointers freed via ``free()`` (the destructor is :c:func:`bf_freep`)
    * - :c:macro:`_cleanup_close_`
      - File descriptors closed via ``close()`` (the destructor is :c:func:`closep`)
    * - ``_free_bf_<type>_``
@@ -82,7 +82,7 @@ Every ``bf_<type>_free(struct bf_<type> **p)`` must:
 - Return ``void``
 - Take a **double pointer**
 - Be a no-op when ``*p == NULL``
-- Call :c:func:`freep` (or the right destructor chain) to free the heap-allocated object and set the pointer to NULL
+- Call :c:macro:`BF_FREEP` (or the right destructor chain) to free the heap-allocated object and set the pointer to NULL
 
 .. code:: c
 
@@ -93,7 +93,7 @@ Every ``bf_<type>_free(struct bf_<type> **p)`` must:
 
         // ... release nested resources ...
 
-        freep((void *)*chain);
+        BF_FREEP(*chain);
     }
 
 The ``bf_<type>_clean(struct bf_<type> *p)`` variant (used by ``_clean_*``) tears down the fields of an automatic-storage object and must leave it in a state where calling it again is a no-op.

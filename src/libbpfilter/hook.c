@@ -506,7 +506,7 @@ int bf_hookopts_new_from_pack(struct bf_hookopts **hookopts,
 
 void bf_hookopts_clean(struct bf_hookopts *hookopts)
 {
-    freep((void *)&hookopts->cgpath);
+    BF_FREEP(&hookopts->cgpath);
 }
 
 void bf_hookopts_free(struct bf_hookopts **hookopts)
@@ -517,7 +517,7 @@ void bf_hookopts_free(struct bf_hookopts **hookopts)
         return;
 
     bf_hookopts_clean(*hookopts);
-    freep((void *)hookopts);
+    BF_FREEP(hookopts);
 }
 
 int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack)

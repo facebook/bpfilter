@@ -48,7 +48,7 @@ static void bf_list_node_free(bf_list_node **node,
 
     if (free_data)
         free_data(&(*node)->data);
-    freep((void *)node);
+    BF_FREEP(node);
 }
 
 int bf_list_new(bf_list **list, const bf_list_ops *ops)

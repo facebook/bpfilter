@@ -115,7 +115,7 @@ static void _bf_set_group_free(struct bf_set_group **group)
         return;
 
     bf_list_clean(&(*group)->sets);
-    freep((void *)group);
+    BF_FREEP(group);
 }
 
 static int _bf_set_group_new(struct bf_set_group **group)

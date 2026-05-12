@@ -35,7 +35,7 @@ static bool _bf_set_elem_equal(const void *lhs, const void *rhs, void *ctx)
 static void _bf_set_elem_free(void **data, void *ctx)
 {
     (void)ctx;
-    freep((void *)data);
+    BF_FREEP(data);
 }
 
 static const bf_hashset_ops _bf_set_elem_ops = {
@@ -349,8 +349,8 @@ void bf_set_free(struct bf_set **set)
         return;
 
     bf_hashset_clean(&(*set)->elems);
-    freep((void *)&(*set)->name);
-    freep((void *)set);
+    BF_FREEP(&(*set)->name);
+    BF_FREEP(set);
 }
 
 int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)

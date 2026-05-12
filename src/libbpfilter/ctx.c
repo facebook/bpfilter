@@ -163,14 +163,14 @@ static void _bf_ctx_free(struct bf_ctx **ctx)
         return;
 
     closep(&(*ctx)->token_fd);
-    freep((void *)&(*ctx)->bpffs_path);
+    BF_FREEP(&(*ctx)->bpffs_path);
 
     for (enum bf_elfstub_id id = 0; id < _BF_ELFSTUB_MAX; ++id)
         bf_elfstub_free(&(*ctx)->stubs[id]);
 
     bf_btf_teardown();
 
-    freep((void *)ctx);
+    BF_FREEP(ctx);
 }
 
 /**

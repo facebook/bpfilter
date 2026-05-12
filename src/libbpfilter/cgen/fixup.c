@@ -37,7 +37,7 @@ void bf_fixup_free(struct bf_fixup **fixup)
     if (!*fixup)
         return;
 
-    freep((void *)fixup);
+    BF_FREEP(fixup);
 }
 
 static const char *_bf_fixup_type_to_str(enum bf_fixup_type type)

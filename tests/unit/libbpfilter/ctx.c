@@ -74,7 +74,7 @@ static void bpffs_path_is_owned_copy(void **state)
 
     /* Tear down before the tmpdir cleanup so the ctx releases its copy while
      * the bpffs path is still on disk. ASan/leak detectors would flag a
-     * missing free here, exercising the matching freep() in _bf_ctx_free. */
+     * missing free here, exercising the matching BF_FREEP() in _bf_ctx_free. */
     bf_ctx_teardown();
 }
 

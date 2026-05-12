@@ -75,7 +75,7 @@ static int _bf_hashset_resize(bf_hashset *set, size_t new_cap)
         new_slots[idx] = elem;
     }
 
-    freep((void *)&set->slots);
+    BF_FREEP(&set->slots);
     set->slots = new_slots;
     set->cap = new_cap;
     set->slots_in_use = set->len;
@@ -188,7 +188,7 @@ void bf_hashset_free(bf_hashset **set)
         return;
 
     bf_hashset_clean(*set);
-    freep((void *)set);
+    BF_FREEP(set);
 }
 
 void bf_hashset_init(bf_hashset *set, const bf_hashset_ops *ops, void *ctx)
@@ -208,10 +208,10 @@ void bf_hashset_clean(bf_hashset *set)
     bf_hashset_foreach (set, elem) {
         if (set->ops.free)
             set->ops.free(&elem->data, set->ctx);
-        freep((void *)&elem);
+        BF_FREEP(&elem);
     }
 
-    freep((void *)&set->slots);
+    BF_FREEP(&set->slots);
     set->cap = 0;
     set->len = 0;
     set->slots_in_use = 0;
@@ -328,7 +328,7 @@ static void _bf_hashset_unlink(bf_hashset *set, size_t found_idx)
         set->tail = elem->prev;
 
     set->slots[found_idx] = _BF_HASHSET_TOMBSTONE;
-    freep((void *)&elem);
+    BF_FREEP(&elem);
     --set->len;
 }
 

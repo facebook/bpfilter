@@ -109,9 +109,9 @@ void bft_stream_free(struct bft_streams **streams)
     (void)fclose(_streams->new_stdout);
     (void)fclose(_streams->new_stderr);
 
-    freep((void *)&_streams->stdout_buf);
-    freep((void *)&_streams->stderr_buf);
-    freep((void *)streams);
+    BF_FREEP(&_streams->stdout_buf);
+    BF_FREEP(&_streams->stderr_buf);
+    BF_FREEP(streams);
 }
 
 int btf_setup_create_sockets(void **state)
@@ -165,7 +165,7 @@ void bft_sockets_free(struct bft_sockets **sockets)
 
     closep(&_sockets->client_fd);
     closep(&_sockets->server_fd);
-    freep((void *)sockets);
+    BF_FREEP(sockets);
 }
 
 int btf_setup_create_tmpdir(void **state)
@@ -223,7 +223,7 @@ void bft_tmpdir_free(struct bft_tmpdir **tmpdir)
         return;
 
     nftw(_tmpdir->dir_path, _bft_unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
-    freep((void *)tmpdir);
+    BF_FREEP(tmpdir);
 }
 
 bool bft_list_eq(const bf_list *lhs, const bf_list *rhs, bft_list_eq_cb cb)

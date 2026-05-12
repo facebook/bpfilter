@@ -61,14 +61,14 @@ void bf_vector_free(bf_vector **vec)
         return;
 
     bf_vector_clean(*vec);
-    freep((void *)vec);
+    BF_FREEP(vec);
 }
 
 void bf_vector_clean(bf_vector *vec)
 {
     assert(vec);
 
-    freep((void *)&vec->data);
+    BF_FREEP(&vec->data);
     vec->size = 0;
     vec->cap = 0;
 }
