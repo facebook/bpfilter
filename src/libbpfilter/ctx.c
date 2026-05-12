@@ -270,6 +270,9 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose)
 {
     int r;
 
+    if (_bf_global_ctx)
+        return bf_err_r(-EBUSY, "context is already initialized");
+
     r = _bf_ctx_new(&_bf_global_ctx, with_bpf_token, bpffs_path, verbose);
     if (r)
         return bf_err_r(r, "failed to create new context");

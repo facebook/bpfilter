@@ -159,11 +159,46 @@ static void verbose_flags(void **state)
     assert_false(bf_ctx_is_verbose(BF_VERBOSE_BYTECODE));
 }
 
+static void setup_twice_fails(void **state)
+{
+    /* The fixture has already called bf_ctx_setup successfully. A second
+     * call without an intervening teardown must reject with -EBUSY rather
+     * than silently overwriting (and leaking) the existing global context. */
+    struct bft_tmpdir *tmpdir = *state;
+
+    assert_err(
+        bf_ctx_setup(false, tmpdir->dir_path, BF_FLAG(BF_VERBOSE_DEBUG)));
+
+    /* The original context is untouched and remains usable. */
+    assert_non_null(bf_ctx_get_bpffs_path());
+    assert_string_equal(bf_ctx_get_bpffs_path(), tmpdir->dir_path);
+    assert_true(bf_ctx_is_verbose(BF_VERBOSE_DEBUG));
+}
+
+static void setup_after_teardown(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+
+    (void)state;
+
+    /* No fixture: this test manages the setup/teardown sequence itself. */
+    assert_ok(bft_tmpdir_new(&tmpdir));
+
+    /* Setup, then teardown, then setup again: the second setup must succeed
+     * because teardown clears the global context. */
+    assert_ok(bf_ctx_setup(false, tmpdir->dir_path, 0));
+    bf_ctx_teardown();
+
+    assert_ok(bf_ctx_setup(false, tmpdir->dir_path, 0));
+    bf_ctx_teardown();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(no_setup),
         cmocka_unit_test(bpffs_path_is_owned_copy),
+        cmocka_unit_test(setup_after_teardown),
         cmocka_unit_test_setup_teardown(bpffs_path_matches_setup, bft_setup_ctx,
                                         bft_teardown_ctx),
         cmocka_unit_test_setup_teardown(get_cgens_empty, bft_setup_ctx,
@@ -173,6 +208,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(get_cgen_corrupt_returns_error,
                                         bft_setup_ctx, bft_teardown_ctx),
         cmocka_unit_test_setup_teardown(verbose_flags, bft_setup_ctx,
+                                        bft_teardown_ctx),
+        cmocka_unit_test_setup_teardown(setup_twice_fails, bft_setup_ctx,
                                         bft_teardown_ctx),
     };
 
