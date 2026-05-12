@@ -207,6 +207,50 @@ BENCHMARK(single_rule__ip4_saddr__x_elem_set)
     ->Arg(1 << 7)
     ->Arg(1 << 15);
 
+void chain_set__ip4_saddr__x_elem_set(::benchmark::State &state)
+{
+    const std::string chain_name = "bf_benchmark";
+    Chain chain(chain_name, BF_HOOK_XDP, BF_VERDICT_ACCEPT);
+
+    Set s = Set({BF_MATCHER_IP4_SADDR});
+    uint32_t nelems = state.range(0);
+    for (uint32_t i = 0; i < nelems; ++i)
+        s << uint32ToIp4(i);
+    chain << s;
+
+    chain << Rule(BF_VERDICT_DROP, std::nullopt, 0,
+                  std::vector<Matcher> {
+                      Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
+                  });
+
+    auto chainp = chain.get();
+
+    for (auto _: state) {
+        int ret = bf_chain_set(chainp.get(), nullptr);
+        if (ret < 0) {
+            state.SkipWithError("failed to load chain");
+            break;
+        }
+
+        state.PauseTiming();
+        ret = bf_chain_flush(chain_name.c_str());
+        if (ret < 0) {
+            state.SkipWithError("failed to flush chain");
+            break;
+        }
+        state.ResumeTiming();
+    }
+
+    state.SetLabel(
+        std::format("load chain, ip4.saddr, {} elements set", nelems));
+}
+
+BENCHMARK(chain_set__ip4_saddr__x_elem_set)
+    ->Arg(1 << 3)
+    ->Arg(1 << 16)
+    ->Arg(1 << 20)
+    ->Unit(::benchmark::kMillisecond);
+
 void single_rule__ip4_saddr_c(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
