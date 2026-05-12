@@ -53,6 +53,7 @@ class Stats:
         self.n_failures = 0
         self.n_cache_hits = 0
         self.n_cache_misses = 0
+        self.failed_shas: set[str] = set()
 
     def success(self, from_cache: bool = False) -> None:
         if from_cache:
@@ -61,12 +62,14 @@ class Stats:
             self.n_cache_misses += 1
         self.n_successes += 1
 
-    def failure(self, from_cache: bool = False) -> None:
+    def failure(self, commit_sha: str | None = None, from_cache: bool = False) -> None:
         if from_cache:
             self.n_cache_hits += 1
         else:
             self.n_cache_misses += 1
         self.n_failures += 1
+        if commit_sha is not None:
+            self.failed_shas.add(commit_sha)
 
 
 class Renderer:
@@ -406,7 +409,7 @@ class Executor(ABC):
         r = self._run(self._substitute_workdir(cmd), timeout)
         if r:
             self.log(f"[red bold]{message} failed[/]")
-            self.stats.failure(from_cache=False)
+            self.stats.failure(commit_sha=commit.hexsha, from_cache=False)
             self.cache[get_cache_key(commit, self._host)] = {"success": False}
 
         return r == 0
@@ -847,7 +850,7 @@ class BenchmarkContext:
                 continue
             elif cached_data and not executor._source.retry_failed:
                 executor.log("Skipping (cached failure)")
-                executor.stats.failure(from_cache=True)
+                executor.stats.failure(commit_sha=commit.hexsha, from_cache=True)
                 continue
 
             executor.log(
@@ -1072,6 +1075,23 @@ def run_benchmarks(args: argparse.Namespace):
             )
         report.print_report([20])
 
+    failed_shas = executor.stats.failed_shas
+    if args.fail_on_last_commit_failure and executor.commits:
+        last_sha = executor.commits[-1].hexsha
+        if last_sha in failed_shas:
+            renderer.log(
+                f"[red bold]The last commit ({last_sha[:SHORT_SHA_LEN]}) failed "
+                f"to build or run; failing the bfbencher invocation.[/]"
+            )
+            raise SystemExit(1)
+
+    if args.fail_on_any_commit_failure and failed_shas:
+        renderer.log(
+            f"[red bold]{len(failed_shas)} commit(s) failed to build or run; "
+            f"failing the bfbencher invocation.[/]"
+        )
+        raise SystemExit(1)
+
     if args.fail_on_significant_change:
         terms = [20]
         for benchmark in executor.results.sorted_benchmarks():
@@ -1159,6 +1179,18 @@ def main():
         choices=["better", "worse", "any"],
         help="exit with non-zero status if any benchmark has a statistically significant change (better=improvement, worse=regression, any=either)",
         default=None,
+    )
+    parser.add_argument(
+        "--fail-on-last-commit-failure",
+        action="store_true",
+        help="exit with non-zero status if the last (newest) commit failed to build or run, including cached failures.",
+        default=False,
+    )
+    parser.add_argument(
+        "--fail-on-any-commit-failure",
+        action="store_true",
+        help="exit with non-zero status if any commit failed to build or run, including cached failures.",
+        default=False,
     )
     parser.add_argument(
         "--bind-node",

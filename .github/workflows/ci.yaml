@@ -186,6 +186,7 @@ jobs:
             --pr-report-path $GITHUB_STEP_SUMMARY \
             $BENCH_RETRY \
             $BENCH_FAIL_ON \
+            --fail-on-last-commit-failure \
             --bind-node 0 \
             --no-preempt \
             --cpu-pin 3 \
