@@ -67,11 +67,13 @@ enum bf_log_level
  * @param ... Format arguments.
  */
 #define _bf_log_impl(level, color, fmt, ...)                                   \
-    if (level >= bf_log_get_level()) {                                         \
-        (void)fprintf(stderr, _bf_logger_prefix_fmt fmt "\n",                  \
-                      _bf_logger_prefix_fmt_args(level, color),                \
-                      ##__VA_ARGS__);                                          \
-    }
+    do {                                                                       \
+        if (level >= bf_log_get_level()) {                                     \
+            (void)fprintf(stderr, _bf_logger_prefix_fmt fmt "\n",              \
+                          _bf_logger_prefix_fmt_args(level, color),            \
+                          ##__VA_ARGS__);                                      \
+        }                                                                      \
+    } while (0)
 
 #define bf_abort(fmt, ...)                                                     \
     ({                                                                         \
@@ -146,12 +148,14 @@ enum bf_log_level
  * @param vargs @p va_list of arguments.
  */
 #define _bf_log_v_impl(level, color, fmt, vargs)                               \
-    if ((level) >= bf_log_get_level()) {                                       \
-        (void)fprintf(stderr, _bf_logger_prefix_fmt,                           \
-                      _bf_logger_prefix_fmt_args(level, color));               \
-        (void)vfprintf(stderr, (fmt), (vargs));                                \
-        (void)fprintf(stderr, "\n");                                           \
-    }
+    do {                                                                       \
+        if ((level) >= bf_log_get_level()) {                                   \
+            (void)fprintf(stderr, _bf_logger_prefix_fmt,                       \
+                          _bf_logger_prefix_fmt_args(level, color));           \
+            (void)vfprintf(stderr, (fmt), (vargs));                            \
+            (void)fprintf(stderr, "\n");                                       \
+        }                                                                      \
+    } while (0)
 
 #define bf_err_v(fmt, vargs)                                                   \
     _bf_log_v_impl(BF_LOG_ERR, BF_COLOR_RED, fmt, vargs)

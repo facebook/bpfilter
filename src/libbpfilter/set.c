@@ -73,7 +73,7 @@ int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
             return bf_err_r(-ENOMEM, "failed to allocate memory for set name");
     }
 
-    memcpy(&(_set)->key, key, n_comps * sizeof(enum bf_matcher_type));
+    memcpy(&_set->key, key, n_comps * sizeof(enum bf_matcher_type));
     _set->n_comps = n_comps;
     _set->elem_size = 0;
     bf_hashset_init(&_set->elems, &_bf_set_elem_ops, &_set->elem_size);

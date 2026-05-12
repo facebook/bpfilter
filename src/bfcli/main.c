@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
     return r;
 }
 
+/* Called by the generated parser; cannot be static. */
+// NOLINTNEXTLINE(misc-use-internal-linkage)
 void yyerror(struct bfc_ruleset *ruleset, const char *fmt, ...)
 {
     va_list args;

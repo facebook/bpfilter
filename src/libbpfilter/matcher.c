@@ -183,8 +183,8 @@ static void _bf_print_u32_range(const void *payload)
     (void)fprintf(stdout, "0x%" PRIx32 "-0x%" PRIx32, range[0], range[1]);
 }
 
-int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
-                    void *payload, const char *raw_payload)
+static int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
+                           void *payload, const char *raw_payload)
 {
     assert(payload);
     assert(raw_payload);
@@ -203,7 +203,7 @@ int _bf_parse_iface(enum bf_matcher_type type, enum bf_matcher_op op,
     return 0;
 }
 
-void _bf_print_iface(const void *payload)
+static void _bf_print_iface(const void *payload)
 {
     assert(payload);
 
@@ -217,8 +217,8 @@ void _bf_print_iface(const void *payload)
         (void)fprintf(stdout, "%" PRIu32, ifindex);
 }
 
-int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
-                       void *payload, const char *raw_payload)
+static int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
+                              void *payload, const char *raw_payload)
 {
     unsigned long value;
 
@@ -239,7 +239,7 @@ int _bf_parse_l3_proto(enum bf_matcher_type type, enum bf_matcher_op op,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-void _bf_print_l3_proto(const void *payload)
+static void _bf_print_l3_proto(const void *payload)
 {
     assert(payload);
 
@@ -251,8 +251,8 @@ void _bf_print_l3_proto(const void *payload)
         (void)fprintf(stdout, "0x%04" PRIx16, *(uint16_t *)payload);
 }
 
-int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
-                       void *payload, const char *raw_payload)
+static int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
+                              void *payload, const char *raw_payload)
 {
     unsigned long value;
 
@@ -273,7 +273,7 @@ int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-void _bf_print_l4_proto(const void *payload)
+static void _bf_print_l4_proto(const void *payload)
 {
     assert(payload);
 
@@ -285,8 +285,8 @@ void _bf_print_l4_proto(const void *payload)
         (void)fprintf(stdout, "%" PRIu8, *(uint8_t *)payload);
 }
 
-int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
-                      void *payload, const char *raw_payload)
+static int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
+                             void *payload, const char *raw_payload)
 {
     assert(payload);
     assert(raw_payload);
@@ -306,7 +306,7 @@ int _bf_parse_l4_port(enum bf_matcher_type type, enum bf_matcher_op op,
     return -EINVAL;
 }
 
-void _bf_print_l4_port(const void *payload)
+static void _bf_print_l4_port(const void *payload)
 {
     assert(payload);
 
@@ -364,7 +364,7 @@ err:
     return -EINVAL;
 }
 
-void _bf_print_l4_port_range(const void *payload)
+static void _bf_print_l4_port_range(const void *payload)
 {
     assert(payload);
 
@@ -438,7 +438,7 @@ static int _bf_parse_mark(enum bf_matcher_type type, enum bf_matcher_op op,
     return 0;
 }
 
-void _bf_print_mark(const void *payload)
+static void _bf_print_mark(const void *payload)
 {
     assert(payload);
 
@@ -464,7 +464,7 @@ static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
     return -EINVAL;
 }
 
-void _bf_print_ipv4_addr(const void *payload)
+static void _bf_print_ipv4_addr(const void *payload)
 {
     assert(payload);
 
@@ -517,7 +517,7 @@ err:
     return -EINVAL;
 }
 
-void _bf_print_ipv4_net(const void *payload)
+static void _bf_print_ipv4_net(const void *payload)
 {
     assert(payload);
 
@@ -549,7 +549,7 @@ static int _bf_parse_ipv6_addr(enum bf_matcher_type type, enum bf_matcher_op op,
     return -EINVAL;
 }
 
-void _bf_print_ipv6_addr(const void *payload)
+static void _bf_print_ipv6_addr(const void *payload)
 {
     assert(payload);
 
@@ -601,7 +601,7 @@ err:
     return -EINVAL;
 }
 
-void _bf_print_ipv6_net(const void *payload)
+static void _bf_print_ipv6_net(const void *payload)
 {
     assert(payload);
 
@@ -656,7 +656,7 @@ err:
     return -EINVAL;
 }
 
-void _bf_print_tcp_flags(const void *payload)
+static void _bf_print_tcp_flags(const void *payload)
 {
     assert(payload);
 
@@ -693,7 +693,7 @@ static int _bf_parse_icmp_type(enum bf_matcher_type type, enum bf_matcher_op op,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-void _bf_print_icmp_type(const void *payload)
+static void _bf_print_icmp_type(const void *payload)
 {
     assert(payload);
 
@@ -724,7 +724,7 @@ static int _bf_parse_icmp_code(enum bf_matcher_type type, enum bf_matcher_op op,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-void _bf_print_icmp_code(const void *payload)
+static void _bf_print_icmp_code(const void *payload)
 {
     assert(payload);
 
@@ -790,7 +790,7 @@ static int _bf_parse_icmpv6_type(enum bf_matcher_type type,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
-void _bf_print_icmpv6_type(const void *payload)
+static void _bf_print_icmpv6_type(const void *payload)
 {
     assert(payload);
 

@@ -151,7 +151,7 @@ static int _bf_rule_has_incompatible_matchers(const struct bf_chain *chain,
     return 0;
 }
 
-int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
+static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
     int r;
 

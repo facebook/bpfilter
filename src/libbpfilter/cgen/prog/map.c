@@ -194,6 +194,10 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
         [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
+        /* Unreachable: bf_map_new() rejects BF_MAP_TYPE_SET; use
+         * bf_map_new_from_set() instead. Listed here to give the entry a
+         * valid bf_bpf_map_type value. */
+        [BF_MAP_TYPE_SET] = BF_BPF_MAP_TYPE_HASH,
         [BF_MAP_TYPE_CTX] = BF_BPF_MAP_TYPE_ARRAY,
     };
 

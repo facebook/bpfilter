@@ -17,11 +17,18 @@ file(GLOB_RECURSE bf_test_srcs
 )
 set(bf_all_srcs ${bf_srcs} ${bf_test_srcs})
 
+# Only report diagnostics from headers in the project source tree. This
+# excludes build-generated headers (flex/bison output, version.h, rawstubs.h
+# and the elfstub .inc.c files) which we don't write by hand and shouldn't be
+# held to clang-tidy's style rules.
+set(LINT_HEADER_FILTER "^${CMAKE_SOURCE_DIR}/src/(core|libbpfilter|bfcli)/.*")
+
 add_test(NAME "check.lint"
     COMMAND
         ${RUN_CLANG_TIDY_BIN}
             -config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
+            -header-filter=${LINT_HEADER_FILTER}
             -extra-arg=-fno-caret-diagnostics
             -j ${CPU_COUNT}
             ${bf_srcs}
