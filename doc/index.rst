@@ -15,6 +15,7 @@
    developers/build
    developers/contributing
    developers/style
+   developers/memory
    developers/modules/index
    developers/packets_processing
    developers/generation
