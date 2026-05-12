@@ -50,7 +50,7 @@ int bf_log_opt_from_str(const char *str, enum bf_log_opt *hdr)
 
 int bf_rule_new(struct bf_rule **rule)
 {
-    struct bf_rule *_rule;
+    _free_bf_rule_ struct bf_rule *_rule = NULL;
 
     assert(rule);
 
@@ -60,7 +60,7 @@ int bf_rule_new(struct bf_rule **rule)
 
     _rule->matchers = bf_list_default(bf_matcher_free, bf_matcher_pack);
 
-    *rule = _rule;
+    *rule = TAKE_PTR(_rule);
 
     return 0;
 }

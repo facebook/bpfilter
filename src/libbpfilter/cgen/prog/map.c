@@ -239,6 +239,8 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     if (!_map)
         return -ENOMEM;
 
+    _map->fd = -1;
+
     r = bf_rpack_kv_str(node, "name", &name);
     if (r)
         return bf_rpack_key_err(r, "bf_map.name");
@@ -286,7 +288,7 @@ void bf_map_free(struct bf_map **map)
         return;
 
     closep(&(*map)->fd);
-    freep((void *)map);
+    freep(map);
 }
 
 int bf_map_pack(const struct bf_map *map, bf_wpack_t *pack)

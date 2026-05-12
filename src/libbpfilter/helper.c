@@ -56,7 +56,7 @@ int bf_strncpy(char *dst, size_t len, const char *src)
 
 int bf_realloc(void **ptr, size_t size)
 {
-    _cleanup_free_ void *_ptr;
+    _cleanup_free_ void *_ptr = NULL;
 
     assert(ptr);
 

@@ -104,6 +104,8 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     if (!_ctx)
         return -ENOMEM;
 
+    _ctx->token_fd = -1;
+
     r = bf_btf_setup();
     if (r)
         return bf_err_r(r, "failed to load vmlinux BTF");
@@ -115,7 +117,6 @@ static int _bf_ctx_new(struct bf_ctx **ctx, bool with_bpf_token,
     if (!_ctx->bpffs_path)
         return -ENOMEM;
 
-    _ctx->token_fd = -1;
     if (_ctx->with_bpf_token) {
         _cleanup_close_ int token_fd = -1;
 
