@@ -34,7 +34,6 @@ jobs:
           - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
-          - { name: fedora, version: "41" }
           - { name: ubuntu, version: "24.04" }
           - { name: ubuntu, version: "25.04" }
           - { name: ubuntu, version: "25.10" }
@@ -73,7 +72,6 @@ jobs:
           - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
-          - { name: fedora, version: "41" }
           - { name: ubuntu, version: "24.04" }
           - { name: ubuntu, version: "25.04" }
           - { name: ubuntu, version: "25.10" }
