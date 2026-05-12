@@ -687,7 +687,7 @@ static void hookopts_parse_opts_list(void **state)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     _free_bf_list_ bf_list *opts = NULL;
-    bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+    bf_list_ops free_ops = bf_list_ops_default(bf_freep, NULL);
     char *opt1 = strdup("ifindex=42");
     char *opt2 = strdup("family=inet4");
     char *opt3 = strdup("priorities=100-200");

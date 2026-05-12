@@ -145,7 +145,6 @@ extern const char *strerrordesc_np(int errnum);
  */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-#define _cleanup_free_ __attribute__((__cleanup__(freep)))
 #define _cleanup_close_ __attribute__((__cleanup__(closep)))
 
 /**
@@ -214,15 +213,56 @@ char *bf_rtrim(char *str);
 char *bf_trim(char *str);
 
 /**
- * Free a pointer and set it to NULL.
+ * @brief Free a pointer and set it to NULL.
  *
- * @param ptr Pointer to free.
+ * Frees `*ptr` with `free()` and sets `*ptr` to NULL. If `*ptr` is already
+ * NULL, the call is a no-op (per `free()`).
+ *
+ * This is the function form of the free-and-null helper. It is used:
+ *
+ * - As the cleanup callback bound to the `_cleanup_free_` attribute.
+ * - As a function pointer where a `void (*)(void *)` callback is expected
+ *   (e.g. `bf_list_ops_default(bf_freep, ...)`).
+ *
+ * For direct manual frees in source code, prefer the `BF_FREEP()` macro:
+ * it accepts any `T **` argument without the explicit `(void *)` cast that
+ * Clang would otherwise require for the multilevel pointer conversion.
+ *
+ * @pre `ptr` is not NULL.
+ *
+ * @param ptr Address of the pointer to free, typed as `void *` so the
+ *        cleanup-attribute machinery and other callback consumers can pass
+ *        any `T **` to it.
  */
-static inline void freep(void *ptr)
+static inline void bf_freep(void *ptr)
 {
     free(*(void **)ptr);
     *(void **)ptr = NULL;
 }
+
+#define _cleanup_free_ __attribute__((__cleanup__(bf_freep)))
+
+/**
+ * @brief Free a pointer and set it to NULL, type-safe.
+ *
+ * Manual counterpart of `_cleanup_free_` and `bf_freep`. Calls `free(*p)`
+ * then assigns NULL to `*p`. `*p` may be NULL, in which case the call is
+ * a no-op.
+ *
+ * Implemented as a macro so it accepts any `T **` argument without the
+ * `(void *)` cast that `bf_freep(void *)` would otherwise require at the
+ * call site. Use this for direct manual frees; use `bf_freep` when a
+ * function pointer is needed.
+ *
+ * @pre `p` is not NULL.
+ *
+ * @param p Address of the pointer to free.
+ */
+#define BF_FREEP(p)                                                            \
+    do {                                                                       \
+        free(*(p));                                                            \
+        *(p) = NULL;                                                           \
+    } while (0)
 
 /**
  * @brief Close a file descriptor and set it to -1.

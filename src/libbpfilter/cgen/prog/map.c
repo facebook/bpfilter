@@ -57,7 +57,7 @@ static void _bf_btf_free(struct bf_btf **btf)
 
     btf__free((*btf)->btf);
     closep(&(*btf)->fd);
-    freep((void *)btf);
+    BF_FREEP(btf);
 }
 
 static int _bf_btf_load(struct bf_btf *btf)
@@ -288,7 +288,7 @@ void bf_map_free(struct bf_map **map)
         return;
 
     closep(&(*map)->fd);
-    freep(map);
+    BF_FREEP(map);
 }
 
 int bf_map_pack(const struct bf_map *map, bf_wpack_t *pack)

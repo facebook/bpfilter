@@ -34,7 +34,7 @@ static int _bft_list_dummy_pack(const void *data, bf_wpack_t *pack)
 bf_list *bft_list_dummy(size_t len, bft_list_dummy_inserter inserter)
 {
     _free_bf_list_ bf_list *list = NULL;
-    bf_list_ops ops = bf_list_ops_default(freep, _bft_list_dummy_pack);
+    bf_list_ops ops = bf_list_ops_default(bf_freep, _bft_list_dummy_pack);
     int r;
 
     r = bf_list_new(&list, &ops);

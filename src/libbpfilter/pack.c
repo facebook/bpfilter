@@ -83,8 +83,8 @@ void bf_wpack_free(bf_wpack_t **pack)
 
     mpack_writer_destroy(&_pack->writer);
 
-    freep((void *)&_pack->data);
-    freep((void *)pack);
+    BF_FREEP(&_pack->data);
+    BF_FREEP(pack);
 }
 
 bool bf_wpack_is_valid(bf_wpack_t *pack)
@@ -275,7 +275,7 @@ void bf_rpack_free(bf_rpack_t **pack)
         return;
 
     mpack_tree_destroy(&_pack->tree);
-    freep((void *)pack);
+    BF_FREEP(pack);
 }
 
 #define MP_NODE(node) (*(mpack_node_t *)&(node))

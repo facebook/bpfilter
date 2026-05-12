@@ -417,6 +417,6 @@ void bf_lock_release_chain(struct bf_lock *lock)
 
     closep(&lock->chain_fd);
 
-    freep((void *)&lock->chain_name);
+    BF_FREEP(&lock->chain_name);
     lock->chain_lock = BF_LOCK_NONE;
 }

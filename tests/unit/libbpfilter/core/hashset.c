@@ -23,7 +23,7 @@ static bool _bf_uint32_equal(const void *lhs, const void *rhs, void *ctx)
 static void _bf_uint32_free(void **data, void *ctx)
 {
     (void)ctx;
-    freep((void *)data);
+    BF_FREEP(data);
 }
 
 static const bf_hashset_ops _bf_uint32_ops = {

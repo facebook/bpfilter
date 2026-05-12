@@ -355,8 +355,8 @@ void bf_chain_free(struct bf_chain **chain)
 
     bf_list_clean(&(*chain)->sets);
     bf_list_clean(&(*chain)->rules);
-    freep((void *)&(*chain)->name);
-    freep((void *)chain);
+    BF_FREEP(&(*chain)->name);
+    BF_FREEP(chain);
 }
 
 int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)

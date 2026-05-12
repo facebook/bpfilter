@@ -113,7 +113,7 @@
 %token <sval> REDIRECT_DIR
 
 // Grammar types
-%destructor { freep(&$$); } <sval>
+%destructor { BF_FREEP(&$$); } <sval>
 
 %type <hook> hook
 %type <hookopts> hookopts

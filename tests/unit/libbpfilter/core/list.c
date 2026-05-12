@@ -26,7 +26,7 @@ static void new_and_free(void **state)
         // Allocate and free, custom operators, empty
 
         bf_list *list;
-        bf_list_ops free_ops = bf_list_ops_default(freep, NULL);
+        bf_list_ops free_ops = bf_list_ops_default(bf_freep, NULL);
 
         assert_int_equal(0, bf_list_new(&list, &free_ops));
         bf_list_free(&list);

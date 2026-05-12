@@ -40,7 +40,7 @@ static void _bf_printk_str_free(struct bf_printk_str **pstr)
     if (!*pstr)
         return;
 
-    freep((void *)pstr);
+    BF_FREEP(pstr);
 }
 
 static int _bf_elfstub_prepare(struct bf_elfstub *stub,
@@ -213,6 +213,6 @@ void bf_elfstub_free(struct bf_elfstub **stub)
         return;
 
     bf_list_clean(&(*stub)->strs);
-    freep((void *)&(*stub)->insns);
-    freep((void *)stub);
+    BF_FREEP(&(*stub)->insns);
+    BF_FREEP(stub);
 }

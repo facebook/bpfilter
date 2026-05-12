@@ -174,7 +174,7 @@ void bf_link_free(struct bf_link **link)
     bf_hookopts_free(&(*link)->hookopts);
     closep(&(*link)->fd);
     closep(&(*link)->fd_extra);
-    freep((void *)link);
+    BF_FREEP(link);
 }
 
 int bf_link_pack(const struct bf_link *link, bf_wpack_t *pack)

@@ -60,7 +60,7 @@ void bf_counter_free(struct bf_counter **counter)
     if (!*counter)
         return;
 
-    freep((void *)counter);
+    BF_FREEP(counter);
 }
 
 int bf_counter_pack(const struct bf_counter *counter, bf_wpack_t *pack)
