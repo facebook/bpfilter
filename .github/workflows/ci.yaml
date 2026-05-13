@@ -92,41 +92,6 @@ jobs:
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
 
-  label-experimental-failure:
-    needs: build
-    if: always() && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    name: "Experimental label"
-    steps:
-      - name: Apply breakage label if any experimental job failed
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const LABEL = 'breaks: experimental distros';
-            const { data: jobsResp } = await github.rest.actions.listJobsForWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-              per_page: 100,
-            });
-            const failed = jobsResp.jobs.filter(
-              (j) => j.name.includes('[experimental]') && j.conclusion === 'failure'
-            );
-            const issueParams = {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            };
-            if (failed.length > 0) {
-              await github.rest.issues.addLabels({ ...issueParams, labels: [LABEL] });
-            } else {
-              try {
-                await github.rest.issues.removeLabel({ ...issueParams, name: LABEL });
-              } catch (e) {
-                if (e.status !== 404) throw e;
-              }
-            }
-
   test:
     needs: create-images
     timeout-minutes: 5

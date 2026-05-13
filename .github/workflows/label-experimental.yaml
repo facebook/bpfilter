@@ -1,0 +1,72 @@
+name: Label experimental failures
+
+# Runs after the CI workflow completes. This file uses `workflow_run` (rather
+# than `pull_request`) so it can apply/remove PR labels on fork-originated
+# pull requests as well: `workflow_run` runs in the base repository's context
+# with the requested write permissions, while `pull_request` from a fork gets
+# a read-only GITHUB_TOKEN regardless of the workflow's `permissions:` block.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  pull-requests: write
+
+jobs:
+  label:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    name: "Apply 'breaks: experimental distros' label"
+    steps:
+      - name: Apply or clear the label based on experimental job outcomes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const LABEL = 'breaks: experimental distros';
+            const runId = context.payload.workflow_run.id;
+            const headSha = context.payload.workflow_run.head_sha;
+
+            // Resolve the PR number. For in-repo PRs the payload exposes it
+            // directly; for fork-originated runs `pull_requests` is empty
+            // and we fall back to looking the PR up by head SHA.
+            let issueNumber;
+            const payloadPrs = context.payload.workflow_run.pull_requests;
+            if (payloadPrs.length > 0) {
+              issueNumber = payloadPrs[0].number;
+            } else {
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: headSha,
+              });
+              const openPrs = prs.filter((pr) => pr.state === 'open');
+              if (openPrs.length === 0) return;
+              issueNumber = openPrs[0].number;
+            }
+
+            const { data: jobsResp } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const failed = jobsResp.jobs.filter(
+              (j) => j.name.includes('[experimental]') && j.conclusion === 'failure'
+            );
+
+            const issueParams = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            };
+            if (failed.length > 0) {
+              await github.rest.issues.addLabels({ ...issueParams, labels: [LABEL] });
+            } else {
+              try {
+                await github.rest.issues.removeLabel({ ...issueParams, name: LABEL });
+              } catch (e) {
+                if (e.status !== 404) throw e;
+              }
+            }
