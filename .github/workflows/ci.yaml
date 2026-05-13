@@ -26,11 +26,13 @@ jobs:
   create-images:
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         host:
           - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "rawhide", experimental: true }
           - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
@@ -38,7 +40,8 @@ jobs:
           - { name: ubuntu, version: "25.04" }
           - { name: ubuntu, version: "25.10" }
     runs-on: [ "${{ matrix.host.name }}" ]
-    name: "Image: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
+    continue-on-error: ${{ matrix.distribution.experimental || false }}
+    name: "Image: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})${{ matrix.distribution.experimental && ' [experimental]' || '' }}"
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
@@ -64,11 +67,13 @@ jobs:
     needs: create-images
     timeout-minutes: 5
     strategy:
+      fail-fast: false
       matrix:
         host:
           - { name: 8-core-ubuntu, arch: x64 }
           - { name: 4-core-ubuntu-arm, arch: arm64 }
         distribution:
+          - { name: fedora, version: "rawhide", experimental: true }
           - { name: fedora, version: "44" }
           - { name: fedora, version: "43" }
           - { name: fedora, version: "42" }
@@ -76,8 +81,9 @@ jobs:
           - { name: ubuntu, version: "25.04" }
           - { name: ubuntu, version: "25.10" }
     runs-on: [ "${{ matrix.host.name }}" ]
+    continue-on-error: ${{ matrix.distribution.experimental || false }}
     container: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
-    name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})"
+    name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})${{ matrix.distribution.experimental && ' [experimental]' || '' }}"
     steps:
       - name: Checkout bpfilter
         uses: actions/checkout@v2
@@ -85,6 +91,41 @@ jobs:
         run: cmake -S $GITHUB_WORKSPACE -B $GITHUB_WORKSPACE/build -DNO_BENCHMARKS=1
       - name: Build all
         run: make -C $GITHUB_WORKSPACE/build -j `nproc`
+
+  label-experimental-failure:
+    needs: build
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    name: "Experimental label"
+    steps:
+      - name: Apply breakage label if any experimental job failed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const LABEL = 'breaks: experimental distros';
+            const { data: jobsResp } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+            const failed = jobsResp.jobs.filter(
+              (j) => j.name.includes('[experimental]') && j.conclusion === 'failure'
+            );
+            const issueParams = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            };
+            if (failed.length > 0) {
+              await github.rest.issues.addLabels({ ...issueParams, labels: [LABEL] });
+            } else {
+              try {
+                await github.rest.issues.removeLabel({ ...issueParams, name: LABEL });
+              } catch (e) {
+                if (e.status !== 404) throw e;
+              }
+            }
 
   test:
     needs: create-images
