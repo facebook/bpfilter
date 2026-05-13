@@ -257,13 +257,20 @@ static inline void bf_freep(void *ptr)
  * call site. Use this for direct manual frees; use `bf_freep` when a
  * function pointer is needed.
  *
+ * Only the `free()` argument is reinterpreted as `void **` to strip any
+ * `const` qualifier on the pointed-to type, so owned-but-`const`-typed
+ * buffers (e.g. `const char *name` fields backed by `strdup`) can be
+ * freed without a call-site cast. The `*(p) = NULL` assignment is left
+ * uncasted on purpose: it requires `*(p)` to be a pointer lvalue, which
+ * preserves the macro's `T **` type-check on `p`.
+ *
  * @pre `p` is not NULL.
  *
  * @param p Address of the pointer to free.
  */
 #define BF_FREEP(p)                                                            \
     do {                                                                       \
-        free(*(p));                                                            \
+        free(*(void **)(p));                                                   \
         *(p) = NULL;                                                           \
     } while (0)
 
