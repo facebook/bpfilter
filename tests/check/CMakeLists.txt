@@ -13,7 +13,6 @@ file(GLOB_RECURSE bf_srcs
 file(GLOB_RECURSE bf_test_srcs
     ${CMAKE_SOURCE_DIR}/tests/*.h               ${CMAKE_SOURCE_DIR}/tests/*.c
     ${CMAKE_SOURCE_DIR}/tests/*.hpp             ${CMAKE_SOURCE_DIR}/tests/*.cpp
-    ${CMAKE_SOURCE_DIR}/tools/benchmarks/*.hpp  ${CMAKE_SOURCE_DIR}/tools/benchmarks/*.cpp
 )
 set(bf_all_srcs ${bf_srcs} ${bf_test_srcs})
 

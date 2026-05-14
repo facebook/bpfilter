@@ -36,8 +36,8 @@ DEFAULT_LAST_COMMIT_REF = "wip"
 DEFAULT_SOURCE_PATH = pathlib.Path(".")
 DEFAULT_CACHE_PATH = pathlib.Path(".cache/bfbencher")
 DEFAULT_USERNAME = getpass.getuser()
-DEFAULT_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/results.html.j2")
-DEFAULT_PR_REPORT_TEMPLATE_PATH = pathlib.Path("tools/benchmarks/summary.html.j2")
+DEFAULT_REPORT_TEMPLATE_PATH = pathlib.Path("tests/benchmarks/results.html.j2")
+DEFAULT_PR_REPORT_TEMPLATE_PATH = pathlib.Path("tests/benchmarks/summary.html.j2")
 DEFAULT_HOST = [socket.gethostname(), "localhost"]
 SHORT_SHA_LEN = 7
 
@@ -751,9 +751,7 @@ class BenchmarkContext:
     def bfcli_path(self) -> pathlib.Path:
         return self.build_dir / "output/sbin/bfcli"
 
-    def configure(
-        self, doc: bool = False, tests: bool = False, checks: bool = False
-    ) -> bool:
+    def configure(self, doc: bool = False, checks: bool = False) -> bool:
         cmd: list[str] = [
             "cmake",
             "-S",
@@ -764,8 +762,6 @@ class BenchmarkContext:
 
         if not doc:
             cmd += ["-DNO_DOCS=1"]
-        if not tests:
-            cmd += ["-DNO_TESTS=1"]
         if not checks:
             cmd += ["-DNO_CHECKS=1"]
 

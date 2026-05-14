@@ -66,7 +66,6 @@ in
       "-DNO_DOCS=1"
       "-DNO_TESTS=1"
       "-DNO_CHECKS=1"
-      "-DNO_BENCHMARKS=1"
     ];
 
     # We do not run the unit tests because the nix build sandbox doesn't
