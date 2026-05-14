@@ -95,9 +95,8 @@ You can then use CMake to generate the build system:
 The usual CMake options are allowed (e.g. ``CMAKE_BUILD_TYPE``, ``CMAKE_INSTALL_PREFIX``...). The build configuration is modular, so you're free to enable/disable some parts of the projects according to your needs:
 
 - ``-DNO_DOCS``: disable the documentation, including the coverage and benchmarks report.
-- ``-DNO_TESTS``: disable unit tests, end-to-end tests, and integration tests.
+- ``-DNO_TESTS``: disable unit tests, end-to-end tests, integration tests, and benchmarks.
 - ``-DNO_CHECKS``: disable style check and static analyzer.
-- ``-DNO_BENCHMARKS``: disable benchmarks.
 
 A full configuration (without any part disabled) will provide the following targets:
 
