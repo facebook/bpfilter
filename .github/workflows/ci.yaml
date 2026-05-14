@@ -183,7 +183,7 @@ jobs:
             BENCH_INCLUDE=""
             BENCH_FAIL_ON=""
           fi
-          tests/benchmarks/bfbencher \
+          python3 -m tests.benchmarks.bfbencher \
             --since 30bd49f \
             --until $BENCH_UNTIL \
             $BENCH_INCLUDE \
