@@ -111,6 +111,47 @@ class Renderer:
 
         self.console.print(table)
 
+    def print_compare_report(
+        self,
+        rows: list[Report.CompareRow],
+        base_sha: str,
+        ref_sha: str,
+    ) -> None:
+        def format_pct(pct: float) -> str:
+            color = "green" if pct < 0 else ("red" if pct > 0 else "white")
+            return f"[{color}]{pct:+.1f}%[/{color}]"
+
+        table = rich.table.Table(
+            title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
+            show_header=True,
+        )
+        table.add_column("Benchmark", style="cyan")
+        table.add_column("Base", justify="right")
+        table.add_column("Ref", justify="right")
+        table.add_column("ΔTime", justify="right")
+        table.add_column("ΔTime%", justify="right")
+        table.add_column("Base Insn", justify="right")
+        table.add_column("Ref Insn", justify="right")
+        table.add_column("ΔInsn", justify="right")
+        table.add_column("ΔInsn%", justify="right")
+
+        for row in rows:
+            table.add_row(
+                row.name,
+                row.base_time_str,
+                row.ref_time_str,
+                row.delta_time_str,
+                format_pct(row.delta_time_pct),
+                str(row.base_insn) if row.base_insn is not None else "-",
+                str(row.ref_insn) if row.ref_insn is not None else "-",
+                f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
+                format_pct(row.delta_insn_pct)
+                if row.delta_insn_pct is not None
+                else "-",
+            )
+
+        self.console.print(table)
+
 
 renderer: Renderer = Renderer()
 
@@ -224,6 +265,10 @@ class Benchmark:
     @property
     def last(self) -> Result | None:
         return self._results[-1] if self._results else None
+
+    @property
+    def results(self) -> list[Result]:
+        return list(self._results)
 
     @property
     def times(self) -> list[int]:
@@ -925,6 +970,23 @@ class Report:
         runtime_ns: float = 0  # Runtime in nanoseconds for sorting
         insn_count: int = 0  # Instruction count for sorting
 
+    @dataclasses.dataclass
+    class CompareRow:
+        """Prepared data for a single benchmark row in compare mode."""
+
+        name: str
+        label: str
+        base_time_str: str
+        ref_time_str: str
+        delta_time_str: str
+        delta_time_pct: float
+        base_insn: int | None
+        ref_insn: int | None
+        delta_insn: int | None
+        delta_insn_pct: float | None
+        base_time_ns: float
+        ref_time_ns: float
+
     def __init__(self, history: History):
         self._history = history
 
@@ -1064,6 +1126,116 @@ class Report:
         rows = self._get_benchmark_rows(terms)
         renderer.print_report(rows, terms)
 
+    def get_compare_rows(self, base_sha: str, ref_sha: str) -> list[CompareRow]:
+        """Build per-benchmark base/ref comparison rows."""
+        rows = []
+        for benchmark in self._history.sorted_benchmarks():
+            base_result = next(
+                (r for r in benchmark.results if r.commit_sha == base_sha), None
+            )
+            ref_result = next(
+                (r for r in benchmark.results if r.commit_sha == ref_sha), None
+            )
+            if not base_result or not ref_result:
+                continue
+
+            base_ns: float = float(base_result.time.to("ns").magnitude)
+            ref_ns: float = float(ref_result.time.to("ns").magnitude)
+            delta_ns: float = ref_ns - base_ns
+            delta_pct: float = (delta_ns / base_ns * 100) if base_ns else 0.0
+
+            base_insn = int(base_result.nInsn) if base_result.nInsn else None
+            ref_insn = int(ref_result.nInsn) if ref_result.nInsn else None
+            if base_insn is not None and ref_insn is not None:
+                delta_insn: int | None = ref_insn - base_insn
+                delta_insn_pct: float | None = (
+                    (delta_insn / base_insn * 100) if base_insn else 0.0
+                )
+            else:
+                delta_insn = None
+                delta_insn_pct = None
+
+            rows.append(
+                Report.CompareRow(
+                    name=benchmark.name,
+                    label=benchmark.label,
+                    base_time_str=f"{base_result.time:~.2f}",
+                    ref_time_str=f"{ref_result.time:~.2f}",
+                    delta_time_str=(
+                        f"{(delta_ns * ureg.ns).to_compact():+~.2f}"
+                        if abs(delta_ns) >= 1
+                        else f"{delta_ns * ureg.ns:+~.2f}"
+                    ),
+                    delta_time_pct=delta_pct,
+                    base_insn=base_insn,
+                    ref_insn=ref_insn,
+                    delta_insn=delta_insn,
+                    delta_insn_pct=delta_insn_pct,
+                    base_time_ns=base_ns,
+                    ref_time_ns=ref_ns,
+                )
+            )
+
+        return rows
+
+    def print_compare_report(self, base_sha: str, ref_sha: str) -> None:
+        rows = self.get_compare_rows(base_sha, ref_sha)
+        renderer.print_compare_report(rows, base_sha, ref_sha)
+
+    def write_compare_json(
+        self,
+        path: pathlib.Path,
+        base_sha: str,
+        ref_sha: str,
+        host: str,
+    ) -> None:
+        rows = self.get_compare_rows(base_sha, ref_sha)
+        data = {
+            "base": base_sha,
+            "ref": ref_sha,
+            "host": host,
+            "benchmarks": [
+                {
+                    "name": r.name,
+                    "base_time_ns": r.base_time_ns,
+                    "ref_time_ns": r.ref_time_ns,
+                    "delta_time_ns": r.ref_time_ns - r.base_time_ns,
+                    "delta_time_pct": r.delta_time_pct,
+                    "base_insn": r.base_insn,
+                    "ref_insn": r.ref_insn,
+                    "delta_insn": r.delta_insn,
+                    "delta_insn_pct": r.delta_insn_pct,
+                }
+                for r in rows
+            ],
+        }
+
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+
+
+def _benchmark_commits(executor: Executor, args: argparse.Namespace) -> None:
+    """Run the configure -> build -> benchmark pipeline for each commit."""
+    for ctx in BenchmarkContext.commits(executor):
+        if not ctx.configure():
+            continue
+        if not ctx.make("bfcli"):
+            continue
+        if not ctx.make("benchmark_bin"):
+            continue
+        if not ctx.run_benchmark(
+            args.bind_node, args.no_preempt, args.cpu_pin, args.slice
+        ):
+            continue
+
+        results = ctx.results
+        if not results:
+            executor.log(f"could not find {ctx.results_path}")
+            continue
+
+        executor.add_results(ctx.commit, results)
+        executor.log("Done!")
+
 
 def run_benchmarks(args: argparse.Namespace):
     executor = (
@@ -1071,28 +1243,7 @@ def run_benchmarks(args: argparse.Namespace):
     )
 
     with executor:
-        for ctx in BenchmarkContext.commits(executor):
-            if not ctx.configure():
-                continue
-
-            if not ctx.make("bfcli"):
-                continue
-
-            if not ctx.make("benchmark_bin"):
-                continue
-
-            if not ctx.run_benchmark(
-                args.bind_node, args.no_preempt, args.cpu_pin, args.slice
-            ):
-                continue
-
-            results = ctx.results
-            if not results:
-                executor.log(f"could not find {ctx.results_path}")
-                continue
-
-            executor.add_results(ctx.commit, results)
-            executor.log("Done!")
+        _benchmark_commits(executor, args)
 
         report = Report(executor._results)
         if args.report_path:
@@ -1137,6 +1288,85 @@ def run_benchmarks(args: argparse.Namespace):
                 benchmark, terms, args.fail_on_significant_change
             ):
                 raise SystemExit(1)
+
+
+def run_compare(args: argparse.Namespace) -> None:
+    source_repo = git.Repo(args.sources)
+    base_sha: str = source_repo.git.rev_parse(args.base)
+    ref_sha: str = source_repo.git.rev_parse(args.ref)
+
+    # _benchmark_commits walks the history range; treat base+ref as a
+    # two-commit "range" by anchoring both ends on base and including ref.
+    args.since = args.base
+    args.until = args.base
+    args.include = [args.ref]
+
+    executor = (
+        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
+    )
+
+    with executor:
+        _benchmark_commits(executor, args)
+
+        report = Report(executor._results)
+        report.print_compare_report(base_sha, ref_sha)
+
+        if args.json_output:
+            report.write_compare_json(
+                args.json_output, base_sha, ref_sha, executor.host
+            )
+
+
+def compare(
+    base: str,
+    ref: str,
+    *,
+    sources: pathlib.Path = DEFAULT_SOURCE_PATH,
+    host: str = DEFAULT_HOST[0],
+    cache_dir: pathlib.Path = DEFAULT_CACHE_PATH,
+    bind_node: int | None = None,
+    no_preempt: bool = False,
+    cpu_pin: int | None = None,
+    slice: str | None = None,
+    retry: list[str] | None = None,
+) -> list[Report.CompareRow]:
+    """Programmatic compare API.
+
+    Runs benchmarks for `base` and `ref` (with cache reuse when possible)
+    and returns one CompareRow per benchmark with delta_time / delta_insn
+    fields. This is the fitness signal consumed by tools like bfoptimize.
+    """
+    args = argparse.Namespace(
+        sources=sources,
+        host=host,
+        cache_dir=cache_dir,
+        bind_node=bind_node,
+        no_preempt=no_preempt,
+        cpu_pin=cpu_pin,
+        slice=slice,
+        retry=list(retry) if retry else [],
+        fail_on_significant_change=None,
+        fail_on_last_commit_failure=False,
+        fail_on_any_commit_failure=False,
+        base=base,
+        ref=ref,
+        since=base,
+        until=base,
+        include=[ref],
+        json_output=None,
+    )
+
+    source_repo = git.Repo(args.sources)
+    base_sha = source_repo.git.rev_parse(base)
+    ref_sha = source_repo.git.rev_parse(ref)
+
+    executor = (
+        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
+    )
+
+    with executor:
+        _benchmark_commits(executor, args)
+        return Report(executor._results).get_compare_rows(base_sha, ref_sha)
 
 
 def main():
@@ -1264,6 +1494,28 @@ def main():
         help="path of the HTML summary report for pull requests (shows only significant changes).",
     )
 
+    compare_parser = subparsers.add_parser(
+        "compare",
+        parents=[shared],
+        help="compare performance between two specific commits",
+        description="Benchmark two specific commits and report the performance difference.",
+    )
+    compare_parser.add_argument(
+        "base",
+        type=str,
+        help='baseline commit ref. Use "wip" for uncommitted changes.',
+    )
+    compare_parser.add_argument(
+        "ref",
+        type=str,
+        help='commit ref to compare against the baseline. Use "wip" for uncommitted changes.',
+    )
+    compare_parser.add_argument(
+        "--json-output",
+        type=pathlib.Path,
+        help="write comparison results to a JSON file.",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -1273,6 +1525,8 @@ def main():
     try:
         if args.command == "history":
             run_benchmarks(args)
+        elif args.command == "compare":
+            run_compare(args)
     except KeyboardInterrupt:
         renderer.log("Command interrupted by user")
         raise SystemExit(1)
