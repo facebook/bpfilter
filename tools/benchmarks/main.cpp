@@ -94,6 +94,108 @@ void chain_policy_c(::benchmark::State &state)
 
 BENCHMARK(chain_policy_c);
 
+void xdp__prologue(::benchmark::State &state)
+{
+    Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bft::Program(chain.name());
+
+    while (state.KeepRunningBatch(::bft::progRunRepeat)) {
+        auto stats = prog.run(::bft::pkt_local_ip6_tcp);
+        if (stats.retval != XDP_PASS)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("XDP prologue, accept policy");
+}
+
+BENCHMARK(xdp__prologue);
+
+void tc__prologue(::benchmark::State &state)
+{
+    Chain chain("bf_benchmark", BF_HOOK_TC_INGRESS, BF_VERDICT_ACCEPT);
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bft::Program(chain.name());
+
+    // TC_ACT_OK = 0
+    while (state.KeepRunningBatch(::bft::progRunRepeat)) {
+        auto stats = prog.run(::bft::pkt_local_ip6_tcp);
+        if (stats.retval != 0)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("TC prologue, accept policy");
+}
+
+BENCHMARK(tc__prologue);
+
+void cgroup_skb__prologue(::benchmark::State &state)
+{
+    Chain chain("bf_benchmark", BF_HOOK_CGROUP_SKB_INGRESS, BF_VERDICT_ACCEPT);
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bft::Program(chain.name());
+
+    while (state.KeepRunningBatch(::bft::progRunRepeat)) {
+        auto stats = prog.run(::bft::pkt_local_ip6_tcp);
+        if (stats.retval != ::bft::CGROUP_SKB_ACCEPT)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("CGroup skb prologue, accept policy");
+}
+
+BENCHMARK(cgroup_skb__prologue);
+
+void netfilter__prologue(::benchmark::State &state)
+{
+    Chain chain("bf_benchmark", BF_HOOK_NF_LOCAL_IN, BF_VERDICT_ACCEPT);
+
+    auto chainp = chain.get();
+    int ret = bf_chain_set(chainp.get(), nullptr);
+    if (ret < 0)
+        throw std::runtime_error("failed to load chain");
+
+    auto prog = bft::Program(chain.name());
+
+    // NF_ACCEPT = 1
+    while (state.KeepRunningBatch(::bft::progRunRepeat)) {
+        auto stats = prog.run(::bft::pkt_local_ip6_tcp);
+        if (stats.retval != 1)
+            state.SkipWithError("benchmark run failed");
+
+        state.SetIterationTime((double)stats.duration * stats.repeat);
+    }
+
+    state.counters["nInsn"] = prog.nInsn();
+    state.SetLabel("Netfilter prologue, accept policy");
+}
+
+BENCHMARK(netfilter__prologue);
+
 void single_rule__ip4_saddr(::benchmark::State &state)
 {
     Chain chain("bf_benchmark", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
