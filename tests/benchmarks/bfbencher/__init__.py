@@ -548,9 +548,54 @@ class FilesystemSource:
         self._local = local_src_dir
 
         shutil.copytree(self._path, self._local, dirs_exist_ok=True)
+        self._detach_if_worktree()
         self._repo: git.Repo = git.Repo(self._local)
         self._retry_all: bool = False
         self._retry_failed: bool = False
+
+    def _detach_if_worktree(self) -> None:
+        """Convert a copied git worktree into a standalone repository.
+
+        In a git worktree the .git entry is a file containing a gitdir pointer
+        to the original repo's worktree-specific state. shutil.copytree copies
+        that file verbatim, so all git operations on the copy would mutate the
+        original worktree's HEAD and index. Detect that case and replace the
+        .git file with a self-contained .git directory built from the
+        worktree-specific state (HEAD, index) and the shared commondir
+        (objects, refs, config, ...).
+        """
+        git_entry = self._local / ".git"
+        if not git_entry.is_file():
+            return
+
+        content = git_entry.read_text().strip()
+        if not content.startswith("gitdir:"):
+            return
+
+        wt_gitdir = pathlib.Path(content.split(":", 1)[1].strip())
+        if not wt_gitdir.is_absolute():
+            wt_gitdir = (self._local / wt_gitdir).resolve()
+
+        commondir_file = wt_gitdir / "commondir"
+        if commondir_file.exists():
+            commondir = (wt_gitdir / commondir_file.read_text().strip()).resolve()
+        else:
+            commondir = wt_gitdir
+
+        git_entry.unlink()
+        shutil.copytree(commondir, self._local / ".git")
+
+        # Drop worktrees/: entries are specific to the original repo.
+        worktrees_dir = self._local / ".git" / "worktrees"
+        if worktrees_dir.exists():
+            shutil.rmtree(worktrees_dir)
+
+        # Apply this worktree's HEAD and index, which differ from the main
+        # worktree's equivalents.
+        for fname in ("HEAD", "index"):
+            src = wt_gitdir / fname
+            if src.exists():
+                shutil.copy2(src, self._local / ".git" / fname)
 
     @property
     def local(self) -> pathlib.Path:
