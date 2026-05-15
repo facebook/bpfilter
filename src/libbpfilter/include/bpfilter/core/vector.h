@@ -62,9 +62,11 @@ void bf_vector_init(bf_vector *vec, size_t elem_size);
 #define bf_vector_foreach(vec, elem)                                           \
     for (void *(elem) = (vec)->data,                                           \
               *__end = (vec)->data ?                                           \
-                           (vec)->data + ((vec)->size * (vec)->elem_size) :    \
+                           (char *)(vec)->data +                               \
+                               ((vec)->size * (vec)->elem_size) :              \
                            NULL;                                               \
-         (elem) && (elem) < __end; (elem) = (elem) + (vec)->elem_size)
+         (elem) && (elem) < __end;                                             \
+         (elem) = (char *)(elem) + (vec)->elem_size)
 
 /**
  * @brief Allocate and initialise a new vector on the heap.
