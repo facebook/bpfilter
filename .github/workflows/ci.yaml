@@ -23,6 +23,22 @@ permissions:
   pull-requests: write
 
 jobs:
+  check-generated-docs:
+    timeout-minutes: 5
+    runs-on: [ "8-core-ubuntu" ]
+    name: "Check generated docs"
+    steps:
+      - name: Checkout bpfilter
+        uses: actions/checkout@v4
+      - name: Check matcher hook documentation
+        run: |
+          python3 $GITHUB_WORKSPACE/doc/generate_matcher_hook_compat.py \
+            --matcher-c $GITHUB_WORKSPACE/src/libbpfilter/matcher.c \
+            --matcher-h $GITHUB_WORKSPACE/src/libbpfilter/include/bpfilter/matcher.h \
+            --hook-h $GITHUB_WORKSPACE/src/libbpfilter/include/bpfilter/hook.h \
+            --output $GITHUB_WORKSPACE/doc/usage/_generated/bfcli_matcher_hook_compatibility.rst \
+            --check
+
   create-images:
     timeout-minutes: 30
     strategy:
