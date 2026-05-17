@@ -21,6 +21,7 @@
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/if.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 
@@ -203,8 +204,16 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     assert(hookopts);
     assert(raw_opt);
 
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFACE)) {
+        return bf_err_r(-EEXIST,
+                        "ifindex= can't be set when iface= is already defined");
+    }
+
     if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
         return bf_err_r(-EEXIST, "ifindex= is defined multiple times");
+
+    bf_warn(
+        "hook option 'ifindex=' is deprecated, use 'iface=' instead; 'iface=' accepts either an interface name or a numeric index");
 
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
@@ -222,11 +231,59 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     return 0;
 }
 
+static int _bf_hookopts_iface_parse(struct bf_hookopts *hookopts,
+                                    const char *raw_opt)
+{
+    uint32_t ifindex;
+    int r;
+
+    assert(hookopts);
+    assert(raw_opt);
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFACE))
+        return bf_err_r(-EEXIST, "iface= is defined multiple times");
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX)) {
+        return bf_err_r(-EEXIST,
+                        "iface= can't be set when ifindex= is already defined");
+    }
+
+    r = bf_if_index_from_str(raw_opt, &ifindex);
+    if (r)
+        return bf_err_r(r, "failed to parse iface from '%s'", raw_opt);
+
+    if (ifindex > INT_MAX)
+        return bf_err_r(-E2BIG, "iface resolves to ifindex too big: %u",
+                        ifindex);
+
+    hookopts->ifindex = (int)ifindex;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFACE);
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
+
+    return 0;
+}
+
+static void _bf_hookopts_iface_dump(const struct bf_hookopts *hookopts,
+                                    prefix_t *prefix)
+{
+    assert(hookopts);
+    assert(prefix);
+
+    DUMP(prefix, "iface: %d", hookopts->ifindex);
+}
+
 static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
                                       prefix_t *prefix)
 {
     assert(hookopts);
     assert(prefix);
+
+    /* iface= sets both BF_HOOKOPTS_IFACE and BF_HOOKOPTS_IFINDEX so the
+     * XDP/TC ifindex requirement in bf_hookopts_validate is satisfied. In
+     * that case _bf_hookopts_iface_dump has already emitted the value;
+     * skip the ifindex line to avoid a duplicate dump entry. */
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE))
+        return;
 
     DUMP(prefix, "ifindex: %d", hookopts->ifindex);
 }
@@ -366,6 +423,12 @@ static struct bf_hookopts_ops
     int (*parse)(struct bf_hookopts *, const char *);
     void (*dump)(const struct bf_hookopts *, prefix_t *);
 } _bf_hookopts_ops[] = {
+    [BF_HOOKOPTS_IFACE] = {.name = "iface",
+                           .type = BF_HOOKOPTS_IFACE,
+                           .required_by = 0,
+                           .supported_by = BF_FLAGS(BF_FLAVOR_XDP, BF_FLAVOR_TC),
+                           .parse = _bf_hookopts_iface_parse,
+                           .dump = _bf_hookopts_iface_dump},
     [BF_HOOKOPTS_IFINDEX] = {.name = "ifindex",
                              .type = BF_HOOKOPTS_IFINDEX,
                              .required_by =

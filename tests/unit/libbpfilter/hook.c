@@ -228,6 +228,86 @@ static void hookopts_parse_ifindex(void **state)
     assert_int_equal(hookopts->ifindex, 42);
 }
 
+static void hookopts_parse_iface(void **state)
+{
+    (void)state;
+
+    // iface= accepts a numeric interface index
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt[] = "iface=42";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt));
+        assert_int_equal(hookopts->ifindex, 42);
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE));
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+    }
+
+    // iface= accepts the loopback interface by name (always present)
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt[] = "iface=lo";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt));
+        assert_true(hookopts->ifindex > 0);
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE));
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+    }
+
+    // iface= rejects a non-existent interface name that isn't numeric
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt[] = "iface=this_iface_does_not_exist_xyz";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_err(bf_hookopts_parse_opt(hookopts, opt));
+        assert_false(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE));
+        assert_false(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+    }
+
+    // iface= cannot be specified twice
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt1[] = "iface=42";
+        char opt2[] = "iface=100";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
+        assert_err(bf_hookopts_parse_opt(hookopts, opt2));
+        assert_int_equal(hookopts->ifindex, 42);
+    }
+
+    // ifindex= followed by iface= is rejected
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt1[] = "ifindex=42";
+        char opt2[] = "iface=100";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
+        assert_err(bf_hookopts_parse_opt(hookopts, opt2));
+        assert_int_equal(hookopts->ifindex, 42);
+        assert_false(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE));
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+    }
+
+    // iface= followed by ifindex= is rejected
+    {
+        _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
+        char opt1[] = "iface=42";
+        char opt2[] = "ifindex=100";
+
+        assert_ok(bf_hookopts_new(&hookopts));
+        assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
+        assert_err(bf_hookopts_parse_opt(hookopts, opt2));
+        assert_int_equal(hookopts->ifindex, 42);
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFACE));
+        assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+    }
+}
+
 static void hookopts_parse_cgpath(void **state)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
@@ -743,6 +823,7 @@ int main(void)
         cmocka_unit_test(nf_hook_to_str),
         cmocka_unit_test(hookopts_new_and_free),
         cmocka_unit_test(hookopts_parse_ifindex),
+        cmocka_unit_test(hookopts_parse_iface),
         cmocka_unit_test(hookopts_parse_cgpath),
         cmocka_unit_test(hookopts_parse_family),
         cmocka_unit_test(hookopts_parse_priorities),
