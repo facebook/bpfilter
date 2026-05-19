@@ -40,6 +40,7 @@ using bf::Chain;
 using bf::Matcher;
 using bf::Rule;
 using bf::Set;
+namespace bm = bft::benchmark;
 
 std::vector<uint8_t> uint32ToIp4(uint32_t val)
 {
@@ -301,6 +302,7 @@ void single_rule__ip4_saddr__x_elem_set(::benchmark::State &state)
     }
 
     state.counters["nInsn"] = prog.nInsn();
+    bm::set_flags(state, {.use_set = true});
     state.SetLabel(std::format("1 rule, ip4.saddr, {} elements set", nrules));
 }
 
@@ -343,6 +345,7 @@ void chain_set__ip4_saddr__x_elem_set(::benchmark::State &state)
         state.ResumeTiming();
     }
 
+    bm::set_flags(state, {.use_set = true, .userspace_only = true});
     state.SetLabel(
         std::format("load chain, ip4.saddr, {} elements set", nelems));
 }
@@ -408,6 +411,7 @@ void single_rule__ip4_saddr_l(::benchmark::State &state)
     }
 
     state.counters["nInsn"] = prog.nInsn();
+    bm::set_flags(state, {.use_log = true});
     state.SetLabel("1 rule, ip4.saddr, log link");
 }
 
@@ -521,6 +525,7 @@ void single_rule__ip6_saddr__x_elem_set(::benchmark::State &state)
     }
 
     state.counters["nInsn"] = prog.nInsn();
+    bm::set_flags(state, {.use_set = true});
     state.SetLabel(std::format("1 rule, ip6.saddr, {} elements set", nrules));
 }
 
@@ -586,6 +591,7 @@ void single_rule__ip6_saddr_l(::benchmark::State &state)
     }
 
     state.counters["nInsn"] = prog.nInsn();
+    bm::set_flags(state, {.use_log = true});
     state.SetLabel("1 rule, ip6.saddr, log link");
 }
 

@@ -403,3 +403,18 @@ bool Sources::isDirty() const
 }
 
 } // namespace bft
+
+namespace bft::benchmark
+{
+
+void set_flags(::benchmark::State &state, Flags flags)
+{
+    if (flags.use_set)
+        state.counters["use_set"] = 1;
+    if (flags.use_log)
+        state.counters["use_log"] = 1;
+    if (flags.userspace_only)
+        state.counters["userspace_only"] = 1;
+}
+
+} // namespace bft::benchmark

@@ -8,6 +8,7 @@
 #include <linux/bpf.h>
 
 #include <array>
+#include <benchmark/benchmark.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf_common.h>
 #include <cstdint>
@@ -176,3 +177,17 @@ public:
 };
 
 } // namespace bft
+
+namespace bft::benchmark
+{
+
+struct Flags
+{
+    bool use_set = false;
+    bool use_log = false;
+    bool userspace_only = false;
+};
+
+void set_flags(::benchmark::State &state, Flags flags);
+
+} // namespace bft::benchmark
