@@ -200,6 +200,9 @@ class Result:
             json["cpu_time"] * ureg(json["time_unit"]),
             json.get("nInsn", 0),
             json.get("label", ""),
+            bool(json.get("use_set", 0)),
+            bool(json.get("use_log", 0)),
+            bool(json.get("userspace_only", 0)),
         )
 
     def __init__(
@@ -211,6 +214,9 @@ class Result:
         cpu_time: pint.Quantity,
         n_insn: int,
         label: str,
+        use_set: bool = False,
+        use_log: bool = False,
+        userspace_only: bool = False,
     ):
         self.commit_sha = commit.hexsha
         self.commit_summary = commit.summary
@@ -220,6 +226,9 @@ class Result:
         self.cpu_time = cpu_time
         self.nInsn = n_insn
         self.label = label
+        self.use_set = use_set
+        self.use_log = use_log
+        self.userspace_only = userspace_only
 
     @property
     def short_commit_sha(self) -> str:
@@ -282,6 +291,18 @@ class Benchmark:
         if any(n == 0 for n in nInsns):
             return None
         return nInsns
+
+    @property
+    def use_set(self) -> bool:
+        return self.last.use_set if self.last else False
+
+    @property
+    def use_log(self) -> bool:
+        return self.last.use_log if self.last else False
+
+    @property
+    def userspace_only(self) -> bool:
+        return self.last.userspace_only if self.last else False
 
     @property
     def commits_sha(self) -> list[str]:
@@ -969,6 +990,9 @@ class Report:
         ]  # term -> {"time": ..., "nInsn": ...}
         runtime_ns: float = 0  # Runtime in nanoseconds for sorting
         insn_count: int = 0  # Instruction count for sorting
+        use_set: bool = False
+        use_log: bool = False
+        userspace_only: bool = False
 
     @dataclasses.dataclass
     class CompareRow:
@@ -986,6 +1010,9 @@ class Report:
         delta_insn_pct: float | None
         base_time_ns: float
         ref_time_ns: float
+        use_set: bool = False
+        use_log: bool = False
+        userspace_only: bool = False
 
     def __init__(self, history: History):
         self._history = history
@@ -1037,6 +1064,9 @@ class Report:
                     terms=term_data,
                     runtime_ns=runtime_ns,
                     insn_count=insn_count,
+                    use_set=benchmark.use_set,
+                    use_log=benchmark.use_log,
+                    userspace_only=benchmark.userspace_only,
                 )
             )
 
@@ -1173,6 +1203,9 @@ class Report:
                     delta_insn_pct=delta_insn_pct,
                     base_time_ns=base_ns,
                     ref_time_ns=ref_ns,
+                    use_set=benchmark.use_set,
+                    use_log=benchmark.use_log,
+                    userspace_only=benchmark.userspace_only,
                 )
             )
 
@@ -1205,6 +1238,9 @@ class Report:
                     "ref_insn": r.ref_insn,
                     "delta_insn": r.delta_insn,
                     "delta_insn_pct": r.delta_insn_pct,
+                    "use_set": r.use_set,
+                    "use_log": r.use_log,
+                    "userspace_only": r.userspace_only,
                 }
                 for r in rows
             ],
