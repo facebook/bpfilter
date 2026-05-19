@@ -124,7 +124,12 @@ The <strong>Δ</strong> columns show the percentage change compared to the mean 
     <tbody class="table-group-divider">
         {%- for row in rows %}
         <tr data-name="{{ row.label }}" data-runtime="{{ row.runtime_ns | default(0) }}" data-instructions="{{ row.insn_count | default(0) }}">
-            <td class="fw-medium"><a href="#chart-{{ row.name }}" class="benchmark-link">{{ row.label }}</a></td>
+            <td class="fw-medium">
+                <a href="#chart-{{ row.name }}" class="benchmark-link">{{ row.label }}</a>
+                {%- if row.use_set %}<span class="badge bg-warning text-dark ms-1" data-bs-toggle="tooltip" data-bs-title="uses a BPF set map">set</span>{% endif %}
+                {%- if row.use_log %}<span class="badge bg-info text-dark ms-1" data-bs-toggle="tooltip" data-bs-title="emits log entries">log</span>{% endif %}
+                {%- if row.userspace_only %}<span class="badge bg-secondary ms-1" data-bs-toggle="tooltip" data-bs-title="measures userspace only, not BPF execution">userspace</span>{% endif %}
+            </td>
             <td class="text-end">{{ row.time_str }}</td>
             {%- if row.insn_str %}
             <td class="text-end">{{ row.insn_str }}</td>
