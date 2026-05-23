@@ -79,6 +79,8 @@ function(bf_target_add_elfstubs TARGET)
             DEPENDS
                 ${_LOCAL_DIR}/${_stub}.bpf.c
                 ${DECL_TEMPLATE_PATH}
+                ${CMAKE_SOURCE_DIR}/src/libbpfilter/include/bpfilter/runtime.h
+                ${CMAKE_SOURCE_DIR}/src/libbpfilter/cgen/runtime.h
             OUTPUT
                 ${ELFSTUBS_INC_DIR}/${_stub}.inc.c
             COMMENT "Generate ${_stub} stub"
