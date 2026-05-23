@@ -62,7 +62,7 @@ s.close()
 }
 
 get_counter() {
-    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
+    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].values | map(.value.count) | add"
 }
 
 # meta.l3_proto

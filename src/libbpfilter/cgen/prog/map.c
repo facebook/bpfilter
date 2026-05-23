@@ -191,7 +191,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
                size_t key_size, size_t value_size, size_t n_elems)
 {
     static enum bf_bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
-        [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_PERCPU_ARRAY,
         [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
         /* Unreachable: bf_map_new() rejects BF_MAP_TYPE_SET; use
@@ -331,6 +331,7 @@ static const char *_bf_bpf_type_to_str(enum bf_bpf_map_type type)
     static const char *type_strs[] = {
         [BF_BPF_MAP_TYPE_HASH] = "BF_BPF_MAP_TYPE_HASH",
         [BF_BPF_MAP_TYPE_ARRAY] = "BF_BPF_MAP_TYPE_ARRAY",
+        [BF_BPF_MAP_TYPE_PERCPU_ARRAY] = "BF_BPF_MAP_TYPE_PERCPU_ARRAY",
         [BF_BPF_MAP_TYPE_LPM_TRIE] = "BF_BPF_MAP_TYPE_LPM_TRIE",
         [BF_BPF_MAP_TYPE_RINGBUF] = "BF_BPF_MAP_TYPE_RINGBUF",
     };

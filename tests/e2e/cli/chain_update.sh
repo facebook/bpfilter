@@ -28,11 +28,11 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_4 BF_HOOK_XDP{ifi
     rule ip4.proto icmp counter DROP
 "
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
-counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/chain_load_xdp_4/bf_cmap | jq '.[0].value.count')
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/chain_load_xdp_4/bf_cmap | jq '.[0].values | map(.value.count) | add')
 test "$counter" = "1"
 ${FROM_NS} ${BFCLI} chain update --from-str "chain chain_load_xdp_4 BF_HOOK_XDP ACCEPT
     rule ip4.proto icmp counter DROP
 "
-counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/chain_load_xdp_4/bf_cmap | jq '.[0].value.count')
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/chain_load_xdp_4/bf_cmap | jq '.[0].values | map(.value.count) | add')
 test "$counter" = "0"
 ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_4

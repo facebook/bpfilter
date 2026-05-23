@@ -145,6 +145,20 @@ int bf_handle_get_counter(const struct bf_handle *handle, uint32_t counter_idx,
                           struct bf_counter *counter);
 
 /**
+ * @brief Set a counter value in the handle's counters map.
+ *
+ * Writes `counter` into the per-CPU map at `counter_idx` by placing the
+ * value in CPU 0's slot and zeroing all other slots.
+ *
+ * @param handle Handle to write the counter to. Can't be NULL.
+ * @param counter_idx Index of the counter to set.
+ * @param counter Counter value to write. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_handle_set_counter(struct bf_handle *handle, uint32_t counter_idx,
+                          const struct bf_counter *counter);
+
+/**
  * @brief Attach the BPF program to a hook.
  *
  * Creates a `bf_link` to attach the program to the specified hook.
