@@ -50,6 +50,7 @@ enum bf_bpf_map_type
 {
     BF_BPF_MAP_TYPE_HASH = 1,
     BF_BPF_MAP_TYPE_ARRAY = 2,
+    BF_BPF_MAP_TYPE_PERCPU_ARRAY = 6,
     BF_BPF_MAP_TYPE_LPM_TRIE = 11,
     BF_BPF_MAP_TYPE_RINGBUF = 27,
 };

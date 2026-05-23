@@ -231,8 +231,8 @@ ${FROM_NS} ${BFCLI} chain update-set \
     --set-name blocked_ips \
     --add 10.0.0.2
 
-counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[0].value.count')
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[0].values | map(.value.count) | add')
 test "$counter" = "1"
-counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[1].value.count')
+counter=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/test_xdp/bf_cmap | jq '.[1].values | map(.value.count) | add')
 test "$counter" = "1"
 ${FROM_NS} ${BFCLI} chain flush --name test_xdp

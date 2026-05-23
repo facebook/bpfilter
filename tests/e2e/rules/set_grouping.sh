@@ -53,8 +53,8 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain multibyte BF_HOOK_XDP{ifindex=${
 (! ping -c 1 -W 1 ${NS_IP_ADDR}) || { echo "ERROR: ping should have been dropped via s8 (bit 8)"; exit 1; }
 count=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/multibyte/ -name 'bf_set_*' | wc -l)
 [ "${count}" -eq 1 ] || { echo "ERROR: expected 1 map for 9 same-key sets, got ${count}"; exit 1; }
-miss=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/multibyte/bf_cmap | jq '.[0].value.count')
+miss=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/multibyte/bf_cmap | jq '.[0].values | map(.value.count) | add')
 [ "${miss}" = "0" ] || { echo "ERROR: s0 rule (byte 0) should not match, got ${miss}"; exit 1; }
-hit=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/multibyte/bf_cmap | jq '.[1].value.count')
+hit=$(${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/multibyte/bf_cmap | jq '.[1].values | map(.value.count) | add')
 [ "${hit}" -ge 1 ] || { echo "ERROR: s8 rule (byte 1) should match at least once, got ${hit}"; exit 1; }
 ${FROM_NS} ${BFCLI} chain flush --name multibyte

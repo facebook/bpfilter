@@ -6,6 +6,7 @@
 #include "cgen/handle.h"
 
 #include <assert.h>
+#include <bpf/libbpf.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -366,6 +367,8 @@ void bf_handle_unpin(struct bf_handle *handle, struct bf_lock *lock)
 int bf_handle_get_counter(const struct bf_handle *handle, uint32_t counter_idx,
                           struct bf_counter *counter)
 {
+    _cleanup_free_ struct bf_counter *percpu = NULL;
+    int num_cpus;
     int r;
 
     assert(handle);
@@ -374,9 +377,54 @@ int bf_handle_get_counter(const struct bf_handle *handle, uint32_t counter_idx,
     if (!handle->cmap)
         return bf_err_r(-ENOENT, "handle has no counters map");
 
-    r = bf_bpf_map_lookup_elem(handle->cmap->fd, &counter_idx, counter);
+    num_cpus = libbpf_num_possible_cpus();
+    if (num_cpus < 0)
+        return bf_err_r(num_cpus, "failed to get number of possible CPUs");
+
+    percpu = calloc(num_cpus, sizeof(*percpu));
+    if (!percpu)
+        return -ENOMEM;
+
+    r = bf_bpf_map_lookup_elem(handle->cmap->fd, &counter_idx, percpu);
     if (r < 0)
         return bf_err_r(r, "failed to lookup counters map");
+
+    counter->count = 0;
+    counter->size = 0;
+    for (int i = 0; i < num_cpus; i++) {
+        counter->count += percpu[i].count;
+        counter->size += percpu[i].size;
+    }
+
+    return 0;
+}
+
+int bf_handle_set_counter(struct bf_handle *handle, uint32_t counter_idx,
+                          const struct bf_counter *counter)
+{
+    _cleanup_free_ struct bf_counter *percpu = NULL;
+    int num_cpus;
+    int r;
+
+    assert(handle);
+    assert(counter);
+
+    if (!handle->cmap)
+        return bf_err_r(-ENOENT, "handle has no counters map");
+
+    num_cpus = libbpf_num_possible_cpus();
+    if (num_cpus < 0)
+        return bf_err_r(num_cpus, "failed to get number of possible CPUs");
+
+    percpu = calloc(num_cpus, sizeof(*percpu));
+    if (!percpu)
+        return -ENOMEM;
+
+    percpu[0] = *counter;
+
+    r = bf_bpf_map_update_elem(handle->cmap->fd, &counter_idx, percpu, 0);
+    if (r < 0)
+        return bf_err_r(r, "failed to update counters map");
 
     return 0;
 }
