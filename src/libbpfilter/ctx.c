@@ -288,6 +288,11 @@ void bf_ctx_teardown(void)
     _bf_ctx_free(&_bf_global_ctx);
 }
 
+bool bf_ctx_is_setup(void)
+{
+    return _bf_global_ctx != NULL;
+}
+
 void bf_ctx_dump(prefix_t *prefix)
 {
     if (!_bf_global_ctx)
