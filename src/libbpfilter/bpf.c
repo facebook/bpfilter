@@ -24,6 +24,8 @@
 #define _BF_NR_bpf 321
 #elif defined(__aarch64__)
 #define _BF_NR_bpf 280
+#elif defined(__loongarch__)
+#define _BF_NR_bpf 280
 #else
 #error _BF_NR_bpf not defined. bpfilter does not support your arch.
 #endif
