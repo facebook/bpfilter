@@ -439,6 +439,7 @@ With:
   - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of socket operations (``connect()`` or ``sendmsg()`` calls).
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, ``NEXT``, or ``REDIRECT``.
+
     - ``ACCEPT``: forward the packet to the kernel.
     - ``DROP``: discard the packet.
     - ``CONTINUE``: continue processing subsequent rules (non-terminal).
