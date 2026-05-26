@@ -57,6 +57,13 @@ int bf_ctx_setup(bool with_bpf_token, const char *bpffs_path, uint16_t verbose);
 void bf_ctx_teardown(void);
 
 /**
+ * @brief Check if the global context is setup.
+ *
+ * @return True if the global context is setup, false otherwise.
+ */
+bool bf_ctx_is_setup(void);
+
+/**
  * Dump the global context.
  *
  * @param prefix Prefix to use for the dump.
