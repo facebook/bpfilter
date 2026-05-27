@@ -887,6 +887,13 @@ class BenchmarkContext:
 
         return self._executor.run_benchmark_cmd(f"Building {target}", self._commit, cmd)
 
+    def flush(self) -> bool:
+        cmd = ["sudo", "rm", "-rf", "/sys/fs/bpf/bpfilter"]
+
+        return self._executor.run_benchmark_cmd(
+            "Flushing leftover chains", self._commit, cmd
+        )
+
     def run_benchmark(
         self,
         bind_node: int | None = None,
@@ -1258,6 +1265,8 @@ def _benchmark_commits(executor: Executor, args: argparse.Namespace) -> None:
         if not ctx.make("bfcli"):
             continue
         if not ctx.make("benchmark_bin"):
+            continue
+        if not ctx.flush():
             continue
         if not ctx.run_benchmark(
             args.bind_node, args.no_preempt, args.cpu_pin, args.slice
