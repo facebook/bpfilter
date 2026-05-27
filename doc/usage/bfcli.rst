@@ -425,7 +425,7 @@ Rules are defined such as:
     rule
         [$MATCHER...]
         [$SET...]
-        [log [$HEADERS]]
+        [log [$HEADERS] [every $FREQUENCY]]
         [counter]
         [mark $MARK]
         $VERDICT
@@ -436,6 +436,8 @@ With:
 
     - ``log $HEADERS``: log specific packet headers. ``$HEADERS`` is a comma-separated list of ``link`` (layer 2), ``internet`` (layer 3), and/or ``transport`` (layer 4). Only supported by packet-based hooks (XDP, TC, NF, cgroup_skb).
     - ``log``: log all available data for the hook type. For packet-based hooks, this is equivalent to ``log link,internet,transport``. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this records the process ID, process name, destination address, and destination port. Sendmsg hooks additionally include the source address.
+
+    Either form accepts an optional ``every $FREQUENCY`` suffix to rate-limit log events. ``$FREQUENCY`` is a positive number (integer or decimal) followed by a unit: ``ns``, ``us``, ``ms``, or ``s`` (e.g. ``every 1s``, ``every 500ms``, ``every 1.5s``). At most one log entry is emitted per ``$FREQUENCY`` interval per rule. Without ``every``, every match is logged.
   - ``counter``: optional literal. If set, the filter will count the number of events matched by the rule. For packet-based hooks, this includes both the number of packets and the total bytes. For ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, this counts the number of socket operations (``connect()`` or ``sendmsg()`` calls).
   - ``mark``: optional, ``$MARK`` must be a valid decimal or hexadecimal 32-bits value. If set, write the packet's marker value. This marker can be used later on in a rule (see ``meta.mark``) or with a TC filter.
   - ``$VERDICT``: action taken by the rule if the packet is matched against **all** the criteria: either ``ACCEPT``, ``DROP``, ``CONTINUE``, ``NEXT``, or ``REDIRECT``.

@@ -109,6 +109,15 @@ int bf_handle_new_from_pack(struct bf_handle **handle, struct bf_lock *lock,
             return bf_rpack_key_err(r, "bf_handle.lmap");
     }
 
+    r = bf_rpack_kv_node(node, "smap", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_handle.smap");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_map_new_from_pack(&_handle->smap, dir_fd, child);
+        if (r)
+            return bf_rpack_key_err(r, "bf_handle.smap");
+    }
+
     r = bf_rpack_kv_array(node, "sets", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_handle.sets");
@@ -146,6 +155,7 @@ void bf_handle_free(struct bf_handle **handle)
     bf_map_free(&(*handle)->cmap);
     bf_map_free(&(*handle)->pmap);
     bf_map_free(&(*handle)->lmap);
+    bf_map_free(&(*handle)->smap);
     bf_list_clean(&(*handle)->sets);
 
     free(*handle);
@@ -189,6 +199,14 @@ int bf_handle_pack(const struct bf_handle *handle, bf_wpack_t *pack)
         bf_wpack_close_object(pack);
     } else {
         bf_wpack_kv_nil(pack, "lmap");
+    }
+
+    if (handle->smap) {
+        bf_wpack_open_object(pack, "smap");
+        bf_map_pack(handle->smap, pack);
+        bf_wpack_close_object(pack);
+    } else {
+        bf_wpack_kv_nil(pack, "smap");
     }
 
     bf_wpack_kv_list(pack, "sets", &handle->sets);
@@ -242,6 +260,15 @@ void bf_handle_dump(const struct bf_handle *handle, prefix_t *prefix)
         bf_dump_prefix_pop(prefix);
     } else {
         DUMP(prefix, "lmap: struct bf_map * (NULL)");
+    }
+
+    if (handle->smap) {
+        DUMP(prefix, "smap: struct bf_map *");
+        bf_dump_prefix_push(prefix);
+        bf_map_dump(handle->smap, bf_dump_prefix_last(prefix));
+        bf_dump_prefix_pop(prefix);
+    } else {
+        DUMP(prefix, "smap: struct bf_map * (NULL)");
     }
 
     DUMP(bf_dump_prefix_last(prefix), "sets: bf_list<bf_map>[%lu]",
@@ -305,6 +332,14 @@ int bf_handle_pin(struct bf_handle *handle, struct bf_lock *lock)
         }
     }
 
+    if (handle->smap) {
+        r = bf_map_pin(handle->smap, dir_fd);
+        if (r) {
+            bf_err_r(r, "failed to pin BPF state map");
+            goto err_unpin_all;
+        }
+    }
+
     bf_list_foreach (&handle->sets, set_node) {
         struct bf_map *map = bf_list_node_get_data(set_node);
 
@@ -348,6 +383,8 @@ void bf_handle_unpin(struct bf_handle *handle, struct bf_lock *lock)
         bf_map_unpin(handle->pmap, dir_fd);
     if (handle->lmap)
         bf_map_unpin(handle->lmap, dir_fd);
+    if (handle->smap)
+        bf_map_unpin(handle->smap, dir_fd);
 
     bf_list_foreach (&handle->sets, set_node) {
         struct bf_map *map = bf_list_node_get_data(set_node);
@@ -477,5 +514,6 @@ void bf_handle_unload(struct bf_handle *handle)
     bf_map_free(&handle->cmap);
     bf_map_free(&handle->pmap);
     bf_map_free(&handle->lmap);
+    bf_map_free(&handle->smap);
     bf_list_clean(&handle->sets);
 }

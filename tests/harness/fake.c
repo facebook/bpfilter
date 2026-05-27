@@ -190,6 +190,7 @@ struct bf_rule *bft_rule_dummy(size_t n_matchers)
 
     rule->index = 0;
     rule->log = BF_FLAGS(BF_LOG_OPT_INTERNET, BF_LOG_OPT_TRANSPORT);
+    rule->log_rate_ns = 500000000ULL; // 500ms
     rule->mark = 0x17;
     rule->has_counters = 1;
     rule->verdict = BF_VERDICT_ACCEPT;

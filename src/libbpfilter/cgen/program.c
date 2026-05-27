@@ -62,6 +62,7 @@
 #define _BF_COUNTER_MAP_NAME "bf_cmap"
 #define _BF_PRINTER_MAP_NAME "bf_pmap"
 #define _BF_LOG_MAP_NAME "bf_lmap"
+#define _BF_STATE_MAP_NAME "bf_smap"
 
 static inline size_t _bf_round_next_power_of_2(size_t value)
 {
@@ -436,6 +437,10 @@ static int _bf_program_fixup(struct bf_program *program,
             insn_type = BF_FIXUP_INSN_IMM;
             value = program->handle->lmap->fd;
             break;
+        case BF_FIXUP_TYPE_STATE_MAP_FD:
+            insn_type = BF_FIXUP_INSN_IMM;
+            value = program->handle->smap->fd;
+            break;
         case BF_FIXUP_TYPE_SET_MAP_FD: {
             const struct bf_set_group *group =
                 _bf_program_find_set_group(program, fixup->attr.set_ptr);
@@ -562,7 +567,54 @@ static int _bf_program_generate_rule(struct bf_program *program,
         }
     }
 
-    if (rule->log) {
+    if (rule->log && rule->log_rate_ns) {
+        // Rate-limited log: check last_log_ts in the state map before logging.
+        //
+        // R9 (callee-saved) holds the pointer to this rule's state entry
+        // across the bpf_ktime_get_ns() call.
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_9, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(state_map)));
+        {
+            // Outer skip: state_map is NULL (shouldn't happen at runtime,
+            // but the verifier requires the NULL check).
+            _clean_bf_jmpctx_ struct bf_jmpctx null_ctx =
+                bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_9, 0, 0));
+
+            if (rule->index > 0) {
+                EMIT(program,
+                     BPF_ALU64_IMM(
+                         BPF_ADD, BPF_REG_9,
+                         (int)(rule->index * sizeof(struct bf_rule_state))));
+            }
+
+            EMIT(program, BPF_EMIT_CALL(BPF_FUNC_ktime_get_ns));
+
+            EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_9, 0));
+            EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_0));
+            EMIT(program, BPF_ALU64_REG(BPF_SUB, BPF_REG_2, BPF_REG_1));
+
+            {
+                // Load log_rate_ns as a 64-bit immediate into R1.
+                const struct bpf_insn rate_insn[2] = {
+                    BPF_LD_IMM64(BPF_REG_1, rule->log_rate_ns),
+                };
+                EMIT(program, rate_insn[0]);
+                EMIT(program, rate_insn[1]);
+            }
+
+            {
+                // Inner skip: delta < log_rate_ns means still within window.
+                _clean_bf_jmpctx_ struct bf_jmpctx rate_ctx = bf_jmpctx_get(
+                    program, BPF_JMP_REG(BPF_JLT, BPF_REG_2, BPF_REG_1, 0));
+
+                EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_9, BPF_REG_0, 0));
+
+                r = program->runtime.ops->gen_inline_log(program, rule);
+                if (r)
+                    return r;
+            }
+        }
+    } else if (rule->log) {
         r = program->runtime.ops->gen_inline_log(program, rule);
         if (r)
             return r;
@@ -795,6 +847,20 @@ int bf_program_generate(struct bf_program *program)
     if (r)
         return r;
 
+    // Populate ctx->state_map with the base pointer from the single-entry
+    // state map. The key (0) is written to scratch[0..3] temporarily.
+    // Placed after gen_inline_prologue so R1-R5 are free: the helper call
+    // does not need to be followed by a ctx restore.
+    if (program->runtime.chain->flags & BF_FLAG(BF_CHAIN_LOG_RATELIMIT)) {
+        EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_SCR_OFF(0), 0));
+        EMIT_LOAD_STATE_FD_FIXUP(program, BPF_REG_1);
+        EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_10));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, BF_PROG_SCR_OFF(0)));
+        EMIT(program, BPF_EMIT_CALL(BPF_FUNC_map_lookup_elem));
+        EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_0,
+                                  BF_PROG_CTX_OFF(state_map)));
+    }
+
     bf_list_foreach (&chain->rules, rule_node) {
         r = _bf_program_generate_rule(program,
                                       bf_list_node_get_data(rule_node));
@@ -899,6 +965,33 @@ static int _bf_program_load_log_map(struct bf_program *program)
     r = _bf_program_fixup(program, BF_FIXUP_TYPE_LOG_MAP_FD);
     if (r)
         return bf_err_r(r, "failed to fixup log map FD");
+
+    return 0;
+}
+
+static int _bf_program_load_state_map(struct bf_program *program)
+{
+    size_t n_rules;
+    int r;
+
+    assert(program);
+
+    if (!(program->runtime.chain->flags & BF_FLAG(BF_CHAIN_LOG_RATELIMIT)))
+        return 0;
+
+    n_rules = bf_list_size(&program->runtime.chain->rules);
+    if (n_rules == 0)
+        return 0;
+
+    r = bf_map_new(&program->handle->smap, _BF_STATE_MAP_NAME,
+                   BF_MAP_TYPE_STATE, sizeof(uint32_t),
+                   n_rules * sizeof(struct bf_rule_state), 1);
+    if (r)
+        return bf_err_r(r, "failed to create the state bf_map object");
+
+    r = _bf_program_fixup(program, BF_FIXUP_TYPE_STATE_MAP_FD);
+    if (r)
+        return bf_err_r(r, "failed to fixup state map FD");
 
     return 0;
 }
@@ -1058,6 +1151,10 @@ int bf_program_load(struct bf_program *prog)
     r = _bf_program_load_log_map(prog);
     if (r)
         return bf_err_r(r, "failed to load the log map");
+
+    r = _bf_program_load_state_map(prog);
+    if (r)
+        return bf_err_r(r, "failed to load the state map");
 
     if (bf_ctx_is_verbose(BF_VERBOSE_DEBUG)) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);

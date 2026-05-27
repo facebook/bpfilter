@@ -41,6 +41,7 @@ struct bfc_chain_opts;
 #define INET6_ADDRSTRLEN 46
 
 #define BF_TIME_S 1000000000
+#define BF_TIME_MS 1000000
 #define BF_TIME_US 1000
 
 #define BF_DUMP_HEXDUMP_LEN 8
@@ -262,7 +263,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
         if (rule->log) {
             if (rule->log == BF_LOG_OPT_DEFAULT) {
-                (void)fprintf(stdout, "        log\n");
+                (void)fprintf(stdout, "        log");
             } else {
                 uint8_t log = rule->log;
 
@@ -274,9 +275,29 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
 
                     log &= ~BF_FLAG(hdr);
                     (void)fprintf(stdout, "%s%s", bf_log_opt_to_str(hdr),
-                                  log ? "," : "\n");
+                                  log ? "," : "");
                 }
             }
+
+            if (rule->log_rate_ns) {
+                uint64_t r = rule->log_rate_ns;
+
+                if (r % BF_TIME_S == 0) {
+                    (void)fprintf(stdout, " every %llus",
+                                  (unsigned long long)(r / BF_TIME_S));
+                } else if (r % BF_TIME_MS == 0) {
+                    (void)fprintf(stdout, " every %llums",
+                                  (unsigned long long)(r / BF_TIME_MS));
+                } else if (r % BF_TIME_US == 0) {
+                    (void)fprintf(stdout, " every %lluus",
+                                  (unsigned long long)(r / BF_TIME_US));
+                } else {
+                    (void)fprintf(stdout, " every %lluns",
+                                  (unsigned long long)r);
+                }
+            }
+
+            (void)fprintf(stdout, "\n");
         }
 
         if (bf_rule_mark_is_set(rule))
