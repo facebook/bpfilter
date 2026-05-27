@@ -52,6 +52,10 @@ struct bf_handle
     /** Log map. NULL if not created. */
     struct bf_map *lmap;
 
+    /** Per-rule state map. Single-entry array; value holds one `bf_rule_state`
+     * per rule. NULL if the chain has no logging rules. */
+    struct bf_map *smap;
+
     /** List of set maps. Contains at most one map for each unique key
      * format. */
     bf_list sets;

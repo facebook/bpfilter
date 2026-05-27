@@ -39,6 +39,9 @@ enum bf_chain_flags
     /** A rule will log data to the ring buffer. */
     BF_CHAIN_LOG,
 
+    /** A rule uses rate-limited logging (log ... every). */
+    BF_CHAIN_LOG_RATELIMIT,
+
     /** A rule will filter on IPv6 nexthdr field. */
     BF_CHAIN_STORE_NEXTHDR,
 

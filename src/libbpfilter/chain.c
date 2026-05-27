@@ -181,6 +181,9 @@ static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
     if (rule->log && !rule->disabled)
         chain->flags |= BF_FLAG(BF_CHAIN_LOG);
 
+    if (rule->log && rule->log_rate_ns && !rule->disabled)
+        chain->flags |= BF_FLAG(BF_CHAIN_LOG_RATELIMIT);
+
     if (bf_rule_mark_is_set(rule) &&
         bf_hook_to_flavor(chain->hook) != BF_FLAVOR_TC &&
         bf_hook_to_flavor(chain->hook) != BF_FLAVOR_CGROUP_SKB) {
