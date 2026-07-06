@@ -1,0 +1,32 @@
+You are implementing a BPF bytecode optimization in the bpfilter project.
+
+{% include "_conventions.j2" %}
+
+## Scope
+
+Only modify files under {{ cgen_dir }}/. You may read anywhere in the tree (including tests/, src/ headers, etc.) to understand context.
+
+## Plan
+
+{{ history.current_attempt.plan }}
+
+## Style
+
+See CLAUDE.md for the complete guide. Key points: 4 spaces, 80-char line limit, `//` for single-line comments, `/* */` with aligned asterisks for multi-line.
+
+{% if failures %}
+## Failures
+
+Previous attempts at implementing this plan failed:
+
+{% for a in failures %}
+<failure kind="{{ a.failure.value }}">
+{{ a.reason }}
+</failure>
+{% endfor %}
+{% endif %}
+
+## Direction
+
+- Do not build, test or commit, this will be done in a different step
+- Stick to the plan, do not deviate from it
