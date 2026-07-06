@@ -117,12 +117,13 @@ enum bf_log_level
  */
 #define _bf_log_code_impl(level, color, code, fmt, ...)                        \
     ({                                                                         \
+        const int __code = (code);                                             \
         if ((level) >= bf_log_get_level()) {                                   \
             (void)fprintf(stderr, _bf_logger_prefix_fmt fmt ": %s\n",          \
                           _bf_logger_prefix_fmt_args(level, color),            \
-                          ##__VA_ARGS__, bf_strerror(code));                   \
+                          ##__VA_ARGS__, bf_strerror(__code));                 \
         }                                                                      \
-        (code) < 0 ? (code) : -(code);                                         \
+        __code < 0 ? __code : -__code;                                         \
     })
 
 #define bf_err_r(code, fmt, ...)                                               \
