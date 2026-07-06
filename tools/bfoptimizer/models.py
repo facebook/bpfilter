@@ -184,14 +184,18 @@ class History:
     def duration(self) -> float:
         return sum(attempt.duration for attempt in self.attempts)
 
-    def cumulative_progress(self) -> float:
+    def cumulative_progress(self, up_to: int | None = None) -> float:
         """Δtime% from the original baseline to the current best commit.
+
+        Only attempts up to index up_to (inclusive) are considered when
+        provided, giving the progress as of that attempt.
 
         Returns 0.0 when there are no successful attempts with benchmark data.
         """
+        attempts = self.attempts if up_to is None else self.attempts[: up_to + 1]
         successes = [
             attempt
-            for attempt in self.attempts
+            for attempt in attempts
             if attempt.result == AttemptResult.SUCCESS
         ]
         if not successes:

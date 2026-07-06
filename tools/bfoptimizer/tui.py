@@ -22,6 +22,7 @@ import rich.table
 import rich.text
 import textual.events
 import textual.widgets
+import textual_plot
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Header, Static, TabbedContent, TabPane
@@ -430,6 +431,78 @@ class AttemptsPane(Horizontal):
             self.query_one(AttemptSummary).show(index, self._history.attempts[index])
 
 
+class ProgressPane(Vertical):
+    DEFAULT_CSS = """
+    ProgressPane {
+        height: 1fr;
+    }
+    ProgressPane PlotWidget {
+        height: 1fr;
+        border: round $primary;
+        background: $background;
+    }
+    """
+
+    def __init__(self, history: History) -> None:
+        super().__init__()
+        self._history = history
+
+    def compose(self) -> ComposeResult:
+        yield textual_plot.PlotWidget()
+
+    def on_mount(self) -> None:
+        plot = self.query_one(textual_plot.PlotWidget)
+        plot.border_title = "Progress"
+        plot.show_legend(textual_plot.LegendLocation.BOTTOMLEFT)
+
+    def refresh_progress(self) -> None:
+        attempts = self._history.attempts
+
+        kept: list[tuple[int, float]] = []
+        rejected: list[tuple[int, float]] = []
+        # The overall line starts at the run baseline and only moves on kept
+        # attempts: regressions are reverted, so progress stays flat through
+        # them.
+        overall: list[tuple[int, float]] = [(0, 0.0)]
+        for i, attempt in enumerate(attempts):
+            if attempt.result == AttemptResult.IN_PROGRESS:
+                continue
+            overall.append((i + 1, self._history.cumulative_progress(up_to=i)))
+            if not attempt.benchmark_results:
+                continue
+            marks = kept if attempt.result == AttemptResult.SUCCESS else rejected
+            marks.append((i + 1, attempt.delta_pct))
+
+        plot = self.query_one(textual_plot.PlotWidget)
+        plot.clear()
+        plot.set_xlabel("attempt")
+        plot.set_ylabel("Δtime %")
+        plot.set_xlimits(0, self._history.config.iterations)
+        plot.plot(
+            [x for x, _ in overall],
+            [y for _, y in overall],
+            line_style="blue",
+            hires_mode=textual_plot.HiResMode.BRAILLE,
+            label="overall",
+        )
+        if kept:
+            plot.scatter(
+                [x for x, _ in kept],
+                [y for _, y in kept],
+                marker="●",
+                marker_style="green",
+                label="kept",
+            )
+        if rejected:
+            plot.scatter(
+                [x for x, _ in rejected],
+                [y for _, y in rejected],
+                marker="x",
+                marker_style="red",
+                label="regression",
+            )
+
+
 class StatColumn(Static):
     """One column in the stats bar: label / value / sublabel."""
 
@@ -579,6 +652,8 @@ class Optimizer(App):
                 yield LogView()
             with TabPane("Attempts", id="tab-attempts"):
                 yield AttemptsPane(self._history)
+            with TabPane("Progress", id="tab-progress"):
+                yield ProgressPane(self._history)
 
     def on_mount(self) -> None:
         self.theme = "solarized-light"
@@ -601,3 +676,4 @@ class Optimizer(App):
     def _refresh(self) -> None:
         self.query_one(StatsBar).refresh_stats()
         self.query_one(AttemptsPane).refresh_attempts()
+        self.query_one(ProgressPane).refresh_progress()
