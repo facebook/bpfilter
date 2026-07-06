@@ -502,24 +502,34 @@ class RemoteExecutor(Executor):
 
         self.log(f"Connecting to remote host {self._host}")
         self._remote_workdir = self._workdir
-        self._agent: paramiko.Agent = paramiko.Agent()
+        self._agent: paramiko.Agent | None = None
 
         self._client = paramiko.SSHClient()
         self._client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
-        for key in self._agent.get_keys():
-            if self._host.lower() in key.comment.lower():
-                pkey = key
-                break
+        if self._args.ssh_key:
+            self._client.connect(
+                self._host,
+                username=DEFAULT_USERNAME,
+                key_filename=str(self._args.ssh_key.expanduser()),
+                allow_agent=False,
+                look_for_keys=False,
+            )
         else:
-            raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
+            self._agent = paramiko.Agent()
+            for key in self._agent.get_keys():
+                if self._host.lower() in key.comment.lower():
+                    pkey = key
+                    break
+            else:
+                raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
 
-        self._client.connect(
-            self._host,
-            username=DEFAULT_USERNAME,
-            pkey=pkey,
-            allow_agent=False,
-        )
+            self._client.connect(
+                self._host,
+                username=DEFAULT_USERNAME,
+                pkey=pkey,
+                allow_agent=False,
+            )
 
         # From now on, all self.run() commands are run on the remote host
         self.run(["hostname"])
@@ -573,7 +583,8 @@ class RemoteExecutor(Executor):
         self.run(["umount", "-l", str(self._remote_workdir)])
         self.run(["rm", "-rf", str(self._remote_workdir)])
         self._client.close()
-        self._agent.close()
+        if self._agent:
+            self._agent.close()
         super().__exit__(exc_type, exc_value, traceback)
 
 
@@ -1386,6 +1397,7 @@ def compare(
     *,
     sources: pathlib.Path = DEFAULT_SOURCE_PATH,
     host: str = DEFAULT_HOST[0],
+    ssh_key: pathlib.Path | None = None,
     cache_dir: pathlib.Path = DEFAULT_CACHE_PATH,
     bind_node: int | None = None,
     no_preempt: bool = False,
@@ -1404,6 +1416,7 @@ def compare(
     args = argparse.Namespace(
         sources=sources,
         host=host,
+        ssh_key=ssh_key,
         cache_dir=cache_dir,
         bind_node=bind_node,
         no_preempt=no_preempt,
@@ -1449,6 +1462,12 @@ def main():
         type=str,
         help=f'host to run the benchmark on. bfbencher will connect to the host using SSH, copy the project sources on it, and run the benchmarks. Defaults to "{DEFAULT_HOST[0]}" (current host).',
         default=DEFAULT_HOST[0],
+    )
+    shared.add_argument(
+        "--ssh-key",
+        type=pathlib.Path,
+        help="path to the SSH private key used to authenticate to the remote host. If not set, the key is looked up in the SSH agent by matching the host name against the key comments.",
+        default=None,
     )
     shared.add_argument(
         "--cache-dir",
