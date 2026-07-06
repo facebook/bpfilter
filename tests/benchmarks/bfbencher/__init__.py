@@ -69,6 +69,45 @@ class Stats:
             self.failed_shas.add(commit_sha)
 
 
+def compare_table(
+    rows: list[Report.CompareRow], base_sha: str, ref_sha: str
+) -> rich.table.Table:
+    """Build the base/ref comparison table (negative Δ = faster = green)."""
+
+    def format_pct(pct: float) -> str:
+        color = "green" if pct < 0 else ("red" if pct > 0 else "white")
+        return f"[{color}]{pct:+.1f}%[/{color}]"
+
+    table = rich.table.Table(
+        title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
+        show_header=True,
+    )
+    table.add_column("Benchmark", style="cyan")
+    table.add_column("Base", justify="right")
+    table.add_column("Ref", justify="right")
+    table.add_column("ΔTime", justify="right")
+    table.add_column("ΔTime%", justify="right")
+    table.add_column("Base Insn", justify="right")
+    table.add_column("Ref Insn", justify="right")
+    table.add_column("ΔInsn", justify="right")
+    table.add_column("ΔInsn%", justify="right")
+
+    for row in rows:
+        table.add_row(
+            row.name,
+            row.base_time_str,
+            row.ref_time_str,
+            row.delta_time_str,
+            format_pct(row.delta_time_pct),
+            str(row.base_insn) if row.base_insn is not None else "-",
+            str(row.ref_insn) if row.ref_insn is not None else "-",
+            f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
+            format_pct(row.delta_insn_pct) if row.delta_insn_pct is not None else "-",
+        )
+
+    return table
+
+
 class Renderer:
     """Console output handler for benchmark progress and results."""
 
@@ -117,40 +156,7 @@ class Renderer:
         base_sha: str,
         ref_sha: str,
     ) -> None:
-        def format_pct(pct: float) -> str:
-            color = "green" if pct < 0 else ("red" if pct > 0 else "white")
-            return f"[{color}]{pct:+.1f}%[/{color}]"
-
-        table = rich.table.Table(
-            title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
-            show_header=True,
-        )
-        table.add_column("Benchmark", style="cyan")
-        table.add_column("Base", justify="right")
-        table.add_column("Ref", justify="right")
-        table.add_column("ΔTime", justify="right")
-        table.add_column("ΔTime%", justify="right")
-        table.add_column("Base Insn", justify="right")
-        table.add_column("Ref Insn", justify="right")
-        table.add_column("ΔInsn", justify="right")
-        table.add_column("ΔInsn%", justify="right")
-
-        for row in rows:
-            table.add_row(
-                row.name,
-                row.base_time_str,
-                row.ref_time_str,
-                row.delta_time_str,
-                format_pct(row.delta_time_pct),
-                str(row.base_insn) if row.base_insn is not None else "-",
-                str(row.ref_insn) if row.ref_insn is not None else "-",
-                f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
-                format_pct(row.delta_insn_pct)
-                if row.delta_insn_pct is not None
-                else "-",
-            )
-
-        self.console.print(table)
+        self.console.print(compare_table(rows, base_sha, ref_sha))
 
 
 renderer: Renderer = Renderer()
