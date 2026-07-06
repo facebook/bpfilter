@@ -364,7 +364,7 @@ class Executor(ABC):
     The Executor transparently handle local or remote commands.
     """
 
-    def __init__(self, args: argparse.Namespace):
+    def __init__(self, args: argparse.Namespace, renderer: Renderer | None = None):
         self._host: str = args.host
         self._workdir: pathlib.Path = (
             pathlib.Path(tempfile.gettempdir()) / f"bpfilter-{uuid.uuid4().hex[:8]}"
@@ -376,7 +376,10 @@ class Executor(ABC):
         self._local_workdir.mkdir()
         self._retry_shas: set[str] = set()
         self._commits: list[git.Commit] = []
-        self._source = FilesystemSource(args.sources, self._local_workdir / "bpfilter")
+        self._renderer = renderer
+        self._source = FilesystemSource(
+            args.sources, self._local_workdir / "bpfilter", renderer
+        )
         self._results = History()
         self._args = args
 
@@ -453,7 +456,7 @@ class Executor(ABC):
             log = f"\\[[yellow bold]{commit.hexsha[:SHORT_SHA_LEN]}[/], {index + 1}/{len(self.commits)}] {msg}"
         else:
             log = msg
-        renderer.log(log)
+        (self._renderer or renderer).log(log)
 
     @abstractmethod
     def _run(self, cmd: list[str], timeout: int | None = None) -> int:
@@ -615,15 +618,24 @@ class LocalExecutor(Executor):
 class FilesystemSource:
     """Manages source repository for benchmarking, including WIP commits."""
 
-    def __init__(self, path: str, local_src_dir: pathlib.Path) -> None:
+    def __init__(
+        self,
+        path: str,
+        local_src_dir: pathlib.Path,
+        renderer: Renderer | None = None,
+    ) -> None:
         self._path = pathlib.Path(path)
         self._local = local_src_dir
+        self._renderer = renderer
 
         shutil.copytree(self._path, self._local, dirs_exist_ok=True)
         self._detach_if_worktree()
         self._repo: git.Repo = git.Repo(self._local)
         self._retry_all: bool = False
         self._retry_failed: bool = False
+
+    def _log(self, msg: str) -> None:
+        (self._renderer or renderer).log(msg)
 
     def _detach_if_worktree(self) -> None:
         """Convert a copied git worktree into a standalone repository.
@@ -677,7 +689,7 @@ class FilesystemSource:
     def _commit_wip(self) -> git.Commit:
         """Commit uncommitted changes as WIP and return the commit."""
         if self._repo.is_dirty(untracked_files=True):
-            renderer.log("Committing uncommitted changes as WIP")
+            self._log("Committing uncommitted changes as WIP")
             self._repo.git.add(A=True)
             self._repo.index.commit("bfbencher: WIP")
         return self._repo.head.commit
@@ -728,14 +740,14 @@ class FilesystemSource:
             try:
                 retry_shas.add(self._repo.git.rev_parse(ref))
             except git.exc.GitCommandError:
-                renderer.log(f"Warning: could not resolve retry ref '{ref}'")
+                self._log(f"Warning: could not resolve retry ref '{ref}'")
 
         # Handle uncommitted changes
         if self._repo.is_dirty(untracked_files=True):
             if has_wip:
                 self._commit_wip()
             else:
-                renderer.log("Discarding uncommitted changes in source directory")
+                self._log("Discarding uncommitted changes in source directory")
                 self._repo.git.reset("--hard", "HEAD")
                 self._repo.git.clean("-fd")
 
@@ -758,11 +770,11 @@ class FilesystemSource:
             if commit.hexsha not in commit_set:
                 commits.append(commit)
                 commit_set.add(commit.hexsha)
-                renderer.log(
+                self._log(
                     f"Including commit {commit.hexsha[:SHORT_SHA_LEN]}: {str(commit.summary)}"
                 )
             else:
-                renderer.log(f"Commit {ref} already in range, skipping")
+                self._log(f"Commit {ref} already in range, skipping")
 
         # Sort commits in topological order (oldest first)
         if len(commits) > 1:
@@ -776,11 +788,11 @@ class FilesystemSource:
             ]
 
         if include:
-            renderer.log(
+            self._log(
                 f"Found {len(commits)} commits ({since_ref}..{until_ref} + {len(include)} included)"
             )
         else:
-            renderer.log(f"Found {len(commits)} commits ({since_ref}..{until_ref})")
+            self._log(f"Found {len(commits)} commits ({since_ref}..{until_ref})")
 
         return commits, retry_shas
 
@@ -1380,12 +1392,14 @@ def compare(
     cpu_pin: int | None = None,
     slice: str | None = None,
     retry: list[str] | None = None,
+    renderer: Renderer | None = None,
 ) -> list[Report.CompareRow]:
     """Programmatic compare API.
 
     Runs benchmarks for `base` and `ref` (with cache reuse when possible)
     and returns one CompareRow per benchmark with delta_time / delta_insn
     fields. This is the fitness signal consumed by tools like bfoptimize.
+    Progress messages go to `renderer`, or the module default when None.
     """
     args = argparse.Namespace(
         sources=sources,
@@ -1412,7 +1426,9 @@ def compare(
     ref_sha = source_repo.git.rev_parse(ref)
 
     executor = (
-        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
+        LocalExecutor(args, renderer)
+        if args.host in DEFAULT_HOST
+        else RemoteExecutor(args, renderer)
     )
 
     with executor:
