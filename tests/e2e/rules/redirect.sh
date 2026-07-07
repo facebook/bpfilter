@@ -2,10 +2,6 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
-get_counter() {
-    ${FROM_NS} ${BFCLI} chain get --name "$1" | awk '/counters [0-9]+ packets/{print $2}'
-}
-
 make_sandbox
 
 # Invalid: REDIRECT not supported for NF/cgroup_skb hooks, and XDP only supports 'out'
@@ -30,25 +26,25 @@ REDIR1_IFINDEX=$(${FROM_NS} ip -o link show redir1 | awk '{print $1}' | cut -d: 
 # XDP redirect: packets on veth_ns redirected out redir0, counted at redir1
 ${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_XDP{ifindex=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} out"
-test "$(get_counter cnt)" = "0"
+test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
-test "$(get_counter cnt)" = "1"
+test "$(get_counter cnt 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # TC ingress redirect: packets redirected to redir0's ingress
 ${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{ifindex=${REDIR0_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_INGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} in"
-test "$(get_counter cnt)" = "0"
+test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
-test "$(get_counter cnt)" = "1"
+test "$(get_counter cnt 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # TC egress redirect with interface name: packets redirected out redir0, counted at redir1
 ${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{ifindex=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_EGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT redir0 out"
-test "$(get_counter cnt)" = "0"
+test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
-test "$(get_counter cnt)" = "1"
+test "$(get_counter cnt 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 ${FROM_NS} ip link del redir0
