@@ -61,10 +61,6 @@ s.close()
 "
 }
 
-get_counter() {
-    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].values | map(.value.count) | add"
-}
-
 # meta.l3_proto
 ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l3_proto eq ipv4 log counter DROP"
 (! udp4_sendmsg ${HOST_IP_ADDR} 9990)

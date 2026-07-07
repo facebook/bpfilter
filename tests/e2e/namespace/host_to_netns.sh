@@ -8,5 +8,5 @@ make_sandbox
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} ruleset set --from-str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp counter DROP"
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
-${FROM_NS} ${BFCLI} chain get --name xdp | awk '/ip4.proto eq icmp/{getline; print $2}' | grep -q "^1$" && exit 0 || exit 1
+test "$(get_counter xdp 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
