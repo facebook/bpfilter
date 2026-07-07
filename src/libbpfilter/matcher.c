@@ -1615,9 +1615,9 @@ static const char *_bf_ipproto_strs[UINT8_MAX + 1] = {
     [IPPROTO_HOPOPTS] = "hop",   [IPPROTO_ICMP] = "icmp",
     [IPPROTO_IGMP] = "igmp",     [IPPROTO_TCP] = "tcp",
     [IPPROTO_UDP] = "udp",       [IPPROTO_ROUTING] = "routing",
-    [IPPROTO_FRAGMENT] = "frag", [IPPROTO_AH] = "ah",
-    [IPPROTO_DSTOPTS] = "dst",   [IPPROTO_ICMPV6] = "icmpv6",
-    [IPPROTO_MH] = "mh",
+    [IPPROTO_FRAGMENT] = "frag", [IPPROTO_GRE] = "gre",
+    [IPPROTO_AH] = "ah",         [IPPROTO_DSTOPTS] = "dst",
+    [IPPROTO_ICMPV6] = "icmpv6", [IPPROTO_MH] = "mh",
 };
 
 const char *bf_ipproto_to_str(uint8_t ipproto)
