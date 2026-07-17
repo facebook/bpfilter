@@ -235,8 +235,7 @@ static void rpack_size_t_overflow(void **state)
     assert_ok(bf_rpack_new(&rpack, data, data_len));
     root = bf_rpack_root(rpack);
 
-    assert_int_equal(bf_rpack_kv_size(root, "size_val", &size_val),
-                     -EOVERFLOW);
+    assert_int_equal(bf_rpack_kv_size(root, "size_val", &size_val), -EOVERFLOW);
 }
 #endif
 
