@@ -90,11 +90,11 @@ static int _bf_printer_msg_new_from_pack(struct bf_printer_msg **msg,
     if (r)
         return bf_err_r(r, "failed to create bf_printer_msg from pack");
 
-    r = bf_rpack_kv_u64(node, "offset", &_msg->offset);
+    r = bf_rpack_kv_size(node, "offset", &_msg->offset);
     if (r)
         return bf_rpack_key_err(r, "bf_printer_msg.offset");
 
-    r = bf_rpack_kv_u64(node, "len", &_msg->len);
+    r = bf_rpack_kv_size(node, "len", &_msg->len);
     if (r)
         return bf_rpack_key_err(r, "bf_printer_msg.len");
 

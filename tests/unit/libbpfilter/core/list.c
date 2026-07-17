@@ -88,7 +88,7 @@ static void pack_and_unpack(void **state)
         _cleanup_free_ size_t *value = NULL;
 
         assert_non_null(value = malloc(sizeof(*value)));
-        assert_ok(bf_rpack_kv_u64(list_elem_node, "size_t", value));
+        assert_ok(bf_rpack_kv_size(list_elem_node, "size_t", value));
 
         assert_ok(bf_list_push(&destination, (void **)&value));
     }

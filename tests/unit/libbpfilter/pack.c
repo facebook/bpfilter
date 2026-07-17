@@ -194,6 +194,51 @@ static void rpack_primitives(void **state)
     assert_true(bf_rpack_is_nil(nil_node));
 }
 
+static void rpack_size_t(void **state)
+{
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+    bf_rpack_node_t root;
+    size_t size_val;
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_u64(wpack, "size_val", 42);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    root = bf_rpack_root(rpack);
+
+    assert_ok(bf_rpack_kv_size(root, "size_val", &size_val));
+    assert_int_equal(size_val, 42);
+}
+
+#if SIZE_MAX < UINT64_MAX
+static void rpack_size_t_overflow(void **state)
+{
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
+    bf_rpack_node_t root;
+    size_t size_val = 0;
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_u64(wpack, "size_val", (uint64_t)SIZE_MAX + 1);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    root = bf_rpack_root(rpack);
+
+    assert_int_equal(bf_rpack_kv_size(root, "size_val", &size_val), -EOVERFLOW);
+}
+#endif
+
 static void rpack_binary(void **state)
 {
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -442,6 +487,10 @@ int main(void)
         cmocka_unit_test(wpack_enum),
         cmocka_unit_test(rpack_new_free),
         cmocka_unit_test(rpack_primitives),
+        cmocka_unit_test(rpack_size_t),
+#if SIZE_MAX < UINT64_MAX
+        cmocka_unit_test(rpack_size_t_overflow),
+#endif
         cmocka_unit_test(rpack_binary),
         cmocka_unit_test(rpack_nested_objects),
         cmocka_unit_test(rpack_arrays),
