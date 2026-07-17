@@ -5,6 +5,8 @@
 
 #include "bpfilter/pack.h"
 
+#include <errno.h>
+
 #include "bpfilter/core/list.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
@@ -532,6 +534,23 @@ int bf_rpack_u64(bf_rpack_node_t node, uint64_t *value)
     return 0;
 }
 
+int bf_rpack_size(bf_rpack_node_t node, size_t *value)
+{
+    uint64_t _value;
+    int r;
+
+    r = bf_rpack_u64(node, &_value);
+    if (r)
+        return r;
+
+    if (_value > SIZE_MAX)
+        return -EOVERFLOW;
+
+    *value = _value;
+
+    return 0;
+}
+
 int bf_rpack_kv_u64(bf_rpack_node_t node, const char *key, uint64_t *value)
 {
     bf_rpack_node_t child;
@@ -542,6 +561,18 @@ int bf_rpack_kv_u64(bf_rpack_node_t node, const char *key, uint64_t *value)
         return r;
 
     return bf_rpack_u64(child, value);
+}
+
+int bf_rpack_kv_size(bf_rpack_node_t node, const char *key, size_t *value)
+{
+    bf_rpack_node_t child;
+    int r;
+
+    r = bf_rpack_kv_node(node, key, &child);
+    if (r)
+        return r;
+
+    return bf_rpack_size(child, value);
 }
 
 int bf_rpack_str(bf_rpack_node_t node, char **value)
