@@ -277,6 +277,82 @@ static void new_from_raw_multiple_keys(void **state)
     assert_int_equal(bf_hashset_size(&set->elems), 2);
 }
 
+static void new_from_raw_port_range(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // A range component expands into one element per value in [start, end].
+    // Elements are separated by ';' (',' separates components within an
+    // element), so the third element '33-44' expands to 12 ports.
+    assert_ok(bf_set_new_from_raw(&set, "test_range", "(tcp.dport)",
+                                  "{11; 22; 33-44}"));
+    assert_non_null(set);
+    assert_int_equal(set->n_comps, 1);
+    assert_int_equal(set->key[0], BF_MATCHER_TCP_DPORT);
+    assert_int_equal(bf_hashset_size(&set->elems), 14); // 11, 22, 33..44
+}
+
+static void new_from_raw_port_range_boundaries(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Smallest range: 0 and 1.
+    assert_ok(bf_set_new_from_raw(&set, "test_low", "(tcp.dport)", "{0-1}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 2);
+    bf_set_free(&set);
+
+    // Degenerate single-value range at the upper bound.
+    assert_ok(bf_set_new_from_raw(&set, "test_high", "(tcp.dport)",
+                                  "{65535-65535}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+}
+
+static void new_from_raw_port_range_invalid(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // End before start.
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{44-33}"));
+
+    // Missing end bound.
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{33-}"));
+
+    // Missing start bound.
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{-44}"));
+}
+
+static void new_from_raw_range_multi_comp(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // A range in one component of a multi-component key expands that component
+    // while the others stay fixed.
+    assert_ok(bf_set_new_from_raw(&set, "test_multi_range",
+                                  "(ip4.daddr, tcp.sport)", "{1.2.3.4, 80-82}"));
+    assert_non_null(set);
+    assert_int_equal(set->n_comps, 2);
+    assert_int_equal(bf_hashset_size(&set->elems), 3); // ports 80, 81, 82
+}
+
+static void new_from_raw_range_multi_comp_both(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Only one ranged component per element is supported.
+    assert_err(bf_set_new_from_raw(&set, "test_both_ranges",
+                                   "(tcp.sport, tcp.dport)", "{1-2, 3-4}"));
+}
+
 static void new_from_raw_invalid(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -472,6 +548,11 @@ int main(void)
         cmocka_unit_test(dump_empty),
         cmocka_unit_test(new_from_raw),
         cmocka_unit_test(new_from_raw_multiple_keys),
+        cmocka_unit_test(new_from_raw_port_range),
+        cmocka_unit_test(new_from_raw_port_range_boundaries),
+        cmocka_unit_test(new_from_raw_port_range_invalid),
+        cmocka_unit_test(new_from_raw_range_multi_comp),
+        cmocka_unit_test(new_from_raw_range_multi_comp_both),
         cmocka_unit_test(new_from_raw_invalid),
         cmocka_unit_test(add_many_basic),
         cmocka_unit_test(add_many_mismatched_key_count),
