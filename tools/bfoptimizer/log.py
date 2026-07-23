@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 """Translation of claude_agent_sdk messages into bfoptimizer log records."""
 
 import enum

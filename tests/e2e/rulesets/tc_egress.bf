@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 chain tc_egress BF_HOOK_TC_EGRESS ACCEPT
     set my_custom_set (ip4.saddr, ip4.proto) in {
         192.168.1.1, tcp

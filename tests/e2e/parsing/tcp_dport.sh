@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 

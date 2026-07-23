@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 chain nf_forward BF_HOOK_NF_FORWARD ACCEPT
     set my_custom_set (ip4.saddr, ip4.proto) in {
         192.168.1.1, tcp

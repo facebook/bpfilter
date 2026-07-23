@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 """Argument parser, optimization loop, and main entry point for bfoptimizer."""
 
 from __future__ import annotations
