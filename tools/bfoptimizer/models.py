@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 """Data models for the bfoptimizer package."""
 
 from __future__ import annotations

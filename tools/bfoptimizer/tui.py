@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 """Textual UI for bfoptimizer.
 
 Owns every widget and the App shell. The optimization loop itself is

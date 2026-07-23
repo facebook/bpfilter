@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ */
+
 #include "mock.h"
 
 void bft_mock_clean(bft_mock *mock)

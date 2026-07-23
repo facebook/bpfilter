@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 {
   description = "bpfilter - eBPF-based packet filtering framework";
 

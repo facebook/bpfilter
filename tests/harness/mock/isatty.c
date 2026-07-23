@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ */
+
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>
