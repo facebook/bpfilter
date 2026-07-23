@@ -6,7 +6,9 @@
 #include "bpfilter/set.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -161,9 +163,15 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
 {
     _cleanup_free_ void *elem = NULL;
     _cleanup_free_ char *_raw_elem = NULL;
+    const struct bf_matcher_ops *range_in_ops = NULL;
     char *tmp, *saveptr, *token;
     size_t elem_offset = 0;
     size_t comp_idx = 0;
+    size_t range_offset = 0;
+    enum bf_matcher_type range_type = 0;
+    uint16_t range_start = 0;
+    uint16_t range_end = 0;
+    bool has_range = false;
     int r;
 
     assert(set);
@@ -183,6 +191,7 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
     tmp = _raw_elem;
     while ((token = strtok_r(tmp, ",", &saveptr))) {
         const struct bf_matcher_ops *ops;
+        const struct bf_matcher_ops *range_ops;
 
         if (comp_idx >= set->n_comps) {
             return bf_err_r(
@@ -199,11 +208,41 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
                             bf_matcher_type_to_str(set->key[comp_idx]));
         }
 
-        r = ops->parse(set->key[comp_idx], BF_MATCHER_IN, elem + elem_offset,
-                       token);
-        if (r) {
-            return bf_err_r(r, "failed to parse set element component '%s'",
-                            token);
+        /* A component is treated as a range if it contains a '-' and its matcher
+         * type supports the RANGE operator (ports today). This defers writing
+         * the component's slot until the range is expanded below. */
+        range_ops = bf_matcher_get_ops(set->key[comp_idx], BF_MATCHER_RANGE);
+        if (strchr(token, '-') && range_ops) {
+            uint16_t bounds[2];
+
+            if (has_range) {
+                return bf_err_r(
+                    -EINVAL,
+                    "set element '%s' has more than one ranged component, only one is supported",
+                    raw_elem);
+            }
+
+            r = range_ops->parse(set->key[comp_idx], BF_MATCHER_RANGE, bounds,
+                                 token);
+            if (r) {
+                return bf_err_r(
+                    r, "failed to parse set element range component '%s'",
+                    token);
+            }
+
+            has_range = true;
+            range_offset = elem_offset;
+            range_type = set->key[comp_idx];
+            range_in_ops = ops;
+            range_start = bounds[0];
+            range_end = bounds[1];
+        } else {
+            r = ops->parse(set->key[comp_idx], BF_MATCHER_IN,
+                           elem + elem_offset, token);
+            if (r) {
+                return bf_err_r(r, "failed to parse set element component '%s'",
+                                token);
+            }
         }
 
         elem_offset += ops->ref_payload_size;
@@ -216,11 +255,43 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
                         raw_elem);
     }
 
-    r = bf_hashset_add(&set->elems, &elem);
-    if (r == -EEXIST)
+    if (!has_range) {
+        r = bf_hashset_add(&set->elems, &elem);
+        if (r == -EEXIST)
+            return 0;
+        if (r)
+            return bf_err_r(r, "failed to insert element into set");
+
         return 0;
-    if (r)
-        return bf_err_r(r, "failed to insert element into set");
+    }
+
+    /* Expand the ranged component into one element per value in [start, end].
+     * A uint32_t counter is used so a range ending at UINT16_MAX terminates. */
+    for (uint32_t value = range_start; value <= range_end; ++value) {
+        _cleanup_free_ void *row = NULL;
+        char valbuf[16];
+
+        (void)snprintf(valbuf, sizeof(valbuf), "%" PRIu32, value);
+
+        r = range_in_ops->parse(range_type, BF_MATCHER_IN, elem + range_offset,
+                                valbuf);
+        if (r) {
+            return bf_err_r(r, "failed to parse expanded range value '%s'",
+                            valbuf);
+        }
+
+        row = malloc(set->elem_size);
+        if (!row)
+            return bf_err_r(-ENOMEM, "failed to allocate a new set element");
+
+        memcpy(row, elem, set->elem_size);
+
+        r = bf_hashset_add(&set->elems, &row);
+        if (r == -EEXIST)
+            continue;
+        if (r)
+            return bf_err_r(r, "failed to insert element into set");
+    }
 
     return 0;
 }
