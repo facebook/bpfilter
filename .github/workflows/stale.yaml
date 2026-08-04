@@ -1,0 +1,52 @@
+# Automatically close stale PRs.
+#
+# Runs every night and check every open PR. If a pull request had no activity
+# over the past 14 days, a comment is added to inform the owner that the PR
+# is stale, and a `stale` label is added. If there is no activity in the
+# following 14 days, the PR is closed.
+#
+
+name: Stale PRs
+
+on:
+  schedule:
+    - cron: "25 3 * * *" # Run daily at 3:25
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write # comments go through the issues API, even on PRs
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          debug-only: ${{ inputs.dry-run || false }}
+
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+
+          days-before-pr-stale: 14
+          days-before-pr-close: 14
+
+          stale-pr-label: "stale"
+          stale-pr-message: >
+            This PR has had no activity for 14 days. It will be closed in
+            14 more days unless it is updated. Comment or push to keep it open.
+          close-pr-message: >
+            Closing after 28 days without activity. Reopen once you resume work.
+
+          exempt-pr-labels: "blocked,needs-review,pinned"
+          exempt-draft-pr: true
+          remove-pr-stale-when-updated: true
+
+          ascending: true
+          operations-per-run: 100
+          delete-branch: false
