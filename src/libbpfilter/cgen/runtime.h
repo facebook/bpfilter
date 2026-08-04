@@ -71,6 +71,20 @@ static_assert(sizeof(struct bf_runtime_sock_addr) <= 64,
               "bf_runtime_sock_addr must fit in the scratch area");
 
 /**
+ * @brief Per-rule mutable state stored in the program's state map.
+ *
+ * One entry per rule, accessible from BPF programs via a single-entry array
+ * map looked up in the program prologue.
+ */
+struct bf_rule_state
+{
+    /** Timestamp of the last log event for this rule, in nanoseconds.
+     * Zero-initialised; compared against `bpf_ktime_get_ns()` to enforce
+     * per-rule log rate limiting. */
+    __u64 last_log_ts;
+};
+
+/**
  * @brief Runtime stack layout for the generated BPF programs.
  *
  * This runtime context is located at `r10 - sizeof(struct bf_runtime)`, it is
@@ -113,6 +127,12 @@ struct bf_runtime
 
     /** Ring buffer map containing the logged packets. */
     void *log_map;
+
+    /** Base pointer into the single-entry state map value.
+     * NULL if the chain has no logging rules. Set in the program prologue
+     * via `bpf_map_lookup_elem`; each rule's state is at
+     * `state_map + rule_index * sizeof(struct bf_rule_state)`. */
+    void *state_map;
 
     /** Total size of the packet, or 0 for non-packet flavors. */
     __u64 pkt_size;

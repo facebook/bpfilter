@@ -59,6 +59,10 @@ struct bf_rule
     bf_list matchers;
     uint8_t log;
 
+    /** Minimum interval between two log events for this rule, in nanoseconds.
+     * Zero means no rate limiting: every match is logged. */
+    uint64_t log_rate_ns;
+
     /** Mark to set to the packet's `sk_buff`. Only support for some hooks.
      * The leftmost 32 bits are set to 1 if a mark is defined, or 0 otherwise.
      * See `bf_rule_mark_is_set`. */

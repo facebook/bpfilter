@@ -455,7 +455,7 @@ static int _bf_cgen_transfer_counters(const struct bf_handle *old_handle,
         if (!counter.count && !counter.size)
             continue;
 
-        r = bf_map_set_elem(new_handle->cmap, &i, &counter);
+        r = bf_handle_set_counter(new_handle, i, &counter);
         if (r)
             return bf_err_r(r, "failed to write counter %u", i);
     }

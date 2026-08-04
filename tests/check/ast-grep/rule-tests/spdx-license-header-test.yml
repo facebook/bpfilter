@@ -1,0 +1,14 @@
+id: spdx-license-header
+valid:
+  - |
+    /* SPDX-License-Identifier: GPL-2.0-only */
+    #include <stdio.h>
+    int main(void) { return 0; }
+  - |
+    // SPDX-License-Identifier: GPL-2.0-only
+    #include <stdlib.h>
+    void foo(void) {}
+invalid:
+  - |
+    #include <stdio.h>
+    int main(void) { return 0; }

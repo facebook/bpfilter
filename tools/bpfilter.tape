@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 # VHS script to generate the demo GIFs
 #
 # Uses https://github.com/charmbracelet/vhs

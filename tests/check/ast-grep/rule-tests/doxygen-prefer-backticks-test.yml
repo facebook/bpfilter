@@ -1,0 +1,34 @@
+id: doxygen-prefer-backticks
+valid:
+  - |
+    /**
+     * @brief Create a new chain.
+     *
+     * @param chain On success, points to the new `bf_chain`.
+     * @return 0 on success.
+     */
+    int bf_chain_new(struct bf_chain **chain);
+  - |
+    // @param is fine in regular comments
+    int x = 0;
+  - |
+    /**
+     * @brief Return value description.
+     * @return A `bf_btf` structure on success.
+     */
+    int bf_foo(void);
+invalid:
+  - |
+    /**
+     * @brief Manage BPF object references.
+     *
+     * @ref bf_handle is used to manage references.
+     */
+    int bf_handle_new(void);
+  - |
+    /**
+     * @brief Free a map object.
+     *
+     * @param map @ref bf_map object to free.
+     */
+    void bf_map_free(struct bf_map **map);

@@ -1,0 +1,33 @@
+id: no-fprintf-stderr
+valid:
+  - |
+    void bf_handle(void)
+    {
+        bf_err("something went wrong");
+    }
+  - |
+    void bf_process(const char *s)
+    {
+        bf_warn("unexpected value: %s", s);
+    }
+  - |
+    static void _bf_print_insn(void *private_data, const char *fmt, ...)
+    {
+        fprintf(stderr, fmt);
+    }
+  - |
+    void bf_logger_emit(const char *fmt, va_list args)
+    {
+        vfprintf(stderr, fmt, args);
+    }
+invalid:
+  - |
+    void bf_handle(void)
+    {
+        fprintf(stderr, "error: %s", msg);
+    }
+  - |
+    void bf_handle(const char *fmt, va_list args)
+    {
+        vfprintf(stderr, fmt, args);
+    }

@@ -1,0 +1,22 @@
+id: no-fprintf-stderr
+snapshots:
+  ? |
+    void bf_handle(const char *fmt, va_list args)
+    {
+        vfprintf(stderr, fmt, args);
+    }
+  : labels:
+    - source: vfprintf(stderr, fmt, args)
+      style: primary
+      start: 52
+      end: 79
+  ? |
+    void bf_handle(void)
+    {
+        fprintf(stderr, "error: %s", msg);
+    }
+  : labels:
+    - source: 'fprintf(stderr, "error: %s", msg)'
+      style: primary
+      start: 27
+      end: 60

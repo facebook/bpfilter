@@ -32,6 +32,22 @@ static void no_setup(void **state)
     assert_false(bf_ctx_is_verbose(BF_VERBOSE_DEBUG));
 }
 
+static void is_setup(void **state)
+{
+    _free_bft_tmpdir_ struct bft_tmpdir *tmpdir = NULL;
+
+    (void)state;
+
+    assert_false(bf_ctx_is_setup());
+
+    assert_ok(bft_tmpdir_new(&tmpdir));
+    assert_ok(bf_ctx_setup(false, tmpdir->dir_path, 0));
+    assert_true(bf_ctx_is_setup());
+
+    bf_ctx_teardown();
+    assert_false(bf_ctx_is_setup());
+}
+
 static void bpffs_path_matches_setup(void **state)
 {
     struct bft_tmpdir *tmpdir = *state;
@@ -197,6 +213,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(no_setup),
+        cmocka_unit_test(is_setup),
         cmocka_unit_test(bpffs_path_is_owned_copy),
         cmocka_unit_test(setup_after_teardown),
         cmocka_unit_test_setup_teardown(bpffs_path_matches_setup, bft_setup_ctx,

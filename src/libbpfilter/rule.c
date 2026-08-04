@@ -86,6 +86,12 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_rule.log");
 
+    if (bf_rpack_kv_contains(node, "log_rate_ns")) {
+        r = bf_rpack_kv_u64(node, "log_rate_ns", &_rule->log_rate_ns);
+        if (r)
+            return bf_rpack_key_err(r, "bf_rule.log_rate_ns");
+    }
+
     if (bf_rpack_kv_contains(node, "has_counters")) {
         r = bf_rpack_kv_bool(node, "has_counters", &has_counters);
         if (r)
@@ -159,6 +165,7 @@ int bf_rule_pack(const struct bf_rule *rule, bf_wpack_t *pack)
 
     bf_wpack_kv_u32(pack, "index", rule->index);
     bf_wpack_kv_u8(pack, "log", rule->log);
+    bf_wpack_kv_u64(pack, "log_rate_ns", rule->log_rate_ns);
     bf_wpack_kv_bool(pack, "has_counters", rule->has_counters);
     bf_wpack_kv_u64(pack, "mark", rule->mark);
     bf_wpack_kv_int(pack, "verdict", rule->verdict);

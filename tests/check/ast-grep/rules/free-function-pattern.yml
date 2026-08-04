@@ -1,0 +1,37 @@
+id: free-function-pattern
+language: c
+severity: error
+message: >-
+  Free function _?bf_*_free() / _?bfc_*_free() violates conventions.
+  Free functions must return void and take a double-pointer parameter (TYPE **).
+note: >-
+  Ensure the function returns void, takes TYPE ** as parameter,
+  is a no-op if *ptr is NULL, and sets *ptr to NULL after freeing.
+  Limitation: this rule only checks the function signature.
+  The "no-op if *ptr is NULL" and "set *ptr to NULL" requirements must be
+  verified by review or by runtime tests.
+rule:
+  all:
+    - kind: function_definition
+    - has:
+        kind: function_declarator
+        has:
+          kind: identifier
+          regex: "^_?(bf|bfc)_\\w+_free$"
+    - any:
+        - not:
+            has:
+              kind: primitive_type
+              regex: "^void$"
+        - not:
+            has:
+              kind: function_declarator
+              has:
+                kind: parameter_list
+                has:
+                  kind: parameter_declaration
+                  has:
+                    kind: pointer_declarator
+                    has:
+                      kind: pointer_declarator
+                    stopBy: end

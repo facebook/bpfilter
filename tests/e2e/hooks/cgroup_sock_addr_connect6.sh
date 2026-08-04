@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
@@ -76,10 +77,6 @@ s.connect(('$1', $2))
 s.send(b'x')
 s.close()
 "
-}
-
-get_counter() {
-    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
 }
 
 # meta.l3_proto

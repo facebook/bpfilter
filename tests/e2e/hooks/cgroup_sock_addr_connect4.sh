@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
@@ -66,10 +67,6 @@ tcp4_connect() {
 
 udp4_connect() {
     ${FROM_NS} bash -c "echo \$\$ > ${CGROUP_PATH}/cgroup.procs && echo > /dev/udp/$1/$2" 2>/dev/null
-}
-
-get_counter() {
-    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
 }
 
 # meta.l3_proto

@@ -135,6 +135,7 @@ bf_add_e2e_shell_test(e2e parsing/udp_dport.sh)
 bf_add_e2e_shell_test(e2e parsing/udp_sport.sh)
 
 bf_add_e2e_shell_test(e2e rules/action_order.sh ROOT)
+bf_add_e2e_shell_test(e2e rules/gre.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/icmp_tc.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/icmp_xdp.sh ROOT)
 bf_add_e2e_shell_test(e2e rules/log.sh ROOT)

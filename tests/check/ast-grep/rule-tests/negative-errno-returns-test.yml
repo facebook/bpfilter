@@ -1,0 +1,50 @@
+id: negative-errno-returns
+valid:
+  - |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return -ENOMEM;
+    }
+  - |
+    int bf_rule_load(struct bf_rule *rule)
+    {
+        return bf_err_r(-EINVAL, "invalid rule");
+    }
+  - |
+    int bf_ctx_setup(struct bf_ctx *ctx)
+    {
+        return 0;
+    }
+  - |
+    int bf_set_add(struct bf_set *set, const void *elem)
+    {
+        return r;
+    }
+  - |
+    int bf_hook_parse(struct bf_hook *hook)
+    {
+        if (!hook)
+            return -EINVAL;
+        return -ENOMEM;
+    }
+invalid:
+  - |
+    int bf_chain_new(struct bf_chain **chain)
+    {
+        return ENOMEM;
+    }
+  - |
+    int bf_rule_load(struct bf_rule *rule)
+    {
+        return EINVAL;
+    }
+  - |
+    int bf_io_read(int fd)
+    {
+        return EIO;
+    }
+  - |
+    int bf_arg_parse(const char *s)
+    {
+        return E2BIG;
+    }

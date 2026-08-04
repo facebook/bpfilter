@@ -1,0 +1,27 @@
+id: no-direct-free
+language: c
+severity: error
+message: >-
+  Direct call to free() detected. Use BF_FREEP() or a typed bf_*_free()
+  cleanup function instead to prevent double-free via cleanup attributes.
+note: >-
+  Replace free(ptr) with the appropriate cleanup helper.
+  Use BF_FREEP(&ptr) for generic allocations (type-safe macro form),
+  or bf_X_free(&obj) for typed objects. Declare locals with the
+  _cleanup_free_ attribute (which binds bf_freep) where possible.
+  Exempt callers: bf_freep, _?bf_*_free, _?bfc_*_free, _?bf_*_cleanup,
+  _?bfc_*_cleanup.
+rule:
+  kind: call_expression
+  has:
+    kind: identifier
+    regex: "^free$"
+  not:
+    inside:
+      kind: function_definition
+      stopBy: end
+      has:
+        kind: function_declarator
+        has:
+          kind: identifier
+          regex: "^(bf_freep|_?bf_\\w+_(free|cleanup)|_?bfc_\\w+_(free|cleanup))$"

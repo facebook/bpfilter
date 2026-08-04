@@ -1,0 +1,47 @@
+id: enum-sentinel-format
+valid:
+  - |
+    enum bf_hook
+    {
+        BF_HOOK_XDP,
+        BF_HOOK_TC_INGRESS,
+        _BF_HOOK_MAX,
+    };
+  - |
+    enum bf_log
+    {
+        BF_LOG_DBG,
+        BF_LOG_INFO,
+        _BF_LOG_MAX,
+    };
+  - |
+    enum bf_color
+    {
+        BF_COLOR_RESET = 0,
+        BF_COLOR_RED = 1 << 3,
+    };
+  - |
+    enum bf_bpf_cmd
+    {
+        BF_BPF_PROG_LOAD = 5,
+        BF_BPF_MAP_CREATE = 0,
+    };
+  - |
+    enum bf_nf_inet_hooks
+    {
+        BF_NF_INET_PRE_ROUTING = 0,
+        BF_NF_INET_LOCAL_IN = 1,
+    };
+invalid:
+  - |
+    enum bf_hook
+    {
+        BF_HOOK_XDP,
+        BF_HOOK_TC_INGRESS,
+    };
+  - |
+    enum bf_chain_type
+    {
+        BF_CHAIN_TYPE_FILTER,
+        BF_CHAIN_TYPE_NAT,
+    };

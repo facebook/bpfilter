@@ -1,0 +1,17 @@
+id: doxygen-public-functions
+snapshots:
+  ? |
+    // This is not a Doxygen comment
+    int bf_set_add(struct bf_set *set, int value);
+  : labels:
+    - source: int bf_set_add(struct bf_set *set, int value);
+      style: primary
+      start: 33
+      end: 79
+  ? |
+    int bf_rule_free(void);
+  : labels:
+    - source: int bf_rule_free(void);
+      style: primary
+      start: 0
+      end: 23

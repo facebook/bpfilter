@@ -1,0 +1,30 @@
+id: bf-prefix-public-functions
+snapshots:
+  ? |
+    int my_func(void)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int my_func(void)
+        {
+            return 0;
+        }
+      style: primary
+      start: 0
+      end: 35
+  ? |
+    void process_packet(struct pkt *p)
+    {
+        return;
+    }
+  : labels:
+    - source: |-
+        void process_packet(struct pkt *p)
+        {
+            return;
+        }
+      style: primary
+      start: 0
+      end: 50

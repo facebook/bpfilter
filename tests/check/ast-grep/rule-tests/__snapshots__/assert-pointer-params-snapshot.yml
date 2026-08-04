@@ -1,0 +1,62 @@
+id: assert-pointer-params
+snapshots:
+  ? |
+    int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+    {
+        return 0;
+    }
+  : labels:
+    - source: |-
+        int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+        {
+            return 0;
+        }
+      style: primary
+      start: 0
+      end: 85
+    - source: '*chain'
+      style: secondary
+      start: 38
+      end: 44
+    - source: struct bf_chain *chain
+      style: secondary
+      start: 22
+      end: 44
+    - source: (struct bf_chain *chain, struct bf_rule *rule)
+      style: secondary
+      start: 21
+      end: 67
+    - source: bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule)
+      style: secondary
+      start: 4
+      end: 67
+  ? |
+    void bf_rule_free(struct bf_rule **rule)
+    {
+        return;
+    }
+  : labels:
+    - source: |-
+        void bf_rule_free(struct bf_rule **rule)
+        {
+            return;
+        }
+      style: primary
+      start: 0
+      end: 56
+    - source: '**rule'
+      style: secondary
+      start: 33
+      end: 39
+    - source: struct bf_rule **rule
+      style: secondary
+      start: 18
+      end: 39
+    - source: (struct bf_rule **rule)
+      style: secondary
+      start: 17
+      end: 40
+    - source: bf_rule_free(struct bf_rule **rule)
+      style: secondary
+      start: 5
+      end: 40

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 set -eux
 
@@ -122,6 +123,14 @@ trap 'cleanup 1; exit 1' INT TERM
 # Testing
 #
 ################################################################################
+
+# Print the packet counter of rule INDEX in chain NAME, read from the chain's
+# pinned counters map.
+#
+# Usage: get_counter NAME INDEX
+get_counter() {
+    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].values | map(.value.count) | add"
+}
 
 cleanup
 mkdir -p ${WORKDIR}

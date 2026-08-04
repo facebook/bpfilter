@@ -1,0 +1,18 @@
+id: spdx-license-header
+language: c
+severity: error
+message: File must contain an SPDX license header
+note: >-
+  Every source file must contain an SPDX license identifier comment,
+  conventionally at the top of the file. Both styles are accepted:
+  /* SPDX-License-Identifier: GPL-2.0-only */ and
+  // SPDX-License-Identifier: GPL-2.0-only.
+  Limitation: this rule matches any SPDX comment anywhere in the file,
+  it does not verify that the comment is the first line.
+rule:
+  kind: translation_unit
+  not:
+    has:
+      kind: comment
+      regex: "SPDX-License-Identifier"
+      stopBy: end

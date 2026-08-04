@@ -434,6 +434,7 @@ static void ipproto_conversions(void **state)
     assert_non_null(bf_ipproto_to_str(6)); // TCP
     assert_non_null(bf_ipproto_to_str(17)); // UDP
     assert_non_null(bf_ipproto_to_str(1)); // ICMP
+    assert_string_equal(bf_ipproto_to_str(47), "gre");
 
     // Test from string
     assert_ok(bf_ipproto_from_str("tcp", &ipproto));
@@ -441,6 +442,9 @@ static void ipproto_conversions(void **state)
 
     assert_ok(bf_ipproto_from_str("udp", &ipproto));
     assert_int_equal(ipproto, 17);
+
+    assert_ok(bf_ipproto_from_str("gre", &ipproto));
+    assert_int_equal(ipproto, 47);
 
     // Test invalid
     assert_err(bf_ipproto_from_str("invalid", &ipproto));

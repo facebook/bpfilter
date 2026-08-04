@@ -1,3 +1,4 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 chain cgroup_sock_addr_connect6 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT
     rule
         meta.l3_proto eq ipv6

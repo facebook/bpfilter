@@ -1,0 +1,10 @@
+id: is-public-declaration
+language: c
+rule:
+  kind: declaration
+  has:
+    kind: function_declarator
+    stopBy: end
+  not:
+    has:
+      kind: storage_class_specifier

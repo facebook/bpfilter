@@ -1,0 +1,16 @@
+id: no-direct-free
+snapshots:
+  ? |
+    void process(char *buf)
+    {
+        free(buf);
+    }
+  : labels:
+    - source: free(buf)
+      style: primary
+      start: 30
+      end: 39
+    - source: free
+      style: secondary
+      start: 30
+      end: 34

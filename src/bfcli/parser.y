@@ -26,6 +26,7 @@
     #include <linux/in6.h>
     #include <linux/if_ether.h>
     #include <limits.h>
+    #include <math.h>
 
     #include <bpfilter/verdict.h>
     #include <bpfilter/hook.h>
@@ -59,15 +60,48 @@
         BF_RULE_OPTION_LOG      = 1 << 0,
         BF_RULE_OPTION_COUNTER  = 1 << 1,
         BF_RULE_OPTION_MARK     = 1 << 2,
+        BF_RULE_OPTION_LOG_RATE = 1 << 3,
     };
 
     struct bf_rule_options {
         uint8_t flags;
 
         uint8_t log;
+        uint64_t log_rate_ns;
         bool counter;
         uint32_t mark;
     };
+
+    static inline int _parse_log_rate(const char *s, uint64_t *ns)
+    {
+        double multiplier;
+        double v;
+        char *end;
+
+        v = strtod(s, &end);
+        if (end == s || v <= 0.0)
+            return -1;
+
+        if (strcmp(end, "ns") == 0)
+            multiplier = 1.0;
+        else if (strcmp(end, "us") == 0)
+            multiplier = 1000.0;
+        else if (strcmp(end, "ms") == 0)
+            multiplier = 1000000.0;
+        else if (strcmp(end, "s") == 0)
+            multiplier = 1000000000.0;
+        else
+            return -1;
+
+        if (!isfinite(v) || v > (double)UINT64_MAX / multiplier)
+            return -1;
+
+        *ns = (uint64_t)(v * multiplier + 0.5);
+        if (*ns == 0)
+            return -1;
+
+        return 0;
+    }
 
     struct bfc_rule_verdict {
         enum bf_verdict verdict;
@@ -83,6 +117,7 @@
     bool bval;
     uint8_t u8;
     uint32_t u32;
+    uint64_t u64;
     char *sval;
     enum bf_verdict verdict;
     enum bf_hook hook;
@@ -101,7 +136,7 @@
 %token CHAIN
 %token RULE
 %token SET
-%token NEGATE LOG COUNTER MARK
+%token NEGATE LOG COUNTER MARK EVERY
 %token REDIRECT_TOKEN
 %token <sval> SET_TYPE
 %token <sval> SET_RAW_PAYLOAD
@@ -141,6 +176,7 @@
 %destructor { bf_list_free(&$$); } rules
 
 %type <u8> log_headers
+%type <u64> log_rate
 %type <rule_options> rule_option
 %type <rule_options> rule_options
 %type <rule> rule
@@ -299,6 +335,7 @@ rule            : RULE matchers rule_options rule_verdict
                         bf_parse_err("failed to create a new bf_rule\n");
 
                     rule->log = $3.flags & BF_RULE_OPTION_LOG ? $3.log : 0;
+                    rule->log_rate_ns = $3.flags & BF_RULE_OPTION_LOG_RATE ? $3.log_rate_ns : 0;
                     rule->has_counters = $3.flags & BF_RULE_OPTION_COUNTER ? 1 : 0;
 
                     if ($3.flags & BF_RULE_OPTION_MARK)
@@ -336,6 +373,22 @@ rule_option     : LOG
                         .flags = BF_RULE_OPTION_LOG,
                     };
                 }
+                | LOG EVERY log_rate
+                {
+                    $$ = (struct bf_rule_options){
+                        .log = BF_LOG_OPT_DEFAULT,
+                        .log_rate_ns = $3,
+                        .flags = BF_RULE_OPTION_LOG | BF_RULE_OPTION_LOG_RATE,
+                    };
+                }
+                | LOG log_headers EVERY log_rate
+                {
+                    $$ = (struct bf_rule_options){
+                        .log = $2,
+                        .log_rate_ns = $4,
+                        .flags = BF_RULE_OPTION_LOG | BF_RULE_OPTION_LOG_RATE,
+                    };
+                }
                 | COUNTER
                 {
                     $$ = (struct bf_rule_options){
@@ -363,6 +416,19 @@ rule_option     : LOG
                     };
                 }
 
+log_rate        : STRING
+                {
+                    _cleanup_free_ const char *rate_str = $1;
+                    uint64_t ns;
+
+                    if (_parse_log_rate(rate_str, &ns) < 0)
+                        bf_parse_err("invalid rate '%s': expected <N>ns/us/ms/s",
+                                     rate_str);
+
+                    $$ = ns;
+                }
+                ;
+
 rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                 | rule_options rule_option {
                     if ($2.flags & BF_RULE_OPTION_LOG) {
@@ -370,6 +436,11 @@ rule_options    : %empty { $$ = (struct bf_rule_options){}; }
                             bf_parse_err("duplicate keyword \"log\" in rule");
                         $1.flags |= BF_RULE_OPTION_LOG;
                         $1.log = $2.log;
+                    }
+
+                    if ($2.flags & BF_RULE_OPTION_LOG_RATE) {
+                        $1.flags |= BF_RULE_OPTION_LOG_RATE;
+                        $1.log_rate_ns = $2.log_rate_ns;
                     }
 
                     if ($2.flags & BF_RULE_OPTION_COUNTER) {

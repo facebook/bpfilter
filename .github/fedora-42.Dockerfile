@@ -25,6 +25,7 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     libcmocka-devel \
     libgit2-devel \
     libtool \
+    pipx \
     procps-ng \
     python3-breathe \
     python3-dateutil \
@@ -36,3 +37,6 @@ RUN dnf --disablerepo=* --enablerepo=fedora,updates --nodocs --setopt=install_we
     sed \
     xxd && \
     dnf clean all -y
+
+RUN pipx install --global ast-grep-cli && \
+    ast-grep --version

@@ -1,0 +1,37 @@
+id: assert-pointer-params
+language: c
+severity: error
+message: Functions with pointer parameters must assert() them at entry
+note: >-
+  bpfilter uses assert() for pointer preconditions at function entry.
+  Limitation: this rule flags functions with zero assert() calls; it cannot
+  verify that EACH pointer parameter is asserted individually. A function
+  with three pointer parameters and a single assert() will pass silently.
+rule:
+  all:
+    - matches: is-public-function
+    - has:
+        kind: function_declarator
+        has:
+          kind: parameter_list
+          has:
+            kind: parameter_declaration
+            has:
+              kind: pointer_declarator
+        stopBy: end
+    - not:
+        has:
+          kind: compound_statement
+          has:
+            kind: call_expression
+            has:
+              kind: identifier
+              regex: "^assert$"
+            stopBy: end
+          stopBy: end
+    - not:
+        has:
+          kind: function_declarator
+          has:
+            kind: identifier
+            regex: "^(main|closep|yyerror)$"

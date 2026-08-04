@@ -1,0 +1,27 @@
+id: doxygen-public-functions
+valid:
+  - |
+    /**
+     * @brief Create a new chain from the given parameters.
+     *
+     * @param chain On success, points to the new chain.
+     * @return 0 on success, negative errno on failure.
+     */
+    int bf_chain_new(struct bf_chain **chain, const char *name);
+  - |
+    static inline int _bf_helper(int x);
+  - |
+    /**
+     * @brief Free a chain object.
+     *
+     * @param chain Pointer to the chain pointer. Set to NULL on return.
+     */
+    void bf_chain_free(struct bf_chain **chain);
+  - |
+    int x = 42;
+invalid:
+  - |
+    int bf_rule_free(void);
+  - |
+    // This is not a Doxygen comment
+    int bf_set_add(struct bf_set *set, int value);

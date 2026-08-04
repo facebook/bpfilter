@@ -1,0 +1,24 @@
+id: no-ifndef-guards
+snapshots:
+  ? |
+    #ifndef BF_CHAIN_H
+    #define BF_CHAIN_H
+    struct bf_chain;
+    #endif
+  : labels:
+    - source: |-
+        #ifndef BF_CHAIN_H
+        #define BF_CHAIN_H
+        struct bf_chain;
+        #endif
+      style: primary
+      start: 0
+      end: 61
+    - source: |
+        #ifndef BF_CHAIN_H
+        #define BF_CHAIN_H
+        struct bf_chain;
+        #endif
+      style: secondary
+      start: 0
+      end: 62

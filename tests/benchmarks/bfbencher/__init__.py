@@ -69,6 +69,45 @@ class Stats:
             self.failed_shas.add(commit_sha)
 
 
+def compare_table(
+    rows: list[Report.CompareRow], base_sha: str, ref_sha: str
+) -> rich.table.Table:
+    """Build the base/ref comparison table (negative Δ = faster = green)."""
+
+    def format_pct(pct: float) -> str:
+        color = "green" if pct < 0 else ("red" if pct > 0 else "white")
+        return f"[{color}]{pct:+.1f}%[/{color}]"
+
+    table = rich.table.Table(
+        title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
+        show_header=True,
+    )
+    table.add_column("Benchmark", style="cyan")
+    table.add_column("Base", justify="right")
+    table.add_column("Ref", justify="right")
+    table.add_column("ΔTime", justify="right")
+    table.add_column("ΔTime%", justify="right")
+    table.add_column("Base Insn", justify="right")
+    table.add_column("Ref Insn", justify="right")
+    table.add_column("ΔInsn", justify="right")
+    table.add_column("ΔInsn%", justify="right")
+
+    for row in rows:
+        table.add_row(
+            row.name,
+            row.base_time_str,
+            row.ref_time_str,
+            row.delta_time_str,
+            format_pct(row.delta_time_pct),
+            str(row.base_insn) if row.base_insn is not None else "-",
+            str(row.ref_insn) if row.ref_insn is not None else "-",
+            f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
+            format_pct(row.delta_insn_pct) if row.delta_insn_pct is not None else "-",
+        )
+
+    return table
+
+
 class Renderer:
     """Console output handler for benchmark progress and results."""
 
@@ -117,40 +156,7 @@ class Renderer:
         base_sha: str,
         ref_sha: str,
     ) -> None:
-        def format_pct(pct: float) -> str:
-            color = "green" if pct < 0 else ("red" if pct > 0 else "white")
-            return f"[{color}]{pct:+.1f}%[/{color}]"
-
-        table = rich.table.Table(
-            title=f"{base_sha[:SHORT_SHA_LEN]} → {ref_sha[:SHORT_SHA_LEN]}",
-            show_header=True,
-        )
-        table.add_column("Benchmark", style="cyan")
-        table.add_column("Base", justify="right")
-        table.add_column("Ref", justify="right")
-        table.add_column("ΔTime", justify="right")
-        table.add_column("ΔTime%", justify="right")
-        table.add_column("Base Insn", justify="right")
-        table.add_column("Ref Insn", justify="right")
-        table.add_column("ΔInsn", justify="right")
-        table.add_column("ΔInsn%", justify="right")
-
-        for row in rows:
-            table.add_row(
-                row.name,
-                row.base_time_str,
-                row.ref_time_str,
-                row.delta_time_str,
-                format_pct(row.delta_time_pct),
-                str(row.base_insn) if row.base_insn is not None else "-",
-                str(row.ref_insn) if row.ref_insn is not None else "-",
-                f"{row.delta_insn:+d}" if row.delta_insn is not None else "-",
-                format_pct(row.delta_insn_pct)
-                if row.delta_insn_pct is not None
-                else "-",
-            )
-
-        self.console.print(table)
+        self.console.print(compare_table(rows, base_sha, ref_sha))
 
 
 renderer: Renderer = Renderer()
@@ -358,7 +364,7 @@ class Executor(ABC):
     The Executor transparently handle local or remote commands.
     """
 
-    def __init__(self, args: argparse.Namespace):
+    def __init__(self, args: argparse.Namespace, renderer: Renderer | None = None):
         self._host: str = args.host
         self._workdir: pathlib.Path = (
             pathlib.Path(tempfile.gettempdir()) / f"bpfilter-{uuid.uuid4().hex[:8]}"
@@ -370,7 +376,10 @@ class Executor(ABC):
         self._local_workdir.mkdir()
         self._retry_shas: set[str] = set()
         self._commits: list[git.Commit] = []
-        self._source = FilesystemSource(args.sources, self._local_workdir / "bpfilter")
+        self._renderer = renderer
+        self._source = FilesystemSource(
+            args.sources, self._local_workdir / "bpfilter", renderer
+        )
         self._results = History()
         self._args = args
 
@@ -447,7 +456,7 @@ class Executor(ABC):
             log = f"\\[[yellow bold]{commit.hexsha[:SHORT_SHA_LEN]}[/], {index + 1}/{len(self.commits)}] {msg}"
         else:
             log = msg
-        renderer.log(log)
+        (self._renderer or renderer).log(log)
 
     @abstractmethod
     def _run(self, cmd: list[str], timeout: int | None = None) -> int:
@@ -493,24 +502,34 @@ class RemoteExecutor(Executor):
 
         self.log(f"Connecting to remote host {self._host}")
         self._remote_workdir = self._workdir
-        self._agent: paramiko.Agent = paramiko.Agent()
+        self._agent: paramiko.Agent | None = None
 
         self._client = paramiko.SSHClient()
         self._client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
-        for key in self._agent.get_keys():
-            if self._host.lower() in key.comment.lower():
-                pkey = key
-                break
+        if self._args.ssh_key:
+            self._client.connect(
+                self._host,
+                username=DEFAULT_USERNAME,
+                key_filename=str(self._args.ssh_key.expanduser()),
+                allow_agent=False,
+                look_for_keys=False,
+            )
         else:
-            raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
+            self._agent = paramiko.Agent()
+            for key in self._agent.get_keys():
+                if self._host.lower() in key.comment.lower():
+                    pkey = key
+                    break
+            else:
+                raise RuntimeError(f"No SSH agent key found matching '{self._host}'")
 
-        self._client.connect(
-            self._host,
-            username=DEFAULT_USERNAME,
-            pkey=pkey,
-            allow_agent=False,
-        )
+            self._client.connect(
+                self._host,
+                username=DEFAULT_USERNAME,
+                pkey=pkey,
+                allow_agent=False,
+            )
 
         # From now on, all self.run() commands are run on the remote host
         self.run(["hostname"])
@@ -564,7 +583,8 @@ class RemoteExecutor(Executor):
         self.run(["umount", "-l", str(self._remote_workdir)])
         self.run(["rm", "-rf", str(self._remote_workdir)])
         self._client.close()
-        self._agent.close()
+        if self._agent:
+            self._agent.close()
         super().__exit__(exc_type, exc_value, traceback)
 
 
@@ -609,15 +629,24 @@ class LocalExecutor(Executor):
 class FilesystemSource:
     """Manages source repository for benchmarking, including WIP commits."""
 
-    def __init__(self, path: str, local_src_dir: pathlib.Path) -> None:
+    def __init__(
+        self,
+        path: str,
+        local_src_dir: pathlib.Path,
+        renderer: Renderer | None = None,
+    ) -> None:
         self._path = pathlib.Path(path)
         self._local = local_src_dir
+        self._renderer = renderer
 
         shutil.copytree(self._path, self._local, dirs_exist_ok=True)
         self._detach_if_worktree()
         self._repo: git.Repo = git.Repo(self._local)
         self._retry_all: bool = False
         self._retry_failed: bool = False
+
+    def _log(self, msg: str) -> None:
+        (self._renderer or renderer).log(msg)
 
     def _detach_if_worktree(self) -> None:
         """Convert a copied git worktree into a standalone repository.
@@ -671,7 +700,7 @@ class FilesystemSource:
     def _commit_wip(self) -> git.Commit:
         """Commit uncommitted changes as WIP and return the commit."""
         if self._repo.is_dirty(untracked_files=True):
-            renderer.log("Committing uncommitted changes as WIP")
+            self._log("Committing uncommitted changes as WIP")
             self._repo.git.add(A=True)
             self._repo.index.commit("bfbencher: WIP")
         return self._repo.head.commit
@@ -722,14 +751,14 @@ class FilesystemSource:
             try:
                 retry_shas.add(self._repo.git.rev_parse(ref))
             except git.exc.GitCommandError:
-                renderer.log(f"Warning: could not resolve retry ref '{ref}'")
+                self._log(f"Warning: could not resolve retry ref '{ref}'")
 
         # Handle uncommitted changes
         if self._repo.is_dirty(untracked_files=True):
             if has_wip:
                 self._commit_wip()
             else:
-                renderer.log("Discarding uncommitted changes in source directory")
+                self._log("Discarding uncommitted changes in source directory")
                 self._repo.git.reset("--hard", "HEAD")
                 self._repo.git.clean("-fd")
 
@@ -752,11 +781,11 @@ class FilesystemSource:
             if commit.hexsha not in commit_set:
                 commits.append(commit)
                 commit_set.add(commit.hexsha)
-                renderer.log(
+                self._log(
                     f"Including commit {commit.hexsha[:SHORT_SHA_LEN]}: {str(commit.summary)}"
                 )
             else:
-                renderer.log(f"Commit {ref} already in range, skipping")
+                self._log(f"Commit {ref} already in range, skipping")
 
         # Sort commits in topological order (oldest first)
         if len(commits) > 1:
@@ -770,11 +799,11 @@ class FilesystemSource:
             ]
 
         if include:
-            renderer.log(
+            self._log(
                 f"Found {len(commits)} commits ({since_ref}..{until_ref} + {len(include)} included)"
             )
         else:
-            renderer.log(f"Found {len(commits)} commits ({since_ref}..{until_ref})")
+            self._log(f"Found {len(commits)} commits ({since_ref}..{until_ref})")
 
         return commits, retry_shas
 
@@ -886,6 +915,13 @@ class BenchmarkContext:
         ]
 
         return self._executor.run_benchmark_cmd(f"Building {target}", self._commit, cmd)
+
+    def flush(self) -> bool:
+        cmd = ["sudo", "rm", "-rf", "/sys/fs/bpf/bpfilter"]
+
+        return self._executor.run_benchmark_cmd(
+            "Flushing leftover chains", self._commit, cmd
+        )
 
     def run_benchmark(
         self,
@@ -1259,6 +1295,8 @@ def _benchmark_commits(executor: Executor, args: argparse.Namespace) -> None:
             continue
         if not ctx.make("benchmark_bin"):
             continue
+        if not ctx.flush():
+            continue
         if not ctx.run_benchmark(
             args.bind_node, args.no_preempt, args.cpu_pin, args.slice
         ):
@@ -1359,22 +1397,26 @@ def compare(
     *,
     sources: pathlib.Path = DEFAULT_SOURCE_PATH,
     host: str = DEFAULT_HOST[0],
+    ssh_key: pathlib.Path | None = None,
     cache_dir: pathlib.Path = DEFAULT_CACHE_PATH,
     bind_node: int | None = None,
     no_preempt: bool = False,
     cpu_pin: int | None = None,
     slice: str | None = None,
     retry: list[str] | None = None,
+    renderer: Renderer | None = None,
 ) -> list[Report.CompareRow]:
     """Programmatic compare API.
 
     Runs benchmarks for `base` and `ref` (with cache reuse when possible)
     and returns one CompareRow per benchmark with delta_time / delta_insn
     fields. This is the fitness signal consumed by tools like bfoptimize.
+    Progress messages go to `renderer`, or the module default when None.
     """
     args = argparse.Namespace(
         sources=sources,
         host=host,
+        ssh_key=ssh_key,
         cache_dir=cache_dir,
         bind_node=bind_node,
         no_preempt=no_preempt,
@@ -1397,7 +1439,9 @@ def compare(
     ref_sha = source_repo.git.rev_parse(ref)
 
     executor = (
-        LocalExecutor(args) if args.host in DEFAULT_HOST else RemoteExecutor(args)
+        LocalExecutor(args, renderer)
+        if args.host in DEFAULT_HOST
+        else RemoteExecutor(args, renderer)
     )
 
     with executor:
@@ -1418,6 +1462,12 @@ def main():
         type=str,
         help=f'host to run the benchmark on. bfbencher will connect to the host using SSH, copy the project sources on it, and run the benchmarks. Defaults to "{DEFAULT_HOST[0]}" (current host).',
         default=DEFAULT_HOST[0],
+    )
+    shared.add_argument(
+        "--ssh-key",
+        type=pathlib.Path,
+        help="path to the SSH private key used to authenticate to the remote host. If not set, the key is looked up in the SSH agent by matching the host name against the key comments.",
+        default=None,
     )
     shared.add_argument(
         "--cache-dir",

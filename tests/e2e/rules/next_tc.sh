@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
 get_counter() {
-    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].value.count"
+    ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].values | map(.value.count) | add"
 }
 
 make_sandbox

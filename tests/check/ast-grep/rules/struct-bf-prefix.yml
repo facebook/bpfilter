@@ -1,0 +1,21 @@
+id: struct-bf-prefix
+language: c
+severity: error
+message: >-
+  Struct tag does not follow naming convention.
+  Library structs must use bf_ prefix, CLI structs use bfc_ prefix.
+note: >-
+  Rename the struct to bf_<name> (libbpfilter) or bfc_<name> (bfcli).
+  Only struct definitions (with a body) are checked -- references to
+  external types like `struct stat` or `struct nlmsghdr` are ignored.
+rule:
+  all:
+    - kind: struct_specifier
+    - has:
+        field: body
+        kind: field_declaration_list
+    - has:
+        field: name
+        kind: type_identifier
+        not:
+          regex: "^(bf_|bfc_)"

@@ -23,6 +23,8 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/logger.h>
 
+#include "cgen/runtime.h"
+
 #define _free_bf_btf_ __attribute__((__cleanup__(_bf_btf_free)))
 
 static void _bf_btf_free(struct bf_btf **btf);
@@ -111,6 +113,13 @@ static struct bf_btf *_bf_map_make_btf(const struct bf_map *map)
         btf__add_field(kbtf, "count", 1, 0, 0);
         btf__add_field(kbtf, "size", 1, 64, 0);
         break;
+    case BF_MAP_TYPE_STATE:
+        btf__add_int(kbtf, "u64", 8, 0);
+        btf->key_type_id = btf__add_int(kbtf, "u32", 4, 0);
+        btf->value_type_id = btf__add_struct(kbtf, "bf_rule_state",
+                                             sizeof(struct bf_rule_state));
+        btf__add_field(kbtf, "last_log_ts", 1, 0, 0);
+        break;
     case BF_MAP_TYPE_PRINTER:
     case BF_MAP_TYPE_SET:
     case BF_MAP_TYPE_LOG:
@@ -191,7 +200,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
                size_t key_size, size_t value_size, size_t n_elems)
 {
     static enum bf_bpf_map_type _map_type_to_bpf[_BF_MAP_TYPE_MAX] = {
-        [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_COUNTERS] = BF_BPF_MAP_TYPE_PERCPU_ARRAY,
         [BF_MAP_TYPE_PRINTER] = BF_BPF_MAP_TYPE_ARRAY,
         [BF_MAP_TYPE_LOG] = BF_BPF_MAP_TYPE_RINGBUF,
         /* Unreachable: bf_map_new() rejects BF_MAP_TYPE_SET; use
@@ -199,6 +208,7 @@ int bf_map_new(struct bf_map **map, const char *name, enum bf_map_type type,
          * valid bf_bpf_map_type value. */
         [BF_MAP_TYPE_SET] = BF_BPF_MAP_TYPE_HASH,
         [BF_MAP_TYPE_CTX] = BF_BPF_MAP_TYPE_ARRAY,
+        [BF_MAP_TYPE_STATE] = BF_BPF_MAP_TYPE_ARRAY,
     };
 
     assert(map);
@@ -318,6 +328,7 @@ static const char *_bf_map_type_to_str(enum bf_map_type type)
         [BF_MAP_TYPE_LOG] = "BF_MAP_TYPE_LOG",
         [BF_MAP_TYPE_SET] = "BF_MAP_TYPE_SET",
         [BF_MAP_TYPE_CTX] = "BF_MAP_TYPE_CTX",
+        [BF_MAP_TYPE_STATE] = "BF_MAP_TYPE_STATE",
     };
 
     static_assert_enum_mapping(type_strs, _BF_MAP_TYPE_MAX);
@@ -331,6 +342,7 @@ static const char *_bf_bpf_type_to_str(enum bf_bpf_map_type type)
     static const char *type_strs[] = {
         [BF_BPF_MAP_TYPE_HASH] = "BF_BPF_MAP_TYPE_HASH",
         [BF_BPF_MAP_TYPE_ARRAY] = "BF_BPF_MAP_TYPE_ARRAY",
+        [BF_BPF_MAP_TYPE_PERCPU_ARRAY] = "BF_BPF_MAP_TYPE_PERCPU_ARRAY",
         [BF_BPF_MAP_TYPE_LPM_TRIE] = "BF_BPF_MAP_TYPE_LPM_TRIE",
         [BF_BPF_MAP_TYPE_RINGBUF] = "BF_BPF_MAP_TYPE_RINGBUF",
     };

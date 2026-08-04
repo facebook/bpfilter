@@ -241,6 +241,18 @@ static std::string which(const std::string &cmd)
     return {};
 }
 
+std::string hostname()
+{
+    std::array<char, HOST_NAME_MAX + 1> buf {};
+    if (gethostname(buf.data(), buf.size()) != 0) {
+        return {};
+    }
+
+    buf.back() = '\0';
+
+    return std::string(buf.data());
+}
+
 int setup(std::span<char *> args)
 {
     const struct argp argp = {.options = options.data(),
@@ -284,6 +296,7 @@ int setup(std::span<char *> args)
     if (pos != ::std::string::npos)
         config.outfile.replace(pos, pattern.size(), config.gitrev);
 
+    ::benchmark::AddCustomContext("hostname", hostname());
     ::benchmark::AddCustomContext("gitrev", config.gitrev);
     ::benchmark::AddCustomContext("gitdate", ::std::to_string(config.gitdate));
     ::benchmark::AddCustomContext("bfcli", config.bfcli);

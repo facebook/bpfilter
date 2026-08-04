@@ -57,6 +57,31 @@ set_tests_properties("check.checkstyle" PROPERTIES
     LABELS "check"
 )
 
+find_program(SG_BIN NAMES ast-grep)
+
+if(SG_BIN)
+    set(SG_CONFIG ${CMAKE_SOURCE_DIR}/tests/check/ast-grep/sgconfig.yml)
+
+    add_test(NAME "check.astgrep.test"
+        COMMAND ${SG_BIN} test --config ${SG_CONFIG}
+    )
+
+    add_test(NAME "check.astgrep"
+        COMMAND ${SG_BIN} scan --config ${SG_CONFIG}
+            ${CMAKE_SOURCE_DIR}/src/libbpfilter
+            ${CMAKE_SOURCE_DIR}/src/bfcli
+            --off=assert-pointer-params
+            --off=doxygen-prefer-backticks
+            --off=doxygen-public-functions
+            --off=no-direct-free
+            --off=single-line-comment-style
+    )
+
+    set_tests_properties("check.astgrep.test" "check.astgrep" PROPERTIES
+        LABELS "check"
+    )
+endif()
+
 add_custom_target(fixstyle
     COMMAND
         ${CLANG_FORMAT_BIN}

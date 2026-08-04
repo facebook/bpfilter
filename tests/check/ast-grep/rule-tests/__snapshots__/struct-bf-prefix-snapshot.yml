@@ -1,0 +1,52 @@
+id: struct-bf-prefix
+snapshots:
+  ? |
+    struct chain
+    {
+        int count;
+    };
+  : labels:
+    - source: |-
+        struct chain
+        {
+            int count;
+        }
+      style: primary
+      start: 0
+      end: 31
+    - source: |-
+        {
+            int count;
+        }
+      style: secondary
+      start: 13
+      end: 31
+    - source: chain
+      style: secondary
+      start: 7
+      end: 12
+  ? |
+    struct filter_rule
+    {
+        int id;
+    };
+  : labels:
+    - source: |-
+        struct filter_rule
+        {
+            int id;
+        }
+      style: primary
+      start: 0
+      end: 34
+    - source: |-
+        {
+            int id;
+        }
+      style: secondary
+      start: 19
+      end: 34
+    - source: filter_rule
+      style: secondary
+      start: 7
+      end: 18
