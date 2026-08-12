@@ -271,15 +271,15 @@ int bf_map_new_from_pack(struct bf_map **map, int dir_fd, bf_rpack_node_t node)
     if (r)
         return bf_rpack_key_err(r, "bf_map.bpf_type");
 
-    r = bf_rpack_kv_u64(node, "key_size", &_map->key_size);
+    r = bf_rpack_kv_size(node, "key_size", &_map->key_size);
     if (r)
         return bf_rpack_key_err(r, "bf_map.key_size");
 
-    r = bf_rpack_kv_u64(node, "value_size", &_map->value_size);
+    r = bf_rpack_kv_size(node, "value_size", &_map->value_size);
     if (r)
         return bf_rpack_key_err(r, "bf_map.value_size");
 
-    r = bf_rpack_kv_u64(node, "n_elems", &_map->n_elems);
+    r = bf_rpack_kv_size(node, "n_elems", &_map->n_elems);
     if (r)
         return bf_rpack_key_err(r, "bf_map.n_elems");
     if (_map->n_elems == 0)
