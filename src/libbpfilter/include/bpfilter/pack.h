@@ -451,6 +451,7 @@ int bf_rpack_u8(bf_rpack_node_t node, uint8_t *value);
 int bf_rpack_u16(bf_rpack_node_t node, uint16_t *value);
 int bf_rpack_u32(bf_rpack_node_t node, uint32_t *value);
 int bf_rpack_u64(bf_rpack_node_t node, uint64_t *value);
+int bf_rpack_size(bf_rpack_node_t node, size_t *value);
 int bf_rpack_str(bf_rpack_node_t node, char **value);
 int bf_rpack_bool(bf_rpack_node_t node, bool *value);
 int bf_rpack_bin(bf_rpack_node_t node, const void **data, size_t *data_len);
@@ -464,6 +465,7 @@ int bf_rpack_kv_u8(bf_rpack_node_t node, const char *key, uint8_t *value);
 int bf_rpack_kv_u16(bf_rpack_node_t node, const char *key, uint16_t *value);
 int bf_rpack_kv_u32(bf_rpack_node_t node, const char *key, uint32_t *value);
 int bf_rpack_kv_u64(bf_rpack_node_t node, const char *key, uint64_t *value);
+int bf_rpack_kv_size(bf_rpack_node_t node, const char *key, size_t *value);
 int bf_rpack_kv_str(bf_rpack_node_t node, const char *key, char **value);
 int bf_rpack_kv_bool(bf_rpack_node_t node, const char *key, bool *value);
 int bf_rpack_kv_bin(bf_rpack_node_t node, const char *key, const void **data,
