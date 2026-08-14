@@ -145,6 +145,9 @@ jobs:
         run: make -C $GITHUB_WORKSPACE/build coverage
 
   benchmark:
+    # Benchmarks are only run once a change has landed on main: they require
+    # the self-hosted runner, which serializes every job.
+    if: github.event_name != 'pull_request'
     runs-on: self-hosted
     # Ensure benchmarks are not run concurrently on bf-bench-3
     concurrency:
@@ -159,39 +162,17 @@ jobs:
 
       # Run bfbencher with the same cache directory for every job, so
       # results are shared.
-      # On pull requests, compare the X latest changes on main against the
-      # last commit of the PR. Otherwise, run the benchmarks up to HEAD.
-      # On job retry, the last commit of the PR will always be retried.
       - name: Run bfbencher
         env:
           # Override rich's default terminal width to prevent wrapping.
           COLUMNS: 150
-          IS_RETRY: ${{ github.run_attempt > 1 }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin main
-            BENCH_UNTIL="origin/main"
-            BENCH_INCLUDE="--include HEAD"
-            BENCH_FAIL_ON="--fail-on-significant-change worse"
-            if [ "$IS_RETRY" = "true" ]; then
-              BENCH_RETRY="--retry HEAD"
-            else
-              BENCH_RETRY=""
-            fi
-          else
-            BENCH_UNTIL="HEAD"
-            BENCH_INCLUDE=""
-            BENCH_FAIL_ON=""
-          fi
           python3 -m tests.benchmarks.bfbencher history \
-            --since 30bd49f \
-            --until $BENCH_UNTIL \
-            $BENCH_INCLUDE \
+            --since HEAD~20 \
+            --until HEAD \
             --cache-dir ~/bfbencher-cache \
             --report-path index.html \
             --pr-report-path $GITHUB_STEP_SUMMARY \
-            $BENCH_RETRY \
-            $BENCH_FAIL_ON \
             --fail-on-last-commit-failure \
             --bind-node 0 \
             --no-preempt \
@@ -205,6 +186,8 @@ jobs:
 
   doc:
     needs: [test, benchmark]
+    # benchmark is skipped on pull requests, which would skip this job too.
+    if: ${{ !cancelled() && needs.test.result == 'success' && needs.benchmark.result != 'failure' }}
     timeout-minutes: 5
     runs-on: ["8-core-ubuntu"]
     container: ghcr.io/facebook/bpfilter:fedora-44-x64
@@ -226,6 +209,7 @@ jobs:
       - name: Build
         run: make -C $GITHUB_WORKSPACE/build -j `nproc` doc
       - uses: actions/download-artifact@v8
+        if: github.event_name != 'pull_request'
         with:
           name: benchmarks-report
           path: ${{ github.workspace }}/build/doc/html/external/benchmarks/
