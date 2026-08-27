@@ -23,6 +23,7 @@ static const char *_bf_log_opt_strs[] = {
     [BF_LOG_OPT_LINK] = "link",
     [BF_LOG_OPT_INTERNET] = "internet",
     [BF_LOG_OPT_TRANSPORT] = "transport",
+    [BF_LOG_OPT_5_TUPLE] = "5-tuple",
 };
 static_assert_enum_mapping(_bf_log_opt_strs, _BF_LOG_OPT_MAX);
 

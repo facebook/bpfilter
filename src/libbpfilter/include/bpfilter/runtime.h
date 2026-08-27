@@ -90,11 +90,22 @@ enum bf_log_opt
      */
     BF_LOG_OPT_TRANSPORT,
 
+    /**
+     * Packet 5-tuple: source and destination addresses and ports, and the
+     * transport protocol.
+     */
+    BF_LOG_OPT_5_TUPLE,
+
     _BF_LOG_OPT_MAX,
 
     /** Log all available data for the hook type. */
     BF_LOG_OPT_DEFAULT = 0xFF,
 };
+
+/** Log all available packet headers. */
+#define BF_LOG_PACKET_HEADERS                                                  \
+    ((1ULL << BF_LOG_OPT_LINK) | (1ULL << BF_LOG_OPT_INTERNET) |               \
+     (1ULL << BF_LOG_OPT_TRANSPORT))
 
 /**
  * @brief Log entry type discriminator.
@@ -106,6 +117,9 @@ enum bf_log_type
 
     /** Socket address log entry (cgroup_sock_addr). */
     BF_LOG_TYPE_SOCK_ADDR,
+
+    /** Packet 5-tuple log entry (XDP, TC, NF, cgroup_skb). */
+    BF_LOG_TYPE_PACKET_5_TUPLE,
 
     _BF_LOG_TYPE_MAX,
 };
@@ -162,6 +176,24 @@ struct bf_log_sock_addr
 };
 
 /**
+ * @brief Packet 5-tuple log payload fields (XDP, TC, NF, cgroup_skb).
+ */
+struct bf_log_pkt_5_tuple
+{
+    /** Source address (4 bytes for IPv4, 16 for IPv6). */
+    bf_aligned(8) __u8 saddr[sizeof(struct in6_addr)];
+
+    /** Destination address (4 bytes for IPv4, 16 for IPv6). */
+    bf_aligned(8) __u8 daddr[sizeof(struct in6_addr)];
+
+    /** Source port in host byteorder. */
+    __u16 sport;
+
+    /** Destination port in host byteorder. */
+    __u16 dport;
+};
+
+/**
  * @brief Log structure published by a chain when the `log` action is hit.
  *
  * The structure is published into a log buffer by the chain, when a hit rule
@@ -196,11 +228,14 @@ struct bf_log
      *   byteorder.
      * - `BF_LOG_TYPE_SOCK_ADDR`: use `sock_addr` — socket address, port,
      *   and process metadata.
+     * - `BF_LOG_TYPE_PACKET_5_TUPLE`: use `pkt_5_tuple` — packet source and
+     *   destination addresses and ports.
      */
     union
     {
         struct bf_log_pkt pkt;
         struct bf_log_sock_addr sock_addr;
+        struct bf_log_pkt_5_tuple pkt_5_tuple;
     } BF_ANONYMOUS_MEMBER(payload);
 };
 

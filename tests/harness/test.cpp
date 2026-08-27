@@ -69,6 +69,28 @@ void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
     assert_int_equal(expected, r);
 }
 
+int bft_capture_log(void *ctx, void *data, size_t size)
+{
+    auto *capture = static_cast<struct bft_log_capture *>(ctx);
+    struct bf_log log = {};
+
+    assert_int_equal(sizeof(log), size);
+    std::memcpy(&log, data, sizeof(log));
+    capture->entries.push_back(log);
+
+    return 0;
+}
+
+void bft_assert_log_address(const uint8_t *actual, int family,
+                            const char *expected)
+{
+    std::array<uint8_t, sizeof(struct in6_addr)> addr = {};
+    size_t len = family == AF_INET ? sizeof(struct in_addr) : sizeof(addr);
+
+    assert_int_equal(1, inet_pton(family, expected, addr.data()));
+    assert_memory_equal(addr.data(), actual, len);
+}
+
 namespace
 {
 // TCX_PASS/TCX_DROP/TCX_NEXT are enum values in linux/bpf.h, but may conflict

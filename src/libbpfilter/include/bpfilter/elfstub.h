@@ -170,6 +170,22 @@ enum bf_elfstub_id
      */
     BF_ELFSTUB_SOCK_ADDR_LOG,
 
+    /**
+     * Log a packet 5-tuple to a ring buffer.
+     *
+     * `__u8 bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict, __u32 l3_l4_proto)`
+     *
+     * **Parameters**
+     * - `ctx`: address of the `bf_runtime` context of the program.
+     * - `rule_id`: id of the matched rule.
+     * - `verdict`: verdict of the matched rule.
+     * - `l3_l4_proto`: layer 3 and layer 4 protocols packed as
+     *   `(l3 << 16 | l4)`.
+     *
+     * **Return** 0 on success, or 1 on error.
+     */
+    BF_ELFSTUB_PKT_5_TUPLE_LOG,
+
     _BF_ELFSTUB_MAX,
 };
 

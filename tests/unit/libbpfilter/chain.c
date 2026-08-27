@@ -346,17 +346,52 @@ static void invalid_log_opts_for_hook(void **state)
 {
     (void)state;
 
-    // Per-field log options on a sock_addr hook
-    _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
-    struct bf_rule *r0 = NULL;
+    {
+        // Per-field log options on a sock_addr hook
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *r0 = NULL;
 
-    assert_ok(bf_rule_new(&r0));
-    r0->log = BF_FLAG(BF_LOG_OPT_LINK);
-    assert_ok(bf_list_add_tail(&rules, r0));
+        assert_ok(bf_rule_new(&r0));
+        r0->log = BF_LOG_PACKET_HEADERS;
+        assert_ok(bf_list_add_tail(&rules, r0));
 
-    assert_err(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
-                            BF_VERDICT_ACCEPT, NULL, &rules));
+        assert_err(bf_chain_new(&chain, "test",
+                                BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                                BF_VERDICT_ACCEPT, NULL, &rules));
+    }
+
+    {
+        // 5-tuple logging on a sock_addr hook
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *r0 = NULL;
+
+        assert_ok(bf_rule_new(&r0));
+        r0->log = BF_FLAG(BF_LOG_OPT_5_TUPLE);
+        assert_ok(bf_list_add_tail(&rules, r0));
+
+        assert_err(bf_chain_new(&chain, "test",
+                                BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
+                                BF_VERDICT_ACCEPT, NULL, &rules));
+    }
+
+    {
+        // 5-tuple is exclusive from packet layer options
+        _free_bf_chain_ struct bf_chain *chain = NULL;
+        _clean_bf_list_ bf_list rules =
+            bf_list_default(bf_rule_free, bf_rule_pack);
+        struct bf_rule *r0 = NULL;
+
+        assert_ok(bf_rule_new(&r0));
+        r0->log = BF_FLAG(BF_LOG_OPT_5_TUPLE) | BF_FLAG(BF_LOG_OPT_INTERNET);
+        assert_ok(bf_list_add_tail(&rules, r0));
+
+        assert_err(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
+                                NULL, &rules));
+    }
 }
 
 static void get_set_by_name(void **state)

@@ -36,15 +36,18 @@ private:
     bf_verdict _verdict;
     std::optional<struct bf_counter> _counters;
     uint8_t _log;
+    std::optional<uint64_t> _logRateNs;
     std::vector<Matcher> _matchers;
 
 public:
     Rule(bf_verdict verdict,
          std::optional<struct bf_counter> counters = std::nullopt,
-         uint8_t log = 0, std::vector<Matcher> matchers = {}):
+         uint8_t log = 0, std::vector<Matcher> matchers = {},
+         std::optional<uint64_t> logRateNs = std::nullopt):
         _verdict {verdict},
         _counters {counters},
         _log {log},
+        _logRateNs {logRateNs},
         _matchers {std::move(matchers)}
     {}
 
@@ -64,6 +67,7 @@ public:
             throw std::runtime_error("failed to create bf_rule");
 
         rule->log = _log;
+        rule->log_rate_ns = _logRateNs.value_or(0);
         rule->has_counters = _counters.has_value();
         rule->verdict = _verdict;
 
