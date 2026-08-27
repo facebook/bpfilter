@@ -78,6 +78,16 @@ int bft_matcher_test_teardown(void **state);
 void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
                          const bft::Packet &pkt, int expected);
 
+struct bft_log_capture
+{
+    std::vector<struct bf_log> entries;
+};
+
+int bft_capture_log(void *ctx, void *data, size_t size);
+
+void bft_assert_log_address(const uint8_t *actual, int family,
+                            const char *expected);
+
 /**
  * @brief Encode a port number as a 2-byte big-endian payload.
  *

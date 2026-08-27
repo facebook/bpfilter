@@ -427,15 +427,29 @@ int bf_packet_gen_inline_log(struct bf_program *program,
     EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
     EMIT(program, BPF_MOV64_IMM(BPF_REG_2, rule->index));
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log));
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_4, rule->verdict));
 
-    // Pack l3_proto and l4_proto
-    EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_7));
-    EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_5, 16));
-    EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_5, BPF_REG_8));
+    if (rule->log == BF_FLAG(BF_LOG_OPT_5_TUPLE)) {
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->verdict));
 
-    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_LOG);
+        // Pack l3_proto and l4_proto
+        EMIT(program, BPF_MOV64_REG(BPF_REG_4, BPF_REG_7));
+        EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_4, 16));
+        EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_4, BPF_REG_8));
+
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_5_TUPLE_LOG);
+    } else {
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_3, rule->log == BF_LOG_OPT_DEFAULT ?
+                                                   BF_LOG_PACKET_HEADERS :
+                                                   rule->log));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_4, rule->verdict));
+
+        // Pack l3_proto and l4_proto
+        EMIT(program, BPF_MOV64_REG(BPF_REG_5, BPF_REG_7));
+        EMIT(program, BPF_ALU64_IMM(BPF_LSH, BPF_REG_5, 16));
+        EMIT(program, BPF_ALU64_REG(BPF_OR, BPF_REG_5, BPF_REG_8));
+
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_PKT_LOG);
+    }
 
     return 0;
 }

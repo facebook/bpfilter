@@ -5,7 +5,9 @@
 
 #pragma once
 
+#include <cstring>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 extern "C" {
@@ -38,6 +40,15 @@ public:
         _op {op},
         _payload {std::move(payload)},
         _negate {negate} {};
+
+    static Matcher alwaysMatch()
+    {
+        float probability = 100.0f;
+        std::vector<uint8_t> payload(sizeof(probability));
+
+        std::memcpy(payload.data(), &probability, sizeof(probability));
+        return {BF_MATCHER_META_PROBABILITY, BF_MATCHER_EQ, std::move(payload)};
+    }
 
     [[nodiscard]] bf_matcher_type type() const
     {

@@ -677,6 +677,55 @@ static void _bf_chain_log_sock_addr(const struct bf_log *log)
                   bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
 }
 
+static void _bf_chain_log_5_tuple(const struct bf_log *log)
+{
+    char src_addr[INET6_ADDRSTRLEN];
+    char dst_addr[INET6_ADDRSTRLEN];
+    const char *protocol;
+    int family;
+
+    assert(log);
+
+    if (log->l3_proto == ETH_P_IP) {
+        family = AF_INET;
+    } else if (log->l3_proto == ETH_P_IPV6) {
+        family = AF_INET6;
+    } else {
+        (void)fprintf(stdout, "  5-tuple   : <unknown protocol 0x%04x>\n",
+                      log->l3_proto);
+        return;
+    }
+
+    inet_ntop(family, log->pkt_5_tuple.saddr, src_addr, sizeof(src_addr));
+    inet_ntop(family, log->pkt_5_tuple.daddr, dst_addr, sizeof(dst_addr));
+    protocol = bf_ipproto_to_str(log->l4_proto);
+    /* Tuple logging only emits TCP or UDP records, both of which are known to
+     * bf_ipproto_to_str(). */
+
+    (void)fprintf(stdout, "  5-tuple   : %s%s%s ",
+                  bf_logger_get_color(BF_COLOR_LIGHT_MAGENTA, BF_STYLE_BOLD),
+                  protocol ?: "unknown",
+                  bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+
+    if (family == AF_INET6) {
+        (void)fprintf(stdout, "%s[%s]:%u%s → %s[%s]:%u%s\n",
+                      bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_BOLD),
+                      src_addr, log->pkt_5_tuple.sport,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
+                      bf_logger_get_color(BF_COLOR_LIGHT_CYAN, BF_STYLE_BOLD),
+                      dst_addr, log->pkt_5_tuple.dport,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+    } else {
+        (void)fprintf(stdout, "%s%s:%u%s → %s%s:%u%s\n",
+                      bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD),
+                      src_addr, log->pkt_5_tuple.sport,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET),
+                      bf_logger_get_color(BF_COLOR_CYAN, BF_STYLE_BOLD),
+                      dst_addr, log->pkt_5_tuple.dport,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+    }
+}
+
 void bfc_print_log(const struct bf_log *log)
 {
     assert(log);
@@ -694,6 +743,9 @@ void bfc_print_log(const struct bf_log *log)
         break;
     case BF_LOG_TYPE_SOCK_ADDR:
         _bf_chain_log_sock_addr(log);
+        break;
+    case BF_LOG_TYPE_PACKET_5_TUPLE:
+        _bf_chain_log_5_tuple(log);
         break;
     default:
         break;

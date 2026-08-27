@@ -152,6 +152,7 @@ bf_add_e2e_shell_test(e2e hooks/cgroup_sock_addr_sendmsg6.sh ROOT)
 bf_add_e2e_shell_test(e2e rulesets/rulesets.sh ROOT)
 
 bf_add_e2e_c_test(verdicts/next.cpp)
+bf_add_e2e_c_test(actions/log_5_tuple.cpp)
 
 bf_add_e2e_c_test(matchers/icmp_code.cpp)
 bf_add_e2e_c_test(matchers/icmp_type.cpp)

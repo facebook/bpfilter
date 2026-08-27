@@ -20,6 +20,8 @@ DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp log NEXT"
 ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp log REDIRECT 1 in"
 ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_TC_INGRESS ACCEPT rule ip4.proto icmp log mark 0x1 DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto tcp log 5-tuple DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto tcp log 5-tuple every 1s DROP"
 # log every <frequency>: integer and float values, with and without headers
 ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log every 1s DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log every 500ms DROP"
@@ -32,6 +34,10 @@ ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.
 (! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,ip DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,,internet DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log @DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto tcp log 5-tuple,link DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto tcp log link,5-tuple DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_XDP ACCEPT rule ip4.proto tcp log 5_tuple DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain c1 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=/sys/fs/cgroup} ACCEPT rule meta.l4_proto tcp log 5-tuple DROP")
 
 make_sandbox
 

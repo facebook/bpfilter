@@ -153,6 +153,7 @@ static int _bf_rule_has_incompatible_matchers(const struct bf_chain *chain,
 
 static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
 {
+    const uint8_t tuple = BF_FLAG(BF_LOG_OPT_5_TUPLE);
     int r;
 
     assert(rule);
@@ -168,6 +169,13 @@ static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
             return r;
 
         rule->disabled = r;
+    }
+
+    if (rule->log != BF_LOG_OPT_DEFAULT && (rule->log & tuple) &&
+        rule->log != tuple) {
+        return bf_err_r(
+            -EINVAL,
+            "5-tuple logging can't be combined with packet layer options");
     }
 
     if (rule->log && rule->log != BF_LOG_OPT_DEFAULT &&
