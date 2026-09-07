@@ -5,6 +5,49 @@
 
 make_sandbox
 
+# A rule referencing multiple grouped sets stays disabled until every set is
+# non-empty, and follows each emptiness transition after a single update.
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set blocked_ips0 (ip4.saddr) in {}
+    set blocked_ips1 (ip4.saddr) in {}
+    rule
+        (ip4.saddr) in blocked_ips0
+        (ip4.saddr) in blocked_ips1
+        counter
+        DROP
+"
+
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+test "$(get_counter test_xdp 0)" = "0"
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips0 \
+    --add ${HOST_IP_ADDR}
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+test "$(get_counter test_xdp 0)" = "0"
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips1 \
+    --add ${HOST_IP_ADDR}
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "1"
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips1 \
+    --remove ${HOST_IP_ADDR}
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+test "$(get_counter test_xdp 0)" = "1"
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name blocked_ips1 \
+    --add ${HOST_IP_ADDR}
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "2"
+
 # Adding new elements
 ${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {

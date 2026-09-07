@@ -271,7 +271,7 @@ int bfc_chain_update_set(const struct bfc_opts *opts)
     _free_bf_set_ struct bf_set *to_remove = NULL;
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    struct bf_set *dest_set = NULL;
+    const struct bf_set *dest_set = NULL;
     int r;
 
     if (bf_list_is_empty(&opts->set_add) && bf_list_is_empty(&opts->set_remove))

@@ -76,8 +76,8 @@ struct bf_set
  * @param n_comps Number of components in `key`.
  * @return 0 on success, or a negative error value on failure.
  */
-int bf_set_new(struct bf_set **set, const char *name, enum bf_matcher_type *key,
-               size_t n_comps);
+int bf_set_new(struct bf_set **set, const char *name,
+               const enum bf_matcher_type *key, size_t n_comps);
 
 /**
  * @brief Allocate and initialise a new set from a raw key and payload values.
@@ -104,6 +104,16 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
  * @return 0 on success, or a negative errno value on failure.
  */
 int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node);
+
+/**
+ * @brief Allocate and initialise a set as a copy of another set.
+ *
+ * @param dest Destination set. The caller owns the object on success. Can't be
+ *        NULL.
+ * @param src Set to copy. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_set_new_from_copy(struct bf_set **dest, const struct bf_set *src);
 
 void bf_set_free(struct bf_set **set);
 
