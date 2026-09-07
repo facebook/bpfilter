@@ -254,6 +254,25 @@ static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
     return 0;
 }
 
+static int _bf_chain_validate_rules(struct bf_chain *chain)
+{
+    int r;
+
+    assert(chain);
+
+    chain->flags = 0;
+
+    bf_list_foreach (&chain->rules, rule_node) {
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        r = _bf_chain_check_rule(chain, rule);
+        if (r)
+            return r;
+    }
+
+    return 0;
+}
+
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
                  enum bf_verdict policy, bf_list *sets, bf_list *rules)
 {
@@ -276,7 +295,6 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     if (!_chain->name)
         return -ENOMEM;
 
-    _chain->flags = 0;
     _chain->hook = hook;
     _chain->policy = policy;
 
@@ -291,10 +309,11 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
 
         rule->index = ridx++;
-        r = _bf_chain_check_rule(_chain, rule);
-        if (r)
-            return r;
     }
+
+    r = _bf_chain_validate_rules(_chain);
+    if (r)
+        return r;
 
     *chain = TAKE_PTR(_chain);
 
@@ -456,8 +475,9 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set)
     return bf_list_add_tail(&chain->sets, set);
 }
 
-struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
-                                            const struct bf_matcher *matcher)
+const struct bf_set *
+bf_chain_get_set_for_matcher(const struct bf_chain *chain,
+                             const struct bf_matcher *matcher)
 {
     assert(chain);
     assert(matcher);
@@ -472,8 +492,8 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
     return bf_list_get_at(&chain->sets, set_id);
 }
 
-struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain,
-                                        const char *set_name)
+const struct bf_set *bf_chain_get_set_by_name(const struct bf_chain *chain,
+                                              const char *set_name)
 {
     assert(chain);
     assert(set_name);
@@ -485,6 +505,50 @@ struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain,
     }
 
     return NULL;
+}
+
+int bf_chain_apply_set_delta(struct bf_chain *chain, const char *set_name,
+                             const struct bf_set *to_add,
+                             const struct bf_set *to_remove)
+{
+    _free_bf_set_ struct bf_set *add_copy = NULL;
+    _free_bf_set_ struct bf_set *remove_copy = NULL;
+    struct bf_set *set;
+    int r;
+
+    assert(chain);
+    assert(set_name);
+    assert(to_add);
+    assert(to_remove);
+
+    set = (struct bf_set *)bf_chain_get_set_by_name(chain, set_name);
+    if (!set)
+        return bf_err_r(-ENOENT, "set '%s' does not exist", set_name);
+
+    if (!bf_set_same_key(set, to_add) || !bf_set_same_key(set, to_remove))
+        return bf_err_r(-EINVAL, "set key format mismatch");
+
+    r = bf_set_new_from_copy(&add_copy, to_add);
+    if (r)
+        return r;
+
+    r = bf_set_new_from_copy(&remove_copy, to_remove);
+    if (r)
+        return r;
+
+    r = bf_set_add_many(set, &add_copy);
+    if (r)
+        return bf_err_r(r, "failed to calculate set union");
+
+    r = bf_set_remove_many(set, &remove_copy);
+    if (r)
+        return bf_err_r(r, "failed to calculate set difference");
+
+    r = _bf_chain_validate_rules(chain);
+    if (r)
+        return bf_err_r(r, "failed to validate chain after set update");
+
+    return 0;
 }
 
 int bf_chain_new_from_copy(struct bf_chain **dest, const struct bf_chain *src)

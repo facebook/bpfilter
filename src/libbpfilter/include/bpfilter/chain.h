@@ -153,8 +153,9 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set);
  * @return The set `matcher` filters on, or NULL if the set can't be found or
  *         if `matcher->type` is not `BF_MATCHER_SET`.
  */
-struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
-                                            const struct bf_matcher *matcher);
+const struct bf_set *
+bf_chain_get_set_for_matcher(const struct bf_chain *chain,
+                             const struct bf_matcher *matcher);
 
 /**
  * @brief Get a set from the chain by name.
@@ -166,8 +167,23 @@ struct bf_set *bf_chain_get_set_for_matcher(const struct bf_chain *chain,
  * @param set_name Name of the set to retrieve. Can't be NULL.
  * @return Pointer to the set, or NULL if not found.
  */
-struct bf_set *bf_chain_get_set_by_name(struct bf_chain *chain,
-                                        const char *set_name);
+const struct bf_set *bf_chain_get_set_by_name(const struct bf_chain *chain,
+                                              const char *set_name);
+
+/**
+ * @brief Apply element additions and removals to a set owned by a chain.
+ *
+ * Their key formats must match the set named by `set_name`.
+ *
+ * @param chain Chain containing the set to update. Can't be NULL.
+ * @param set_name Name of the set to update. Can't be NULL.
+ * @param to_add Set containing elements to add. Can't be NULL.
+ * @param to_remove Set containing elements to remove. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_chain_apply_set_delta(struct bf_chain *chain, const char *set_name,
+                             const struct bf_set *to_add,
+                             const struct bf_set *to_remove);
 
 /** Allocate and initialize a chain as a copy of another chain.
  *
