@@ -16,7 +16,6 @@
 #include "bpfilter/helper.h"
 #include "bpfilter/hook.h"
 #include "bpfilter/logger.h"
-#include "bpfilter/pack.h"
 #include "bpfilter/set.h"
 #include "cgen/cgen.h"
 #include "cgen/handle.h"
@@ -448,49 +447,12 @@ int bf_chain_update(const struct bf_chain *chain)
     return bf_cgen_update(cgen, &chain_copy, 0, &lock);
 }
 
-static int copy_set(struct bf_set **dest, const struct bf_set *src)
-{
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
-    const void *data;
-    size_t data_len;
-    int r;
-
-    r = bf_wpack_new(&wpack);
-    if (r)
-        return r;
-
-    bf_wpack_open_object(wpack, "set");
-    r = bf_set_pack(src, wpack);
-    if (r)
-        return r;
-    bf_wpack_close_object(wpack);
-
-    r = bf_wpack_get_data(wpack, &data, &data_len);
-    if (r)
-        return r;
-
-    r = bf_rpack_new(&rpack, data, data_len);
-    if (r)
-        return r;
-
-    bf_rpack_node_t child;
-    r = bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &child);
-    if (r)
-        return r;
-
-    return bf_set_new_from_pack(dest, child);
-}
-
 int bf_chain_update_set(const char *name, const struct bf_set *to_add,
                         const struct bf_set *to_remove)
 {
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
     _free_bf_chain_ struct bf_chain *new_chain = NULL;
-    struct bf_set *dest_set = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
-    _free_bf_set_ struct bf_set *add_copy = NULL;
-    _free_bf_set_ struct bf_set *remove_copy = NULL;
     int r;
 
     assert(name);
@@ -512,25 +474,9 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
     if (r)
         return r;
 
-    dest_set = bf_chain_get_set_by_name(new_chain, to_add->name);
-    if (!dest_set)
-        return bf_err_r(-ENOENT, "set '%s' does not exist", to_add->name);
-
-    r = copy_set(&add_copy, to_add);
+    r = bf_chain_apply_set_delta(new_chain, to_add->name, to_add, to_remove);
     if (r)
         return r;
-
-    r = copy_set(&remove_copy, to_remove);
-    if (r)
-        return r;
-
-    r = bf_set_add_many(dest_set, &add_copy);
-    if (r)
-        return bf_err_r(r, "failed to calculate set union");
-
-    r = bf_set_remove_many(dest_set, &remove_copy);
-    if (r)
-        return bf_err_r(r, "failed to calculate set difference");
 
     r = bf_cgen_update(cgen, &new_chain,
                        BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS), &lock);

@@ -201,7 +201,7 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             const char *in_str = negate ? "not in" : "in";
 
             if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
-                struct bf_set *set =
+                const struct bf_set *set =
                     bf_chain_get_set_for_matcher(chain, matcher);
 
                 (void)fprintf(stdout, "        (");

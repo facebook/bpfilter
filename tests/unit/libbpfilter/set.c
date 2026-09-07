@@ -163,6 +163,7 @@ static void pack_and_unpack(void **state)
 {
     _free_bf_set_ struct bf_set *source = NULL;
     _free_bf_set_ struct bf_set *destination = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     _free_bf_rpack_ bf_rpack_t *rpack = NULL;
     bf_rpack_node_t node;
@@ -185,6 +186,9 @@ static void pack_and_unpack(void **state)
     assert_ok(bf_set_new_from_pack(&destination, node));
 
     assert_true(bft_set_eq_ordered(source, destination));
+
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    assert_true(bft_set_eq_ordered(source, copy));
 }
 
 static void pack_and_unpack_empty(void **state)
