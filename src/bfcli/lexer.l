@@ -42,6 +42,7 @@
 %s STATE_MATCHER_ICMP_TYPE
 %s STATE_MATCHER_ICMP_CODE
 %s STATE_MATCHER_TCP_FLAGS
+%s STATE_MATCHER_META_LIMIT
 
 int             (-|(0x))?[0-9a-zA-Z]+
 float           [0-9]+(\.[0-9]+)?
@@ -180,6 +181,16 @@ meta\.flow_hash     { BEGIN(STATE_MATCHER_META_FLOW_HASH); yylval.sval = strdup(
 <STATE_MATCHER_META_FLOW_HASH>{
     (eq|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}(-{int})? {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+meta\.limit  { BEGIN(STATE_MATCHER_META_LIMIT); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_LIMIT>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int}\/[a-zA-Z] {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
