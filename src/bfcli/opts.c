@@ -297,7 +297,6 @@ static void _bfc_opts_help(struct argp_state *state, const char *arg,
     (void)opts;
 
     argp_state_help(state, state->out_stream, ARGP_HELP_STD_HELP);
-    exit(0);
 };
 
 static void _bfc_opts_usage(struct argp_state *state, const char *arg,
@@ -306,8 +305,8 @@ static void _bfc_opts_usage(struct argp_state *state, const char *arg,
     (void)arg;
     (void)opts;
 
-    argp_state_help(state, state->out_stream, ARGP_HELP_STD_USAGE);
-    exit(0);
+    argp_state_help(state, state->out_stream,
+                    ARGP_HELP_SHORT_USAGE | ARGP_HELP_EXIT_OK);
 };
 
 static void _bfc_opts_version(struct argp_state *state, const char *arg,
