@@ -3,6 +3,9 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <arpa/inet.h>
+#include <errno.h>
+
 #include <bpfilter/chain.h>
 #include <bpfilter/core/list.h>
 #include <bpfilter/helper.h>
@@ -141,6 +144,69 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_true(r0->disabled);
     assert_false(r1->disabled);
     assert_int_equal(chain->flags & BF_FLAG(BF_CHAIN_LOG), 0);
+}
+
+static void apply_set_delta_updates_derived_state(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+    _free_bf_set_ struct bf_set *invalid_delta = NULL;
+    struct bf_rule *rule = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_TCP_SPORT};
+
+    enum bf_matcher_type invalid_key[] = {BF_MATCHER_UDP_SPORT};
+
+    uint32_t set_index = 0;
+    uint16_t port = htons(80);
+    uint8_t nexthdr = IPPROTO_TCP;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "set", key, ARRAY_SIZE(key)));
+    assert_ok(bf_list_push(&sets, (void **)&set));
+
+    assert_ok(bf_set_new(&to_add, "set", key, ARRAY_SIZE(key)));
+    assert_ok(bf_set_add_elem(to_add, &port));
+    assert_ok(bf_set_new(&to_remove, "set", key, ARRAY_SIZE(key)));
+
+    assert_ok(bf_rule_new(&rule));
+    rule->log = BF_LOG_OPT_DEFAULT;
+    rule->log_rate_ns = 1;
+
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index), false));
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
+                                  &nexthdr, sizeof(nexthdr), false));
+    assert_ok(bf_list_add_tail(&rules, rule));
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
+                           &sets, &rules));
+    assert_true(rule->disabled);
+    assert_int_equal(chain->flags, 0);
+
+    assert_ok(bf_chain_apply_set_delta(chain, "set", to_add, to_remove));
+    assert_false(rule->disabled);
+    assert_int_equal(
+        chain->flags,
+        BF_FLAGS(BF_CHAIN_LOG, BF_CHAIN_LOG_RATELIMIT, BF_CHAIN_STORE_NEXTHDR));
+
+    assert_ok(bf_chain_apply_set_delta(chain, "set", to_remove, to_add));
+    assert_true(rule->disabled);
+    assert_int_equal(chain->flags, 0);
+
+    assert_int_equal(
+        bf_chain_apply_set_delta(chain, "missing", to_add, to_remove), -ENOENT);
+
+    assert_ok(bf_set_new(&invalid_delta, "set", invalid_key,
+                         ARRAY_SIZE(invalid_key)));
+    assert_int_equal(
+        bf_chain_apply_set_delta(chain, "set", invalid_delta, to_remove),
+        -EINVAL);
 }
 
 static void incompatible_matchers_disable_rule(void **state)
@@ -412,6 +478,7 @@ int main(void)
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
+        cmocka_unit_test(apply_set_delta_updates_derived_state),
         cmocka_unit_test(incompatible_matchers_disable_rule),
         cmocka_unit_test(sock_addr_log_flag),
         cmocka_unit_test(invalid_log_opts_for_hook),
