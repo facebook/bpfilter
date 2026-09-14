@@ -9,8 +9,6 @@
 #include <linux/bpf_common.h>
 #include <linux/if_ether.h>
 #include <linux/in.h> // NOLINT
-#include <linux/tcp.h>
-#include <linux/udp.h>
 
 #include <endian.h>
 #include <errno.h>
@@ -25,7 +23,6 @@
 #include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
 #include "cgen/runtime.h"
-#include "cgen/swich.h"
 #include "filter.h"
 
 /** @todo Add support for input and output interface filtering based on the
@@ -60,48 +57,6 @@ _bf_matcher_generate_meta_probability(struct bf_program *program,
     }
 
     return 0;
-}
-
-static int _bf_matcher_generate_meta_port(struct bf_program *program,
-                                          const struct bf_matcher *matcher)
-{
-    _clean_bf_swich_ struct bf_swich swich;
-    uint16_t *port = (uint16_t *)bf_matcher_payload(matcher);
-    int r;
-
-    // Load L4 header address into r6
-    EMIT(program,
-         BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr)));
-
-    // Get the packet's port into r1
-    swich = bf_swich_get(program, BPF_REG_8);
-    EMIT_SWICH_OPTION(
-        &swich, IPPROTO_TCP,
-        BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
-                    bf_matcher_get_type(matcher) == BF_MATCHER_META_SPORT ?
-                        offsetof(struct tcphdr, source) :
-                        offsetof(struct tcphdr, dest)));
-    EMIT_SWICH_OPTION(
-        &swich, IPPROTO_UDP,
-        BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_6,
-                    bf_matcher_get_type(matcher) == BF_MATCHER_META_SPORT ?
-                        offsetof(struct udphdr, source) :
-                        offsetof(struct udphdr, dest)));
-    EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_1, 0));
-
-    r = bf_swich_generate(&swich);
-    if (r)
-        return bf_err_r(r, "failed to generate swich for meta.(s|d)port");
-
-    // If r1 == 0: no TCP nor UDP header found, jump to the next rule
-    EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0));
-
-    if (bf_matcher_get_op(matcher) == BF_MATCHER_RANGE) {
-        EMIT(program, BPF_BSWAP(BPF_REG_1, 16));
-        return bf_cmp_range(program, matcher, port[0], port[1], BPF_REG_1);
-    }
-
-    return bf_cmp_value(program, matcher, port, 2, BPF_REG_1);
 }
 
 static int
@@ -172,11 +127,10 @@ int bf_matcher_generate_meta(struct bf_program *program,
                             BPF_REG_8);
     case BF_MATCHER_META_PROBABILITY:
         return _bf_matcher_generate_meta_probability(program, matcher);
-    case BF_MATCHER_META_SPORT:
-    case BF_MATCHER_META_DPORT:
-        return _bf_matcher_generate_meta_port(program, matcher);
     case BF_MATCHER_META_FLOW_PROBABILITY:
         return _bf_matcher_generate_meta_flow_probability(program, matcher);
+    case BF_MATCHER_META_SPORT:
+    case BF_MATCHER_META_DPORT:
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
         return bf_err_r(-ENOTSUP,
