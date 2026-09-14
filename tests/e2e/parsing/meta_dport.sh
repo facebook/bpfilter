@@ -3,6 +3,8 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (meta.dport) in { 80; 443 } counter DROP"
+
 ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.dport eq 0 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.dport eq 40 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule meta.dport eq 65535 counter DROP"

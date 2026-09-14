@@ -564,6 +564,12 @@ static void get_ops(void **state)
     ops = bf_matcher_get_ops(BF_MATCHER_TCP_DPORT, BF_MATCHER_RANGE);
     assert_non_null(ops);
 
+    ops = bf_matcher_get_ops(BF_MATCHER_META_SPORT, BF_MATCHER_IN);
+    assert_non_null(ops);
+
+    ops = bf_matcher_get_ops(BF_MATCHER_META_DPORT, BF_MATCHER_IN);
+    assert_non_null(ops);
+
     // Not all combinations are valid, so some may return NULL
     // Just verify the function doesn't crash
     for (enum bf_matcher_type type = 0; type < _BF_MATCHER_TYPE_MAX; ++type) {

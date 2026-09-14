@@ -6,6 +6,7 @@
 #include "Chain.hpp"
 #include "Matcher.hpp"
 #include "Rule.hpp"
+#include "Set.hpp"
 #include "test.hpp"
 
 extern "C" {
@@ -59,8 +60,8 @@ static void meta_dport_eq(void **state)
             bft::TCP {.sport = 12345, .dport = 443},
         test->verdictAccept());
 
-    // ICMP is neither TCP nor UDP: meta_dport sets R1=0 and jumps to the next
-    // rule, so the drop rule must not fire regardless of the port value.
+    // ICMP is neither TCP nor UDP, so it has no meta destination port and the
+    // drop rule must not fire.
     bft_assert_prog_run(
         "test_meta_dport", test->hook(),
         bft::Ethernet() /
@@ -167,11 +168,82 @@ static void meta_dport_range(void **state)
     bft_assert_counter_eq("test_meta_dport", 0, 4, -1);
 }
 
+static void meta_dport_in(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+    auto ip4_elem = std::vector<uint8_t> {192, 0, 2, 2};
+    auto port = bft_port_be(80);
+
+    ip4_elem.insert(ip4_elem.end(), port.begin(), port.end());
+
+    auto ip4_set = bf::Set({BF_MATCHER_IP4_DADDR, BF_MATCHER_META_DPORT});
+    ip4_set << ip4_elem;
+
+    BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
+                  << std::move(ip4_set)
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
+                                           {0, 0, 0, 0})}));
+
+    bft_assert_prog_run(
+        "test_meta_dport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_meta_dport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::UDP {.sport = 12345, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_meta_dport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 81},
+        test->verdictAccept());
+
+    bft_assert_prog_run(
+        "test_meta_dport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::ICMPv4 {.type = 0, .code = 0},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_meta_dport", 0, 2, -1);
+
+    auto ip6_elem = bft_ipv6_addr("2001:db8::2");
+    port = bft_port_be(443);
+    ip6_elem.insert(ip6_elem.end(), port.begin(), port.end());
+
+    auto ip6_set = bf::Set({BF_MATCHER_IP6_DADDR, BF_MATCHER_META_DPORT});
+    ip6_set << ip6_elem;
+
+    BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
+                  << std::move(ip6_set)
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
+                                           {0, 0, 0, 0})}));
+
+    bft_assert_prog_run(
+        "test_meta_dport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv6 {.saddr = "2001:db8::1", .daddr = "2001:db8::2"} /
+            bft::TCP {.sport = 12345, .dport = 443},
+        test->verdictDrop());
+
+    bft_assert_counter_eq("test_meta_dport", 0, 1, -1);
+}
+
 int main()
 {
     auto suite = MatcherTestsSuite(BF_MATCHER_META_DPORT);
 
     suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_EQ, meta_dport_eq);
+    suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_IN, meta_dport_in);
     suite << MatcherTest(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
                          meta_dport_range);
 
