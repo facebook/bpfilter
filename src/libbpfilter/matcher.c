@@ -810,6 +810,21 @@ static void _bf_print_icmpv6_type(const void *payload)
 static_assert(_BF_HOOK_MAX <= 8 * sizeof(uint32_t),
               "too many hooks for unsupported_hooks bitmask");
 
+/* TCP (RFC 9293, section 3.1) and UDP (RFC 768, "Format") define their
+ * first 32 bits identically:
+ *
+ *     | Source Port (16 bits) | Destination Port (16 bits) |
+ *
+ * https://www.rfc-editor.org/rfc/rfc9293.html#section-3.1
+ * https://www.rfc-editor.org/rfc/rfc768.html
+ *
+ * Packet META port matching relies on this common wire layout. */
+static_assert(offsetof(struct tcphdr, source) ==
+                  offsetof(struct udphdr, source),
+              "TCP and UDP source port offsets must match");
+static_assert(offsetof(struct tcphdr, dest) == offsetof(struct udphdr, dest),
+              "TCP and UDP destination port offsets must match");
+
 // Comma-separated cgroup_sock_addr hook lists, for use inside `BF_FLAGS()`.
 #define _BF_HOOKS_CGROUP_SOCK_ADDR_IP4                                         \
     BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4, BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4
@@ -850,6 +865,9 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_SPORT] =
         {
             .layer = BF_MATCHER_NO_LAYER,
+            .hdr_payload_size = sizeof(uint16_t),
+            // TCP and UDP share this offset, as asserted above.
+            .hdr_payload_offset = offsetof(struct tcphdr, source),
             .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
             .ops =
                 {
@@ -863,6 +881,9 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
     [BF_MATCHER_META_DPORT] =
         {
             .layer = BF_MATCHER_NO_LAYER,
+            .hdr_payload_size = sizeof(uint16_t),
+            // TCP and UDP share this offset, as asserted above.
+            .hdr_payload_offset = offsetof(struct tcphdr, dest),
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
