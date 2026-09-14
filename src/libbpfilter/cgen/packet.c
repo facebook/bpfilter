@@ -368,7 +368,7 @@ static int _bf_matcher_pkt_generate_set(struct bf_program *program,
                             bf_matcher_type_to_str(type));
         }
 
-        r = bf_stub_load_header(program, meta, BPF_REG_6);
+        r = _bf_matcher_pkt_prepare_header(program, type, meta);
         if (r)
             return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
 

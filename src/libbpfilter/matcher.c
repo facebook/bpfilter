@@ -873,6 +873,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
                                    _bf_print_l4_port_range),
@@ -887,6 +889,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
             .ops =
                 {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint16_t),
+                                   _bf_parse_l4_port, _bf_print_l4_port),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint16_t),
                                    _bf_parse_l4_port, _bf_print_l4_port),
                     BF_MATCHER_OPS(BF_MATCHER_RANGE, 2 * sizeof(uint16_t),
                                    _bf_parse_l4_port_range,
