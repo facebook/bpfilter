@@ -519,6 +519,27 @@ Here is an example:
         }
         ACCEPT
 
+Port ranges
+~~~~~~~~~~~
+
+Sets with a single port component (``tcp.sport``, ``tcp.dport``, ``udp.sport``, or ``udp.dport``) support inclusive ranges written as ``START-END``. Both bounds must be between 0 and 65535, and the start must not exceed the end.
+
+Ranges can appear anywhere in the set and can be mixed with individual ports. For example:
+
+.. code:: shell
+
+    set ports (tcp.dport) in { 11; 22; 27-30 }
+
+This is equivalent to:
+
+.. code:: shell
+
+    set ports (tcp.dport) in { 11; 22; 27; 28; 29; 30 }
+
+Each range is expanded into individual set elements. Duplicate ports, including those introduced by overlapping ranges, are stored only once. Ranges are supported in both named and anonymous sets.
+
+Port ranges are not supported in multi-component set keys. For example, ``(ip4.saddr, tcp.dport) in { 192.168.1.1, 80-82 }`` is rejected.
+
 .. warning::
 
     While the IPv4 and IPv6 ``snet`` and ``dnet`` matchers are supported in sets, they can be mixed with other matchers. A set key can be a single ``ip4.snet``, ``ip4.dnet``, ``ip6.snet``, ``ip6.dnet``, or a combination of non-network matchers.

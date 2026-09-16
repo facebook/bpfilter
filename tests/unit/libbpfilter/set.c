@@ -281,6 +281,73 @@ static void new_from_raw_multiple_keys(void **state)
     assert_int_equal(bf_hashset_size(&set->elems), 2);
 }
 
+static void new_from_raw_port_range(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Range at the end
+    assert_ok(bf_set_new_from_raw(&set, "test_range_end", "(tcp.dport)",
+                                  "{11; 22; 27-30}"));
+    assert_non_null(set);
+    assert_int_equal(set->n_comps, 1);
+    assert_int_equal(set->key[0], BF_MATCHER_TCP_DPORT);
+    assert_int_equal(bf_hashset_size(&set->elems), 6);
+
+    bf_set_free(&set);
+
+    // Range at the beginning
+    assert_ok(bf_set_new_from_raw(&set, "test_range_begin", "(tcp.dport)",
+                                  "{27-30; 40; 50}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 6);
+
+    bf_set_free(&set);
+
+    // Range in the middle
+    assert_ok(bf_set_new_from_raw(&set, "test_range_middle", "(tcp.dport)",
+                                  "{11; 27-30; 50}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 6);
+}
+
+static void new_from_raw_port_range_boundaries(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&set, "test_low", "(tcp.dport)", "{0-1}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 2);
+
+    bf_set_free(&set);
+
+    assert_ok(
+        bf_set_new_from_raw(&set, "test_high", "(tcp.dport)", "{65535-65535}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+}
+
+static void new_from_raw_port_range_invalid(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{27-17}"));
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{27-}"));
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{-17}"));
+    assert_err(bf_set_new_from_raw(&set, "test", "(tcp.dport)", "{27-30, 80}"));
+}
+
+static void new_from_raw_port_range_multiple_keys(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    assert_err(bf_set_new_from_raw(&set, "test", "(ip4.daddr, tcp.dport)",
+                                   "{1.2.3.4, 80-82}"));
+}
+
 static void new_from_raw_invalid(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -476,6 +543,10 @@ int main(void)
         cmocka_unit_test(dump_empty),
         cmocka_unit_test(new_from_raw),
         cmocka_unit_test(new_from_raw_multiple_keys),
+        cmocka_unit_test(new_from_raw_port_range),
+        cmocka_unit_test(new_from_raw_port_range_boundaries),
+        cmocka_unit_test(new_from_raw_port_range_invalid),
+        cmocka_unit_test(new_from_raw_port_range_multiple_keys),
         cmocka_unit_test(new_from_raw_invalid),
         cmocka_unit_test(add_many_basic),
         cmocka_unit_test(add_many_mismatched_key_count),
