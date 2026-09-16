@@ -41,6 +41,11 @@ SHORT_SHA_LEN = 7
 ureg: pint.UnitRegistry = pint.UnitRegistry()
 
 
+def is_wip(ref: str) -> bool:
+    """Return True if `ref` is the sentinel for the uncommitted changes."""
+    return ref.lower() == "wip"
+
+
 class Stats:
     """Tracks benchmark execution statistics for a host."""
 
@@ -389,6 +394,10 @@ class Executor(ABC):
     def retry_shas(self) -> set[str]:
         return self._retry_shas
 
+    def resolve(self, ref: str) -> str:
+        """Resolve a commit ref to a SHA, including the "wip" sentinel."""
+        return self._source.resolve(ref)
+
     @property
     def commits(self) -> list[git.Commit]:
         return self._commits
@@ -644,6 +653,7 @@ class FilesystemSource:
         self._repo: git.Repo = git.Repo(self._local)
         self._retry_all: bool = False
         self._retry_failed: bool = False
+        self._resolved: dict[str, str] = {}
 
     def _log(self, msg: str) -> None:
         (self._renderer or renderer).log(msg)
@@ -697,6 +707,33 @@ class FilesystemSource:
         """Local path to the source repository copy."""
         return self._local
 
+    def _rev_parse(self, ref: str) -> str:
+        """Resolve `ref` to a SHA and cache the result."""
+        sha: str = self._repo.git.rev_parse(ref)
+        self._resolved[ref] = sha
+        return sha
+
+    def resolve(self, ref: str) -> str:
+        """Resolve a commit ref to a SHA, including the "wip" sentinel.
+
+        prepare() caches the SHA of every ref it resolves, before the WIP
+        commit is created. Reusing that cache keeps refs such as "HEAD"
+        pointing to the commit they designated back then, and maps "wip" to
+        the commit holding the uncommitted changes.
+
+        Args:
+            ref: Commit ref, or "wip" for the uncommitted changes.
+
+        Returns:
+            The commit SHA.
+        """
+        if is_wip(ref):
+            if "wip" not in self._resolved:
+                raise ValueError('"wip" can only be resolved once prepared')
+            return self._resolved["wip"]
+
+        return self._resolved.get(ref) or self._rev_parse(ref)
+
     def _commit_wip(self) -> git.Commit:
         """Commit uncommitted changes as WIP and return the commit."""
         if self._repo.is_dirty(untracked_files=True):
@@ -730,19 +767,14 @@ class FilesystemSource:
 
         include = include or []
         retry = retry or []
-        has_wip = (
-            since.lower() == "wip"
-            or until.lower() == "wip"
-            or any(ref.lower() == "wip" for ref in include)
-        )
+        has_wip = is_wip(since) or is_wip(until) or any(is_wip(ref) for ref in include)
 
         # Resolve non-wip refs to SHAs BEFORE committing WIP (so HEAD refers to
         # the original HEAD, not the WIP commit)
-        since_sha = None if since.lower() == "wip" else self._repo.git.rev_parse(since)
-        until_sha = None if until.lower() == "wip" else self._repo.git.rev_parse(until)
+        since_sha = None if is_wip(since) else self._rev_parse(since)
+        until_sha = None if is_wip(until) else self._rev_parse(until)
         include_shas = [
-            None if ref.lower() == "wip" else self._repo.git.rev_parse(ref)
-            for ref in include
+            None if is_wip(ref) else self._rev_parse(ref) for ref in include
         ]
         retry_shas = set()
         for ref in retry:
@@ -763,8 +795,9 @@ class FilesystemSource:
                 self._repo.git.clean("-fd")
 
         # Resolve refs (wip -> HEAD which now points to the WIP commit)
-        since_ref = since_sha or self._repo.head.commit.hexsha
-        until_ref = until_sha or self._repo.head.commit.hexsha
+        self._resolved["wip"] = self._repo.head.commit.hexsha
+        since_ref = since_sha or self._resolved["wip"]
+        until_ref = until_sha or self._resolved["wip"]
 
         # Get commits in range
         commits = list(
@@ -774,8 +807,8 @@ class FilesystemSource:
 
         # Process included commits (use pre-resolved SHAs)
         for ref, sha in zip(include, include_shas):
-            # sha is None for "wip" refs, use HEAD (now pointing to WIP commit)
-            commit_sha = sha or self._repo.head.commit.hexsha
+            # sha is None for "wip" refs, use the resolved WIP commit
+            commit_sha = sha or self._resolved["wip"]
             commit = self._repo.commit(commit_sha)
 
             if commit.hexsha not in commit_set:
@@ -1365,10 +1398,6 @@ def run_benchmarks(args: argparse.Namespace):
 
 
 def run_compare(args: argparse.Namespace) -> None:
-    source_repo = git.Repo(args.sources)
-    base_sha: str = source_repo.git.rev_parse(args.base)
-    ref_sha: str = source_repo.git.rev_parse(args.ref)
-
     # _benchmark_commits walks the history range; treat base+ref as a
     # two-commit "range" by anchoring both ends on base and including ref.
     args.since = args.base
@@ -1380,6 +1409,18 @@ def run_compare(args: argparse.Namespace) -> None:
     )
 
     with executor:
+        # Resolve once the sources are prepared: "wip" is a commit only after
+        # the uncommitted changes have been committed.
+        base_sha: str = executor.resolve(args.base)
+        ref_sha: str = executor.resolve(args.ref)
+
+        if base_sha == ref_sha:
+            renderer.log(
+                f"[red bold]{args.base} and {args.ref} are the same commit "
+                f"({base_sha[:SHORT_SHA_LEN]}), nothing to compare.[/]"
+            )
+            raise SystemExit(1)
+
         _benchmark_commits(executor, args)
 
         report = Report(executor._results)
@@ -1434,10 +1475,6 @@ def compare(
         json_output=None,
     )
 
-    source_repo = git.Repo(args.sources)
-    base_sha = source_repo.git.rev_parse(base)
-    ref_sha = source_repo.git.rev_parse(ref)
-
     executor = (
         LocalExecutor(args, renderer)
         if args.host in DEFAULT_HOST
@@ -1445,6 +1482,9 @@ def compare(
     )
 
     with executor:
+        base_sha = executor.resolve(base)
+        ref_sha = executor.resolve(ref)
+
         _benchmark_commits(executor, args)
         return Report(executor._results).get_compare_rows(base_sha, ref_sha)
 
