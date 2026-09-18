@@ -377,7 +377,7 @@ With:
 
   .. note::
 
-      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``udp.dport``. Connect hooks additionally support ``tcp.dport``. Sendmsg hooks additionally support ``ip4.saddr``, ``ip4.snet``, ``ip6.saddr``, and ``ip6.snet``. Sets are supported with the same per-component restrictions: each set key component must be a matcher supported by the chain's hook. Note that ``meta.dport`` and ``meta.sport`` are not supported in sets.
+      ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks operate on socket metadata rather than packet data. Supported matchers: ``meta.l3_proto``, ``meta.l4_proto``, ``meta.probability``, ``meta.dport``, ``ip4.daddr``, ``ip4.dnet``, ``ip4.proto``, ``ip6.daddr``, ``ip6.dnet``, ``udp.dport``. Connect hooks additionally support ``tcp.dport``. Sendmsg hooks additionally support ``ip4.saddr``, ``ip4.snet``, ``ip6.saddr``, and ``ip6.snet``. Sets are supported with the same per-component restrictions: each set key component must be a matcher supported by the chain's hook. ``meta.dport`` is supported in sets, while ``meta.sport`` is unavailable on these hooks.
 
   - ``$POLICY``: action taken if no rule matches the packet:
 
@@ -574,19 +574,23 @@ Meta
       - ``eq``
       - ``$PROTOCOL``
       - ``$PROTOCOL`` must be a transport layer protocol name (e.g. "ICMP", case insensitive), or a valid decimal or hexadecimal `internet protocol number`_.
-    * - :rspan:`1` Source port
-      - :rspan:`1` ``meta.sport``
+    * - :rspan:`2` Source port
+      - :rspan:`2` ``meta.sport``
       - ``eq``
       - ``$PORT``
-      - ``$PORT`` must be a valid decimal port number.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
-    * - :rspan:`1` Destination port
-      - :rspan:`1` ``meta.dport``
+    * - :rspan:`2` Destination port
+      - :rspan:`2` ``meta.dport``
       - ``eq``
       - ``$PORT``
-      - ``$PORT`` must be a valid decimal port number.
+      - :rspan:`1` ``$PORT`` must be a valid decimal port number.
+    * - ``in``
+      - ``{$PORT[;...]}``
     * - ``range``
       - ``$START-$END``
       - ``$START`` and ``$END`` are valid port values, as decimal integers.
@@ -613,6 +617,10 @@ Meta
       - ``eq``
       - ``$PROBABILITY``
       - ``$PROBABILITY`` is a floating-point percentage value (i.e., within [0%, 100%], e.g., "50%" or "33.33%"). Unlike ``meta.probability`` which uses per-packet randomness, ``meta.flow_probability`` computes a deterministic hash from the packet's 5-tuple (source/destination IP, source/destination port, protocol) ensuring all packets from the same flow get the same match decision. Only applies to IPv4/IPv6 packets with TCP or UDP on L4; packets with other protocols are skipped. Compatible with ``BF_HOOK_XDP``, ``BF_HOOK_TC_INGRESS``, ``BF_HOOK_TC_EGRESS``, ``BF_HOOK_CGROUP_SKB_INGRESS``, and ``BF_HOOK_CGROUP_SKB_EGRESS`` hooks.
+
+.. note::
+
+    On packet-based hooks, ``meta.sport`` and ``meta.dport`` are protocol-neutral across TCP and UDP. They do not match packets with other L4 protocols.
 
 IPv4
 ####

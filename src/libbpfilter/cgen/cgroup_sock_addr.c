@@ -271,6 +271,7 @@ static ssize_t _bf_cgroup_sock_addr_ctx_offset(enum bf_matcher_type type)
         return offsetof(struct bpf_sock_addr, user_ip6);
     case BF_MATCHER_IP4_PROTO:
         return offsetof(struct bpf_sock_addr, protocol);
+    case BF_MATCHER_META_DPORT:
     case BF_MATCHER_TCP_DPORT:
     case BF_MATCHER_UDP_DPORT:
         return offsetof(struct bpf_sock_addr, user_port);

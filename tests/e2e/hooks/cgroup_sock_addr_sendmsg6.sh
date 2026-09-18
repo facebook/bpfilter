@@ -37,8 +37,11 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_S
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.daddr) in { ::1; ::2 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.dnet) in { fd00::/64 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.saddr, udp.dport) in { ::1, 53 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (meta.dport) in { 53; 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (ip6.daddr, meta.dport) in { ::1, 53 } counter DROP"
 
 # Unsupported set components
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (meta.sport) in { 80 } counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (tcp.dport) in { 80 } counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6 ACCEPT rule (tcp.sport) in { 80 } counter DROP")
 
@@ -138,6 +141,12 @@ test "$(get_counter c 0)" = "1"
 
 # (ip6.saddr, udp.dport) multi-component hash set
 ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.saddr, udp.dport) in { ${NS_IP6_ADDR}, 9990 } counter DROP"
+(! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
+udp6_sendmsg ${HOST_IP6_ADDR} 9991
+test "$(get_counter c 0)" = "1"
+
+# (ip6.daddr, meta.dport) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.daddr, meta.dport) in { ${HOST_IP6_ADDR}, 9990 } counter DROP"
 (! udp6_sendmsg ${HOST_IP6_ADDR} 9990)
 udp6_sendmsg ${HOST_IP6_ADDR} 9991
 test "$(get_counter c 0)" = "1"

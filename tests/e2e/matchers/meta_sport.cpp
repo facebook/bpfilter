@@ -6,6 +6,7 @@
 #include "Chain.hpp"
 #include "Matcher.hpp"
 #include "Rule.hpp"
+#include "Set.hpp"
 #include "test.hpp"
 
 extern "C" {
@@ -58,8 +59,8 @@ static void meta_sport_eq(void **state)
             bft::TCP {.sport = 54321, .dport = 80},
         test->verdictAccept());
 
-    // ICMP is neither TCP nor UDP: meta_sport sets R1=0 and jumps to the next
-    // rule, so the drop rule must not fire regardless of the port value.
+    // ICMP is neither TCP nor UDP, so it has no meta source port and the drop
+    // rule must not fire.
     bft_assert_prog_run(
         "test_meta_sport", test->hook(),
         bft::Ethernet() /
@@ -166,11 +167,53 @@ static void meta_sport_range(void **state)
     bft_assert_counter_eq("test_meta_sport", 0, 4, -1);
 }
 
+static void meta_sport_in(void **state)
+{
+    auto *test = static_cast<MatcherTest *>(*state);
+    auto ip4_elem = std::vector<uint8_t> {192, 0, 2, 1};
+    auto port = bft_port_be(12345);
+
+    ip4_elem.insert(ip4_elem.end(), port.begin(), port.end());
+
+    auto ip4_set = bf::Set({BF_MATCHER_IP4_SADDR, BF_MATCHER_META_SPORT});
+    ip4_set << ip4_elem;
+
+    BFT_CHAIN_SET(bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
+                  << std::move(ip4_set)
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
+                                           {0, 0, 0, 0})}));
+
+    bft_assert_prog_run(
+        "test_meta_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_meta_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::UDP {.sport = 12345, .dport = 53},
+        test->verdictDrop());
+
+    bft_assert_prog_run(
+        "test_meta_sport", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 54321, .dport = 80},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_meta_sport", 0, 2, -1);
+}
+
 int main()
 {
     auto suite = MatcherTestsSuite(BF_MATCHER_META_SPORT);
 
     suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_EQ, meta_sport_eq);
+    suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_IN, meta_sport_in);
     suite << MatcherTest(BF_MATCHER_META_SPORT, BF_MATCHER_RANGE,
                          meta_sport_range);
 

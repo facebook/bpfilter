@@ -33,14 +33,13 @@
 /**
  * Packet matcher codegen follows a three-stage pipeline:
  *
- * 1. Protocol check: `_bf_program_generate_rule()` (in program.c)
- *    emits deduplicated protocol guards before the matcher loop,
- *    so each L3/L4 protocol is verified at most once per rule.
+ * 1. Protocol check: `_bf_program_generate_rule()` (in program.c) emits
+ *    deduplicated guards for protocol-specific matchers before the matcher
+ *    loop, so each protocol-specific guard is emitted at most once per rule.
  *
- * 2. Header + field load:  `bf_stub_load_header()` loads the header
- *    base address into `R6`, then `_bf_matcher_pkt_load_field()` reads
- *    the target field into the specified register (and `reg+1` for
- *    128-bit values such as IPv6 addresses).
+ * 2. Header + field load: the header base address is loaded into `R6`, then
+ *    `_bf_matcher_pkt_load_field()` reads the target field into the specified
+ *    register (and `reg+1` for 128-bit values such as IPv6 addresses).
  *
  * 3. Comparison:  A `bf_cmp_*` function compares the value in the
  *    specified register against the matcher's reference payload.
@@ -97,6 +96,28 @@ static int _bf_matcher_pkt_load_field(struct bf_program *program,
     }
 
     return 0;
+}
+
+static int _bf_matcher_pkt_prepare_header(struct bf_program *program,
+                                          enum bf_matcher_type type,
+                                          const struct bf_matcher_meta *meta)
+{
+    assert(program);
+    assert(meta);
+
+    switch (type) {
+    case BF_MATCHER_META_SPORT:
+    case BF_MATCHER_META_DPORT:
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, IPPROTO_TCP, 2));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, IPPROTO_UDP, 1));
+        EMIT_FIXUP_JMP_NEXT_RULE(program, BPF_JMP_A(0));
+
+        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_6, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(l4_hdr)));
+        return 0;
+    default:
+        return bf_stub_load_header(program, meta, BPF_REG_6);
+    }
 }
 
 static int _bf_matcher_pkt_load(struct bf_program *program,
@@ -159,7 +180,12 @@ static int _bf_matcher_pkt_generate_port(struct bf_program *program,
 {
     int r;
 
-    r = _bf_matcher_pkt_load(program, meta, BPF_REG_1);
+    r = _bf_matcher_pkt_prepare_header(program, bf_matcher_get_type(matcher),
+                                       meta);
+    if (r)
+        return r;
+
+    r = _bf_matcher_pkt_load_field(program, meta, BPF_REG_1);
     if (r)
         return r;
 
@@ -342,7 +368,7 @@ static int _bf_matcher_pkt_generate_set(struct bf_program *program,
                             bf_matcher_type_to_str(type));
         }
 
-        r = bf_stub_load_header(program, meta, BPF_REG_6);
+        r = _bf_matcher_pkt_prepare_header(program, type, meta);
         if (r)
             return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
 
@@ -373,8 +399,6 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_L3_PROTO:
     case BF_MATCHER_META_L4_PROTO:
     case BF_MATCHER_META_PROBABILITY:
-    case BF_MATCHER_META_SPORT:
-    case BF_MATCHER_META_DPORT:
     case BF_MATCHER_META_FLOW_PROBABILITY:
         return bf_matcher_generate_meta(program, matcher);
     case BF_MATCHER_META_MARK:
@@ -403,6 +427,8 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_TCP_DPORT:
     case BF_MATCHER_UDP_SPORT:
     case BF_MATCHER_UDP_DPORT:
+    case BF_MATCHER_META_SPORT:
+    case BF_MATCHER_META_DPORT:
         return _bf_matcher_pkt_generate_port(program, matcher, meta);
     case BF_MATCHER_TCP_FLAGS:
         return _bf_matcher_pkt_generate_tcp_flags(program, matcher, meta);

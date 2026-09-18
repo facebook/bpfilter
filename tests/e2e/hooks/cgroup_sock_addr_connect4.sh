@@ -50,9 +50,12 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_C
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.dnet) in { 192.168.1.0/24; 10.0.0.0/8 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (tcp.dport) in { 80; 443 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.daddr, tcp.dport) in { 1.1.1.1, 80; 2.2.2.2, 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (meta.dport) in { 80; 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.daddr, meta.dport) in { 1.1.1.1, 80; 2.2.2.2, 443 } counter DROP"
 
 # Unsupported set components
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (ip4.saddr) in { 1.1.1.1 } counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (meta.sport) in { 80 } counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule (tcp.sport) in { 80 } counter DROP")
 
 make_sandbox
@@ -153,3 +156,14 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNE
 (! udp4_connect ${HOST_IP_ADDR} 9990)
 udp4_connect ${HOST_IP_ADDR} 9991
 test "$(get_counter c 0)" = "1"
+
+# (ip4.daddr, meta.dport) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.daddr, meta.dport) in { ${HOST_IP_ADDR}, 9990 } counter DROP"
+(! udp4_connect ${HOST_IP_ADDR} 9990)
+udp4_connect ${HOST_IP_ADDR} 9991
+test "$(get_counter c 0)" = "1"
+
+# An explicit protocol matcher remains independent
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.l4_proto eq tcp (meta.dport) in { 9990 } counter DROP"
+udp4_connect ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "0"

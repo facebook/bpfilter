@@ -37,9 +37,12 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_C
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (ip6.daddr) in { ::1; ::2 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (ip6.dnet) in { 2001:db8::/32; fd00::/8 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (tcp.dport) in { 80; 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (meta.dport) in { 80; 443 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (ip6.daddr, meta.dport) in { ::1, 80; ::2, 443 } counter DROP"
 
 # Unsupported set components
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (ip6.saddr) in { ::1 } counter DROP")
+(! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (meta.sport) in { 80 } counter DROP")
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6 ACCEPT rule (tcp.sport) in { 80 } counter DROP")
 
 make_sandbox
@@ -150,4 +153,10 @@ test "$(get_counter c 0)" = "1"
 # ip6.dnet trie set
 ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.dnet) in { fd00::/64 } counter DROP"
 (! udp6_connect ${HOST_IP6_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
+
+# (ip6.daddr, meta.dport) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_CONNECT6{cgpath=${CGROUP_PATH}} ACCEPT rule (ip6.daddr, meta.dport) in { ${HOST_IP6_ADDR}, 9990 } counter DROP"
+(! udp6_connect ${HOST_IP6_ADDR} 9990)
+udp6_connect ${HOST_IP6_ADDR} 9991
 test "$(get_counter c 0)" = "1"
