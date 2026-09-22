@@ -11,6 +11,7 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${N
     set blocked_ips0 (ip4.saddr) in {}
     set blocked_ips1 (ip4.saddr) in {}
     rule
+        ip4.proto icmp
         (ip4.saddr) in blocked_ips0
         (ip4.saddr) in blocked_ips1
         counter
