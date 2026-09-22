@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include <bpfilter/btf.h>
 #include <bpfilter/chain.h>
 #include <bpfilter/elfstub.h>
 #include <bpfilter/flavor.h>
@@ -25,6 +26,7 @@
 #include <bpfilter/set.h>
 #include <bpfilter/verdict.h>
 
+#include "cgen/jmp.h"
 #include "cgen/matcher/cmp.h"
 #include "cgen/matcher/meta.h"
 #include "cgen/matcher/set.h"
@@ -437,6 +439,141 @@ static int _bf_cgroup_sock_addr_get_verdict(enum bf_verdict verdict,
     }
 }
 
+#define _BF_SOCK_ADDR_NS_PID_OFF                                               \
+    BF_PROG_SCR_OFF(offsetof(struct bf_runtime_sock_addr, ns_pid))
+
+/* The kernel pointers dereferenced to reach the namespace-local PID are staged
+ * in the scratch area, right after `bf_runtime_sock_addr`. */
+#define _BF_SOCK_ADDR_NS_PID_WALK_OFF                                          \
+    BF_PROG_SCR_OFF(sizeof(struct bf_runtime_sock_addr))
+
+static_assert(sizeof(struct bf_runtime_sock_addr) + sizeof(__u64) <= 64,
+              "no room left in the scratch area for the PID namespace walk");
+
+/**
+ * @brief Store the process' namespace-local PID into the staging area.
+ *
+ * `bpf_get_current_pid_tgid()` reports the PID as seen from the initial PID
+ * namespace. The namespace-local one is only reachable through the kernel
+ * structures: `current->group_leader->thread_pid->numbers[level].nr`, with
+ * `level` the depth of the process' own PID namespace. `level` is 0 in the
+ * initial namespace, where this yields the same value as
+ * `bpf_get_current_pid_tgid()`.
+ *
+ * `numbers` is indexed with a runtime value, and the verifier rejects variable
+ * offsets on BTF pointers, so the walk uses `bpf_probe_read_kernel()` and
+ * computes the addresses as scalars.
+ *
+ * `ns_pid` is left to 0 if `level` is 0: the process' only PID is the one
+ * reported by `bpf_get_current_pid_tgid()`. The PID allocator never hands out
+ * 0, so 0 unambiguously means "no namespace-local PID to report", including
+ * when the walk failed: `bpf_probe_read_kernel()` zeroes its destination on
+ * failure, so an unreadable address leaves the slot zeroed instead of stale.
+ *
+ * @todo `pid.level` and `upid.nr` are assumed to be 4 bytes: `level` is loaded
+ * back from the slot with `BPF_W`, and `ns_pid` is a `__u32`. Validate their
+ * size against the BTF data, so a kernel changing either of them fails the
+ * program generation instead of logging a wrong PID.
+ *
+ * @param program Program to emit the instructions into. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_cgroup_sock_addr_store_ns_pid(struct bf_program *program)
+{
+    int group_leader_off;
+    int thread_pid_off;
+    int level_off;
+
+    assert(program);
+
+    /* The pointers are only needed to reach the next one, they are read into
+     * the walk slot. `level` and the PID itself are read into the `ns_pid`
+     * slot, which then holds the 0 to report if the walk stops at the initial
+     * namespace. */
+
+    // Walk: current->group_leader
+    group_leader_off = bf_btf_get_field_off("task_struct", "group_leader");
+    if (group_leader_off < 0)
+        return group_leader_off;
+
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_current_task));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program,
+         BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, _BF_SOCK_ADDR_NS_PID_WALK_OFF));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 8));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_0));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, group_leader_off));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_probe_read_kernel));
+
+    // Walk: current->group_leader->thread_pid
+    thread_pid_off = bf_btf_get_field_off("task_struct", "thread_pid");
+    if (thread_pid_off < 0)
+        return thread_pid_off;
+
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program,
+         BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, _BF_SOCK_ADDR_NS_PID_WALK_OFF));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 8));
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_10,
+                              _BF_SOCK_ADDR_NS_PID_WALK_OFF));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, thread_pid_off));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_probe_read_kernel));
+
+    // Walk: current->group_leader->thread_pid->level
+    level_off = bf_btf_get_field_off("pid", "level");
+    if (level_off < 0)
+        return level_off;
+
+    /* R9 is callee-saved and free at this point: the rate limiter in
+     * `_bf_program_generate_log()` is done with it. It keeps `thread_pid`
+     * across the `level` read, to index `numbers` with it. */
+    EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_9, BPF_REG_10,
+                              _BF_SOCK_ADDR_NS_PID_WALK_OFF));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, _BF_SOCK_ADDR_NS_PID_OFF));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 4));
+    EMIT(program, BPF_MOV64_REG(BPF_REG_3, BPF_REG_9));
+    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, level_off));
+    EMIT(program, BPF_EMIT_CALL(BPF_FUNC_probe_read_kernel));
+
+    /* Walk: current->group_leader->thread_pid->numbers[level].nr, skipped
+     * for the initial namespace: the slot then keeps the level, which is the
+     * 0 to report. */
+    EMIT(program,
+         BPF_LDX_MEM(BPF_W, BPF_REG_3, BPF_REG_10, _BF_SOCK_ADDR_NS_PID_OFF));
+
+    {
+        int numbers_off;
+        int nr_off;
+        int upid_size;
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_3, 0, 0));
+
+        numbers_off = bf_btf_get_field_off("pid", "numbers");
+        if (numbers_off < 0)
+            return numbers_off;
+
+        nr_off = bf_btf_get_field_off("upid", "nr");
+        if (nr_off < 0)
+            return nr_off;
+
+        upid_size = bf_btf_get_type_size("upid");
+        if (upid_size < 0)
+            return upid_size;
+
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+        EMIT(program,
+             BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, _BF_SOCK_ADDR_NS_PID_OFF));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_2, 4));
+        EMIT(program, BPF_ALU64_IMM(BPF_MUL, BPF_REG_3, upid_size));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, numbers_off + nr_off));
+        EMIT(program, BPF_ALU64_REG(BPF_ADD, BPF_REG_3, BPF_REG_9));
+        EMIT(program, BPF_EMIT_CALL(BPF_FUNC_probe_read_kernel));
+    }
+
+    return 0;
+}
+
 static int _bf_cgroup_sock_addr_gen_inline_log(struct bf_program *program,
                                                const struct bf_rule *rule)
 {
@@ -511,6 +648,10 @@ static int _bf_cgroup_sock_addr_gen_inline_log(struct bf_program *program,
     r = _bf_cgroup_sock_addr_store_field(
         program, BF_PROG_SCR_OFF(offsetof(struct bf_runtime_sock_addr, dport)),
         2, BPF_REG_1);
+    if (r)
+        return r;
+
+    r = _bf_cgroup_sock_addr_store_ns_pid(program);
     if (r)
         return r;
 

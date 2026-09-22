@@ -211,3 +211,23 @@ int bf_btf_get_field_off(const char *struct_name, const char *field_name)
 
     return (int)(offset / 8);
 }
+
+int bf_btf_get_type_size(const char *name)
+{
+    int id;
+    __s64 size;
+
+    assert(name);
+
+    id = btf__find_by_name_kind(_bf_btf, name, BTF_KIND_STRUCT);
+    if (id < 0)
+        return bf_err_r(id, "failed to find BTF structure '%s'", name);
+
+    size = btf__resolve_size(_bf_btf, id);
+    if (size < 0)
+        return bf_err_r((int)size, "failed to resolve the size of '%s'", name);
+    if (size > INT_MAX)
+        return bf_err_r(-E2BIG, "'%s' is bigger than %d bytes", name, INT_MAX);
+
+    return (int)size;
+}

@@ -77,3 +77,14 @@ int bf_btf_kernel_has_token(void);
  * @return Offset of @p field_name if found, negative error value on failure.
  */
 int bf_btf_get_field_off(const char *struct_name, const char *field_name);
+
+/**
+ * @brief Get the size of a kernel structure.
+ *
+ * Linux' BTF data must be loaded with `bf_btf_setup` before calling this
+ * function.
+ *
+ * @param name Name of the structure to get the size of. Can't be NULL.
+ * @return Size of `name` in bytes, or a negative errno value on failure.
+ */
+int bf_btf_get_type_size(const char *name);

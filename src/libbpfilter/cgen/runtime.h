@@ -65,6 +65,12 @@ struct bf_runtime_sock_addr
 
     /** Destination port in host byte order. */
     __u16 bf_aligned(8) dport;
+
+    /**
+     * PID of the process in its own PID namespace, 0 if it runs in the
+     * initial one.
+     */
+    __u32 bf_aligned(8) ns_pid;
 };
 
 static_assert(sizeof(struct bf_runtime_sock_addr) <= 64,

@@ -33,6 +33,7 @@ __u8 bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
     log->log_type = BF_LOG_TYPE_SOCK_ADDR;
 
     log->sock_addr.pid = (__u32)(bpf_get_current_pid_tgid() >> 32);
+    log->sock_addr.ns_pid = sock_addr->ns_pid;
     bpf_get_current_comm(log->sock_addr.comm, sizeof(log->sock_addr.comm));
 
     if (captured_fields & BF_LOG_SOCK_ADDR_SADDR) {

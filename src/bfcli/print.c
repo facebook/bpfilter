@@ -671,6 +671,15 @@ static void _bf_chain_log_sock_addr(const struct bf_log *log)
                   log->sock_addr.pid,
                   bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
 
+    /* A process in the initial PID namespace has a single PID, already
+     * printed above, and ns_pid is 0. */
+    if (log->sock_addr.ns_pid) {
+        (void)fprintf(stdout, "  NS PID    : %s%u%s\n",
+                      bf_logger_get_color(BF_COLOR_LIGHT_YELLOW, BF_STYLE_BOLD),
+                      log->sock_addr.ns_pid,
+                      bf_logger_get_color(BF_COLOR_RESET, BF_STYLE_RESET));
+    }
+
     (void)fprintf(stdout, "  Process   : %s%.*s%s\n",
                   bf_logger_get_color(BF_COLOR_LIGHT_GREEN, BF_STYLE_BOLD),
                   BF_COMM_LEN, log->sock_addr.comm,

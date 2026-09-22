@@ -87,13 +87,33 @@ static void get_field_offset(void **state)
     bf_btf_teardown();
 }
 
+static void get_type_size(void **state)
+{
+    (void)state;
+
+    assert_ok(bf_btf_setup());
+
+    // struct upid { int nr; struct pid_namespace *ns; }
+    assert_int_equal(bf_btf_get_type_size("upid"), 2 * sizeof(void *));
+
+    assert_int_gte(bf_btf_get_type_size("sk_buff"), 0);
+
+    // Only structures are supported
+    assert_err(bf_btf_get_type_size("bpf_attr"));
+    assert_err(bf_btf_get_type_size("int"));
+
+    // Invalid structure
+    assert_err(bf_btf_get_type_size("les carottes"));
+
+    bf_btf_teardown();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(init_and_clean),
-        cmocka_unit_test(get_id_and_name),
-        cmocka_unit_test(check_token),
-        cmocka_unit_test(get_field_offset),
+        cmocka_unit_test(init_and_clean), cmocka_unit_test(get_id_and_name),
+        cmocka_unit_test(check_token),    cmocka_unit_test(get_field_offset),
+        cmocka_unit_test(get_type_size),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

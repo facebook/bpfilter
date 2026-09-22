@@ -173,6 +173,16 @@ struct bf_log_sock_addr
 
     /** Destination address (4 bytes for IPv4, 16 for IPv6). */
     bf_aligned(8) __u8 daddr[sizeof(struct in6_addr)];
+
+    /**
+        * PID (tgid) of the process in its own PID namespace.
+        *
+        * 0 if the process runs in the initial PID namespace, as its only PID is
+        * already reported in `pid`, or if the kernel structures couldn't be read.
+        * The PID allocator never returns 0, so a non-zero value always carries
+        * something `pid` doesn't.
+        */
+    __u32 ns_pid;
 };
 
 /**
