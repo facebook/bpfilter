@@ -76,6 +76,7 @@ int bf_set_new(struct bf_set **set, const char *name,
     memcpy(&_set->key, key, n_comps * sizeof(enum bf_matcher_type));
     _set->n_comps = n_comps;
     _set->elem_size = 0;
+    _set->min_size = 0;
     bf_hashset_init(&_set->elems, &_bf_set_elem_ops, &_set->elem_size);
 
     for (size_t i = 0; i < n_comps; ++i) {
@@ -314,6 +315,10 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
     if (r)
         return bf_err_r(r, "failed to create bf_set from pack");
 
+    r = bf_rpack_kv_size(node, "min_size", &_set->min_size);
+    if (r)
+        return bf_rpack_key_err(r, "bf_set.min_size");
+
     r = bf_rpack_kv_array(node, "elements", &child);
     if (r)
         return bf_rpack_key_err(r, "bf_set.elements");
@@ -405,6 +410,8 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
         bf_wpack_enum(pack, set->key[i]);
     bf_wpack_close_array(pack);
 
+    bf_wpack_kv_u64(pack, "min_size", set->min_size);
+
     bf_wpack_open_array(pack, "elements");
     bf_hashset_foreach (&set->elems, elem)
         bf_wpack_bin(pack, elem->data, set->elem_size);
@@ -435,6 +442,7 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     bf_dump_prefix_pop(prefix);
 
     DUMP(prefix, "elem_size: %lu", set->elem_size);
+    DUMP(prefix, "min_size: %lu", set->min_size);
     DUMP(bf_dump_prefix_last(prefix), "elems: bf_hashset<bytes>[%lu]",
          bf_hashset_size(&set->elems));
 

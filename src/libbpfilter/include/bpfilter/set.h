@@ -63,6 +63,13 @@ struct bf_set
     /** If a set key has a single component which filters on a network address,
      * use a LPM trie structure instead of the standard hash map. */
     bool use_trie;
+
+    /** Minimum number of elements the set's BPF map should have room for.
+     * 0 by default: the map is sized to fit the set's elements. This is a
+     * lower bound, not a limit: the map grows past `min_size` if the set
+     * contains more elements. Only used to size the BPF map: `elems` is not
+     * pre-allocated for `min_size` elements. */
+    size_t min_size;
 };
 
 /**
