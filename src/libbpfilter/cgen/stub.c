@@ -477,6 +477,44 @@ int bf_stub_load(struct bf_program *program, size_t src_offset, size_t size,
     return 0;
 }
 
+int bf_stub_store(struct bf_program *program, int reg, size_t size,
+                  int dst_offset)
+{
+    int dst_off = dst_offset;
+    size_t remaining_size = size;
+
+    assert(program);
+
+    if (size > 8)
+        return bf_err_r(-E2BIG, "bf_stub_store copies at most 8 bytes");
+
+    while (remaining_size) {
+        int bpf_size = BPF_B;
+        size_t copy_bytes = 1;
+
+        if (BF_ALIGNED_64(dst_off) && remaining_size >= 8) {
+            bpf_size = BPF_DW;
+            copy_bytes = 8;
+        } else if (BF_ALIGNED_32(dst_off) && remaining_size >= 4) {
+            bpf_size = BPF_W;
+            copy_bytes = 4;
+        } else if (BF_ALIGNED_16(dst_off) && remaining_size >= 2) {
+            bpf_size = BPF_H;
+            copy_bytes = 2;
+        }
+
+        EMIT(program, BPF_STX_MEM(bpf_size, BPF_REG_10, reg, dst_off));
+
+        remaining_size -= copy_bytes;
+        dst_off += (int)copy_bytes;
+
+        if (remaining_size)
+            EMIT(program, BPF_ALU64_IMM(BPF_RSH, reg, copy_bytes * 8));
+    }
+
+    return 0;
+}
+
 int bf_stub_stx_payload(struct bf_program *program,
                         const struct bf_matcher_meta *meta, size_t offset)
 {

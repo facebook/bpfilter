@@ -9,6 +9,8 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_S
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.probability eq 50% counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.dport eq 443 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.dport range 8000-9000 counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.pid eq 1234 counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule meta.pid not 1234 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule ip4.saddr eq 10.0.0.1 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule ip4.snet eq 10.0.0.0/8 counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule ip4.daddr eq 1.1.1.1 counter DROP"
@@ -41,6 +43,8 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_S
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (udp.dport) in { 53; 443 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (meta.dport) in { 53; 443 } counter DROP"
 ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (ip4.daddr, meta.dport) in { 1.1.1.1, 53 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (meta.pid) in { 1; 1234 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (ip4.daddr, meta.pid) in { 1.1.1.1, 1; 2.2.2.2, 1234 } counter DROP"
 
 # Unsupported set components
 (! ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4 ACCEPT rule (meta.sport) in { 80 } counter DROP")
@@ -92,6 +96,16 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDM
 (! udp4_sendmsg ${HOST_IP_ADDR} 9995)
 udp4_sendmsg ${HOST_IP_ADDR} 9996
 test "$(get_counter c 0)" = "2"
+
+# meta.pid eq: PID 1 never runs in the test cgroup
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.pid eq 1 counter DROP"
+udp4_sendmsg ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "0"
+
+# meta.pid not
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule meta.pid not 1 counter DROP"
+(! udp4_sendmsg ${HOST_IP_ADDR} 9990)
+test "$(get_counter c 0)" = "1"
 
 # ip4.daddr
 ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule ip4.daddr eq ${HOST_IP_ADDR} counter DROP"
@@ -151,3 +165,8 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDM
 (! udp4_sendmsg ${HOST_IP_ADDR} 9990)
 udp4_sendmsg ${HOST_IP_ADDR} 9991
 test "$(get_counter c 0)" = "1"
+
+# (ip4.daddr, meta.pid) multi-component hash set
+${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SOCK_ADDR_SENDMSG4{cgpath=${CGROUP_PATH}} ACCEPT rule (ip4.daddr, meta.pid) in { ${HOST_IP_ADDR}, 1 } counter DROP"
+udp4_sendmsg ${HOST_IP_ADDR} 9990
+test "$(get_counter c 0)" = "0"

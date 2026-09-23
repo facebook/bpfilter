@@ -111,6 +111,12 @@ enum bf_matcher_type
     BF_MATCHER_ICMPV6_CODE,
     /// Matches in a set, the set knows how to build the key from the packet
     BF_MATCHER_SET,
+    /* Matcher types are serialized with the chains pinned to the BPF
+     * filesystem: new types are appended so the existing values are left
+     * unchanged. */
+    /// Matches the PID (thread group ID) of the process, as seen from the
+    /// initial PID namespace.
+    BF_MATCHER_META_PID,
     _BF_MATCHER_TYPE_MAX,
 };
 

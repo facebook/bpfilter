@@ -329,6 +329,22 @@ static int _bf_cgroup_sock_addr_generate_set(struct bf_program *program,
                             bf_matcher_type_to_str(type));
         }
 
+        /* The PID is not part of the context, a helper returns it. The key
+         * components are packed, so the store offset might be misaligned:
+         * `bf_stub_store` splits the store accordingly. */
+        if (type == BF_MATCHER_META_PID) {
+            EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_current_pid_tgid));
+            EMIT(program, BPF_ALU64_IMM(BPF_RSH, BPF_REG_0, 32));
+
+            r = bf_stub_store(program, BPF_REG_0, meta->hdr_payload_size,
+                              BF_PROG_SCR_OFF(offset));
+            if (r)
+                return r;
+
+            offset += meta->hdr_payload_size;
+            continue;
+        }
+
         if (ctx_off < 0) {
             return bf_err_r(
                 (int)ctx_off,
@@ -373,6 +389,11 @@ _bf_cgroup_sock_addr_gen_inline_matcher(struct bf_program *program,
     case BF_MATCHER_META_L4_PROTO:
     case BF_MATCHER_META_PROBABILITY:
         return bf_matcher_generate_meta(program, matcher);
+    case BF_MATCHER_META_PID:
+        EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_current_pid_tgid));
+        EMIT(program, BPF_ALU64_IMM(BPF_RSH, BPF_REG_0, 32));
+        return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 4,
+                            BPF_REG_0);
     case BF_MATCHER_IP4_SADDR:
         return _bf_cgroup_sock_addr_load_and_cmp(
             program, matcher, offsetof(struct bpf_sock_addr, msg_src_ip4), 4);

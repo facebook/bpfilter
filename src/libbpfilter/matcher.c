@@ -445,6 +445,44 @@ static void _bf_print_mark(const void *payload)
     (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
 }
 
+static int _bf_parse_pid(enum bf_matcher_type type, enum bf_matcher_op op,
+                         void *payload, const char *raw_payload)
+{
+    unsigned long pid;
+    char *endptr;
+
+    assert(payload);
+    assert(raw_payload);
+
+    /* The kernel never assigns PID 0 to a process, and PIDs are stored in a
+     * signed `pid_t`: accept [1, INT32_MAX] only. */
+    errno = 0;
+    pid = strtoul(raw_payload, &endptr, BF_BASE_10);
+    if (isdigit(*raw_payload) && *endptr == '\0' && errno != ERANGE &&
+        pid != 0 && pid <= INT32_MAX) {
+        /* Set elements pack their components: `payload` might be misaligned
+         * for a direct 4-byte store. */
+        uint32_t value = (uint32_t)pid;
+
+        memcpy(payload, &value, sizeof(value));
+
+        return 0;
+    }
+
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects a decimal process ID between 1 and %d, not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), INT32_MAX,
+        raw_payload);
+}
+
+static void _bf_print_pid(const void *payload)
+{
+    assert(payload);
+
+    (void)fprintf(stdout, "%" PRIu32, *(uint32_t *)payload);
+}
+
 static int _bf_parse_ipv4_addr(enum bf_matcher_type type, enum bf_matcher_op op,
                                void *payload, const char *raw_payload)
 {
@@ -947,6 +985,20 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(float),
                                    _bf_parse_probability,
                                    _bf_print_probability),
+                },
+        },
+    [BF_MATCHER_META_PID] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .hdr_payload_size = sizeof(uint32_t),
+            .unsupported_hooks = BF_FLAGS_MASK(_BF_HOOK_MAX) &
+                                 ~(BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL)),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint32_t),
+                                   _bf_parse_pid, _bf_print_pid),
+                    BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
+                                   _bf_parse_pid, _bf_print_pid),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
@@ -1520,6 +1572,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_ICMPV6_TYPE] = "icmpv6.type",
     [BF_MATCHER_ICMPV6_CODE] = "icmpv6.code",
     [BF_MATCHER_SET] = "<set>",
+    [BF_MATCHER_META_PID] = "meta.pid",
 };
 
 static_assert_enum_mapping(_bf_matcher_type_strs, _BF_MATCHER_TYPE_MAX);

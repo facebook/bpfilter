@@ -5,6 +5,9 @@
 
 #include <arpa/inet.h>
 
+#include <bpfilter/flavor.h>
+#include <bpfilter/helper.h>
+#include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
 
 #include "bpfilter/dump.h"
@@ -908,6 +911,85 @@ static void meta_mark_invalid(void **state)
     // Test with invalid string
     assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_MARK,
                                        BF_MATCHER_EQ, "not_a_number", false));
+}
+
+static void meta_pid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const struct bf_matcher_meta *meta;
+    const struct bf_matcher_ops *ops;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                      BF_MATCHER_EQ, "1", false));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 1);
+    bf_matcher_free(&matcher);
+
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                      BF_MATCHER_EQ, "2147483647", true));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), INT32_MAX);
+    assert_true(bf_matcher_get_negate(matcher));
+    bf_matcher_dump(matcher, &prefix);
+    bf_matcher_free(&matcher);
+
+    // Set elements are parsed and printed as the EQ payload
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                      BF_MATCHER_IN, "4242", false));
+    assert_int_equal(*(uint32_t *)bf_matcher_payload(matcher), 4242);
+    ops = bf_matcher_get_ops(BF_MATCHER_META_PID, BF_MATCHER_IN);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+
+    assert_null(bf_matcher_get_ops(BF_MATCHER_META_PID, BF_MATCHER_RANGE));
+
+    // Set keys are built from `hdr_payload_size` bytes per component
+    meta = bf_matcher_get_meta(BF_MATCHER_META_PID);
+    assert_non_null(meta);
+    assert_int_equal(meta->hdr_payload_size, ops->ref_payload_size);
+
+    // Only cgroup_sock_addr hooks are supported
+    assert_int_equal(meta->unsupported_hooks & ~BF_FLAGS_MASK(_BF_HOOK_MAX), 0);
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
+        assert_int_equal(!(meta->unsupported_hooks & BF_FLAG(hook)),
+                         bf_hook_to_flavor(hook) == BF_FLAVOR_CGROUP_SOCK_ADDR);
+    }
+}
+
+static void meta_pid_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    // The kernel never assigns PID 0 to a process
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "0", false));
+
+    // Out of pid_t range
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "2147483648", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "-1", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "99999999999999999999999",
+                                       false));
+
+    // Only plain decimal values are accepted
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "0x10", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "12a", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "+12", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, " 12", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_EQ, "", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_PID,
+                                       BF_MATCHER_IN, "not_a_pid", false));
 }
 
 static void new_from_raw_ip4_addr(void **state)
@@ -1923,6 +2005,8 @@ int main(void)
         cmocka_unit_test(meta_sport_dport_range_invalid),
         cmocka_unit_test(meta_mark),
         cmocka_unit_test(meta_mark_invalid),
+        cmocka_unit_test(meta_pid),
+        cmocka_unit_test(meta_pid_invalid),
         cmocka_unit_test(new_from_raw_ip4_addr),
         cmocka_unit_test(new_from_raw_ip6_addr),
         cmocka_unit_test(new_from_raw_port),

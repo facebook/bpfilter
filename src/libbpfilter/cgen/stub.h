@@ -134,5 +134,24 @@ int bf_stub_load_header(struct bf_program *program,
 int bf_stub_load(struct bf_program *program, size_t src_offset, size_t size,
                  int dst_offset);
 
+/**
+ * @brief Store the `size` low bytes of `reg` at `R10 + dst_offset`.
+ *
+ * Store-side counterpart of `bf_stub_load`, for values living in a register
+ * (e.g. a helper's return value) instead of memory. The access size per
+ * iteration is the largest width `dst_offset` is aligned to: the verifier
+ * enforces strict alignment on stack accesses. The value is stored in host
+ * byte order, `reg` is shifted right after each partial store and is
+ * clobbered unless a single store is emitted.
+ *
+ * @param program Program to emit the instructions into. Can't be NULL.
+ * @param reg Register holding the value to store.
+ * @param size Number of bytes to store. At most 8.
+ * @param dst_offset Byte offset from `R10` (stack pointer) to write to.
+ * @return 0 on success, or negative error value on error.
+ */
+int bf_stub_store(struct bf_program *program, int reg, size_t size,
+                  int dst_offset);
+
 int bf_stub_stx_payload(struct bf_program *program,
                         const struct bf_matcher_meta *meta, size_t offset);

@@ -30,6 +30,7 @@
 %s STATE_MATCHER_META_L3_PROTO
 %s STATE_MATCHER_META_MARK
 %s STATE_MATCHER_META_FLOW_HASH
+%s STATE_MATCHER_META_PID
 %s STATE_MATCHER_L4_PROTO
 %s STATE_MATCHER_META_PROBA
 %s STATE_MATCHER_IPV4_ADDR
@@ -180,6 +181,16 @@ meta\.flow_hash     { BEGIN(STATE_MATCHER_META_FLOW_HASH); yylval.sval = strdup(
 <STATE_MATCHER_META_FLOW_HASH>{
     (eq|range) { yylval.sval = strdup(yytext); return MATCHER_OP; }
     {int}(-{int})? {
+        BEGIN(INITIAL);
+        yylval.sval = strdup(yytext);
+        return RAW_PAYLOAD;
+    }
+}
+
+meta\.pid           { BEGIN(STATE_MATCHER_META_PID); yylval.sval = strdup(yytext); return MATCHER_TYPE; }
+<STATE_MATCHER_META_PID>{
+    (eq) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    {int} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);
         return RAW_PAYLOAD;
