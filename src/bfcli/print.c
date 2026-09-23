@@ -157,15 +157,19 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             if (i != set->n_comps - 1)
                 (void)fprintf(stdout, ", ");
         }
+        (void)fprintf(stdout, ")");
+
+        if (set->min_size)
+            (void)fprintf(stdout, " min-size=%zu", set->min_size);
 
         if (no_set_content) {
             (void)fprintf(stdout,
-                          ") in { /* %zu elements, content elided */ }\n",
+                          " in { /* %zu elements, content elided */ }\n",
                           bf_hashset_size(&set->elems));
             continue;
         }
 
-        (void)fprintf(stdout, ") in {\n");
+        (void)fprintf(stdout, " in {\n");
 
         bf_hashset_foreach (&set->elems, node) {
             uint32_t payload_idx = 0;
