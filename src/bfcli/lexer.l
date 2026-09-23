@@ -6,6 +6,7 @@
 %{
     #include <stdio.h>
     #include <stdbool.h>
+    #include <stdlib.h>
 
     #include <bpfilter/verdict.h>
     #include <bpfilter/hook.h>
@@ -116,6 +117,12 @@ every           { BEGIN(STATE_LOG_EVERY); return EVERY; }
 }
 <STATE_MATCHER_SET>{
     (in) { yylval.sval = strdup(yytext); return MATCHER_OP; }
+    min-size=[0-9]+ {
+        /* bpfilter only support min-size= as option for now, if we introduce
+         * new option, we should implement a generic way of parsing options. */
+        yylval.u64 = strtoull(yytext + sizeof("min-size=") - 1, NULL, 10);
+        return SET_MIN_SIZE;
+    }
     \{[^}]*\} {
         BEGIN(INITIAL);
         yylval.sval = strdup(yytext);

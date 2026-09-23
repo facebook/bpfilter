@@ -139,6 +139,7 @@
 %token NEGATE LOG COUNTER MARK EVERY
 %token REDIRECT_TOKEN
 %token <sval> SET_TYPE
+%token <u64> SET_MIN_SIZE
 %token <sval> SET_RAW_PAYLOAD
 %token <sval> STRING
 %token <sval> HOOK VERDICT MATCHER_TYPE MATCHER_OP
@@ -165,6 +166,7 @@
 
 %type <void> sets
 %type <void> set
+%type <u64> set_min_size
 
 %type <list> matchers
 %destructor { bf_list_free(&$$); } matchers
@@ -289,13 +291,13 @@ hookopts        : %empty { $$ = NULL; }
 sets            : %empty { }
                 | sets set { }
                 ;
-set             : SET STRING SET_TYPE matcher_op SET_RAW_PAYLOAD
+set             : SET STRING SET_TYPE set_min_size matcher_op SET_RAW_PAYLOAD
                 {
                     _free_bf_set_ struct bf_set *set = NULL;
                     _cleanup_free_ const char *name = $2;
                     _cleanup_free_ const char *raw_key = $3;
-                    _cleanup_free_ const char *payload = $5;
-                    enum bf_matcher_op op = $4;
+                    _cleanup_free_ const char *payload = $6;
+                    enum bf_matcher_op op = $5;
                     int r;
 
                     if (op != BF_MATCHER_IN)
@@ -305,10 +307,22 @@ set             : SET STRING SET_TYPE matcher_op SET_RAW_PAYLOAD
                     if (r)
                         bf_parse_err("failed to create new set");
 
+                    set->min_size = $4;
+
                     if (bf_list_add_tail(&ruleset->sets, set) < 0)
                         bf_parse_err("failed to insert rule into bf_list\n");
 
                     TAKE_PTR(set);
+                }
+                ;
+
+set_min_size    : %empty { $$ = 0; }
+                | SET_MIN_SIZE
+                {
+                    if ($1 > UINT32_MAX)
+                        bf_parse_err("set min-size can't exceed %u", UINT32_MAX);
+
+                    $$ = $1;
                 }
                 ;
 
