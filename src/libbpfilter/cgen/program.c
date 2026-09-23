@@ -1074,6 +1074,24 @@ static bool _bf_dedup_equal(const void *lhs, const void *rhs, void *ctx)
  * Per-group keys and bitmask values are prepared in user space so a single
  * `bf_bpf_map_update_batch()` call populates the map on the kernel side.
  *
+ * The map is created with room for `max(bf_set.min_size, element count)`
+ * entries for each set in the group: a set that outgrows its `min_size`
+ * grows the map on its own, it never borrows the room reserved for another
+ * set of the group. Shared elements are stored once but counted once per
+ * set, so the map over-reserves when grouped sets overlap; this is the cost
+ * of keeping per-set reservations independent.
+ * For each group, we calculate:
+ * - `n_total_elems`: sum of `set.n_elems` for each sets of a group. Will count
+ *   duplicates if any.
+ * - `n_unique_elems`: same as `n_total_elems`, but doesn't count duplicate
+ *   elements.
+ * - `n_map_elems`: number of elements that we should have room for in the map,
+ *   sum of `max(set.min_size, set.n_elems)` for each set in the group.
+ *
+ * Empty sets are not part of any group (see `_bf_program_build_set_groups()`),
+ * so they get no map whatever their `min_size`: their reservation only takes
+ * effect once they become non-empty and the program is regenerated.
+ *
  * Group ownership of the created maps is transferred to `handle->sets`;
  * the `bf_set_group::map` pointer is a non-owning back-reference used by
  * `_bf_program_fixup()` when resolving `BF_FIXUP_TYPE_SET_MAP_FD` fixups.
@@ -1106,14 +1124,19 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
             bf_hashset_default(&dedup_ops, &key_size);
         size_t n_total_elems = 0;
         size_t n_unique_elems;
+        size_t n_map_elems = 0;
         _free_bf_map_ struct bf_map *new_map = NULL;
         struct bf_map *map_ref;
 
-        // Upper-bound the set capacity to avoid incremental rehashing.
+        /* Upper-bound the set capacity to avoid incremental rehashing, and
+         * size the BPF map so every set is guaranteed room for
+         * max(min_size, element count) entries, independently of the other
+         * sets in the group. */
         bf_list_foreach (&group->sets, set_node) {
             const struct bf_set *set = bf_list_node_get_data(set_node);
 
             n_total_elems += bf_hashset_size(&set->elems);
+            n_map_elems += bf_max(set->min_size, bf_hashset_size(&set->elems));
         }
 
         r = bf_hashset_reserve(&unique_elements, n_total_elems);
@@ -1165,7 +1188,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
                        (uint16_t)map_idx++);
 
-        r = bf_map_new_from_set(&new_map, name, key_set, n_unique_elems,
+        r = bf_map_new_from_set(&new_map, name, key_set, n_map_elems,
                                 value_size);
         if (r)
             return r;
