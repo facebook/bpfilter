@@ -174,6 +174,7 @@ static void pack_and_unpack(void **state)
 
     // Create and pack the source set
     assert_non_null(source = bft_set_dummy(4));
+    source->min_size = 16;
     assert_ok(bf_wpack_new(&wpack));
     bf_wpack_open_object(wpack, "set");
     assert_ok(bf_set_pack(source, wpack));
@@ -185,6 +186,7 @@ static void pack_and_unpack(void **state)
     assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
     assert_ok(bf_set_new_from_pack(&destination, node));
 
+    assert_int_equal(destination->min_size, 16);
     assert_true(bft_set_eq_ordered(source, destination));
 
     assert_ok(bf_set_new_from_copy(&copy, source));
