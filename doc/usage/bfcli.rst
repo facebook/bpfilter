@@ -274,6 +274,8 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
 
 Atomically update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership. Counters are preserved across the update.
 
+Sets can grow without limit through ``update-set``. To provision room upfront for a known number of elements, define the set with ``min-size`` (see `Sets`_).
+
 **Options**
   - ``--name NAME``: name of the chain containing the set.
   - ``--set-name NAME``: name of the set to update.
@@ -475,7 +477,7 @@ There are multiple ways to define sets in your ruleset. bpfilter supports named 
 
 .. code:: shell
 
-    set $NAME $KEY in {
+    set $NAME $KEY [min-size=$MIN_SIZE] in {
         $ELEMENT_0;
         $ELEMENT_1
     }
@@ -499,12 +501,16 @@ With:
   - ``$NAME``: name of the set, for named sets. Allows users to define a set at the beginning of the ruleset, then use it in multiple rules. Sets defined directly in a rule are anonymous, they can't be reused in a different rule. When using a named set, the key used in the rule to refer to the set must be the same as the key used to define the set.
   - ``$KEY``: the set's key, which is the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])``. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component". Parentheses are required even if the key contains a single component.
   - ``$ELEMENT``: elements are the data to store in the set, each component of the key should have a corresponding value in each element. Components of an element are comma-separated, elements themselves are delimited by semicolon or new line.
+  - ``$MIN_SIZE``: optional minimum capacity of the set, for named sets. The set's BPF map is created with room for at least ``$MIN_SIZE`` elements, so the set can be grown up to that many elements with ``bfcli chain update-set``. This is a lower bound, not a limit: a set containing more than ``$MIN_SIZE`` elements gets a map sized for its content. ``min-size=0`` is the default behavior.
 
 Here is an example:
 
 .. code:: shell
 
     set dns (ip4.saddr) in { 1.1.1.1; 1.0.0.1 }
+
+    # Reserve room for 1024 addresses, to be added with 'chain update-set'
+    set blocklist (ip4.saddr) min-size=1024 in { 192.0.2.1 }
 
     rule
         (ip4.saddr) in dns
