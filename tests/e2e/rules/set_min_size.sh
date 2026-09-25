@@ -63,17 +63,12 @@ echo "$chain_output"
 echo "$chain_output" | grep -q 'min-size=3'
 ${FROM_NS} ${BFCLI} chain flush --name grow
 
-# An empty set creates no map; the reservation takes effect once the set
-# becomes non-empty
-${FROM_NS} ${BFCLI} chain set --from-str "chain lazy BF_HOOK_XDP ACCEPT
+# An empty set with a min-size is backed by a map, an empty set without
+# min-size is not
+${FROM_NS} ${BFCLI} chain set --from-str "chain empty BF_HOOK_XDP ACCEPT
     set blocklist (ip4.saddr) min-size=16 in {}
-    rule (ip4.saddr) in blocklist counter DROP"
-count=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/lazy/ -name 'bf_set_*' | wc -l)
-test "${count}" -eq 0
-
-${FROM_NS} ${BFCLI} chain update-set \
-    --name lazy \
-    --set-name blocklist \
-    --add 192.0.2.1
-test "$(get_set_map_entries lazy)" = "16"
-${FROM_NS} ${BFCLI} chain flush --name lazy
+    set other (ip4.daddr) in {}
+    rule (ip4.saddr) in blocklist counter DROP
+    rule (ip4.daddr) in other counter DROP"
+test "$(get_set_map_entries empty)" = "16"
+${FROM_NS} ${BFCLI} chain flush --name empty

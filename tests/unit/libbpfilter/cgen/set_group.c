@@ -20,11 +20,13 @@
 
 #include "test.h"
 
-static void _bft_push_set(bf_list *sets, enum bf_matcher_type type)
+static void _bft_push_set(bf_list *sets, enum bf_matcher_type type,
+                          size_t min_size)
 {
     _free_bf_set_ struct bf_set *set = NULL;
 
     assert_ok(bf_set_new(&set, NULL, &type, 1));
+    set->min_size = min_size;
     assert_ok(bf_list_push(sets, (void **)&set));
 }
 
@@ -35,19 +37,23 @@ static void _bft_push_set(bf_list *sets, enum bf_matcher_type type)
  * - 3: ip4.saddr: group 0, bit 1
  * - 4: ip4.snet (LPM trie): group 2, bit 0
  * - 5: ip4.snet (LPM trie): group 3, bit 0
- * - 6: ip4.saddr: group 0, bit 2 */
+ * - 6: ip4.saddr: group 0, bit 2
+ * - 7: ip4.saddr, empty with a minimum size: group 0, bit 3
+ * - 8: ip4.snet (LPM trie), empty with a minimum size: group 4, bit 0 */
 static struct bf_chain *_bft_chain_with_sets(void)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
 
-    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR);
-    _bft_push_set(&sets, BF_MATCHER_TCP_SPORT);
-    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR);
-    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR);
-    _bft_push_set(&sets, BF_MATCHER_IP4_SNET);
-    _bft_push_set(&sets, BF_MATCHER_IP4_SNET);
-    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 0);
+    _bft_push_set(&sets, BF_MATCHER_TCP_SPORT, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SNET, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SNET, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 0);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 4);
+    _bft_push_set(&sets, BF_MATCHER_IP4_SNET, 4);
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
                            &sets, NULL));
@@ -79,15 +85,16 @@ static void build_groups(void **state)
     // Expected group and bit index of each set, SIZE_MAX if not grouped.
     const size_t expected[][2] = {
         {0, 0}, {1, 0}, {SIZE_MAX, SIZE_MAX}, {0, 1}, {2, 0}, {3, 0}, {0, 2},
+        {0, 3}, {4, 0},
     };
 
     (void)state;
 
     assert_ok(bf_set_group_build(&groups, chain));
-    assert_int_equal(bf_list_size(&groups), 4);
+    assert_int_equal(bf_list_size(&groups), 5);
 
     group = bf_list_get_at(&groups, 0);
-    assert_int_equal(bf_list_size(&group->sets), 3);
+    assert_int_equal(bf_list_size(&group->sets), 4);
 
     for (size_t i = 0; i < ARRAY_SIZE(expected); ++i) {
         const struct bf_set *set = bf_list_get_at(&chain->sets, i);
@@ -139,7 +146,7 @@ static void value_size(void **state)
 
     // One bit per set: one set more than fits in a byte needs 2 bytes
     for (size_t i = 0; i < CHAR_BIT + 1; ++i)
-        _bft_push_set(&sets, BF_MATCHER_IP4_SADDR);
+        _bft_push_set(&sets, BF_MATCHER_IP4_SADDR, 0);
 
     assert_ok(bf_chain_new(&large, "large", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
                            &sets, NULL));
