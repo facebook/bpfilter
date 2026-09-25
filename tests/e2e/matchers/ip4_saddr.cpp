@@ -113,6 +113,30 @@ static void ip4_saddr_in(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_ip4_saddr", 0, 2, -1);
+
+    // "not in" on an empty set matches the packet
+    BFT_CHAIN_SET(bf::Chain("test_ip4_saddr", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Set({BF_MATCHER_IP4_SADDR})
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
+                                           {0, 0, 0, 0}, true)}));
+
+    bft_assert_prog_run(
+        "test_ip4_saddr", test->hook(),
+        bft::Ethernet() /
+            bft::IPv4 {.saddr = "192.0.2.1", .daddr = "192.0.2.2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictDrop());
+
+    // Packets without an IPv4 source address are not matched
+    bft_assert_prog_run(
+        "test_ip4_saddr", test->hook(),
+        bft::Ethernet() /
+            bft::IPv6 {.saddr = "2001:db8::1", .daddr = "2001:db8::2"} /
+            bft::TCP {.sport = 12345, .dport = 80},
+        test->verdictAccept());
+
+    bft_assert_counter_eq("test_ip4_saddr", 0, 1, -1);
 }
 
 int main()

@@ -577,6 +577,35 @@ static int _bf_program_generate_log(struct bf_program *program,
     return program->runtime.ops->gen_inline_log(program, rule);
 }
 
+/**
+ * @brief Check whether a matcher needs no bytecode.
+ *
+ * A matcher needs no bytecode if it matches every packet the rule applies
+ * to. The protocol checks derived from the matcher are still generated.
+ *
+ * @param program Program to generate the matcher for. Can't be NULL.
+ * @param matcher Matcher to check. Can't be NULL.
+ * @return True if no bytecode is needed for the matcher, false otherwise.
+ */
+static bool _bf_program_matcher_is_noop(const struct bf_program *program,
+                                        const struct bf_matcher *matcher)
+{
+    assert(program);
+    assert(matcher);
+
+    if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
+        const struct bf_set *set =
+            bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
+
+        /* ... not in {} will match every packet, so no need to generate the
+         * bytecode for it. */
+        if (bf_set_is_empty(set) && bf_matcher_get_negate(matcher))
+            return true;
+    }
+
+    return false;
+}
+
 static int _bf_program_generate_rule(struct bf_program *program,
                                      struct bf_rule *rule)
 {
@@ -619,6 +648,9 @@ static int _bf_program_generate_rule(struct bf_program *program,
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+
+        if (_bf_program_matcher_is_noop(program, matcher))
+            continue;
 
         r = program->runtime.ops->gen_inline_matcher(program, matcher);
         if (r)

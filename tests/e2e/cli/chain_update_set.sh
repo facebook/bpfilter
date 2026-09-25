@@ -49,6 +49,32 @@ ${FROM_NS} ${BFCLI} chain update-set \
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 test "$(get_counter test_xdp 0)" = "2"
 
+# A rule matching addresses "not in" an empty set matches every packet, and
+# follows the set's emptiness transitions.
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set allowed (ip4.saddr) in {}
+    rule
+        ip4.proto icmp
+        (ip4.saddr) not in allowed
+        counter
+        DROP
+"
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "1"
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name allowed \
+    --add ${HOST_IP_ADDR}
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+
+${FROM_NS} ${BFCLI} chain update-set \
+    --name test_xdp \
+    --set-name allowed \
+    --remove ${HOST_IP_ADDR}
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "2"
+
 # Adding new elements
 ${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
