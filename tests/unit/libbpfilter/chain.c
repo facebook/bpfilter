@@ -209,6 +209,43 @@ static void apply_set_delta_updates_derived_state(void **state)
         bf_chain_apply_set_delta(chain, "set", invalid_delta, NULL), -EINVAL);
 }
 
+static void empty_set_only_disables_in_rules(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    _free_bf_set_ struct bf_set *set = NULL;
+    struct bf_rule *in_rule = NULL;
+    struct bf_rule *not_in_rule = NULL;
+
+    enum bf_matcher_type key[] = {BF_MATCHER_TCP_SPORT};
+
+    uint32_t set_index = 0;
+
+    (void)state;
+
+    assert_ok(bf_set_new(&set, "set", key, ARRAY_SIZE(key)));
+    assert_ok(bf_list_push(&sets, (void **)&set));
+
+    assert_ok(bf_rule_new(&in_rule));
+    assert_ok(bf_rule_add_matcher(in_rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index), false));
+    assert_ok(bf_list_add_tail(&rules, in_rule));
+
+    assert_ok(bf_rule_new(&not_in_rule));
+    assert_ok(bf_rule_add_matcher(not_in_rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  &set_index, sizeof(set_index), true));
+    assert_ok(bf_list_add_tail(&rules, not_in_rule));
+
+    assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
+                           &sets, &rules));
+
+    // Rule containing an "in" matcher with an empty set is disabled
+    assert_true(in_rule->disabled);
+    // Rule containing a "not in" matcher with an empty set is not disabled
+    assert_false(not_in_rule->disabled);
+}
+
 static void incompatible_matchers_disable_rule(void **state)
 {
     (void)state;
@@ -479,6 +516,7 @@ int main(void)
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),
         cmocka_unit_test(apply_set_delta_updates_derived_state),
+        cmocka_unit_test(empty_set_only_disables_in_rules),
         cmocka_unit_test(incompatible_matchers_disable_rule),
         cmocka_unit_test(sock_addr_log_flag),
         cmocka_unit_test(invalid_log_opts_for_hook),

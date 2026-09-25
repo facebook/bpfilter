@@ -22,15 +22,22 @@
 #include "bpfilter/verdict.h"
 
 /**
- * @brief Check if a rule references an empty set.
+ * @brief Check if a rule can't match because it references an unmatchable set.
  *
- * @param chain Chain containing the sets list.
- * @param rule Rule to check.
- * @return 0 if no issues, 1 if rule references an empty set (should be
- *         disabled), or negative errno if rule references a non-existent set.
+ * Check if a rule contains a matcher on a set that can't match any packet:
+ * - `... in {}`: the reference value can't be found in the set, because the
+ *   set is empty. The rule will never match.
+ * - `... not in {}`: the set is empty, but we test for the negative: the
+ *   reference value won't be in the set. The rule can match.
+ *
+ * @param chain Chain containing the sets list. Can't be NULL.
+ * @param rule Rule to check. Can't be NULL.
+ * @return 0 if the rule has no set matcher, or a set matcher that might match
+ *         a packet. 1 if the rule contains a set matcher that can't match any
+ *         packet. A negative errno value on failure.
  */
-static int _bf_rule_references_empty_set(const struct bf_chain *chain,
-                                         const struct bf_rule *rule)
+static int _bf_rule_has_unmatchable_set_matcher(const struct bf_chain *chain,
+                                                const struct bf_rule *rule)
 {
     assert(chain);
     assert(rule);
@@ -45,13 +52,12 @@ static int _bf_rule_references_empty_set(const struct bf_chain *chain,
 
         set_index = *(uint32_t *)bf_matcher_payload(matcher);
         set = bf_list_get_at(&chain->sets, set_index);
-
         if (!set) {
             return bf_err_r(-EINVAL, "rule %u references non-existent set",
                             rule->index);
         }
 
-        if (bf_set_is_empty(set)) {
+        if (bf_set_is_empty(set) && !bf_matcher_get_negate(matcher)) {
             bf_warn("rule %u references empty set, rule will be disabled",
                     rule->index);
             return 1;
@@ -158,7 +164,7 @@ static int _bf_chain_check_rule(struct bf_chain *chain, struct bf_rule *rule)
 
     assert(rule);
 
-    r = _bf_rule_references_empty_set(chain, rule);
+    r = _bf_rule_has_unmatchable_set_matcher(chain, rule);
     if (r < 0)
         return r;
     rule->disabled = r;
