@@ -60,7 +60,7 @@ static bool _bf_set_needs_map(const struct bf_set *set)
 {
     assert(set);
 
-    return !bf_set_is_empty(set);
+    return !bf_set_is_empty(set) || set->min_size;
 }
 
 int bf_set_group_build(bf_list *groups, const struct bf_chain *chain)

@@ -17,6 +17,10 @@
  * A chain's sets are stored in BPF maps. To limit the number of maps, sets
  * are partitioned into groups, and each group is backed by a single BPF map.
  *
+ * Empty sets are part of a group, and so have a map, if and only if their
+ * `min_size` is not 0: elements can then be added to them without
+ * regenerating the program.
+ *
  * Hash-keyed sets sharing a key format are placed in the same group.
  * LPM trie sets are never grouped together: each one sits in a group of its
  * own, as an LPM trie lookup always returns the longest-prefix match, which
@@ -67,7 +71,7 @@ int bf_set_group_build(bf_list *groups, const struct bf_chain *chain);
  * @param bit_idx If not NULL, set to the bit index of `set` within the group.
  *        Unchanged if `set` is not part of any group.
  * @return The group containing `set`, or NULL if `set` is not part of any
- *         group (for example, because it is empty).
+ *         group (because it is empty and its `min_size` is 0).
  */
 const struct bf_set_group *bf_set_group_find(const bf_list *groups,
                                              const struct bf_set *set,

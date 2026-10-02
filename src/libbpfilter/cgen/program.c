@@ -446,9 +446,11 @@ static bool _bf_program_matcher_is_noop(const struct bf_program *program,
         const struct bf_set *set =
             bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
 
-        /* ... not in {} will match every packet, so no need to generate the
-         * bytecode for it. */
-        if (bf_set_is_empty(set) && bf_matcher_get_negate(matcher))
+        /* A set not backed by a map is empty, and stays empty until the
+         * program is regenerated: ... not in {} will match every packet, so
+         * no need to generate the bytecode for it. */
+        if (!bf_set_group_find(&program->set_groups, set, NULL, NULL) &&
+            bf_matcher_get_negate(matcher))
             return true;
     }
 
@@ -995,23 +997,6 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         }
         n_unique_elems = bf_hashset_size(&unique_elements);
 
-        // Compute bf_map keys and values for batch insertion.
-        keys = calloc(n_unique_elems, key_size);
-        if (!keys)
-            return bf_err_r(-ENOMEM, "failed to allocate map keys");
-
-        values = calloc(n_unique_elems, value_size);
-        if (!values)
-            return bf_err_r(-ENOMEM, "failed to allocate map values");
-
-        bf_hashset_foreach (&unique_elements, hentry) {
-            memcpy(keys + (i * key_size), hentry->data, key_size);
-            (void)bf_set_group_elem_value(group, hentry->data,
-                                          values + (i * value_size));
-            ++i;
-        }
-
-        // Create the BPF map from the computed keys and values.
         (void)snprintf(name, BPF_OBJ_NAME_LEN, _BF_SET_MAP_PREFIX "%04x",
                        (uint16_t)map_idx++);
 
@@ -1020,10 +1005,28 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         if (r)
             return r;
 
-        r = bf_bpf_map_update_batch(new_map->fd, keys, values, n_unique_elems,
-                                    BPF_ANY);
-        if (r)
-            return bf_err_r(r, "failed to add set elements to the map");
+        if (n_unique_elems) {
+            // Compute bf_map keys and values for batch insertion.
+            keys = calloc(n_unique_elems, key_size);
+            if (!keys)
+                return bf_err_r(-ENOMEM, "failed to allocate map keys");
+
+            values = calloc(n_unique_elems, value_size);
+            if (!values)
+                return bf_err_r(-ENOMEM, "failed to allocate map values");
+
+            bf_hashset_foreach (&unique_elements, hentry) {
+                memcpy(keys + (i * key_size), hentry->data, key_size);
+                (void)bf_set_group_elem_value(group, hentry->data,
+                                              values + (i * value_size));
+                ++i;
+            }
+
+            r = bf_bpf_map_update_batch(new_map->fd, keys, values,
+                                        n_unique_elems, BPF_ANY);
+            if (r)
+                return bf_err_r(r, "failed to add set elements to the map");
+        }
 
         r = bf_list_push(&new_prog->handle->sets, (void **)&new_map);
         if (r)

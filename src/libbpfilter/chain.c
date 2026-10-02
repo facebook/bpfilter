@@ -30,6 +30,10 @@
  * - `... not in {}`: the set is empty, but we test for the negative: the
  *   reference value won't be in the set. The rule can match.
  *
+ * Empty sets with a minimum size are backed by a BPF map (to which elements
+ * can be added without regenerating the program), so rules referencing them
+ * are not disabled.
+ *
  * @param chain Chain containing the sets list. Can't be NULL.
  * @param rule Rule to check. Can't be NULL.
  * @return 0 if the rule has no set matcher, or a set matcher that might match
@@ -57,7 +61,8 @@ static int _bf_rule_has_unmatchable_set_matcher(const struct bf_chain *chain,
                             rule->index);
         }
 
-        if (bf_set_is_empty(set) && !bf_matcher_get_negate(matcher)) {
+        if (bf_set_is_empty(set) && !set->min_size &&
+            !bf_matcher_get_negate(matcher)) {
             bf_warn("rule %u references empty set, rule will be disabled",
                     rule->index);
             return 1;
