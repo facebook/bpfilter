@@ -77,6 +77,7 @@ add_custom_target(unit
 
 bf_add_c_test(unit libbpfilter/bpf.c)
 bf_add_c_test(unit libbpfilter/btf.c)
+bf_add_c_test(unit libbpfilter/cgen/set_group.c)
 bf_add_c_test(unit libbpfilter/chain.c)
 bf_add_c_test(unit libbpfilter/cli.c)
 bf_add_c_test(unit libbpfilter/counter.c)

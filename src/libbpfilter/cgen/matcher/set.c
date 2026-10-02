@@ -14,6 +14,7 @@
 
 #include "cgen/matcher/cmp.h"
 #include "cgen/program.h"
+#include "cgen/set_group.h"
 #include "cgen/stub.h"
 
 int bf_set_generate_map_lookup(struct bf_program *program,
@@ -21,7 +22,6 @@ int bf_set_generate_map_lookup(struct bf_program *program,
 {
     const struct bf_set *set;
     size_t bit_index;
-    int r;
 
     assert(program);
     assert(matcher);
@@ -33,9 +33,8 @@ int bf_set_generate_map_lookup(struct bf_program *program,
                         program->runtime.chain->name);
     }
 
-    r = bf_program_set_bit_index(program, set, &bit_index);
-    if (r) {
-        return bf_err_r(r, "set '%s' not assigned to any group",
+    if (!bf_set_group_find(&program->set_groups, set, NULL, &bit_index)) {
+        return bf_err_r(-ENOENT, "set '%s' not assigned to any group",
                         set->name ?: "<anonymous>");
     }
 

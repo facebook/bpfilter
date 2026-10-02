@@ -51,6 +51,7 @@
 #include "cgen/printer.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
+#include "cgen/set_group.h"
 #include "cgen/stub.h"
 #include "cgen/tc.h"
 #include "cgen/xdp.h"
@@ -83,163 +84,6 @@ static inline size_t _bf_round_next_power_of_2(size_t value)
 #endif
 
     return ++value;
-}
-
-/**
- * @brief Sets sharing the same key format, collapsed to a single BPF map.
- *
- * For hash-keyed sets, one `bf_set_group` exists for every unique key
- * format among a chain's non-empty sets. The sets list preserves insertion
- * order; a set's position is its bit index within the group's bitmask
- * value.
- *
- * LPM trie sets are never grouped together: each non-empty trie set gets
- * its own group of size 1. See `_bf_program_build_set_groups()` for the
- * rationale.
- */
-struct bf_set_group
-{
-    /** Non-empty sets that map to the same BPF map. For hash-keyed groups,
-     * all sets share the same key format; LPM trie groups always hold a
-     * single set. Non-owning pointers into the chain's `bf_set` list.
-     * Never empty. */
-    bf_list sets;
-
-    /** Backing BPF map. Populated during `bf_program_load()`; the map is
-     * owned by `bf_program->handle->sets`. */
-    struct bf_map *map;
-};
-
-#define _free_bf_set_group_ __attribute__((__cleanup__(_bf_set_group_free)))
-
-static void _bf_set_group_free(struct bf_set_group **group)
-{
-    assert(group);
-
-    if (!*group)
-        return;
-
-    bf_list_clean(&(*group)->sets);
-    BF_FREEP(group);
-}
-
-static int _bf_set_group_new(struct bf_set_group **group)
-{
-    _free_bf_set_group_ struct bf_set_group *_group = NULL;
-
-    assert(group);
-
-    _group = calloc(1, sizeof(*_group));
-    if (!_group)
-        return -ENOMEM;
-
-    /* The list holds non-owning const struct bf_set * pointers; no free
-     * callback. Groups are temporary (not serialized), so no pack callback
-     * either. */
-    _group->sets = bf_list_default(NULL, NULL);
-
-    *group = TAKE_PTR(_group);
-
-    return 0;
-}
-
-static struct bf_set_group *
-_bf_program_find_set_group(const struct bf_program *program,
-                           const struct bf_set *set)
-{
-    assert(program);
-
-    if (!set)
-        return NULL;
-
-    bf_list_foreach (&program->set_groups, group_node) {
-        struct bf_set_group *group = bf_list_node_get_data(group_node);
-        bf_list_foreach (&group->sets, set_node) {
-            if (bf_list_node_get_data(set_node) == set)
-                return group;
-        }
-    }
-
-    return NULL;
-}
-
-static int _bf_program_build_set_groups(struct bf_program *program)
-{
-    assert(program);
-
-    bf_list_clean(&program->set_groups);
-    program->set_groups = bf_list_default(_bf_set_group_free, NULL);
-
-    bf_list_foreach (&program->runtime.chain->sets, set_node) {
-        struct bf_set *set = bf_list_node_get_data(set_node);
-        struct bf_set_group *match = NULL;
-        int r;
-
-        if (bf_hashset_is_empty(&set->elems))
-            continue;
-
-        /* LPM trie sets are not grouped: BPF LPM trie lookup always
-         * returns the longest-prefix match, so the read-modify-write
-         * step in _bf_program_load_sets_maps() can't preserve the
-         * per-set bitmask when prefixes overlap. */
-        if (!set->use_trie) {
-            bf_list_foreach (&program->set_groups, group_node) {
-                struct bf_set_group *group = bf_list_node_get_data(group_node);
-                const struct bf_set *head =
-                    bf_list_node_get_data(bf_list_get_head(&group->sets));
-
-                if (bf_set_same_key(set, head)) {
-                    match = group;
-                    break;
-                }
-            }
-        }
-
-        if (match) {
-            r = bf_list_add_tail(&match->sets, set);
-            if (r)
-                return bf_err_r(r, "failed to add set to existing group");
-        } else {
-            _free_bf_set_group_ struct bf_set_group *new_group = NULL;
-
-            r = _bf_set_group_new(&new_group);
-            if (r)
-                return bf_err_r(r, "failed to allocate set group");
-
-            r = bf_list_add_tail(&new_group->sets, set);
-            if (r)
-                return bf_err_r(r, "failed to seed set group");
-
-            r = bf_list_push(&program->set_groups, (void **)&new_group);
-            if (r)
-                return bf_err_r(r, "failed to register set group");
-        }
-    }
-
-    return 0;
-}
-
-int bf_program_set_bit_index(const struct bf_program *program,
-                             const struct bf_set *set, size_t *bit_index)
-{
-    assert(program);
-    assert(set);
-    assert(bit_index);
-
-    bf_list_foreach (&program->set_groups, group_node) {
-        struct bf_set_group *group = bf_list_node_get_data(group_node);
-        size_t i = 0;
-
-        bf_list_foreach (&group->sets, set_node) {
-            if (bf_list_node_get_data(set_node) == set) {
-                *bit_index = i;
-                return 0;
-            }
-            ++i;
-        }
-    }
-
-    return -ENOENT;
 }
 
 static const struct bf_flavor_ops *bf_flavor_ops_get(enum bf_flavor flavor)
@@ -276,7 +120,8 @@ int bf_program_new(struct bf_program **program, const struct bf_chain *chain,
     _program->runtime.chain = chain;
     _program->img = bf_vector_default(sizeof(struct bpf_insn));
     _program->fixups = bf_list_default(bf_fixup_free, NULL);
-    _program->set_groups = bf_list_default(_bf_set_group_free, NULL);
+    // Empty until overwritten by bf_set_group_build().
+    _program->set_groups = bf_list_default(NULL, NULL);
     _program->handle = handle;
 
     r = bf_vector_reserve(&_program->img, 512);
@@ -355,8 +200,8 @@ void bf_program_dump(const struct bf_program *program, prefix_t *prefix)
         if (bf_list_is_tail(&program->set_groups, group_node))
             bf_dump_prefix_last(prefix);
 
-        DUMP(prefix, "struct bf_set_group at %p (%lu set(s), map=%p)", group,
-             bf_list_size(&group->sets), (void *)group->map);
+        DUMP(prefix, "struct bf_set_group at %p (%lu set(s))", group,
+             bf_list_size(&group->sets));
         bf_dump_prefix_push(prefix);
         bf_list_foreach (&group->sets, set_node) {
             const struct bf_set *set = bf_list_node_get_data(set_node);
@@ -445,9 +290,13 @@ static int _bf_program_fixup(struct bf_program *program,
             value = program->handle->smap->fd;
             break;
         case BF_FIXUP_TYPE_SET_MAP_FD: {
-            const struct bf_set_group *group =
-                _bf_program_find_set_group(program, fixup->attr.set_ptr);
-            if (!group || !group->map) {
+            const struct bf_map *map = NULL;
+            size_t group_idx;
+
+            if (bf_set_group_find(&program->set_groups, fixup->attr.set_ptr,
+                                  &group_idx, NULL))
+                map = bf_list_get_at(&program->handle->sets, group_idx);
+            if (!map) {
                 return bf_err_r(
                     -ENOENT, "set map fixup: set '%s' not in any loaded group",
                     fixup->attr.set_ptr ?
@@ -455,7 +304,7 @@ static int _bf_program_fixup(struct bf_program *program,
                         "(null)");
             }
             insn_type = BF_FIXUP_INSN_IMM;
-            value = group->map->fd;
+            value = map->fd;
             break;
         }
         case BF_FIXUP_ELFSTUB_CALL:
@@ -874,7 +723,7 @@ int bf_program_generate(struct bf_program *program)
     int ret_code;
     int r;
 
-    r = _bf_program_build_set_groups(program);
+    r = bf_set_group_build(&program->set_groups, chain);
     if (r)
         return bf_err_r(r, "failed to build set groups");
 
@@ -1065,11 +914,8 @@ static bool _bf_dedup_equal(const void *lhs, const void *rhs, void *ctx)
 /**
  * @brief Load set maps, one BPF map per `bf_set_group`.
  *
- * Hash-keyed sets that share the same key format have already been
- * grouped by `_bf_program_build_set_groups()`; LPM trie sets each occupy
- * their own single-set group. Each group collapses to one BPF map whose
- * value is a bitmask: bit `i` of byte `i / CHAR_BIT` identifies the `i`-th
- * set in the group.
+ * Sets have already been grouped by `bf_set_group_build()`, see
+ * `set_group.h` for the grouping rules and the map value layout.
  *
  * Per-group keys and bitmask values are prepared in user space so a single
  * `bf_bpf_map_update_batch()` call populates the map on the kernel side.
@@ -1088,13 +934,8 @@ static bool _bf_dedup_equal(const void *lhs, const void *rhs, void *ctx)
  * - `n_map_elems`: number of elements that we should have room for in the map,
  *   sum of `max(set.min_size, set.n_elems)` for each set in the group.
  *
- * Empty sets are not part of any group (see `_bf_program_build_set_groups()`),
- * so they get no map whatever their `min_size`: their reservation only takes
- * effect once they become non-empty and the program is regenerated.
- *
- * Group ownership of the created maps is transferred to `handle->sets`;
- * the `bf_set_group::map` pointer is a non-owning back-reference used by
- * `_bf_program_fixup()` when resolving `BF_FIXUP_TYPE_SET_MAP_FD` fixups.
+ * Ownership of the created maps is transferred to `handle->sets`, in the
+ * groups' order (see `bf_handle.sets`).
  */
 static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 {
@@ -1105,15 +946,14 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
     assert(new_prog);
 
     bf_list_foreach (&new_prog->set_groups, group_node) {
-        struct bf_set_group *group = bf_list_node_get_data(group_node);
+        const struct bf_set_group *group = bf_list_node_get_data(group_node);
         const struct bf_set *key_set =
             bf_list_node_get_data(bf_list_get_head(&group->sets));
-        size_t n_sets = bf_list_size(&group->sets);
         size_t i = 0;
         _cleanup_free_ uint8_t *keys = NULL;
         size_t key_size = key_set->elem_size;
         _cleanup_free_ uint8_t *values = NULL;
-        size_t value_size = (n_sets + CHAR_BIT - 1) / CHAR_BIT;
+        size_t value_size = bf_set_group_value_size(group);
         const bf_hashset_ops dedup_ops = {
             .hash = _bf_dedup_hash,
             .equal = _bf_dedup_equal,
@@ -1126,7 +966,6 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         size_t n_unique_elems;
         size_t n_map_elems = 0;
         _free_bf_map_ struct bf_map *new_map = NULL;
-        struct bf_map *map_ref;
 
         /* Upper-bound the set capacity to avoid incremental rehashing, and
          * size the BPF map so every set is guaranteed room for
@@ -1166,21 +1005,9 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
             return bf_err_r(-ENOMEM, "failed to allocate map values");
 
         bf_hashset_foreach (&unique_elements, hentry) {
-            size_t bit_idx = 0;
-
-            // Compute the key.
             memcpy(keys + (i * key_size), hentry->data, key_size);
-
-            // Compute the value (bitmask).
-            bf_list_foreach (&group->sets, set_node) {
-                const struct bf_set *set = bf_list_node_get_data(set_node);
-
-                if (bf_hashset_contains(&set->elems, hentry->data)) {
-                    values[(i * value_size) + (bit_idx / CHAR_BIT)] |=
-                        (uint8_t)(1U << (bit_idx % CHAR_BIT));
-                }
-                ++bit_idx;
-            }
+            (void)bf_set_group_elem_value(group, hentry->data,
+                                          values + (i * value_size));
             ++i;
         }
 
@@ -1198,11 +1025,9 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
         if (r)
             return bf_err_r(r, "failed to add set elements to the map");
 
-        map_ref = new_map;
         r = bf_list_push(&new_prog->handle->sets, (void **)&new_map);
         if (r)
             return r;
-        group->map = map_ref;
     }
 
     return _bf_program_fixup(new_prog, BF_FIXUP_TYPE_SET_MAP_FD);
