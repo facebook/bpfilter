@@ -132,6 +132,52 @@ test "$(get_prog_id test_xdp)" = "${prog_id}"
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 ${FROM_NS} ${BFCLI} chain flush --name test_xdp
 
+# A rule matching addresses "not in" an empty set with a min-size matches every
+# packet, and follows the set's in-place updates
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set allowed (ip4.saddr) min-size=4 in {}
+    rule
+        ip4.proto icmp
+        (ip4.saddr) not in allowed
+        counter
+        DROP
+"
+prog_id=$(get_prog_id test_xdp)
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "1"
+
+${FROM_NS} ${BFCLI} chain update-set --name test_xdp --set-name allowed --add ${HOST_IP_ADDR}
+test "$(get_prog_id test_xdp)" = "${prog_id}"
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+test "$(get_counter test_xdp 0)" = "1"
+
+${FROM_NS} ${BFCLI} chain update-set --name test_xdp --set-name allowed --remove ${HOST_IP_ADDR}
+test "$(get_prog_id test_xdp)" = "${prog_id}"
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+test "$(get_counter test_xdp 0)" = "2"
+${FROM_NS} ${BFCLI} chain flush --name test_xdp
+
+# A rule matching addresses "not in" a set sharing its map with another set
+# only checks its own set: the host's address in the other set still matches
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set other (ip4.saddr) min-size=4 in {}
+    set allowed (ip4.saddr) min-size=4 in {}
+    rule
+        ip4.proto icmp
+        (ip4.saddr) not in allowed
+        counter
+        DROP
+"
+prog_id=$(get_prog_id test_xdp)
+
+${FROM_NS} ${BFCLI} chain update-set --name test_xdp --set-name other --add ${HOST_IP_ADDR}
+(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+
+${FROM_NS} ${BFCLI} chain update-set --name test_xdp --set-name allowed --add ${HOST_IP_ADDR}
+ping -c 1 -W 0.1 ${NS_IP_ADDR}
+test "$(get_prog_id test_xdp)" = "${prog_id}"
+${FROM_NS} ${BFCLI} chain flush --name test_xdp
+
 # If an in-place update can't be persisted, the set's map is restored: a
 # directory in place of the temporary context pin makes persisting fail
 ${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
