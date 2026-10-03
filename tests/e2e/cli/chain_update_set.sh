@@ -7,7 +7,7 @@ make_sandbox
 
 # A rule referencing multiple grouped sets stays disabled until every set is
 # non-empty, and follows each emptiness transition after a single update.
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips0 (ip4.saddr) in {}
     set blocked_ips1 (ip4.saddr) in {}
     rule
@@ -51,7 +51,7 @@ test "$(get_counter test_xdp 0)" = "2"
 
 # A rule matching addresses "not in" an empty set matches every packet, and
 # follows the set's emptiness transitions.
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set allowed (ip4.saddr) in {}
     rule
         ip4.proto icmp
@@ -76,7 +76,7 @@ ${FROM_NS} ${BFCLI} chain update-set \
 test "$(get_counter test_xdp 0)" = "2"
 
 # Adding new elements
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2
@@ -100,7 +100,7 @@ echo "$chain_output" | grep -q '10.0.0.3'
 echo "$chain_output" | grep -q '10.0.0.4'
 
 # Removing elements
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2;
@@ -126,7 +126,7 @@ echo "$chain_output" | grep -q '10.0.0.2'
 (! echo "$chain_output" | grep -q '10.0.0.4')
 
 # Adding and removing in one operation
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2
@@ -151,7 +151,7 @@ echo "$chain_output" | grep -q '10.0.0.3'
 (! echo "$chain_output" | grep -q '10.0.0.4')
 
 # Trying to update non-existent set should fail
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2
@@ -173,7 +173,7 @@ echo "$chain_output" | grep -q '10.0.0.1'
 echo "$chain_output" | grep -q '10.0.0.2'
 
 # Trying to update with mismatched key format should fail
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2
@@ -195,7 +195,7 @@ echo "$chain_output" | grep -q '10.0.0.1'
 echo "$chain_output" | grep -q '10.0.0.2'
 
 # Trying to update with nothing to add or remove should fail
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2
@@ -211,7 +211,7 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${N
     --set-name blocked_ips 2>&1)
 
 # Trying to add duplicate elements is no-op
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1
     }
@@ -235,7 +235,7 @@ if [ "$count" -ne 1 ]; then
 fi
 
 # Works with compound keys
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_addrs (ip4.saddr, tcp.sport) in {
         10.0.0.1, 10001;
         10.0.0.2, 10002
@@ -275,7 +275,7 @@ echo "$chain_output" | grep -q '10.0.0.1'
 echo "$chain_output" | grep -q '10.0.0.2'
 
 # Counters are preserved after update-set for both set and non-set rules
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1
     }

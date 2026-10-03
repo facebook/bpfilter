@@ -55,7 +55,7 @@ Print the ruleset: request all the chains and rules with counters values.
 .. code:: shell
 
     $ sudo bfcli ruleset get
-      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+      chain my_tc_chain BF_HOOK_TC_INGRESS{iface=2} ACCEPT
           counters policy 87 packets 9085 bytes; error 0 packets 0 bytes
           rule
               ip4.saddr eq 0xc0 0xa8 0x01 0x01 0xff 0xff 0xff 0xff
@@ -72,7 +72,7 @@ Remove all the chains and rules. Once this command completes, bpfilter doesn't c
 .. code:: shell
 
     $ sudo bfcli ruleset get
-      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+      chain my_tc_chain BF_HOOK_TC_INGRESS{iface=2} ACCEPT
           counters policy 87 packets 9085 bytes; error 0 packets 0 bytes
           rule
               ip4.saddr eq 0xc0 0xa8 0x01 0x01 0xff 0xff 0xff 0xff
@@ -106,9 +106,9 @@ If you want to update an existing chain without downtime, use ``bfcli chain upda
           counters policy 0 packets 0 bytes; error 0 packets 0 bytes
 
     # Create an empty TC chain and attach it
-    $ sudo bfcli chain set --from-str "chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT"
+    $ sudo bfcli chain set --from-str "chain my_tc_chain BF_HOOK_TC_INGRESS{iface=2} ACCEPT"
     $ sudo bfcli chain get --name my_tc_chain
-      chain my_tc_chain BF_HOOK_TC_INGRESS{ifindex=2} ACCEPT
+      chain my_tc_chain BF_HOOK_TC_INGRESS{iface=2} ACCEPT
           counters policy 35 packets 4091 bytes; error 0 packets 0 bytes
 
 ``chain get``
@@ -132,7 +132,7 @@ Print a chain.
 
     $ # Print a chain with a large set, eliding the set's content
     $ sudo bfcli chain get --name my_filter --no-set-content
-      chain my_filter BF_HOOK_XDP{ifindex=2} ACCEPT
+      chain my_filter BF_HOOK_XDP{iface=2} ACCEPT
           counters policy 0 packets 0 bytes; error 0 packets 0 bytes
           set blocklist (ip4.saddr) in { /* 4096 elements, content elided */ }
           rule
@@ -161,7 +161,7 @@ Every log entry begins with a shared header: the receive timestamp, the matching
 
     $ # Create an XDP chain with logs and print the logs
     $ sudo bfcli chain set --from-str "
-      chain my_input_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+      chain my_input_chain BF_HOOK_XDP{iface=2} ACCEPT
           rule
               meta.l4_proto tcp
               log transport
@@ -228,9 +228,9 @@ See below for a list of available hook options.
 
     $ # Load and attach an XDP chain, print it
     $ sudo bfcli chain load --from-str "chain my_xdp_chain BF_HOOK_XDP ACCEPT"
-    $ sudo bfcli chain attach --name my_xdp_chain --option ifindex=2
+    $ sudo bfcli chain attach --name my_xdp_chain --option iface=2
     $ sudo bfcli chain get --name my_xdp_chain
-      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+      chain my_xdp_chain BF_HOOK_XDP{iface=2} ACCEPT
           counters policy 101 packets 11714 bytes; error 0 packets 0 bytes
 
 ``chain update``
@@ -251,18 +251,18 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
 .. code:: shell
 
     $ # Set an XDP chain and update it
-    $ sudo bfcli chain set --from-str "chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT"
+    $ sudo bfcli chain set --from-str "chain my_xdp_chain BF_HOOK_XDP{iface=2} ACCEPT"
     $ sudo bfcli chain get --name my_xdp_chain
-      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+      chain my_xdp_chain BF_HOOK_XDP{iface=2} ACCEPT
           counters policy 307 packets 36544 bytes; error 0 packets 0 bytes
     $ sudo bfcli chain update --from-str "
-          chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+          chain my_xdp_chain BF_HOOK_XDP{iface=2} ACCEPT
               rule
                   ip4.proto eq icmp
                   counter
                   DROP"
     $ sudo bfcli chain get --name my_xdp_chain
-      chain my_xdp_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+      chain my_xdp_chain BF_HOOK_XDP{iface=2} ACCEPT
           counters policy 204 packets 24074 bytes; error 0 packets 0 bytes
           rule
               ip4.proto eq 0x01
@@ -290,7 +290,7 @@ At least one of ``--add`` or ``--remove`` must be specified.
 
     $ # Create a chain with a named set
     $ sudo bfcli chain set --from-str "
-          chain my_filter BF_HOOK_XDP{ifindex=2} ACCEPT
+          chain my_filter BF_HOOK_XDP{iface=2} ACCEPT
               set blocklist (ip4.saddr) in { 192.168.1.100 }
               rule
                   (ip4.saddr) in blocklist
@@ -400,10 +400,10 @@ With:
      - Required by
      - Supported by
      - Notes
-   * - ``ifindex=$IFINDEX``
+   * - ``iface=$IFACE``
      - ``BF_HOOK_XDP``, ``BF_HOOK_TC``
      - N/A
-     - Interface index to attach the program to.
+     - Interface name or index to attach the program to. ``ifindex=`` is accepted as a deprecated alias.
    * - ``cgpath=$CGROUP_PATH``
      - ``BF_HOOK_CGROUP_SKB_*``, ``BF_HOOK_CGROUP_SOCK_ADDR_*``
      - N/A

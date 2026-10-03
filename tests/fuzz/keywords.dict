@@ -40,13 +40,16 @@
 "inet6"
 
 # Hook option patterns
+"iface="
 "ifindex="
 "cgpath="
 "family="
 "priorities="
+"iface=1"
+"iface=lo"
+"iface=eth0"
 "ifindex=1"
 "ifindex=lo"
-"ifindex=eth0"
 "cgpath=/sys/fs/cgroup"
 "priorities=1-2"
 "priorities=100-200"

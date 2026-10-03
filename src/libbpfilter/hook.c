@@ -21,6 +21,7 @@
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/if.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 
@@ -198,23 +199,24 @@ const char *bf_nf_hook_to_str(enum bf_nf_inet_hooks hook)
 static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
                                       const char *raw_opt)
 {
-    unsigned long ifindex;
+    uint32_t ifindex;
+    int r;
 
     assert(hookopts);
     assert(raw_opt);
 
     if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
-        return bf_err_r(-EEXIST, "ifindex= is defined multiple times");
+        return bf_err_r(-EEXIST, "iface= is defined multiple times");
 
-    errno = 0;
-    ifindex = strtoul(raw_opt, NULL, 0);
-    if (errno != 0) {
-        return bf_err_r(-errno, "failed to parse bf_hookopts type ifindex=%s",
+    // Accept interface names (eth0) or numeric indexes via bf_if_index_from_str.
+    r = bf_if_index_from_str(raw_opt, &ifindex);
+    if (r) {
+        return bf_err_r(r, "failed to parse bf_hookopts type iface=%s",
                         raw_opt);
     }
 
     if (ifindex > INT_MAX)
-        return bf_err_r(-E2BIG, "ifindex is too big: %lu", ifindex);
+        return bf_err_r(-E2BIG, "iface index is too big: %u", ifindex);
 
     hookopts->ifindex = (int)ifindex;
     hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
@@ -228,7 +230,7 @@ static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
     assert(hookopts);
     assert(prefix);
 
-    DUMP(prefix, "ifindex: %d", hookopts->ifindex);
+    DUMP(prefix, "iface: %d", hookopts->ifindex);
 }
 
 static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
@@ -366,7 +368,7 @@ static struct bf_hookopts_ops
     int (*parse)(struct bf_hookopts *, const char *);
     void (*dump)(const struct bf_hookopts *, prefix_t *);
 } _bf_hookopts_ops[] = {
-    [BF_HOOKOPTS_IFINDEX] = {.name = "ifindex",
+    [BF_HOOKOPTS_IFINDEX] = {.name = "iface",
                              .type = BF_HOOKOPTS_IFINDEX,
                              .required_by =
                                  BF_FLAGS(BF_FLAVOR_XDP, BF_FLAVOR_TC),
@@ -412,6 +414,13 @@ static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         if (bf_streq(_bf_hookopts_ops[type].name, key))
             return &_bf_hookopts_ops[type];
+    }
+
+    /** @deprecated `ifindex=` was replaced by `iface=`. */
+    if (bf_streq(key, "ifindex")) {
+        bf_warn(
+            "ifindex= hook option is deprecated, use iface= instead");
+        return &_bf_hookopts_ops[BF_HOOKOPTS_IFINDEX];
     }
 
     return NULL;
