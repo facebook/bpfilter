@@ -158,10 +158,46 @@ static int _bf_set_parse_key(const char *raw_key, enum bf_matcher_type *key,
     return 0;
 }
 
+static int _bf_set_expand_range(struct bf_set *set, const char *token,
+                                const struct bf_matcher_ops *range_ops)
+{
+    uint16_t bounds[2];
+    int r;
+
+    assert(set);
+    assert(token);
+    assert(range_ops);
+
+    r = range_ops->parse(set->key[0], BF_MATCHER_RANGE, bounds, token);
+    if (r)
+        return bf_err_r(r, "failed to parse set element range '%s'", token);
+
+    for (uint32_t value = bounds[0]; value <= bounds[1]; ++value) {
+        _cleanup_free_ uint16_t *range_elem = NULL;
+        void *range_data;
+
+        range_elem = malloc(set->elem_size);
+        if (!range_elem)
+            return bf_err_r(-ENOMEM, "failed to allocate a new set element");
+
+        *range_elem = (uint16_t)value;
+
+        range_data = range_elem;
+        r = bf_hashset_add(&set->elems, &range_data);
+        if (!r)
+            range_elem = NULL;
+        if (r && r != -EEXIST)
+            return bf_err_r(r, "failed to insert element into set");
+    }
+
+    return 0;
+}
+
 int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
 {
     _cleanup_free_ void *elem = NULL;
     _cleanup_free_ char *_raw_elem = NULL;
+    const struct bf_matcher_ops *range_ops = NULL;
     char *tmp, *saveptr, *token;
     size_t elem_offset = 0;
     size_t comp_idx = 0;
@@ -181,6 +217,15 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
     if (!elem)
         return bf_err_r(-ENOMEM, "failed to allocate a new set element");
 
+    if (set->n_comps == 1 && (set->key[0] == BF_MATCHER_TCP_SPORT ||
+                              set->key[0] == BF_MATCHER_TCP_DPORT ||
+                              set->key[0] == BF_MATCHER_UDP_SPORT ||
+                              set->key[0] == BF_MATCHER_UDP_DPORT ||
+                              set->key[0] == BF_MATCHER_META_SPORT ||
+                              set->key[0] == BF_MATCHER_META_DPORT)) {
+        range_ops = bf_matcher_get_ops(set->key[0], BF_MATCHER_RANGE);
+    }
+
     tmp = _raw_elem;
     while ((token = strtok_r(tmp, ",", &saveptr))) {
         const struct bf_matcher_ops *ops;
@@ -198,6 +243,16 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
         if (!ops) {
             return bf_err_r(-EINVAL, "matcher type '%s' has no matcher_ops",
                             bf_matcher_type_to_str(set->key[comp_idx]));
+        }
+
+        if (range_ops && strchr(token, '-')) {
+            if (strchr(raw_elem, ',')) {
+                return bf_err_r(
+                    -EINVAL,
+                    "set element has more components than defined in the key: '%s'",
+                    token);
+            }
+            return _bf_set_expand_range(set, token, range_ops);
         }
 
         r = ops->parse(set->key[comp_idx], BF_MATCHER_IN, elem + elem_offset,
