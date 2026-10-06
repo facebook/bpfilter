@@ -216,6 +216,8 @@ static void hookopts_parse_iface(void **state)
     char opt2[] = "iface=100";
     char opt_name[] = "iface=lo";
     char opt_deprecated[] = "ifindex=7";
+    char opt_deprecated_name[] = "ifindex=lo";
+    char opt_cross[] = "ifindex=9";
     int lo_idx;
 
     (void)state;
@@ -231,6 +233,9 @@ static void hookopts_parse_iface(void **state)
     assert_err(bf_hookopts_parse_opt(hookopts, opt2));
     assert_int_equal(hookopts->ifindex, 42);
 
+    // Cross-duplicate with deprecated ifindex=
+    assert_err(bf_hookopts_parse_opt(hookopts, opt_cross));
+
     // Interface name
     bf_hookopts_free(&hookopts);
     assert_ok(bf_hookopts_new(&hookopts));
@@ -239,12 +244,17 @@ static void hookopts_parse_iface(void **state)
     assert_ok(bf_hookopts_parse_opt(hookopts, opt_name));
     assert_int_equal(hookopts->ifindex, lo_idx);
 
-    // Deprecated ifindex= alias still resolves to the same option
+    // Deprecated ifindex= still accepts a numeric index
     bf_hookopts_free(&hookopts);
     assert_ok(bf_hookopts_new(&hookopts));
     assert_ok(bf_hookopts_parse_opt(hookopts, opt_deprecated));
     assert_int_equal(hookopts->ifindex, 7);
     assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+
+    // Deprecated ifindex= stays numeric-only
+    bf_hookopts_free(&hookopts);
+    assert_ok(bf_hookopts_new(&hookopts));
+    assert_err(bf_hookopts_parse_opt(hookopts, opt_deprecated_name));
 }
 
 static void hookopts_parse_cgpath(void **state)

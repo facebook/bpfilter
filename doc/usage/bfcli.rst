@@ -403,7 +403,12 @@ With:
    * - ``iface=$IFACE``
      - ``BF_HOOK_XDP``, ``BF_HOOK_TC``
      - N/A
-     - Interface name or index to attach the program to. ``ifindex=`` is accepted as a deprecated alias.
+     - Interface name or index to attach the program to. At least one of
+       ``iface=`` or ``ifindex=`` must be provided for XDP/TC chains.
+   * - ``ifindex=$IFINDEX``
+     - N/A
+     - N/A
+     - Deprecated, use ``iface=`` instead. Numeric interface index only.
    * - ``cgpath=$CGROUP_PATH``
      - ``BF_HOOK_CGROUP_SKB_*``, ``BF_HOOK_CGROUP_SOCK_ADDR_*``
      - N/A
