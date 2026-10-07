@@ -10,7 +10,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/socket.h>
 
 #include <bpfilter/btf.h>
 #include <bpfilter/flavor.h>
@@ -22,12 +21,8 @@
 #include "cgen/packet.h"
 #include "cgen/program.h"
 #include "cgen/stub.h"
-#include "cgen/swich.h"
 #include "filter.h"
 #include "linux/bpf.h"
-
-// Forward definition to avoid headers clusterfuck.
-uint16_t htons(uint16_t hostshort);
 
 static int _bf_cgroup_skb_gen_inline_prologue(struct bf_program *program)
 {
@@ -59,26 +54,13 @@ static int _bf_cgroup_skb_gen_inline_prologue(struct bf_program *program)
 
     /* BPF_PROG_TYPE_CGROUP_SKB doesn't provide access the the Ethernet header,
      * so we can't parse it and discover the L3 protocol ID.
-     * Instead, we use the __sk_buff.family value and convert it to the
-     * corresponding ethertype. */
-    if ((offset = bf_btf_get_field_off("__sk_buff", "family")) < 0)
+     * Instead, we use __sk_buff.protocol: the packet's ethertype, in network
+     * byte order, as in the Ethernet header. Don't use __sk_buff.family: it is
+     * the socket's family, and an AF_INET6 socket can send and receive IPv4
+     * packets. */
+    if ((offset = bf_btf_get_field_off("__sk_buff", "protocol")) < 0)
         return offset;
-    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offset));
-
-    {
-        _clean_bf_swich_ struct bf_swich swich =
-            bf_swich_get(program, BPF_REG_2);
-
-        EMIT_SWICH_OPTION(&swich, AF_INET,
-                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IP)));
-        EMIT_SWICH_OPTION(&swich, AF_INET6,
-                          BPF_MOV64_IMM(BPF_REG_7, htons(ETH_P_IPV6)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_7, 0));
-
-        r = bf_swich_generate(&swich);
-        if (r)
-            return r;
-    }
+    EMIT(program, BPF_LDX_MEM(BPF_W, BPF_REG_7, BPF_REG_1, offset));
 
     EMIT(program, BPF_ST_MEM(BPF_W, BPF_REG_10, BF_PROG_CTX_OFF(l3_offset), 0));
 
