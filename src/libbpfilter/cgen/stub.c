@@ -322,7 +322,6 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 int bf_stub_parse_l4_hdr(struct bf_program *program)
 {
     _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
-    int ret_code;
     int r;
 
     assert(program);
@@ -361,7 +360,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_3, BF_PROG_CTX_OFF(l4)));
     EMIT_KFUNC_CALL(program, "bpf_dynptr_slice");
 
-    // If the function call failed, quit the program
+    /* If the function call failed (e.g. the packet is too short), continue as
+     * if the L4 protocol was not supported: the rules and the chain policy
+     * still apply. */
     {
         _clean_bf_jmpctx_ struct bf_jmpctx _ =
             bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 0));
@@ -376,15 +377,13 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
         if (bf_ctx_is_verbose(BF_VERBOSE_BPF))
             EMIT_PRINT(program, "failed to create L4 dynamic pointer slice");
 
-        r = program->runtime.ops->get_verdict(BF_VERDICT_ACCEPT, &ret_code);
-        if (r)
-            return r;
-
-        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
-        EMIT(program, BPF_EXIT_INSN());
+        /* No L4 protocol (r8 = 0) and no L4 header (r0 = NULL, the calls
+         * above overwrote r0). */
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, 0));
     }
 
-    // Store the L4 header address into the runtime context
+    // Store the L4 header address (NULL on failure) into the runtime context
     EMIT(program,
          BPF_STX_MEM(BPF_DW, BPF_REG_10, BPF_REG_0, BF_PROG_CTX_OFF(l4_hdr)));
 

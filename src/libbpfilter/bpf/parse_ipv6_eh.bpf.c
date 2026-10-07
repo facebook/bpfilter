@@ -41,8 +41,9 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
             ctx->l4_offset += (ext->hdrlen + 2) * 4;
             break;
         case IPPROTO_FRAGMENT:
+            // Fixed size: the second byte is reserved, not a length
             next_hdr_type = ext->nexthdr;
-            ctx->l4_offset += ext->hdrlen + 8;
+            ctx->l4_offset += 8;
             break;
         default:
             return next_hdr_type;
