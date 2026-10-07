@@ -56,6 +56,7 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
             return next_hdr_type;
         }
 
+        __u8 hdrlen = ext->hdrlen;
         __u8 offset;
         __u8 shift;
         ctx->ipv6_eh |=
@@ -70,6 +71,8 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
             offset = EH_AH_OFFSET;
             shift = EH_AH_SHIFT;
         } else if (next_hdr_type == IPPROTO_FRAGMENT) {
+            // Fixed size: the second byte is reserved, not a length
+            hdrlen = 0;
             offset = EH_FRAG_OFFSET;
             shift = EH_FRAG_SHIFT;
         } else {
@@ -77,7 +80,7 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
             shift = EH_COMMON_SHIFT;
         }
 
-        ctx->l4_offset += (ext->hdrlen + offset) << shift;
+        ctx->l4_offset += (hdrlen + offset) << shift;
         next_hdr_type = ext->nexthdr;
     }
 
