@@ -81,6 +81,10 @@ int bf_stub_parse_l3_hdr(struct bf_program *program);
  * L4 header, with the following differences:
  * - The size of the slice to request depends on the L4 protocol ID stored in @c r8
  * - There is no logic to process the L4 header and determine the L5 protocol
+ * - If the slice creation fails (e.g. the packet is too short), the error
+ *   counter is updated, the L4 protocol ID register is set to 0 and
+ *   `bf_runtime.l4_hdr` to NULL, and processing continues as for an
+ *   unsupported L4 protocol
  *
  * If the L4 protocol is not supported, this function returns before requesting
  * a dynamic pointer slice, and the L4 protocol ID register is set to 0.
