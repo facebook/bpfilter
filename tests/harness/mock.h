@@ -18,47 +18,45 @@
 /**
  * @file mock.h
  *
- * Mock functions are used to wrap a system call or an external library function
- * in order to simplify the test of a libbpfilter function, or prevent it from
- * modifying the underlying system.
+ * A mock replaces a function while it is enabled, so a test can control how
+ * this function behaves.
  *
- * ## Technicalities
-
+ * Keep mocks simple: only mock a function to simulate the environment (e.g. a
+ * system call that requires privileges or modifies the system), or to trigger
+ * a failure that a test can't cause otherwise, such as an allocation failure.
+ * Don't use mocks to reach code paths that a test can reach with real inputs.
  *
- * Mock functions from `bpfilter` or from the standard library. Mocking function
- * allows the tester to call a stub and force the function to return a
- * predefined value. Mocks can be used to trigger a specific code path or
- * prevent a system call (which would modify the system or require elevated
- * privileges).
+ * # Technicalities
  *
- * Mocks must be declared in `harness/mock.h` with `bf_test_mock_declare()` and
- * implemented in `harness/mock.c` with `bf_test_mock_define()`. Then, add the
- * mocked function to `bf_test_mock()` in `harness/CMakeLists.txt`.
+ * Mocks are defined in the `mock` shared library. ctest runs the unit tests
+ * with this library in `LD_PRELOAD`, so the dynamic linker resolves calls to a
+ * mocked function to its mock. Run the unit tests through ctest: without the
+ * preload, the real functions may be called instead. In debug builds, ASan is
+ * preloaded first, so the functions it intercepts, such as `malloc()`, can't
+ * be mocked.
  *
- * In your tests, create the mock with `bf_test_mock_get(function, retval)`.
- * `retval` is the value you expect the mock to return when called. By default,
- * the mock expects to return this value only once and never be called again.
- * To configure a different behavior, use `bf_test_mock_get_empty()` and
- * `bf_test_mock_will_return()` or `bf_test_mock_will_return_always()`. Use
- * `_clean_bf_test_mock_` to limit your mock to the current scope.
+ * To add a mock:
+ * 1. Implement it in its own file in `harness/mock/` (e.g.
+ *    `harness/mock/bf_realloc.c`), and add the file to the `mock` library in
+ *    `harness/CMakeLists.txt`. When the mock is disabled, it must call the
+ *    real function, found with `dlsym(RTLD_NEXT, ...)`.
+ * 2. Declare it with `bft_mock_declare()` in `harness/mock.h`, and define it
+ *    with `bft_mock_define()` in `harness/mock.c`.
+ * 3. In tests, enable it with `bft_mock_get()`, and use `_clean_bft_mock_` to
+ *    disable it when leaving the scope.
  *
- * Using a mock to ensure `_bf_print_msg_new()` fails if `malloc()` fails:
+ * For example, to check that `bf_wpack_get_data()` fails when `bf_realloc()`
+ * fails:
  * @code{.c}
- * // Create a mock for malloc which will return NULL once.
- * _clean_bf_test_mock bf_test_mock _ bf_test_mock_get(malloc, NULL);
+ * {
+ *     _clean_bft_mock_ bft_mock _ = bft_mock_get(bf_realloc);
  *
- * // Expect the function to fail if malloc fails.
- * assert_error(_bf_printer_msg_new(&msg));
+ *     assert_err(bf_wpack_get_data(pack, &data, &data_len));
+ * }
  * @endcode
  *
- * This module also defines convenience function to simulate a runtime
- * environment such as creating a temporary file to serialize the context into.
-
-
-MOCKING IS ONLY TO MOCK, not to trigger different code path during testing
--> KISS
-
-
+ * `bft_mock_syscall_set_retval()` defines the value that the `syscall` mock
+ * returns for the `bpf()` system call.
  */
 
 struct btf;
@@ -108,6 +106,7 @@ typedef struct
 
 void bft_mock_clean(bft_mock *mock);
 
+bft_mock_declare(bf_realloc);
 bft_mock_declare(btf__load_vmlinux_btf);
 bft_mock_declare(isatty);
 bft_mock_declare(setns);
