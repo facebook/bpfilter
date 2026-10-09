@@ -19,11 +19,8 @@ __u8 bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
     __u8 l4_proto = (__u8)l3_l4_proto;
 
     log = bpf_ringbuf_reserve(ctx->log_map, sizeof(struct bf_log), 0);
-    if (!log) {
-        bpf_printk("failed to reserve %d bytes in ringbuf",
-                   sizeof(struct bf_log));
+    if (!log)
         return 1;
-    }
 
     log->ts = bpf_ktime_get_ns();
     log->rule_id = rule_id;
