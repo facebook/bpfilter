@@ -56,8 +56,9 @@ struct bf_handle
      * per rule. NULL if the chain has no logging rules. */
     struct bf_map *smap;
 
-    /** List of set maps. Contains at most one map for each unique key
-     * format. */
+    /** List of set maps, one for each `bf_set_group` built from the chain by
+     * `bf_set_group_build()`, in the same order: the `i`-th map backs the
+     * `i`-th group. */
     bf_list sets;
 };
 

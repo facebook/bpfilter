@@ -412,6 +412,28 @@ static void bpf_map_update_elem_failure(void **state)
     assert_int_equal(r, -EEXIST);
 }
 
+static void bpf_map_delete_elem_success(void **state)
+{
+    _clean_bft_mock_ bft_mock mock = bft_mock_get(syscall);
+    uint32_t key = 0;
+
+    (void)state;
+
+    bft_mock_syscall_set_retval(0);
+    assert_ok(bf_bpf_map_delete_elem(10, &key));
+}
+
+static void bpf_map_delete_elem_failure(void **state)
+{
+    _clean_bft_mock_ bft_mock mock = bft_mock_get(syscall);
+    uint32_t key = 0;
+
+    (void)state;
+
+    bft_mock_syscall_set_retval(-ENOENT);
+    assert_err(bf_bpf_map_delete_elem(10, &key));
+}
+
 static void bpf_map_update_batch_success(void **state)
 {
     uint32_t keys[] = {0, 1, 2};
@@ -542,6 +564,8 @@ int main(void)
         cmocka_unit_test(bpf_map_create_with_token),
         cmocka_unit_test(bpf_map_update_elem_success),
         cmocka_unit_test(bpf_map_update_elem_failure),
+        cmocka_unit_test(bpf_map_delete_elem_success),
+        cmocka_unit_test(bpf_map_delete_elem_failure),
         cmocka_unit_test(bpf_map_update_batch_success),
         cmocka_unit_test(bpf_link_create_success),
         cmocka_unit_test(bpf_link_create_netfilter),

@@ -272,9 +272,9 @@ If you want to modify the hook options, use ``bfcli chain set`` instead.
 ``chain update-set``
 ~~~~~~~~~~~~~~~~~~~~
 
-Atomically update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership. Counters are preserved across the update.
+Update the content of a named set in a chain using delta operations. This is more efficient than replacing the entire chain when you only need to modify set membership. Counters are preserved across the update.
 
-Sets can grow without limit through ``update-set``. To provision room upfront for a known number of elements, define the set with ``min-size`` (see `Sets`_).
+By default, the chain's program is regenerated with the updated set, and replaces the existing program atomically. If the set is defined with a ``min-size`` (see `Sets`_) and contains at most ``min-size`` elements once updated, the elements are added to and removed from the set's BPF map directly, without regenerating the program. Other updates regenerate the program; sets can grow without limit.
 
 **Options**
   - ``--name NAME``: name of the chain containing the set.
@@ -301,6 +301,17 @@ At least one of ``--add`` or ``--remove`` must be specified.
 
     $ # Remove an address from the blocklist
     $ sudo bfcli chain update-set --name my_filter --set-name blocklist --remove 192.168.1.100
+
+    $ # Create a chain with an empty set, with room for 1024 addresses
+    $ sudo bfcli chain set --from-str "
+          chain my_filter BF_HOOK_XDP{ifindex=2} ACCEPT
+              set blocklist (ip4.saddr) min-size=1024 in {}
+              rule
+                  (ip4.saddr) in blocklist
+                  DROP"
+
+    $ # Add an address to the blocklist, without regenerating the program
+    $ sudo bfcli chain update-set --name my_filter --set-name blocklist --add 192.168.1.100
 
 ``chain flush``
 ~~~~~~~~~~~~~~~
@@ -501,7 +512,7 @@ With:
   - ``$NAME``: name of the set, for named sets. Allows users to define a set at the beginning of the ruleset, then use it in multiple rules. Sets defined directly in a rule are anonymous, they can't be reused in a different rule. When using a named set, the key used in the rule to refer to the set must be the same as the key used to define the set.
   - ``$KEY``: the set's key, which is the format of the data stored in the set. Keys are defined as ``($MATCHER_0 [, $MATCHERS...])``. This instructs bpfilter that the key is formed from the payload of the list matchers. For example, ``(ip4.saddr, ip4.proto)`` describe the key as the source IPv4 address followed by the IPv4 protocol field. Each matcher defined in the key is called a "component". Parentheses are required even if the key contains a single component.
   - ``$ELEMENT``: elements are the data to store in the set, each component of the key should have a corresponding value in each element. Components of an element are comma-separated, elements themselves are delimited by semicolon or new line.
-  - ``$MIN_SIZE``: optional minimum capacity of the set, for named sets. The set's BPF map is created with room for at least ``$MIN_SIZE`` elements, so the set can be grown up to that many elements with ``bfcli chain update-set``. This is a lower bound, not a limit: a set containing more than ``$MIN_SIZE`` elements gets a map sized for its content. ``min-size=0`` is the default behavior.
+  - ``$MIN_SIZE``: optional minimum capacity of the set, for named sets. The set's BPF map is created with room for at least ``$MIN_SIZE`` elements, so ``bfcli chain update-set`` can add elements to the set without regenerating the chain's program, up to that many elements. This is a lower bound, not a limit: a set containing more than ``$MIN_SIZE`` elements gets a map sized for its content. ``min-size=0`` is the default behavior. Note this differs from nftables' ``size``, which is a hard maximum.
 
 Here is an example:
 

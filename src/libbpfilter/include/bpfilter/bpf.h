@@ -159,6 +159,16 @@ int bf_bpf_map_update_elem(int map_fd, const void *key, const void *value,
                            int flags);
 
 /**
+ * @brief Delete a BPF map element.
+ *
+ * @param map_fd File descriptor of the map to delete the element from.
+ * @param key Key of the element to delete. Can't be NULL.
+ * @return 0 on success, or a negative error value on failure, including:
+ * - `-ENOENT`: `key` is not in the map.
+ */
+int bf_bpf_map_delete_elem(int map_fd, const void *key);
+
+/**
  * @brief Create or update multiple elements in a BPF map at once.
  *
  * @param map_fd File descriptor of the map to update.

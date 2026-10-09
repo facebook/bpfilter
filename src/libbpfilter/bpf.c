@@ -265,6 +265,20 @@ int bf_bpf_map_update_elem(int map_fd, const void *key, const void *value,
     return bf_bpf(BF_BPF_MAP_UPDATE_ELEM, &attr);
 }
 
+int bf_bpf_map_delete_elem(int map_fd, const void *key)
+{
+    union bpf_attr attr;
+
+    assert(key);
+
+    memset(&attr, 0, sizeof(attr));
+
+    attr.map_fd = map_fd;
+    attr.key = bf_ptr_to_u64(key);
+
+    return bf_bpf(BF_BPF_MAP_DELETE_ELEM, &attr);
+}
+
 int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
                             size_t count, int flags)
 {

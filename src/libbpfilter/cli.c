@@ -451,7 +451,6 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
                         const struct bf_set *to_remove)
 {
     _clean_bf_lock_ struct bf_lock lock = bf_lock_default();
-    _free_bf_chain_ struct bf_chain *new_chain = NULL;
     _free_bf_cgen_ struct bf_cgen *cgen = NULL;
     int r;
 
@@ -470,16 +469,7 @@ int bf_chain_update_set(const char *name, const struct bf_set *to_add,
     if (r)
         return r;
 
-    r = bf_chain_new_from_copy(&new_chain, cgen->chain);
-    if (r)
-        return r;
-
-    r = bf_chain_apply_set_delta(new_chain, to_add->name, to_add, to_remove);
-    if (r)
-        return r;
-
-    r = bf_cgen_update(cgen, &new_chain,
-                       BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS), &lock);
+    r = bf_cgen_update_set(cgen, to_add, to_remove, &lock);
     if (r)
         return bf_err_r(r, "failed to update chain with new set data");
 

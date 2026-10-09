@@ -16,6 +16,7 @@ struct bf_chain;
 struct bf_handle;
 struct bf_hookopts;
 struct bf_lock;
+struct bf_set;
 
 #define _free_bf_cgen_ __attribute__((cleanup(bf_cgen_free)))
 
@@ -160,6 +161,27 @@ enum bf_cgen_update_flags
  */
 int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
                    uint32_t flags, struct bf_lock *lock);
+
+/**
+ * @brief Update a named set of the codegen's chain.
+ *
+ * If the set has a minimum size and doesn't contain more than `min_size`
+ * elements once updated, the update is written directly to the set's map,
+ * located using the set groups: the program is not regenerated, and the
+ * update is not atomic. Otherwise, the program is regenerated from a copy of
+ * the chain with the updated set, using `bf_cgen_update()`. Counters are
+ * preserved in both cases.
+ *
+ * @param cgen Codegen to update. Can't be NULL.
+ * @param to_add Elements to add to the set. Its name identifies the updated
+ *        set. Can't be NULL.
+ * @param to_remove Elements to remove from the set. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Must hold a
+ *        valid `chain_fd`. Can't be NULL.
+ * @return 0 on success, or negative errno value on failure.
+ */
+int bf_cgen_update_set(struct bf_cgen *cgen, const struct bf_set *to_add,
+                       const struct bf_set *to_remove, struct bf_lock *lock);
 
 /**
  * Detach a program from the kernel.

@@ -5,6 +5,8 @@
 
 #include "cgen/cgen.h"
 
+#include <linux/bpf.h>
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -16,6 +18,7 @@
 
 #include <bpfilter/bpf.h>
 #include <bpfilter/chain.h>
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
@@ -24,12 +27,14 @@
 #include <bpfilter/logger.h>
 #include <bpfilter/pack.h>
 #include <bpfilter/rule.h>
+#include <bpfilter/set.h>
 
 #include "cgen/dump.h"
 #include "cgen/handle.h"
 #include "cgen/prog/link.h"
 #include "cgen/prog/map.h"
 #include "cgen/program.h"
+#include "cgen/set_group.h"
 #include "core/lock.h"
 
 #define _BF_PROG_NAME "bf_prog"
@@ -548,6 +553,316 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
         return bf_err_r(r, "failed to persist cgen for '%s'",
                         cgen->chain->name);
     }
+
+    return 0;
+}
+
+/**
+ * @brief Compute the elements a set update actually adds and removes.
+ *
+ * `added` receives the elements of `to_add` that are neither in `set` nor in
+ * `to_remove`, and `removed` the elements of `to_remove` that are in `set`.
+ * Applying `added` then `removed` to `set` has the same effect as applying
+ * `to_add` then `to_remove`, and applying `removed` then `added` reverts it.
+ *
+ * @param set Set to update. Can't be NULL.
+ * @param to_add Elements to add to `set`. Can't be NULL.
+ * @param to_remove Elements to remove from `set`. Can't be NULL.
+ * @param added On success, set to the elements the update adds to `set`.
+ *        Can't be NULL.
+ * @param removed On success, set to the elements the update removes from
+ *        `set`. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_cgen_get_set_changes(const struct bf_set *set,
+                                    const struct bf_set *to_add,
+                                    const struct bf_set *to_remove,
+                                    struct bf_set **added,
+                                    struct bf_set **removed)
+{
+    _free_bf_set_ struct bf_set *_added = NULL;
+    _free_bf_set_ struct bf_set *_removed = NULL;
+    int r;
+
+    assert(set);
+    assert(to_add);
+    assert(to_remove);
+    assert(added);
+    assert(removed);
+
+    r = bf_set_new(&_added, NULL, set->key, set->n_comps);
+    if (r)
+        return r;
+
+    r = bf_set_new(&_removed, NULL, set->key, set->n_comps);
+    if (r)
+        return r;
+
+    bf_hashset_foreach (&to_add->elems, elem) {
+        if (bf_hashset_contains(&set->elems, elem->data) ||
+            bf_hashset_contains(&to_remove->elems, elem->data))
+            continue;
+
+        r = bf_set_add_elem(_added, elem->data);
+        if (r)
+            return r;
+    }
+
+    bf_hashset_foreach (&to_remove->elems, elem) {
+        if (!bf_hashset_contains(&set->elems, elem->data))
+            continue;
+
+        r = bf_set_add_elem(_removed, elem->data);
+        if (r)
+            return r;
+    }
+
+    *added = TAKE_PTR(_added);
+    *removed = TAKE_PTR(_removed);
+
+    return 0;
+}
+
+/**
+ * @brief Get the loaded map backing a set, to update the set in place.
+ *
+ * The groups built from the chain are the groups of the loaded program, as
+ * long as the sets that need a map didn't change: the set's group is then
+ * backed by the map at the same index in the handle.
+ *
+ * @param cgen Codegen of the loaded program. Can't be NULL.
+ * @param groups Set groups built from the codegen's chain. Can't be NULL.
+ * @param set Set to find the map of, from the codegen's chain. Can't be NULL.
+ * @param group On success, set to the group of `set`. Can't be NULL.
+ * @return The map backing `set`, or NULL if no loaded map matches the set's
+ *         group.
+ */
+static const struct bf_map *
+_bf_cgen_get_set_map(const struct bf_cgen *cgen, const bf_list *groups,
+                     const struct bf_set *set,
+                     const struct bf_set_group **group)
+{
+    const struct bf_set_group *_group;
+    const struct bf_map *map;
+    size_t group_idx;
+
+    assert(cgen);
+    assert(groups);
+    assert(set);
+    assert(group);
+
+    if (bf_list_size(groups) != bf_list_size(&cgen->handle->sets))
+        return NULL;
+
+    _group = bf_set_group_find(groups, set, &group_idx, NULL);
+    if (!_group)
+        return NULL;
+
+    map = bf_list_get_at(&cgen->handle->sets, group_idx);
+    if (!map || map->key_size != set->elem_size ||
+        map->value_size != bf_set_group_value_size(_group))
+        return NULL;
+
+    *group = _group;
+
+    return map;
+}
+
+/**
+ * @brief Write the elements of a set update to the set's map.
+ *
+ * The value of each element is computed from the sets of `group`, which must
+ * contain the updated set. Elements no set of the group contains anymore are
+ * deleted from the map first, so the map never holds more elements than
+ * before or after the update. The other elements are then written.
+ *
+ * @param map Map backing `group`. Can't be NULL.
+ * @param group Group of the updated set. Can't be NULL.
+ * @param added Elements added to the set. Can't be NULL.
+ * @param removed Elements removed from the set. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure. On failure, the
+ *         map can be partially updated.
+ */
+static int _bf_cgen_write_set_changes(const struct bf_map *map,
+                                      const struct bf_set_group *group,
+                                      const struct bf_set *added,
+                                      const struct bf_set *removed)
+{
+    const struct bf_set *changes[] = {added, removed};
+    _cleanup_free_ uint8_t *value = NULL;
+    int r;
+
+    assert(map);
+    assert(group);
+    assert(added);
+    assert(removed);
+
+    value = malloc(bf_set_group_value_size(group));
+    if (!value)
+        return -ENOMEM;
+
+    for (size_t i = 0; i < ARRAY_SIZE(changes); ++i) {
+        bf_hashset_foreach (&changes[i]->elems, elem) {
+            if (bf_set_group_elem_value(group, elem->data, value))
+                continue;
+
+            r = bf_bpf_map_delete_elem(map->fd, elem->data);
+            if (r && r != -ENOENT)
+                return bf_err_r(r, "failed to delete element from set map");
+        }
+    }
+
+    for (size_t i = 0; i < ARRAY_SIZE(changes); ++i) {
+        bf_hashset_foreach (&changes[i]->elems, elem) {
+            if (!bf_set_group_elem_value(group, elem->data, value))
+                continue;
+
+            r = bf_bpf_map_update_elem(map->fd, elem->data, value, BPF_ANY);
+            if (r)
+                return bf_err_r(r, "failed to write element to set map");
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Revert a set update written in place.
+ *
+ * The set is restored in the codegen's chain, then the elements of the update
+ * are written back to the set's map.
+ *
+ * @param cgen Codegen containing the set. Can't be NULL.
+ * @param set_name Name of the updated set. Can't be NULL.
+ * @param map Map backing `group`. Can't be NULL.
+ * @param group Group of the updated set. Can't be NULL.
+ * @param added Elements the update added to the set. Can't be NULL.
+ * @param removed Elements the update removed from the set. Can't be NULL.
+ */
+static void _bf_cgen_revert_set_changes(struct bf_cgen *cgen,
+                                        const char *set_name,
+                                        const struct bf_map *map,
+                                        const struct bf_set_group *group,
+                                        const struct bf_set *added,
+                                        const struct bf_set *removed)
+{
+    int r;
+
+    assert(cgen);
+    assert(set_name);
+
+    r = bf_chain_apply_set_delta(cgen->chain, set_name, removed, added);
+    if (!r)
+        r = _bf_cgen_write_set_changes(map, group, removed, added);
+    if (r)
+        bf_err_r(r, "failed to restore the map of set '%s'", set_name);
+}
+
+/**
+ * @brief Update a set by regenerating the program.
+ *
+ * @param cgen Codegen to update. Can't be NULL.
+ * @param to_add Elements to add to the set. Its name identifies the updated
+ *        set. Can't be NULL.
+ * @param to_remove Elements to remove from the set. Can't be NULL.
+ * @param lock Lock providing the chain directory file descriptor. Can't be
+ *        NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+static int _bf_cgen_regen_set(struct bf_cgen *cgen, const struct bf_set *to_add,
+                              const struct bf_set *to_remove,
+                              struct bf_lock *lock)
+{
+    _free_bf_chain_ struct bf_chain *new_chain = NULL;
+    int r;
+
+    assert(cgen);
+    assert(to_add);
+    assert(to_remove);
+    assert(lock);
+
+    r = bf_chain_new_from_copy(&new_chain, cgen->chain);
+    if (r)
+        return r;
+
+    r = bf_chain_apply_set_delta(new_chain, to_add->name, to_add, to_remove);
+    if (r)
+        return r;
+
+    return bf_cgen_update(cgen, &new_chain,
+                          BF_FLAG(BF_CGEN_UPDATE_PRESERVE_COUNTERS), lock);
+}
+
+int bf_cgen_update_set(struct bf_cgen *cgen, const struct bf_set *to_add,
+                       const struct bf_set *to_remove, struct bf_lock *lock)
+{
+    _free_bf_set_ struct bf_set *added = NULL;
+    _free_bf_set_ struct bf_set *removed = NULL;
+    _clean_bf_list_ bf_list groups = bf_list_default(NULL, NULL);
+    const struct bf_set_group *group = NULL;
+    const struct bf_map *map = NULL;
+    const struct bf_set *set;
+    size_t n_elems;
+    int r;
+
+    assert(cgen);
+    assert(to_add);
+    assert(to_add->name);
+    assert(to_remove);
+    assert(lock);
+
+    set = bf_chain_get_set_by_name(cgen->chain, to_add->name);
+    if (!set)
+        return bf_err_r(-ENOENT, "set '%s' does not exist", to_add->name);
+
+    if (!bf_set_same_key(set, to_add) || !bf_set_same_key(set, to_remove))
+        return bf_err_r(-EINVAL, "set key format mismatch");
+
+    r = _bf_cgen_get_set_changes(set, to_add, to_remove, &added, &removed);
+    if (r)
+        return bf_err_r(r, "failed to compute the changes to set '%s'",
+                        set->name);
+
+    n_elems = bf_hashset_size(&set->elems) - bf_hashset_size(&removed->elems) +
+              bf_hashset_size(&added->elems);
+
+    /* Sets with a minimum size are always backed by a map, which has room for
+     * at least `min_size` elements of the set, whatever the content of the
+     * other sets of its group (see `_bf_program_load_sets_maps()`). */
+    if (set->min_size && n_elems <= set->min_size) {
+        r = bf_set_group_build(&groups, cgen->chain);
+        if (r)
+            return bf_err_r(r, "failed to build set groups");
+
+        map = _bf_cgen_get_set_map(cgen, &groups, set, &group);
+    }
+
+    if (!map) {
+        bf_dbg("set '%s' can't be updated in place, regenerating the program",
+               set->name);
+        return _bf_cgen_regen_set(cgen, to_add, to_remove, lock);
+    }
+
+    r = bf_chain_apply_set_delta(cgen->chain, set->name, added, removed);
+    if (r)
+        return bf_err_r(r, "failed to update set '%s'", set->name);
+
+    r = _bf_cgen_write_set_changes(map, group, added, removed);
+    if (r) {
+        _bf_cgen_revert_set_changes(cgen, set->name, map, group, added,
+                                    removed);
+        return bf_err_r(r, "failed to update set '%s' in place", set->name);
+    }
+
+    r = _bf_cgen_persist(cgen, lock->chain_fd);
+    if (r) {
+        _bf_cgen_revert_set_changes(cgen, set->name, map, group, added,
+                                    removed);
+        return bf_err_r(r, "failed to persist cgen for '%s'",
+                        cgen->chain->name);
+    }
+
+    bf_dbg("updated set '%s' in place", set->name);
 
     return 0;
 }
