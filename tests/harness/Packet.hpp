@@ -111,6 +111,30 @@ struct IPv6
 };
 
 /**
+ * @brief IPv6 Hop-by-Hop Options header, padded to 8 bytes.
+ */
+struct IPv6HopByHop
+{
+    static constexpr uint8_t ip_proto = 0; // IPPROTO_HOPOPTS
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
+};
+
+/**
+ * @brief IPv6 Fragment header for a single fragment (offset 0, M flag unset).
+ */
+struct IPv6Fragment
+{
+    uint8_t reserved = 0;
+
+    static constexpr uint8_t ip_proto = 44; // IPPROTO_FRAGMENT
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
+};
+
+/**
  * @brief TCP header.
  */
 struct TCP
@@ -192,6 +216,13 @@ struct ICMPv6
     [[nodiscard]] size_t write(uint8_t *buf) const;
 };
 
+/**
+ * @brief IPv6 extension header: written with the protocol of the next layer.
+ */
+template<typename T>
+concept IPv6ExtHdr =
+    requires(const T &layer, uint8_t *buf) { layer.write(buf, T::ip_proto); };
+
 namespace detail
 {
 
@@ -208,6 +239,34 @@ struct Partial
     L3 l3;
 };
 
+/**
+ * @brief Network layer followed by an IPv6 extension header.
+ *
+ * Produced by `operator/`. It is used as a network layer, so extension headers
+ * can be chained before the transport layer.
+ */
+template<typename L3, IPv6ExtHdr Ext>
+struct WithExtHdr
+{
+    L3 l3;
+    Ext ext;
+
+    static constexpr uint16_t ether_type = L3::ether_type;
+
+    [[nodiscard]] static size_t size()
+    {
+        return L3::size() + Ext::size();
+    }
+
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto,
+                               size_t payload) const
+    {
+        const size_t off = l3.write(buf, Ext::ip_proto, Ext::size() + payload);
+
+        return off + ext.write(buf + off, proto);
+    }
+};
+
 } // namespace detail
 
 /**
@@ -220,6 +279,18 @@ template<typename L3>
 detail::Partial<L3> operator/(Ethernet layer2, L3 layer3)
 {
     return {layer2, layer3};
+}
+
+/**
+ * @brief Append an IPv6 extension header to a partial stack.
+ *
+ * Usage: `auto pkt = Ethernet{} / IPv6{} / IPv6HopByHop{} / TCP{};`
+ */
+template<typename L3, IPv6ExtHdr Ext>
+detail::Partial<detail::WithExtHdr<L3, Ext>>
+operator/(detail::Partial<L3> stack, Ext ext)
+{
+    return {stack.l2, {stack.l3, ext}};
 }
 
 /**
