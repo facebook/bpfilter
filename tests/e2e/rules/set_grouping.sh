@@ -28,7 +28,7 @@ count=$(${FROM_NS} find ${WORKDIR}/bpf/bpfilter/split/ -name 'bf_set_*' | wc -l)
 
 # Isolation test: the host's address lives in set b only.
 # Chain references set a only. We must not match on set b elements.
-${FROM_NS} ${BFCLI} chain set --from-str "chain isolation BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain isolation BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set a (ip4.saddr) in { 192.0.2.40 }
     set b (ip4.saddr) in { ${HOST_IP_ADDR} }
     rule (ip4.saddr) in a counter DROP"
@@ -39,7 +39,7 @@ ${FROM_NS} ${BFCLI} chain flush --name isolation
 # (1 byte per 8 sets). The host's address sits in s8 only (bit_index 8 ->
 # byte 1, bit 0). Rule 0 references s0 (byte 0, bit 0) and must miss;
 # rule 1 references s8 and must drop.
-${FROM_NS} ${BFCLI} chain set --from-str "chain multibyte BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain multibyte BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set s0 (ip4.saddr) in { 192.0.2.10 }
     set s1 (ip4.saddr) in { 192.0.2.11 }
     set s2 (ip4.saddr) in { 192.0.2.12 }

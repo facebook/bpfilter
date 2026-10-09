@@ -28,12 +28,12 @@ Sleep 2500ms
 Enter
 Type "# Block ICMP on input, and https://1.1.1.1 on output" Sleep 500ms Enter
 Type "sudo bfcli ruleset set --from-str '" Enter
-Type "chain my_input_chain BF_HOOK_XDP{ifindex=2} ACCEPT" Enter
+Type "chain my_input_chain BF_HOOK_XDP{iface=2} ACCEPT" Enter
 Type "  rule" Enter
 Type "    ip4.proto icmp" Enter
 Type "    counter" Enter
 Type "    DROP" Enter
-Type "chain my_output_chain BF_HOOK_TC_EGRESS{ifindex=2} ACCEPT" Enter
+Type "chain my_output_chain BF_HOOK_TC_EGRESS{iface=2} ACCEPT" Enter
 Type "  rule" Enter
 Type "    (ip4.daddr) in {1.1.1.1; 8.8.8.8}" Enter
 Type "    tcp.dport eq 443" Enter

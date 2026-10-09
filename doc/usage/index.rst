@@ -57,7 +57,7 @@ Use ``bfcli`` to create a filtering chain. A chain is a set of rules to filter p
 .. code-block:: bash
 
 	$ sudo bfcli ruleset set --from-str "
-        chain my_chain BF_HOOK_XDP{ifindex=$IFINDEX} ACCEPT
+        chain my_chain BF_HOOK_XDP{iface=$IFACE} ACCEPT
             rule
                 ip4.proto eq icmp
                 counter
@@ -86,7 +86,7 @@ Now that our filtering rule is in place, pings to ``facebook.com`` should be blo
 .. code-block:: bash
 
     $ sudo bfcli ruleset get
-    chain my_chain BF_HOOK_XDP{ifindex=2} ACCEPT
+    chain my_chain BF_HOOK_XDP{iface=2} ACCEPT
         counters policy 12942 packets 12436391 bytes; error 0 packets 0 bytes
         rule
             ip4.proto eq icmp

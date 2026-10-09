@@ -1,4 +1,4 @@
-chain firewall BF_HOOK_XDP {ifindex=lo} DROP
+chain firewall BF_HOOK_XDP {iface=lo} DROP
 # Allow loopback
 rule ip4.saddr eq 127.0.0.1 ACCEPT
 # Allow established

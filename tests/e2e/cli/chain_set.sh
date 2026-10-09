@@ -9,9 +9,9 @@ make_sandbox
 (! ${FROM_NS} ${BFCLI} chain set --from-str "chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT")
 (! ${FROM_NS} ${BFCLI} chain set --name invalid --from-str "chain test0 BF_HOOK_XDP ACCEPT chain test1 BF_HOOK_XDP ACCEPT")
 ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_xdp_0 BF_HOOK_XDP ACCEPT"
-${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_xdp_1 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_xdp_1 BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --name chain_set_tc_0 --from-str "chain chain_set_tc_0 BF_HOOK_TC_INGRESS ACCEPT chain chain_set_tc_1 BF_HOOK_TC_INGRESS ACCEPT"
-${FROM_NS} ${BFCLI} chain set --name chain_set_tc_2 --from-str "chain chain_set_tc_2 BF_HOOK_TC_EGRESS{ifindex=${NS_IFINDEX}} ACCEPT chain chain_set_tc_3 BF_HOOK_TC_INGRESS ACCEPT"
+${FROM_NS} ${BFCLI} chain set --name chain_set_tc_2 --from-str "chain chain_set_tc_2 BF_HOOK_TC_EGRESS{iface=${NS_IFINDEX}} ACCEPT chain chain_set_tc_3 BF_HOOK_TC_INGRESS ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_xdp_0 BF_HOOK_NF_LOCAL_IN ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_tc_0 BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=101-102} ACCEPT"
 ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_set_xdp_1 BF_HOOK_NF_LOCAL_IN ACCEPT"

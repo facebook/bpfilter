@@ -6,16 +6,16 @@
 make_sandbox
 
 # Create and attach chain, verify filtering works
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT"
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 
 # Chain is discoverable from bpffs with correct ifindex
 chain_output=$(${FROM_NS} ${BFCLI} chain get --name test_chain)
 echo "$chain_output"
-echo "$chain_output" | grep -q "ifindex=${NS_IFINDEX}"
+echo "$chain_output" | grep -q "iface=${NS_IFINDEX}"
 
 # Attached chain with sets: set elements and filtering persist
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set myset (ip4.saddr) in { ${HOST_IP_ADDR}; 192.168.1.2 }
     set empty_set (ip4.saddr) in {}
     rule (ip4.saddr) in myset counter DROP
