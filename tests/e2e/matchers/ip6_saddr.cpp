@@ -40,7 +40,14 @@ static void ip6_saddr_eq(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    bft_assert_counter_eq("test_ip6_saddr", 0, 1, -1);
+    // saddr=2001:db8::1 with a truncated TCP header still matches -> DROP
+    auto pkt =
+        bft::Ethernet() / bft::IPv6 {.saddr = "2001:db8::1"} / bft::TCP {};
+    pkt.len -= 1;
+    bft_assert_prog_run("test_ip6_saddr", test->hook(), pkt,
+                        test->verdictDrop());
+
+    bft_assert_counter_eq("test_ip6_saddr", 0, 2, -1);
 
     // Try with negation
     BFT_CHAIN_SET(
