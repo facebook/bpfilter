@@ -48,12 +48,19 @@ _bf_matcher_generate_meta_probability(struct bf_program *program,
 
     EMIT(program, BPF_EMIT_CALL(BPF_FUNC_get_prandom_u32));
 
+    /* Compare with a 32-bit jump: struct bpf_insn.imm is signed, and the
+     * 64-bit BPF_JMP class sign-extends it before the comparison. Any
+     * threshold above INT32_MAX (every probability above 50%) would then
+     * compare r0 against 0xffffffff80000000 or more and never jump, so the
+     * rule would match 100% of the packets (and 0% when negated). BPF_JMP32
+     * compares the low 32 bits unsigned, which is what bpf_get_prandom_u32()
+     * returns. Same approach as meta.flow_probability below. */
     if (bf_matcher_get_negate(matcher)) {
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JLE, BPF_REG_0, threshold, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP32_IMM(BPF_JLE, BPF_REG_0, threshold, 0));
     } else {
-        EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(BPF_JGT, BPF_REG_0, threshold, 0));
+        EMIT_FIXUP_JMP_NEXT_RULE(
+            program, BPF_JMP32_IMM(BPF_JGT, BPF_REG_0, threshold, 0));
     }
 
     return 0;
