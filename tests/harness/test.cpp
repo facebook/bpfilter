@@ -17,31 +17,31 @@ extern "C" {
 #include <bpfilter/flavor.h>
 }
 
-void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
-                         const bft::Packet &pkt, int expected)
+/* Mimic the kernel's struct nf_hook_state layout for BPF_PROG_TEST_RUN
+ * context. Only hook and pf are read by the kernel; all pointer fields
+ * must be zero. */
+struct nf_hook_state_ctx
 {
-    _cleanup_close_ int fd = -1;
-    int r;
+    uint8_t hook;
+    uint8_t pf;
+    void *in;
+    void *out;
+    void *sk;
+    void *net;
+    int (*okfn)(void *, void *, void *);
+};
 
-    /* Mimic the kernel's struct nf_hook_state layout for BPF_PROG_TEST_RUN
-     * context. Only hook and pf are read by the kernel; all pointer fields
-     * must be zero. */
-    struct nf_hook_state_ctx
-    {
-        uint8_t hook;
-        uint8_t pf;
-        void *in;
-        void *out;
-        void *sk;
-        void *net;
-        int (*okfn)(void *, void *, void *);
-    };
+static_assert(sizeof(nf_hook_state_ctx) == 48);
 
-    static_assert(sizeof(nf_hook_state_ctx) == 48);
-
-    fd = bf_chain_prog_fd(chain_name);
-    assert_true(fd >= 0);
-
+/**
+ * @brief Run `pkt` once through the program `fd` attached to `hook`.
+ *
+ * See bft_assert_prog_run() for the per-hook input conventions.
+ *
+ * @return The program's return value (verdict), or a negative errno value.
+ */
+static int _bft_prog_run_once(int fd, enum bf_hook hook, const bft::Packet &pkt)
+{
     if (bf_hook_to_flavor(hook) == BF_FLAVOR_NF) {
         struct nf_hook_state_ctx ctx = {};
         uint16_t ethertype;
@@ -56,17 +56,46 @@ void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
         ctx.pf = ethertype == 0x0800 ? NFPROTO_IPV4 : NFPROTO_IPV6;
 
         if (hook == BF_HOOK_NF_LOCAL_OUT) {
-            r = bf_bpf_prog_run(fd, pkt.data.data() + ETH_HLEN,
-                                pkt.len - ETH_HLEN, &ctx, sizeof(ctx));
-        } else {
-            r = bf_bpf_prog_run(fd, pkt.data.data(), pkt.len, &ctx,
-                                sizeof(ctx));
+            return bf_bpf_prog_run(fd, pkt.data.data() + ETH_HLEN,
+                                   pkt.len - ETH_HLEN, &ctx, sizeof(ctx));
         }
-    } else {
-        r = bf_bpf_prog_run(fd, pkt.data.data(), pkt.len, nullptr, 0);
+
+        return bf_bpf_prog_run(fd, pkt.data.data(), pkt.len, &ctx, sizeof(ctx));
     }
 
-    assert_int_equal(expected, r);
+    return bf_bpf_prog_run(fd, pkt.data.data(), pkt.len, nullptr, 0);
+}
+
+void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
+                         const bft::Packet &pkt, int expected)
+{
+    _cleanup_close_ int fd = -1;
+
+    fd = bf_chain_prog_fd(chain_name);
+    assert_true(fd >= 0);
+
+    assert_int_equal(expected, _bft_prog_run_once(fd, hook, pkt));
+}
+
+size_t bft_prog_run_count(const char *chain_name, enum bf_hook hook,
+                          const bft::Packet &pkt, size_t runs, int verdict)
+{
+    _cleanup_close_ int fd = -1;
+    size_t count = 0;
+
+    fd = bf_chain_prog_fd(chain_name);
+    assert_true(fd >= 0);
+
+    for (size_t i = 0; i < runs; ++i) {
+        int r = _bft_prog_run_once(fd, hook, pkt);
+
+        // Every run must end in one of the two verdicts the chain can produce.
+        assert_true(r == bft_hook_accept(hook) || r == bft_hook_drop(hook));
+        if (r == verdict)
+            ++count;
+    }
+
+    return count;
 }
 
 int bft_capture_log(void *ctx, void *data, size_t size)

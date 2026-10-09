@@ -78,6 +78,19 @@ int bft_matcher_test_teardown(void **state);
 void bft_assert_prog_run(const char *chain_name, enum bf_hook hook,
                          const bft::Packet &pkt, int expected);
 
+/**
+ * @brief Run a packet through a chain's BPF program `runs` times and count
+ * the runs that returned `verdict`.
+ *
+ * Same input conventions as bft_assert_prog_run(). Intended for matchers
+ * whose result is random per run (e.g. meta.probability), where a single
+ * verdict is not meaningful but the match rate over many runs is.
+ *
+ * @return Number of runs (out of `runs`) that returned `verdict`.
+ */
+size_t bft_prog_run_count(const char *chain_name, enum bf_hook hook,
+                          const bft::Packet &pkt, size_t runs, int verdict);
+
 struct bft_log_capture
 {
     std::vector<struct bf_log> entries;
