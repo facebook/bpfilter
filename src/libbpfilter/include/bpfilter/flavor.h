@@ -143,7 +143,9 @@ struct bf_flavor_ops
      * @brief Generate bytecode for rule logging.
      *
      * Each flavor controls its own register setup and ELF stub selection.
-     * Required for all flavors.
+     * `EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_xxx)` should be the last
+     * instruction emitted, so its return value remains in `r0` after the
+     * callback returns. Required for all flavors.
      *
      * @param program Program being generated. Can't be NULL.
      * @param rule Rule whose log action to generate. Can't be NULL.
