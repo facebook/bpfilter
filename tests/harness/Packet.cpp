@@ -27,6 +27,8 @@ namespace
 constexpr uint8_t kIPv4IHL = 5;
 constexpr uint8_t kTCPDataOffset = 5;
 constexpr uint8_t kTrafficClassLowMask = 0x0f;
+// Size of the IPv6 extension headers built by the packet builder.
+constexpr size_t kIPv6ExtHdrLen = 8;
 
 uint16_t checksum(const void *data, size_t len)
 {
@@ -126,6 +128,34 @@ size_t IPv6::write(uint8_t *buf, uint8_t proto, size_t payload) const
     std::memcpy(&hdr.daddr, daddr.addr.data(), daddr.addr.size());
     std::memcpy(buf, &hdr, sizeof(hdr));
     return sizeof(hdr);
+}
+
+size_t IPv6HopByHop::size()
+{
+    return kIPv6ExtHdrLen;
+}
+
+size_t IPv6HopByHop::write(uint8_t *buf, uint8_t proto) const
+{
+    // Hdr Ext Len 0 (8 bytes), then a PadN option with 4 bytes of padding
+    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, 0, IPV6_TLV_PADN,
+                                                     4};
+
+    std::memcpy(buf, hdr.data(), hdr.size());
+    return hdr.size();
+}
+
+size_t IPv6Fragment::size()
+{
+    return kIPv6ExtHdrLen;
+}
+
+size_t IPv6Fragment::write(uint8_t *buf, uint8_t proto) const
+{
+    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, reserved};
+
+    std::memcpy(buf, hdr.data(), hdr.size());
+    return hdr.size();
 }
 
 size_t TCP::size()

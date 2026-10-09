@@ -43,6 +43,13 @@ static void tcp_dport_eq(void **state)
             bft::TCP {.sport = 12345, .dport = 80},
         test->verdictDrop());
 
+    // TCP dport=80 after a Fragment header with reserved=8 -> DROP
+    bft_assert_prog_run("test_tcp_dport", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} / bft::IPv6HopByHop {} /
+                            bft::IPv6Fragment {.reserved = 8} /
+                            bft::TCP {.dport = 80},
+                        test->verdictDrop());
+
     // TCP dport=443 should not match -> ACCEPT
     bft_assert_prog_run(
         "test_tcp_dport", test->hook(),
@@ -59,7 +66,7 @@ static void tcp_dport_eq(void **state)
             bft::UDP {.sport = 12345, .dport = 80},
         test->verdictAccept());
 
-    bft_assert_counter_eq("test_tcp_dport", 0, 2, -1);
+    bft_assert_counter_eq("test_tcp_dport", 0, 3, -1);
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
