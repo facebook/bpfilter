@@ -143,7 +143,8 @@ struct bf_flavor_ops
      * @brief Generate bytecode for rule logging.
      *
      * Each flavor controls its own register setup and ELF stub selection.
-     * Required for all flavors.
+     * The bytecode must end with the call to the log ELF stub, so its return
+     * value is in @c r0 . Required for all flavors.
      *
      * @param program Program being generated. Can't be NULL.
      * @param rule Rule whose log action to generate. Can't be NULL.

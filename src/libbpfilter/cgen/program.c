@@ -514,6 +514,7 @@ static int _bf_program_generate_log(struct bf_program *program,
     _clean_bf_jmpctx_ struct bf_jmpctx l4_ctx = bf_jmpctx_default();
     _clean_bf_jmpctx_ struct bf_jmpctx null_ctx = bf_jmpctx_default();
     _clean_bf_jmpctx_ struct bf_jmpctx rate_ctx = bf_jmpctx_default();
+    int r;
 
     assert(program);
     assert(rule);
@@ -574,7 +575,19 @@ static int _bf_program_generate_log(struct bf_program *program,
         EMIT(program, BPF_STX_MEM(BPF_DW, BPF_REG_9, BPF_REG_0, 0));
     }
 
-    return program->runtime.ops->gen_inline_log(program, rule);
+    r = program->runtime.ops->gen_inline_log(program, rule);
+    if (r)
+        return r;
+
+    // The log ELF stub returns non-zero if the ring buffer is full
+    if (bf_ctx_is_verbose(BF_VERBOSE_BPF)) {
+        _clean_bf_jmpctx_ struct bf_jmpctx _ =
+            bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 0));
+
+        EMIT_PRINT(program, "failed to reserve a log entry in the ring buffer");
+    }
+
+    return 0;
 }
 
 /**
