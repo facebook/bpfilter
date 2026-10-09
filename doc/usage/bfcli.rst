@@ -13,7 +13,7 @@ The following options apply to all ``bfcli`` commands and must be specified befo
 - ``--verbose VERBOSE_FLAG``: enable verbose output. Can be specified multiple times. Supported values:
 
   - ``debug``: enable debug logs.
-  - ``bpf``: insert log messages into BPF programs to log failed kernel function calls. View with ``bpftool prog tracelog`` or ``cat /sys/kernel/debug/tracing/trace_pipe``.
+  - ``bpf``: insert log messages into BPF programs to log failed kernel function calls and dropped log entries (see ``chain logs``). View with ``bpftool prog tracelog`` or ``cat /sys/kernel/debug/tracing/trace_pipe``.
   - ``bytecode``: dump a program's bytecode before loading it.
 
 Commands
@@ -145,6 +145,8 @@ Print a chain.
 Print a chain's log entries.
 
 bfcli will print log entries as they are published by the chain. Hit ``Ctrl+C`` to quit.
+
+Log entries go through a fixed-size ring buffer of about 1000 entries. While it is full, for example because nothing reads it, new entries are dropped. Chains loaded with ``--verbose bpf`` print a message to the trace buffer for each dropped entry.
 
 Every log entry begins with a shared header: the receive timestamp, the matching rule's index, and the applied verdict. The remaining fields depend on the hook type:
 
