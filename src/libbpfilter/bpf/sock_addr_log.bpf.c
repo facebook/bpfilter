@@ -4,14 +4,15 @@
  */
 
 #include <linux/bpf.h>
+#include <linux/errno.h>
 
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_helpers.h>
 
 #include "cgen/runtime.h"
 
-__u8 bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
-                      __u32 l3_l4_proto, __u8 captured_fields)
+int bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
+                     __u32 l3_l4_proto, __u8 captured_fields)
 {
     const struct bf_runtime_sock_addr *sock_addr = (const void *)ctx->scratch;
     struct bf_log *log;
@@ -20,7 +21,7 @@ __u8 bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
 
     log = bpf_ringbuf_reserve(ctx->log_map, sizeof(struct bf_log), 0);
     if (!log)
-        return 1;
+        return -ENOMEM;
 
     log->ts = bpf_ktime_get_ns();
     log->rule_id = rule_id;

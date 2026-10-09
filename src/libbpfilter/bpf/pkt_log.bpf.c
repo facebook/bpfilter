@@ -4,6 +4,7 @@
  */
 
 #include <linux/bpf.h>
+#include <linux/errno.h>
 
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_helpers.h>
@@ -11,8 +12,8 @@
 
 #include "cgen/runtime.h"
 
-__u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers,
-                __u32 verdict, __u32 l3_l4_proto)
+int bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers,
+               __u32 verdict, __u32 l3_l4_proto)
 {
     struct bf_log *log;
     __u16 l3_proto = (__u16)(l3_l4_proto >> 16);
@@ -20,7 +21,7 @@ __u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers,
 
     log = bpf_ringbuf_reserve(ctx->log_map, sizeof(struct bf_log), 0);
     if (!log)
-        return 1;
+        return -ENOMEM;
 
     log->ts = bpf_ktime_get_ns();
     log->rule_id = rule_id;

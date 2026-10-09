@@ -4,6 +4,7 @@
  */
 
 #include <linux/bpf.h>
+#include <linux/errno.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
 #include <linux/ip.h>
@@ -17,8 +18,8 @@
 
 #include "cgen/runtime.h"
 
-__u8 bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
-                        __u32 l3_l4_proto)
+int bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
+                       __u32 l3_l4_proto)
 {
     struct bf_log *log;
     __u16 l3_proto = (__u16)(l3_l4_proto >> 16);
@@ -26,7 +27,7 @@ __u8 bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict,
 
     log = bpf_ringbuf_reserve(ctx->log_map, sizeof(struct bf_log), 0);
     if (!log)
-        return 1;
+        return -ENOMEM;
 
     __builtin_memset(log, 0, sizeof(*log));
 
