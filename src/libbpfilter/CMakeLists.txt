@@ -31,6 +31,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/rule.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/runtime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/set.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/limit.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter/verdict.h
 
     # Private sources and headers
@@ -56,6 +57,7 @@ set(libbpfilter_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/pack.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rule.c
     ${CMAKE_CURRENT_SOURCE_DIR}/set.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/limit.c
     ${CMAKE_CURRENT_SOURCE_DIR}/verdict.c
     ${CMAKE_CURRENT_SOURCE_DIR}/version.c
 
@@ -118,6 +120,7 @@ bf_target_add_elfstubs(libbpfilter
         "flow_hash"
         "sock_addr_log"
         "pkt_5_tuple_log"
+        "limit"
 )
 
 target_compile_definitions(libbpfilter

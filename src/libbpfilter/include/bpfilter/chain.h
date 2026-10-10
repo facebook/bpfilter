@@ -56,6 +56,7 @@ struct bf_chain
     enum bf_verdict policy;
     bf_list sets;
     bf_list rules;
+    bf_list limits;
 
     /// Policy counters. Not serialized.
     struct bf_counter policy_counters;
@@ -78,10 +79,12 @@ struct bf_chain
  * @param policy Default action of the chain if no rule matched.
  * @param sets List of sets used by `rules`.
  * @param rules List of rules.
+ * @param limits List of limits.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
-                 enum bf_verdict policy, bf_list *sets, bf_list *rules);
+                 enum bf_verdict policy, bf_list *sets, bf_list *rules,
+                 bf_list *limits);
 
 /**
  * @brief Allocate and initialize a new chain from serialized data.

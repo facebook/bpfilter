@@ -34,6 +34,7 @@
     #include <bpfilter/core/list.h>
     #include <bpfilter/rule.h>
     #include <bpfilter/chain.h>
+    #include <bpfilter/limit.h>
     #include <bpfilter/runtime.h>
 
     #include "helper.h"
@@ -147,6 +148,7 @@
 %token <sval> RAW_PAYLOAD
 %token <sval> REDIRECT_IFACE
 %token <sval> REDIRECT_DIR
+%token <sval> MATCHER_META_LIMIT
 
 // Grammar types
 %destructor { BF_FREEP(&$$); } <sval>
@@ -203,7 +205,7 @@ chain           : CHAIN STRING hook hookopts verdict sets rules
                     if (!bf_verdict_is_valid_policy($5))
                         bf_parse_err("'%s' is not a valid chain policy\n", bf_verdict_to_str($5));
 
-                    if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules) < 0)
+                    if (bf_chain_new(&chain, name, $3, $5, &ruleset->sets, rules, &ruleset->limits) < 0)
                         bf_parse_err("failed to create a new bf_chain\n");
 
                     if (hookopts) {
@@ -525,6 +527,27 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     int r;
 
                     r = bf_matcher_new_from_raw(&matcher, $1, $3, payload, $2);
+                    if (r)
+                        bf_parse_err("failed to create a new matcher\n");
+
+                    $$ = TAKE_PTR(matcher);
+                }
+                | MATCHER_META_LIMIT negate matcher_op RAW_PAYLOAD
+                {
+                    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+                    _cleanup_free_ const char *payload = $4;
+                    uint32_t limit_id = bf_list_size(&ruleset->limits);
+                    int r;
+
+                    struct bf_ratelimit *limit = NULL;
+
+                    r = bf_limit_new_from_raw(&limit, payload);
+                    if (r)
+                        bf_parse_err("failed to create new limit");
+
+                    bf_list_add_tail(&ruleset->limits, limit);
+
+                    r = bf_matcher_new(&matcher, BF_MATCHER_META_LIMIT, $3, &limit_id, sizeof(limit_id), $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher\n");
 
