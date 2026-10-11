@@ -1059,12 +1059,14 @@ static int _bf_program_load_state_map(struct bf_program *program)
 
 static int _bf_program_load_limit_map(struct bf_program *program)
 {
-    _cleanup_free_ void *pstr = NULL;
     uint32_t key = 0;
     struct bf_ratelimit_data val = {.current = 0, .last_time = 0};
     int r;
 
     assert(program);
+
+    if (bf_list_is_empty(&program->runtime.chain->limits))
+        return 0;
 
     r = bf_map_new(&program->handle->rmap, _BF_LIMIT_MAP_NAME,
                    BF_MAP_TYPE_LIMIT, sizeof(uint32_t),
