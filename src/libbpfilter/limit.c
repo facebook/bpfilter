@@ -32,7 +32,6 @@ int bf_limit_new_from_raw(struct bf_ratelimit **ratelimit,
                           const char *raw_payload)
 {
     _free_bf_limit_ struct bf_ratelimit *_ratelimit = NULL;
-
     char *endptr;
     uint32_t limit;
     uint32_t duration;

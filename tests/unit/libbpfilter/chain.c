@@ -240,7 +240,7 @@ static void empty_set_only_disables_in_rules(void **state)
     assert_ok(bf_list_add_tail(&rules, not_in_rule));
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
-                           &sets, &rules));
+                           &sets, &rules, NULL));
 
     // Rule containing an "in" matcher with an empty set is disabled
     assert_true(in_rule->disabled);
