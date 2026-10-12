@@ -53,12 +53,11 @@
  *
  * This module also defines convenience function to simulate a runtime
  * environment such as creating a temporary file to serialize the context into.
-
-
-MOCKING IS ONLY TO MOCK, not to trigger different code path during testing
--> KISS
-
-
+ *
+ * Keep mocks simple: only mock a function to simulate the environment (e.g. a
+ * system call that requires privileges or modifies the system), or to trigger
+ * a failure that a test can't cause otherwise, such as an allocation failure.
+ * Don't use mocks to reach code paths that a test can reach with real inputs.
  */
 
 struct btf;
@@ -108,6 +107,7 @@ typedef struct
 
 void bft_mock_clean(bft_mock *mock);
 
+bft_mock_declare(bf_realloc);
 bft_mock_declare(btf__load_vmlinux_btf);
 bft_mock_declare(isatty);
 bft_mock_declare(setns);
