@@ -773,11 +773,14 @@ IPv6
       - ``$ADDR/$MASK``
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - Next header
-      - ``ip6.nexthdr``
+    * - :rspan:`1` Next header
+      - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
       - ``$NEXT_HEADER``
-      - ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
+      - ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_. An extension header matches if the packet contains a header with this type, a transport layer protocol matches the protocol after the extension headers.
+    * - ``in``
+      - ``{$NEXT_HEADER[;...]}``
+      - Set elements are compared to the protocol after the extension headers, so they can't be extension headers: use ``eq`` to match those.
     * - DSCP
       - ``ip6.dscp``
       - ``eq``

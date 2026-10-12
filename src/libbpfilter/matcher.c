@@ -273,6 +273,38 @@ static int _bf_parse_l4_proto(enum bf_matcher_type type, enum bf_matcher_op op,
         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
 }
 
+static int _bf_parse_ip6_nexthdr_in(enum bf_matcher_type type,
+                                    enum bf_matcher_op op, void *payload,
+                                    const char *raw_payload)
+{
+    int r;
+
+    assert(payload);
+    assert(raw_payload);
+
+    r = _bf_parse_l4_proto(type, op, payload, raw_payload);
+    if (r)
+        return r;
+
+    /* A set lookup compares the L4 protocol, found after the extension
+     * headers: an extension header would never match. */
+    switch (*(uint8_t *)payload) {
+    case IPPROTO_HOPOPTS:
+    case IPPROTO_ROUTING:
+    case IPPROTO_FRAGMENT:
+    case IPPROTO_AH:
+    case IPPROTO_DSTOPTS:
+    case IPPROTO_MH:
+        return bf_err_r(
+            -EINVAL,
+            "\"%s %s\" can't match the extension header '%s', use \"%s eq\" instead",
+            bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload,
+            bf_matcher_type_to_str(type));
+    default:
+        return 0;
+    }
+}
+
 static void _bf_print_l4_proto(const void *payload)
 {
     assert(payload);
@@ -1214,7 +1246,8 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                     BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
                                    _bf_parse_l4_proto, _bf_print_l4_proto),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint8_t),
-                                   _bf_parse_l4_proto, _bf_print_l4_proto),
+                                   _bf_parse_ip6_nexthdr_in,
+                                   _bf_print_l4_proto),
                 },
         },
     [BF_MATCHER_IP6_DSCP] =

@@ -1017,6 +1017,38 @@ static void meta_frag_invalid(void **state)
                                        BF_MATCHER_EQ, "", false));
 }
 
+static void ip6_nexthdr_set_elem(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const char *ext_hdrs[] = {"hop", "routing", "frag", "ah",
+                              "dst", "mh",      "0",    "60"};
+
+    (void)state;
+
+    // Set elements are compared to the L4 protocol, after the extension headers
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                      BF_MATCHER_IN, "tcp", false));
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), IPPROTO_TCP);
+    bf_matcher_free(&matcher);
+
+    // ESP ends the extension header chain
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                      BF_MATCHER_IN, "50", false));
+    bf_matcher_free(&matcher);
+
+    // Extension headers can't be set elements, but eq accepts them
+    for (size_t i = 0; i < ARRAY_SIZE(ext_hdrs); ++i) {
+        assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                           BF_MATCHER_IN, ext_hdrs[i], false));
+        assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                          BF_MATCHER_EQ, ext_hdrs[i], false));
+        bf_matcher_free(&matcher);
+    }
+
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                       BF_MATCHER_IN, "xyz", false));
+}
+
 static void meta_pid_invalid(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -2068,6 +2100,7 @@ int main(void)
         cmocka_unit_test(meta_pid_invalid),
         cmocka_unit_test(meta_frag),
         cmocka_unit_test(meta_frag_invalid),
+        cmocka_unit_test(ip6_nexthdr_set_elem),
         cmocka_unit_test(new_from_raw_ip4_addr),
         cmocka_unit_test(new_from_raw_ip6_addr),
         cmocka_unit_test(new_from_raw_port),

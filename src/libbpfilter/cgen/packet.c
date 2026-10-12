@@ -408,11 +408,22 @@ static int _bf_matcher_pkt_generate_set(struct bf_program *program,
                             bf_matcher_type_to_str(type));
         }
 
-        r = _bf_matcher_pkt_prepare_header(program, type, meta);
-        if (r)
-            return bf_err_r(r, "failed to load protocol header into BPF_REG_6");
+        if (type == BF_MATCHER_IP6_NEXTHDR) {
+            /* Like ip6.nexthdr eq, use the L4 protocol found after the
+             * extension headers, not the IPv6 header's Next Header field. */
+            EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10,
+                                      BF_PROG_CTX_OFF(l4_proto)));
+            r = bf_stub_store(program, BPF_REG_1, meta->hdr_payload_size,
+                              BF_PROG_SCR_OFF(offset));
+        } else {
+            r = _bf_matcher_pkt_prepare_header(program, type, meta);
+            if (r) {
+                return bf_err_r(
+                    r, "failed to load protocol header into BPF_REG_6");
+            }
 
-        r = bf_stub_stx_payload(program, meta, offset);
+            r = bf_stub_stx_payload(program, meta, offset);
+        }
         if (r) {
             return bf_err_r(r,
                             "failed to generate bytecode to load packet data");
