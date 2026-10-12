@@ -44,6 +44,12 @@ extern "C" {
 #include "test.h"
 }
 
+/* Include them after <arpa/inet.h>: they include <linux/in6.h>, and
+ * <netinet/in.h> must be included before the uapi headers. */
+#include "Chain.hpp"
+#include "Matcher.hpp"
+#include "Rule.hpp"
+
 /** @brief Per-test setup: flush the ruleset so each test starts clean. */
 int bft_matcher_test_setup(void **state);
 
@@ -61,6 +67,31 @@ int bft_matcher_test_teardown(void **state);
         auto _bft_chain = (chain_expr).get();                                  \
         assert_int_equal(0, bf_chain_set(_bft_chain.get(), nullptr));          \
     } while (0)
+
+/**
+ * @brief Install a chain twice, once for each IPv6 extension header parser,
+ * and run the same assertions after each.
+ *
+ * bpfilter uses a second IPv6 extension header parser, which also records the
+ * extension headers found, when an enabled rule of the chain filters on
+ * `ip6.nexthdr`. The chain is installed as is, then with an extra rule on
+ * `ip6.nexthdr` which doesn't match any packet the tests send.
+ *
+ * @param chain Chain to install. It must not filter on `ip6.nexthdr`.
+ * @param assertions Callable running the assertions against the chain.
+ */
+template<typename Fn>
+void bft_with_ipv6_parsers(bf::Chain chain, const Fn &assertions)
+{
+    BFT_CHAIN_SET(chain);
+    assertions();
+
+    chain << bf::Rule(
+        BF_VERDICT_CONTINUE, std::nullopt, 0,
+        {bf::Matcher(BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ, {UINT8_MAX})});
+    BFT_CHAIN_SET(chain);
+    assertions();
+}
 
 /**
  * @brief Run a packet through a chain's BPF program and assert the return
