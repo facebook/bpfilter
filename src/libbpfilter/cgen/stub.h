@@ -89,7 +89,8 @@ int bf_stub_parse_l3_hdr(struct bf_program *program);
  *   unsupported L4 protocol
  *
  * If the L4 protocol is not supported, this function returns before requesting
- * a dynamic pointer slice, and the L4 protocol ID register is set to 0.
+ * a dynamic pointer slice, the L4 protocol ID register is set to 0, and
+ * `bf_runtime.l4_hdr` to NULL.
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.

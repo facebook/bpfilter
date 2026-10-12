@@ -340,7 +340,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     assert(program);
 
     /* Parse the L4 protocol and handle unuspported protocol, similarly to
-     * bf_stub_parse_l3_hdr() above. */
+     * bf_stub_parse_l3_hdr() above. Without an L4 header, set
+     * bf_runtime.l4_hdr to NULL: the packet log stub reads it, and it would be
+     * uninitialized otherwise. */
     {
         _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_8);
@@ -353,7 +355,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmp6hdr)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_8, 0));
+        EMIT_SWICH_DEFAULT(
+            &swich, BPF_MOV64_IMM(BPF_REG_8, 0),
+            BPF_ST_MEM(BPF_DW, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr), 0));
 
         r = bf_swich_generate(&swich);
         if (r)
