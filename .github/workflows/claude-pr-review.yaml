@@ -315,7 +315,7 @@ jobs:
                       Do NOT attempt to post comments or use any MCP tools to modify the PR.
                   claude_args: |
                       --max-turns 100
-                      --model us.anthropic.claude-opus-4-6-v1
+                      --model us.anthropic.claude-opus-5-5
                       --effort max
                       --json-schema '${{ env.REVIEW_SCHEMA }}'
                       --allowedTools "
