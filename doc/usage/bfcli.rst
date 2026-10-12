@@ -649,10 +649,35 @@ Meta
       - :rspan:`1` ``$PID`` must be a decimal process ID (thread group ID), as seen from the initial PID namespace. This is the process ID reported by the log entries of ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, not its namespace-local counterpart. Only compatible with ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
     * - ``in``
       - ``{$PID[;...]}``
+    * - Fragment
+      - ``meta.frag``
+      - ``eq``
+      - ``$STATE``
+      - Fragmentation state of IPv4 and IPv6 packets. ``$STATE`` is ``none`` (not a fragment, or an IPv6 atomic fragment), ``first`` (first fragment of a datagram), or ``later`` (any other fragment), case insensitive. Incompatible with ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
 
 .. note::
 
     On packet-based hooks, ``meta.sport`` and ``meta.dport`` are protocol-neutral across TCP and UDP. They do not match packets with other L4 protocols.
+
+.. note::
+
+    Only the first fragment of a datagram contains the L4 header. As with nftables, ``meta.l4_proto`` and ``ip6.nexthdr`` match the protocol of every fragment, but the matchers reading the L4 header (ports, TCP flags, ICMP type and code) don't match the other fragments.
+
+    IPv4 datagrams are reassembled before ``BF_HOOK_NF_LOCAL_IN``. IPv6 datagrams are only reassembled before the Netfilter hooks if conntrack is enabled. Otherwise, and on the other hooks, a chain filtering on ports can use ``meta.frag`` to accept the other fragments of the datagrams it accepts:
+
+    .. code-block:: shell
+
+        chain my_chain BF_HOOK_NF_LOCAL_IN{priorities=101-102} DROP
+            rule
+                ip6.snet eq 2001:db8::/32
+                meta.dport range 1024-65535
+                ACCEPT
+            rule
+                ip6.snet eq 2001:db8::/32
+                meta.frag eq later
+                ACCEPT
+
+    The kernel discards a datagram if one of its fragments is missing, and it drops IPv6 fragments which overlap.
 
 IPv4
 ####

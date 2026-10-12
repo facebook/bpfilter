@@ -117,6 +117,9 @@ enum bf_matcher_type
     /// Matches the PID (thread group ID) of the process, as seen from the
     /// initial PID namespace.
     BF_MATCHER_META_PID,
+    /// Matches the fragmentation state of IPv4 and IPv6 packets, see
+    /// `enum bf_frag`.
+    BF_MATCHER_META_FRAG,
     _BF_MATCHER_TYPE_MAX,
 };
 

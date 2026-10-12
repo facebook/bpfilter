@@ -297,6 +297,23 @@ static int _bf_matcher_pkt_generate_l4_proto(struct bf_program *program,
                         BPF_REG_1);
 }
 
+/**
+ * @brief Compare the packet's fragmentation state.
+ *
+ * @param program Program to generate bytecode into. Can't be NULL.
+ * @param matcher Matcher to generate bytecode for. Can't be NULL.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_matcher_pkt_generate_frag(struct bf_program *program,
+                                         const struct bf_matcher *matcher)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(frag)));
+
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 1,
+                        BPF_REG_1);
+}
+
 static int _bf_matcher_pkt_generate_ip4_dscp(struct bf_program *program,
                                              const struct bf_matcher *matcher,
                                              const struct bf_matcher_meta *meta)
@@ -425,6 +442,8 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
         return bf_matcher_generate_meta(program, matcher);
     case BF_MATCHER_META_L4_PROTO:
         return _bf_matcher_pkt_generate_l4_proto(program, matcher);
+    case BF_MATCHER_META_FRAG:
+        return _bf_matcher_pkt_generate_frag(program, matcher);
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
     case BF_MATCHER_META_PID:

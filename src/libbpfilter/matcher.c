@@ -445,6 +445,45 @@ static void _bf_print_mark(const void *payload)
     (void)fprintf(stdout, "0x%" PRIx32, *(uint32_t *)payload);
 }
 
+static const char *_bf_frag_strs[] = {
+    [BF_FRAG_NONE] = "none",
+    [BF_FRAG_FIRST] = "first",
+    [BF_FRAG_LATER] = "later",
+};
+
+static_assert_enum_mapping(_bf_frag_strs, _BF_FRAG_MAX);
+
+static int _bf_parse_frag(enum bf_matcher_type type, enum bf_matcher_op op,
+                          void *payload, const char *raw_payload)
+{
+    assert(payload);
+    assert(raw_payload);
+
+    for (enum bf_frag frag = 0; frag < _BF_FRAG_MAX; ++frag) {
+        if (bf_streq_i(_bf_frag_strs[frag], raw_payload)) {
+            *(uint8_t *)payload = (uint8_t)frag;
+            return 0;
+        }
+    }
+
+    return bf_err_r(
+        -EINVAL,
+        "\"%s %s\" expects a fragmentation state (\"none\", \"first\" or \"later\"), not '%s'",
+        bf_matcher_type_to_str(type), bf_matcher_op_to_str(op), raw_payload);
+}
+
+static void _bf_print_frag(const void *payload)
+{
+    assert(payload);
+
+    uint8_t frag = *(uint8_t *)payload;
+
+    if (frag < _BF_FRAG_MAX)
+        (void)fprintf(stdout, "%s", _bf_frag_strs[frag]);
+    else
+        (void)fprintf(stdout, "%" PRIu8, frag);
+}
+
 static int _bf_parse_pid(enum bf_matcher_type type, enum bf_matcher_op op,
                          void *payload, const char *raw_payload)
 {
@@ -999,6 +1038,16 @@ static struct bf_matcher_meta _bf_matcher_metas[_BF_MATCHER_TYPE_MAX] = {
                                    _bf_parse_pid, _bf_print_pid),
                     BF_MATCHER_OPS(BF_MATCHER_IN, sizeof(uint32_t),
                                    _bf_parse_pid, _bf_print_pid),
+                },
+        },
+    [BF_MATCHER_META_FRAG] =
+        {
+            .layer = BF_MATCHER_NO_LAYER,
+            .unsupported_hooks = BF_FLAGS(_BF_HOOKS_CGROUP_SOCK_ADDR_ALL),
+            .ops =
+                {
+                    BF_MATCHER_OPS(BF_MATCHER_EQ, sizeof(uint8_t),
+                                   _bf_parse_frag, _bf_print_frag),
                 },
         },
     [BF_MATCHER_IP4_SADDR] =
@@ -1573,6 +1622,7 @@ static const char *_bf_matcher_type_strs[] = {
     [BF_MATCHER_ICMPV6_CODE] = "icmpv6.code",
     [BF_MATCHER_SET] = "<set>",
     [BF_MATCHER_META_PID] = "meta.pid",
+    [BF_MATCHER_META_FRAG] = "meta.frag",
 };
 
 static_assert_enum_mapping(_bf_matcher_type_strs, _BF_MATCHER_TYPE_MAX);
