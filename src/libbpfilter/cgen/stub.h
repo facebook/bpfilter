@@ -65,9 +65,11 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program);
  * - The size of the slice to request depends on the L3 protocol ID stored in @c r7
  * - Once the slice has been requested, the L3 header is processed to extract
  *   the offset of the L4 header and the L4 protocol ID
+ * - The L4 protocol ID is also stored in `bf_runtime.l4_proto`, as
+ *   @ref bf_stub_parse_l4_hdr might clear the L4 protocol ID register
  *
- * If the L3 protocol is not supported, this function returns before requesting
- * a dynamic pointer slice, and the L3 protocol ID register is set to 0.
+ * If the L3 protocol is not supported, this function skips the slice request,
+ * the L3 protocol ID register is set to 0, and `bf_runtime.l4_proto` to 0.
  *
  * @param program Program to emit instructions into.
  * @return 0 on success, or negative errno value on error.

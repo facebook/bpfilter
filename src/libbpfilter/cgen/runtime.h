@@ -150,6 +150,12 @@ struct bf_runtime
     __u8 l3_size;
     __u8 l4_size;
 
+    /** L4 protocol of the packet: the IPv4 protocol, or the IPv6 next header
+     * after the extension headers. Unlike `r8`, it is set even if the L4
+     * header can't be read, so `meta.l4_proto` and `ip6.nexthdr` still match
+     * the protocol. 0 if the L3 protocol isn't supported. */
+    __u8 l4_proto;
+
     /** Offset of the layer 3 protocol header. */
     __u32 bf_aligned(8) l3_offset;
 

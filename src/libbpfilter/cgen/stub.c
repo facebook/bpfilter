@@ -167,7 +167,7 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
-    _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
+    struct bf_jmpctx unsupported;
     int ret_code;
     int r;
 
@@ -190,7 +190,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         if (r)
             return r;
     }
-    _ = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, 0, 0));
+    unsupported = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, 0, 0));
 
     EMIT(program,
          BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_4, BF_PROG_CTX_OFF(l3_size)));
@@ -319,6 +319,15 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
         bf_jmpctx_cleanup(&ehjmp);
     }
+
+    // Unsupported L3 protocols jump here, with r8 still 0
+    bf_jmpctx_cleanup(&unsupported);
+
+    /* bf_stub_parse_l4_hdr() sets r8 to 0 if the L4 header can't be read, so
+     * keep the L4 protocol in the runtime context for the matchers which
+     * don't need the L4 header. */
+    EMIT(program,
+         BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_8, BF_PROG_CTX_OFF(l4_proto)));
 
     return 0;
 }

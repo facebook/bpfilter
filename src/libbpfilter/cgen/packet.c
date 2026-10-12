@@ -252,7 +252,7 @@ _bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
                    BF_IPV6_EH_AH(ehdr == IPPROTO_AH) |
                    BF_IPV6_EH_DSTOPTS(ehdr == IPPROTO_DSTOPTS) |
                    BF_IPV6_EH_MH(ehdr == IPPROTO_MH));
-        EMIT(program, BPF_LDX_MEM(BPF_DW, BPF_REG_1, BPF_REG_10,
+        EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10,
                                   BF_PROG_CTX_OFF(ipv6_eh)));
         EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_1, eh_mask));
 
@@ -265,13 +265,36 @@ _bf_matcher_pkt_generate_ip6_nexthdr(struct bf_program *program,
                                  BPF_REG_1, 0, 0));
         break;
     default:
-        /* check l4 protocols using `BPF_REG_8` */
+        // Compare the L4 protocol, available even without an L4 header
+        EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10,
+                                  BF_PROG_CTX_OFF(l4_proto)));
         EMIT_FIXUP_JMP_NEXT_RULE(program,
-                                 BPF_JMP_IMM(jmp_op, BPF_REG_8, ehdr, 0));
+                                 BPF_JMP_IMM(jmp_op, BPF_REG_1, ehdr, 0));
         break;
     }
 
     return 0;
+}
+
+/**
+ * @brief Compare the packet's L4 protocol.
+ *
+ * `BPF_REG_8` is 0 when the L4 header can't be read (unsupported protocol or
+ * truncated header), so the L4 protocol is read from the runtime context
+ * instead.
+ *
+ * @param program Program to generate bytecode into. Can't be NULL.
+ * @param matcher Matcher to generate bytecode for. Can't be NULL.
+ * @return 0 on success, negative errno on error.
+ */
+static int _bf_matcher_pkt_generate_l4_proto(struct bf_program *program,
+                                             const struct bf_matcher *matcher)
+{
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(l4_proto)));
+
+    return bf_cmp_value(program, matcher, bf_matcher_payload(matcher), 1,
+                        BPF_REG_1);
 }
 
 static int _bf_matcher_pkt_generate_ip4_dscp(struct bf_program *program,
@@ -397,10 +420,11 @@ int bf_packet_gen_inline_matcher(struct bf_program *program,
     switch (bf_matcher_get_type(matcher)) {
     case BF_MATCHER_META_IFACE:
     case BF_MATCHER_META_L3_PROTO:
-    case BF_MATCHER_META_L4_PROTO:
     case BF_MATCHER_META_PROBABILITY:
     case BF_MATCHER_META_FLOW_PROBABILITY:
         return bf_matcher_generate_meta(program, matcher);
+    case BF_MATCHER_META_L4_PROTO:
+        return _bf_matcher_pkt_generate_l4_proto(program, matcher);
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
     case BF_MATCHER_META_PID:
