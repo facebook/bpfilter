@@ -69,9 +69,9 @@ static int _bf_nf_gen_inline_prologue(struct bf_program *program)
     EMIT(program,
          BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_4, BF_PROG_CTX_OFF(ifindex)));
 
-    /* BPF_PROG_TYPE_CGROUP_SKB doesn't provide access the the Ethernet header,
+    /* BPF_PROG_TYPE_NETFILTER doesn't provide access to the Ethernet header,
      * so we can't parse it and discover the L3 protocol ID.
-     * Instead, we use the __sk_buff.family value and convert it to the
+     * Instead, we use the nf_hook_state.pf value and convert it to the
      * corresponding ethertype. */
     if ((offset = bf_btf_get_field_off("nf_hook_state", "pf")) < 0)
         return offset;
