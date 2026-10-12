@@ -49,6 +49,44 @@ static void ip6_nexthdr_eq(void **state)
             bft::UDP {.sport = 12345, .dport = 53},
         test->verdictAccept());
 
+    // TCP after a Fragment header right after the IPv6 header -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.more = true} / bft::TCP {},
+                        test->verdictDrop());
+
+    // TCP after an Authentication Header -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} / bft::IPv6AH {} /
+                            bft::TCP {},
+                        test->verdictDrop());
+
+    bft_assert_counter_eq("test_ip6_nexthdr", 0, 4, -1);
+
+    // IPPROTO_FRAGMENT = 44: matches the extension header, wherever it is
+    BFT_CHAIN_SET(bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
+                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                              {bf::Matcher(BF_MATCHER_IP6_NEXTHDR,
+                                           BF_MATCHER_EQ, {44})}));
+
+    // Fragment header right after the IPv6 header -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.more = true} / bft::UDP {},
+                        test->verdictDrop());
+
+    // Fragment header after a Hop-by-Hop Options header -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} / bft::IPv6HopByHop {} /
+                            bft::IPv6Fragment {.more = true} / bft::UDP {},
+                        test->verdictDrop());
+
+    // No Fragment header -> ACCEPT
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} / bft::IPv6DstOpts {} /
+                            bft::UDP {},
+                        test->verdictAccept());
+
     bft_assert_counter_eq("test_ip6_nexthdr", 0, 2, -1);
 
     // Negation

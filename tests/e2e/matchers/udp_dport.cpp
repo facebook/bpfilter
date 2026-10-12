@@ -59,6 +59,51 @@ static void udp_dport_eq(void **state)
 
     bft_assert_counter_eq("test_udp_dport", 0, 2, -1);
 
+    // UDP behind IPv6 extension headers, with both IPv6 parsers
+    bft_with_ipv6_parsers(
+        bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                        {bf::Matcher(BF_MATCHER_UDP_DPORT, BF_MATCHER_EQ,
+                                     bft_port_be(53))}),
+        [test]() {
+            // First fragment, right after the IPv6 header -> DROP
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictDrop());
+
+            // Atomic fragment -> DROP
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictDrop());
+
+            // First fragment after a Hop-by-Hop Options header -> DROP
+            bft_assert_prog_run(
+                "test_udp_dport", test->hook(),
+                bft::Ethernet() / bft::IPv6 {} / bft::IPv6HopByHop {} /
+                    bft::IPv6Fragment {.more = true} / bft::UDP {.dport = 53},
+                test->verdictDrop());
+
+            // After a Destination Options header -> DROP
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6DstOpts {} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictDrop());
+
+            // First fragment to another port -> ACCEPT
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::UDP {.dport = 5353},
+                                test->verdictAccept());
+
+            bft_assert_counter_eq("test_udp_dport", 0, 4, -1);
+        });
+
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_udp_dport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
