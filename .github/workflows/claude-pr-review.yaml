@@ -212,7 +212,11 @@ jobs:
                       before proceeding.
 
                       Give each agent a unique reviewer ID (reviewer-1 through reviewer-5) and pass them
-                      the PR title, description, full patch, and the list of changed files.
+                      the PR number, title, description, and the list of changed files, but not the patch:
+                      each agent only starts once its prompt is written, so copying the patch into five
+                      prompts delays the last agent by minutes. Tell them to fetch the patch themselves
+                      with `mcp__github__get_pull_request_diff` (owner `${{ github.repository_owner }}`,
+                      repo `${{ github.event.repository.name }}`, pullNumber ${{ needs.setup.outputs.pr_number }}).
                       Tell them to look at the pre-patch repo for context, and to read
                       `.claude/commands/review-pr.md` and `doc/developers/style.rst` for review guidelines.
                       Tell them to skip the "Output format" and "Report" subsections in review-pr.md —
