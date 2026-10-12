@@ -205,7 +205,8 @@ jobs:
                       independently across ALL remaining sections (Code review, Style, Documentation, Commit).
 
                       CRITICAL: You MUST launch all 5 agents in a SINGLE assistant message containing
-                      5 parallel Agent tool calls. Do NOT use `run_in_background`. Do NOT launch them
+                      5 parallel Agent tool calls, each with `run_in_background: false`: the Agent tool
+                      runs subagents in the background unless told otherwise. Do NOT launch them
                       one at a time across multiple turns. All 5 must be foreground calls in one message
                       so they run concurrently and you automatically wait for all of them to finish
                       before proceeding.
