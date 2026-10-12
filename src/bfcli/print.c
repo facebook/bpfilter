@@ -122,6 +122,12 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
             need_comma = true;
         }
 
+        if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_DEFRAG)) {
+            (void)fprintf(stdout, "%sdefrag=%s", need_comma ? "," : "",
+                          hookopts->defrag ? "yes" : "no");
+            need_comma = true;
+        }
+
         (void)fprintf(stdout, "}");
     }
 

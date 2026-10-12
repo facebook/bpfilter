@@ -177,7 +177,9 @@ int bf_bpf_map_update_batch(int map_fd, const void *keys, const void *values,
  * @param prog_fd File descriptor of the program to attach to the link.
  * @param target_fd Link target. 0 if no target.
  * @param hook Hook to attach the link to.
- * @param flags Extra flags, passed directly to the system call. 0 if no flags.
+ * @param flags Extra flags, passed directly to the system call. For Netfilter
+ *        hooks, these are the Netfilter link flags (`BPF_F_NETFILTER_*`). 0 if
+ *        no flags.
  * @param family Protocol family, used for Netfilter hooks. Ignored otherwise.
  * @param priority Hook priority, used for Netfilter hooks. Ignored otherwise.
  * @return A valid BPF link file descriptor on success (owned by the caller),

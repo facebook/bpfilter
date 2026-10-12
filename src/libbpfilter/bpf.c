@@ -297,12 +297,15 @@ int bf_bpf_link_create(int prog_fd, int target_fd, enum bf_hook hook, int flags,
     attr.link_create.prog_fd = prog_fd;
     attr.link_create.target_fd = target_fd;
     attr.link_create.attach_type = attach_type;
-    attr.link_create.flags = flags;
 
     if (attach_type == BF_BPF_NETFILTER) {
+        // The kernel requires link_create.flags to be 0 for Netfilter links
         attr.link_create.netfilter.pf = family;
         attr.link_create.netfilter.hooknum = bf_hook_to_nf_hook(hook);
         attr.link_create.netfilter.priority = priority;
+        attr.link_create.netfilter.flags = flags;
+    } else {
+        attr.link_create.flags = flags;
     }
 
     return bf_bpf(BF_BPF_LINK_CREATE, &attr);

@@ -416,6 +416,10 @@ With:
      - ``BF_HOOK_NF_*``
      - N/A
      - ``INT1`` and ``INT2`` are different non-zero integers. Priority values to use when attaching the chain. Two values are required to ensure atomic update of the chain.
+   * - ``defrag=$BOOL``
+     - N/A
+     - ``BF_HOOK_NF_*``
+     - ``yes`` or ``no`` (default). If ``yes``, the kernel reassembles IPv4 and IPv6 fragments before the chain, so it filters complete datagrams, without enabling conntrack. Requires a kernel with ``BPF_F_NETFILTER_IP_DEFRAG`` (Linux 6.6 or later).
 
 
 Rules
@@ -663,7 +667,7 @@ Meta
 
     Only the first fragment of a datagram contains the L4 header. As with nftables, ``meta.l4_proto`` and ``ip6.nexthdr`` match the protocol of every fragment, but the matchers reading the L4 header (ports, TCP flags, ICMP type and code) don't match the other fragments.
 
-    IPv4 datagrams are reassembled before ``BF_HOOK_NF_LOCAL_IN``. IPv6 datagrams are only reassembled before the Netfilter hooks if conntrack is enabled. Otherwise, and on the other hooks, a chain filtering on ports can use ``meta.frag`` to accept the other fragments of the datagrams it accepts:
+    IPv4 datagrams are reassembled before ``BF_HOOK_NF_LOCAL_IN``. IPv6 datagrams are only reassembled before the Netfilter hooks if conntrack is enabled, or if a chain uses the ``defrag=yes`` hook option. Otherwise, and on the other hooks, a chain filtering on ports can use ``meta.frag`` to accept the other fragments of the datagrams it accepts:
 
     .. code-block:: shell
 
