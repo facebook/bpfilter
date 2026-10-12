@@ -166,6 +166,36 @@ static void meta_dport_range(void **state)
         test->verdictAccept());
 
     bft_assert_counter_eq("test_meta_dport", 0, 4, -1);
+
+    // Fragments, with both IPv6 parsers
+    bft_with_ipv6_parsers(
+        bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                        {bf::Matcher(BF_MATCHER_META_DPORT, BF_MATCHER_RANGE,
+                                     bft_port_range(1024, 65535))}),
+        [test]() {
+            // First fragment, dport in range -> DROP
+            bft_assert_prog_run("test_meta_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::UDP {.dport = 5000},
+                                test->verdictDrop());
+
+            /* Non-first fragments: their payload isn't a port, whether it
+             * reads as in range or not -> ACCEPT */
+            bft_assert_prog_run("test_meta_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.offset = 181} /
+                                    bft::UDP {.sport = 65535, .dport = 65535},
+                                test->verdictAccept());
+            bft_assert_prog_run("test_meta_dport", test->hook(),
+                                bft::Ethernet() /
+                                    bft::IPv4 {.frag_offset = 181} /
+                                    bft::UDP {.sport = 65535, .dport = 65535},
+                                test->verdictAccept());
+
+            bft_assert_counter_eq("test_meta_dport", 0, 1, -1);
+        });
 }
 
 static void meta_dport_in(void **state)

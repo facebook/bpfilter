@@ -7,12 +7,27 @@
 #include <linux/in.h>
 #include <linux/ipv6.h>
 
+#include <bpf/bpf_endian.h>
 #include <bpf/bpf_helpers.h>
 #include <stddef.h>
 
 #include "cgen/runtime.h"
 
 #define BF_IPV6_EXT_MAX_CHAIN 6
+
+// Fragment offset (in 8-byte units, shifted by 3) and More Fragments flag
+#define BF_IPV6_FRAG_OFFSET 0xfff8
+#define BF_IPV6_FRAG_MORE 0x0001
+
+/* IPv6 Fragment header (RFC 8200, section 4.5): `struct frag_hdr` isn't part of
+ * the kernel's uapi. */
+struct bf_ipv6_frag_hdr
+{
+    __u8 nexthdr;
+    __u8 reserved;
+    __be16 frag_off;
+    __be32 identification;
+};
 
 #define EH_COMMON_OFFSET 1
 #define EH_COMMON_SHIFT 3
@@ -71,6 +86,22 @@ __u8 bf_parse_ipv6(struct bf_runtime *ctx)
             offset = EH_AH_OFFSET;
             shift = EH_AH_SHIFT;
         } else if (next_hdr_type == IPPROTO_FRAGMENT) {
+            struct bf_ipv6_frag_hdr _frag;
+            const struct bf_ipv6_frag_hdr * const frag = bpf_dynptr_slice(
+                &ctx->dynptr, ctx->l4_offset, &_frag, sizeof(_frag));
+
+            if (!frag)
+                break;
+
+            const __u16 frag_off = bpf_ntohs(frag->frag_off);
+            if (frag_off & BF_IPV6_FRAG_OFFSET) {
+                // A non-first fragment carries payload, not headers
+                ctx->frag = BF_FRAG_LATER;
+                return frag->nexthdr;
+            }
+            if (frag_off & BF_IPV6_FRAG_MORE)
+                ctx->frag = BF_FRAG_FIRST;
+
             // Fixed size: the second byte is reserved, not a length
             hdrlen = 0;
             offset = EH_FRAG_OFFSET;

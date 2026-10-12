@@ -54,6 +54,30 @@ static void icmpv6_type_eq(void **state)
 
     bft_assert_counter_eq("test_icmpv6_type", 0, 1, -1);
 
+    // Fragments, with both IPv6 parsers
+    bft_with_ipv6_parsers(
+        bf::Chain("test_icmpv6_type", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(
+                   BF_VERDICT_DROP, bf_counter(), {},
+                   {bf::Matcher(BF_MATCHER_ICMPV6_TYPE, BF_MATCHER_EQ, {128})}),
+        [test]() {
+            // First fragment -> DROP
+            bft_assert_prog_run("test_icmpv6_type", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::ICMPv6 {.type = 128},
+                                test->verdictDrop());
+
+            // Non-first fragment: payload, not an ICMPv6 header -> ACCEPT
+            bft_assert_prog_run("test_icmpv6_type", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.offset = 181} /
+                                    bft::ICMPv6 {.type = 128},
+                                test->verdictAccept());
+
+            bft_assert_counter_eq("test_icmpv6_type", 0, 1, -1);
+        });
+
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_icmpv6_type", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},

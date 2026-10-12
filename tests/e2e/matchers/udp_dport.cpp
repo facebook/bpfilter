@@ -101,7 +101,32 @@ static void udp_dport_eq(void **state)
                                     bft::UDP {.dport = 5353},
                                 test->verdictAccept());
 
-            bft_assert_counter_eq("test_udp_dport", 0, 4, -1);
+            /* Non-first fragments start with payload, even if it looks like
+             * a UDP header to port 53 -> ACCEPT */
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.offset = 181} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictAccept());
+            bft_assert_prog_run(
+                "test_udp_dport", test->hook(),
+                bft::Ethernet() / bft::IPv6 {} / bft::IPv6HopByHop {} /
+                    bft::IPv6Fragment {.offset = 181, .more = true} /
+                    bft::UDP {.dport = 53},
+                test->verdictAccept());
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() /
+                                    bft::IPv4 {.frag_offset = 181} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictAccept());
+
+            // First IPv4 fragment -> DROP
+            bft_assert_prog_run("test_udp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv4 {.more = true} /
+                                    bft::UDP {.dport = 53},
+                                test->verdictDrop());
+
+            bft_assert_counter_eq("test_udp_dport", 0, 5, -1);
         });
 
     // Negation

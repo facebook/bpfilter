@@ -156,6 +156,9 @@ struct bf_runtime
      * the protocol. 0 if the L3 protocol isn't supported. */
     __u8 l4_proto;
 
+    /** Fragmentation state of the packet, as an `enum bf_frag` value. */
+    __u8 frag;
+
     /** Offset of the layer 3 protocol header. */
     __u32 bf_aligned(8) l3_offset;
 

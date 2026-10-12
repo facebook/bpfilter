@@ -67,6 +67,23 @@ static_assert(BF_L4_SLICE_LEN % 8 == 0,
 #define BF_COMM_LEN 16
 
 /**
+ * @brief Fragmentation state of an IPv4 or IPv6 packet.
+ */
+enum bf_frag
+{
+    /** Not a fragment, or an atomic fragment (offset 0, no more fragments). */
+    BF_FRAG_NONE,
+
+    /** First fragment of a datagram: offset 0, more fragments follow. */
+    BF_FRAG_FIRST,
+
+    /** Any other fragment of a datagram: it has no L4 header. */
+    BF_FRAG_LATER,
+
+    _BF_FRAG_MAX,
+};
+
+/**
  * @brief Log option identifiers for per-rule logging.
  */
 enum bf_log_opt

@@ -47,7 +47,14 @@ static void ip6_saddr_eq(void **state)
     bft_assert_prog_run("test_ip6_saddr", test->hook(), pkt,
                         test->verdictDrop());
 
-    bft_assert_counter_eq("test_ip6_saddr", 0, 2, -1);
+    // First fragment ending inside the UDP header -> DROP
+    auto frag = bft::Ethernet() / bft::IPv6 {.saddr = "2001:db8::1"} /
+                bft::IPv6Fragment {.more = true} / bft::UDP {};
+    frag.len -= 4;
+    bft_assert_prog_run("test_ip6_saddr", test->hook(), frag,
+                        test->verdictDrop());
+
+    bft_assert_counter_eq("test_ip6_saddr", 0, 3, -1);
 
     // Try with negation
     BFT_CHAIN_SET(

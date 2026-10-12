@@ -67,7 +67,13 @@ static void ip6_nexthdr_eq(void **state)
     bft_assert_prog_run("test_ip6_nexthdr", test->hook(), pkt,
                         test->verdictDrop());
 
-    bft_assert_counter_eq("test_ip6_nexthdr", 0, 5, -1);
+    // Non-first fragment of a TCP segment -> nexthdr=6 -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.offset = 181} / bft::TCP {},
+                        test->verdictDrop());
+
+    bft_assert_counter_eq("test_ip6_nexthdr", 0, 6, -1);
 
     // L4 protocol bpfilter doesn't parse: IPPROTO_GRE = 47
     BFT_CHAIN_SET(bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
@@ -104,13 +110,19 @@ static void ip6_nexthdr_eq(void **state)
                             bft::IPv6Fragment {.more = true} / bft::UDP {},
                         test->verdictDrop());
 
+    // Non-first fragment -> DROP
+    bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.offset = 181} / bft::UDP {},
+                        test->verdictDrop());
+
     // No Fragment header -> ACCEPT
     bft_assert_prog_run("test_ip6_nexthdr", test->hook(),
                         bft::Ethernet() / bft::IPv6 {} / bft::IPv6DstOpts {} /
                             bft::UDP {},
                         test->verdictAccept());
 
-    bft_assert_counter_eq("test_ip6_nexthdr", 0, 2, -1);
+    bft_assert_counter_eq("test_ip6_nexthdr", 0, 3, -1);
 
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)

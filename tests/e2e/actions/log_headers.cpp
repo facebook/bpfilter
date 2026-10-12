@@ -57,7 +57,23 @@ static void transportHeader(void **state)
     assert_int_equal(1, ring_buffer__consume(rb));
     assert_int_equal(0, capture.entries.back().pkt.headers);
 
-    bft_assert_counter_eq("test_log_headers", 0, 2, -1);
+    // First fragment: the transport header is logged
+    bft_assert_prog_run("test_log_headers", BF_HOOK_XDP,
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.more = true} / bft::UDP {},
+                        bft_hook_drop(BF_HOOK_XDP));
+    assert_int_equal(1, ring_buffer__consume(rb));
+    assert_int_equal(kTransportLog, capture.entries.back().pkt.headers);
+
+    // Non-first fragment: no transport header
+    bft_assert_prog_run("test_log_headers", BF_HOOK_XDP,
+                        bft::Ethernet() / bft::IPv6 {} /
+                            bft::IPv6Fragment {.offset = 181} / bft::UDP {},
+                        bft_hook_drop(BF_HOOK_XDP));
+    assert_int_equal(1, ring_buffer__consume(rb));
+    assert_int_equal(0, capture.entries.back().pkt.headers);
+
+    bft_assert_counter_eq("test_log_headers", 0, 4, -1);
 
     ring_buffer__free(rb);
 }

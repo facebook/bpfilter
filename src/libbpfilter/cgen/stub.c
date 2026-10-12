@@ -25,6 +25,7 @@
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/runtime.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/jmp.h"
@@ -38,6 +39,10 @@
     ((1ULL << IPPROTO_HOPOPTS) | (1ULL << IPPROTO_ROUTING) |                   \
      (1ULL << IPPROTO_FRAGMENT) | (1ULL << IPPROTO_ESP) |                      \
      (1ULL << IPPROTO_AH) | (1ULL << IPPROTO_DSTOPTS))
+
+// IPv4 fragment offset and More Fragments flag, they're not part of the uapi
+#define _BF_IP_OFFSET 0x1fff
+#define _BF_IP_MF 0x2000
 
 /**
  * Generate stub to create a dynptr.
@@ -173,6 +178,9 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
 
     assert(program);
 
+    EMIT(program,
+         BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag), BF_FRAG_NONE));
+
     /* Store the size of the L3 protocol header in r4, depending on the protocol
      * ID stored in r7. If the protocol is not supported, we store 0 into r7
      * and we skip the instructions below. */
@@ -249,6 +257,22 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
                                   BF_PROG_CTX_OFF(l4_offset)));
         EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
                                   offsetof(struct iphdr, protocol)));
+
+        /* Fragmentation state: first fragment if More Fragments is set,
+         * overridden by later fragment if the offset isn't 0. frag_off is
+         * big-endian, so are the masks. */
+        EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_0,
+                                  offsetof(struct iphdr, frag_off)));
+        EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_1));
+        EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_2, htobe16(_BF_IP_MF)));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 1));
+        EMIT(program, BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag),
+                                 BF_FRAG_FIRST));
+        EMIT(program,
+             BPF_ALU64_IMM(BPF_AND, BPF_REG_1, htobe16(_BF_IP_OFFSET)));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 1));
+        EMIT(program, BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag),
+                                 BF_FRAG_LATER));
     }
 
     {
@@ -328,6 +352,13 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
      * don't need the L4 header. */
     EMIT(program,
          BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_8, BF_PROG_CTX_OFF(l4_proto)));
+
+    /* A non-first fragment starts with payload, not with an L4 header: clear
+     * r8 so bf_stub_parse_l4_hdr() and the L4 matchers skip it. */
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(frag)));
+    EMIT(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, BF_FRAG_LATER, 1));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
 
     return 0;
 }
