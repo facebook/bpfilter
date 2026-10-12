@@ -318,10 +318,14 @@ jobs:
                       ```
 
                       Do NOT attempt to post comments or use any MCP tools to modify the PR.
+
+                  # --effort also applies to the reviewer agents, which spend most of the run
+                  # thinking: it is the main control over review time and cost. Raise it to
+                  # xhigh or max if reviews start missing issues.
                   claude_args: |
                       --max-turns 100
                       --model us.anthropic.claude-opus-5-5
-                      --effort max
+                      --effort high
                       --json-schema '${{ env.REVIEW_SCHEMA }}'
                       --allowedTools "
                         Read,LS,Grep,Glob,Task,Agent,
