@@ -35,8 +35,10 @@ static void _bf_wpack_writer_flush_cb(mpack_writer_t *writer,
             new_cap <<= 1;
 
         r = bf_realloc(&pack->data, new_cap);
-        if (r)
+        if (r) {
             mpack_writer_flag_error(writer, mpack_error_memory);
+            return;
+        }
 
         pack->data_cap = new_cap;
     }

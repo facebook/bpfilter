@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "fake.h"
+#include "mock.h"
 #include "test.h"
 
 static void wpack_new_free(void **state)
@@ -127,6 +128,27 @@ static void wpack_arrays(void **state)
     assert_true(bf_wpack_is_valid(pack));
     assert_ok(bf_wpack_get_data(pack, &data, &data_len));
     assert_non_null(data);
+}
+
+static void wpack_get_data_nomem(void **state)
+{
+    _free_bf_wpack_ bf_wpack_t *pack = NULL;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&pack));
+    bf_wpack_kv_str(pack, "str_val", "hello world");
+
+    {
+        _clean_bft_mock_ bft_mock _ = bft_mock_get(bf_realloc);
+
+        // The first flush can't allocate the output buffer
+        assert_err(bf_wpack_get_data(pack, &data, &data_len));
+    }
+
+    assert_false(bf_wpack_is_valid(pack));
 }
 
 static void rpack_primitives(void **state)
@@ -485,6 +507,7 @@ int main(void)
         cmocka_unit_test(wpack_nested_objects),
         cmocka_unit_test(wpack_arrays),
         cmocka_unit_test(wpack_enum),
+        cmocka_unit_test(wpack_get_data_nomem),
         cmocka_unit_test(rpack_new_free),
         cmocka_unit_test(rpack_primitives),
         cmocka_unit_test(rpack_size_t),
