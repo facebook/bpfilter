@@ -14,8 +14,8 @@ ${FROM_NS} ${BFCLI} chain flush --name chain_attach_0
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_xdp_0 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log link,transport,internet counter DROP"
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_xdp_1 BF_HOOK_XDP ACCEPT"
-${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_0 --option ifindex=${NS_IFINDEX}
-(! ${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_1 --option ifindex=${NS_IFINDEX})
+${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_0 --option iface=${NS_IFINDEX}
+(! ${FROM_NS} ${BFCLI} chain attach --name chain_attach_xdp_1 --option iface=${NS_IFINDEX})
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_xdp_0
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_xdp_1
@@ -24,8 +24,8 @@ ${FROM_NS} ${BFCLI} chain flush --name chain_attach_xdp_1
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_tc_0 BF_HOOK_TC_EGRESS ACCEPT rule ip4.proto icmp log internet,link,transport counter DROP"
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_tc_1 BF_HOOK_TC_EGRESS ACCEPT"
-${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_0 --option ifindex=${NS_IFINDEX}
-${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_1 --option ifindex=${NS_IFINDEX}
+${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_0 --option iface=${NS_IFINDEX}
+${FROM_NS} ${BFCLI} chain attach --name chain_attach_tc_1 --option iface=${NS_IFINDEX}
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_0
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_1

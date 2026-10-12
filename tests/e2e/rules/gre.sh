@@ -33,7 +33,7 @@ ${FROM_NS} ip link set ${GRE_NS} up
 ping -c 1 -W 0.5 ${GRE_NS_IP_ADDR}
 
 # Drop GRE (IPv4 protocol 47) entering the namespace
-${FROM_NS} ${BFCLI} ruleset set --from-str "chain xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto eq gre counter DROP"
+${FROM_NS} ${BFCLI} ruleset set --from-str "chain xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto eq gre counter DROP"
 
 # Encapsulated traffic is dropped, non-GRE traffic still goes through
 (! ping -c 1 -W 0.5 ${GRE_NS_IP_ADDR})

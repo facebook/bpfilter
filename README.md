@@ -62,7 +62,7 @@ make -C $BUILD_DIR
 
 ```shell
 # Count the number of pings coming to interface #2
-sudo $BUILD_DIR/output/sbin/bfcli ruleset set --from-str "chain my_chain BF_HOOK_XDP{ifindex=2} ACCEPT rule ip4.proto icmp counter ACCEPT"
+sudo $BUILD_DIR/output/sbin/bfcli ruleset set --from-str "chain my_chain BF_HOOK_XDP{iface=2} ACCEPT rule ip4.proto icmp counter ACCEPT"
 ```
 
 The complete documentation is available on [bpfilter.io](https://bpfilter.io/).

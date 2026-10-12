@@ -16,16 +16,16 @@ ${FROM_NS} ${BFCLI} chain update --from-str "chain chain_load_xdp_2 BF_HOOK_XDP 
 ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_2
 
 # Chain exists and is attached
-${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT"
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain update --from-str "chain chain_load_xdp_3 BF_HOOK_XDP ACCEPT rule ip4.proto icmp log transport counter DROP"
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
-${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_3 --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT"
+${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_3 --from-str "chain chain_load_xdp_3 BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT"
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_3
 
 # Counters are reset after chain update
-${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_4 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_4 BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     rule ip4.proto icmp counter DROP
 "
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})

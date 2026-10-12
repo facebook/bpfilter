@@ -5,7 +5,7 @@
 
 make_sandbox
 
-${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test_xdp BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     set blocked_ips (ip4.saddr) in {
         10.0.0.1;
         10.0.0.2;

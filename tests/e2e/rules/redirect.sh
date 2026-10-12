@@ -8,13 +8,13 @@ make_sandbox
 # Invalid: REDIRECT not supported for NF/cgroup_skb hooks, and XDP only supports 'out'
 (! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_NF_LOCAL_IN{family=inet4,priorities=100-200} ACCEPT rule ip4.proto icmp REDIRECT 1 out")
 (! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_CGROUP_SKB_INGRESS{cgpath=/sys/fs/cgroup} ACCEPT rule ip4.proto icmp REDIRECT 1 out")
-(! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 in")
-(! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_TC_INGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT nonexistent_iface in")
+(! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 in")
+(! ${FROM_NS} ${BFCLI} chain set --from-str "chain c BF_HOOK_TC_INGRESS{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT nonexistent_iface in")
 
 # Valid: TC both directions, XDP 'out', with ifindex or interface name
-${FROM_NS} ${BFCLI} chain set --from-str "chain c1 BF_HOOK_TC_INGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 in"
-${FROM_NS} ${BFCLI} chain set --from-str "chain c2 BF_HOOK_TC_EGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT lo out"
-${FROM_NS} ${BFCLI} chain set --from-str "chain c3 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 out"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c1 BF_HOOK_TC_INGRESS{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 in"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c2 BF_HOOK_TC_EGRESS{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT lo out"
+${FROM_NS} ${BFCLI} chain set --from-str "chain c3 BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT 1 out"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # Create veth pair: packets egressing redir0 arrive at redir1's ingress
@@ -25,24 +25,24 @@ REDIR0_IFINDEX=$(${FROM_NS} ip -o link show redir0 | awk '{print $1}' | cut -d: 
 REDIR1_IFINDEX=$(${FROM_NS} ip -o link show redir1 | awk '{print $1}' | cut -d: -f1)
 
 # XDP redirect: packets on veth_ns redirected out redir0, counted at redir1
-${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_XDP{ifindex=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
-${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} out"
+${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_XDP{iface=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} out"
 test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
 test "$(get_counter cnt 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # TC ingress redirect: packets redirected to redir0's ingress
-${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{ifindex=${REDIR0_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
-${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_INGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} in"
+${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{iface=${REDIR0_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_INGRESS{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT ${REDIR0_IFINDEX} in"
 test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
 test "$(get_counter cnt 0)" = "1"
 ${FROM_NS} ${BFCLI} ruleset flush
 
 # TC egress redirect with interface name: packets redirected out redir0, counted at redir1
-${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{ifindex=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
-${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_EGRESS{ifindex=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT redir0 out"
+${FROM_NS} ${BFCLI} chain set --from-str "chain cnt BF_HOOK_TC_INGRESS{iface=${REDIR1_IFINDEX}} ACCEPT rule ip4.proto icmp counter ACCEPT"
+${FROM_NS} ${BFCLI} chain set --from-str "chain redir BF_HOOK_TC_EGRESS{iface=${NS_IFINDEX}} ACCEPT rule ip4.proto icmp REDIRECT redir0 out"
 test "$(get_counter cnt 0)" = "0"
 ping -c 1 -W 1 ${NS_IP_ADDR} || true
 test "$(get_counter cnt 0)" = "1"

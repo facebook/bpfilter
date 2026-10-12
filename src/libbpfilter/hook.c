@@ -21,6 +21,7 @@
 #include "bpfilter/dump.h"
 #include "bpfilter/flavor.h"
 #include "bpfilter/helper.h"
+#include "bpfilter/if.h"
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 
@@ -195,6 +196,35 @@ const char *bf_nf_hook_to_str(enum bf_nf_inet_hooks hook)
     }
 }
 
+static int _bf_hookopts_iface_parse(struct bf_hookopts *hookopts,
+                                    const char *raw_opt)
+{
+    uint32_t ifindex;
+    int r;
+
+    assert(hookopts);
+    assert(raw_opt);
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
+        return bf_err_r(-EEXIST, "iface= (or ifindex=) is already defined");
+
+    // Accept interface names (eth0) or numeric indexes via bf_if_index_from_str.
+    r = bf_if_index_from_str(raw_opt, &ifindex);
+    if (r) {
+        return bf_err_r(r, "failed to parse bf_hookopts type iface=%s",
+                        raw_opt);
+    }
+
+    if (ifindex > INT_MAX)
+        return bf_err_r(-E2BIG, "iface index is too big: %u", ifindex);
+
+    hookopts->ifindex = (int)ifindex;
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
+
+    return 0;
+}
+
+/** @deprecated Prefer iface=. Kept for existing configs; numeric index only. */
 static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
                                       const char *raw_opt)
 {
@@ -204,7 +234,7 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     assert(raw_opt);
 
     if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_IFINDEX))
-        return bf_err_r(-EEXIST, "ifindex= is defined multiple times");
+        return bf_err_r(-EEXIST, "ifindex= (or iface=) is already defined");
 
     errno = 0;
     ifindex = strtoul(raw_opt, NULL, 0);
@@ -216,19 +246,21 @@ static int _bf_hookopts_ifindex_parse(struct bf_hookopts *hookopts,
     if (ifindex > INT_MAX)
         return bf_err_r(-E2BIG, "ifindex is too big: %lu", ifindex);
 
+    bf_warn("ifindex= hook option is deprecated, use iface= instead");
+
     hookopts->ifindex = (int)ifindex;
     hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_IFINDEX);
 
     return 0;
 }
 
-static void _bf_hookopts_ifindex_dump(const struct bf_hookopts *hookopts,
-                                      prefix_t *prefix)
+static void _bf_hookopts_iface_dump(const struct bf_hookopts *hookopts,
+                                    prefix_t *prefix)
 {
     assert(hookopts);
     assert(prefix);
 
-    DUMP(prefix, "ifindex: %d", hookopts->ifindex);
+    DUMP(prefix, "iface: %d", hookopts->ifindex);
 }
 
 static int _bf_hookopts_cgpath_parse(struct bf_hookopts *hookopts,
@@ -366,13 +398,13 @@ static struct bf_hookopts_ops
     int (*parse)(struct bf_hookopts *, const char *);
     void (*dump)(const struct bf_hookopts *, prefix_t *);
 } _bf_hookopts_ops[] = {
-    [BF_HOOKOPTS_IFINDEX] = {.name = "ifindex",
+    [BF_HOOKOPTS_IFINDEX] = {.name = "iface",
                              .type = BF_HOOKOPTS_IFINDEX,
                              .required_by =
                                  BF_FLAGS(BF_FLAVOR_XDP, BF_FLAVOR_TC),
                              .supported_by = 0,
-                             .parse = _bf_hookopts_ifindex_parse,
-                             .dump = _bf_hookopts_ifindex_dump},
+                             .parse = _bf_hookopts_iface_parse,
+                             .dump = _bf_hookopts_iface_dump},
     [BF_HOOKOPTS_CGPATH] = {.name = "cgpath",
                             .type = BF_HOOKOPTS_CGPATH,
                             .required_by = BF_FLAGS(BF_FLAVOR_CGROUP_SKB,
@@ -412,6 +444,19 @@ static struct bf_hookopts_ops *_bf_hookopts_get_ops(const char *key)
     for (enum bf_hookopts_type type = 0; type < _BF_HOOKOPTS_MAX; ++type) {
         if (bf_streq(_bf_hookopts_ops[type].name, key))
             return &_bf_hookopts_ops[type];
+    }
+
+    /** @deprecated `ifindex=` stays numeric-only; prefer `iface=`. */
+    if (bf_streq(key, "ifindex")) {
+        static struct bf_hookopts_ops deprecated_ifindex = {
+            .name = "ifindex",
+            .type = BF_HOOKOPTS_IFINDEX,
+            .required_by = 0,
+            .supported_by = 0,
+            .parse = _bf_hookopts_ifindex_parse,
+            .dump = _bf_hookopts_iface_dump,
+        };
+        return &deprecated_ifindex;
     }
 
     return NULL;

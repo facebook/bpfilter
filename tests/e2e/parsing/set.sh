@@ -73,7 +73,7 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (  
 
 make_sandbox
 
-${FROM_NS} ${BFCLI} chain set --from-str "chain test BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+${FROM_NS} ${BFCLI} chain set --from-str "chain test BF_HOOK_XDP{iface=${NS_IFINDEX}} ACCEPT
     rule (ip4.saddr) in { 192.168.1.1 } DROP
     rule (ip4.saddr) in {} ACCEPT"
 # Verify only 1 set map was pinned (empty set should not create a map)

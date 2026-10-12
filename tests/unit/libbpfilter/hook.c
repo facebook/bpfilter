@@ -9,6 +9,7 @@
 
 #include "bpfilter/core/list.h"
 #include "bpfilter/dump.h"
+#include "bpfilter/if.h"
 #include "bpfilter/pack.h"
 #include "fake.h"
 #include "test.h"
@@ -208,17 +209,22 @@ static void hookopts_new_and_free(void **state)
     // Test free (cleanup attribute will handle this)
 }
 
-static void hookopts_parse_ifindex(void **state)
+static void hookopts_parse_iface(void **state)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    char opt1[] = "ifindex=42";
-    char opt2[] = "ifindex=100";
+    char opt1[] = "iface=42";
+    char opt2[] = "iface=100";
+    char opt_name[] = "iface=lo";
+    char opt_deprecated[] = "ifindex=7";
+    char opt_deprecated_name[] = "ifindex=lo";
+    char opt_cross[] = "ifindex=9";
+    int lo_idx;
 
     (void)state;
 
     assert_ok(bf_hookopts_new(&hookopts));
 
-    // Test valid ifindex
+    // Numeric interface index
     assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
     assert_int_equal(hookopts->ifindex, 42);
     assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
@@ -226,6 +232,29 @@ static void hookopts_parse_ifindex(void **state)
     // Can't overwrite an option
     assert_err(bf_hookopts_parse_opt(hookopts, opt2));
     assert_int_equal(hookopts->ifindex, 42);
+
+    // Cross-duplicate with deprecated ifindex=
+    assert_err(bf_hookopts_parse_opt(hookopts, opt_cross));
+
+    // Interface name
+    bf_hookopts_free(&hookopts);
+    assert_ok(bf_hookopts_new(&hookopts));
+    lo_idx = bf_if_index_from_name("lo");
+    assert_int_gte(lo_idx, 0);
+    assert_ok(bf_hookopts_parse_opt(hookopts, opt_name));
+    assert_int_equal(hookopts->ifindex, lo_idx);
+
+    // Deprecated ifindex= still accepts a numeric index
+    bf_hookopts_free(&hookopts);
+    assert_ok(bf_hookopts_new(&hookopts));
+    assert_ok(bf_hookopts_parse_opt(hookopts, opt_deprecated));
+    assert_int_equal(hookopts->ifindex, 7);
+    assert_true(bf_hookopts_is_used(hookopts, BF_HOOKOPTS_IFINDEX));
+
+    // Deprecated ifindex= stays numeric-only
+    bf_hookopts_free(&hookopts);
+    assert_ok(bf_hookopts_new(&hookopts));
+    assert_err(bf_hookopts_parse_opt(hookopts, opt_deprecated_name));
 }
 
 static void hookopts_parse_cgpath(void **state)
@@ -372,7 +401,7 @@ static void hookopts_validate_xdp(void **state)
     // With ifindex, should be valid
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-        char opt[] = "ifindex=1";
+        char opt[] = "iface=1";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt));
         assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_XDP));
@@ -381,7 +410,7 @@ static void hookopts_validate_xdp(void **state)
     // XDP doesn't support cgpath
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-        char opt1[] = "ifindex=1";
+        char opt1[] = "iface=1";
         char opt2[] = "cgpath=/sys/fs/cgroup";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
@@ -405,7 +434,7 @@ static void hookopts_validate_tc(void **state)
     // With ifindex, should be valid
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-        char opt[] = "ifindex=1";
+        char opt[] = "iface=1";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt));
         assert_ok(bf_hookopts_validate(hookopts, BF_HOOK_TC_INGRESS));
@@ -439,7 +468,7 @@ static void hookopts_validate_cgroup_skb(void **state)
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         char opt1[] = "cgpath=/sys/fs/cgroup";
-        char opt2[] = "ifindex=1";
+        char opt2[] = "iface=1";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
@@ -477,7 +506,7 @@ static void hookopts_validate_cgroup_sock_addr(void **state)
     {
         _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
         char opt1[] = "cgpath=/sys/fs/cgroup";
-        char opt2[] = "ifindex=1";
+        char opt2[] = "iface=1";
         assert_ok(bf_hookopts_new(&hookopts));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt1));
         assert_ok(bf_hookopts_parse_opt(hookopts, opt2));
@@ -531,7 +560,7 @@ static void hookopts_pack_and_unpack(void **state)
     bf_rpack_node_t node;
     const void *data;
     size_t data_len;
-    char opt1[] = "ifindex=42";
+    char opt1[] = "iface=42";
     char opt2[] = "cgpath=/sys/fs/cgroup";
     char opt3[] = "family=inet4";
     char opt4[] = "priorities=100-200";
@@ -600,7 +629,7 @@ static void hookopts_pack_empty(void **state)
 static void hookopts_dump(void **state)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    char opt1[] = "ifindex=42";
+    char opt1[] = "iface=42";
     char opt2[] = "family=inet4";
     prefix_t prefix = {};
 
@@ -618,7 +647,7 @@ static void hookopts_dump(void **state)
 static void hookopts_dump_all_options(void **state)
 {
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
-    char opt1[] = "ifindex=42";
+    char opt1[] = "iface=42";
     char opt2[] = "cgpath=/sys/fs/cgroup";
     char opt3[] = "family=inet4";
     char opt4[] = "priorities=100-200";
@@ -688,7 +717,7 @@ static void hookopts_parse_opts_list(void **state)
     _free_bf_hookopts_ struct bf_hookopts *hookopts = NULL;
     _free_bf_list_ bf_list *opts = NULL;
     bf_list_ops free_ops = bf_list_ops_default(bf_freep, NULL);
-    char *opt1 = strdup("ifindex=42");
+    char *opt1 = strdup("iface=42");
     char *opt2 = strdup("family=inet4");
     char *opt3 = strdup("priorities=100-200");
 
@@ -742,7 +771,7 @@ int main(void)
         cmocka_unit_test(hook_from_nf_hook),
         cmocka_unit_test(nf_hook_to_str),
         cmocka_unit_test(hookopts_new_and_free),
-        cmocka_unit_test(hookopts_parse_ifindex),
+        cmocka_unit_test(hookopts_parse_iface),
         cmocka_unit_test(hookopts_parse_cgpath),
         cmocka_unit_test(hookopts_parse_family),
         cmocka_unit_test(hookopts_parse_priorities),

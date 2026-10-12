@@ -7,7 +7,7 @@ make_sandbox
 
 # Create non-attached chain, verify discovery and attachment
 ${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP ACCEPT"
-${FROM_NS} ${BFCLI} chain attach --name test_chain --option ifindex=${NS_IFINDEX}
+${FROM_NS} ${BFCLI} chain attach --name test_chain --option iface=${NS_IFINDEX}
 
 # Non-attached chain with sets: set elements persist, chain can be attached
 ${FROM_NS} ${BFCLI} chain set --from-str "chain test_chain BF_HOOK_XDP ACCEPT
@@ -25,7 +25,7 @@ echo "$chain_output" | grep -q "192.168.1.2"
 echo "$chain_output" | grep -q "empty_set"
 
 # Attach and verify filtering works
-${FROM_NS} ${BFCLI} chain attach --name test_chain --option ifindex=${NS_IFINDEX}
+${FROM_NS} ${BFCLI} chain attach --name test_chain --option iface=${NS_IFINDEX}
 (! ping -c 1 -W 0.1 ${NS_IP_ADDR})
 
 ${FROM_NS} ${BFCLI} chain flush --name test_chain
