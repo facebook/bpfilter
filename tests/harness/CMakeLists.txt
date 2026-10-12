@@ -42,6 +42,7 @@ target_link_libraries(harness_cxx
 
 add_library(mock EXCLUDE_FROM_ALL
     SHARED
+        mock/bf_realloc.c
         mock/btf__load_vmlinux_btf.c
         mock/isatty.c
         mock/setns.c
