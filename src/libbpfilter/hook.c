@@ -357,6 +357,38 @@ static void _bf_hookopts_priorities_dump(const struct bf_hookopts *hookopts,
          hookopts->priorities[1]);
 }
 
+static int _bf_hookopts_defrag_parse(struct bf_hookopts *hookopts,
+                                     const char *raw_opt)
+{
+    assert(hookopts);
+    assert(raw_opt);
+
+    if (hookopts->used_opts & BF_FLAG(BF_HOOKOPTS_DEFRAG))
+        return bf_err_r(-EEXIST, "defrag= is defined multiple times");
+
+    if (bf_streq(raw_opt, "yes")) {
+        hookopts->defrag = true;
+    } else if (bf_streq(raw_opt, "no")) {
+        hookopts->defrag = false;
+    } else {
+        return bf_err_r(-EINVAL, "defrag= expects 'yes' or 'no', not '%s'",
+                        raw_opt);
+    }
+
+    hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_DEFRAG);
+
+    return 0;
+}
+
+static void _bf_hookopts_defrag_dump(const struct bf_hookopts *hookopts,
+                                     prefix_t *prefix)
+{
+    assert(hookopts);
+    assert(prefix);
+
+    DUMP(prefix, "defrag: %s", hookopts->defrag ? "yes" : "no");
+}
+
 static struct bf_hookopts_ops
 {
     const char *name;
@@ -394,6 +426,12 @@ static struct bf_hookopts_ops
                                 .supported_by = 0,
                                 .parse = _bf_hookopts_priorities_parse,
                                 .dump = _bf_hookopts_priorities_dump},
+    [BF_HOOKOPTS_DEFRAG] = {.name = "defrag",
+                            .type = BF_HOOKOPTS_DEFRAG,
+                            .required_by = 0,
+                            .supported_by = BF_FLAGS(BF_FLAVOR_NF),
+                            .parse = _bf_hookopts_defrag_parse,
+                            .dump = _bf_hookopts_defrag_dump},
 };
 
 static_assert_enum_mapping(_bf_hookopts_ops, _BF_HOOKOPTS_MAX);
@@ -499,6 +537,17 @@ int bf_hookopts_new_from_pack(struct bf_hookopts **hookopts,
         _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_PRIORITIES);
     }
 
+    r = bf_rpack_kv_node(node, "defrag", &child);
+    if (r)
+        return bf_rpack_key_err(r, "bf_hookopts.defrag");
+    if (!bf_rpack_is_nil(child)) {
+        r = bf_rpack_bool(child, &_hookopts->defrag);
+        if (r)
+            return bf_rpack_key_err(r, "bf_hookopts.defrag");
+
+        _hookopts->used_opts |= BF_FLAG(BF_HOOKOPTS_DEFRAG);
+    }
+
     *hookopts = TAKE_PTR(_hookopts);
 
     return 0;
@@ -548,6 +597,11 @@ int bf_hookopts_pack(const struct bf_hookopts *hookopts, bf_wpack_t *pack)
     } else {
         bf_wpack_kv_nil(pack, "priorities");
     }
+
+    if (bf_hookopts_is_used(hookopts, BF_HOOKOPTS_DEFRAG))
+        bf_wpack_kv_bool(pack, "defrag", hookopts->defrag);
+    else
+        bf_wpack_kv_nil(pack, "defrag");
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

@@ -149,6 +149,7 @@ struct bf_hookopts
     // Netfilter
     unsigned int family;
     int priorities[2];
+    bool defrag;
 };
 
 enum bf_hookopts_type
@@ -157,6 +158,7 @@ enum bf_hookopts_type
     BF_HOOKOPTS_CGPATH,
     BF_HOOKOPTS_FAMILY,
     BF_HOOKOPTS_PRIORITIES,
+    BF_HOOKOPTS_DEFRAG,
     _BF_HOOKOPTS_MAX,
 };
 

@@ -27,8 +27,15 @@ namespace
 constexpr uint8_t kIPv4IHL = 5;
 constexpr uint8_t kTCPDataOffset = 5;
 constexpr uint8_t kTrafficClassLowMask = 0x0f;
-// Size of the IPv6 extension headers built by the packet builder.
+// Size of the IPv6 extension headers built by the packet builder, except AH.
 constexpr size_t kIPv6ExtHdrLen = 8;
+// AH with a 4-byte ICV, its Payload Len is in 4-byte units, minus 2.
+constexpr size_t kIPv6AHLen = 16;
+constexpr uint8_t kIPv6AHPayloadLen = (kIPv6AHLen / 4) - 2;
+constexpr uint16_t kIPv4MoreFragments = 0x2000;
+constexpr uint16_t kIPv6MoreFragments = 0x0001;
+constexpr uint8_t kIPv6FragOffsetShift = 3;
+constexpr size_t kGREHdrLen = 4;
 
 uint16_t checksum(const void *data, size_t len)
 {
@@ -47,6 +54,17 @@ uint16_t checksum(const void *data, size_t len)
     sum += sum >> 16;
 
     return static_cast<uint16_t>(~sum);
+}
+
+// Write an 8-byte options header (Hop-by-Hop or Destination Options).
+size_t writeIPv6PaddedOpts(uint8_t *buf, uint8_t proto)
+{
+    // Hdr Ext Len 0 (8 bytes), then a PadN option with 4 bytes of padding
+    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, 0, IPV6_TLV_PADN,
+                                                     4};
+
+    std::memcpy(buf, hdr.data(), hdr.size());
+    return hdr.size();
 }
 
 } // namespace
@@ -99,6 +117,7 @@ size_t IPv4::write(uint8_t *buf, uint8_t proto, size_t payload) const
     hdr.tos = tos;
     hdr.tot_len = htons(sizeof(hdr) + payload);
     hdr.id = htons(id);
+    hdr.frag_off = htons((more ? kIPv4MoreFragments : 0) | frag_offset);
     hdr.ttl = ttl;
     hdr.protocol = proto;
     hdr.saddr = htonl(saddr.addr);
@@ -137,9 +156,29 @@ size_t IPv6HopByHop::size()
 
 size_t IPv6HopByHop::write(uint8_t *buf, uint8_t proto) const
 {
-    // Hdr Ext Len 0 (8 bytes), then a PadN option with 4 bytes of padding
-    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, 0, IPV6_TLV_PADN,
-                                                     4};
+    return writeIPv6PaddedOpts(buf, proto);
+}
+
+size_t IPv6DstOpts::size()
+{
+    return kIPv6ExtHdrLen;
+}
+
+size_t IPv6DstOpts::write(uint8_t *buf, uint8_t proto) const
+{
+    return writeIPv6PaddedOpts(buf, proto);
+}
+
+size_t IPv6Routing::size()
+{
+    return kIPv6ExtHdrLen;
+}
+
+size_t IPv6Routing::write(uint8_t *buf, uint8_t proto) const
+{
+    // Hdr Ext Len 0 (8 bytes): no addresses
+    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, 0, type,
+                                                     segments_left};
 
     std::memcpy(buf, hdr.data(), hdr.size());
     return hdr.size();
@@ -152,8 +191,32 @@ size_t IPv6Fragment::size()
 
 size_t IPv6Fragment::write(uint8_t *buf, uint8_t proto) const
 {
-    const std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, reserved};
+    std::array<uint8_t, kIPv6ExtHdrLen> hdr = {proto, reserved};
+    const uint16_t frag_off =
+        htons(static_cast<uint16_t>(offset << kIPv6FragOffsetShift) |
+              (more ? kIPv6MoreFragments : 0));
+    const uint32_t ident = htonl(id);
 
+    std::memcpy(&hdr[2], &frag_off, sizeof(frag_off));
+    std::memcpy(&hdr[4], &ident, sizeof(ident));
+    std::memcpy(buf, hdr.data(), hdr.size());
+    return hdr.size();
+}
+
+size_t IPv6AH::size()
+{
+    return kIPv6AHLen;
+}
+
+size_t IPv6AH::write(uint8_t *buf, uint8_t proto) const
+{
+    // Next Header, Payload Len, Reserved, SPI, Sequence Number, then a zero ICV
+    std::array<uint8_t, kIPv6AHLen> hdr = {proto, kIPv6AHPayloadLen};
+    const uint32_t nspi = htonl(spi);
+    const uint32_t nseq = htonl(seq);
+
+    std::memcpy(&hdr[4], &nspi, sizeof(nspi));
+    std::memcpy(&hdr[8], &nseq, sizeof(nseq));
     std::memcpy(buf, hdr.data(), hdr.size());
     return hdr.size();
 }
@@ -228,6 +291,21 @@ size_t ICMPv6::write(uint8_t *buf) const
     hdr.icmp6_cksum = 0;
     std::memcpy(buf, &hdr, sizeof(hdr));
     return sizeof(hdr);
+}
+
+size_t GRE::size()
+{
+    return kGREHdrLen;
+}
+
+size_t GRE::write(uint8_t *buf) const
+{
+    // No flags and version 0, then the encapsulated protocol
+    const uint16_t nproto = htons(proto);
+
+    std::memset(buf, 0, kGREHdrLen);
+    std::memcpy(buf + 2, &nproto, sizeof(nproto));
+    return kGREHdrLen;
 }
 
 } // namespace bft

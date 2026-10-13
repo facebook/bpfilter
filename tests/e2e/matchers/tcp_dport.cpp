@@ -68,6 +68,43 @@ static void tcp_dport_eq(void **state)
 
     bft_assert_counter_eq("test_tcp_dport", 0, 3, -1);
 
+    // TCP behind IPv6 extension headers, with both IPv6 parsers
+    bft_with_ipv6_parsers(
+        bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                        {bf::Matcher(BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
+                                     bft_port_be(80))}),
+        [test]() {
+            // Routing header right after the IPv6 header -> DROP
+            bft_assert_prog_run("test_tcp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Routing {} /
+                                    bft::TCP {.dport = 80},
+                                test->verdictDrop());
+
+            // Authentication Header right after the IPv6 header -> DROP
+            bft_assert_prog_run("test_tcp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6AH {} / bft::TCP {.dport = 80},
+                                test->verdictDrop());
+
+            // Fragment header with reserved=8 right after the IPv6 header
+            bft_assert_prog_run("test_tcp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.reserved = 8} /
+                                    bft::TCP {.dport = 80},
+                                test->verdictDrop());
+
+            // Routing header, then another port -> ACCEPT
+            bft_assert_prog_run("test_tcp_dport", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Routing {} /
+                                    bft::TCP {.dport = 443},
+                                test->verdictAccept());
+
+            bft_assert_counter_eq("test_tcp_dport", 0, 3, -1);
+        });
+
     // Negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},

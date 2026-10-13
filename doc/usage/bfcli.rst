@@ -416,6 +416,10 @@ With:
      - ``BF_HOOK_NF_*``
      - N/A
      - ``INT1`` and ``INT2`` are different non-zero integers. Priority values to use when attaching the chain. Two values are required to ensure atomic update of the chain.
+   * - ``defrag=$BOOL``
+     - N/A
+     - ``BF_HOOK_NF_*``
+     - ``yes`` or ``no`` (default). If ``yes``, the kernel reassembles IPv4 and IPv6 fragments before the chain, so it filters complete datagrams, without enabling conntrack. Requires a kernel with ``BPF_F_NETFILTER_IP_DEFRAG`` (Linux 6.6 or later).
 
 
 Rules
@@ -649,10 +653,35 @@ Meta
       - :rspan:`1` ``$PID`` must be a decimal process ID (thread group ID), as seen from the initial PID namespace. This is the process ID reported by the log entries of ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks, not its namespace-local counterpart. Only compatible with ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
     * - ``in``
       - ``{$PID[;...]}``
+    * - Fragment
+      - ``meta.frag``
+      - ``eq``
+      - ``$STATE``
+      - Fragmentation state of IPv4 and IPv6 packets. ``$STATE`` is ``none`` (not a fragment, or an IPv6 atomic fragment), ``first`` (first fragment of a datagram), or ``later`` (any other fragment), case insensitive. Incompatible with ``BF_HOOK_CGROUP_SOCK_ADDR_*`` hooks.
 
 .. note::
 
     On packet-based hooks, ``meta.sport`` and ``meta.dport`` are protocol-neutral across TCP and UDP. They do not match packets with other L4 protocols.
+
+.. note::
+
+    Only the first fragment of a datagram contains the L4 header. As with nftables, ``meta.l4_proto`` and ``ip6.nexthdr`` match the protocol of every fragment, but the matchers reading the L4 header (ports, TCP flags, ICMP type and code) don't match the other fragments.
+
+    IPv4 datagrams are reassembled before ``BF_HOOK_NF_LOCAL_IN``. IPv6 datagrams are only reassembled before the Netfilter hooks if conntrack is enabled, or if a chain uses the ``defrag=yes`` hook option. Otherwise, and on the other hooks, a chain filtering on ports can use ``meta.frag`` to accept the other fragments of the datagrams it accepts:
+
+    .. code-block:: shell
+
+        chain my_chain BF_HOOK_NF_LOCAL_IN{priorities=101-102} DROP
+            rule
+                ip6.snet eq 2001:db8::/32
+                meta.dport range 1024-65535
+                ACCEPT
+            rule
+                ip6.snet eq 2001:db8::/32
+                meta.frag eq later
+                ACCEPT
+
+    The kernel discards a datagram if one of its fragments is missing, and it drops IPv6 fragments which overlap.
 
 IPv4
 ####
@@ -744,11 +773,14 @@ IPv6
       - ``$ADDR/$MASK``
     * - ``in``
       - ``{$ADDR/$MASK[,...]}``
-    * - Next header
-      - ``ip6.nexthdr``
+    * - :rspan:`1` Next header
+      - :rspan:`1` ``ip6.nexthdr``
       - ``eq``
       - ``$NEXT_HEADER``
-      - ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_.
+      - ``$NEXT_HEADER`` is a transport layer protocol name (e.g. "ICMP", case insensitive), an IPv6 extension header name, or a valid decimal or hexadecimal `internet protocol number`_. An extension header matches if the packet contains a header with this type, a transport layer protocol matches the protocol after the extension headers.
+    * - ``in``
+      - ``{$NEXT_HEADER[;...]}``
+      - Set elements are compared to the protocol after the extension headers, so they can't be extension headers: use ``eq`` to match those.
     * - DSCP
       - ``ip6.dscp``
       - ``eq``

@@ -141,6 +141,7 @@ int bf_matcher_generate_meta(struct bf_program *program,
     case BF_MATCHER_META_DPORT:
     case BF_MATCHER_META_MARK:
     case BF_MATCHER_META_FLOW_HASH:
+    case BF_MATCHER_META_FRAG:
         return bf_err_r(-ENOTSUP,
                         "matcher '%s' requires flavor-specific dispatch",
                         bf_matcher_type_to_str(bf_matcher_get_type(matcher)));

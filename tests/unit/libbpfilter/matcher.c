@@ -9,6 +9,7 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/runtime.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/pack.h"
@@ -956,6 +957,96 @@ static void meta_pid(void **state)
         assert_int_equal(!(meta->unsupported_hooks & BF_FLAG(hook)),
                          bf_hook_to_flavor(hook) == BF_FLAVOR_CGROUP_SOCK_ADDR);
     }
+}
+
+static void meta_frag(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const struct bf_matcher_meta *meta;
+    const struct bf_matcher_ops *ops;
+    const uint8_t unknown = _BF_FRAG_MAX;
+    prefix_t prefix = {};
+
+    (void)state;
+
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                      BF_MATCHER_EQ, "none", false));
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), BF_FRAG_NONE);
+    bf_matcher_free(&matcher);
+
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                      BF_MATCHER_EQ, "first", false));
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), BF_FRAG_FIRST);
+    bf_matcher_free(&matcher);
+
+    // Case insensitive
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                      BF_MATCHER_EQ, "Later", true));
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), BF_FRAG_LATER);
+    assert_true(bf_matcher_get_negate(matcher));
+    bf_matcher_dump(matcher, &prefix);
+
+    ops = bf_matcher_get_ops(BF_MATCHER_META_FRAG, BF_MATCHER_EQ);
+    assert_non_null(ops);
+    assert_non_null(ops->print);
+    ops->print(bf_matcher_payload(matcher));
+    ops->print(&unknown);
+
+    assert_null(bf_matcher_get_ops(BF_MATCHER_META_FRAG, BF_MATCHER_IN));
+
+    // cgroup_sock_addr hooks have no packet to inspect
+    meta = bf_matcher_get_meta(BF_MATCHER_META_FRAG);
+    assert_non_null(meta);
+    for (enum bf_hook hook = 0; hook < _BF_HOOK_MAX; ++hook) {
+        assert_int_equal(!!(meta->unsupported_hooks & BF_FLAG(hook)),
+                         bf_hook_to_flavor(hook) == BF_FLAVOR_CGROUP_SOCK_ADDR);
+    }
+}
+
+static void meta_frag_invalid(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                       BF_MATCHER_EQ, "middle", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                       BF_MATCHER_EQ, "1", false));
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_META_FRAG,
+                                       BF_MATCHER_EQ, "", false));
+}
+
+static void ip6_nexthdr_set_elem(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const char *ext_hdrs[] = {"hop", "routing", "frag", "ah",
+                              "dst", "mh",      "0",    "60"};
+
+    (void)state;
+
+    // Set elements are compared to the L4 protocol, after the extension headers
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                      BF_MATCHER_IN, "tcp", false));
+    assert_int_equal(*(uint8_t *)bf_matcher_payload(matcher), IPPROTO_TCP);
+    bf_matcher_free(&matcher);
+
+    // ESP ends the extension header chain
+    assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                      BF_MATCHER_IN, "50", false));
+    bf_matcher_free(&matcher);
+
+    // Extension headers can't be set elements, but eq accepts them
+    for (size_t i = 0; i < ARRAY_SIZE(ext_hdrs); ++i) {
+        assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                           BF_MATCHER_IN, ext_hdrs[i], false));
+        assert_ok(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                          BF_MATCHER_EQ, ext_hdrs[i], false));
+        bf_matcher_free(&matcher);
+    }
+
+    assert_err(bf_matcher_new_from_raw(&matcher, BF_MATCHER_IP6_NEXTHDR,
+                                       BF_MATCHER_IN, "xyz", false));
 }
 
 static void meta_pid_invalid(void **state)
@@ -2007,6 +2098,9 @@ int main(void)
         cmocka_unit_test(meta_mark_invalid),
         cmocka_unit_test(meta_pid),
         cmocka_unit_test(meta_pid_invalid),
+        cmocka_unit_test(meta_frag),
+        cmocka_unit_test(meta_frag_invalid),
+        cmocka_unit_test(ip6_nexthdr_set_elem),
         cmocka_unit_test(new_from_raw_ip4_addr),
         cmocka_unit_test(new_from_raw_ip6_addr),
         cmocka_unit_test(new_from_raw_port),

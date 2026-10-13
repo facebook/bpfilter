@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -26,6 +27,34 @@
 #include "core/lock.h"
 
 static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook);
+
+/**
+ * @brief Create a Netfilter BPF link for one protocol family.
+ *
+ * @param prog_fd File descriptor of the program to attach.
+ * @param hook Netfilter hook to attach the program to.
+ * @param hookopts Hook options of the link. Can't be NULL.
+ * @param family Protocol family to filter, `PF_INET` or `PF_INET6`.
+ * @param priority Priority of the program in the Netfilter hook.
+ * @return A BPF link file descriptor on success, or a negative errno value on
+ *         failure.
+ */
+static int _bf_link_create_nf(int prog_fd, enum bf_hook hook,
+                              const struct bf_hookopts *hookopts,
+                              uint32_t family, int priority)
+{
+    int r;
+
+    assert(hookopts);
+
+    r = bf_bpf_link_create(prog_fd, 0, hook,
+                           hookopts->defrag ? BPF_F_NETFILTER_IP_DEFRAG : 0,
+                           family, priority);
+    if (r == -EOPNOTSUPP && hookopts->defrag)
+        return bf_err_r(r, "the kernel doesn't support defrag=yes");
+
+    return r;
+}
 
 int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook,
                 struct bf_hookopts **hookopts, int prog_fd)
@@ -89,14 +118,14 @@ int bf_link_new(struct bf_link **link, const char *name, enum bf_hook hook,
         fd = r;
         break;
     case BF_FLAVOR_NF:
-        r = bf_bpf_link_create(prog_fd, 0, hook, 0, PF_INET,
+        r = _bf_link_create_nf(prog_fd, hook, _hookopts, PF_INET,
                                _hookopts->priorities[0]);
         if (r < 0)
             return bf_err_r(r, "failed to create nf_inet BPF link");
 
         fd = r;
 
-        r = bf_bpf_link_create(prog_fd, 0, hook, 0, PF_INET6,
+        r = _bf_link_create_nf(prog_fd, hook, _hookopts, PF_INET6,
                                _hookopts->priorities[0]);
         if (r < 0)
             return bf_err_r(r, "failed to create nf_inet6 BPF link");
@@ -257,13 +286,13 @@ static int _bf_link_update_nf(struct bf_link *link, int prog_fd)
 
     // Attach new program to both inet4 and inet6 using the unused priority
     // This ensures the network is never left unfiltered
-    r = bf_bpf_link_create(prog_fd, 0, link->hook, 0, PF_INET,
+    r = _bf_link_create_nf(prog_fd, link->hook, &opts, PF_INET,
                            opts.priorities[1]);
     if (r < 0)
         return bf_err_r(r, "failed to create nf_inet BPF link");
     new_inet_fd = r;
 
-    r = bf_bpf_link_create(prog_fd, 0, link->hook, 0, PF_INET6,
+    r = _bf_link_create_nf(prog_fd, link->hook, &opts, PF_INET6,
                            opts.priorities[1]);
     if (r < 0)
         return bf_err_r(r, "failed to create nf_inet6 BPF link");

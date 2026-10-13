@@ -25,6 +25,7 @@
 #include <bpfilter/flavor.h>
 #include <bpfilter/helper.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/runtime.h>
 #include <bpfilter/verdict.h>
 
 #include "cgen/jmp.h"
@@ -33,7 +34,15 @@
 #include "cgen/swich.h"
 #include "filter.h"
 
-#define _BF_LOW_EH_BITMASK 0x1801800000000801ULL
+// IPv6 extension headers with a protocol number below 64
+#define _BF_LOW_EH_BITMASK                                                     \
+    ((1ULL << IPPROTO_HOPOPTS) | (1ULL << IPPROTO_ROUTING) |                   \
+     (1ULL << IPPROTO_FRAGMENT) | (1ULL << IPPROTO_ESP) |                      \
+     (1ULL << IPPROTO_AH) | (1ULL << IPPROTO_DSTOPTS))
+
+// IPv4 fragment offset and More Fragments flag, they're not part of the uapi
+#define _BF_IP_OFFSET 0x1fff
+#define _BF_IP_MF 0x2000
 
 /**
  * Generate stub to create a dynptr.
@@ -163,11 +172,14 @@ int bf_stub_parse_l2_ethhdr(struct bf_program *program)
 
 int bf_stub_parse_l3_hdr(struct bf_program *program)
 {
-    _clean_bf_jmpctx_ struct bf_jmpctx _ = bf_jmpctx_default();
+    struct bf_jmpctx unsupported;
     int ret_code;
     int r;
 
     assert(program);
+
+    EMIT(program,
+         BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag), BF_FRAG_NONE));
 
     /* Store the size of the L3 protocol header in r4, depending on the protocol
      * ID stored in r7. If the protocol is not supported, we store 0 into r7
@@ -186,7 +198,7 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         if (r)
             return r;
     }
-    _ = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, 0, 0));
+    unsupported = bf_jmpctx_get(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_7, 0, 0));
 
     EMIT(program,
          BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_4, BF_PROG_CTX_OFF(l3_size)));
@@ -245,6 +257,22 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
                                   BF_PROG_CTX_OFF(l4_offset)));
         EMIT(program, BPF_LDX_MEM(BPF_B, BPF_REG_8, BPF_REG_0,
                                   offsetof(struct iphdr, protocol)));
+
+        /* Fragmentation state: first fragment if More Fragments is set,
+         * overridden by later fragment if the offset isn't 0. frag_off is
+         * big-endian, so are the masks. */
+        EMIT(program, BPF_LDX_MEM(BPF_H, BPF_REG_1, BPF_REG_0,
+                                  offsetof(struct iphdr, frag_off)));
+        EMIT(program, BPF_MOV64_REG(BPF_REG_2, BPF_REG_1));
+        EMIT(program, BPF_ALU64_IMM(BPF_AND, BPF_REG_2, htobe16(_BF_IP_MF)));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_2, 0, 1));
+        EMIT(program, BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag),
+                                 BF_FRAG_FIRST));
+        EMIT(program,
+             BPF_ALU64_IMM(BPF_AND, BPF_REG_1, htobe16(_BF_IP_OFFSET)));
+        EMIT(program, BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 1));
+        EMIT(program, BPF_ST_MEM(BPF_B, BPF_REG_10, BF_PROG_CTX_OFF(frag),
+                                 BF_FRAG_LATER));
     }
 
     {
@@ -264,8 +292,8 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         udpjmp = bf_jmpctx_get(program,
                                BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, IPPROTO_UDP, 0));
 
-        /* For all the EH protocol numbers <64, use a bitmask:
-         * mask = (1<<0) | (1<<43) | (1<<44) | (1<<50) | (1<<51) | (1<<60)
+        /* For all the EH protocol numbers <64, use a bitmask
+         * (_BF_LOW_EH_BITMASK).
          *
          * Pseudo-code:
          * - r3 = 1 << r8 (nexthdr)
@@ -316,6 +344,22 @@ int bf_stub_parse_l3_hdr(struct bf_program *program)
         bf_jmpctx_cleanup(&ehjmp);
     }
 
+    // Unsupported L3 protocols jump here, with r8 still 0
+    bf_jmpctx_cleanup(&unsupported);
+
+    /* bf_stub_parse_l4_hdr() sets r8 to 0 if the L4 header can't be read, so
+     * keep the L4 protocol in the runtime context for the matchers which
+     * don't need the L4 header. */
+    EMIT(program,
+         BPF_STX_MEM(BPF_B, BPF_REG_10, BPF_REG_8, BF_PROG_CTX_OFF(l4_proto)));
+
+    /* A non-first fragment starts with payload, not with an L4 header: clear
+     * r8 so bf_stub_parse_l4_hdr() and the L4 matchers skip it. */
+    EMIT(program,
+         BPF_LDX_MEM(BPF_B, BPF_REG_1, BPF_REG_10, BF_PROG_CTX_OFF(frag)));
+    EMIT(program, BPF_JMP_IMM(BPF_JNE, BPF_REG_1, BF_FRAG_LATER, 1));
+    EMIT(program, BPF_MOV64_IMM(BPF_REG_8, 0));
+
     return 0;
 }
 
@@ -327,7 +371,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
     assert(program);
 
     /* Parse the L4 protocol and handle unuspported protocol, similarly to
-     * bf_stub_parse_l3_hdr() above. */
+     * bf_stub_parse_l3_hdr() above. Without an L4 header, set
+     * bf_runtime.l4_hdr to NULL: the packet log stub reads it, and it would be
+     * uninitialized otherwise. */
     {
         _clean_bf_swich_ struct bf_swich swich =
             bf_swich_get(program, BPF_REG_8);
@@ -340,7 +386,9 @@ int bf_stub_parse_l4_hdr(struct bf_program *program)
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmphdr)));
         EMIT_SWICH_OPTION(&swich, IPPROTO_ICMPV6,
                           BPF_MOV64_IMM(BPF_REG_4, sizeof(struct icmp6hdr)));
-        EMIT_SWICH_DEFAULT(&swich, BPF_MOV64_IMM(BPF_REG_8, 0));
+        EMIT_SWICH_DEFAULT(
+            &swich, BPF_MOV64_IMM(BPF_REG_8, 0),
+            BPF_ST_MEM(BPF_DW, BPF_REG_10, BF_PROG_CTX_OFF(l4_hdr), 0));
 
         r = bf_swich_generate(&swich);
         if (r)

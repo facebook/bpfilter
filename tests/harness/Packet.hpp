@@ -69,6 +69,10 @@ struct IPv4
     uint8_t ttl = kDefaultTTL;
     uint16_t id = kDefaultId;
     uint8_t tos = 0;
+    /// Fragment offset, in 8-byte units.
+    uint16_t frag_offset = 0;
+    /// More Fragments flag.
+    bool more = false;
 
     static constexpr uint16_t ether_type = 0x0800;
 
@@ -122,13 +126,59 @@ struct IPv6HopByHop
 };
 
 /**
- * @brief IPv6 Fragment header for a single fragment (offset 0, M flag unset).
+ * @brief IPv6 Destination Options header, padded to 8 bytes.
+ */
+struct IPv6DstOpts
+{
+    static constexpr uint8_t ip_proto = 60; // IPPROTO_DSTOPTS
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
+};
+
+/**
+ * @brief IPv6 Routing header without addresses (8 bytes).
+ */
+struct IPv6Routing
+{
+    uint8_t type = 0;
+    uint8_t segments_left = 0;
+
+    static constexpr uint8_t ip_proto = 43; // IPPROTO_ROUTING
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
+};
+
+/**
+ * @brief IPv6 Fragment header.
+ *
+ * Defaults to an atomic fragment: offset 0, M flag unset.
  */
 struct IPv6Fragment
 {
     uint8_t reserved = 0;
+    /// Fragment offset, in 8-byte units.
+    uint16_t offset = 0;
+    /// More Fragments flag.
+    bool more = false;
+    uint32_t id = 0;
 
     static constexpr uint8_t ip_proto = 44; // IPPROTO_FRAGMENT
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
+};
+
+/**
+ * @brief IPv6 Authentication Header with a 4-byte ICV (16 bytes).
+ */
+struct IPv6AH
+{
+    uint32_t spi = 1;
+    uint32_t seq = 1;
+
+    static constexpr uint8_t ip_proto = 51; // IPPROTO_AH
 
     [[nodiscard]] static size_t size();
     [[nodiscard]] size_t write(uint8_t *buf, uint8_t proto) const;
@@ -211,6 +261,21 @@ struct ICMPv6
     uint8_t code = kDefaultCode;
 
     static constexpr uint8_t ip_proto = 58; // IPPROTO_ICMPV6
+
+    [[nodiscard]] static size_t size();
+    [[nodiscard]] size_t write(uint8_t *buf) const;
+};
+
+/**
+ * @brief GRE header without optional fields.
+ */
+struct GRE
+{
+    static constexpr uint16_t kDefaultProto = 0x0800; // ETH_P_IP
+
+    uint16_t proto = kDefaultProto;
+
+    static constexpr uint8_t ip_proto = 47; // IPPROTO_GRE
 
     [[nodiscard]] static size_t size();
     [[nodiscard]] size_t write(uint8_t *buf) const;

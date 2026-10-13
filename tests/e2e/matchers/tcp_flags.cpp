@@ -189,6 +189,34 @@ static void tcp_flags_all(void **state)
 
     bft_assert_counter_eq("test_tcp_flags", 0, 2, -1);
 
+    // Non-first fragments have no TCP header, whatever their payload
+    bft_with_ipv6_parsers(
+        bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(
+                   BF_VERDICT_DROP, bf_counter(), {},
+                   {bf::Matcher(BF_MATCHER_TCP_FLAGS, BF_MATCHER_ALL, {0x12})}),
+        [test]() {
+            bft_assert_prog_run("test_tcp_flags", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.offset = 181} /
+                                    bft::TCP {.syn = true, .ack = true},
+                                test->verdictAccept());
+            bft_assert_prog_run("test_tcp_flags", test->hook(),
+                                bft::Ethernet() /
+                                    bft::IPv4 {.frag_offset = 181} /
+                                    bft::TCP {.syn = true, .ack = true},
+                                test->verdictAccept());
+
+            // First fragment -> DROP
+            bft_assert_prog_run("test_tcp_flags", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::TCP {.syn = true, .ack = true},
+                                test->verdictDrop());
+
+            bft_assert_counter_eq("test_tcp_flags", 0, 1, -1);
+        });
+
     // Try with negation
     BFT_CHAIN_SET(bf::Chain("test_tcp_flags", test->hook(), BF_VERDICT_ACCEPT)
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},

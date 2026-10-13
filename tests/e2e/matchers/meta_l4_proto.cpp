@@ -42,7 +42,97 @@ static void meta_l4_proto_eq(void **state)
             bft::UDP {.sport = 12345, .dport = 53},
         test->verdictAccept());
 
-    bft_assert_counter_eq("test_meta_l4_proto", 0, 1, -1);
+    // Truncated TCP header -> l4_proto=6 -> DROP
+    auto pkt4 = bft::Ethernet() / bft::IPv4 {} / bft::TCP {};
+    pkt4.len -= 1;
+    bft_assert_prog_run("test_meta_l4_proto", test->hook(), pkt4,
+                        test->verdictDrop());
+
+    auto pkt6 = bft::Ethernet() / bft::IPv6 {} / bft::TCP {};
+    pkt6.len -= 1;
+    bft_assert_prog_run("test_meta_l4_proto", test->hook(), pkt6,
+                        test->verdictDrop());
+
+    bft_assert_counter_eq("test_meta_l4_proto", 0, 3, -1);
+
+    // L4 protocol bpfilter doesn't parse: IPPROTO_GRE = 47
+    BFT_CHAIN_SET(
+        bf::Chain("test_meta_l4_proto", test->hook(), BF_VERDICT_ACCEPT)
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                    {bf::Matcher(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
+                                 bft_u16_payload(47))}));
+
+    bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                        bft::Ethernet() / bft::IPv4 {} / bft::GRE {},
+                        test->verdictDrop());
+
+    bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                        bft::Ethernet() / bft::IPv6 {} / bft::GRE {},
+                        test->verdictDrop());
+
+    bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                        bft::Ethernet() / bft::IPv4 {} / bft::UDP {},
+                        test->verdictAccept());
+
+    bft_assert_counter_eq("test_meta_l4_proto", 0, 2, -1);
+
+    // L4 protocol behind IPv6 extension headers, with both IPv6 parsers
+    bft_with_ipv6_parsers(
+        bf::Chain("test_meta_l4_proto", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                        {bf::Matcher(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
+                                     bft_u16_payload(17))}),
+        [test]() {
+            // First fragment of a UDP datagram -> l4_proto=17 -> DROP
+            bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::UDP {},
+                                test->verdictDrop());
+
+            // UDP after a Routing header -> l4_proto=17 -> DROP
+            bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Routing {} / bft::UDP {},
+                                test->verdictDrop());
+
+            // TCP after a Fragment header -> l4_proto=6 -> ACCEPT
+            bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::TCP {},
+                                test->verdictAccept());
+
+            /* Non-first fragments have no UDP header, but the protocol is
+             * still UDP -> DROP */
+            bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.offset = 181} /
+                                    bft::UDP {},
+                                test->verdictDrop());
+            bft_assert_prog_run(
+                "test_meta_l4_proto", test->hook(),
+                bft::Ethernet() / bft::IPv4 {.frag_offset = 181} / bft::UDP {},
+                test->verdictDrop());
+
+            bft_assert_counter_eq("test_meta_l4_proto", 0, 4, -1);
+        });
+
+    // The Fragment header isn't reported as the L4 protocol
+    bft_with_ipv6_parsers(
+        bf::Chain("test_meta_l4_proto", test->hook(), BF_VERDICT_ACCEPT)
+            << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
+                        {bf::Matcher(BF_MATCHER_META_L4_PROTO, BF_MATCHER_EQ,
+                                     bft_u16_payload(0))}),
+        [test]() {
+            bft_assert_prog_run("test_meta_l4_proto", test->hook(),
+                                bft::Ethernet() / bft::IPv6 {} /
+                                    bft::IPv6Fragment {.more = true} /
+                                    bft::UDP {},
+                                test->verdictAccept());
+
+            bft_assert_counter_eq("test_meta_l4_proto", 0, 0, -1);
+        });
 
     // Negation
     BFT_CHAIN_SET(
