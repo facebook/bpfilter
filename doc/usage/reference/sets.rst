@@ -37,6 +37,8 @@ With:
 
 The following matchers can be used as key components: ``meta.sport``, ``meta.dport``, ``meta.pid``, ``ip4.saddr``, ``ip4.daddr``, ``ip4.snet``, ``ip4.dnet``, ``ip4.proto``, ``ip6.saddr``, ``ip6.daddr``, ``ip6.snet``, ``ip6.dnet``, ``ip6.nexthdr``, ``tcp.sport``, ``tcp.dport``, ``udp.sport``, ``udp.dport``, ``icmp.type``, ``icmp.code``, ``icmpv6.type``, and ``icmpv6.code``. Each component must also be supported by the chain's hook (see :doc:`hooks`). The elements use the same format as the payload of the corresponding matcher (see :doc:`matchers`).
 
+Set names are non-empty and contain only ASCII letters (``a-z``, ``A-Z``), digits (``0-9``), underscores (``_``), and hyphens (``-``). Names are case-sensitive.
+
 Here is an example:
 
 .. code:: shell

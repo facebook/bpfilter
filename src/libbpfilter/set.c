@@ -17,6 +17,9 @@
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 
+#define _BF_SET_NAME_CHARS                                                     \
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+
 /// Mask value of matcher types supporting LPM trie maps.
 #define _BF_SET_USE_TRIE_MASK                                                  \
     (BF_FLAGS(BF_MATCHER_IP4_SNET, BF_MATCHER_IP4_DNET, BF_MATCHER_IP6_SNET,   \
@@ -44,6 +47,11 @@ static const bf_hashset_ops _bf_set_elem_ops = {
     .free = _bf_set_elem_free,
 };
 
+bool bf_set_is_valid_name(const char *name)
+{
+    return name && *name && name[strspn(name, _BF_SET_NAME_CHARS)] == '\0';
+}
+
 int bf_set_new(struct bf_set **set, const char *name,
                const enum bf_matcher_type *key, size_t n_comps)
 {
@@ -52,6 +60,9 @@ int bf_set_new(struct bf_set **set, const char *name,
 
     assert(set);
     assert(key);
+
+    if (name && !bf_set_is_valid_name(name))
+        return bf_err_r(-EINVAL, "invalid user-defined set name '%s'", name);
 
     if (n_comps == 0)
         return bf_err_r(-EINVAL, "at least 1 key component is required");

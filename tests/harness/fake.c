@@ -98,8 +98,10 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
         {
             // Create a rule with SET, any matcher, SET
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(4);
-            _free_bf_set_ struct bf_set *set1 = bft_set_dummy(4);
+            _free_bf_set_ struct bf_set *set0 =
+                bft_set_dummy("bft_set_dummy", 4);
+            _free_bf_set_ struct bf_set *set1 =
+                bft_set_dummy("bft_set_dummy", 4);
             uint32_t ip = 0xff;
 
             r = bf_rule_new(&rule);
@@ -152,7 +154,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             // Create a rule with a single set, no other matcher
 
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(4);
+            _free_bf_set_ struct bf_set *set0 =
+                bft_set_dummy("bft_set_dummy", 4);
 
             r = bf_rule_new(&rule);
             if (r)
@@ -221,7 +224,7 @@ struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len)
     return TAKE_PTR(matcher);
 }
 
-struct bf_set *bft_set_dummy(size_t n_elems)
+struct bf_set *bft_set_dummy(const char *name, size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
 
@@ -229,7 +232,7 @@ struct bf_set *bft_set_dummy(size_t n_elems)
 
     int r;
 
-    r = bf_set_new(&set, "bft_set_dummy", key, ARRAY_SIZE(key));
+    r = bf_set_new(&set, name, key, ARRAY_SIZE(key));
     if (r)
         return NULL;
 

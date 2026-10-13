@@ -3,6 +3,22 @@
 
 . "$(dirname "$0")"/../e2e_test_util.sh
 
+for name in Set_012-abc 0 _ -; do
+    ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+        set ${name} (ip4.saddr) in { 192.168.1.1 }
+        rule (ip4.saddr) in ${name} ACCEPT"
+done
+
+for name in name.with.dot name/slash name:colon @name 'café' \
+    @anon:0123456789abcdef @anon:invalid; do
+    (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+        set ${name} (ip4.saddr) in { 192.168.1.1 }
+        rule (ip4.saddr) in ${name} ACCEPT")
+    (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+        set myset (ip4.saddr) in { 192.168.1.1 }
+        rule (ip4.saddr) in ${name} ACCEPT")
+done
+
 ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
     set myset (ip4.saddr) in {
         192.168.1.1;

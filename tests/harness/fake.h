@@ -52,4 +52,4 @@ const void *bft_get_randomly_filled_buffer(size_t len);
 struct bf_chain *bft_chain_dummy(bool with_rules);
 struct bf_rule *bft_rule_dummy(size_t n_matchers);
 struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len);
-struct bf_set *bft_set_dummy(size_t n_elems);
+struct bf_set *bft_set_dummy(const char *name, size_t n_elems);

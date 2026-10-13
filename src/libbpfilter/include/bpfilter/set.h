@@ -73,11 +73,22 @@ struct bf_set
 };
 
 /**
+ * @brief Check whether a set name can be supplied by a user.
+ *
+ * Names must be non-empty and contain only ASCII letters, digits, underscores,
+ * and hyphens.
+ *
+ * @param name Name to validate. Can be NULL, which is not a valid name.
+ * @return true if the name is valid for a user-defined set, false otherwise.
+ */
+bool bf_set_is_valid_name(const char *name);
+
+/**
  * @brief Allocate and initialise a new set.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
- * @param name Name of the set, can be used to identify it. If NULL, the set
- *        is anonymous.
+ * @param name Name of the set, can be used to identify it. Must satisfy
+ *        bf_set_is_valid_name(). If NULL, the set is anonymous.
  * @param key Key of the set, as an array of `bf_matcher_type`. Not all the
  *        matcher types can be used as set key components. Can't be NULL.
  * @param n_comps Number of components in `key`.
@@ -90,8 +101,8 @@ int bf_set_new(struct bf_set **set, const char *name,
  * @brief Allocate and initialise a new set from a raw key and payload values.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
- * @param name Name of the set, can be used to identify it. If NULL, the set
- *        is anonymous.
+ * @param name Name of the set, can be used to identify it. Must satisfy
+ *        bf_set_is_valid_name(). If NULL, the set is anonymous.
  * @param raw_key Set key, as a string of comma-separated matcher types enclosed
  *        in parentheses. Can't be NULL.
  * @param raw_payload Set payload, to parse according to `raw_key`. Can't be
@@ -103,6 +114,9 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
 
 /**
  * @brief Allocate and initialize a new set from serialized data.
+ *
+ * Validates the stored name with bf_set_is_valid_name(). A nil name is
+ * accepted for anonymous sets.
  *
  * @param set Set object to allocate and initialize from the serialized data.
  *        The caller will own the object. On failure, `*set` is unchanged.
