@@ -440,6 +440,14 @@ int bf_chain_update(const struct bf_chain *chain)
     if (r)
         return r;
 
+    if (chain->hook != cgen->chain->hook) {
+        return bf_err_r(
+            -EINVAL,
+            "can't update chain '%s': hook %s doesn't match the existing hook %s",
+            chain->name, bf_hook_to_str(chain->hook),
+            bf_hook_to_str(cgen->chain->hook));
+    }
+
     r = bf_chain_new_from_copy(&chain_copy, chain);
     if (r)
         return r;
