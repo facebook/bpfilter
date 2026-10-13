@@ -156,14 +156,14 @@ int bf_chain_load(struct bf_chain *chain);
 int bf_chain_attach(const char *name, const struct bf_hookopts *hookopts);
 
 /**
- * @brief Update an attached chain.
+ * @brief Update a chain.
  *
- * The chain to update must exist and be attached to a hook.
+ * The chain to update must exist. If it is attached to a hook, the new program
+ * replaces the existing one atomically, and the chain stays attached.
  *
  * @param chain Chain to update. Can't be NULL.
  * @return 0 on success, or a negative errno value on failure, including:
  * - `-ENOENT`: no chain found for this name.
- * - `-ENOLINK`: the chain to update is not attached.
  */
 int bf_chain_update(const struct bf_chain *chain);
 

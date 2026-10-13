@@ -240,9 +240,6 @@ int bfc_chain_update(const struct bfc_opts *opts)
         r = bf_chain_update(chain);
         if (r == -ENOENT)
             return bf_err_r(r, "chain '%s' not found", chain->name);
-        if (r == -ENOLINK)
-            return bf_err_r(r, "chain '%s' is not attached to a hook",
-                            chain->name);
         if (r)
             return bf_err_r(r, "unknown error");
     } else {
