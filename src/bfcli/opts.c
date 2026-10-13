@@ -806,7 +806,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
             "Configure bpfilter chains and filtering rules.\v"
             "Examples:\n"
             "  # Set a ruleset from file\n"
-            "  bfcli ruleset set --from-file myruleset.txt\n\n"
+            "  bfcli ruleset set --from-file myruleset.bf\n\n"
             "  # Create an XDP chain\n"
             "  bfcli chain set --from-str \"chain my_xdp_chain BF_HOOK_XDP ACCEPT rule (ip4.saddr) in {192.168.1.1} ACCEPT\"\n\n"
             "  # Get current ruleset\n"
