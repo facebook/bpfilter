@@ -122,8 +122,8 @@ static void mixed_enabled_disabled_log_flag(void **state)
 
     (void)state;
 
-    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(0)));
-    assert_ok(bf_list_add_tail(&sets, bft_set_dummy(4)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy("bft_set_dummy", 0)));
+    assert_ok(bf_list_add_tail(&sets, bft_set_dummy("bft_set_dummy", 4)));
 
     set_index = 0;
     assert_ok(bf_rule_new(&r0));

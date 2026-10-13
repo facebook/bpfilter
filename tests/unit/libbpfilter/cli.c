@@ -141,8 +141,8 @@ static void chain_update(void **state)
 
 static void chain_update_set(void **state)
 {
-    _free_bf_set_ struct bf_set *set0 = bft_set_dummy(3);
-    _free_bf_set_ struct bf_set *set1 = bft_set_dummy(2);
+    _free_bf_set_ struct bf_set *set0 = bft_set_dummy("bft_set_dummy", 3);
+    _free_bf_set_ struct bf_set *set1 = bft_set_dummy("bft_set_dummy", 2);
 
     (void)state;
 
