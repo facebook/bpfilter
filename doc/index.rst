@@ -5,7 +5,10 @@
    :caption: Users
 
    Overview <self>
-   usage/index
+   usage/tutorials/index
+   usage/how-to/index
+   usage/reference/index
+   usage/explanation/index
 
 .. toctree::
    :hidden:
@@ -64,4 +67,12 @@
 
 **bpfilter** combines two components: ``bfcli``, a CLI that allows users to define filtering rules in human-readable text, and ``libbpfilter``, a library that converts these rules into efficient BPF programs and manages their lifecycle.
 
-Want to know more about **bpfilter**? Check the :doc:`user's guide <usage/index>`, the :doc:`developer documentation <developers/build>`, or watch our talk at `Scale <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_!
+Want to know more about **bpfilter**?
+
+- **New to bpfilter?** :doc:`Install it <usage/how-to/install>`, then follow :doc:`usage/tutorials/first-chain`.
+- **Complete a task**: :doc:`usage/how-to/index` cover installing **bpfilter** and applying, updating, inspecting, and removing filters.
+- **Look up syntax or behavior**: :doc:`usage/reference/index` describes the ``bfcli`` commands and the ruleset syntax.
+- **Understand how filtering works**: :doc:`usage/explanation/index` explains rule evaluation, hook placement, and the chain lifecycle.
+- **Work on bpfilter**: the :doc:`developer documentation <developers/build>` covers building, contributing, and the code base.
+
+You can also watch our talk at `Scale <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_!
