@@ -6,7 +6,9 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,12 +32,15 @@ private:
     };
 
     std::vector<bf_matcher_type> _key;
+    std::optional<std::string> _name;
     size_t _key_size = 0;
     std::vector<std::vector<uint8_t>> _elements;
 
 public:
-    Set(std::vector<bf_matcher_type> key):
-        _key {std::move(key)}
+    Set(std::vector<bf_matcher_type> key,
+        std::optional<std::string> name = std::nullopt):
+        _key {std::move(key)},
+        _name {std::move(name)}
     {
         for (bf_matcher_type type: _key) {
             const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
@@ -60,7 +65,7 @@ public:
         struct bf_set *set;
 
         int r =
-            bf_set_new(&set, nullptr,
+            bf_set_new(&set, _name ? _name->c_str() : nullptr,
                        const_cast<bf_matcher_type *>(_key.data()), _key.size());
         if (r != 0)
             throw std::runtime_error("failed to create a new bf_set");
