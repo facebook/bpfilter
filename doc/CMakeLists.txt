@@ -80,7 +80,28 @@ list(FILTER bf_srcs EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/external/.*")
 set(doc_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/index.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/usage/bfcli.rst
-	${CMAKE_CURRENT_SOURCE_DIR}/usage/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/tutorials/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/tutorials/first-chain.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/install.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/apply-ruleset.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/block-addresses.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/update-chain.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/update-blocklist.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/inspect.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/how-to/remove-chain.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/bfcli.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/ruleset.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/chains.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/hooks.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/rules.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/matchers.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/reference/sets.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/explanation/index.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/explanation/rule-evaluation.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/explanation/hooks.rst
+	${CMAKE_CURRENT_SOURCE_DIR}/usage/explanation/lifecycle.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/build.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/contributing.rst
 	${CMAKE_CURRENT_SOURCE_DIR}/developers/generation.rst
