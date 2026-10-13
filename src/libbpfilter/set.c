@@ -5,6 +5,7 @@
 
 #include "bpfilter/set.h"
 
+#include <endian.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -180,7 +181,7 @@ static int _bf_set_expand_range(struct bf_set *set, const char *token,
         if (!range_elem)
             return bf_err_r(-ENOMEM, "failed to allocate a new set element");
 
-        *range_elem = (uint16_t)value;
+        *range_elem = htobe16((uint16_t)value);
 
         range_data = range_elem;
         r = bf_hashset_add(&set->elems, &range_data);

@@ -338,6 +338,30 @@ static void new_from_raw_port_range_boundaries(void **state)
     assert_int_equal(bf_hashset_size(&set->elems), 1);
 }
 
+static void new_from_raw_port_range_elements(void **state)
+{
+    _free_bf_set_ struct bf_set *range = NULL;
+    _free_bf_set_ struct bf_set *ports = NULL;
+
+    (void)state;
+
+    // A range is stored exactly like the ports it covers
+    assert_ok(bf_set_new_from_raw(&range, "test_range", "(udp.dport)",
+                                  "{27-30; 9990-9992}"));
+    assert_ok(bf_set_new_from_raw(&ports, "test_ports", "(udp.dport)",
+                                  "{27; 28; 29; 30; 9990; 9991; 9992}"));
+    assert_int_equal(bf_hashset_size(&range->elems), 7);
+    bf_hashset_foreach (&range->elems, elem)
+        assert_true(bf_hashset_contains(&ports->elems, elem->data));
+
+    bf_set_free(&range);
+
+    // A port covered by a range is only stored once
+    assert_ok(bf_set_new_from_raw(&range, "test_overlap", "(tcp.dport)",
+                                  "{27; 27-28}"));
+    assert_int_equal(bf_hashset_size(&range->elems), 2);
+}
+
 static void new_from_raw_port_range_invalid(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -557,6 +581,7 @@ int main(void)
         cmocka_unit_test(new_from_raw_multiple_keys),
         cmocka_unit_test(new_from_raw_port_range),
         cmocka_unit_test(new_from_raw_port_range_boundaries),
+        cmocka_unit_test(new_from_raw_port_range_elements),
         cmocka_unit_test(new_from_raw_port_range_invalid),
         cmocka_unit_test(new_from_raw_port_range_multiple_keys),
         cmocka_unit_test(new_from_raw_invalid),
