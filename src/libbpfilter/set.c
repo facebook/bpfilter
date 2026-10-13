@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "bpfilter/core/hashset.h"
 #include "bpfilter/dump.h"
@@ -19,6 +20,9 @@
 
 #define _BF_SET_NAME_CHARS                                                     \
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+#define _BF_SET_ANON_NAME_PREFIX "@anon:"
+#define _BF_SET_ANON_NAME_ID_LEN 16
+#define _BF_SET_ANON_NAME_ID_CHARS "0123456789abcdef"
 
 /// Mask value of matcher types supporting LPM trie maps.
 #define _BF_SET_USE_TRIE_MASK                                                  \
@@ -52,17 +56,47 @@ bool bf_set_is_valid_name(const char *name)
     return name && *name && name[strspn(name, _BF_SET_NAME_CHARS)] == '\0';
 }
 
-int bf_set_new(struct bf_set **set, const char *name,
-               const enum bf_matcher_type *key, size_t n_comps)
+bool bf_set_is_anonymous(const struct bf_set *set)
+{
+    assert(set);
+    assert(set->name);
+
+    return strncmp(set->name, _BF_SET_ANON_NAME_PREFIX,
+                   sizeof(_BF_SET_ANON_NAME_PREFIX) - 1) == 0;
+}
+
+static bool _bf_set_is_valid_internal_name(const char *name)
+{
+    const char *identifier;
+
+    assert(name);
+
+    if (bf_set_is_valid_name(name))
+        return true;
+
+    if (strncmp(name, _BF_SET_ANON_NAME_PREFIX,
+                sizeof(_BF_SET_ANON_NAME_PREFIX) - 1) != 0)
+        return false;
+
+    identifier = name + sizeof(_BF_SET_ANON_NAME_PREFIX) - 1;
+
+    return strlen(identifier) == _BF_SET_ANON_NAME_ID_LEN &&
+           strspn(identifier, _BF_SET_ANON_NAME_ID_CHARS) ==
+               _BF_SET_ANON_NAME_ID_LEN;
+}
+
+static int _bf_set_new(struct bf_set **set, const char *name,
+                       const enum bf_matcher_type *key, size_t n_comps)
 {
     _free_bf_set_ struct bf_set *_set = NULL;
     uint64_t mask = 0;
 
     assert(set);
+    assert(name);
     assert(key);
 
-    if (name && !bf_set_is_valid_name(name))
-        return bf_err_r(-EINVAL, "invalid user-defined set name '%s'", name);
+    if (!_bf_set_is_valid_internal_name(name))
+        return bf_err_r(-EINVAL, "invalid set name '%s'", name);
 
     if (n_comps == 0)
         return bf_err_r(-EINVAL, "at least 1 key component is required");
@@ -77,12 +111,9 @@ int bf_set_new(struct bf_set **set, const char *name,
     if (!_set)
         return -ENOMEM;
 
-    _set->name = NULL;
-    if (name) {
-        _set->name = strdup(name);
-        if (!_set->name)
-            return bf_err_r(-ENOMEM, "failed to allocate memory for set name");
-    }
+    _set->name = strdup(name);
+    if (!_set->name)
+        return bf_err_r(-ENOMEM, "failed to allocate memory for set name");
 
     memcpy(&_set->key, key, n_comps * sizeof(enum bf_matcher_type));
     _set->n_comps = n_comps;
@@ -115,6 +146,36 @@ int bf_set_new(struct bf_set **set, const char *name,
     *set = TAKE_PTR(_set);
 
     return 0;
+}
+
+int bf_set_new(struct bf_set **set, const char *name,
+               const enum bf_matcher_type *key, size_t n_comps)
+{
+    char generated_name[sizeof(_BF_SET_ANON_NAME_PREFIX) +
+                        _BF_SET_ANON_NAME_ID_LEN] = _BF_SET_ANON_NAME_PREFIX;
+
+    assert(set);
+    assert(key);
+
+    if (name && !bf_set_is_valid_name(name))
+        return bf_err_r(-EINVAL, "invalid user-defined set name '%s'", name);
+
+    // Generate a random identifier for anonymous sets.
+    if (!name) {
+        uint8_t random_bytes[_BF_SET_ANON_NAME_ID_LEN];
+        char *identifier =
+            generated_name + sizeof(_BF_SET_ANON_NAME_PREFIX) - 1;
+
+        if (getentropy(random_bytes, sizeof(random_bytes)) < 0)
+            return bf_err_r(-errno, "failed to generate anonymous set name");
+
+        for (size_t i = 0; i < ARRAY_SIZE(random_bytes); ++i)
+            identifier[i] = _BF_SET_ANON_NAME_ID_CHARS[random_bytes[i] % 16];
+
+        name = generated_name;
+    }
+
+    return _bf_set_new(set, name, key, n_comps);
 }
 
 /**
@@ -351,14 +412,9 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
 
     assert(set);
 
-    r = bf_rpack_kv_node(node, "name", &child);
+    r = bf_rpack_kv_str(node, "name", &name);
     if (r)
         return bf_rpack_key_err(r, "bf_set.name");
-    if (!bf_rpack_is_nil(child)) {
-        r = bf_rpack_str(child, &name);
-        if (r)
-            return bf_err_r(r, "failed to read set name from bf_set.name pack");
-    }
 
     r = bf_rpack_kv_array(node, "key", &child);
     if (r)
@@ -377,7 +433,7 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
             return bf_rpack_key_err(r, "bf_set.key");
     }
 
-    r = bf_set_new(&_set, name, key, n_comps);
+    r = _bf_set_new(&_set, name, key, n_comps);
     if (r)
         return bf_err_r(r, "failed to create bf_set from pack");
 
@@ -466,10 +522,7 @@ int bf_set_pack(const struct bf_set *set, bf_wpack_t *pack)
     assert(set);
     assert(pack);
 
-    if (set->name)
-        bf_wpack_kv_str(pack, "name", set->name);
-    else
-        bf_wpack_kv_nil(pack, "name");
+    bf_wpack_kv_str(pack, "name", set->name);
 
     bf_wpack_open_array(pack, "key");
     for (size_t i = 0; i < set->n_comps; ++i)
@@ -496,7 +549,7 @@ void bf_set_dump(const struct bf_set *set, prefix_t *prefix)
     DUMP(prefix, "struct bf_set at %p", set);
     bf_dump_prefix_push(prefix);
 
-    DUMP(prefix, "name: %s", set->name ?: "<anonymous>");
+    DUMP(prefix, "name: %s", set->name);
     DUMP(prefix, "key: bf_matcher_type[%zu]", set->n_comps);
     bf_dump_prefix_push(prefix);
     for (size_t i = 0; i < set->n_comps; ++i) {
