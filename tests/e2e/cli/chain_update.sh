@@ -24,6 +24,19 @@ ${FROM_NS} ${BFCLI} chain update --name chain_load_xdp_3 --from-str "chain chain
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain flush --name chain_load_xdp_3
 
+# The chain's hook can't change, whether the chain is attached or not
+${FROM_NS} ${BFCLI} chain set --from-str "chain chain_update_hook_xdp BF_HOOK_XDP ACCEPT"
+(! ${FROM_NS} ${BFCLI} chain update --from-str "chain chain_update_hook_xdp BF_HOOK_TC_INGRESS ACCEPT")
+chain_output=$(${FROM_NS} ${BFCLI} chain get --name chain_update_hook_xdp)
+echo "$chain_output" | grep -q 'chain chain_update_hook_xdp BF_HOOK_XDP ACCEPT'
+${FROM_NS} ${BFCLI} chain flush --name chain_update_hook_xdp
+
+${FROM_NS} ${BFCLI} chain set --from-str "chain chain_update_hook_nf BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT"
+(! ${FROM_NS} ${BFCLI} chain update --from-str "chain chain_update_hook_nf BF_HOOK_NF_LOCAL_OUT ACCEPT")
+chain_output=$(${FROM_NS} ${BFCLI} chain get --name chain_update_hook_nf)
+echo "$chain_output" | grep -q 'chain chain_update_hook_nf BF_HOOK_NF_LOCAL_IN{priorities=101-102} ACCEPT'
+${FROM_NS} ${BFCLI} chain flush --name chain_update_hook_nf
+
 # Counters are reset after chain update
 ${FROM_NS} ${BFCLI} chain set --from-str "chain chain_load_xdp_4 BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
     rule ip4.proto icmp counter DROP
