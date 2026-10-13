@@ -122,7 +122,7 @@ enum bf_elfstub_id
     /**
      * Log user-requested packet headers to a ring buffer.
      *
-     * `__u8 bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict, __u32 l3_l4_proto)`
+     * `int bf_pkt_log(struct bf_runtime *ctx, __u32 rule_id, __u8 headers, __u32 verdict, __u32 l3_l4_proto)`
      *
      * **Parameters**
      * - `ctx`: address of the `bf_runtime` context of the program.
@@ -131,7 +131,7 @@ enum bf_elfstub_id
      * - `verdict`: verdict of the matched rule.
      * - `l3_l4_proto`: layer 3 (internet) and layer 4 (transport) protocols packed (l3 << 16 | l4)
      *
-     * **Return** 0 on success, or 1 on error.
+     * **Return** 0 on success, or negative errno value on failure.
      */
     BF_ELFSTUB_PKT_LOG,
 
@@ -156,7 +156,7 @@ enum bf_elfstub_id
     /**
      * Log socket address metadata to a ring buffer.
      *
-     * `__u8 bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict, __u32 l3_l4_proto, __u8 captured_fields)`
+     * `int bf_sock_addr_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict, __u32 l3_l4_proto, __u8 captured_fields)`
      *
      * **Parameters**
      * - `ctx`: address of the `bf_runtime` context of the program.
@@ -166,14 +166,14 @@ enum bf_elfstub_id
      * - `captured_fields`: bitmask of conditional fields captured in the
      *   log entry (see `BF_LOG_SOCK_ADDR_*`).
      *
-     * **Return** 0 on success, or 1 on error.
+     * **Return** 0 on success, or negative errno value on failure.
      */
     BF_ELFSTUB_SOCK_ADDR_LOG,
 
     /**
      * Log a packet 5-tuple to a ring buffer.
      *
-     * `__u8 bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict, __u32 l3_l4_proto)`
+     * `int bf_pkt_5_tuple_log(struct bf_runtime *ctx, __u32 rule_id, __u32 verdict, __u32 l3_l4_proto)`
      *
      * **Parameters**
      * - `ctx`: address of the `bf_runtime` context of the program.
@@ -182,7 +182,7 @@ enum bf_elfstub_id
      * - `l3_l4_proto`: layer 3 and layer 4 protocols packed as
      *   `(l3 << 16 | l4)`.
      *
-     * **Return** 0 on success, or 1 on error.
+     * **Return** 0 on success, or negative errno value on failure.
      */
     BF_ELFSTUB_PKT_5_TUPLE_LOG,
 
