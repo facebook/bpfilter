@@ -148,7 +148,9 @@ enum bf_cgen_update_flags
  * new program.
  *
  * On success, the new program is stored in the codegen, and the previous
- * program is unloaded and freed.
+ * program is unloaded and freed. The log ring buffer is kept, so file
+ * descriptors returned by `bf_chain_logs_fd()` keep receiving the chain's
+ * logs.
  *
  * @param cgen Codegen to update. Can't be NULL.
  * @param new_chain Chain containing the new rules, sets, and policy.
