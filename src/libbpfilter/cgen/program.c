@@ -578,14 +578,15 @@ static int _bf_program_generate_log(struct bf_program *program,
 }
 
 /**
- * @brief Check whether a matcher needs no bytecode.
+ * @brief Check whether matcher code generation can be skipped.
  *
- * A matcher needs no bytecode if it matches every packet the rule applies
- * to. The protocol checks derived from the matcher are still generated.
+ * Negated empty sets can skip matcher code generation. Protocol checks
+ * emitted before the matcher are still generated. Any guards inside the
+ * matcher code are skipped.
  *
  * @param program Program to generate the matcher for. Can't be NULL.
  * @param matcher Matcher to check. Can't be NULL.
- * @return True if no bytecode is needed for the matcher, false otherwise.
+ * @return True if matcher code generation can be skipped, false otherwise.
  */
 static bool _bf_program_matcher_is_noop(const struct bf_program *program,
                                         const struct bf_matcher *matcher)
@@ -597,8 +598,7 @@ static bool _bf_program_matcher_is_noop(const struct bf_program *program,
         const struct bf_set *set =
             bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
 
-        /* ... not in {} will match every packet, so no need to generate the
-         * bytecode for it. */
+        // An empty set never contains the key, so negation needs no lookup.
         if (bf_set_is_empty(set) && bf_matcher_get_negate(matcher))
             return true;
     }
@@ -617,9 +617,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
     assert(rule);
     assert(program->runtime.ops->gen_inline_matcher);
     assert(program->runtime.ops->gen_inline_log);
-
-    if (rule->disabled)
-        return 0;
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
@@ -699,6 +696,7 @@ static int _bf_program_generate_rule(struct bf_program *program,
             return bf_err_r(-ENOTSUP, "redirect is not supported by %s hook",
                             bf_hook_to_str(program->runtime.chain->hook));
         }
+
         r = program->runtime.ops->gen_inline_redirect(
             program, rule->redirect_ifindex, rule->redirect_dir);
         if (r)
@@ -712,10 +710,6 @@ static int _bf_program_generate_rule(struct bf_program *program,
                  rule->verdict);
         break;
     }
-
-    r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE);
-    if (r)
-        return bf_err_r(r, "failed to generate next rule fixups");
 
     return 0;
 }
@@ -871,6 +865,7 @@ int bf_program_emit_fixup_elfstub(struct bf_program *program,
 int bf_program_generate(struct bf_program *program)
 {
     const struct bf_chain *chain = program->runtime.chain;
+    bool policy_reachable = true;
     int ret_code;
     int r;
 
@@ -918,30 +913,50 @@ int bf_program_generate(struct bf_program *program)
     }
 
     bf_list_foreach (&chain->rules, rule_node) {
-        r = _bf_program_generate_rule(program,
-                                      bf_list_node_get_data(rule_node));
+        struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        if (rule->disabled)
+            continue;
+
+        r = _bf_program_generate_rule(program, rule);
         if (r)
             return r;
+
+        size_t n_fixups = bf_list_size(&program->fixups);
+        r = _bf_program_fixup(program, BF_FIXUP_TYPE_JMP_NEXT_RULE);
+        if (r)
+            return bf_err_r(r, "failed to generate next rule fixups");
+
+        /* Resolving next-rule jumps removes their fixups and leaves all other
+         * fixups unchanged. If the list shrinks, the rule has a jump to the
+         * next rule. CONTINUE also reaches the next rule by falling through. */
+        policy_reachable = rule->verdict == BF_VERDICT_CONTINUE ||
+                           bf_list_size(&program->fixups) < n_fixups;
+
+        if (!policy_reachable)
+            break;
     }
 
-    r = program->runtime.ops->gen_inline_epilogue(program);
-    if (r)
-        return r;
+    if (policy_reachable) {
+        r = program->runtime.ops->gen_inline_epilogue(program);
+        if (r)
+            return r;
 
-    // Call the update counters function
-    /// @todo Allow chains to have no counters at all.
-    EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
-    EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
-    EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);
-    EMIT(program,
-         BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
-    EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
+        // Call the update counters function
+        /// @todo Allow chains to have no counters at all.
+        EMIT(program, BPF_MOV64_REG(BPF_REG_1, BPF_REG_10));
+        EMIT(program, BPF_ALU64_IMM(BPF_ADD, BPF_REG_1, BF_PROG_CTX_OFF(arg)));
+        EMIT_LOAD_COUNTERS_FD_FIXUP(program, BPF_REG_2);
+        EMIT(program,
+             BPF_MOV32_IMM(BPF_REG_3, bf_program_chain_counter_idx(program)));
+        EMIT_FIXUP_ELFSTUB(program, BF_ELFSTUB_UPDATE_COUNTERS);
 
-    r = program->runtime.ops->get_verdict(chain->policy, &ret_code);
-    if (r)
-        return r;
-    EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
-    EMIT(program, BPF_EXIT_INSN());
+        r = program->runtime.ops->get_verdict(chain->policy, &ret_code);
+        if (r)
+            return r;
+        EMIT(program, BPF_MOV64_IMM(BPF_REG_0, ret_code));
+        EMIT(program, BPF_EXIT_INSN());
+    }
 
     r = _bf_program_generate_elfstubs(program);
     if (r)
