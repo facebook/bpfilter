@@ -98,11 +98,10 @@ static void icmpv6_code_in(void **state)
     auto set = bf::Set({BF_MATCHER_ICMPV6_CODE});
     set << std::vector<uint8_t> {3} << std::vector<uint8_t> {0};
 
-    BFT_CHAIN_SET(bf::Chain("test_icmpv6_code", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_icmpv6_code", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // ICMPv6 code=3 is in set -> DROP
     bft_assert_prog_run(

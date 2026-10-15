@@ -66,23 +66,24 @@ public:
         if (r != 0)
             throw std::runtime_error("failed to create bf_rule");
 
+        std::unique_ptr<bf_rule, deleter> owned(rule);
+
         rule->log = _log;
         rule->log_rate_ns = _logRateNs.value_or(0);
         rule->has_counters = _counters.has_value();
         rule->verdict = _verdict;
 
         for (const Matcher &matcher: _matchers) {
-            const auto &payload = matcher.payload();
-            r = bf_rule_add_matcher(rule, matcher.type(), matcher.op(),
-                                    payload.data(), payload.size(),
-                                    matcher.negate());
-            if (r != 0) {
-                bf_rule_free(&rule);
+            auto bfmatcher = matcher.get();
+
+            r = bf_list_add_tail(&rule->matchers, bfmatcher.get());
+            if (r != 0)
                 throw std::runtime_error("failed to add bf_matcher to bf_rule");
-            }
+
+            bfmatcher.release();
         }
 
-        return std::unique_ptr<bf_rule, deleter>(rule);
+        return owned;
     }
 };
 

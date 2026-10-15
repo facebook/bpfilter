@@ -101,11 +101,10 @@ static void udp_sport_in(void **state)
     auto set = bf::Set({BF_MATCHER_UDP_SPORT});
     set << bft_port_be(12345) << bft_port_be(53);
 
-    BFT_CHAIN_SET(bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_udp_sport", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     bft_assert_prog_run(
         "test_udp_sport", test->hook(),

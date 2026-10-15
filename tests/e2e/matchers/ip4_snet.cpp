@@ -211,11 +211,10 @@ static void ip4_snet_in(void **state)
     set << bft_ip4_lpm_key(24, 192, 0, 2, 0)
         << bft_ip4_lpm_key(24, 10, 0, 0, 0);
 
-    BFT_CHAIN_SET(bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip4_snet", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // saddr=192.0.2.1 matches 192.0.2.0/24 in set -> DROP
     bft_assert_prog_run(

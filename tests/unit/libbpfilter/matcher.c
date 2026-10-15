@@ -9,6 +9,7 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/set.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/pack.h"
@@ -37,6 +38,91 @@ static void new_and_free(void **state)
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_IP4_PROTO, BF_MATCHER_EQ,
                              &proto, sizeof(proto), false));
     assert_non_null(matcher);
+}
+
+static void set_name_payload(void **state)
+{
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+
+    const char *names[] = {"blocked", NULL};
+
+    (void)state;
+
+    for (size_t i = 0; i < ARRAY_SIZE(names); ++i) {
+        _free_bf_set_ struct bf_set *set = NULL;
+        _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+        _free_bf_matcher_ struct bf_matcher *restored = NULL;
+        _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+        _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+        _cleanup_free_ char *name = NULL;
+        _cleanup_free_ char *serialized_name = NULL;
+        const void *data;
+        size_t data_len;
+
+        assert_ok(bf_set_new(&set, names[i], key, ARRAY_SIZE(key)));
+        assert_non_null(name = strdup(set->name));
+        assert_ok(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                                 sizeof(*set), true));
+        assert_string_equal(bf_matcher_payload(matcher), name);
+        assert_ptr_not_equal(bf_matcher_payload(matcher), set->name);
+        assert_int_equal(bf_matcher_payload_len(matcher), strlen(name) + 1);
+        bf_set_free(&set);
+        assert_string_equal(bf_matcher_payload(matcher), name);
+
+        assert_ok(bf_wpack_new(&wpack));
+        assert_ok(bf_matcher_pack(matcher, wpack));
+        assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+        assert_ok(bf_rpack_new(&rpack, data, data_len));
+        assert_ok(
+            bf_rpack_kv_str(bf_rpack_root(rpack), "payload", &serialized_name));
+        assert_string_equal(serialized_name, name);
+        assert_ok(bf_matcher_new_from_pack(&restored, bf_rpack_root(rpack)));
+        assert_true(bft_matcher_equal(matcher, restored));
+    }
+}
+
+static void set_invalid_input(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    struct bf_set set = {};
+    uint32_t index = 0;
+
+    (void)state;
+
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &index,
+                              sizeof(index), false));
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, NULL, 0,
+                              false));
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set,
+                              sizeof(set), false));
+    set.name = "";
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set,
+                              sizeof(set), false));
+    set.name = "blocked";
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_EQ, &set,
+                              sizeof(set), false));
+    assert_null(matcher);
+}
+
+static void set_legacy_payload_rejected(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    uint32_t index = 0;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_enum(wpack, "type", BF_MATCHER_SET);
+    bf_wpack_kv_enum(wpack, "op", BF_MATCHER_IN);
+    bf_wpack_kv_bin(wpack, "payload", &index, sizeof(index));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_err(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack)));
+    assert_null(matcher);
 }
 
 static void new_with_payload(void **state)
@@ -1967,6 +2053,9 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(new_and_free),
+        cmocka_unit_test(set_name_payload),
+        cmocka_unit_test(set_invalid_input),
+        cmocka_unit_test(set_legacy_payload_rejected),
         cmocka_unit_test(new_with_payload),
         cmocka_unit_test(getters),
         cmocka_unit_test(pack_and_unpack),

@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "Set.hpp"
+
 extern "C" {
 #include <bpfilter/matcher.h>
 }
@@ -32,6 +34,7 @@ private:
     bf_matcher_op _op;
     std::vector<uint8_t> _payload;
     bool _negate;
+    std::shared_ptr<const bf_set> _set;
 
 public:
     Matcher(bf_matcher_type type, bf_matcher_op op,
@@ -40,6 +43,15 @@ public:
         _op {op},
         _payload {std::move(payload)},
         _negate {negate} {};
+
+    static Matcher in(const Set &set, bool negate = false)
+    {
+        Matcher matcher(BF_MATCHER_SET, BF_MATCHER_IN, {}, negate);
+
+        matcher._set = set.ref();
+
+        return matcher;
+    }
 
     static Matcher alwaysMatch()
     {
@@ -74,8 +86,13 @@ public:
     {
         struct bf_matcher *matcher = nullptr;
 
-        int r = bf_matcher_new(&matcher, _type, _op, _payload.data(),
-                               _payload.size(), _negate);
+        const void *payload = _type == BF_MATCHER_SET ?
+                                  static_cast<const void *>(_set.get()) :
+                                  _payload.data();
+        size_t payload_len =
+            _type == BF_MATCHER_SET ? sizeof(bf_set) : _payload.size();
+        int r =
+            bf_matcher_new(&matcher, _type, _op, payload, payload_len, _negate);
         if (r != 0)
             throw std::runtime_error("failed to create bf_matcher");
 

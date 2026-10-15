@@ -497,22 +497,13 @@ const struct bf_set *
 bf_chain_get_set_for_matcher(const struct bf_chain *chain,
                              const struct bf_matcher *matcher)
 {
-    uint32_t set_id;
-
     assert(chain);
     assert(matcher);
 
     if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
         return NULL;
 
-    set_id = *(uint32_t *)bf_matcher_payload(matcher);
-
-    bf_hashset_foreach (&chain->sets, set_node) {
-        if (!set_id--)
-            return set_node->data;
-    }
-
-    return NULL;
+    return bf_chain_get_set_by_name(chain, bf_matcher_payload(matcher));
 }
 
 static struct bf_set *_bf_chain_get_set_by_name(struct bf_chain *chain,

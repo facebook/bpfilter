@@ -150,8 +150,10 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
  * @param op Comparison operator.
  * @param payload Payload of the matcher, its content and size depends on @p
  *        type . Can be NULL but only if @p payload_len is 0, in which case
- *        there is no payload.
- * @param payload_len Length of the payload.
+ *        there is no payload. For BF_MATCHER_SET, pass a pointer to a bf_set.
+ *        The matcher stores an owned copy of its name.
+ * @param payload_len Length of the input payload. For BF_MATCHER_SET, pass
+ *        sizeof(struct bf_set).
  * @param negate If true, negate the matcher's comparison.
  * @return 0 on success, or negative errno value on failure.
  */

@@ -179,10 +179,9 @@ static void meta_sport_in(void **state)
     ip4_set << ip4_elem;
 
     BFT_CHAIN_SET(bf::Chain("test_meta_sport", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(ip4_set)
+                  << ip4_set
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+                              {bf::Matcher::in(ip4_set)}));
 
     bft_assert_prog_run(
         "test_meta_sport", test->hook(),
