@@ -79,6 +79,8 @@ struct btf;
                     .wrap_name = BF_STR(__wrap_##name)};                       \
     })
 
+#define bft_mock_default() {.disable = NULL}
+
 #define bft_mock_real(mock) __real_##mock
 #define bft_mock_define(x)                                                     \
     static bool _bft_mock_##x##_on = false;                                    \
