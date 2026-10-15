@@ -9,6 +9,19 @@ for name in Set_012-abc 0 _ -; do
         rule (ip4.saddr) in ${name} ACCEPT"
 done
 
+# Set names must be unique within a chain, including unreferenced sets.
+(! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT
+    set duplicate (ip4.saddr) in { 192.168.1.1 }
+    set duplicate (ip4.saddr) in { 192.168.1.2 }")
+
+# The same name can be used independently in different chains.
+${BFCLI} ruleset set --dry-run --from-str "chain first BF_HOOK_XDP ACCEPT
+    set shared (ip4.saddr) in { 192.168.1.1 }
+    rule (ip4.saddr) in shared ACCEPT
+    chain second BF_HOOK_XDP ACCEPT
+    set shared (ip4.saddr) in { 192.168.1.2 }
+    rule (ip4.saddr) in shared DROP"
+
 for name in name.with.dot name/slash name:colon @name 'café' \
     @anon:0123456789abcdef @anon:invalid; do
     (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT

@@ -51,6 +51,43 @@ static const bf_hashset_ops _bf_set_elem_ops = {
     .free = _bf_set_elem_free,
 };
 
+static uint64_t _bf_set_name_hash(const void *data, void *ctx)
+{
+    const struct bf_set *set = data;
+
+    (void)ctx;
+
+    return bf_fnv1a(set->name, strlen(set->name), bf_fnv1a_init());
+}
+
+static bool _bf_set_name_equal(const void *lhs, const void *rhs, void *ctx)
+{
+    const struct bf_set *left = lhs;
+    const struct bf_set *right = rhs;
+
+    (void)ctx;
+
+    return bf_streq(left->name, right->name);
+}
+
+static void _bf_set_collection_free(void **data, void *ctx)
+{
+    (void)ctx;
+
+    bf_set_free((struct bf_set **)data);
+}
+
+bf_hashset bf_set_hashset_default(void)
+{
+    const bf_hashset_ops ops = {
+        .hash = _bf_set_name_hash,
+        .equal = _bf_set_name_equal,
+        .free = _bf_set_collection_free,
+    };
+
+    return bf_hashset_default(&ops, NULL);
+}
+
 bool bf_set_is_valid_name(const char *name)
 {
     return name && *name && name[strspn(name, _BF_SET_NAME_CHARS)] == '\0';

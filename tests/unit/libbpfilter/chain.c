@@ -52,7 +52,7 @@ static void pack_and_unpack(void **state)
 
     (void)state;
 
-    assert_non_null(chain0 = bft_chain_dummy(false));
+    assert_non_null(chain0 = bft_chain_dummy(true));
 
     assert_ok(bf_wpack_new(&wpack));
     assert_ok(bf_chain_pack(chain0, wpack));
@@ -96,11 +96,10 @@ static void get_set_from_matcher(void **state)
     struct bf_matcher *r5_m0 =
         bf_list_node_get_data(bf_list_get_head(&r5->matchers));
 
-    struct bf_list_node *snode = bf_list_get_head(&chain->sets);
-    struct bf_set *set0 = bf_list_node_get_data(snode);
-    struct bf_set *set1 = bf_list_node_get_data(bf_list_node_next(snode));
-    struct bf_set *set2 =
-        bf_list_node_get_data(bf_list_node_next(bf_list_node_next(snode)));
+    bf_hashset_elem *snode = chain->sets.head;
+    struct bf_set *set0 = snode->data;
+    struct bf_set *set1 = snode->next->data;
+    struct bf_set *set2 = snode->next->next->data;
 
     (void)state;
 
@@ -114,18 +113,18 @@ static void get_set_from_matcher(void **state)
 static void mixed_enabled_disabled_log_flag(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
+    _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 0);
+    _free_bf_set_ struct bf_set *set1 = bft_set_dummy(NULL, 4);
     struct bf_rule *r0 = NULL;
     struct bf_rule *r1 = NULL;
-    uint32_t set_index;
+    uint32_t set_index = 0;
 
     (void)state;
 
-    assert_ok(bf_list_add_tail(&sets, bft_set_dummy("bft_set_dummy", 0)));
-    assert_ok(bf_list_add_tail(&sets, bft_set_dummy("bft_set_dummy", 4)));
-
-    set_index = 0;
+    assert_non_null(set0);
+    assert_non_null(set1);
     assert_ok(bf_rule_new(&r0));
     r0->log = 1;
     assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN, &set_index,
@@ -138,6 +137,9 @@ static void mixed_enabled_disabled_log_flag(void **state)
                                   sizeof(set_index), false));
     assert_ok(bf_list_add_tail(&rules, r1));
 
+    assert_ok(bf_hashset_add(&sets, (void **)&set0));
+    assert_ok(bf_hashset_add(&sets, (void **)&set1));
+
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_TC_EGRESS, BF_VERDICT_ACCEPT,
                            &sets, &rules));
 
@@ -149,7 +151,7 @@ static void mixed_enabled_disabled_log_flag(void **state)
 static void apply_set_delta_updates_derived_state(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
     _free_bf_set_ struct bf_set *set = NULL;
     _free_bf_set_ struct bf_set *delta_set = NULL;
@@ -167,7 +169,7 @@ static void apply_set_delta_updates_derived_state(void **state)
     (void)state;
 
     assert_ok(bf_set_new(&set, "set", key, ARRAY_SIZE(key)));
-    assert_ok(bf_list_push(&sets, (void **)&set));
+    assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_set_new(&delta_set, "set", key, ARRAY_SIZE(key)));
     assert_ok(bf_set_add_elem(delta_set, &port));
@@ -212,7 +214,7 @@ static void apply_set_delta_updates_derived_state(void **state)
 static void empty_set_only_disables_in_rules(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
     _free_bf_set_ struct bf_set *set = NULL;
     struct bf_rule *in_rule = NULL;
@@ -225,7 +227,7 @@ static void empty_set_only_disables_in_rules(void **state)
     (void)state;
 
     assert_ok(bf_set_new(&set, "set", key, ARRAY_SIZE(key)));
-    assert_ok(bf_list_push(&sets, (void **)&set));
+    assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&in_rule));
     assert_ok(bf_rule_add_matcher(in_rule, BF_MATCHER_SET, BF_MATCHER_IN,
@@ -294,8 +296,7 @@ static void incompatible_matchers_disable_rule(void **state)
     // L3 conflict via set: ip4.daddr set + ip6.daddr matcher.
     {
         _free_bf_chain_ struct bf_chain *chain = NULL;
-        _clean_bf_list_ bf_list sets =
-            bf_list_default(bf_set_free, bf_set_pack);
+        _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
         _clean_bf_list_ bf_list rules =
             bf_list_default(bf_rule_free, bf_rule_pack);
         _free_bf_set_ struct bf_set *set = NULL;
@@ -308,7 +309,7 @@ static void incompatible_matchers_disable_rule(void **state)
 
         assert_ok(bf_set_new(&set, "s", key, ARRAY_SIZE(key)));
         assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
-        assert_ok(bf_list_push(&sets, (void **)&set));
+        assert_ok(bf_hashset_add(&sets, (void **)&set));
 
         assert_ok(bf_rule_new(&rule));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
@@ -383,7 +384,7 @@ static void policy_validation(void **state)
 static void set_component_unsupported_hook(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
     _free_bf_set_ struct bf_set *set = NULL;
     struct bf_rule *rule = NULL;
@@ -397,7 +398,7 @@ static void set_component_unsupported_hook(void **state)
     // Set component unsupported for hook: ip4.saddr on CONNECT4.
     assert_ok(bf_set_new(&set, "s", key, ARRAY_SIZE(key)));
     assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
-    assert_ok(bf_list_push(&sets, (void **)&set));
+    assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&rule));
     assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
@@ -408,14 +409,14 @@ static void set_component_unsupported_hook(void **state)
                             BF_VERDICT_ACCEPT, &sets, &rules));
 
     // Supported component: ip4.daddr on CONNECT4 should succeed.
-    bf_list_clean(&sets);
+    bf_hashset_clean(&sets);
     bf_list_clean(&rules);
 
     enum bf_matcher_type daddr_key[] = {BF_MATCHER_IP4_DADDR};
 
     assert_ok(bf_set_new(&set, "s2", daddr_key, ARRAY_SIZE(daddr_key)));
     assert_ok(bf_set_add_elem(set, (uint8_t[4]) {10, 0, 0, 1}));
-    assert_ok(bf_list_push(&sets, (void **)&set));
+    assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&rule));
     assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
@@ -497,13 +498,45 @@ static void invalid_log_opts_for_hook(void **state)
     }
 }
 
-static void get_set_by_name(void **state)
+static void unpack_duplicate_sets(void **state)
 {
-    _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const void *data;
+    size_t data_len;
 
     (void)state;
 
-    assert_non_null(bf_chain_get_set_by_name(chain, "bft_set_dummy"));
+    assert_ok(bf_set_new_from_raw(&set, "duplicate", "(ip4.saddr)", "{}"));
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_kv_str(wpack, "name", "test");
+    bf_wpack_kv_enum(wpack, "hook", BF_HOOK_XDP);
+    bf_wpack_kv_enum(wpack, "policy", BF_VERDICT_ACCEPT);
+    bf_wpack_open_array(wpack, "sets");
+    for (size_t i = 0; i < 2; ++i) {
+        bf_wpack_open_object(wpack, NULL);
+        assert_ok(bf_set_pack(set, wpack));
+        bf_wpack_close_object(wpack);
+    }
+    bf_wpack_close_array(wpack);
+    bf_wpack_open_array(wpack, "rules");
+    bf_wpack_close_array(wpack);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_err(bf_chain_new_from_pack(&chain, bf_rpack_root(rpack)));
+    assert_null(chain);
+}
+
+static void get_set_by_name(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(true);
+    const struct bf_set *set = chain->sets.head->data;
+
+    (void)state;
+
+    assert_ptr_equal(set, bf_chain_get_set_by_name(chain, set->name));
     assert_null(bf_chain_get_set_by_name(chain, "bft_set_missing"));
 }
 
@@ -523,6 +556,7 @@ int main(void)
         cmocka_unit_test(policy_validation),
         cmocka_unit_test(set_component_unsupported_hook),
         cmocka_unit_test(get_set_by_name),
+        cmocka_unit_test(unpack_duplicate_sets),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

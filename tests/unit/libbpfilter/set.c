@@ -378,7 +378,7 @@ static void dump(void **state)
     (void)state;
 
     // Dump a set with elements
-    assert_non_null(set = bft_set_dummy("bft_set_dummy", 4));
+    assert_non_null(set = bft_set_dummy(NULL, 4));
     bf_set_dump(set, &prefix);
 }
 

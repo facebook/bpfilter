@@ -144,8 +144,8 @@ void bfc_chain_dump(struct bf_chain *chain, struct bf_hookopts *hookopts,
     }
 
     // Loop over named sets
-    bf_list_foreach (&chain->sets, set_node) {
-        struct bf_set *set = bf_list_node_get_data(set_node);
+    bf_hashset_foreach (&chain->sets, set_node) {
+        struct bf_set *set = set_node->data;
 
         if (bf_set_is_anonymous(set))
             continue;

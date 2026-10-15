@@ -98,10 +98,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
         {
             // Create a rule with SET, any matcher, SET
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 =
-                bft_set_dummy("bft_set_dummy", 4);
-            _free_bf_set_ struct bf_set *set1 =
-                bft_set_dummy("bft_set_dummy", 4);
+            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 4);
+            _free_bf_set_ struct bf_set *set1 = bft_set_dummy(NULL, 4);
             uint32_t ip = 0xff;
 
             r = bf_rule_new(&rule);
@@ -125,11 +123,11 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_hashset_add(&chain->sets, (void **)&set0);
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set1);
+            r = bf_hashset_add(&chain->sets, (void **)&set1);
             if (r)
                 return NULL;
 
@@ -154,8 +152,7 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             // Create a rule with a single set, no other matcher
 
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 =
-                bft_set_dummy("bft_set_dummy", 4);
+            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 4);
 
             r = bf_rule_new(&rule);
             if (r)
@@ -167,7 +164,7 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_hashset_add(&chain->sets, (void **)&set0);
             if (r)
                 return NULL;
 
