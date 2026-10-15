@@ -232,7 +232,7 @@ static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
         return r;
     }
 
-    if (r != -ENOTSUP)
+    if (r != -ENOTSUP && r != -ENOMEM)
         return r;
 
     bf_dbg_r(r, "driver mode not available");
