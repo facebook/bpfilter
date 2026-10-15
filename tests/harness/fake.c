@@ -86,7 +86,6 @@ const void *bft_get_randomly_filled_buffer(size_t len)
 struct bf_chain *bft_chain_dummy(bool with_rules)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    uint32_t id = 0;
     int r;
 
     r = bf_chain_new(&chain, "bft_chain_dummy", BF_HOOK_TC_EGRESS,
@@ -106,9 +105,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            id = 0;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set0,
+                                    sizeof(*set0), false);
             if (r)
                 return NULL;
 
@@ -117,9 +115,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set1,
+                                    sizeof(*set1), false);
             if (r)
                 return NULL;
 
@@ -158,9 +155,8 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set0,
+                                    sizeof(*set0), false);
             if (r)
                 return NULL;
 

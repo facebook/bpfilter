@@ -33,6 +33,7 @@
 #include "bpfilter/logger.h"
 #include "bpfilter/pack.h"
 #include "bpfilter/runtime.h"
+#include "bpfilter/set.h"
 
 #define INET4_ADDRSTRLEN 16
 #define INET6_ADDRSTRLEN 46
@@ -1359,14 +1360,23 @@ const struct bf_matcher_ops *bf_matcher_get_ops(enum bf_matcher_type type,
     return meta->ops[op].ref_payload_size ? &meta->ops[op] : NULL;
 }
 
-int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
-                   enum bf_matcher_op op, const void *payload,
-                   size_t payload_len, bool negate)
+static int _bf_matcher_new(struct bf_matcher **matcher,
+                           enum bf_matcher_type type, enum bf_matcher_op op,
+                           const void *payload, size_t payload_len, bool negate)
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
 
     assert(matcher);
     assert((payload && payload_len) || (!payload && !payload_len));
+
+    if (type == BF_MATCHER_SET &&
+        (op != BF_MATCHER_IN || !payload || payload_len < 2 ||
+         memchr(payload, '\0', payload_len) !=
+             (const char *)payload + payload_len - 1))
+        return bf_err_r(-EINVAL, "invalid set matcher payload or operator");
+
+    if (payload_len > SIZE_MAX - sizeof(*_matcher))
+        return -E2BIG;
 
     _matcher = malloc(sizeof(struct bf_matcher) + payload_len);
     if (!_matcher)
@@ -1381,6 +1391,25 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
     *matcher = TAKE_PTR(_matcher);
 
     return 0;
+}
+
+int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
+                   enum bf_matcher_op op, const void *payload,
+                   size_t payload_len, bool negate)
+{
+    assert(matcher);
+
+    if (type == BF_MATCHER_SET) {
+        const struct bf_set *set = payload;
+
+        if (!set || payload_len != sizeof(*set) || !set->name)
+            return bf_err_r(-EINVAL, "set matcher requires a set object");
+
+        payload = set->name;
+        payload_len = strlen(set->name) + 1;
+    }
+
+    return _bf_matcher_new(matcher, type, op, payload, payload_len, negate);
 }
 
 int bf_matcher_new_from_raw(struct bf_matcher **matcher,
@@ -1421,6 +1450,7 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
 int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
+    _cleanup_free_ char *set_name = NULL;
     enum bf_matcher_type type;
     enum bf_matcher_op op;
     const void *payload;
@@ -1444,11 +1474,19 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
             return bf_rpack_key_err(r, "bf_matcher.negate");
     }
 
-    r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
+    if (type == BF_MATCHER_SET) {
+        r = bf_rpack_kv_str(node, "payload", &set_name);
+        if (!r) {
+            payload = set_name;
+            payload_len = strlen(set_name) + 1;
+        }
+    } else {
+        r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
+    }
     if (r)
         return bf_rpack_key_err(r, "bf_matcher.payload");
 
-    r = bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
+    r = _bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
     if (r)
         return bf_err_r(r, "failed to create bf_matcher from pack");
 
@@ -1476,8 +1514,11 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
     bf_wpack_kv_int(pack, "type", matcher->type);
     bf_wpack_kv_int(pack, "op", matcher->op);
     bf_wpack_kv_bool(pack, "negate", matcher->negate);
-    bf_wpack_kv_bin(pack, "payload", matcher->payload,
-                    matcher->len - sizeof(*matcher));
+    if (matcher->type == BF_MATCHER_SET)
+        bf_wpack_kv_str(pack, "payload", (const char *)matcher->payload);
+    else
+        bf_wpack_kv_bin(pack, "payload", matcher->payload,
+                        matcher->len - sizeof(*matcher));
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

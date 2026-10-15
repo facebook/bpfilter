@@ -29,23 +29,23 @@ private:
         }
     };
 
-    std::vector<bf_matcher_type> _key;
-    size_t _key_size = 0;
+    std::shared_ptr<bf_set> _prototype;
     std::vector<std::vector<uint8_t>> _elements;
 
 public:
-    Set(std::vector<bf_matcher_type> key):
-        _key {std::move(key)}
+    Set(std::vector<bf_matcher_type> key)
     {
-        for (bf_matcher_type type: _key) {
-            const struct bf_matcher_meta *meta = bf_matcher_get_meta(type);
-            _key_size += meta->ops[BF_MATCHER_IN].ref_payload_size;
-        }
+        struct bf_set *set = nullptr;
+
+        if (bf_set_new(&set, nullptr, key.data(), key.size()) != 0)
+            throw std::runtime_error("failed to create a new bf_set");
+
+        _prototype = std::shared_ptr<bf_set>(set, deleter());
     }
 
     Set &operator<<(const std::vector<uint8_t> &element)
     {
-        if (element.size() != _key_size) {
+        if (element.size() != _prototype->elem_size) {
             throw std::invalid_argument(
                 "number of elements in the vector should match the number of components in the set key");
         }
@@ -57,11 +57,9 @@ public:
 
     [[nodiscard]] std::unique_ptr<bf_set, deleter> get() const
     {
-        struct bf_set *set;
+        struct bf_set *set = nullptr;
 
-        int r =
-            bf_set_new(&set, nullptr,
-                       const_cast<bf_matcher_type *>(_key.data()), _key.size());
+        int r = bf_set_new_from_copy(&set, _prototype.get());
         if (r != 0)
             throw std::runtime_error("failed to create a new bf_set");
 
@@ -76,6 +74,11 @@ public:
         }
 
         return std::unique_ptr<bf_set, deleter>(set);
+    }
+
+    [[nodiscard]] std::shared_ptr<const bf_set> ref() const
+    {
+        return _prototype;
     }
 };
 

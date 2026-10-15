@@ -172,11 +172,10 @@ static void ip6_dnet_in(void **state)
     auto set = bf::Set({BF_MATCHER_IP6_DNET});
     set << bft_ip6_lpm_key(32, "2001:db8::") << bft_ip6_lpm_key(64, "fd00::");
 
-    BFT_CHAIN_SET(bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip6_dnet", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // daddr=fd00::1 matches fd00::/64 in set -> DROP
     bft_assert_prog_run(

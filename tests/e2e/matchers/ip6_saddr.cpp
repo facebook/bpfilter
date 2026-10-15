@@ -109,11 +109,10 @@ static void ip6_saddr_in(void **state)
     auto set = bf::Set({BF_MATCHER_IP6_SADDR});
     set << bft_ipv6_addr("2001:db8::1") << bft_ipv6_addr("2001:db8::2");
 
-    BFT_CHAIN_SET(bf::Chain("test_ip6_saddr", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip6_saddr", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     bft_assert_prog_run(
         "test_ip6_saddr", test->hook(),

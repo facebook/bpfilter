@@ -98,11 +98,10 @@ static void icmp_type_in(void **state)
     auto set = bf::Set({BF_MATCHER_ICMP_TYPE});
     set << std::vector<uint8_t> {8} << std::vector<uint8_t> {0};
 
-    BFT_CHAIN_SET(bf::Chain("test_icmp_type", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_icmp_type", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // ICMP type=8 is in set -> DROP
     bft_assert_prog_run(

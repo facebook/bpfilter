@@ -112,11 +112,10 @@ static void tcp_dport_in(void **state)
     auto set = bf::Set({BF_MATCHER_TCP_DPORT});
     set << bft_port_be(80) << bft_port_be(443);
 
-    BFT_CHAIN_SET(bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_tcp_dport", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // TCP dport=80 is in set -> DROP
     bft_assert_prog_run(
