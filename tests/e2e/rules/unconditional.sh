@@ -7,7 +7,7 @@ make_sandbox
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 
 # Terminal verdicts skip the suffix and policy; CONTINUE reaches the suffix.
-for matcher in '' '(meta.sport) not in {}'; do
+for matcher in '' '(meta.sport) not in {}' 'meta.probability eq 100%'; do
     for verdict in ACCEPT DROP NEXT CONTINUE; do
         ${FROM_NS} ${BFCLI} chain set --from-str \
             "chain c BF_HOOK_XDP{ifindex=${NS_IFINDEX}} NEXT \

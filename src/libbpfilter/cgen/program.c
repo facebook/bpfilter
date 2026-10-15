@@ -580,9 +580,9 @@ static int _bf_program_generate_log(struct bf_program *program,
 /**
  * @brief Check whether matcher code generation can be skipped.
  *
- * Negated empty sets can skip matcher code generation. Protocol checks
- * emitted before the matcher are still generated. Any guards inside the
- * matcher code are skipped.
+ * Negated empty sets and non-negated probability matchers of 100% can skip
+ * matcher code generation. Protocol checks emitted before the matcher
+ * are still generated. Any guards inside the matcher code are skipped.
  *
  * @param program Program to generate the matcher for. Can't be NULL.
  * @param matcher Matcher to check. Can't be NULL.
@@ -593,6 +593,12 @@ static bool _bf_program_matcher_is_noop(const struct bf_program *program,
 {
     assert(program);
     assert(matcher);
+
+    if (bf_matcher_get_type(matcher) == BF_MATCHER_META_PROBABILITY) {
+        const float proba = *(const float *)bf_matcher_payload(matcher);
+
+        return proba == 100.0F && !bf_matcher_get_negate(matcher);
+    }
 
     if (bf_matcher_get_type(matcher) == BF_MATCHER_SET) {
         const struct bf_set *set =
