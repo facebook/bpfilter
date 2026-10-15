@@ -7,7 +7,8 @@
 
 void bft_mock_clean(bft_mock *mock)
 {
-    mock->disable();
+    if (mock->disable)
+        mock->disable();
 }
 
 bft_mock_define(bf_realloc);
