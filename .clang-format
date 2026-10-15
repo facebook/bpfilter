@@ -93,7 +93,7 @@ PointerAlignment: Right
 QualifierAlignment: Leave
 ReferenceAlignment: Right
 ReflowComments: false
-SeparateDefinitionBlocks: Always
+SeparateDefinitionBlocks: Leave
 SortIncludes: CaseSensitive
 SortUsingDeclarations: true
 SpaceAfterCStyleCast: false
