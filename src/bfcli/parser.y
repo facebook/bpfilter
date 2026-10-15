@@ -309,10 +309,8 @@ set             : SET STRING SET_TYPE set_min_size matcher_op SET_RAW_PAYLOAD
 
                     set->min_size = $4;
 
-                    if (bf_list_add_tail(&ruleset->sets, set) < 0)
-                        bf_parse_err("failed to insert rule into bf_list\n");
-
-                    TAKE_PTR(set);
+                    if (bf_hashset_add(&ruleset->sets, (void **)&set) < 0)
+                        bf_parse_err("failed to add set '%s' to the ruleset", name);
                 }
                 ;
 
@@ -537,7 +535,7 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     _cleanup_free_ const char *raw_key = $1;
                     _cleanup_free_ const char *payload = $4;
                     enum bf_matcher_op op = $3;
-                     uint32_t set_id = bf_list_size(&ruleset->sets);
+                     uint32_t set_id = bf_hashset_size(&ruleset->sets);
                      int r;
 
                     if (op != BF_MATCHER_IN)
@@ -547,11 +545,9 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     if (r)
                         bf_parse_err("failed to create new set");
 
-                     r = bf_list_add_tail(&ruleset->sets, set);
+                     r = bf_hashset_add(&ruleset->sets, (void **)&set);
                      if (r < 0)
                         bf_parse_err("failed to add new set to the ruleset");
-
-                     TAKE_PTR(set);
 
                     r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set_id, sizeof(set_id), $2);
                     if (r)
@@ -576,8 +572,8 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     if (r)
                         bf_parse_err("failed to verify set key '%s'", raw_key);
 
-                    bf_list_foreach (&ruleset->sets, set_node) {
-                        struct bf_set *set = bf_list_node_get_data(set_node);
+                    bf_hashset_foreach (&ruleset->sets, set_node) {
+                        struct bf_set *set = set_node->data;
 
                         if (bf_streq(set->name, name)) {
                             found_set = set;

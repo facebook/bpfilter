@@ -153,6 +153,14 @@ void bf_hashset_init(bf_hashset *set, const bf_hashset_ops *ops, void *ctx);
 void bf_hashset_clean(bf_hashset *set);
 
 /**
+ * @brief Move a hashset, leaving the source empty and reusable.
+ *
+ * @param set Hashset to move. Can't be NULL.
+ * @return New hashset containing all the data and callbacks from `set`.
+ */
+bf_hashset bf_hashset_move(bf_hashset *set);
+
+/**
  * @brief Get the number of elements in the hashset.
  *
  * @param set Initialised hashset. Must be non-NULL.
@@ -205,6 +213,15 @@ int bf_hashset_add(bf_hashset *set, void **data);
  * @return True if a matching element is present.
  */
 bool bf_hashset_contains(const bf_hashset *set, const void *data);
+
+/**
+ * @brief Get the stored element matching a key without transferring ownership.
+ *
+ * @param set Hashset to search. Can't be NULL.
+ * @param key Element to match. Can't be NULL.
+ * @return Borrowed data pointer, or NULL if no element matches.
+ */
+void *bf_hashset_get(const bf_hashset *set, const void *key);
 
 /**
  * @brief Delete an element from the hashset.

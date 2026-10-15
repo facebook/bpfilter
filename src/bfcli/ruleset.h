@@ -14,7 +14,7 @@
 #define bfc_ruleset_default()                                                  \
     {                                                                          \
         .chains = bf_list_default(bf_chain_free, bf_chain_pack),               \
-        .sets = bf_list_default(bf_set_free, bf_set_pack),                     \
+        .sets = bf_set_hashset_default(),                                      \
         .hookopts = bf_list_default(bf_hookopts_free, bf_hookopts_pack),       \
     }
 
@@ -23,7 +23,7 @@
 struct bfc_ruleset
 {
     bf_list chains;
-    bf_list sets;
+    bf_hashset sets;
     bf_list hookopts;
 };
 

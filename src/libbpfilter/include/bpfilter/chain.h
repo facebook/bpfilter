@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
@@ -54,7 +55,7 @@ struct bf_chain
     uint8_t flags;
     enum bf_hook hook;
     enum bf_verdict policy;
-    bf_list sets;
+    bf_hashset sets;
     bf_list rules;
 
     /// Policy counters. Not serialized.
@@ -76,12 +77,13 @@ struct bf_chain
  * @param name Name of the chain. Can't be NULL.
  * @param hook Expected hook to attach the chain to.
  * @param policy Default action of the chain if no rule matched.
- * @param sets List of sets used by `rules`.
+ * @param sets Owning collection of sets used by `rules`, initialized with
+ *        bf_set_hashset_default(). Names must be unique within the chain.
  * @param rules List of rules.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
-                 enum bf_verdict policy, bf_list *sets, bf_list *rules);
+                 enum bf_verdict policy, bf_hashset *sets, bf_list *rules);
 
 /**
  * @brief Allocate and initialize a new chain from serialized data.

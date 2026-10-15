@@ -93,6 +93,13 @@ bool bf_set_is_valid_name(const char *name);
 bool bf_set_is_anonymous(const struct bf_set *set);
 
 /**
+ * @brief Initialize an empty owning collection of sets, keyed by name.
+ *
+ * @return An empty hashset that preserves insertion order and frees its sets.
+ */
+bf_hashset bf_set_hashset_default(void);
+
+/**
  * @brief Allocate and initialise a new set.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
