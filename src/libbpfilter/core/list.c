@@ -106,6 +106,18 @@ void bf_list_clean(bf_list *list)
     list->tail = NULL;
 }
 
+bf_list bf_list_move(bf_list *list)
+{
+    bf_list moved;
+
+    assert(list);
+
+    moved = *list;
+    *list = bf_list_default(moved.ops.free, moved.ops.pack);
+
+    return moved;
+}
+
 int bf_list_pack(const bf_list *list, bf_wpack_t *pack)
 {
     assert(list);
