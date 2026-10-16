@@ -18,7 +18,7 @@ void bfc_ruleset_clean(struct bfc_ruleset *ruleset)
 
     bf_list_clean(&ruleset->chains);
     bf_list_clean(&ruleset->hookopts);
-    bf_list_clean(&ruleset->sets);
+    bf_hashset_clean(&ruleset->sets);
 }
 
 int bfc_ruleset_set(const struct bfc_opts *opts)

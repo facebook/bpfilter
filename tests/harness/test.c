@@ -280,13 +280,20 @@ bool bft_chain_equal(const struct bf_chain *chain0,
     if (chain0->flags != chain1->flags)
         return false;
 
+    if (bf_hashset_size(&chain0->sets) != bf_hashset_size(&chain1->sets))
+        return false;
+
+    for (bf_hashset_elem *left = chain0->sets.head, *right = chain1->sets.head;
+         left && right; left = left->next, right = right->next) {
+        if (!bft_set_eq_ordered(left->data, right->data))
+            return false;
+    }
+
     return bf_streq(chain0->name, chain1->name) &&
            chain0->flags == chain1->flags && chain0->hook == chain1->hook &&
            chain0->policy == chain1->policy &&
            bft_list_eq(&chain0->rules, &chain1->rules,
-                       (bft_list_eq_cb)bft_rule_equal) &&
-           bft_list_eq(&chain0->sets, &chain1->sets,
-                       (bft_list_eq_cb)bft_set_eq_ordered);
+                       (bft_list_eq_cb)bft_rule_equal);
 }
 
 bool bft_rule_equal(const struct bf_rule *rule0, const struct bf_rule *rule1)

@@ -30,7 +30,7 @@
  * - `... not in {}`: the set is empty, but we test for the negative: the
  *   reference value won't be in the set. The rule can match.
  *
- * @param chain Chain containing the sets list. Can't be NULL.
+ * @param chain Chain containing the sets. Can't be NULL.
  * @param rule Rule to check. Can't be NULL.
  * @return 0 if the rule has no set matcher, or a set matcher that might match
  *         a packet. 1 if the rule contains a set matcher that can't match any
@@ -44,14 +44,12 @@ static int _bf_rule_has_unmatchable_set_matcher(const struct bf_chain *chain,
 
     bf_list_foreach (&rule->matchers, matcher_node) {
         struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
-        uint32_t set_index;
-        struct bf_set *set;
+        const struct bf_set *set;
 
         if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
             continue;
 
-        set_index = *(uint32_t *)bf_matcher_payload(matcher);
-        set = bf_list_get_at(&chain->sets, set_index);
+        set = bf_chain_get_set_for_matcher(chain, matcher);
         if (!set) {
             return bf_err_r(-EINVAL, "rule %u references non-existent set",
                             rule->index);
@@ -108,7 +106,7 @@ static int _bf_rule_check_layer(enum bf_matcher_type type,
  * address can never match a packet (a packet is either IPv4 or IPv6, not
  * both). Same for layer 4 (e.g. TCP vs UDP). Such rules should be disabled.
  *
- * @param chain Chain containing the sets list.
+ * @param chain Chain containing the sets.
  * @param rule Rule to check.
  * @return 0 if no conflict, 1 if the rule contains incompatible matchers, or
  *         a negative errno value on failure.
@@ -280,7 +278,7 @@ static int _bf_chain_validate_rules(struct bf_chain *chain)
 }
 
 int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
-                 enum bf_verdict policy, bf_list *sets, bf_list *rules)
+                 enum bf_verdict policy, bf_hashset *sets, bf_list *rules)
 {
     _free_bf_chain_ struct bf_chain *_chain = NULL;
     size_t ridx = 0;
@@ -304,13 +302,13 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     _chain->hook = hook;
     _chain->policy = policy;
 
-    _chain->sets = bf_list_default(bf_set_free, bf_set_pack);
+    _chain->sets = bf_set_hashset_default();
     if (sets)
-        _chain->sets = bf_list_move(*sets);
+        _chain->sets = bf_hashset_move(sets);
 
     _chain->rules = bf_list_default(bf_rule_free, bf_rule_pack);
     if (rules)
-        _chain->rules = bf_list_move(*rules);
+        _chain->rules = bf_list_move(rules);
     bf_list_foreach (&_chain->rules, rule_node) {
         struct bf_rule *rule = bf_list_node_get_data(rule_node);
 
@@ -334,7 +332,7 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     enum bf_verdict policy;
     bf_rpack_node_t array, array_node;
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
-    _clean_bf_list_ bf_list sets = bf_list_default(bf_set_free, bf_set_pack);
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     int r;
 
     r = bf_rpack_kv_str(node, "name", &name);
@@ -355,10 +353,13 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     bf_rpack_array_foreach (array, array_node) {
         _free_bf_set_ struct bf_set *set = NULL;
 
-        r = bf_list_emplace(&sets, bf_set_new_from_pack, set, array_node);
-        if (r) {
+        r = bf_set_new_from_pack(&set, array_node);
+        if (r)
             return bf_err_r(r, "failed to unpack bf_set into bf_chain.sets");
-        }
+
+        r = bf_hashset_add(&sets, (void **)&set);
+        if (r)
+            return bf_err_r(r, "failed to add unpacked set to chain");
     }
 
     r = bf_rpack_kv_array(node, "rules", &array);
@@ -389,7 +390,7 @@ void bf_chain_free(struct bf_chain **chain)
     if (!*chain)
         return;
 
-    bf_list_clean(&(*chain)->sets);
+    bf_hashset_clean(&(*chain)->sets);
     bf_list_clean(&(*chain)->rules);
     BF_FREEP(&(*chain)->name);
     BF_FREEP(chain);
@@ -397,6 +398,8 @@ void bf_chain_free(struct bf_chain **chain)
 
 int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)
 {
+    int r;
+
     assert(chain);
     assert(pack);
 
@@ -404,7 +407,15 @@ int bf_chain_pack(const struct bf_chain *chain, bf_wpack_t *pack)
     bf_wpack_kv_enum(pack, "hook", chain->hook);
     bf_wpack_kv_enum(pack, "policy", chain->policy);
 
-    bf_wpack_kv_list(pack, "sets", &chain->sets);
+    bf_wpack_open_array(pack, "sets");
+    bf_hashset_foreach (&chain->sets, set_node) {
+        bf_wpack_open_object(pack, NULL);
+        r = bf_set_pack(set_node->data, pack);
+        if (r)
+            return r;
+        bf_wpack_close_object(pack);
+    }
+    bf_wpack_close_array(pack);
     bf_wpack_kv_list(pack, "rules", &chain->rules);
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
@@ -423,13 +434,14 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix)
     DUMP(prefix, "hook: %s", bf_hook_to_str(chain->hook));
     DUMP(prefix, "policy: %s", bf_verdict_to_str(chain->policy));
 
-    DUMP(prefix, "sets: bf_list<bf_set>[%lu]", bf_list_size(&chain->sets));
+    DUMP(prefix, "sets: bf_hashset<bf_set>[%lu]",
+         bf_hashset_size(&chain->sets));
     bf_dump_prefix_push(prefix);
-    bf_list_foreach (&chain->sets, set_node) {
-        if (bf_list_is_tail(&chain->sets, set_node))
+    bf_hashset_foreach (&chain->sets, set_node) {
+        if (!set_node->next)
             bf_dump_prefix_last(prefix);
 
-        bf_set_dump(bf_list_node_get_data(set_node), prefix);
+        bf_set_dump(set_node->data, prefix);
     }
     bf_dump_prefix_pop(prefix);
 
@@ -478,7 +490,7 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set)
 {
     assert(chain && set);
 
-    return bf_list_add_tail(&chain->sets, set);
+    return bf_hashset_add(&chain->sets, (void **)&set);
 }
 
 const struct bf_set *
@@ -488,29 +500,21 @@ bf_chain_get_set_for_matcher(const struct bf_chain *chain,
     assert(chain);
     assert(matcher);
 
-    uint32_t set_id;
-
     if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
         return NULL;
 
-    set_id = *(uint32_t *)bf_matcher_payload(matcher);
-
-    return bf_list_get_at(&chain->sets, set_id);
+    return bf_chain_get_set_by_name(chain, bf_matcher_payload(matcher));
 }
 
 static struct bf_set *_bf_chain_get_set_by_name(struct bf_chain *chain,
                                                 const char *set_name)
 {
+    struct bf_set key = {.name = set_name};
+
     assert(chain);
     assert(set_name);
 
-    bf_list_foreach (&chain->sets, set_node) {
-        struct bf_set *set = bf_list_node_get_data(set_node);
-        if (bf_streq(set->name, set_name))
-            return set;
-    }
-
-    return NULL;
+    return bf_hashset_get(&chain->sets, &key);
 }
 
 const struct bf_set *bf_chain_get_set_by_name(const struct bf_chain *chain,

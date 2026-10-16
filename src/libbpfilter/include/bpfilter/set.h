@@ -44,7 +44,8 @@
  */
 struct bf_set
 {
-    /** Name of the set. If NULL, the set is anonymous. */
+    /** Immutable name of the set. Anonymous sets receive a generated name.
+     * Never NULL. */
     const char *name;
 
     /** Key of the set. Can't contain more than `BF_SET_MAX_N_COMPS` types. */
@@ -73,11 +74,37 @@ struct bf_set
 };
 
 /**
+ * @brief Check whether a set name can be supplied by a user.
+ *
+ * Names must be non-empty and contain only ASCII letters, digits, underscores,
+ * and hyphens.
+ *
+ * @param name Name to validate. Can be NULL, which is not a valid name.
+ * @return true if the name is valid for a user-defined set, false otherwise.
+ */
+bool bf_set_is_valid_name(const char *name);
+
+/**
+ * @brief Check whether a set has a generated name.
+ *
+ * @param set Set to check. Can't be NULL.
+ * @return true if the set is anonymous, false if it has a user-defined name.
+ */
+bool bf_set_is_anonymous(const struct bf_set *set);
+
+/**
+ * @brief Initialize an empty owning collection of sets, keyed by name.
+ *
+ * @return An empty hashset that preserves insertion order and frees its sets.
+ */
+bf_hashset bf_set_hashset_default(void);
+
+/**
  * @brief Allocate and initialise a new set.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
- * @param name Name of the set, can be used to identify it. If NULL, the set
- *        is anonymous.
+ * @param name Name of the set. Non-NULL names must satisfy
+ *        `bf_set_is_valid_name()`.
  * @param key Key of the set, as an array of `bf_matcher_type`. Not all the
  *        matcher types can be used as set key components. Can't be NULL.
  * @param n_comps Number of components in `key`.
@@ -90,8 +117,8 @@ int bf_set_new(struct bf_set **set, const char *name,
  * @brief Allocate and initialise a new set from a raw key and payload values.
  *
  * @param set Set to allocate and initialise. Can't be NULL.
- * @param name Name of the set, can be used to identify it. If NULL, the set
- *        is anonymous.
+ * @param name Name of the set. Non-NULL names must satisfy
+ *        `bf_set_is_valid_name()`.
  * @param raw_key Set key, as a string of comma-separated matcher types enclosed
  *        in parentheses. Can't be NULL.
  * @param raw_payload Set payload, to parse according to `raw_key`. Can't be
@@ -103,6 +130,9 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
 
 /**
  * @brief Allocate and initialize a new set from serialized data.
+ *
+ * Validates the stored name, accepting user-defined and internal generated
+ * names.
  *
  * @param set Set object to allocate and initialize from the serialized data.
  *        The caller will own the object. On failure, `*set` is unchanged.

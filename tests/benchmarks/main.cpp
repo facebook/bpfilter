@@ -281,7 +281,7 @@ void single_rule__ip4_saddr__x_elem_set(::benchmark::State &state)
 
     chain << Rule(BF_VERDICT_DROP, std::nullopt, 0,
                   std::vector<Matcher> {
-                      Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
+                      Matcher::in(s),
                   });
 
     chain << s;
@@ -324,7 +324,7 @@ void chain_set__ip4_saddr__x_elem_set(::benchmark::State &state)
 
     chain << Rule(BF_VERDICT_DROP, std::nullopt, 0,
                   std::vector<Matcher> {
-                      Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
+                      Matcher::in(s),
                   });
 
     auto chainp = chain.get();
@@ -504,7 +504,7 @@ void single_rule__ip6_saddr__x_elem_set(::benchmark::State &state)
 
     chain << Rule(BF_VERDICT_DROP, std::nullopt, 0,
                   std::vector<Matcher> {
-                      Matcher(BF_MATCHER_SET, BF_MATCHER_IN, {0, 0, 0, 0}),
+                      Matcher::in(s),
                   });
 
     chain << s;

@@ -170,8 +170,8 @@ static int _bf_program_build_set_groups(struct bf_program *program)
     bf_list_clean(&program->set_groups);
     program->set_groups = bf_list_default(_bf_set_group_free, NULL);
 
-    bf_list_foreach (&program->runtime.chain->sets, set_node) {
-        struct bf_set *set = bf_list_node_get_data(set_node);
+    bf_hashset_foreach (&program->runtime.chain->sets, set_node) {
+        struct bf_set *set = set_node->data;
         struct bf_set_group *match = NULL;
         int r;
 

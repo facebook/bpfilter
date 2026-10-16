@@ -44,6 +44,7 @@ add_library(mock EXCLUDE_FROM_ALL
     SHARED
         mock/bf_realloc.c
         mock/btf__load_vmlinux_btf.c
+        mock/getentropy.c
         mock/isatty.c
         mock/setns.c
         mock/syscall.c

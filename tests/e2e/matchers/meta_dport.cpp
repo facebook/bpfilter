@@ -180,10 +180,9 @@ static void meta_dport_in(void **state)
     ip4_set << ip4_elem;
 
     BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(ip4_set)
+                  << ip4_set
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+                              {bf::Matcher::in(ip4_set)}));
 
     bft_assert_prog_run(
         "test_meta_dport", test->hook(),
@@ -223,10 +222,9 @@ static void meta_dport_in(void **state)
     ip6_set << ip6_elem;
 
     BFT_CHAIN_SET(bf::Chain("test_meta_dport", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(ip6_set)
+                  << ip6_set
                   << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+                              {bf::Matcher::in(ip6_set)}));
 
     bft_assert_prog_run(
         "test_meta_dport", test->hook(),

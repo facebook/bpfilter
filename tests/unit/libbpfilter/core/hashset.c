@@ -6,6 +6,7 @@
 #include <bpfilter/core/hashset.h>
 #include <bpfilter/helper.h>
 
+#include "mock.h"
 #include "test.h"
 
 static uint64_t _bf_uint32_hash(const void *data, void *ctx)
@@ -425,6 +426,40 @@ static void collisions(void **state)
     assert_int_equal(idx, 6);
 }
 
+static void get_and_move(void **state)
+{
+    _clean_bf_hashset_ bf_hashset source =
+        bf_hashset_default(&_bf_uint32_collide_ops, NULL);
+    _clean_bf_hashset_ bf_hashset moved = {};
+    uint32_t first = 1;
+    uint32_t second = 2;
+    void *data = _make_u32(first);
+    void *stored = data;
+
+    (void)state;
+
+    assert_null(bf_hashset_get(&source, &first));
+    assert_ok(bf_hashset_add(&source, &data));
+    assert_ptr_equal(bf_hashset_get(&source, &first), stored);
+    assert_null(bf_hashset_get(&source, &second));
+
+    data = _make_u32(second);
+    stored = data;
+    assert_ok(bf_hashset_add(&source, &data));
+    assert_ok(bf_hashset_delete(&source, &first));
+    assert_ptr_equal(bf_hashset_get(&source, &second), stored);
+
+    moved = bf_hashset_move(&source);
+    assert_true(bf_hashset_is_empty(&source));
+    assert_null(bf_hashset_get(&source, &second));
+    assert_ptr_equal(bf_hashset_get(&moved, &second), stored);
+
+    data = _make_u32(first);
+    assert_ok(bf_hashset_add(&source, &data));
+    assert_non_null(bf_hashset_get(&source, &first));
+    assert_null(bf_hashset_get(&moved, &first));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -440,6 +475,7 @@ int main(void)
         cmocka_unit_test(reserve),
         cmocka_unit_test(grow),
         cmocka_unit_test(collisions),
+        cmocka_unit_test(get_and_move),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

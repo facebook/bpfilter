@@ -160,23 +160,15 @@ typedef struct bf_list
     ((bf_list) {.ops = bf_list_ops_default((list).ops.free, (list).ops.pack)})
 
 /**
- * Move a list.
+ * Move a list, leaving the source empty and reusable.
  *
- * Move a list from `list` and return it. Once moved, the original list can
- * either be reused, discarded, or `bf_list_clean` can be called on it safely.
- * The list it has been moved to will be overriden and `bf_list_clean` should be
- * called on it.
+ * The returned list retains the source's callbacks. Clean a non-empty
+ * destination before assigning the returned list to it.
  *
- * @param list List to move.
- * @return The moved list.
+ * @param list List to move. Can't be NULL.
+ * @return The previous contents, including callbacks.
  */
-#define bf_list_move(list)                                                     \
-    ({                                                                         \
-        bf_list *__list = &(list);                                             \
-        bf_list _list = *__list;                                               \
-        *__list = bf_list_default(__list->ops.free, __list->ops.pack);         \
-        _list;                                                                 \
-    })
+bf_list bf_list_move(bf_list *list);
 
 /**
  * Allocate and initialise a new list.

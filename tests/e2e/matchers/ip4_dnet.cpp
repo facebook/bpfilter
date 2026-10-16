@@ -184,11 +184,10 @@ static void ip4_dnet_in(void **state)
     set << bft_ip4_lpm_key(24, 192, 0, 2, 0)
         << bft_ip4_lpm_key(16, 10, 0, 0, 0);
 
-    BFT_CHAIN_SET(bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip4_dnet", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // daddr=10.0.1.1 matches 10.0.0.0/16 in set -> DROP
     bft_assert_prog_run(

@@ -126,8 +126,8 @@ int bf_ruleset_get(bf_list *chains, bf_list *hookopts)
         TAKE_PTR(hookopts_copy);
     }
 
-    *chains = bf_list_move(_chains);
-    *hookopts = bf_list_move(_hookopts);
+    *chains = bf_list_move(&_chains);
+    *hookopts = bf_list_move(&_hookopts);
 
     return 0;
 }

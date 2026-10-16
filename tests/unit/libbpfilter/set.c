@@ -3,17 +3,70 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <stdlib.h>
+
 #include <bpfilter/set.h>
 
 #include "bpfilter/dump.h"
 #include "bpfilter/pack.h"
 #include "fake.h"
+#include "mock.h"
 #include "test.h"
+
+static void name_is_valid(void **state)
+{
+    const char *valid[] = {"test", "Set_012-abc", "0", "_", "-"};
+    const char *invalid[] = {
+        NULL,          "",           "two words",
+        "tab\tname",   "line\nname", "name.with.dot",
+        "name/slash",  "name:colon", "@name",
+        "caf\xc3\xa9",
+    };
+
+    (void)state;
+
+    for (size_t i = 0; i < ARRAY_SIZE(valid); ++i)
+        assert_true(bf_set_is_valid_name(valid[i]));
+
+    for (size_t i = 0; i < ARRAY_SIZE(invalid); ++i)
+        assert_false(bf_set_is_valid_name(invalid[i]));
+}
+
+static void new_with_invalid_names(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
+    enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    const char *names[] = {
+        "", "two words", "name.with.dot", "name/slash", "caf\xc3\xa9",
+    };
+
+    (void)state;
+
+    for (size_t i = 0; i < ARRAY_SIZE(names); ++i) {
+        assert_err(bf_set_new(&set, names[i], key, ARRAY_SIZE(key)));
+        assert_null(set);
+        assert_err(bf_set_new_from_raw(&set, names[i], "(ip4.saddr)", "{}"));
+        assert_null(set);
+    }
+
+    getentropy_mock = bft_mock_get(getentropy);
+    assert_err(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
+    assert_null(set);
+    assert_err(bf_set_new_from_raw(&set, NULL, "(ip4.saddr)", "{}"));
+    assert_null(set);
+
+    // User-defined names do not require entropy.
+    assert_ok(bf_set_new(&set, "named", key, ARRAY_SIZE(key)));
+    assert_false(bf_set_is_anonymous(set));
+}
 
 static void new_and_free(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
-
+    _free_bf_set_ struct bf_set *other = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
     (void)state;
@@ -22,6 +75,7 @@ static void new_and_free(void **state)
     assert_ok(bf_set_new(&set, "test_set", key, ARRAY_SIZE(key)));
     assert_non_null(set);
     assert_string_equal(set->name, "test_set");
+    assert_false(bf_set_is_anonymous(set));
     assert_int_equal(set->n_comps, 1);
     assert_int_equal(set->key[0], BF_MATCHER_IP4_SADDR);
     bf_set_free(&set);
@@ -29,7 +83,27 @@ static void new_and_free(void **state)
 
     // Free set using the cleanup attribute
     assert_ok(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
-    assert_null(set->name);
+    assert_non_null(set->name);
+    assert_true(bf_set_is_anonymous(set));
+    assert_false(bf_set_is_valid_name(set->name));
+    assert_string_not_equal(set->name, "");
+
+    assert_err(bf_set_new(&copy, set->name, key, ARRAY_SIZE(key)));
+    assert_null(copy);
+    assert_err(bf_set_new_from_raw(&copy, set->name, "(ip4.saddr)", "{}"));
+    assert_null(copy);
+
+    assert_ok(bf_set_new_from_raw(&other, NULL, "(ip4.saddr)", "{192.0.2.1}"));
+    assert_true(bf_set_is_anonymous(other));
+    assert_string_not_equal(set->name, other->name);
+
+    // Copying must preserve the name without generating a new one.
+    getentropy_mock = bft_mock_get(getentropy);
+    assert_ok(bf_set_new_from_copy(&copy, other));
+    assert_true(bf_set_is_anonymous(copy));
+    assert_string_equal(copy->name, other->name);
+    assert_ptr_not_equal(copy->name, other->name);
+    assert_true(bft_set_eq_ordered(copy, other));
 }
 
 static void new_with_multiple_keys(void **state)
@@ -159,7 +233,7 @@ static void reserve(void **state)
     assert_int_equal(bf_hashset_size(&set->elems), 50);
 }
 
-static void pack_and_unpack(void **state)
+static void pack_and_unpack_named(void **state)
 {
     _free_bf_set_ struct bf_set *source = NULL;
     _free_bf_set_ struct bf_set *destination = NULL;
@@ -173,7 +247,7 @@ static void pack_and_unpack(void **state)
     (void)state;
 
     // Create and pack the source set
-    assert_non_null(source = bft_set_dummy(4));
+    assert_non_null(source = bft_set_dummy("Set_012-abc", 4));
     source->min_size = 16;
     assert_ok(bf_wpack_new(&wpack));
     bf_wpack_open_object(wpack, "set");
@@ -191,6 +265,78 @@ static void pack_and_unpack(void **state)
 
     assert_ok(bf_set_new_from_copy(&copy, source));
     assert_true(bft_set_eq_ordered(source, copy));
+}
+
+static void pack_and_unpack_anon(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *destination = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
+    bf_rpack_node_t node;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    // Create and pack the source set
+    assert_non_null(source = bft_set_dummy(NULL, 4));
+    assert_true(bf_set_is_anonymous(source));
+    source->min_size = 16;
+
+    getentropy_mock = bft_mock_get(getentropy);
+    assert_ok(bf_wpack_new(&wpack));
+    bf_wpack_open_object(wpack, "set");
+    assert_ok(bf_set_pack(source, wpack));
+    bf_wpack_close_object(wpack);
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+    // Unpack into destination set
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
+    assert_ok(bf_set_new_from_pack(&destination, node));
+
+    assert_int_equal(destination->min_size, 16);
+    assert_true(bft_set_eq_ordered(source, destination));
+
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    assert_true(bft_set_eq_ordered(source, copy));
+}
+
+static void pack_and_unpack_err(void **state)
+{
+    const char *names[] = {
+        "", "two words", "name.with.dot", "name/slash", "caf\xc3\xa9",
+    };
+
+    (void)state;
+
+    for (size_t i = 0; i < ARRAY_SIZE(names); ++i) {
+        _free_bf_set_ struct bf_set *source = NULL;
+        _free_bf_set_ struct bf_set *destination = NULL;
+        _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+        _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+        bf_rpack_node_t node;
+        const void *data;
+        size_t data_len;
+
+        assert_non_null(source = bft_set_dummy("source", 4));
+        BF_FREEP(&source->name);
+        assert_non_null(source->name = strdup(names[i]));
+
+        assert_ok(bf_wpack_new(&wpack));
+        bf_wpack_open_object(wpack, "set");
+        assert_ok(bf_set_pack(source, wpack));
+        bf_wpack_close_object(wpack);
+        assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+
+        assert_ok(bf_rpack_new(&rpack, data, data_len));
+        assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &node));
+        assert_err(bf_set_new_from_pack(&destination, node));
+        assert_null(destination);
+    }
 }
 
 static void pack_and_unpack_empty(void **state)
@@ -232,7 +378,7 @@ static void dump(void **state)
     (void)state;
 
     // Dump a set with elements
-    assert_non_null(set = bft_set_dummy(4));
+    assert_non_null(set = bft_set_dummy(NULL, 4));
     bf_set_dump(set, &prefix);
 }
 
@@ -540,6 +686,8 @@ static void remove_many_mismatched_key_type(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(name_is_valid),
+        cmocka_unit_test(new_with_invalid_names),
         cmocka_unit_test(new_and_free),
         cmocka_unit_test(new_with_multiple_keys),
         cmocka_unit_test(new_with_invalid_params),
@@ -549,7 +697,9 @@ int main(void)
         cmocka_unit_test(add_multiple_elems),
         cmocka_unit_test(add_duplicate),
         cmocka_unit_test(reserve),
-        cmocka_unit_test(pack_and_unpack),
+        cmocka_unit_test(pack_and_unpack_named),
+        cmocka_unit_test(pack_and_unpack_anon),
+        cmocka_unit_test(pack_and_unpack_err),
         cmocka_unit_test(pack_and_unpack_empty),
         cmocka_unit_test(dump),
         cmocka_unit_test(dump_empty),

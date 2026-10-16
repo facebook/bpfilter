@@ -89,11 +89,10 @@ static void ip6_nexthdr_in(void **state)
     set << std::vector<uint8_t> {6} // TCP
         << std::vector<uint8_t> {17}; // UDP
 
-    BFT_CHAIN_SET(bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
-                  << std::move(set)
-                  << bf::Rule(BF_VERDICT_DROP, bf_counter(), {},
-                              {bf::Matcher(BF_MATCHER_SET, BF_MATCHER_IN,
-                                           {0, 0, 0, 0})}));
+    BFT_CHAIN_SET(
+        bf::Chain("test_ip6_nexthdr", test->hook(), BF_VERDICT_ACCEPT)
+        << set
+        << bf::Rule(BF_VERDICT_DROP, bf_counter(), {}, {bf::Matcher::in(set)}));
 
     // TCP -> nexthdr=6 in set -> DROP
     bft_assert_prog_run(

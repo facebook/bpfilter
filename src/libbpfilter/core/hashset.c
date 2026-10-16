@@ -225,6 +225,18 @@ size_t bf_hashset_size(const bf_hashset *set)
     return set->len;
 }
 
+bf_hashset bf_hashset_move(bf_hashset *set)
+{
+    bf_hashset moved;
+
+    assert(set);
+
+    moved = *set;
+    *set = bf_hashset_default(&moved.ops, moved.ctx);
+
+    return moved;
+}
+
 bool bf_hashset_is_empty(const bf_hashset *set)
 {
     assert(set);
@@ -311,6 +323,19 @@ bool bf_hashset_contains(const bf_hashset *set, const void *data)
     assert(data);
 
     return _bf_hashset_find(set, data, NULL, NULL);
+}
+
+void *bf_hashset_get(const bf_hashset *set, const void *key)
+{
+    size_t index;
+
+    assert(set);
+    assert(key);
+
+    if (!_bf_hashset_find(set, key, &index, NULL))
+        return NULL;
+
+    return set->slots[index]->data;
 }
 
 static void _bf_hashset_unlink(bf_hashset *set, size_t found_idx)

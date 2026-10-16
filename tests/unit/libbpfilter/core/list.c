@@ -102,13 +102,36 @@ static void move(void **state)
     _clean_bf_list_ bf_list destination;
     _free_bf_list_ bf_list *source = NULL;
     _free_bf_list_ bf_list *reference = NULL;
+    _cleanup_free_ size_t *value = NULL;
+    bf_list_node *head;
+    bf_list_node *tail;
 
     (void)state;
 
     assert_non_null(source = bft_list_dummy(10, bf_list_add_head));
     assert_non_null(reference = bft_list_dummy(10, bf_list_add_head));
+    head = source->head;
+    tail = source->tail;
 
-    destination = bf_list_move(*source);
+    destination = bf_list_move(source);
+    assert_true(bft_list_eq(reference, &destination,
+                            (bft_list_eq_cb)bft_list_dummy_eq));
+    assert_ptr_equal(destination.head, head);
+    assert_ptr_equal(destination.tail, tail);
+    assert_true(destination.ops.free == reference->ops.free);
+    assert_true(destination.ops.pack == reference->ops.pack);
+    assert_true(bf_list_is_empty(source));
+    assert_null(source->head);
+    assert_null(source->tail);
+    assert_true(source->ops.free == reference->ops.free);
+    assert_true(source->ops.pack == reference->ops.pack);
+
+    // Cleaning and reusing the source must not affect the moved list.
+    bf_list_clean(source);
+    assert_non_null(value = malloc(sizeof(*value)));
+    *value = 42;
+    assert_ok(bf_list_push(source, (void **)&value));
+    assert_int_equal(bf_list_size(source), 1);
     assert_true(bft_list_eq(reference, &destination,
                             (bft_list_eq_cb)bft_list_dummy_eq));
 }

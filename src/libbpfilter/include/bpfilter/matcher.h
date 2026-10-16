@@ -272,8 +272,10 @@ struct bf_matcher_meta
  * @param op Comparison operator.
  * @param payload Payload of the matcher, its content and size depends on
  *        @p type . Can be NULL but only if @p payload_len is 0, in which case
- *        there is no payload.
- * @param payload_len Length of the payload.
+ *        there is no payload. For BF_MATCHER_SET, pass a pointer to a bf_set.
+ *        The constructor copies its name and retains no pointer to the set.
+ * @param payload_len Length of the input payload. For BF_MATCHER_SET, pass
+ *        sizeof(struct bf_set). The stored payload is the NUL-terminated name.
  * @param negate If true, negate the comparison result.
  * @return 0 on success, or negative errno value on failure.
  */

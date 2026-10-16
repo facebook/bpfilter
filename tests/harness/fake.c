@@ -86,7 +86,6 @@ const void *bft_get_randomly_filled_buffer(size_t len)
 struct bf_chain *bft_chain_dummy(bool with_rules)
 {
     _free_bf_chain_ struct bf_chain *chain = NULL;
-    uint32_t id = 0;
     int r;
 
     r = bf_chain_new(&chain, "bft_chain_dummy", BF_HOOK_TC_EGRESS,
@@ -98,17 +97,16 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
         {
             // Create a rule with SET, any matcher, SET
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(4);
-            _free_bf_set_ struct bf_set *set1 = bft_set_dummy(4);
+            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 4);
+            _free_bf_set_ struct bf_set *set1 = bft_set_dummy(NULL, 4);
             uint32_t ip = 0xff;
 
             r = bf_rule_new(&rule);
             if (r)
                 return NULL;
 
-            id = 0;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set0,
+                                    sizeof(*set0), false);
             if (r)
                 return NULL;
 
@@ -117,17 +115,16 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             if (r)
                 return NULL;
 
-            ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set1,
+                                    sizeof(*set1), false);
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_hashset_add(&chain->sets, (void **)&set0);
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set1);
+            r = bf_hashset_add(&chain->sets, (void **)&set1);
             if (r)
                 return NULL;
 
@@ -152,19 +149,18 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
             // Create a rule with a single set, no other matcher
 
             _free_bf_rule_ struct bf_rule *rule = NULL;
-            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(4);
+            _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 4);
 
             r = bf_rule_new(&rule);
             if (r)
                 return NULL;
 
-            ++id;
-            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, &id,
-                                    sizeof(id), false);
+            r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set0,
+                                    sizeof(*set0), false);
             if (r)
                 return NULL;
 
-            r = bf_list_push(&chain->sets, (void **)&set0);
+            r = bf_hashset_add(&chain->sets, (void **)&set0);
             if (r)
                 return NULL;
 
@@ -221,7 +217,7 @@ struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len)
     return TAKE_PTR(matcher);
 }
 
-struct bf_set *bft_set_dummy(size_t n_elems)
+struct bf_set *bft_set_dummy(const char *name, size_t n_elems)
 {
     _free_bf_set_ struct bf_set *set = NULL;
 
@@ -229,7 +225,7 @@ struct bf_set *bft_set_dummy(size_t n_elems)
 
     int r;
 
-    r = bf_set_new(&set, "bft_set_dummy", key, ARRAY_SIZE(key));
+    r = bf_set_new(&set, name, key, ARRAY_SIZE(key));
     if (r)
         return NULL;
 

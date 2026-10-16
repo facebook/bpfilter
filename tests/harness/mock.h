@@ -79,6 +79,8 @@ struct btf;
                     .wrap_name = BF_STR(__wrap_##name)};                       \
     })
 
+#define bft_mock_default() {.disable = NULL}
+
 #define bft_mock_real(mock) __real_##mock
 #define bft_mock_define(x)                                                     \
     static bool _bft_mock_##x##_on = false;                                    \
@@ -108,6 +110,7 @@ void bft_mock_clean(bft_mock *mock);
 
 bft_mock_declare(bf_realloc);
 bft_mock_declare(btf__load_vmlinux_btf);
+bft_mock_declare(getentropy);
 bft_mock_declare(isatty);
 bft_mock_declare(setns);
 bft_mock_declare(syscall);
