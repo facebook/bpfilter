@@ -227,19 +227,14 @@ static int _bf_link_try_attach_xdp(int prog_fd, int ifindex, enum bf_hook hook)
     int r;
 
     r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_DRV_MODE, 0, 0);
-    if (r >= 0) {
-        bf_info("attached XDP program in driver mode");
+    if (r >= 0)
         return r;
-    }
-
-    if (r != -ENOTSUP)
-        return r;
-
-    bf_dbg_r(r, "driver mode not available");
 
     r = bf_bpf_link_create(prog_fd, ifindex, hook, XDP_FLAGS_SKB_MODE, 0, 0);
-    if (r >= 0)
-        bf_info("attached XDP program in SKB mode");
+    if (r >= 0) {
+        bf_warn(
+            "XDP driver mode unavailable, attached in generic XDP (SKB) mode");
+    }
 
     return r;
 }
