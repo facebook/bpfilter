@@ -109,6 +109,7 @@ typedef struct
 void bft_mock_clean(bft_mock *mock);
 
 bft_mock_declare(bf_realloc);
+bft_mock_declare(btf__find_by_name);
 bft_mock_declare(btf__load_vmlinux_btf);
 bft_mock_declare(getentropy);
 bft_mock_declare(isatty);

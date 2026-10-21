@@ -34,7 +34,7 @@ void bf_btf_teardown(void);
  * Get BTF ID of a kernel function.
  *
  * Linux' BTF data must be loaded with @ref bf_btf_setup before calling this
- * function.
+ * function. Cache storage is released by `bf_btf_teardown()`.
  *
  * @param name Name of the kernel function.
  * @return BTF ID on success, or negative errno value on failure.
