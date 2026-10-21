@@ -381,7 +381,9 @@ int bf_cgen_load(struct bf_cgen *cgen, struct bf_lock *lock)
     }
 
     bf_info("load %s", cgen->chain->name);
-    bf_cgen_dump(cgen, EMPTY_PREFIX);
+
+    if (bf_log_get_level() == BF_LOG_DBG)
+        bf_cgen_dump(cgen, EMPTY_PREFIX);
 
     return 0;
 }
