@@ -60,7 +60,7 @@ int bf_bpf_prog_load(const char *name, enum bf_bpf_prog_type prog_type,
     attr.expected_attach_type = attach_type;
     attr.log_buf = bf_ptr_to_u64(log_buf);
     attr.log_size = log_size;
-    attr.log_level = 1;
+    attr.log_level = log_buf ? 1 : 0;
 
     (void)snprintf(attr.prog_name, BPF_OBJ_NAME_LEN, "%s", name);
 

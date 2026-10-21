@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1223,6 +1224,7 @@ static int _bf_program_load_sets_maps(struct bf_program *new_prog)
 int bf_program_load(struct bf_program *prog)
 {
     _cleanup_free_ char *log_buf = NULL;
+    bool log_enabled = bf_ctx_is_verbose(BF_VERBOSE_DEBUG);
     int r;
 
     assert(prog);
@@ -1247,16 +1249,18 @@ int bf_program_load(struct bf_program *prog)
     if (r)
         return bf_err_r(r, "failed to load the state map");
 
-    if (bf_ctx_is_verbose(BF_VERBOSE_DEBUG)) {
+    if (bf_ctx_is_verbose(BF_VERBOSE_BYTECODE))
+        bf_program_dump_bytecode(prog);
+
+retry_load:
+    if (log_enabled) {
         log_buf = malloc(_BF_LOG_BUF_SIZE);
         if (!log_buf) {
             return bf_err_r(-ENOMEM,
                             "failed to allocate BPF_PROG_LOAD logs buffer");
         }
+        log_buf[0] = '\0';
     }
-
-    if (bf_ctx_is_verbose(BF_VERBOSE_BYTECODE))
-        bf_program_dump_bytecode(prog);
 
     r = bf_bpf_prog_load(prog->handle->prog_name,
                          bf_hook_to_bpf_prog_type(prog->runtime.chain->hook),
@@ -1264,6 +1268,11 @@ int bf_program_load(struct bf_program *prog)
                          bf_hook_to_bpf_attach_type(prog->runtime.chain->hook),
                          log_buf, log_buf ? _BF_LOG_BUF_SIZE : 0,
                          bf_ctx_token(), &prog->handle->prog_fd);
+    if (r && !log_enabled) {
+        log_enabled = true;
+        goto retry_load;
+    }
+
     if (r) {
         return bf_err_r(r, "failed to load bf_program (%lu insns):\n%s\nerrno:",
                         prog->img.size, log_buf ? log_buf : "<NO LOG BUFFER>");
