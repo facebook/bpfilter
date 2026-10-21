@@ -808,6 +808,8 @@ int main(int argc, char *argv[])
     if (r < 0)
         return bf_err_r(r, "failed to initialise bpfilter context");
 
+    bf_log_set_level(BF_LOG_WARN);
+
     try {
         ::benchmark::RunSpecifiedBenchmarks();
     } catch (const ::std::exception &e) {
