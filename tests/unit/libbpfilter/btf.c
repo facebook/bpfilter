@@ -3,7 +3,10 @@
  * Copyright (c) 2023 Meta Platforms, Inc. and affiliates.
  */
 
+#include <errno.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <bpfilter/btf.h>
 
@@ -21,6 +24,7 @@ static void init_and_clean(void **state)
     }
 
     assert_ok(bf_btf_setup());
+    assert_err(bf_btf_setup());
     bf_btf_teardown();
     assert_ok(bf_btf_setup());
     bf_btf_teardown();
@@ -45,6 +49,62 @@ static void get_id_and_name(void **state)
     assert_null(bf_btf_get_name(-1));
     assert_null(bf_btf_get_name(INT_MAX));
 
+    bf_btf_teardown();
+}
+
+static void lookup_name_survives_caller_buffer_free(void **state)
+{
+    _cleanup_free_ char *name = strdup("sk_buff");
+    int id;
+
+    (void)state;
+
+    assert_non_null(name);
+    assert_ok(bf_btf_setup());
+    id = bf_btf_get_id(name);
+    assert_int_gt(id, 0);
+    memset(name, 'x', strlen(name));
+    BF_FREEP(&name);
+
+    assert_int_equal(bf_btf_get_id("sk_buff"), id);
+    assert_string_equal(bf_btf_get_name(id), "sk_buff");
+
+    bf_btf_teardown();
+}
+
+static void lookup_succeeds_after_transient_failure(void **state)
+{
+    int id;
+
+    (void)state;
+
+    assert_ok(bf_btf_setup());
+    {
+        _clean_bft_mock_ bft_mock _ = bft_mock_get(btf__find_by_name);
+
+        assert_err(bf_btf_get_id("sk_buff"));
+    }
+
+    id = bf_btf_get_id("sk_buff");
+    assert_int_gt(id, 0);
+    assert_string_equal(bf_btf_get_name(id), "sk_buff");
+    bf_btf_teardown();
+}
+
+static void lookup_succeeds_after_teardown_and_setup(void **state)
+{
+    int id;
+
+    (void)state;
+
+    assert_ok(bf_btf_setup());
+    assert_int_gt(bf_btf_get_id("sk_buff"), 0);
+    bf_btf_teardown();
+
+    assert_ok(bf_btf_setup());
+    id = bf_btf_get_id("sk_buff");
+    assert_int_gt(id, 0);
+    assert_string_equal(bf_btf_get_name(id), "sk_buff");
     bf_btf_teardown();
 }
 
@@ -111,8 +171,13 @@ static void get_type_size(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(init_and_clean), cmocka_unit_test(get_id_and_name),
-        cmocka_unit_test(check_token),    cmocka_unit_test(get_field_offset),
+        cmocka_unit_test(init_and_clean),
+        cmocka_unit_test(get_id_and_name),
+        cmocka_unit_test(lookup_name_survives_caller_buffer_free),
+        cmocka_unit_test(lookup_succeeds_after_transient_failure),
+        cmocka_unit_test(lookup_succeeds_after_teardown_and_setup),
+        cmocka_unit_test(check_token),
+        cmocka_unit_test(get_field_offset),
         cmocka_unit_test(get_type_size),
     };
 

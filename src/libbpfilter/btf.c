@@ -12,36 +12,75 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "bpfilter/core/vector.h"
 #include "bpfilter/helper.h"
 #include "bpfilter/logger.h"
 
+struct bf_btf_cache_entry
+{
+    char *name;
+    int id;
+};
+
 static struct btf *_bf_btf = NULL;
+static bf_vector _bf_btf_cache;
 
 int bf_btf_setup(void)
 {
+    if (_bf_btf)
+        return bf_err_r(-EBUSY, "kernel BTF is already initialized");
+
     _bf_btf = btf__load_vmlinux_btf();
     if (!_bf_btf)
         return bf_err_r(errno, "failed to load vmlinux BTF");
+
+    bf_vector_init(&_bf_btf_cache, sizeof(struct bf_btf_cache_entry));
 
     return 0;
 }
 
 void bf_btf_teardown(void)
 {
+    bf_vector_foreach (&_bf_btf_cache, elem) {
+        struct bf_btf_cache_entry *entry = elem;
+
+        BF_FREEP(&entry->name);
+    }
+    bf_vector_clean(&_bf_btf_cache);
+
     btf__free(_bf_btf);
     _bf_btf = NULL;
 }
 
 int bf_btf_get_id(const char *name)
 {
+    _cleanup_free_ char *owned_name = NULL;
+    struct bf_btf_cache_entry entry;
     int id;
 
     assert(name);
 
+    bf_vector_foreach (&_bf_btf_cache, elem) {
+        const struct bf_btf_cache_entry *cached = elem;
+
+        if (bf_streq(cached->name, name))
+            return cached->id;
+    }
+
     id = btf__find_by_name(_bf_btf, name);
     if (id < 0)
-        return bf_err_r(errno, "failed to find BTF type for \"%s\"", name);
+        return bf_err_r(id, "failed to find BTF type for \"%s\"", name);
+
+    // Cache allocation failures must not prevent successful lookups.
+    owned_name = strdup(name);
+    if (!owned_name)
+        return id;
+
+    entry = (struct bf_btf_cache_entry) {.name = owned_name, .id = id};
+    if (!bf_vector_add(&_bf_btf_cache, &entry))
+        TAKE_PTR(owned_name);
 
     return id;
 }

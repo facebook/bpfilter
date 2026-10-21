@@ -43,6 +43,7 @@ target_link_libraries(harness_cxx
 add_library(mock EXCLUDE_FROM_ALL
     SHARED
         mock/bf_realloc.c
+        mock/btf__find_by_name.c
         mock/btf__load_vmlinux_btf.c
         mock/getentropy.c
         mock/isatty.c
