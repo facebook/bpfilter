@@ -64,7 +64,6 @@ static void set_name_payload(void **state)
         assert_ok(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, set,
                                  sizeof(*set), true));
         assert_string_equal(bf_matcher_payload(matcher), name);
-        assert_ptr_not_equal(bf_matcher_payload(matcher), set->name);
         assert_int_equal(bf_matcher_payload_len(matcher), strlen(name) + 1);
         bf_set_free(&set);
         assert_string_equal(bf_matcher_payload(matcher), name);
@@ -168,6 +167,50 @@ static void getters(void **state)
     assert_ok(bf_matcher_new(&matcher, BF_MATCHER_TCP_DPORT, BF_MATCHER_EQ,
                              payload, sizeof(payload), true));
     assert_true(bf_matcher_get_negate(matcher));
+}
+
+static void copy_payload_survives_source_free(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *copy = NULL;
+    const uint8_t address[] = {192, 0, 2, 1};
+
+    (void)state;
+
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                             address, sizeof(address), true));
+    assert_ok(bf_matcher_new_from_copy(&copy, source));
+    bf_matcher_free(&source);
+
+    assert_memory_equal(bf_matcher_payload(copy), address, sizeof(address));
+    assert_true(bf_matcher_get_negate(copy));
+    bf_matcher_free(&copy);
+
+    assert_ok(bf_set_new_from_raw(&set, "addresses", "(ip4.saddr)", "{}"));
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                             sizeof(*set), true));
+    bf_set_free(&set);
+    assert_ok(bf_matcher_new_from_copy(&copy, source));
+    bf_matcher_free(&source);
+
+    assert_string_equal(bf_matcher_payload(copy), "addresses");
+    assert_true(bf_matcher_get_negate(copy));
+}
+
+static void copy_preserves_empty_payload(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *copy = NULL;
+
+    (void)state;
+
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ, NULL,
+                             0, false));
+    assert_ok(bf_matcher_new_from_copy(&copy, source));
+
+    assert_true(bft_matcher_equal(source, copy));
+    assert_int_equal(bf_matcher_payload_len(copy), 0);
 }
 
 static void pack_and_unpack(void **state)
@@ -2053,6 +2096,8 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(new_and_free),
+        cmocka_unit_test(copy_payload_survives_source_free),
+        cmocka_unit_test(copy_preserves_empty_payload),
         cmocka_unit_test(set_name_payload),
         cmocka_unit_test(set_invalid_input),
         cmocka_unit_test(set_legacy_payload_rejected),

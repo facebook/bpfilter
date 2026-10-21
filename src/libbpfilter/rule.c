@@ -146,6 +146,47 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
     return 0;
 }
 
+int bf_rule_new_from_copy(struct bf_rule **dest, const struct bf_rule *src)
+{
+    _free_bf_rule_ struct bf_rule *copy = NULL;
+    int r;
+
+    assert(dest);
+    assert(src);
+
+    if (src->verdict < 0 || src->verdict >= _BF_VERDICT_MAX ||
+        src->redirect_dir < 0 || src->redirect_dir >= _BF_REDIRECT_DIR_MAX) {
+        return bf_err_r(-EINVAL,
+                        "invalid source rule verdict or redirect direction");
+    }
+
+    r = bf_rule_new(&copy);
+    if (r)
+        return r;
+
+    copy->index = src->index;
+    copy->log = src->log;
+    copy->log_rate_ns = src->log_rate_ns;
+    copy->has_counters = src->has_counters;
+    copy->mark = src->mark;
+    copy->verdict = src->verdict;
+    copy->redirect_ifindex = src->redirect_ifindex;
+    copy->redirect_dir = src->redirect_dir;
+
+    bf_list_foreach (&src->matchers, matcher_node) {
+        _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+        r = bf_list_emplace(&copy->matchers, bf_matcher_new_from_copy, matcher,
+                            bf_list_node_get_data(matcher_node));
+        if (r)
+            return r;
+    }
+
+    *dest = TAKE_PTR(copy);
+
+    return 0;
+}
+
 void bf_rule_free(struct bf_rule **rule)
 {
     assert(rule);

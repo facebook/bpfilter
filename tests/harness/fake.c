@@ -175,6 +175,47 @@ struct bf_chain *bft_chain_dummy(bool with_rules)
     return TAKE_PTR(chain);
 }
 
+struct bf_chain *bft_chain_with_set(const char *key, const char *elements,
+                                    bool negate)
+{
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_rule_ struct bf_rule *rule = NULL;
+    int r;
+
+    r = bf_chain_new(&chain, "source", BF_HOOK_TC_EGRESS, BF_VERDICT_ACCEPT,
+                     NULL, NULL);
+    if (r)
+        return NULL;
+
+    r = bf_set_new_from_raw(&set, "addresses", key, elements);
+    if (r)
+        return NULL;
+
+    r = bf_rule_new(&rule);
+    if (r)
+        return NULL;
+
+    rule->verdict = BF_VERDICT_DROP;
+    rule->has_counters = 1;
+    r = bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                            sizeof(*set), negate);
+    if (r)
+        return NULL;
+
+    r = bf_chain_add_set(chain, set);
+    if (r)
+        return NULL;
+    TAKE_PTR(set);
+
+    r = bf_chain_add_rule(chain, rule);
+    if (r)
+        return NULL;
+    TAKE_PTR(rule);
+
+    return TAKE_PTR(chain);
+}
+
 struct bf_rule *bft_rule_dummy(size_t n_matchers)
 {
     _free_bf_rule_ struct bf_rule *rule = NULL;

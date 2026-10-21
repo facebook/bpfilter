@@ -117,6 +117,18 @@ int bf_rule_new(struct bf_rule **rule);
 int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node);
 
 /**
+ * @brief Allocate an independent copy of a rule and its matchers.
+ *
+ * Runtime counters and disabled state are reset. Adding the copy to a chain
+ * assigns its index, validates set references, and recalculates disabled state.
+ *
+ * @param dest Destination rule. Unchanged on failure. Can't be NULL.
+ * @param src Rule to copy. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_rule_new_from_copy(struct bf_rule **dest, const struct bf_rule *src);
+
+/**
  * Free a rule.
  *
  * Free @p rule and set it to NULL. If @p rule is NULL, nothing is done.

@@ -507,39 +507,34 @@ int bf_set_new_from_pack(struct bf_set **set, bf_rpack_node_t node)
 
 int bf_set_new_from_copy(struct bf_set **dest, const struct bf_set *src)
 {
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
-    const void *data;
-    size_t data_len;
-    bf_rpack_node_t child;
+    _free_bf_set_ struct bf_set *copy = NULL;
     int r;
 
     assert(dest);
     assert(src);
 
-    r = bf_wpack_new(&wpack);
+    r = _bf_set_new(&copy, src->name, src->key, src->n_comps);
     if (r)
         return r;
 
-    bf_wpack_open_object(wpack, "set");
-    r = bf_set_pack(src, wpack);
-    if (r)
-        return r;
-    bf_wpack_close_object(wpack);
+    copy->min_size = src->min_size;
 
-    r = bf_wpack_get_data(wpack, &data, &data_len);
-    if (r)
-        return r;
+    if (!bf_set_is_empty(src) && copy->elem_size != src->elem_size)
+        return bf_err_r(-EINVAL, "invalid source set element size");
 
-    r = bf_rpack_new(&rpack, data, data_len);
+    r = bf_set_reserve(copy, bf_hashset_size(&src->elems));
     if (r)
         return r;
 
-    r = bf_rpack_kv_obj(bf_rpack_root(rpack), "set", &child);
-    if (r)
-        return r;
+    bf_hashset_foreach (&src->elems, elem) {
+        r = bf_set_add_elem(copy, elem->data);
+        if (r)
+            return r;
+    }
 
-    return bf_set_new_from_pack(dest, child);
+    *dest = TAKE_PTR(copy);
+
+    return 0;
 }
 
 void bf_set_free(struct bf_set **set)

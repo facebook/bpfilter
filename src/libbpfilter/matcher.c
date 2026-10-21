@@ -1495,6 +1495,27 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     return 0;
 }
 
+int bf_matcher_new_from_copy(struct bf_matcher **dest,
+                             const struct bf_matcher *src)
+{
+    size_t payload_len;
+
+    assert(dest);
+    assert(src);
+
+    if (src->type < 0 || src->type >= _BF_MATCHER_TYPE_MAX || src->op < 0 ||
+        src->op >= _BF_MATCHER_OP_MAX || src->len < sizeof(*src)) {
+        return bf_err_r(-EINVAL,
+                        "invalid source matcher type, operator, or length");
+    }
+
+    payload_len = src->len - sizeof(*src);
+
+    return _bf_matcher_new(dest, src->type, src->op,
+                           payload_len ? src->payload : NULL, payload_len,
+                           src->negate);
+}
+
 void bf_matcher_free(struct bf_matcher **matcher)
 {
     assert(matcher);
