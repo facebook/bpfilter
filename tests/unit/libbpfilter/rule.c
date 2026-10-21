@@ -4,6 +4,7 @@
  */
 
 #include <bpfilter/rule.h>
+#include <bpfilter/set.h>
 
 #include "bpfilter/core/list.h"
 #include "bpfilter/pack.h"
@@ -33,6 +34,56 @@ static void new_and_free(void **state)
 
     // Free rule using the cleanup attribute
     assert_ok(bf_rule_new(&rule));
+}
+
+static void copy_configuration_and_ownership(void **state)
+{
+    _free_bf_rule_ struct bf_rule *source = bft_rule_dummy(2);
+    _free_bf_rule_ struct bf_rule *copy = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
+    const struct bf_matcher *set_matcher;
+
+    (void)state;
+
+    assert_non_null(source);
+    source->index = 7;
+    source->verdict = BF_VERDICT_REDIRECT;
+    source->counters = (struct bf_counter) {.count = 7, .size = 1024};
+    source->disabled = true;
+    bf_rule_mark_set(source, 0x1234);
+    bf_rule_set_redirect(source, 8, BF_REDIRECT_EGRESS);
+    assert_ok(bf_set_new_from_raw(&set, "rule_copy_set", "(ip4.saddr)", "{}"));
+    assert_ok(bf_rule_add_matcher(source, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                                  sizeof(*set), true));
+
+    assert_ok(bf_rule_new_from_copy(&copy, source));
+    assert_true(bft_rule_equal(source, copy));
+    assert_int_equal(copy->counters.count, 0);
+    assert_int_equal(copy->counters.size, 0);
+    assert_false(copy->disabled);
+    assert_int_equal(source->counters.count, 7);
+    bf_rule_mark_set(copy, 0x4321);
+    assert_int_equal(bf_rule_mark_get(source), 0x1234);
+
+    bf_rule_free(&source);
+    set_matcher = bf_list_node_get_data(bf_list_get_tail(&copy->matchers));
+    assert_string_equal(bf_matcher_payload(set_matcher), "rule_copy_set");
+}
+
+static void copy_failure_preserves_destination(void **state)
+{
+    _free_bf_rule_ struct bf_rule *source = bft_rule_dummy(1);
+    _free_bf_rule_ struct bf_rule *destination = bft_rule_dummy(0);
+    struct bf_rule *original = destination;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_non_null(destination);
+    source->verdict = _BF_VERDICT_MAX;
+    assert_err(bf_rule_new_from_copy(&destination, source));
+    assert_ptr_equal(destination, original);
+    assert_int_equal(bf_list_size(&destination->matchers), 0);
 }
 
 static void pack_and_unpack(void **state)
@@ -128,6 +179,8 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(to_from_str),
         cmocka_unit_test(new_and_free),
+        cmocka_unit_test(copy_configuration_and_ownership),
+        cmocka_unit_test(copy_failure_preserves_destination),
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(unpack_error),
         cmocka_unit_test(dump),

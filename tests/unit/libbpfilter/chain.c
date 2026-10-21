@@ -64,6 +64,140 @@ static void pack_and_unpack(void **state)
     assert_true(bft_chain_equal(chain0, chain1));
 }
 
+static void copy_preserves_configuration(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    assert_true(bft_chain_equal(source, copy));
+}
+
+static void copy_resets_chain_counters(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source = bft_chain_dummy(false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+
+    (void)state;
+
+    assert_non_null(source);
+    source->policy_counters = (struct bf_counter) {.count = 1, .size = 64};
+    source->error_counters = (struct bf_counter) {.count = 2, .size = 128};
+
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    assert_int_equal(copy->policy_counters.count, 0);
+    assert_int_equal(copy->policy_counters.size, 0);
+    assert_int_equal(copy->error_counters.count, 0);
+    assert_int_equal(copy->error_counters.size, 0);
+    assert_int_equal(source->policy_counters.count, 1);
+    assert_int_equal(source->error_counters.count, 2);
+}
+
+static void copy_set_updates_do_not_change_source(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    _free_bf_set_ struct bf_set *to_add = NULL;
+    const struct bf_set *source_set;
+    const struct bf_set *copied_set;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    assert_ok(
+        bf_set_new_from_raw(&to_add, "added", "(ip4.saddr)", "{192.0.2.2}"));
+    assert_ok(bf_chain_apply_set_delta(copy, "addresses", to_add, NULL));
+
+    source_set = bf_chain_get_set_by_name(source, "addresses");
+    copied_set = bf_chain_get_set_by_name(copy, "addresses");
+    assert_non_null(source_set);
+    assert_non_null(copied_set);
+    assert_int_equal(bf_hashset_size(&source_set->elems), 1);
+    assert_int_equal(bf_hashset_size(&copied_set->elems), 2);
+}
+
+static void copy_set_matcher_survives_source_free(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    const struct bf_rule *rule;
+    const struct bf_set *set;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    bf_chain_free(&source);
+
+    rule = bf_list_get_at(&copy->rules, 0);
+    assert_non_null(rule);
+    set =
+        bf_chain_get_set_for_matcher(copy, bf_list_get_at(&rule->matchers, 0));
+    assert_non_null(set);
+    assert_string_equal(set->name, "addresses");
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+}
+
+static void copy_preserves_disabled_empty_set_rule(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    const struct bf_rule *rule;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    rule = bf_list_get_at(&copy->rules, 0);
+    assert_non_null(rule);
+    assert_true(rule->disabled);
+}
+
+static void copy_preserves_negated_empty_set_rule(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{}", true);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    const struct bf_rule *rule;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    rule = bf_list_get_at(&copy->rules, 0);
+    assert_non_null(rule);
+    assert_false(rule->disabled);
+    assert_true(bf_matcher_get_negate(bf_list_get_at(&rule->matchers, 0)));
+}
+
+static void copy_missing_set_leaves_destination_unchanged(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *destination = bft_chain_dummy(false);
+    struct bf_chain *original = destination;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_non_null(destination);
+    assert_ok(bf_hashset_delete(&source->sets,
+                                bf_chain_get_set_by_name(source, "addresses")));
+
+    assert_err(bf_chain_new_from_copy(&destination, source));
+    assert_ptr_equal(destination, original);
+    assert_true(bf_list_is_empty(&destination->rules));
+    assert_true(bf_hashset_is_empty(&destination->sets));
+}
+
 static void dump(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain0 = bft_chain_dummy(false);
@@ -606,6 +740,13 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(new_and_free),
         cmocka_unit_test(pack_and_unpack),
+        cmocka_unit_test(copy_preserves_configuration),
+        cmocka_unit_test(copy_resets_chain_counters),
+        cmocka_unit_test(copy_set_updates_do_not_change_source),
+        cmocka_unit_test(copy_set_matcher_survives_source_free),
+        cmocka_unit_test(copy_preserves_disabled_empty_set_rule),
+        cmocka_unit_test(copy_preserves_negated_empty_set_rule),
+        cmocka_unit_test(copy_missing_set_leaves_destination_unchanged),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),

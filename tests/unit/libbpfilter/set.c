@@ -102,8 +102,15 @@ static void new_and_free(void **state)
     assert_ok(bf_set_new_from_copy(&copy, other));
     assert_true(bf_set_is_anonymous(copy));
     assert_string_equal(copy->name, other->name);
-    assert_ptr_not_equal(copy->name, other->name);
     assert_true(bft_set_eq_ordered(copy, other));
+
+    // After the source is freed, the copy must retain its anonymous name
+    // and original element while accepting another element.
+    bf_set_free(&other);
+
+    assert_true(bf_set_is_anonymous(copy));
+    assert_ok(bf_set_add_elem_raw(copy, "203.0.113.1"));
+    assert_int_equal(bf_hashset_size(&copy->elems), 2);
 }
 
 static void new_with_multiple_keys(void **state)
@@ -303,6 +310,90 @@ static void pack_and_unpack_anon(void **state)
 
     assert_ok(bf_set_new_from_copy(&copy, source));
     assert_true(bft_set_eq_ordered(source, copy));
+}
+
+static void copy_preserves_configuration(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&source, "addresses",
+                                  "(ip4.saddr, tcp.dport)",
+                                  "{192.0.2.1, 80; 192.0.2.2, 443}"));
+    source->min_size = 16;
+
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    assert_true(bft_set_eq_ordered(source, copy));
+}
+
+static void copy_removal_does_not_change_source(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+    _free_bf_set_ struct bf_set *to_remove = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&source, "addresses", "(ip4.saddr)",
+                                  "{192.0.2.1; 192.0.2.2}"));
+    assert_ok(bf_set_new_from_raw(&to_remove, "removed", "(ip4.saddr)",
+                                  "{192.0.2.1}"));
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    assert_ok(bf_set_remove_many(copy, &to_remove));
+
+    assert_int_equal(bf_hashset_size(&source->elems), 2);
+    assert_int_equal(bf_hashset_size(&copy->elems), 1);
+}
+
+static void copy_accepts_elements_after_source_free(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&source, "addresses", "(ip4.saddr)",
+                                  "{192.0.2.1}"));
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    bf_set_free(&source);
+    assert_ok(bf_set_add_elem_raw(copy, "192.0.2.2"));
+    assert_ok(bf_set_add_elem_raw(copy, "192.0.2.1"));
+
+    assert_int_equal(bf_hashset_size(&copy->elems), 2);
+}
+
+static void copy_network_set_survives_source_free(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&source, "networks", "(ip4.snet)",
+                                  "{192.0.2.0/24; 198.51.100.0/24}"));
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    assert_true(bft_set_eq_ordered(source, copy));
+    bf_set_free(&source);
+    assert_ok(bf_set_add_elem_raw(copy, "203.0.113.0/24"));
+
+    assert_int_equal(bf_hashset_size(&copy->elems), 3);
+}
+
+static void copy_empty_set_accepts_elements_after_source_free(void **state)
+{
+    _free_bf_set_ struct bf_set *source = NULL;
+    _free_bf_set_ struct bf_set *copy = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&source, "addresses", "(ip4.saddr)", "{}"));
+    assert_ok(bf_set_new_from_copy(&copy, source));
+    bf_set_free(&source);
+    assert_ok(bf_set_add_elem_raw(copy, "192.0.2.1"));
+
+    assert_int_equal(bf_hashset_size(&copy->elems), 1);
 }
 
 static void pack_and_unpack_err(void **state)
@@ -746,6 +837,11 @@ int main(void)
         cmocka_unit_test(reserve),
         cmocka_unit_test(pack_and_unpack_named),
         cmocka_unit_test(pack_and_unpack_anon),
+        cmocka_unit_test(copy_preserves_configuration),
+        cmocka_unit_test(copy_removal_does_not_change_source),
+        cmocka_unit_test(copy_accepts_elements_after_source_free),
+        cmocka_unit_test(copy_network_set_survives_source_free),
+        cmocka_unit_test(copy_empty_set_accepts_elements_after_source_free),
         cmocka_unit_test(pack_and_unpack_err),
         cmocka_unit_test(pack_and_unpack_empty),
         cmocka_unit_test(dump),

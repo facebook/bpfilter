@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bpfilter/core/hashset.h"
 #include "bpfilter/core/list.h"
 #include "bpfilter/dump.h"
 #include "bpfilter/helper.h"
@@ -575,36 +576,50 @@ int bf_chain_apply_set_delta(struct bf_chain *chain, const char *set_name,
 
 int bf_chain_new_from_copy(struct bf_chain **dest, const struct bf_chain *src)
 {
-    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
-    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
-    const void *data;
-    size_t data_len;
+    _free_bf_chain_ struct bf_chain *copy = NULL;
     int r;
 
     assert(dest);
     assert(src);
 
-    // For now, we do a copy by serializing and deserializing the struct.
-    // @todo Implement deep copy to avoid serialization overhead.
-    r = bf_wpack_new(&wpack);
-    if (r)
-        return bf_err_r(r, "failed to create wpack for chain serialization");
+    if (src->hook < 0 || src->hook >= _BF_HOOK_MAX)
+        return bf_err_r(-EINVAL, "unknown source chain hook type");
 
-    r = bf_chain_pack(src, wpack);
+    r = bf_chain_new(&copy, src->name, src->hook, src->policy, NULL, NULL);
     if (r)
-        return bf_err_r(r, "failed to serialize chain");
+        return r;
 
-    r = bf_wpack_get_data(wpack, &data, &data_len);
+    r = bf_hashset_reserve(&copy->sets, bf_hashset_size(&src->sets));
     if (r)
-        return bf_err_r(r, "failed to get serialized chain data");
+        return r;
 
-    r = bf_rpack_new(&rpack, data, data_len);
-    if (r)
-        return bf_err_r(r, "failed to create rpack for chain deserialization");
+    bf_hashset_foreach (&src->sets, set_node) {
+        _free_bf_set_ struct bf_set *set = NULL;
 
-    r = bf_chain_new_from_pack(dest, bf_rpack_root(rpack));
-    if (r)
-        return bf_err_r(r, "failed to deserialize chain");
+        r = bf_set_new_from_copy(&set, set_node->data);
+        if (r)
+            return r;
+
+        r = bf_hashset_add(&copy->sets, (void **)&set);
+        if (r)
+            return r;
+    }
+
+    bf_list_foreach (&src->rules, rule_node) {
+        _free_bf_rule_ struct bf_rule *rule = NULL;
+
+        r = bf_rule_new_from_copy(&rule, bf_list_node_get_data(rule_node));
+        if (r)
+            return r;
+
+        r = bf_chain_add_rule(copy, rule);
+        if (r)
+            return r;
+
+        TAKE_PTR(rule);
+    }
+
+    *dest = TAKE_PTR(copy);
 
     return 0;
 }

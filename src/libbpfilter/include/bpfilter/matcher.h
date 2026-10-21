@@ -310,6 +310,18 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
 int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node);
 
 /**
+ * @brief Allocate an independent copy of a matcher and its payload.
+ *
+ * Set matchers copy the set name. The referenced set, if any, is not copied.
+ *
+ * @param dest Destination matcher. Unchanged on failure. Can't be NULL.
+ * @param src Matcher to copy. Can't be NULL.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_matcher_new_from_copy(struct bf_matcher **dest,
+                             const struct bf_matcher *src);
+
+/**
  * Deinitialise and deallocate a matcher.
  *
  * @param matcher Matcher. Can't be NULL.
