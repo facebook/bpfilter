@@ -13,6 +13,7 @@
 #include <format>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <span>
 #include <stdexcept>
 #include <unistd.h>
@@ -351,6 +352,64 @@ void chain_set__ip4_saddr__x_elem_set(::benchmark::State &state)
 }
 
 BENCHMARK(chain_set__ip4_saddr__x_elem_set)
+    ->Arg(1 << 3)
+    ->Arg(1 << 16)
+    ->Arg(1 << 20)
+    ->Unit(::benchmark::kMillisecond);
+
+void chain_set__1000_ip4_saddr__x_elem_sets_c_l(::benchmark::State &state)
+{
+    constexpr uint32_t nrules = 1000;
+    const uint32_t nelems = state.range(0);
+    Chain chain("bf_bench_generation", BF_HOOK_XDP, BF_VERDICT_ACCEPT);
+
+    for (uint32_t i = 0; i < 4; ++i) {
+        Set set({BF_MATCHER_IP4_SADDR});
+
+        for (uint32_t j = 0; j < nelems; ++j)
+            set << uint32ToIp4(j);
+
+        chain << set;
+        chain << Rule(BF_VERDICT_DROP, bf_counter(), 0, {Matcher::in(set)});
+    }
+
+    // Keep the random IPv4 matches identical across runs and set sizes.
+    std::mt19937 random(0);
+    for (uint32_t i = 4; i < nrules; ++i) {
+        // Only log from the 5th rule to trigger ring buffer creation
+        const uint8_t log = i == 4 ? BF_FLAG(BF_LOG_OPT_5_TUPLE) : 0;
+        chain << Rule(BF_VERDICT_DROP, bf_counter(), log,
+                      {Matcher(BF_MATCHER_IP4_SADDR, BF_MATCHER_EQ,
+                               uint32ToIp4(static_cast<uint32_t>(random())))});
+    }
+
+    auto chainp = chain.get();
+
+    // Measure CPU time for the C API call, including generation and loading.
+    // Construct the input once and exclude unloading between iterations.
+    for (auto _: state) {
+        int ret = bf_chain_set(chainp.get(), NULL);
+        if (ret < 0) {
+            state.SkipWithError("failed to generate and load chain");
+            break;
+        }
+
+        state.PauseTiming();
+        ret = bf_chain_flush(chain.name().c_str());
+        if (ret < 0) {
+            state.SkipWithError("failed to flush chain");
+            break;
+        }
+        state.ResumeTiming();
+    }
+
+    bm::set_flags(state,
+                  {.use_set = true, .use_log = true, .userspace_only = true});
+    state.SetLabel(
+        "load chain, 1000 ip4.saddr rules with counters, 4 sets, logging");
+}
+
+BENCHMARK(chain_set__1000_ip4_saddr__x_elem_sets_c_l)
     ->Arg(1 << 3)
     ->Arg(1 << 16)
     ->Arg(1 << 20)
