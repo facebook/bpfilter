@@ -413,6 +413,29 @@ static void new_from_raw(void **state)
     assert_int_equal(bf_hashset_size(&set->elems), 2);
 }
 
+static void new_from_raw_blank_elements(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    // Blank elements are skipped, even before the first element
+    assert_ok(bf_set_new_from_raw(&set, "test_blank", "(ip4.saddr)", "{ }"));
+    assert_int_equal(bf_hashset_size(&set->elems), 0);
+
+    bf_set_free(&set);
+
+    assert_ok(
+        bf_set_new_from_raw(&set, "test_blank", "(ip4.saddr)", "{ ; 1.2.3.4}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+
+    bf_set_free(&set);
+
+    assert_ok(bf_set_new_from_raw(&set, "test_blank", "(ip4.saddr)",
+                                  "{ \n1.2.3.4\n}"));
+    assert_int_equal(bf_hashset_size(&set->elems), 1);
+}
+
 static void new_from_raw_multiple_keys(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
@@ -728,6 +751,7 @@ int main(void)
         cmocka_unit_test(dump),
         cmocka_unit_test(dump_empty),
         cmocka_unit_test(new_from_raw),
+        cmocka_unit_test(new_from_raw_blank_elements),
         cmocka_unit_test(new_from_raw_multiple_keys),
         cmocka_unit_test(new_from_raw_port_range),
         cmocka_unit_test(new_from_raw_port_range_boundaries),

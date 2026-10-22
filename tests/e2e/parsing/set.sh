@@ -53,6 +53,8 @@ ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (  
     3, echo-reply;
     2, echo-request
 } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr) in { } counter DROP"
+${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.saddr) in { ; 192.168.1.1 } counter DROP"
 
 (! ${BFCLI} ruleset set --dry-run --from-str "chain xdp BF_HOOK_XDP ACCEPT rule (ip4.snet, ip4.dnet) in {
     192.168.1.1/24, 192.167.1.1/24;
