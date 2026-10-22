@@ -420,6 +420,7 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
 
     tmp = _raw_payload;
     while ((raw_elem = strtok_r(tmp, "{};\n", &saveptr))) {
+        tmp = NULL;
         raw_elem = bf_trim(raw_elem);
 
         /* While strtok_r() won't return empty token, the trimmed version of the
@@ -430,8 +431,6 @@ int bf_set_new_from_raw(struct bf_set **set, const char *name,
         r = bf_set_add_elem_raw(_set, raw_elem);
         if (r)
             return bf_err_r(r, "failed to parse set element '%s'", raw_elem);
-
-        tmp = NULL;
     }
 
     *set = TAKE_PTR(_set);
