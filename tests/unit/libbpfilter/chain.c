@@ -516,7 +516,7 @@ static void named_reference_stability(void **state)
     (void)state;
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT, NULL,
-                           NULL));
+                           NULL, NULL));
     assert_ok(
         bf_set_new_from_raw(&target, "target", "(ip4.saddr)", "{192.0.2.1}"));
     assert_ok(
