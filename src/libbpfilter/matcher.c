@@ -1378,7 +1378,7 @@ static int _bf_matcher_new(struct bf_matcher **matcher,
     if (payload_len > SIZE_MAX - sizeof(*_matcher))
         return -E2BIG;
 
-    _matcher = malloc(sizeof(struct bf_matcher) + payload_len);
+    _matcher = calloc(1, sizeof(struct bf_matcher) + payload_len);
     if (!_matcher)
         return -ENOMEM;
 
@@ -1429,7 +1429,7 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
                         bf_matcher_type_to_str(type), bf_matcher_op_to_str(op));
     }
 
-    _matcher = malloc(sizeof(*_matcher) + ops->ref_payload_size);
+    _matcher = calloc(1, sizeof(*_matcher) + ops->ref_payload_size);
     if (!_matcher)
         return -ENOMEM;
 
