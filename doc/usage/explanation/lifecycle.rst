@@ -15,14 +15,14 @@ What happens once ``bfcli`` exits? Nothing: there is no daemon. The BPF programs
 Replacing a chain
 -----------------
 
-If you want to replace a chain that is filtering traffic, ``chain set`` is not what you are looking for. ``chain update`` will atomically replace the existing chain with the new one: the chain stays attached, and every packet is processed either by the old chain or by the new one. The new chain must use the same name and the same hook. Its hook options are ignored, and the counters are reset. If the new chain fails to load, the existing one is left unchanged.
+If you want to replace a chain that is filtering traffic, ``chain set`` is not what you are looking for. ``chain update`` will atomically replace the existing chain with the new one: the chain stays attached, and every packet is processed either by the old chain or by the new one. The new chain must use the same name and the same hook. Its hook options are ignored, and the counters are reset. A running ``chain logs`` keeps printing the chain's log entries. If the new chain fails to load, the existing one is left unchanged.
 
 If you want to modify the hook options, you will have to use ``chain set``. ``ruleset set`` behaves the same way for the whole ruleset: all the existing chains are removed, then the new ones are loaded. It's not atomic, and if one of the new chains fails to load or attach, no chain is left.
 
 Updating a set
 --------------
 
-What if you only want to change the content of a named set? ``chain update-set`` will add or remove elements atomically, and preserve the counters. A blocklist is a good example: the addresses change over time, but the rule using them and the hook the chain is attached to don't.
+What if you only want to change the content of a named set? ``chain update-set`` will add or remove elements atomically and preserve the counters, and a running ``chain logs`` keeps printing the chain's log entries. A blocklist is a good example: the addresses change over time, but the rule using them and the hook the chain is attached to don't.
 
 Removing a chain
 ----------------

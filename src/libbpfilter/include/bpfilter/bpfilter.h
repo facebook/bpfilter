@@ -122,6 +122,14 @@ int bf_chain_prog_fd(const char *name);
 /**
  * @brief Get the file descriptor of a chain's logs buffer.
  *
+ * The file descriptor keeps receiving the chain's logs after
+ * `bf_chain_update()` and `bf_chain_update_set()`, until the chain is
+ * replaced (`bf_chain_set()`, `bf_ruleset_set()`) or removed
+ * (`bf_chain_flush()`, `bf_ruleset_flush()`). The logs buffer is kept as long
+ * as a rule logs, even if bpfilter disabled it (e.g. its set is empty); an
+ * update that removes every logging rule removes the logs buffer. Each log
+ * entry's rule index refers to the version of the chain that published it.
+ *
  * @pre
  * - `name` is a non-NULL pointer to a C-string.
  *
