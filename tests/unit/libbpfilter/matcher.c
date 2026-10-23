@@ -9,6 +9,7 @@
 #include <bpfilter/helper.h>
 #include <bpfilter/hook.h>
 #include <bpfilter/matcher.h>
+#include <bpfilter/runtime.h>
 #include <bpfilter/set.h>
 
 #include "bpfilter/dump.h"
@@ -1284,6 +1285,21 @@ static void ipv6_network_invalid(void **state)
                                        BF_MATCHER_IN, "gggg::/64", false));
 }
 
+static void ipv6_network_padding(void **state)
+{
+    struct bf_ip6_lpm_key key = {._padding = UINT32_MAX};
+    const struct bf_matcher_ops *ops;
+
+    (void)state;
+
+    // Set elements are compared byte for byte, so the padding must be zeroed
+    ops = bf_matcher_get_ops(BF_MATCHER_IP6_SNET, BF_MATCHER_IN);
+    assert_non_null(ops);
+    assert_ok(
+        ops->parse(BF_MATCHER_IP6_SNET, BF_MATCHER_IN, &key, "2001:db8::/64"));
+    assert_int_equal(key._padding, 0);
+}
+
 static void icmp_code(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -2105,6 +2121,7 @@ int main(void)
         cmocka_unit_test(ipv6_network_matchers),
         cmocka_unit_test(ipv4_network_invalid),
         cmocka_unit_test(ipv6_network_invalid),
+        cmocka_unit_test(ipv6_network_padding),
         cmocka_unit_test(icmp_code),
         cmocka_unit_test(icmpv6_code),
         cmocka_unit_test(ip6_dscp),

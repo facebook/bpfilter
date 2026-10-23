@@ -630,6 +630,8 @@ static int _bf_parse_ipv6_net(enum bf_matcher_type type, enum bf_matcher_op op,
     if (*endptr != '\0' || addr->prefixlen > 128)
         goto err;
 
+    addr->_padding = 0;
+
     return 0;
 
 err:
