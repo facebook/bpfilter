@@ -323,7 +323,7 @@ int bf_set_add_elem_raw(struct bf_set *set, const char *raw_elem)
                         raw_elem);
     }
 
-    elem = malloc(set->elem_size);
+    elem = calloc(1, set->elem_size);
     if (!elem)
         return bf_err_r(-ENOMEM, "failed to allocate a new set element");
 
