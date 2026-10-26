@@ -264,8 +264,14 @@ static int _bf_link_update_nf(struct bf_link *link, int prog_fd)
         return bf_err_r(r, "failed to create nf_inet6 BPF link");
     new_inet6_fd = r;
 
-    // Detach old links - safe now that new ones are active
+    /* Detach old links - safe now that new ones are active. They were
+     * unpinned, so closing them only drops a reference: they would stay
+     * attached until bpffs releases the pinned inode, the old program would
+     * keep filtering, and its priority would stay busy. */
+    (void)bf_bpf_link_detach(link->fd);
     closep(&link->fd);
+    if (link->fd_extra >= 0)
+        (void)bf_bpf_link_detach(link->fd_extra);
     closep(&link->fd_extra);
 
     // Update link with new file descriptors
