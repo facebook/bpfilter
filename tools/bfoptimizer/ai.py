@@ -9,7 +9,7 @@ import claude_agent_sdk
 import jinja2
 
 from .log import log_message
-from .models import Attempt, History, Model
+from .models import Attempt, Effort, History, Model
 
 _env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(pathlib.Path(__file__).parent / "templates"),
@@ -124,9 +124,12 @@ async def query_implementation(history: History, failures) -> None:
 
 def generate_commit_message(plan: str, diff: str) -> str:
     response = _anthropic_client().messages.create(
-        model=Model.CLAUDE_HAIKU_4_5.value,
+        model=Model.CLAUDE_HAIKU_5_5.value,
         max_tokens=500,
+        # Reserve the output budget for the commit message.
+        thinking={"type": "disabled"},
         output_config={
+            "effort": Effort.LOW.value,
             "format": {
                 "type": "json_schema",
                 "schema": {
@@ -138,7 +141,7 @@ def generate_commit_message(plan: str, diff: str) -> str:
                     "required": ["subject", "body"],
                     "additionalProperties": False,
                 },
-            }
+            },
         },
         messages=[
             {
