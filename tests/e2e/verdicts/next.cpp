@@ -120,12 +120,6 @@ static void next_is_terminal(void **state)
 
 int main()
 {
-    int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
-    if (r != 0) {
-        bf_err("failed to setup bpfilter context: %s", strerror(-r));
-        return 1;
-    }
-
     const std::vector<CMUnitTest> tests = {
         cmocka_unit_test_setup_teardown(next_rule_verdict,
                                         bft_matcher_test_setup,
@@ -137,8 +131,6 @@ int main()
                                         bft_matcher_test_teardown),
     };
 
-    r = _cmocka_run_group_tests("NEXT verdict", tests.data(), tests.size(),
-                                nullptr, nullptr);
-    bf_ctx_teardown();
-    return r;
+    return _cmocka_run_group_tests("NEXT verdict", tests.data(), tests.size(),
+                                   bft_e2e_setup, bft_e2e_teardown);
 }

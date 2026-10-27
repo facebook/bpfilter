@@ -5,6 +5,8 @@
 
 #include "test.hpp"
 
+#include <filesystem>
+
 extern "C" {
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
@@ -15,6 +17,47 @@ extern "C" {
 #include <bpfilter/bpf.h>
 #include <bpfilter/bpfilter.h>
 #include <bpfilter/flavor.h>
+}
+
+int bft_e2e_setup(void **state)
+{
+    char path[] = "/sys/fs/bpf/bftest_XXXXXX";
+    int r;
+
+    // A non-NULL cmocka group state overrides each test's initial_state.
+    // bf_ctx_setup owns a copy of the path, so leave the group state unchanged.
+    (void)state;
+
+    if (!mkdtemp(path))
+        return bf_err_r(-errno, "failed to create test BPF directory");
+
+    r = bf_ctx_setup(false, path, 0);
+    if (r)
+        rmdir(path);
+
+    return r;
+}
+
+int bft_e2e_teardown(void **state)
+{
+    const char *bpffs_path = bf_ctx_get_bpffs_path();
+    std::error_code error;
+    int r;
+
+    (void)state;
+
+    if (!bpffs_path)
+        return 0;
+
+    std::string path(bpffs_path);
+
+    r = bf_ruleset_flush();
+    bf_ctx_teardown();
+    std::filesystem::remove_all(path, error);
+    if (error && !r)
+        r = bf_err_r(-error.value(), "failed to remove test BPF directory");
+
+    return r;
 }
 
 /* Mimic the kernel's struct nf_hook_state layout for BPF_PROG_TEST_RUN

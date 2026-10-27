@@ -186,12 +186,6 @@ static void tupleLogRateEligibility(void **state)
 
 int main()
 {
-    int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
-    if (r != 0) {
-        bf_err("failed to setup bpfilter context: %s", std::strerror(-r));
-        return 1;
-    }
-
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(tupleLogging, bft_matcher_test_setup,
                                         bft_matcher_test_teardown),
@@ -203,8 +197,5 @@ int main()
                                         bft_matcher_test_teardown),
     };
 
-    r = cmocka_run_group_tests(tests, nullptr, nullptr);
-    bf_ctx_teardown();
-
-    return r;
+    return cmocka_run_group_tests(tests, bft_e2e_setup, bft_e2e_teardown);
 }
