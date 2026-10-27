@@ -16,16 +16,17 @@ import git
 from tests.benchmarks.bfbencher import compare_table
 
 from .ai import generate_commit_message, query_implementation, query_proposal
+from .api import api_key, models
 from .build import MakeTarget, benchmark, configure, make
 from .log import RenderAs
 from .models import (
+    DEFAULT_MODEL,
     AttemptResult,
     AttemptStep,
     CommitInfo,
     Config,
     Effort,
     History,
-    Model,
 )
 from .tui import Optimizer
 
@@ -139,9 +140,7 @@ async def _optimization_loop(history: History) -> None:
 
                 await asyncio.to_thread(repo.git.add, ".")
                 diff = await asyncio.to_thread(repo.git.diff, "--staged")
-                commit_msg = await asyncio.to_thread(
-                    generate_commit_message, attempt.plan, diff
-                )
+                commit_msg = await generate_commit_message(history, attempt.plan, diff)
                 log.info(f"Commit: {commit_msg}")
                 commit = await asyncio.to_thread(repo.index.commit, commit_msg)
 
@@ -197,6 +196,31 @@ async def _optimization_loop(history: History) -> None:
         log.info("Optimization completed!")
 
 
+def _check_models(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Reject the model IDs that would fail only once their phase starts."""
+
+    try:
+        catalog = models()
+    except RuntimeError as error:
+        parser.error(str(error))
+
+    for option, model, needs_tools in (
+        ("--proposal-model", args.proposal_model, True),
+        ("--impl-model", args.impl_model, True),
+        ("--commit-model", args.commit_model, False),
+    ):
+        # Presets ("@preset/...") and variants (":nitro") are not catalog
+        # entries: check the model they apply to, if the ID names one.
+        base = model.partition("@")[0]
+        if not base:
+            continue
+        entry = catalog.get(base) or catalog.get(base.partition(":")[0])
+        if entry is None:
+            parser.error(f"{option}: {model} is not an OpenRouter model ID")
+        if needs_tools and "tools" not in entry.get("supported_parameters", []):
+            parser.error(f"{option}: {model} does not support tool calling")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="bfoptimizer",
@@ -226,17 +250,21 @@ def main() -> None:
     )
     _ = ai_g.add_argument(
         "--proposal-model",
-        type=Model,
-        default=Model.CLAUDE_OPUS_5_5,
-        choices=list(Model),
-        help="Model for the proposal phase (default: %(default)s).",
+        default=DEFAULT_MODEL,
+        metavar="MODEL",
+        help="OpenRouter model ID for proposals (default: %(default)s).",
     )
     _ = ai_g.add_argument(
         "--impl-model",
-        type=Model,
-        default=Model.CLAUDE_OPUS_5_5,
-        choices=list(Model),
-        help="Model for the implementation phase (default: %(default)s).",
+        default=DEFAULT_MODEL,
+        metavar="MODEL",
+        help="OpenRouter model ID for implementation (default: %(default)s).",
+    )
+    _ = ai_g.add_argument(
+        "--commit-model",
+        default=None,
+        metavar="MODEL",
+        help="OpenRouter model ID for commit messages (default: --impl-model).",
     )
     _ = ai_g.add_argument(
         "--effort",
@@ -304,6 +332,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    try:
+        api_key()
+    except RuntimeError as error:
+        parser.error(str(error))
+
+    if args.commit_model is None:
+        args.commit_model = args.impl_model
     if args.build_dir is None:
         args.build_dir = args.sources_dir / "build"
     if args.benchmark_exclude_flags is None:
@@ -327,8 +362,11 @@ def main() -> None:
             print(repo.git.status("--short"), file=sys.stderr)
             sys.exit(1)
 
+    _check_models(parser, args)
+
     history = History(Config(**vars(args)))
     Optimizer(history, lambda: _optimization_loop(history)).run()
 
 
-main()
+if __name__ == "__main__":
+    main()
