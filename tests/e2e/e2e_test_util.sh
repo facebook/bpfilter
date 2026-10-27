@@ -98,6 +98,9 @@ make_sandbox() {
 destroy_sandbox() {
     echo "Cleanup the sandbox"
 
+    # Remove the veth pair even if setup failed before moving the peer.
+    ip link delete "${VETH_HOST}" 2>/dev/null || true
+
     # netns should be unmounted AND deleted
     umount /var/run/netns/${NETNS_NAME} || true
     ip netns delete ${NETNS_NAME} || true
