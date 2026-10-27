@@ -16,15 +16,7 @@ import git
 from tests.benchmarks.bfbencher import Report
 
 
-class Model(enum.StrEnum):
-    CLAUDE_FABLE_5_1 = "claude-fable-5-1"
-    CLAUDE_OPUS_5_5 = "claude-opus-5-5"
-    CLAUDE_SONNET_5_5 = "claude-sonnet-5-5"
-    CLAUDE_HAIKU_5_5 = "claude-haiku-5-5"
-
-    def agent_options(self, effort: "Effort") -> dict:
-        """Return kwargs to unpack into ClaudeAgentOptions for this model and effort."""
-        return {"effort": effort.value, "thinking": {"type": "adaptive"}}
+DEFAULT_MODEL = "anthropic/claude-opus-5.5"
 
 
 class Effort(enum.StrEnum):
@@ -43,8 +35,9 @@ class Config:
     build_dir: pathlib.Path
 
     iterations: int
-    proposal_model: Model
-    impl_model: Model
+    proposal_model: str
+    impl_model: str
+    commit_model: str
     effort: Effort
     hint: str | None
     benchmark_host: str | None
@@ -194,9 +187,7 @@ class History:
         """
         attempts = self.attempts if up_to is None else self.attempts[: up_to + 1]
         successes = [
-            attempt
-            for attempt in attempts
-            if attempt.result == AttemptResult.SUCCESS
+            attempt for attempt in attempts if attempt.result == AttemptResult.SUCCESS
         ]
         if not successes:
             return 0.0
