@@ -33,7 +33,7 @@ If you want to start contributing to bpfilter, the best way to get to know the c
 
 Once you know your way around the structure of the project, feel free to continue with the ``@todo``, or jump on a bigger issue in the `GitHub issues tracker <https://github.com/facebook/bpfilter/issues>`_.
 
-You are welcome to reach out to qde@naccy.de if you need help, or have any question!
+Join the `bpfilter Slack workspace <https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA>`_ to ask questions or discuss contributions. You can also email qde@naccy.de.
 
 
 To do

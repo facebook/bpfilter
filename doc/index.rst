@@ -29,6 +29,7 @@
    :caption: External
 
    GitHub repository <https://github.com/facebook/bpfilter>
+   Slack community <https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA>
    external/benchmarks/index
    external/coverage/index
 
@@ -76,3 +77,9 @@ Want to know more about **bpfilter**?
 - **Work on bpfilter**: the :doc:`developer documentation <developers/build>` covers building, contributing, and the code base.
 
 You can also watch our talk at `Scale <https://www.youtube.com/watch?v=fzaPEm4PXn0>`_!
+
+.. raw:: html
+
+   <h5>Community</h5>
+
+Join the `bpfilter Slack workspace <https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA>`_ to ask questions, discuss development, and share feedback.
