@@ -269,7 +269,8 @@ static const struct bfc_opts_cmd _bfc_opts_cmds[] = {
         .name = "bfcli chain update-set",
         .object = BFC_OBJECT_CHAIN,
         .action = BFC_ACTION_UPDATE_SET,
-        .valid_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME,
+        .valid_opts = BF_FLAGS(BFC_OPT_HELP, BFC_OPT_USAGE, BFC_OPT_VERSION,
+                               BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME,
                                BFC_OPT_SET_ADD, BFC_OPT_SET_REMOVE),
         .required_opts = BF_FLAGS(BFC_OPT_CHAIN_NAME, BFC_OPT_SET_NAME),
         .doc = "Update a set in a chain\vAtomically update the content of a "
