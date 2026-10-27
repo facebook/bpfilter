@@ -14,6 +14,23 @@ add_custom_target(test_bin
     COMMENT "Building all test binaries"
 )
 
+if (CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+    # Make has no jobserver for -j1. Pass its normalized -jN value to CTest
+    # explicitly, rather than letting bare --parallel choose the CPU count.
+    string(CONCAT BF_TEST_LAUNCHER
+        "CTEST_PARALLEL_LEVEL="
+        "$(if $(filter -j,$(MAKEFLAGS)),${CPU_COUNT},"
+        "$(or $(patsubst -j%,%,$(firstword $(filter -j%,$(MAKEFLAGS)))),1))"
+    )
+
+    # CMake creates the built-in test target after configuration, so it can
+    # only inherit a launcher from the top-level directory. Every custom
+    # command gets the variable, but only CTest reads it.
+    set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY RULE_LAUNCH_CUSTOM
+        "${BF_TEST_LAUNCHER}"
+    )
+endif()
+
 if (${WITH_COVERAGE})
     include(ProcessorCount)
 
