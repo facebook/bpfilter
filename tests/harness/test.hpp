@@ -50,6 +50,12 @@ int bft_matcher_test_setup(void **state);
 /** @brief Per-test teardown: flush the ruleset to clean up after the test. */
 int bft_matcher_test_teardown(void **state);
 
+/** @brief Set up an end-to-end test group with a unique BPF directory. */
+int bft_e2e_setup(void **state);
+
+/** @brief Flush the test group's ruleset and remove its BPF directory. */
+int bft_e2e_teardown(void **state);
+
 /**
  * @brief Build a chain from a `bf::Chain` expression, install it, and assert
  * success.
@@ -376,12 +382,6 @@ public:
 
     int run()
     {
-        int r = bf_ctx_setup(false, "/sys/fs/bpf", 0);
-        if (r != 0) {
-            bf_err("failed to setup bpfilter context: %s", strerror(-r));
-            return 1;
-        }
-
         std::vector<CMUnitTest> tests;
         tests.reserve(_tests.size() + 1);
 
@@ -401,9 +401,8 @@ public:
                             .initial_state = static_cast<void *>(&test)});
         }
 
-        r = _cmocka_run_group_tests(bf_matcher_type_to_str(_type), tests.data(),
-                                    tests.size(), nullptr, nullptr);
-        bf_ctx_teardown();
-        return r;
+        return _cmocka_run_group_tests(bf_matcher_type_to_str(_type),
+                                       tests.data(), tests.size(),
+                                       bft_e2e_setup, bft_e2e_teardown);
     }
 };

@@ -30,6 +30,10 @@ tests also run in separate host network and mount namespaces, so their routes
 and addresses do not conflict. The harness removes these resources when the
 test ends.
 
+C++ end-to-end tests use separate directories in bpffs, so flushing one test's
+ruleset cannot remove another test's chains. The group fixtures flush the
+ruleset, tear down the context, and remove the directory when the test ends.
+
 Test coverage is disabled by default, to enable it, configure CMake with the ``-DWITH_COVERAGE=1`` flag. Then, you can generate a coverage report using: ``make -C $BUILD_DIR coverage doc``.
 
 
