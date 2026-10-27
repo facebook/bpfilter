@@ -5,9 +5,7 @@
 
 make_sandbox
 
-CGROUP_PATH=/sys/fs/cgroup/bftest_${_TEST_NAME}
 mkdir -p ${CGROUP_PATH}
-trap 'ret=$?; rmdir ${CGROUP_PATH} 2>/dev/null; cleanup; exit ${ret}' EXIT
 
 # Join the test cgroup, then send one UDP packet to address $2 from a new
 # socket of family $1. An AF_INET6 socket has IPV6_V6ONLY turned off, so it

@@ -64,9 +64,7 @@ ${BFCLI} ruleset set --dry-run --from-str "chain test BF_HOOK_CGROUP_SOCK_ADDR_C
 
 make_sandbox
 
-CGROUP_PATH=/sys/fs/cgroup/bftest_${_TEST_NAME}
 mkdir -p ${CGROUP_PATH}
-trap 'ret=$?; rmdir ${CGROUP_PATH} 2>/dev/null; cleanup; exit ${ret}' EXIT
 
 tcp4_connect() {
     ${FROM_NS} bash -c "echo \$\$ > ${CGROUP_PATH}/cgroup.procs && echo > /dev/tcp/$1/$2" 2>/dev/null

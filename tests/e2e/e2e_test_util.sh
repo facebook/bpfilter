@@ -3,20 +3,18 @@
 
 set -eux
 
-TEST_PATH=
 FROM_NS=
 
-# Derive resources names from the test name. Allows for pre-test cleanup
-# and parallel testing of different tests.
-_TEST_NAME=$(basename "$0" .sh)
-_TEST_HASH=$(printf '%s' "$_TEST_NAME" | cksum | awk '{print $1}')
+# Reserve a unique suffix for every invocation, including repeated runs of the
+# same test. Eight characters keep the veth names within Linux's 15-byte limit.
+WORKDIR=$(mktemp -d /tmp/bpfilter.e2e.XXXXXXXX)
+_SHORT_ID=${WORKDIR##*.}
+_TEST_HASH=$(printf '%s' "$_SHORT_ID" | cksum | awk '{print $1}')
 _OCTET2=$(( (_TEST_HASH >> 8) & 0xFF ))
 _OCTET3=$(( _TEST_HASH & 0xFF ))
-_SHORT_ID=$(( _TEST_HASH & 0xFFFF ))
 
-WORKDIR="/tmp/bpfilter.e2e.${_TEST_NAME}"
-
-NETNS_NAME="bftest_${_TEST_NAME}"
+NETNS_NAME="bftest_${_SHORT_ID}"
+CGROUP_PATH="/sys/fs/cgroup/bftest_${_SHORT_ID}"
 VETH_HOST="veth_h_${_SHORT_ID}"
 VETH_NS="veth_n_${_SHORT_ID}"
 HOST_IP="10.${_OCTET2}.${_OCTET3}.1/24"
@@ -69,6 +67,7 @@ make_sandbox() {
     FROM_NS="nsenter --mount=${WORKDIR}/ns/mnt --net=/var/run/netns/${NETNS_NAME}"
 
     # Create the veth
+    ip link set lo up
     ip link add ${VETH_HOST} type veth peer name ${VETH_NS}
     ip link set ${VETH_NS} netns ${NETNS_NAME}
 
@@ -109,6 +108,8 @@ destroy_sandbox() {
         umount ${WORKDIR}/ns/mnt || true
     umount ${WORKDIR}/ns || true
 
+    ip link del ${VETH_HOST} 2>/dev/null || true
+    rmdir ${CGROUP_PATH} 2>/dev/null || true
     rm -rf ${WORKDIR} || true
 }
 
@@ -134,6 +135,3 @@ trap 'cleanup 1; exit 1' INT TERM
 get_counter() {
     ${FROM_NS} bpftool map dump pinned ${WORKDIR}/bpf/bpfilter/$1/bf_cmap | jq ".[$2].values | map(.value.count) | add"
 }
-
-cleanup
-mkdir -p ${WORKDIR}
