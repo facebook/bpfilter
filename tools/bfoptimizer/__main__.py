@@ -227,14 +227,14 @@ def main() -> None:
     _ = ai_g.add_argument(
         "--proposal-model",
         type=Model,
-        default=Model.CLAUDE_OPUS_4_8,
+        default=Model.CLAUDE_OPUS_5_5,
         choices=list(Model),
         help="Model for the proposal phase (default: %(default)s).",
     )
     _ = ai_g.add_argument(
         "--impl-model",
         type=Model,
-        default=Model.CLAUDE_OPUS_4_8,
+        default=Model.CLAUDE_OPUS_5_5,
         choices=list(Model),
         help="Model for the implementation phase (default: %(default)s).",
     )
