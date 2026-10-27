@@ -761,7 +761,7 @@ int bfc_opts_parse(struct bfc_opts *opts, int argc, char **argv)
             .name = "with-bpf-token",
             .key = 't',
             .doc =
-                "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance mounted at /sys/fs/bpf.",
+                "Use a BPF token with the bpf() system calls. The token is created from the bpffs instance specified by --bpffs-path.",
             .group = -1,
         },
         {
