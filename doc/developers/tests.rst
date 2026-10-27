@@ -12,8 +12,8 @@ bpfilter uses CMake and CTest to manage and run its tests, a test suite is defin
 
 .. code-block:: shell
 
-    # Run all the tests
-    make -C $BUILD_DIR test_bin test
+    # Build and run all tests
+    make -C $BUILD_DIR test_bin test -j5
 
     # Run a specific test suite (unit, e2e, integration, check)
     make -C $BUILD_DIR $TEST_SUITE
@@ -23,6 +23,13 @@ bpfilter uses CMake and CTest to manage and run its tests, a test suite is defin
     ctest --test-dir $BUILD_DIR -R $TEST_NAME --output-on-failure
 
 Each test suite has a corresponding ``make`` target to build its binaries (e.g. ``make -C $BUILD_DIR test_bin`` builds all test binaries). By default, CTest doesn't build the test binaries when running tests.
+
+The ``test`` target and the suite targets will run as many tests at once as
+``make`` runs jobs: ``-j5`` runs up to five tests concurrently, a bare ``-j``
+uses all the CPUs, and ``-j1`` (or no ``-j`` at all) runs them one at a time.
+The job count can also come from ``MAKEFLAGS``, but ``-j`` on the command line
+takes precedence: with ``MAKEFLAGS=-j8`` in your environment, ``make test -j1``
+still runs one test at a time. This needs the Unix Makefiles generator.
 
 Each shell end-to-end test invocation uses unique temporary directories,
 network namespace names, interface names, and cgroup paths. Privileged shell
