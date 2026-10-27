@@ -159,6 +159,7 @@ install(
         ${CMAKE_CURRENT_SOURCE_DIR}/include/bpfilter
         ${CMAKE_CURRENT_BINARY_DIR}/include/bpfilter
     TYPE INCLUDE
+    FILES_MATCHING PATTERN "*.h"
 )
 
 install(
