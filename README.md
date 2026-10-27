@@ -15,7 +15,8 @@
 <p align="center">
     <a href="README.md#key-features">Key features</a> •
     <a href="README.md#quick-start">Quick start</a> •
-    <a href="https://bpfilter.io/">Documentation</a>
+    <a href="https://bpfilter.io/">Documentation</a> •
+    <a href="README.md#community">Community</a>
 </p>
 
 <p align="center">
@@ -66,6 +67,10 @@ sudo $BUILD_DIR/output/sbin/bfcli ruleset set --from-str "chain my_chain BF_HOOK
 ```
 
 The complete documentation is available on [bpfilter.io](https://bpfilter.io/).
+
+## Community
+
+Join the [bpfilter Slack workspace](https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA) to ask questions, discuss development, and share feedback.
 
 ## License
 
