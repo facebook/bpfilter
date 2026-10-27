@@ -31,19 +31,17 @@ ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_0
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_tc_1
 
 # cgroup_skb
+mkdir -p ${CGROUP_PATH}
 ping -c 1 -W 0.1 ${NS_IP_ADDR}
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_cgroup_skb_0 BF_HOOK_CGROUP_SKB_INGRESS ACCEPT"
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_cgroup_skb_1 BF_HOOK_CGROUP_SKB_INGRESS ACCEPT rule ip4.proto icmp log internet counter DROP"
-${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_skb_0 --option cgpath=/sys/fs/cgroup
-${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_skb_1 --option cgpath=/sys/fs/cgroup
-(! ping -c 1 -W 0.1 ${NS_IP_ADDR})
+${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_skb_0 --option cgpath=${CGROUP_PATH}
+${FROM_NS} ${BFCLI} chain attach --name chain_attach_cgroup_skb_1 --option cgpath=${CGROUP_PATH}
+(! bash -c "echo \$\$ > ${CGROUP_PATH}/cgroup.procs && exec ping -c 1 -W 0.1 ${NS_IP_ADDR}")
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_cgroup_skb_0
 ${FROM_NS} ${BFCLI} chain flush --name chain_attach_cgroup_skb_1
 
 # cgroup_sock_addr
-CGROUP_PATH=/sys/fs/cgroup/bftest_chain_attach
-mkdir -p ${CGROUP_PATH}
-trap 'ret=$?; rmdir ${CGROUP_PATH} 2>/dev/null; cleanup; exit ${ret}' EXIT
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_csa4_0 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT rule meta.dport eq 9990 DROP"
 ${FROM_NS} ${BFCLI} chain load --from-str "chain chain_attach_csa4_1 BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4 ACCEPT"
 ${FROM_NS} ${BFCLI} chain attach --name chain_attach_csa4_0 --option cgpath=${CGROUP_PATH}

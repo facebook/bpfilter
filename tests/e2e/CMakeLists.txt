@@ -27,7 +27,16 @@ function(bf_add_e2e_shell_test GROUP SOURCE)
     set(target_name "${GROUP}.${target_suffix}")
 
     if (ARG_ROOT)
-        set(AS_ROOT ${CMAKE_SOURCE_DIR}/tools/asroot)
+        # Run each privileged test in its own network and mount namespaces.
+        # make_sandbox creates a veth pair and keeps one end outside the
+        # sandbox, with an address and a route. In a shared network namespace,
+        # two concurrent tests could use the same subnet and send packets to
+        # each other's sandbox. The mount namespace holds the sandbox's mounts
+        # (netns and bpffs), so the kernel removes them when the test exits,
+        # even if the test is killed.
+        set(AS_ROOT ${CMAKE_SOURCE_DIR}/tools/asroot
+            unshare --mount --net --propagation private --
+        )
     endif ()
 
     add_test(NAME ${target_name}

@@ -57,9 +57,7 @@ NS_IP6_ADDR="fd00::2"
 ip addr add ${HOST_IP6_ADDR}/64 dev ${VETH_HOST} nodad
 ip netns exec ${NETNS_NAME} ip addr add ${NS_IP6_ADDR}/64 dev ${VETH_NS} nodad
 
-CGROUP_PATH=/sys/fs/cgroup/bftest_${_TEST_NAME}
 mkdir -p ${CGROUP_PATH}
-trap 'ret=$?; rmdir ${CGROUP_PATH} 2>/dev/null; cleanup; exit ${ret}' EXIT
 
 tcp6_connect() {
     ${FROM_NS} python3 -c "

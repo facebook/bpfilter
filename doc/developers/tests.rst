@@ -24,6 +24,12 @@ bpfilter uses CMake and CTest to manage and run its tests, a test suite is defin
 
 Each test suite has a corresponding ``make`` target to build its binaries (e.g. ``make -C $BUILD_DIR test_bin`` builds all test binaries). By default, CTest doesn't build the test binaries when running tests.
 
+Each shell end-to-end test invocation uses unique temporary directories,
+network namespace names, interface names, and cgroup paths. Privileged shell
+tests also run in separate host network and mount namespaces, so their routes
+and addresses do not conflict. The harness removes these resources when the
+test ends.
+
 Test coverage is disabled by default, to enable it, configure CMake with the ``-DWITH_COVERAGE=1`` flag. Then, you can generate a coverage report using: ``make -C $BUILD_DIR coverage doc``.
 
 
