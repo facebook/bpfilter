@@ -375,16 +375,32 @@ static const char *_bf_tcp_flags_to_str(const struct tcphdr *tcphdr)
     return flag_count > 0 ? flags_str : NULL;
 }
 
-static void _bf_chain_log_header(const struct bf_log *log)
+static int _bf_chain_log_header(const struct bf_log *log)
 {
+    struct timespec realtime;
+    struct timespec monotonic;
     struct timespec time;
+    int64_t elapsed_ns;
     char time_str[64];
 
     assert(log);
 
-    // Convert timestamp to readable format
-    time.tv_sec = (long)log->ts / BF_TIME_S;
-    time.tv_nsec = (long)log->ts % BF_TIME_S;
+    if (clock_gettime(CLOCK_REALTIME, &realtime) ||
+        clock_gettime(CLOCK_MONOTONIC, &monotonic))
+        return bf_err_r(-errno, "failed to read clocks for log timestamp");
+
+    // Reconstruct wall time as realtime_now - (monotonic_now - event_time).
+    elapsed_ns = ((int64_t)monotonic.tv_sec * BF_TIME_S) + monotonic.tv_nsec -
+                 (int64_t)log->ts;
+    time.tv_sec = realtime.tv_sec - (time_t)(elapsed_ns / BF_TIME_S);
+    time.tv_nsec = realtime.tv_nsec - (long)(elapsed_ns % BF_TIME_S);
+    if (time.tv_nsec < 0) {
+        --time.tv_sec;
+        time.tv_nsec += BF_TIME_S;
+    } else if (time.tv_nsec >= BF_TIME_S) {
+        ++time.tv_sec;
+        time.tv_nsec -= BF_TIME_S;
+    }
 
     (void)strftime(time_str, sizeof(time_str), "%H:%M:%S",
                    localtime(&time.tv_sec));
@@ -404,6 +420,8 @@ static void _bf_chain_log_header(const struct bf_log *log)
 
     (void)fprintf(stdout, " verdict %s\n",
                   bf_verdict_to_str((enum bf_verdict)log->verdict));
+
+    return 0;
 }
 
 static void _bf_chain_log_l2(const struct bf_log *log)
@@ -739,11 +757,15 @@ static void _bf_chain_log_5_tuple(const struct bf_log *log)
     }
 }
 
-void bfc_print_log(const struct bf_log *log)
+int bfc_print_log(const struct bf_log *log)
 {
+    int r;
+
     assert(log);
 
-    _bf_chain_log_header(log);
+    r = _bf_chain_log_header(log);
+    if (r)
+        return r;
 
     switch (log->log_type) {
     case BF_LOG_TYPE_PACKET:
@@ -763,4 +785,6 @@ void bfc_print_log(const struct bf_log *log)
     default:
         break;
     }
+
+    return 0;
 }

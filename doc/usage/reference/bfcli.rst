@@ -150,7 +150,7 @@ bfcli will print log entries as they are published by the chain. Hit ``Ctrl+C`` 
 
 Log entries go through a fixed-size ring buffer of about 1000 entries. While it is full, for example because nothing reads it, new entries are dropped. Chains loaded with ``--verbose bpf`` print a message to the trace buffer for each dropped entry.
 
-Every log entry begins with a shared header: the receive timestamp, the matching rule's index, and the applied verdict. The remaining fields depend on the hook type:
+Every log entry begins with a shared header: the event timestamp in local wall-clock time, the matching rule's index, and the applied verdict. The remaining fields depend on the hook type:
 
 - For packet-based hooks using packet-layer logging, the header also includes the matched packet size. It is followed by each requested layer's protocol headers (see :doc:`rules`). If a requested layer could not be processed by the chain, the corresponding output will be truncated.
 - For packet-based hooks using 5-tuple logging, the source and destination addresses and ports are printed on a single line with the transport protocol.
