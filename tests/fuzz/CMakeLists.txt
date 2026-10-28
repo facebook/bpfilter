@@ -21,6 +21,10 @@ add_executable(fuzz_parser EXCLUDE_FROM_ALL
     ${CMAKE_SOURCE_DIR}/src/external/disasm.c
 )
 
+# fuzz_parser recompiles libbpfilter and bfcli sources. Exporting its compile
+# commands would make clang-tidy and IWYU analyze those sources twice.
+set_target_properties(fuzz_parser PROPERTIES EXPORT_COMPILE_COMMANDS OFF)
+
 target_compile_options(fuzz_parser
     PRIVATE
         -g
@@ -44,9 +48,7 @@ target_include_directories(fuzz_parser
         ${CMAKE_BINARY_DIR}/src/bfcli/include
 )
 
-# Vendored kernel headers are SYSTEM so clang-tidy's --system-headers=false
-# default skips the reserved identifiers they use.
-target_include_directories(fuzz_parser SYSTEM
+target_include_directories(fuzz_parser
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/external
         ${CMAKE_SOURCE_DIR}/src/external/include
