@@ -134,9 +134,7 @@ static int _bf_handle_rb_log(void *ctx, void *data, size_t data_size)
     (void)ctx;
     (void)data_size;
 
-    bfc_print_log(log);
-
-    return 0;
+    return bfc_print_log(log);
 }
 
 int bfc_chain_logs(const struct bfc_opts *opts)

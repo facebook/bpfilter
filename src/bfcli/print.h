@@ -43,5 +43,6 @@ int bfc_ruleset_dump(bf_list *chains, bf_list *hookopts, bool no_set_content);
  * - `log != NULL`
  *
  * @param log Logged data.
+ * @return 0 on success, or a negative error code on failure.
  */
-void bfc_print_log(const struct bf_log *log);
+int bfc_print_log(const struct bf_log *log);
