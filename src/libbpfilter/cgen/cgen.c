@@ -6,6 +6,7 @@
 #include "cgen/cgen.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -423,6 +424,24 @@ int bf_cgen_attach(struct bf_cgen *cgen, struct bf_hookopts **hookopts,
 }
 
 /**
+ * @brief Check whether a rule of a chain logs, even if it is disabled.
+ *
+ * @param chain Chain to check. Can't be NULL.
+ * @return True if a rule of `chain` logs, false otherwise.
+ */
+static bool _bf_cgen_has_log_rule(const struct bf_chain *chain)
+{
+    bf_list_foreach (&chain->rules, rule_node) {
+        const struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        if (rule->log)
+            return true;
+    }
+
+    return false;
+}
+
+/**
  * @brief Transfer all counters from old handle to new handle.
  *
  * Copies counter values 1:1 for all rule counters plus policy and error
@@ -494,6 +513,16 @@ int bf_cgen_update(struct bf_cgen *cgen, struct bf_chain **new_chain,
     if (r < 0) {
         return bf_err_r(r,
                         "failed to generate the bytecode for a new bf_program");
+    }
+
+    /* Keep the log ring buffer while a rule still logs, even if bpfilter
+     * disabled it (e.g. its set is empty), so FDs returned by
+     * bf_chain_logs_fd() keep receiving the chain's logs. If no rule logs
+     * anymore, the log ring buffer is removed with the old program. */
+    if (old_handle->lmap && _bf_cgen_has_log_rule(*new_chain)) {
+        r = bf_map_dup(&new_handle->lmap, old_handle->lmap);
+        if (r)
+            return bf_err_r(r, "failed to reuse the log map");
     }
 
     r = bf_program_load(new_prog);
