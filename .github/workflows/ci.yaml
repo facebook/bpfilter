@@ -59,7 +59,7 @@ jobs:
         with:
           file: .github/${{ matrix.distribution.name }}-${{ matrix.distribution.version }}.Dockerfile
           push: ${{ github.event_name == 'push' && 'true' || 'false' }}
-          tags: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+          tags: ghcr.io/meta/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
           cache-from: type=gha,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
           cache-to: type=gha,mode=max,scope=${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
 
@@ -82,7 +82,7 @@ jobs:
           - { name: ubuntu, version: "25.10" }
     runs-on: ["${{ matrix.host.name }}"]
     continue-on-error: ${{ matrix.distribution.experimental || false }}
-    container: ghcr.io/facebook/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
+    container: ghcr.io/meta/bpfilter:${{ matrix.distribution.name }}-${{ matrix.distribution.version }}-${{ matrix.host.arch}}
     name: "Build: ${{ matrix.distribution.name }} ${{ matrix.distribution.version }} (${{ matrix.host.arch}})${{ matrix.distribution.experimental && ' [experimental]' || '' }}"
     steps:
       - name: Checkout bpfilter
@@ -102,7 +102,7 @@ jobs:
           - { name: 4-core-ubuntu-arm, arch: arm64 }
     runs-on: ["${{ matrix.host.name }}"]
     container:
-      image: ghcr.io/facebook/bpfilter:fedora-44-${{ matrix.host.arch }}
+      image: ghcr.io/meta/bpfilter:fedora-44-${{ matrix.host.arch }}
       options: --privileged
     name: "Test: ${{ matrix.host.arch }}"
     steps:
@@ -190,7 +190,7 @@ jobs:
     if: ${{ !cancelled() && needs.test.result == 'success' && needs.benchmark.result != 'failure' }}
     timeout-minutes: 5
     runs-on: ["8-core-ubuntu"]
-    container: ghcr.io/facebook/bpfilter:fedora-44-x64
+    container: ghcr.io/meta/bpfilter:fedora-44-x64
     name: "Documentation"
     steps:
       - name: Checkout bpfilter
