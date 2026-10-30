@@ -531,7 +531,6 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                 | SET_TYPE negate matcher_op SET_RAW_PAYLOAD
                 {
                      _free_bf_matcher_ struct bf_matcher *matcher = NULL;
-                     _free_bf_set_ struct bf_set *set = NULL;
                     _cleanup_free_ const char *raw_key = $1;
                     _cleanup_free_ const char *payload = $4;
                     enum bf_matcher_op op = $3;
@@ -540,17 +539,9 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     if (op != BF_MATCHER_IN)
                         bf_parse_err("only the 'in' operator is supported for sets");
 
-                    r = bf_set_new_from_raw(&set, NULL, raw_key, payload);
-                    if (r)
-                        bf_parse_err("failed to create new set");
-
-                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, set, sizeof(*set), $2);
+                    r = bf_matcher_new_for_anon_set_from_raw(&matcher, raw_key, payload, $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher");
-
-                    r = bf_hashset_add(&ruleset->sets, (void **)&set);
-                    if (r)
-                        bf_parse_err("failed to add new set to the ruleset");
 
                      $$ = TAKE_PTR(matcher);
                 }
@@ -578,7 +569,7 @@ matcher         : matcher_type negate matcher_op RAW_PAYLOAD
                     if (found_set->n_comps != test_key->n_comps || memcmp(found_set->key, test_key->key, found_set->n_comps * sizeof(enum bf_matcher_type)))
                         bf_parse_err("using named set '%s', but key doesn't match", name);
 
-                    r = bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, found_set, sizeof(*found_set), $2);
+                    r = bf_matcher_new_for_named_set(&matcher, found_set, $2);
                     if (r)
                         bf_parse_err("failed to create a new matcher");
 

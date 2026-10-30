@@ -6,8 +6,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
-#include <utility>
 #include <vector>
 
 extern "C" {
@@ -30,14 +30,14 @@ private:
     };
 
     std::shared_ptr<bf_set> _prototype;
-    std::vector<std::vector<uint8_t>> _elements;
 
 public:
-    Set(std::vector<bf_matcher_type> key)
+    Set(std::vector<bf_matcher_type> key, std::optional<std::string> name = {})
     {
         struct bf_set *set = nullptr;
 
-        if (bf_set_new(&set, nullptr, key.data(), key.size()) != 0)
+        if (bf_set_new(&set, name ? name->c_str() : nullptr, key.data(),
+                       key.size()) != 0)
             throw std::runtime_error("failed to create a new bf_set");
 
         _prototype = std::shared_ptr<bf_set>(set, deleter());
@@ -50,7 +50,8 @@ public:
                 "number of elements in the vector should match the number of components in the set key");
         }
 
-        _elements.push_back(element);
+        if (bf_set_add_elem(_prototype.get(), element.data()) != 0)
+            throw std::runtime_error("failed to add element to bf_set");
 
         return *this;
     }
@@ -62,16 +63,6 @@ public:
         int r = bf_set_new_from_copy(&set, _prototype.get());
         if (r != 0)
             throw std::runtime_error("failed to create a new bf_set");
-
-        for (const auto &element: _elements) {
-            r = bf_set_add_elem(
-                set, const_cast<void *>(
-                         reinterpret_cast<const void *>(element.data())));
-            if (r != 0) {
-                bf_set_free(&set);
-                throw std::runtime_error("failed to add element to bf_set");
-            }
-        }
 
         return std::unique_ptr<bf_set, deleter>(set);
     }

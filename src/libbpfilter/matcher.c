@@ -1397,17 +1397,92 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
 {
     assert(matcher);
 
-    if (type == BF_MATCHER_SET) {
-        const struct bf_set *set = payload;
-
-        if (!set || payload_len != sizeof(*set) || !set->name || !*set->name)
-            return bf_err_r(-EINVAL, "set matcher requires a set object");
-
-        return _bf_matcher_new(matcher, type, op, &set, sizeof(struct bf_set *),
-                               negate);
-    }
+    if (type == BF_MATCHER_SET)
+        return bf_err_r(-EINVAL, "use a set matcher constructor");
 
     return _bf_matcher_new(matcher, type, op, payload, payload_len, negate);
+}
+
+int bf_matcher_new_for_named_set(struct bf_matcher **matcher,
+                                 const struct bf_set *set, bool negate)
+{
+    assert(matcher);
+
+    if (!set || !bf_set_is_valid_name(set->name))
+        return bf_err_r(-EINVAL, "set matcher requires a named set");
+
+    return _bf_matcher_new(matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set,
+                           sizeof(struct bf_set *), negate);
+}
+
+static int _bf_matcher_new_for_anon_set(struct bf_matcher **matcher,
+                                        struct bf_set **set, bool negate)
+{
+    int r;
+
+    assert(matcher);
+    assert(set && *set);
+
+    r = _bf_matcher_new(matcher, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                        sizeof(struct bf_set *), negate);
+    if (r)
+        return r;
+
+    TAKE_PTR(*set);
+
+    return 0;
+}
+
+int bf_matcher_new_for_anon_set(struct bf_matcher **matcher,
+                                const enum bf_matcher_type *key, size_t n_comps,
+                                const void * const *elems, size_t n_elems,
+                                bool negate)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    int r;
+
+    assert(matcher);
+    assert(key);
+
+    if (n_elems && !elems)
+        return bf_err_r(-EINVAL, "missing anonymous set elements");
+
+    r = bf_set_new(&set, NULL, key, n_comps);
+    if (r)
+        return r;
+
+    r = bf_set_reserve(set, n_elems);
+    if (r)
+        return r;
+
+    for (size_t i = 0; i < n_elems; ++i) {
+        if (!elems[i])
+            return bf_err_r(-EINVAL, "missing anonymous set element");
+
+        r = bf_set_add_elem(set, elems[i]);
+        if (r)
+            return r;
+    }
+
+    return _bf_matcher_new_for_anon_set(matcher, &set, negate);
+}
+
+int bf_matcher_new_for_anon_set_from_raw(struct bf_matcher **matcher,
+                                         const char *raw_key,
+                                         const char *raw_payload, bool negate)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    int r;
+
+    assert(matcher);
+    assert(raw_key);
+    assert(raw_payload);
+
+    r = bf_set_new_from_raw(&set, NULL, raw_key, raw_payload);
+    if (r)
+        return r;
+
+    return _bf_matcher_new_for_anon_set(matcher, &set, negate);
 }
 
 int bf_matcher_new_from_raw(struct bf_matcher **matcher,
@@ -1476,6 +1551,31 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
     if (type == BF_MATCHER_SET) {
         const struct bf_set *set;
 
+        if (op != BF_MATCHER_IN)
+            return bf_err_r(-EINVAL, "invalid set matcher operator");
+
+        if (bf_rpack_kv_contains(node, "set")) {
+            _free_bf_set_ struct bf_set *anonymous = NULL;
+            bf_rpack_node_t set_node;
+
+            if (bf_rpack_kv_contains(node, "payload"))
+                return bf_err_r(-EINVAL, "ambiguous set matcher payload");
+
+            r = bf_rpack_kv_obj(node, "set", &set_node);
+            if (r)
+                return bf_rpack_key_err(r, "bf_matcher.set");
+
+            r = bf_set_new_from_pack(&anonymous, set_node);
+            if (r)
+                return r;
+            if (!bf_set_is_anonymous(anonymous)) {
+                return bf_err_r(-EINVAL,
+                                "inline matcher set must be anonymous");
+            }
+
+            return _bf_matcher_new_for_anon_set(matcher, &anonymous, negate);
+        }
+
         r = bf_rpack_kv_str(node, "payload", &set_name);
         if (r)
             return bf_rpack_key_err(r, "bf_matcher.payload");
@@ -1492,7 +1592,10 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
             return bf_rpack_key_err(r, "bf_matcher.payload");
     }
 
-    r = bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
+    if (type == BF_MATCHER_SET)
+        r = bf_matcher_new_for_named_set(&_matcher, payload, negate);
+    else
+        r = bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
     if (r)
         return bf_err_r(r, "failed to create bf_matcher from pack");
 
@@ -1520,15 +1623,26 @@ int bf_matcher_new_from_copy(struct bf_matcher **dest,
     if (src->type == BF_MATCHER_SET) {
         const struct bf_set *set;
 
-        if (payload_len != sizeof(struct bf_set *))
-            return bf_err_r(-EINVAL, "invalid source set matcher payload");
+        if (src->op != BF_MATCHER_IN || payload_len != sizeof(struct bf_set *))
+            return bf_err_r(-EINVAL,
+                            "invalid source set matcher payload or operator");
 
         memcpy(&set, src->payload, sizeof(struct bf_set *));
         if (!set)
             return bf_err_r(-EINVAL, "missing source set matcher payload");
 
-        return bf_matcher_new(dest, src->type, src->op, set, sizeof(*set),
-                              src->negate);
+        if (bf_set_is_anonymous(set)) {
+            _free_bf_set_ struct bf_set *copy = NULL;
+            int r;
+
+            r = bf_set_new_from_copy(&copy, set);
+            if (r)
+                return r;
+
+            return _bf_matcher_new_for_anon_set(dest, &copy, src->negate);
+        }
+
+        return bf_matcher_new_for_named_set(dest, set, src->negate);
     }
 
     return _bf_matcher_new(dest, src->type, src->op,
@@ -1542,6 +1656,14 @@ void bf_matcher_free(struct bf_matcher **matcher)
 
     if (!*matcher)
         return;
+
+    if ((*matcher)->type == BF_MATCHER_SET) {
+        struct bf_set *set;
+
+        memcpy(&set, (*matcher)->payload, sizeof(struct bf_set *));
+        if (bf_set_is_anonymous(set))
+            bf_set_free(&set);
+    }
 
     free(*matcher);
     *matcher = NULL;
@@ -1559,7 +1681,17 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
         const struct bf_set *set;
 
         memcpy(&set, matcher->payload, sizeof(struct bf_set *));
-        bf_wpack_kv_str(pack, "payload", set->name);
+        if (bf_set_is_anonymous(set)) {
+            int r;
+
+            bf_wpack_open_object(pack, "set");
+            r = bf_set_pack(set, pack);
+            if (r)
+                return r;
+            bf_wpack_close_object(pack);
+        } else {
+            bf_wpack_kv_str(pack, "payload", set->name);
+        }
     } else {
         bf_wpack_kv_bin(pack, "payload", matcher->payload,
                         matcher->len - sizeof(*matcher));

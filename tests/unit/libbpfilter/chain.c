@@ -54,8 +54,7 @@ static void new_failure_preserves_inputs(void **state)
     assert_ok(
         bf_set_new_from_raw(&set, "addresses", "(ip4.saddr)", "{192.0.2.1}"));
     assert_ok(bf_rule_new(&rule));
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set,
-                                  sizeof(*set), false));
+    assert_ok(bft_rule_add_named_set_matcher(rule, set, false));
     bf_rule_mark_set(rule, 1);
     assert_ok(bf_hashset_add(&sets, (void **)&set));
     assert_ok(bf_list_push(&rules, (void **)&rule));
@@ -121,8 +120,7 @@ static void copy_rebinds_shared_set_references(void **state)
     assert_non_null(source);
     source_set = bf_chain_get_set_by_name(source, "addresses");
     rule = bf_list_get_at(&source->rules, 0);
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  source_set, sizeof(*source_set), true));
+    assert_ok(bft_rule_add_named_set_matcher(rule, source_set, true));
 
     assert_ok(bf_chain_new_from_copy(&copy, source));
     copied_set = bf_chain_get_set_by_name(copy, "addresses");
@@ -263,6 +261,66 @@ static void copy_missing_set_leaves_destination_unchanged(void **state)
     assert_true(bf_hashset_is_empty(&destination->sets));
 }
 
+static void anonymous_matchers_survive_chain_copy(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    _free_bf_chain_ struct bf_chain *restored = NULL;
+    _free_bf_set_ struct bf_set *unused = NULL;
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    struct bf_rule *rule;
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    assert_non_null(source);
+    assert_ok(bf_set_new_from_raw(&unused, "unused", "(tcp.dport)", "{80}"));
+    assert_ok(bf_chain_add_set(source, unused));
+    TAKE_PTR(unused);
+    rule = bf_list_get_at(&source->rules, 0);
+    assert_ok(bf_matcher_new_for_anon_set_from_raw(&matcher, "(ip4.saddr)",
+                                                   "{192.0.2.2}", true));
+    assert_ok(bf_list_push(&rule->matchers, (void **)&matcher));
+
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    assert_true(bft_chain_equal(source, copy));
+    bf_chain_free(&source);
+    assert_int_equal(bf_hashset_size(&copy->sets), 2);
+    assert_non_null(bf_chain_get_set_by_name(copy, "unused"));
+
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_chain_pack(copy, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_chain_new_from_pack(&restored, bf_rpack_root(rpack)));
+    assert_true(bft_chain_equal(copy, restored));
+    bf_chain_free(&copy);
+
+    rule = bf_list_get_at(&restored->rules, 0);
+    bf_list_delete(&rule->matchers, bf_list_get_tail(&rule->matchers));
+    assert_int_equal(bf_hashset_size(&restored->sets), 2);
+    assert_non_null(bf_chain_get_set_by_name(restored, "addresses"));
+    assert_non_null(bf_chain_get_set_by_name(restored, "unused"));
+}
+
+static void reject_anonymous_chain_set(void **state)
+{
+    _free_bf_chain_ struct bf_chain *chain = bft_chain_dummy(false);
+    _free_bf_set_ struct bf_set *set = NULL;
+
+    (void)state;
+
+    assert_non_null(chain);
+    assert_ok(bf_set_new_from_raw(&set, NULL, "(ip4.saddr)", "{192.0.2.1}"));
+    assert_int_equal(bf_chain_add_set(chain, set), -EINVAL);
+    assert_true(bf_hashset_is_empty(&chain->sets));
+    assert_ok(bf_set_add_elem_raw(set, "192.0.2.2"));
+}
+
 static void dump(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain0 = bft_chain_dummy(false);
@@ -314,8 +372,8 @@ static void mixed_enabled_disabled_log_flag(void **state)
     _free_bf_chain_ struct bf_chain *chain = NULL;
     _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
     _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
-    _free_bf_set_ struct bf_set *set0 = bft_set_dummy(NULL, 0);
-    _free_bf_set_ struct bf_set *set1 = bft_set_dummy(NULL, 4);
+    _free_bf_set_ struct bf_set *set0 = bft_set_dummy("empty", 0);
+    _free_bf_set_ struct bf_set *set1 = bft_set_dummy("populated", 4);
     struct bf_rule *r0 = NULL;
     struct bf_rule *r1 = NULL;
 
@@ -325,13 +383,11 @@ static void mixed_enabled_disabled_log_flag(void **state)
     assert_non_null(set1);
     assert_ok(bf_rule_new(&r0));
     r0->log = 1;
-    assert_ok(bf_rule_add_matcher(r0, BF_MATCHER_SET, BF_MATCHER_IN, set0,
-                                  sizeof(*set0), false));
+    assert_ok(bft_rule_add_named_set_matcher(r0, set0, false));
     assert_ok(bf_list_add_tail(&rules, r0));
 
     assert_ok(bf_rule_new(&r1));
-    assert_ok(bf_rule_add_matcher(r1, BF_MATCHER_SET, BF_MATCHER_IN, set1,
-                                  sizeof(*set1), false));
+    assert_ok(bft_rule_add_named_set_matcher(r1, set1, false));
     assert_ok(bf_list_add_tail(&rules, r1));
 
     assert_ok(bf_hashset_add(&sets, (void **)&set0));
@@ -376,8 +432,7 @@ static void apply_set_delta_updates_derived_state(void **state)
     rule->log = BF_LOG_OPT_DEFAULT;
     rule->log_rate_ns = 1;
 
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  matcher_set, sizeof(*matcher_set), false));
+    assert_ok(bft_rule_add_named_set_matcher(rule, matcher_set, false));
     assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_NEXTHDR, BF_MATCHER_EQ,
                                   &nexthdr, sizeof(nexthdr), false));
     assert_ok(bf_list_add_tail(&rules, rule));
@@ -429,13 +484,11 @@ static void empty_set_only_disables_in_rules(void **state)
     assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&in_rule));
-    assert_ok(bf_rule_add_matcher(in_rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  matcher_set, sizeof(*matcher_set), false));
+    assert_ok(bft_rule_add_named_set_matcher(in_rule, matcher_set, false));
     assert_ok(bf_list_add_tail(&rules, in_rule));
 
     assert_ok(bf_rule_new(&not_in_rule));
-    assert_ok(bf_rule_add_matcher(not_in_rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  matcher_set, sizeof(*matcher_set), true));
+    assert_ok(bft_rule_add_named_set_matcher(not_in_rule, matcher_set, true));
     assert_ok(bf_list_add_tail(&rules, not_in_rule));
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
@@ -512,9 +565,7 @@ static void incompatible_matchers_disable_rule(void **state)
         assert_ok(bf_hashset_add(&sets, (void **)&set));
 
         assert_ok(bf_rule_new(&rule));
-        assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                      matcher_set, sizeof(*matcher_set),
-                                      false));
+        assert_ok(bft_rule_add_named_set_matcher(rule, matcher_set, false));
         assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_IP6_DADDR, BF_MATCHER_EQ,
                                       ip6_addr, sizeof(ip6_addr), false));
         assert_ok(bf_list_add_tail(&rules, rule));
@@ -603,16 +654,15 @@ static void set_component_unsupported_hook(void **state)
     assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&rule));
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  matcher_set, sizeof(*matcher_set), false));
+    assert_ok(bft_rule_add_named_set_matcher(rule, matcher_set, false));
     assert_ok(bf_list_add_tail(&rules, rule));
 
     assert_err(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
                             BF_VERDICT_ACCEPT, &sets, &rules));
 
     // Supported component: ip4.daddr on CONNECT4 should succeed.
-    bf_hashset_clean(&sets);
     bf_list_clean(&rules);
+    bf_hashset_clean(&sets);
 
     enum bf_matcher_type daddr_key[] = {BF_MATCHER_IP4_DADDR};
 
@@ -622,8 +672,7 @@ static void set_component_unsupported_hook(void **state)
     assert_ok(bf_hashset_add(&sets, (void **)&set));
 
     assert_ok(bf_rule_new(&rule));
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  matcher_set, sizeof(*matcher_set), false));
+    assert_ok(bft_rule_add_named_set_matcher(rule, matcher_set, false));
     assert_ok(bf_list_add_tail(&rules, rule));
 
     assert_ok(bf_chain_new(&chain, "test", BF_HOOK_CGROUP_SOCK_ADDR_CONNECT4,
@@ -722,8 +771,7 @@ static void named_reference_stability(void **state)
     assert_ok(
         bf_set_new_from_raw(&unrelated, "unrelated", "(ip4.saddr)", "{}"));
     assert_ok(bf_rule_new(&rule));
-    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, target,
-                                  sizeof(*target), false));
+    assert_ok(bft_rule_add_named_set_matcher(rule, target, false));
     matcher = bf_list_node_get_data(bf_list_get_head(&rule->matchers));
     assert_null(bf_chain_get_set_for_matcher(chain, matcher));
     assert_err(bf_chain_add_rule(chain, rule));
@@ -760,8 +808,7 @@ static void named_reference_stability(void **state)
 
     // A different object with the same name cannot reference the stored set.
     assert_ok(bf_rule_new(&foreign_rule));
-    assert_ok(bf_rule_add_matcher(foreign_rule, BF_MATCHER_SET, BF_MATCHER_IN,
-                                  target, sizeof(*target), false));
+    assert_ok(bft_rule_add_named_set_matcher(foreign_rule, target, false));
     assert_err(bf_chain_add_rule(chain, foreign_rule));
 }
 
@@ -821,6 +868,8 @@ int main(void)
         cmocka_unit_test(copy_preserves_disabled_empty_set_rule),
         cmocka_unit_test(copy_preserves_negated_empty_set_rule),
         cmocka_unit_test(copy_missing_set_leaves_destination_unchanged),
+        cmocka_unit_test(anonymous_matchers_survive_chain_copy),
+        cmocka_unit_test(reject_anonymous_chain_set),
         cmocka_unit_test(dump),
         cmocka_unit_test(get_set_from_matcher),
         cmocka_unit_test(mixed_enabled_disabled_log_flag),

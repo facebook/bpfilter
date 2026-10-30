@@ -6,6 +6,7 @@
 #pragma once
 
 #include <memory>
+#include <tuple>
 #include <vector>
 
 extern "C" {
@@ -89,29 +90,32 @@ public:
         if (r != 0)
             throw std::runtime_error("failed to create bf_chain");
 
+        std::unique_ptr<bf_chain, deleter> owned(chain);
+
         for (const Set &set: _sets) {
+            if (bf_set_is_anonymous(set.ref().get()))
+                continue;
+
             auto bfset = set.get();
             r = bf_chain_add_set(chain, bfset.get());
             if (r != 0) {
-                bf_chain_free(&chain);
                 throw std::runtime_error("failed to add bf_set to bf_chain");
             }
 
-            bfset.release();
+            std::ignore = bfset.release();
         }
 
         for (const Rule &rule: _rules) {
             auto bfrule = rule.get(chain);
             r = bf_chain_add_rule(chain, bfrule.get());
             if (r != 0) {
-                bf_chain_free(&chain);
                 throw std::runtime_error("failed to add bf_rule to bf_chain");
             }
 
-            bfrule.release();
+            std::ignore = bfrule.release();
         }
 
-        return std::unique_ptr<bf_chain, deleter>(chain);
+        return owned;
     }
 };
 

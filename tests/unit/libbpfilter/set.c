@@ -35,7 +35,6 @@ static void name_is_valid(void **state)
 static void new_with_invalid_names(void **state)
 {
     _free_bf_set_ struct bf_set *set = NULL;
-    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
     const char *names[] = {
         "", "two words", "name.with.dot", "name/slash", "caf\xc3\xa9",
@@ -50,13 +49,6 @@ static void new_with_invalid_names(void **state)
         assert_null(set);
     }
 
-    getentropy_mock = bft_mock_get(getentropy);
-    assert_err(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
-    assert_null(set);
-    assert_err(bf_set_new_from_raw(&set, NULL, "(ip4.saddr)", "{}"));
-    assert_null(set);
-
-    // User-defined names do not require entropy.
     assert_ok(bf_set_new(&set, "named", key, ARRAY_SIZE(key)));
     assert_false(bf_set_is_anonymous(set));
 }
@@ -66,7 +58,6 @@ static void new_and_free(void **state)
     _free_bf_set_ struct bf_set *set = NULL;
     _free_bf_set_ struct bf_set *other = NULL;
     _free_bf_set_ struct bf_set *copy = NULL;
-    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
     (void)state;
@@ -83,29 +74,20 @@ static void new_and_free(void **state)
 
     // Free set using the cleanup attribute
     assert_ok(bf_set_new(&set, NULL, key, ARRAY_SIZE(key)));
-    assert_non_null(set->name);
+    assert_null(set->name);
     assert_true(bf_set_is_anonymous(set));
-    assert_false(bf_set_is_valid_name(set->name));
-    assert_string_not_equal(set->name, "");
-
-    assert_err(bf_set_new(&copy, set->name, key, ARRAY_SIZE(key)));
-    assert_null(copy);
-    assert_err(bf_set_new_from_raw(&copy, set->name, "(ip4.saddr)", "{}"));
-    assert_null(copy);
 
     assert_ok(bf_set_new_from_raw(&other, NULL, "(ip4.saddr)", "{192.0.2.1}"));
     assert_true(bf_set_is_anonymous(other));
-    assert_string_not_equal(set->name, other->name);
+    assert_null(other->name);
 
-    // Copying must preserve the name without generating a new one.
-    getentropy_mock = bft_mock_get(getentropy);
+    // Copies of anonymous sets remain anonymous.
     assert_ok(bf_set_new_from_copy(&copy, other));
     assert_true(bf_set_is_anonymous(copy));
-    assert_string_equal(copy->name, other->name);
+    assert_null(copy->name);
     assert_true(bft_set_eq_ordered(copy, other));
 
-    // After the source is freed, the copy must retain its anonymous name
-    // and original element while accepting another element.
+    // The copy remains independent after the source is freed.
     bf_set_free(&other);
 
     assert_true(bf_set_is_anonymous(copy));
@@ -281,7 +263,6 @@ static void pack_and_unpack_anon(void **state)
     _free_bf_set_ struct bf_set *copy = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
     _free_bf_rpack_ bf_rpack_t *rpack = NULL;
-    _clean_bft_mock_ bft_mock getentropy_mock = bft_mock_default();
     bf_rpack_node_t node;
     const void *data;
     size_t data_len;
@@ -293,7 +274,6 @@ static void pack_and_unpack_anon(void **state)
     assert_true(bf_set_is_anonymous(source));
     source->min_size = 16;
 
-    getentropy_mock = bft_mock_get(getentropy);
     assert_ok(bf_wpack_new(&wpack));
     bf_wpack_open_object(wpack, "set");
     assert_ok(bf_set_pack(source, wpack));
@@ -399,7 +379,8 @@ static void copy_empty_set_accepts_elements_after_source_free(void **state)
 static void pack_and_unpack_err(void **state)
 {
     const char *names[] = {
-        "", "two words", "name.with.dot", "name/slash", "caf\xc3\xa9",
+        "",           "two words",   "name.with.dot",
+        "name/slash", "caf\xc3\xa9", "@anon:0123456789abcdef",
     };
 
     (void)state;

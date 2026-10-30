@@ -89,16 +89,31 @@ public:
         struct bf_matcher *matcher = nullptr;
 
         const bf_set *set = _set.get();
+        if (_type == BF_MATCHER_SET && bf_set_is_anonymous(set)) {
+            std::vector<const void *> elements;
+
+            for (auto *node = set->elems.head; node; node = node->next)
+                elements.push_back(node->data);
+
+            int r = bf_matcher_new_for_anon_set(&matcher, set->key,
+                                                set->n_comps, elements.data(),
+                                                elements.size(), _negate);
+            if (r != 0)
+                throw std::runtime_error(
+                    "failed to create anonymous set matcher");
+
+            return std::unique_ptr<bf_matcher, deleter>(matcher);
+        }
+
         if (_type == BF_MATCHER_SET && chain)
             set = bf_chain_get_set_by_name(chain, set->name);
 
-        const void *payload = _type == BF_MATCHER_SET ?
-                                  static_cast<const void *>(set) :
-                                  _payload.data();
-        size_t payload_len =
-            _type == BF_MATCHER_SET ? sizeof(bf_set) : _payload.size();
-        int r =
-            bf_matcher_new(&matcher, _type, _op, payload, payload_len, _negate);
+        int r;
+        if (_type == BF_MATCHER_SET)
+            r = bf_matcher_new_for_named_set(&matcher, set, _negate);
+        else
+            r = bf_matcher_new(&matcher, _type, _op, _payload.data(),
+                               _payload.size(), _negate);
         if (r != 0)
             throw std::runtime_error("failed to create bf_matcher");
 
