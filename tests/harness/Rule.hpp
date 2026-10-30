@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 #include "Matcher.hpp"
@@ -81,7 +82,7 @@ public:
             if (r != 0)
                 throw std::runtime_error("failed to add bf_matcher to bf_rule");
 
-            bfmatcher.release();
+            std::ignore = bfmatcher.release();
         }
 
         return owned;

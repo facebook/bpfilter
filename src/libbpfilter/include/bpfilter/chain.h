@@ -55,6 +55,8 @@ struct bf_chain
     uint8_t flags;
     enum bf_hook hook;
     enum bf_verdict policy;
+
+    /// Owning collection of named sets. Anonymous sets belong to matchers.
     bf_hashset sets;
     bf_list rules;
 
@@ -77,7 +79,7 @@ struct bf_chain
  * @param name Name of the chain. Can't be NULL.
  * @param hook Expected hook to attach the chain to.
  * @param policy Default action of the chain if no rule matched.
- * @param sets Owning collection of sets used by `rules`, initialized with
+ * @param sets Owning collection of named sets, initialized with
  *        bf_set_hashset_default(). Names must be unique within the chain.
  * @param rules List of rules.
  * @return 0 on success, or negative errno value on failure.
@@ -136,11 +138,10 @@ void bf_chain_dump(const struct bf_chain *chain, prefix_t *prefix);
 int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule);
 
 /**
- * @brief Insert a set into a chain.
+ * @brief Insert a named set into a chain.
  *
  * The chain will own the set and is responsible for freeing it. To reference
- * the set in a matcher, pass the set pointer and sizeof(*set) to
- * bf_matcher_new(). The matcher borrows the set pointer.
+ * the set in a matcher, use `bf_matcher_new_for_named_set`.
  *
  * @param chain Chain to insert the rule into. Can't be NULL.
  * @param set Set to insert into the chain. Can't be NULL.
@@ -155,6 +156,7 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set);
  * @param matcher Matching filtering on a set. Can't be NULL.
  * @return The set `matcher` filters on, or NULL if the set can't be found or
  *         if `matcher->type` is not `BF_MATCHER_SET`.
+ *         The pointer is borrowed. Anonymous sets belong to their matcher.
  */
 const struct bf_set *
 bf_chain_get_set_for_matcher(const struct bf_chain *chain,

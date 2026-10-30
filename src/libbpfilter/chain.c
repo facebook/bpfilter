@@ -292,6 +292,15 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
         return bf_err_r(-EINVAL, "invalid policy '%s'",
                         bf_verdict_to_str(policy));
 
+    if (sets) {
+        bf_hashset_foreach (sets, set_node) {
+            const struct bf_set *set = set_node->data;
+
+            if (!bf_set_is_valid_name(set->name))
+                return bf_err_r(-EINVAL, "chain sets must have valid names");
+        }
+    }
+
     _chain = calloc(1, sizeof(*_chain));
     if (!_chain)
         return -ENOMEM;
@@ -362,6 +371,9 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
         r = bf_set_new_from_pack(&set, array_node);
         if (r)
             return bf_err_r(r, "failed to unpack bf_set into bf_chain.sets");
+
+        if (bf_set_is_anonymous(set))
+            return bf_err_r(-EINVAL, "anonymous set outside a matcher");
 
         r = bf_hashset_add(&sets, (void **)&set);
         if (r)
@@ -497,6 +509,9 @@ int bf_chain_add_set(struct bf_chain *chain, struct bf_set *set)
 {
     assert(chain && set);
 
+    if (!bf_set_is_valid_name(set->name))
+        return bf_err_r(-EINVAL, "only named sets can be added to a chain");
+
     return bf_hashset_add(&chain->sets, (void **)&set);
 }
 
@@ -513,6 +528,9 @@ bf_chain_get_set_for_matcher(const struct bf_chain *chain,
         return NULL;
 
     memcpy(&set, bf_matcher_payload(matcher), sizeof(struct bf_set *));
+    if (bf_set_is_anonymous(set))
+        return set;
+
     return bf_hashset_get(&chain->sets, set) == set ? set : NULL;
 }
 

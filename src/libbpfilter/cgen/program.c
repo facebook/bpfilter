@@ -223,6 +223,28 @@ static int _bf_program_build_set_groups(struct bf_program *program)
             return r;
     }
 
+    bf_list_foreach (&program->runtime.chain->rules, rule_node) {
+        const struct bf_rule *rule = bf_list_node_get_data(rule_node);
+
+        bf_list_foreach (&rule->matchers, matcher_node) {
+            const struct bf_matcher *matcher =
+                bf_list_node_get_data(matcher_node);
+            const struct bf_set *set;
+            int r;
+
+            if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
+                continue;
+
+            memcpy(&set, bf_matcher_payload(matcher), sizeof(struct bf_set *));
+            if (!bf_set_is_anonymous(set))
+                continue;
+
+            r = _bf_program_add_set_to_group(program, set);
+            if (r)
+                return r;
+        }
+    }
+
     return 0;
 }
 

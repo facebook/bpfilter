@@ -265,7 +265,8 @@ bool bft_set_eq_ordered(const struct bf_set *lhs, const struct bf_set *rhs)
             return false;
     }
 
-    return bf_streq(lhs->name, rhs->name) && lhs->n_comps == rhs->n_comps &&
+    return (lhs->name == rhs->name || bf_streq(lhs->name, rhs->name)) &&
+           lhs->n_comps == rhs->n_comps &&
            0 == memcmp(lhs->key, rhs->key,
                        sizeof(enum bf_matcher_type) * lhs->n_comps) &&
            lhs->use_trie == rhs->use_trie && lhs->min_size == rhs->min_size;

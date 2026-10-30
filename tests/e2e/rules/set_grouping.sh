@@ -35,6 +35,20 @@ ${FROM_NS} ${BFCLI} chain set --from-str "chain isolation BF_HOOK_XDP{ifindex=${
 ping -c 1 -W 1 ${NS_IP_ADDR} || { echo "ERROR: ping should have succeeded"; exit 1; }
 ${FROM_NS} ${BFCLI} chain flush --name isolation
 
+# Named declarations and anonymous matchers must keep independent contents.
+${FROM_NS} ${BFCLI} chain set --from-str "chain mixed BF_HOOK_XDP{ifindex=${NS_IFINDEX}} ACCEPT
+    set unused (ip4.saddr) in { ${HOST_IP_ADDR} }
+    rule (ip4.saddr) in { 192.0.2.40 } counter DROP
+    rule (ip4.saddr) in { ${HOST_IP_ADDR} } counter DROP"
+(! ping -c 1 -W 1 ${NS_IP_ADDR}) || { echo "ERROR: anonymous set should drop ping"; exit 1; }
+test "$(get_counter mixed 0)" = "0"
+test "$(get_counter mixed 1)" -ge 1
+
+dump=$(${FROM_NS} ${BFCLI} chain get --name mixed)
+[[ "${dump}" == *"set unused ("* ]] || { echo "ERROR: unused named declaration was lost"; exit 1; }
+[[ "${dump}" != *"@anon:"* ]] || { echo "ERROR: anonymous sets must not have names"; exit 1; }
+${FROM_NS} ${BFCLI} chain flush --name mixed
+
 # Multibyte bitmask: more than 8 same-key sets force a 2-byte value
 # (1 byte per 8 sets). The host's address sits in s8 only (bit_index 8 ->
 # byte 1, bit 0). Rule 0 references s0 (byte 0, bit 0) and must miss;

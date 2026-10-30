@@ -53,8 +53,7 @@ static void copy_configuration_and_ownership(void **state)
     bf_rule_mark_set(source, 0x1234);
     bf_rule_set_redirect(source, 8, BF_REDIRECT_EGRESS);
     assert_ok(bf_set_new_from_raw(&set, "rule_copy_set", "(ip4.saddr)", "{}"));
-    assert_ok(bf_rule_add_matcher(source, BF_MATCHER_SET, BF_MATCHER_IN, set,
-                                  sizeof(*set), true));
+    assert_ok(bft_rule_add_named_set_matcher(source, set, true));
 
     assert_ok(bf_rule_new_from_copy(&copy, source));
     assert_true(bft_rule_equal(source, copy));

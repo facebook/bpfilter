@@ -10,6 +10,9 @@
 
 #include <bpfilter/core/list.h>
 
+struct bf_rule;
+struct bf_set;
+
 typedef bool (*bft_list_eq_cb)(const void *, const void *);
 typedef int (*bft_list_dummy_inserter)(bf_list *, void *);
 
@@ -66,5 +69,7 @@ struct bf_chain *bft_chain_with_set(const char *key, const char *elements,
                                     bool negate);
 
 struct bf_rule *bft_rule_dummy(size_t n_matchers);
+int bft_rule_add_named_set_matcher(struct bf_rule *rule,
+                                   const struct bf_set *set, bool negate);
 struct bf_matcher *bft_matcher_dummy(const void *data, size_t data_len);
 struct bf_set *bft_set_dummy(const char *name, size_t n_elems);

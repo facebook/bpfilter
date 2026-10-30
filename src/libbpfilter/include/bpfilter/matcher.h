@@ -40,6 +40,7 @@
 #define _free_bf_matcher_ __attribute__((__cleanup__(bf_matcher_free)))
 
 struct bf_matcher;
+struct bf_set;
 
 /**
  * Matcher type.
@@ -269,20 +270,71 @@ struct bf_matcher_meta
  *
  * @param matcher Matcher object to allocate and initialise. Can't be NULL. On
  *        success, contain a pointer to the matcher object, unchanged on error.
- * @param type Matcher type.
+ * @param type Matcher type. `BF_MATCHER_SET` will be rejected: use
+ *        `bf_matcher_new_for_named_set`, `bf_matcher_new_for_anon_set`, or
+ *        `bf_matcher_new_for_anon_set_from_raw` instead.
  * @param op Comparison operator.
  * @param payload Payload of the matcher, its content and size depends on
  *        @p type . Can be NULL but only if @p payload_len is 0, in which case
- *        there is no payload. For BF_MATCHER_SET, pass a pointer to a bf_set.
- *        The constructor borrows the set. Its owner must outlive the matcher.
- * @param payload_len Length of the input payload. For BF_MATCHER_SET, pass
- *        `sizeof(struct bf_set *)`. The stored payload contains the set pointer.
+ *        there is no payload.
+ * @param payload_len Length of the input payload.
  * @param negate If true, negate the comparison result.
  * @return 0 on success, or negative errno value on failure.
  */
 int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
                    enum bf_matcher_op op, const void *payload,
                    size_t payload_len, bool negate);
+
+/**
+ * @brief Create a matcher that borrows an existing named set.
+ *
+ * The matcher uses `BF_MATCHER_SET` and `BF_MATCHER_IN`. The set's owner must
+ * outlive the matcher. `set` must be part of the chain `matcher` will be
+ * inserted into.
+ *
+ * @param matcher Destination matcher. Unchanged on failure. Can't be NULL.
+ * @param set Set to borrow. Must have a valid non-NULL name.
+ * @param negate Whether to negate membership.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_matcher_new_for_named_set(struct bf_matcher **matcher,
+                                 const struct bf_set *set, bool negate);
+
+/**
+ * @brief Create a matcher that owns a new anonymous set.
+ *
+ * The matcher uses `BF_MATCHER_SET` and `BF_MATCHER_IN`. The caller's elements
+ * are copied. The anonymous set is freed with the matcher.
+ *
+ * @param matcher Destination matcher. Unchanged on failure. Can't be NULL.
+ * @param key Set key components. Can't be NULL.
+ * @param n_comps Number of key components.
+ * @param elems Array of element pointers. Each element contains the packed
+ *        key components. Can be NULL when `n_elems` is zero.
+ * @param n_elems Number of elements in `elems`.
+ * @param negate Whether to negate membership.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_matcher_new_for_anon_set(struct bf_matcher **matcher,
+                                const enum bf_matcher_type *key, size_t n_comps,
+                                const void * const *elems, size_t n_elems,
+                                bool negate);
+
+/**
+ * @brief Create a matcher that owns a new anonymous set from raw values.
+ *
+ * The matcher uses `BF_MATCHER_SET` and `BF_MATCHER_IN`. Partial allocations
+ * are freed on failure. The anonymous set is freed with the matcher.
+ *
+ * @param matcher Destination matcher. Unchanged on failure. Can't be NULL.
+ * @param raw_key Set key, as accepted by `bf_set_new_from_raw()`. Can't be NULL.
+ * @param raw_payload Set elements to parse. Can't be NULL.
+ * @param negate Whether to negate membership.
+ * @return 0 on success, or a negative errno value on failure.
+ */
+int bf_matcher_new_for_anon_set_from_raw(struct bf_matcher **matcher,
+                                         const char *raw_key,
+                                         const char *raw_payload, bool negate);
 
 /**
  * @brief Allocate and initialise a new matcher from a raw payload (string).
@@ -307,7 +359,9 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
  *        matcher. Can't be NULL.
  * @param node Serialized matcher. Can't be NULL.
  * @param sets Sets used to resolve serialized names. Can be NULL if the
- *        matcher does not reference a set. The collection retains ownership.
+ *        matcher does not reference a named set. Anonymous sets are loaded
+ *        inline and owned by the matcher. `sets` retains ownership of the
+ *        named sets.
  * @return 0 on success, or negative error value on failure.
  */
 int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
@@ -316,7 +370,12 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
 /**
  * @brief Allocate a copy of a matcher and its payload.
  *
- * Set matchers borrow the same set as the source matcher.
+ * Anonymous sets are deep-copied. Named sets remain borrowed from the same
+ * owner as the source matcher.
+ *
+ * @warning If you manually deep-copy a chain (i.e. without
+ * `bf_chain_new_from_copy`), you also need to update the reference to named
+ * sets contained in the matchers.
  *
  * @param dest Destination matcher. Unchanged on failure. Can't be NULL.
  * @param src Matcher to copy. Can't be NULL.

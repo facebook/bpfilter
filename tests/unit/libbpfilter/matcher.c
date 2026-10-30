@@ -44,7 +44,7 @@ static void set_pointer_round_trip(void **state)
 {
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
-    const char *names[] = {"blocked", NULL};
+    const char *names[] = {"blocked", "allowed"};
 
     (void)state;
 
@@ -62,8 +62,7 @@ static void set_pointer_round_trip(void **state)
 
         assert_ok(bf_set_new(&set, names[i], key, ARRAY_SIZE(key)));
         assert_non_null(name = strdup(set->name));
-        assert_ok(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, set,
-                                 sizeof(*set), true));
+        assert_ok(bf_matcher_new_for_named_set(&matcher, set, true));
         assert_ok(bf_hashset_add(&sets, (void **)&set));
 
         assert_ok(bf_wpack_new(&wpack));
@@ -87,6 +86,102 @@ static void set_pointer_round_trip(void **state)
     }
 }
 
+static void anonymous_set_copy_and_round_trip(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *source = NULL;
+    _free_bf_matcher_ struct bf_matcher *expected = NULL;
+    _free_bf_matcher_ struct bf_matcher *copy = NULL;
+    _free_bf_matcher_ struct bf_matcher *restored = NULL;
+    _free_bf_wpack_ bf_wpack_t *wpack = NULL;
+    _free_bf_rpack_ bf_rpack_t *rpack = NULL;
+    const enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t addresses[] = {htonl(0xc0000201), htonl(0xc0000202)};
+    const void *elements[] = {&addresses[0], &addresses[1], &addresses[0]};
+    const void *data;
+    size_t data_len;
+
+    (void)state;
+
+    assert_ok(bf_matcher_new_for_anon_set(
+        &source, key, ARRAY_SIZE(key), elements, ARRAY_SIZE(elements), true));
+    addresses[0] = 0;
+    addresses[1] = 0;
+    assert_ok(bf_matcher_new_for_anon_set_from_raw(
+        &expected, "(ip4.saddr)", "{192.0.2.1; 192.0.2.2}", true));
+    assert_true(bft_matcher_equal(source, expected));
+
+    assert_ok(bf_matcher_new_from_copy(&copy, source));
+    bf_matcher_free(&source);
+    assert_true(bft_matcher_equal(copy, expected));
+
+    assert_ok(bf_wpack_new(&wpack));
+    assert_ok(bf_matcher_pack(copy, wpack));
+    assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
+    assert_ok(bf_rpack_new(&rpack, data, data_len));
+    assert_ok(bf_matcher_new_from_pack(&restored, bf_rpack_root(rpack), NULL));
+    bf_matcher_free(&copy);
+    assert_true(bft_matcher_equal(restored, expected));
+}
+
+static void anonymous_set_failures_preserve_destination(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    const enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
+    uint32_t address = htonl(0xc0000201);
+    const void *elements[] = {&address, NULL};
+    struct bf_matcher *original;
+
+    (void)state;
+
+    assert_ok(bf_matcher_new_for_anon_set_from_raw(&matcher, "(ip4.saddr)",
+                                                   "{192.0.2.1}", false));
+    original = matcher;
+    assert_err(bf_matcher_new_for_anon_set(&matcher, key, 0, NULL, 0, false));
+    assert_ptr_equal(matcher, original);
+    assert_err(bf_matcher_new_for_anon_set(&matcher, key, ARRAY_SIZE(key), NULL,
+                                           1, false));
+    assert_ptr_equal(matcher, original);
+    assert_err(bf_matcher_new_for_anon_set(
+        &matcher, key, ARRAY_SIZE(key), elements, ARRAY_SIZE(elements), false));
+    assert_ptr_equal(matcher, original);
+    assert_err(bf_matcher_new_for_anon_set_from_raw(
+        &matcher, "(ip4.saddr)", "{192.0.2.1; invalid}", false));
+    assert_ptr_equal(matcher, original);
+    assert_err(bf_matcher_new_for_anon_set_from_raw(&matcher, "(invalid)", "{}",
+                                                    false));
+    assert_ptr_equal(matcher, original);
+}
+
+static void anonymous_set_empty(void **state)
+{
+    _free_bf_matcher_ struct bf_matcher *typed = NULL;
+    _free_bf_matcher_ struct bf_matcher *raw = NULL;
+    const enum bf_matcher_type key[] = {BF_MATCHER_TCP_DPORT};
+
+    (void)state;
+
+    assert_ok(bf_matcher_new_for_anon_set(&typed, key, ARRAY_SIZE(key), NULL, 0,
+                                          false));
+    assert_ok(
+        bf_matcher_new_for_anon_set_from_raw(&raw, "(tcp.dport)", "{}", false));
+    assert_true(bft_matcher_equal(typed, raw));
+}
+
+static void anonymous_set_pointer_rejected(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&set, NULL, "(ip4.saddr)", "{192.0.2.1}"));
+    assert_int_equal(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN,
+                                    set, sizeof(*set), false),
+                     -EINVAL);
+    assert_null(matcher);
+    assert_ok(bf_set_add_elem_raw(set, "192.0.2.2"));
+}
+
 static void set_invalid_input(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
@@ -105,12 +200,39 @@ static void set_invalid_input(void **state)
     assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set,
                               sizeof(set), false));
     set.name = "blocked";
+    assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, &set,
+                              sizeof(set), false));
     assert_err(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_EQ, &set,
                               sizeof(set), false));
     assert_null(matcher);
 }
 
-static void set_legacy_payload_rejected(void **state)
+static void named_set_failures_preserve_destination(void **state)
+{
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_matcher_ struct bf_matcher *matcher = NULL;
+    struct bf_set invalid = {.name = "invalid.name"};
+    struct bf_matcher *original;
+
+    (void)state;
+
+    assert_ok(bf_set_new_from_raw(&set, NULL, "(ip4.saddr)", "{192.0.2.1}"));
+    assert_ok(bf_matcher_new_for_anon_set_from_raw(&matcher, "(tcp.dport)",
+                                                   "{80}", false));
+    original = matcher;
+    assert_int_equal(bf_matcher_new_for_named_set(&matcher, NULL, false),
+                     -EINVAL);
+    assert_ptr_equal(matcher, original);
+    assert_int_equal(bf_matcher_new_for_named_set(&matcher, set, false),
+                     -EINVAL);
+    assert_ptr_equal(matcher, original);
+    assert_int_equal(bf_matcher_new_for_named_set(&matcher, &invalid, false),
+                     -EINVAL);
+    assert_ptr_equal(matcher, original);
+    assert_ok(bf_set_add_elem_raw(set, "192.0.2.2"));
+}
+
+static void set_binary_payload_rejected(void **state)
 {
     _free_bf_matcher_ struct bf_matcher *matcher = NULL;
     _free_bf_wpack_ bf_wpack_t *wpack = NULL;
@@ -195,15 +317,13 @@ static void copy_payload_survives_source_free(void **state)
     bf_matcher_free(&copy);
 
     assert_ok(bf_set_new_from_raw(&set, "addresses", "(ip4.saddr)", "{}"));
-    assert_ok(bf_matcher_new(&source, BF_MATCHER_SET, BF_MATCHER_IN, set,
-                             sizeof(*set), true));
+    assert_ok(bf_matcher_new_for_named_set(&source, set, true));
     assert_ok(bf_matcher_new_from_copy(&copy, source));
     assert_true(bft_matcher_equal(source, copy));
     bf_matcher_free(&source);
 
     assert_ok(bf_set_add_elem_raw(set, "192.0.2.1"));
-    assert_ok(bf_matcher_new(&source, BF_MATCHER_SET, BF_MATCHER_IN, set,
-                             sizeof(*set), true));
+    assert_ok(bf_matcher_new_for_named_set(&source, set, true));
     assert_true(bft_matcher_equal(source, copy));
     assert_true(bf_matcher_get_negate(copy));
 }
@@ -2116,8 +2236,13 @@ int main(void)
         cmocka_unit_test(copy_payload_survives_source_free),
         cmocka_unit_test(copy_preserves_empty_payload),
         cmocka_unit_test(set_pointer_round_trip),
+        cmocka_unit_test(anonymous_set_copy_and_round_trip),
+        cmocka_unit_test(anonymous_set_failures_preserve_destination),
+        cmocka_unit_test(anonymous_set_empty),
+        cmocka_unit_test(anonymous_set_pointer_rejected),
         cmocka_unit_test(set_invalid_input),
-        cmocka_unit_test(set_legacy_payload_rejected),
+        cmocka_unit_test(named_set_failures_preserve_destination),
+        cmocka_unit_test(set_binary_payload_rejected),
         cmocka_unit_test(new_with_payload),
         cmocka_unit_test(getters),
         cmocka_unit_test(pack_and_unpack),
