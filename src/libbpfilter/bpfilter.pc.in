@@ -4,7 +4,7 @@ libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 
 Name: bpfilter
 Description: BPF-based packet filtering framework
-URL: https://github.com/facebook/bpfilter
+URL: https://github.com/meta/bpfilter
 Version: @PROJECT_VERSION@@PROJECT_VERSION_SUFFIX@
 Cflags: -I${includedir}
 Libs: -L${libdir} -lbpfilter

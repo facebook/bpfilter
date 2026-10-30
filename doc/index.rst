@@ -28,7 +28,7 @@
    :hidden:
    :caption: External
 
-   GitHub repository <https://github.com/facebook/bpfilter>
+   GitHub repository <https://github.com/meta/bpfilter>
    Slack community <https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA>
    external/benchmarks/index
    external/coverage/index
