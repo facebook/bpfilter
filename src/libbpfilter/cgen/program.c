@@ -164,6 +164,52 @@ _bf_program_find_set_group(const struct bf_program *program,
     return NULL;
 }
 
+static int _bf_program_add_set_to_group(struct bf_program *program,
+                                        const struct bf_set *set)
+{
+    _free_bf_set_group_ struct bf_set_group *group = NULL;
+    int r;
+
+    assert(program);
+    assert(set);
+
+    if (bf_hashset_is_empty(&set->elems))
+        return 0;
+
+    /* If a group with a matching key already exists, reuse it. For LPM trie,
+     * sets can't be grouped (as we can't define which rule matches on which
+     * prefix), so they always are the sole member of their group. */
+    if (!set->use_trie) {
+        bf_list_foreach (&program->set_groups, group_node) {
+            struct bf_set_group *group = bf_list_node_get_data(group_node);
+            const struct bf_set *head =
+                bf_list_node_get_data(bf_list_get_head(&group->sets));
+
+            if (bf_set_same_key(set, head)) {
+                r = bf_list_add_tail(&group->sets, (void *)set);
+                if (r)
+                    return bf_err_r(r, "failed to add set to existing group");
+
+                return 0;
+            }
+        }
+    }
+
+    r = _bf_set_group_new(&group);
+    if (r)
+        return bf_err_r(r, "failed to allocate set group");
+
+    r = bf_list_add_tail(&group->sets, (void *)set);
+    if (r)
+        return bf_err_r(r, "failed to seed set group");
+
+    r = bf_list_push(&program->set_groups, (void **)&group);
+    if (r)
+        return bf_err_r(r, "failed to register set group");
+
+    return 0;
+}
+
 static int _bf_program_build_set_groups(struct bf_program *program)
 {
     assert(program);
@@ -172,49 +218,9 @@ static int _bf_program_build_set_groups(struct bf_program *program)
     program->set_groups = bf_list_default(_bf_set_group_free, NULL);
 
     bf_hashset_foreach (&program->runtime.chain->sets, set_node) {
-        struct bf_set *set = set_node->data;
-        struct bf_set_group *match = NULL;
-        int r;
-
-        if (bf_hashset_is_empty(&set->elems))
-            continue;
-
-        /* LPM trie sets are not grouped: BPF LPM trie lookup always
-         * returns the longest-prefix match, so the read-modify-write
-         * step in _bf_program_load_sets_maps() can't preserve the
-         * per-set bitmask when prefixes overlap. */
-        if (!set->use_trie) {
-            bf_list_foreach (&program->set_groups, group_node) {
-                struct bf_set_group *group = bf_list_node_get_data(group_node);
-                const struct bf_set *head =
-                    bf_list_node_get_data(bf_list_get_head(&group->sets));
-
-                if (bf_set_same_key(set, head)) {
-                    match = group;
-                    break;
-                }
-            }
-        }
-
-        if (match) {
-            r = bf_list_add_tail(&match->sets, set);
-            if (r)
-                return bf_err_r(r, "failed to add set to existing group");
-        } else {
-            _free_bf_set_group_ struct bf_set_group *new_group = NULL;
-
-            r = _bf_set_group_new(&new_group);
-            if (r)
-                return bf_err_r(r, "failed to allocate set group");
-
-            r = bf_list_add_tail(&new_group->sets, set);
-            if (r)
-                return bf_err_r(r, "failed to seed set group");
-
-            r = bf_list_push(&program->set_groups, (void **)&new_group);
-            if (r)
-                return bf_err_r(r, "failed to register set group");
-        }
+        int r = _bf_program_add_set_to_group(program, set_node->data);
+        if (r)
+            return r;
     }
 
     return 0;
