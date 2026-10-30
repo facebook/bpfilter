@@ -26,7 +26,7 @@ extern "C" {
  * approximation that is a false failure probability of about 2e-9 per case;
  * the exact binomial tail is larger for the rare-event case (about 2e-8 for
  * 99.9%), so the suite-wide risk over all hooks and cases stays in the 1e-7
- * range. The regression this guards against (facebook/bpfilter#583: every
+ * range. The regression this guards against (meta/bpfilter#583: every
  * probability above 50% behaving like 100%, and like 0% when negated) is 25+
  * points away at 75%.
  */
@@ -96,7 +96,7 @@ static void _bft_assert_probability_rate(MatcherTest *test, float proba,
 
 /**
  * Verify meta.probability matches at the configured rate on both sides of the
- * 50% boundary, where the threshold crosses INT32_MAX (facebook/bpfilter#583).
+ * 50% boundary, where the threshold crosses INT32_MAX (meta/bpfilter#583).
  */
 static void _bft_meta_probability_eq_rate(MatcherTest *test)
 {

@@ -24,14 +24,14 @@ So before you open a PR:
 
 We close PRs, without a full review, when they were clearly never read by their author, weren't tested, or ignore the style guide after a heads-up. If it keeps happening we'll block you. We've spent more time on some of these review comments than the author spent opening the PR, and we won't keep making that trade.
 
-If you're new and willing to put the work in, you're welcome here and we'll take the time to ramp you up. Pick something tagged `good first issue <https://github.com/facebook/bpfilter/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>`_, or email us (qde@naccy.de) and we'll find you a good starting task.
+If you're new and willing to put the work in, you're welcome here and we'll take the time to ramp you up. Pick something tagged `good first issue <https://github.com/meta/bpfilter/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>`_, or email us (qde@naccy.de) and we'll find you a good starting task.
 
 Where to start
 --------------
 
 If you want to start contributing to bpfilter, the best way to get to know the codebase would be to start with one of the ``@todo`` available in the code. Most of those tasks are small, self-contained, work trivial enough that they do not deserve their GitHub issue.
 
-Once you know your way around the structure of the project, feel free to continue with the ``@todo``, or jump on a bigger issue in the `GitHub issues tracker <https://github.com/facebook/bpfilter/issues>`_.
+Once you know your way around the structure of the project, feel free to continue with the ``@todo``, or jump on a bigger issue in the `GitHub issues tracker <https://github.com/meta/bpfilter/issues>`_.
 
 Join the `bpfilter Slack workspace <https://join.slack.com/t/bpfilter/shared_invite/zt-4d89whuae-JnJJ~h0zpdHwzP7wyYQpwA>`_ to ask questions or discuss contributions. You can also email qde@naccy.de.
 
