@@ -28,8 +28,7 @@ int bf_set_generate_map_lookup(struct bf_program *program,
 
     set = bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
     if (!set) {
-        return bf_err_r(-ENOENT, "set '%s' not found in %s",
-                        (const char *)bf_matcher_payload(matcher),
+        return bf_err_r(-ENOENT, "matcher set not found in %s",
                         program->runtime.chain->name);
     }
 

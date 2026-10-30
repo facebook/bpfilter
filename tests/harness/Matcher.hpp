@@ -13,6 +13,7 @@
 #include "Set.hpp"
 
 extern "C" {
+#include <bpfilter/chain.h>
 #include <bpfilter/matcher.h>
 }
 
@@ -82,12 +83,17 @@ public:
         return _negate;
     }
 
-    [[nodiscard]] std::unique_ptr<bf_matcher, deleter> get() const
+    [[nodiscard]] std::unique_ptr<bf_matcher, deleter>
+    get(const bf_chain *chain = nullptr) const
     {
         struct bf_matcher *matcher = nullptr;
 
+        const bf_set *set = _set.get();
+        if (_type == BF_MATCHER_SET && chain)
+            set = bf_chain_get_set_by_name(chain, set->name);
+
         const void *payload = _type == BF_MATCHER_SET ?
-                                  static_cast<const void *>(_set.get()) :
+                                  static_cast<const void *>(set) :
                                   _payload.data();
         size_t payload_len =
             _type == BF_MATCHER_SET ? sizeof(bf_set) : _payload.size();

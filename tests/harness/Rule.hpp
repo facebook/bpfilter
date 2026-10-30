@@ -58,7 +58,8 @@ public:
         return *this;
     }
 
-    [[nodiscard]] std::unique_ptr<bf_rule, deleter> get() const
+    [[nodiscard]] std::unique_ptr<bf_rule, deleter>
+    get(const bf_chain *chain = nullptr) const
     {
         struct bf_rule *rule;
 
@@ -74,7 +75,7 @@ public:
         rule->verdict = _verdict;
 
         for (const Matcher &matcher: _matchers) {
-            auto bfmatcher = matcher.get();
+            auto bfmatcher = matcher.get(chain);
 
             r = bf_list_add_tail(&rule->matchers, bfmatcher.get());
             if (r != 0)

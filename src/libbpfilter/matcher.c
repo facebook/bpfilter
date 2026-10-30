@@ -1369,10 +1369,8 @@ static int _bf_matcher_new(struct bf_matcher **matcher,
     assert(matcher);
     assert((payload && payload_len) || (!payload && !payload_len));
 
-    if (type == BF_MATCHER_SET &&
-        (op != BF_MATCHER_IN || !payload || payload_len < 2 ||
-         memchr(payload, '\0', payload_len) !=
-             (const char *)payload + payload_len - 1))
+    if (type == BF_MATCHER_SET && (op != BF_MATCHER_IN || !payload ||
+                                   payload_len != sizeof(struct bf_set *)))
         return bf_err_r(-EINVAL, "invalid set matcher payload or operator");
 
     if (payload_len > SIZE_MAX - sizeof(*_matcher))
@@ -1402,11 +1400,11 @@ int bf_matcher_new(struct bf_matcher **matcher, enum bf_matcher_type type,
     if (type == BF_MATCHER_SET) {
         const struct bf_set *set = payload;
 
-        if (!set || payload_len != sizeof(*set) || !set->name)
+        if (!set || payload_len != sizeof(*set) || !set->name || !*set->name)
             return bf_err_r(-EINVAL, "set matcher requires a set object");
 
-        payload = set->name;
-        payload_len = strlen(set->name) + 1;
+        return _bf_matcher_new(matcher, type, op, &set, sizeof(struct bf_set *),
+                               negate);
     }
 
     return _bf_matcher_new(matcher, type, op, payload, payload_len, negate);
@@ -1447,7 +1445,8 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
     return 0;
 }
 
-int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
+int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
+                             const bf_hashset *sets)
 {
     _free_bf_matcher_ struct bf_matcher *_matcher = NULL;
     _cleanup_free_ char *set_name = NULL;
@@ -1475,18 +1474,25 @@ int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node)
     }
 
     if (type == BF_MATCHER_SET) {
+        const struct bf_set *set;
+
         r = bf_rpack_kv_str(node, "payload", &set_name);
-        if (!r) {
-            payload = set_name;
-            payload_len = strlen(set_name) + 1;
-        }
+        if (r)
+            return bf_rpack_key_err(r, "bf_matcher.payload");
+
+        if (!sets ||
+            !(set = bf_hashset_get(sets, &(struct bf_set) {.name = set_name})))
+            return bf_err_r(-ENOENT, "set '%s' not found", set_name);
+
+        payload = set;
+        payload_len = sizeof(*set);
     } else {
         r = bf_rpack_kv_bin(node, "payload", &payload, &payload_len);
+        if (r)
+            return bf_rpack_key_err(r, "bf_matcher.payload");
     }
-    if (r)
-        return bf_rpack_key_err(r, "bf_matcher.payload");
 
-    r = _bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
+    r = bf_matcher_new(&_matcher, type, op, payload, payload_len, negate);
     if (r)
         return bf_err_r(r, "failed to create bf_matcher from pack");
 
@@ -1510,6 +1516,20 @@ int bf_matcher_new_from_copy(struct bf_matcher **dest,
     }
 
     payload_len = src->len - sizeof(*src);
+
+    if (src->type == BF_MATCHER_SET) {
+        const struct bf_set *set;
+
+        if (payload_len != sizeof(struct bf_set *))
+            return bf_err_r(-EINVAL, "invalid source set matcher payload");
+
+        memcpy(&set, src->payload, sizeof(struct bf_set *));
+        if (!set)
+            return bf_err_r(-EINVAL, "missing source set matcher payload");
+
+        return bf_matcher_new(dest, src->type, src->op, set, sizeof(*set),
+                              src->negate);
+    }
 
     return _bf_matcher_new(dest, src->type, src->op,
                            payload_len ? src->payload : NULL, payload_len,
@@ -1535,11 +1555,15 @@ int bf_matcher_pack(const struct bf_matcher *matcher, bf_wpack_t *pack)
     bf_wpack_kv_int(pack, "type", matcher->type);
     bf_wpack_kv_int(pack, "op", matcher->op);
     bf_wpack_kv_bool(pack, "negate", matcher->negate);
-    if (matcher->type == BF_MATCHER_SET)
-        bf_wpack_kv_str(pack, "payload", (const char *)matcher->payload);
-    else
+    if (matcher->type == BF_MATCHER_SET) {
+        const struct bf_set *set;
+
+        memcpy(&set, matcher->payload, sizeof(struct bf_set *));
+        bf_wpack_kv_str(pack, "payload", set->name);
+    } else {
         bf_wpack_kv_bin(pack, "payload", matcher->payload,
                         matcher->len - sizeof(*matcher));
+    }
 
     return bf_wpack_is_valid(pack) ? 0 : -EINVAL;
 }

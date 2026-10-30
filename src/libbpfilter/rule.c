@@ -66,7 +66,8 @@ int bf_rule_new(struct bf_rule **rule)
     return 0;
 }
 
-int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
+int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node,
+                          const bf_hashset *sets)
 {
     _free_bf_rule_ struct bf_rule *_rule = NULL;
     bf_rpack_node_t m_nodes, m_node;
@@ -134,7 +135,7 @@ int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node)
         _free_bf_matcher_ struct bf_matcher *matcher = NULL;
 
         r = bf_list_emplace(&_rule->matchers, bf_matcher_new_from_pack, matcher,
-                            m_node);
+                            m_node, sets);
         if (r) {
             return bf_err_r(
                 r, "failed to unpack bf_matcher into bf_rule.matchers");

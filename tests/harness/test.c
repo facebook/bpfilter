@@ -312,6 +312,19 @@ bool bft_rule_equal(const struct bf_rule *rule0, const struct bf_rule *rule1)
 bool bft_matcher_equal(const struct bf_matcher *matcher0,
                        const struct bf_matcher *matcher1)
 {
+    if (bf_matcher_get_type(matcher0) == BF_MATCHER_SET &&
+        bf_matcher_get_type(matcher1) == BF_MATCHER_SET) {
+        const struct bf_set *set0;
+        const struct bf_set *set1;
+
+        memcpy(&set0, bf_matcher_payload(matcher0), sizeof(set0));
+        memcpy(&set1, bf_matcher_payload(matcher1), sizeof(set1));
+        return bf_matcher_get_op(matcher0) == bf_matcher_get_op(matcher1) &&
+               bf_matcher_get_negate(matcher0) ==
+                   bf_matcher_get_negate(matcher1) &&
+               bft_set_eq_ordered(set0, set1);
+    }
+
     return bf_matcher_get_type(matcher0) == bf_matcher_get_type(matcher1) &&
            bf_matcher_get_op(matcher0) == bf_matcher_get_op(matcher1) &&
            bf_matcher_get_negate(matcher0) == bf_matcher_get_negate(matcher1) &&

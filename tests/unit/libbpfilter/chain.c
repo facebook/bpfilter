@@ -41,6 +41,35 @@ static void new_and_free(void **state)
     }
 }
 
+static void new_failure_preserves_inputs(void **state)
+{
+    _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, NULL);
+    _free_bf_chain_ struct bf_chain *chain = NULL;
+    _free_bf_set_ struct bf_set *set = NULL;
+    _free_bf_rule_ struct bf_rule *rule = NULL;
+
+    (void)state;
+
+    assert_ok(
+        bf_set_new_from_raw(&set, "addresses", "(ip4.saddr)", "{192.0.2.1}"));
+    assert_ok(bf_rule_new(&rule));
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                                  sizeof(*set), false));
+    bf_rule_mark_set(rule, 1);
+    assert_ok(bf_hashset_add(&sets, (void **)&set));
+    assert_ok(bf_list_push(&rules, (void **)&rule));
+
+    // XDP chains cannot set packet marks.
+    assert_err(bf_chain_new(&chain, "test", BF_HOOK_XDP, BF_VERDICT_ACCEPT,
+                            &sets, &rules));
+    assert_null(chain);
+    assert_int_equal(bf_hashset_size(&sets), 1);
+    assert_int_equal(bf_list_size(&rules), 1);
+    assert_non_null(
+        bf_hashset_get(&sets, &(struct bf_set) {.name = "addresses"}));
+}
+
 static void pack_and_unpack(void **state)
 {
     _free_bf_chain_ struct bf_chain *chain0 = NULL;
@@ -75,6 +104,40 @@ static void copy_preserves_configuration(void **state)
     assert_non_null(source);
     assert_ok(bf_chain_new_from_copy(&copy, source));
     assert_true(bft_chain_equal(source, copy));
+}
+
+static void copy_rebinds_shared_set_references(void **state)
+{
+    _free_bf_chain_ struct bf_chain *source =
+        bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
+    _free_bf_chain_ struct bf_chain *copy = NULL;
+    const struct bf_set *source_set;
+    const struct bf_set *copied_set;
+    struct bf_rule *rule;
+    uint32_t address = htonl(0xc0000201);
+
+    (void)state;
+
+    assert_non_null(source);
+    source_set = bf_chain_get_set_by_name(source, "addresses");
+    rule = bf_list_get_at(&source->rules, 0);
+    assert_ok(bf_rule_add_matcher(rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  source_set, sizeof(*source_set), true));
+
+    assert_ok(bf_chain_new_from_copy(&copy, source));
+    copied_set = bf_chain_get_set_by_name(copy, "addresses");
+    assert_non_null(copied_set);
+    assert_ptr_not_equal(source_set, copied_set);
+    assert_int_equal(bf_hashset_size(&copy->sets), 1);
+    bf_chain_free(&source);
+
+    rule = bf_list_get_at(&copy->rules, 0);
+    assert_int_equal(bf_list_size(&rule->matchers), 2);
+    bf_list_foreach (&rule->matchers, node) {
+        assert_ptr_equal(copied_set, bf_chain_get_set_for_matcher(
+                                         copy, bf_list_node_get_data(node)));
+    }
+    assert_true(bf_hashset_contains(&copied_set->elems, &address));
 }
 
 static void copy_resets_chain_counters(void **state)
@@ -184,15 +247,17 @@ static void copy_missing_set_leaves_destination_unchanged(void **state)
         bft_chain_with_set("(ip4.saddr)", "{192.0.2.1}", false);
     _free_bf_chain_ struct bf_chain *destination = bft_chain_dummy(false);
     struct bf_chain *original = destination;
+    void *taken = NULL;
 
     (void)state;
 
     assert_non_null(source);
     assert_non_null(destination);
-    assert_ok(bf_hashset_delete(&source->sets,
-                                bf_chain_get_set_by_name(source, "addresses")));
+    assert_ok(bf_hashset_take(
+        &source->sets, bf_chain_get_set_by_name(source, "addresses"), &taken));
 
     assert_err(bf_chain_new_from_copy(&destination, source));
+    assert_ok(bf_hashset_add(&source->sets, &taken));
     assert_ptr_equal(destination, original);
     assert_true(bf_list_is_empty(&destination->rules));
     assert_true(bf_hashset_is_empty(&destination->sets));
@@ -642,6 +707,7 @@ static void named_reference_stability(void **state)
     _free_bf_set_ struct bf_set *target = NULL;
     _free_bf_set_ struct bf_set *unrelated = NULL;
     _free_bf_rule_ struct bf_rule *rule = NULL;
+    _free_bf_rule_ struct bf_rule *foreign_rule = NULL;
     struct bf_set unrelated_key = {.name = "unrelated"};
     const struct bf_set *stored;
     struct bf_matcher *matcher;
@@ -691,6 +757,12 @@ static void named_reference_stability(void **state)
     assert_err(bf_chain_add_set(chain, target));
     assert_non_null(target);
     assert_ptr_equal(stored, bf_chain_get_set_by_name(chain, "target"));
+
+    // A different object with the same name cannot reference the stored set.
+    assert_ok(bf_rule_new(&foreign_rule));
+    assert_ok(bf_rule_add_matcher(foreign_rule, BF_MATCHER_SET, BF_MATCHER_IN,
+                                  target, sizeof(*target), false));
+    assert_err(bf_chain_add_rule(chain, foreign_rule));
 }
 
 static void unpack_duplicate_sets(void **state)
@@ -739,8 +811,10 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(new_and_free),
+        cmocka_unit_test(new_failure_preserves_inputs),
         cmocka_unit_test(pack_and_unpack),
         cmocka_unit_test(copy_preserves_configuration),
+        cmocka_unit_test(copy_rebinds_shared_set_references),
         cmocka_unit_test(copy_resets_chain_counters),
         cmocka_unit_test(copy_set_updates_do_not_change_source),
         cmocka_unit_test(copy_set_matcher_survives_source_free),

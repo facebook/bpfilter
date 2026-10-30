@@ -140,7 +140,7 @@ int bf_chain_add_rule(struct bf_chain *chain, struct bf_rule *rule);
  *
  * The chain will own the set and is responsible for freeing it. To reference
  * the set in a matcher, pass the set pointer and sizeof(*set) to
- * bf_matcher_new(). The matcher stores a copy of the set's name.
+ * bf_matcher_new(). The matcher borrows the set pointer.
  *
  * @param chain Chain to insert the rule into. Can't be NULL.
  * @param set Set to insert into the chain. Can't be NULL.

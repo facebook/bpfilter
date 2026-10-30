@@ -294,8 +294,7 @@ static int _bf_cgroup_sock_addr_generate_set(struct bf_program *program,
 
     set = bf_chain_get_set_for_matcher(program->runtime.chain, matcher);
     if (!set) {
-        return bf_err_r(-ENOENT, "set #%u not found in %s",
-                        *(uint32_t *)bf_matcher_payload(matcher),
+        return bf_err_r(-ENOENT, "matcher set not found in %s",
                         program->runtime.chain->name);
     }
 

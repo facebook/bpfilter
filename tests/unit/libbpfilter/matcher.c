@@ -40,7 +40,7 @@ static void new_and_free(void **state)
     assert_non_null(matcher);
 }
 
-static void set_name_payload(void **state)
+static void set_pointer_round_trip(void **state)
 {
     enum bf_matcher_type key[] = {BF_MATCHER_IP4_SADDR};
 
@@ -49,6 +49,7 @@ static void set_name_payload(void **state)
     (void)state;
 
     for (size_t i = 0; i < ARRAY_SIZE(names); ++i) {
+        _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
         _free_bf_set_ struct bf_set *set = NULL;
         _free_bf_matcher_ struct bf_matcher *matcher = NULL;
         _free_bf_matcher_ struct bf_matcher *restored = NULL;
@@ -63,10 +64,7 @@ static void set_name_payload(void **state)
         assert_non_null(name = strdup(set->name));
         assert_ok(bf_matcher_new(&matcher, BF_MATCHER_SET, BF_MATCHER_IN, set,
                                  sizeof(*set), true));
-        assert_string_equal(bf_matcher_payload(matcher), name);
-        assert_int_equal(bf_matcher_payload_len(matcher), strlen(name) + 1);
-        bf_set_free(&set);
-        assert_string_equal(bf_matcher_payload(matcher), name);
+        assert_ok(bf_hashset_add(&sets, (void **)&set));
 
         assert_ok(bf_wpack_new(&wpack));
         assert_ok(bf_matcher_pack(matcher, wpack));
@@ -75,8 +73,17 @@ static void set_name_payload(void **state)
         assert_ok(
             bf_rpack_kv_str(bf_rpack_root(rpack), "payload", &serialized_name));
         assert_string_equal(serialized_name, name);
-        assert_ok(bf_matcher_new_from_pack(&restored, bf_rpack_root(rpack)));
+        assert_err(
+            bf_matcher_new_from_pack(&restored, bf_rpack_root(rpack), NULL));
+        assert_null(restored);
+        assert_ok(
+            bf_matcher_new_from_pack(&restored, bf_rpack_root(rpack), &sets));
         assert_true(bft_matcher_equal(matcher, restored));
+        bf_matcher_free(&matcher);
+        bf_matcher_free(&restored);
+        assert_ok(bf_set_add_elem_raw(
+            bf_hashset_get(&sets, &(struct bf_set) {.name = name}),
+            "192.0.2.1"));
     }
 }
 
@@ -120,7 +127,7 @@ static void set_legacy_payload_rejected(void **state)
     bf_wpack_kv_bin(wpack, "payload", &index, sizeof(index));
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_err(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack)));
+    assert_err(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack), NULL));
     assert_null(matcher);
 }
 
@@ -190,11 +197,14 @@ static void copy_payload_survives_source_free(void **state)
     assert_ok(bf_set_new_from_raw(&set, "addresses", "(ip4.saddr)", "{}"));
     assert_ok(bf_matcher_new(&source, BF_MATCHER_SET, BF_MATCHER_IN, set,
                              sizeof(*set), true));
-    bf_set_free(&set);
     assert_ok(bf_matcher_new_from_copy(&copy, source));
+    assert_true(bft_matcher_equal(source, copy));
     bf_matcher_free(&source);
 
-    assert_string_equal(bf_matcher_payload(copy), "addresses");
+    assert_ok(bf_set_add_elem_raw(set, "192.0.2.1"));
+    assert_ok(bf_matcher_new(&source, BF_MATCHER_SET, BF_MATCHER_IN, set,
+                             sizeof(*set), true));
+    assert_true(bft_matcher_equal(source, copy));
     assert_true(bf_matcher_get_negate(copy));
 }
 
@@ -234,7 +244,8 @@ static void pack_and_unpack(void **state)
 
     // Unpack into destination
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     // Verify they're equal
     assert_true(bft_matcher_equal(source, destination));
@@ -261,7 +272,8 @@ static void pack_and_unpack_small_payload(void **state)
 
     // Unpack
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     assert_true(bft_matcher_equal(source, destination));
 }
@@ -289,7 +301,8 @@ static void pack_and_unpack_with_negate(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     // Verify negate round-trips correctly
     assert_true(bf_matcher_get_negate(destination));
@@ -314,7 +327,7 @@ static void unpack_without_negate_defaults_false(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack)));
+    assert_ok(bf_matcher_new_from_pack(&matcher, bf_rpack_root(rpack), NULL));
 
     assert_int_equal(bf_matcher_get_type(matcher), BF_MATCHER_TCP_SPORT);
     assert_int_equal(bf_matcher_get_op(matcher), BF_MATCHER_EQ);
@@ -881,7 +894,8 @@ static void meta_probability_pack_unpack(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     assert_true(bft_matcher_equal(source, destination));
     bf_matcher_free(&source);
@@ -897,7 +911,8 @@ static void meta_probability_pack_unpack(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     assert_true(bft_matcher_equal(source, destination));
 }
@@ -2071,7 +2086,8 @@ static void meta_flow_probability_pack_unpack(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     assert_true(bft_matcher_equal(source, destination));
     bf_matcher_free(&source);
@@ -2087,7 +2103,8 @@ static void meta_flow_probability_pack_unpack(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_ok(bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_ok(
+        bf_matcher_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 
     assert_true(bft_matcher_equal(source, destination));
 }
@@ -2098,7 +2115,7 @@ int main(void)
         cmocka_unit_test(new_and_free),
         cmocka_unit_test(copy_payload_survives_source_free),
         cmocka_unit_test(copy_preserves_empty_payload),
-        cmocka_unit_test(set_name_payload),
+        cmocka_unit_test(set_pointer_round_trip),
         cmocka_unit_test(set_invalid_input),
         cmocka_unit_test(set_legacy_payload_rejected),
         cmocka_unit_test(new_with_payload),
