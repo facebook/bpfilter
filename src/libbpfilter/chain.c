@@ -317,8 +317,13 @@ int bf_chain_new(struct bf_chain **chain, const char *name, enum bf_hook hook,
     }
 
     r = _bf_chain_validate_rules(_chain);
-    if (r)
+    if (r) {
+        if (rules)
+            *rules = bf_list_move(&_chain->rules);
+        if (sets)
+            *sets = bf_hashset_move(&_chain->sets);
         return r;
+    }
 
     *chain = TAKE_PTR(_chain);
 
@@ -332,8 +337,8 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     enum bf_hook hook;
     enum bf_verdict policy;
     bf_rpack_node_t array, array_node;
-    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
     _clean_bf_hashset_ bf_hashset sets = bf_set_hashset_default();
+    _clean_bf_list_ bf_list rules = bf_list_default(bf_rule_free, bf_rule_pack);
     int r;
 
     r = bf_rpack_kv_str(node, "name", &name);
@@ -369,7 +374,8 @@ int bf_chain_new_from_pack(struct bf_chain **chain, bf_rpack_node_t node)
     bf_rpack_array_foreach (array, array_node) {
         _free_bf_rule_ struct bf_rule *rule = NULL;
 
-        r = bf_list_emplace(&rules, bf_rule_new_from_pack, rule, array_node);
+        r = bf_list_emplace(&rules, bf_rule_new_from_pack, rule, array_node,
+                            &sets);
         if (r) {
             return bf_err_r(r, "failed to unpack bf_rule into bf_chain.rules");
         }
@@ -391,8 +397,8 @@ void bf_chain_free(struct bf_chain **chain)
     if (!*chain)
         return;
 
-    bf_hashset_clean(&(*chain)->sets);
     bf_list_clean(&(*chain)->rules);
+    bf_hashset_clean(&(*chain)->sets);
     BF_FREEP(&(*chain)->name);
     BF_FREEP(chain);
 }
@@ -498,13 +504,16 @@ const struct bf_set *
 bf_chain_get_set_for_matcher(const struct bf_chain *chain,
                              const struct bf_matcher *matcher)
 {
+    const struct bf_set *set;
+
     assert(chain);
     assert(matcher);
 
     if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
         return NULL;
 
-    return bf_chain_get_set_by_name(chain, bf_matcher_payload(matcher));
+    memcpy(&set, bf_matcher_payload(matcher), sizeof(struct bf_set *));
+    return bf_hashset_get(&chain->sets, set) == set ? set : NULL;
 }
 
 static struct bf_set *_bf_chain_get_set_by_name(struct bf_chain *chain,
@@ -611,6 +620,29 @@ int bf_chain_new_from_copy(struct bf_chain **dest, const struct bf_chain *src)
         r = bf_rule_new_from_copy(&rule, bf_list_node_get_data(rule_node));
         if (r)
             return r;
+
+        bf_list_foreach (&rule->matchers, matcher_node) {
+            struct bf_matcher *matcher = bf_list_node_get_data(matcher_node);
+            const struct bf_set *set;
+
+            if (bf_matcher_get_type(matcher) != BF_MATCHER_SET)
+                continue;
+
+            set = bf_chain_get_set_for_matcher(src, matcher);
+            if (!set)
+                return bf_err_r(-ENOENT,
+                                "matcher set not found in source chain");
+            if (!set->name)
+                continue;
+
+            set = bf_chain_get_set_by_name(copy, set->name);
+            if (!set)
+                return bf_err_r(-ENOENT,
+                                "matcher set not found in copied chain");
+
+            memcpy((void *)bf_matcher_payload(matcher), &set,
+                   sizeof(struct bf_set *));
+        }
 
         r = bf_chain_add_rule(copy, rule);
         if (r)

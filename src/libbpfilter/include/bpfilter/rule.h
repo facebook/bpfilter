@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/core/list.h>
 #include <bpfilter/counter.h>
 #include <bpfilter/dump.h>
@@ -112,15 +113,26 @@ int bf_rule_new(struct bf_rule **rule);
  *        data. The caller will own the object. On failure, `*rule` is
  *        unchanged. Can't be NULL.
  * @param node Node containing the serialized rule. Can't be NULL.
+ * @param sets Sets used to resolve matcher references. Can be NULL if no
+ *        matcher references a set. The collection retains ownership.
  * @return 0 on success, or a negative errno value on failure.
  */
-int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node);
+int bf_rule_new_from_pack(struct bf_rule **rule, bf_rpack_node_t node,
+                          const bf_hashset *sets);
 
 /**
- * @brief Allocate an independent copy of a rule and its matchers.
+ * @brief Allocate a copy of a rule and its matchers.
+ *
+ * Sets remain borrowed from the same owner as the source rule. That owner
+ * must outlive the copied rule, including its destruction.
  *
  * Runtime counters and disabled state are reset. Adding the copy to a chain
  * assigns its index, validates set references, and recalculates disabled state.
+ *
+ * @warning Before inserting the copy into another chain, replace its set
+ * matchers with matchers that borrow that chain's sets. Matching names alone
+ * do not rebind references. To copy a complete chain, use
+ * `bf_chain_new_from_copy()`, which rebinds references to the copied sets.
  *
  * @param dest Destination rule. Unchanged on failure. Can't be NULL.
  * @param src Rule to copy. Can't be NULL.
@@ -163,7 +175,7 @@ void bf_rule_dump(const struct bf_rule *rule, prefix_t *prefix);
  * @param payload Payload of the matcher, its content and size depends on @p
  *        type . Can be NULL but only if @p payload_len is 0, in which case
  *        there is no payload. For BF_MATCHER_SET, pass a pointer to a bf_set.
- *        The matcher stores an owned copy of its name.
+ *        The matcher borrows the set. Its owner must outlive the matcher.
  * @param payload_len Length of the input payload. For BF_MATCHER_SET, pass
  *        sizeof(struct bf_set).
  * @param negate If true, negate the matcher's comparison.

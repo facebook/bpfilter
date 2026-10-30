@@ -101,7 +101,7 @@ public:
         }
 
         for (const Rule &rule: _rules) {
-            auto bfrule = rule.get();
+            auto bfrule = rule.get(chain);
             r = bf_chain_add_rule(chain, bfrule.get());
             if (r != 0) {
                 bf_chain_free(&chain);

@@ -38,9 +38,9 @@ static void new_and_free(void **state)
 
 static void copy_configuration_and_ownership(void **state)
 {
+    _free_bf_set_ struct bf_set *set = NULL;
     _free_bf_rule_ struct bf_rule *source = bft_rule_dummy(2);
     _free_bf_rule_ struct bf_rule *copy = NULL;
-    _free_bf_set_ struct bf_set *set = NULL;
     const struct bf_matcher *set_matcher;
 
     (void)state;
@@ -67,7 +67,9 @@ static void copy_configuration_and_ownership(void **state)
 
     bf_rule_free(&source);
     set_matcher = bf_list_node_get_data(bf_list_get_tail(&copy->matchers));
-    assert_string_equal(bf_matcher_payload(set_matcher), "rule_copy_set");
+    assert_int_equal(bf_matcher_get_type(set_matcher), BF_MATCHER_SET);
+    assert_true(bf_matcher_get_negate(set_matcher));
+    assert_ok(bf_set_add_elem_raw(set, "192.0.2.1"));
 }
 
 static void copy_failure_preserves_destination(void **state)
@@ -109,7 +111,7 @@ static void pack_and_unpack(void **state)
     // Unpack in the destination counter
     assert_ok(bf_rpack_new(&rpack, data, data_len));
     assert_ok(bf_rpack_kv_obj(bf_rpack_root(rpack), "rule", &node));
-    assert_ok(bf_rule_new_from_pack(&destination, node));
+    assert_ok(bf_rule_new_from_pack(&destination, node, NULL));
 
     assert_true(bft_rule_equal(source, destination));
 }
@@ -129,7 +131,7 @@ static void unpack_error(void **state)
     assert_ok(bf_wpack_get_data(wpack, &data, &data_len));
 
     assert_ok(bf_rpack_new(&rpack, data, data_len));
-    assert_err(bf_rule_new_from_pack(&destination, bf_rpack_root(rpack)));
+    assert_err(bf_rule_new_from_pack(&destination, bf_rpack_root(rpack), NULL));
 }
 
 static void dump(void **state)

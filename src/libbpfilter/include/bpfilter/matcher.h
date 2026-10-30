@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <bpfilter/core/hashset.h>
 #include <bpfilter/dump.h>
 #include <bpfilter/pack.h>
 
@@ -273,9 +274,9 @@ struct bf_matcher_meta
  * @param payload Payload of the matcher, its content and size depends on
  *        @p type . Can be NULL but only if @p payload_len is 0, in which case
  *        there is no payload. For BF_MATCHER_SET, pass a pointer to a bf_set.
- *        The constructor copies its name and retains no pointer to the set.
+ *        The constructor borrows the set. Its owner must outlive the matcher.
  * @param payload_len Length of the input payload. For BF_MATCHER_SET, pass
- *        sizeof(struct bf_set). The stored payload is the NUL-terminated name.
+ *        `sizeof(struct bf_set *)`. The stored payload contains the set pointer.
  * @param negate If true, negate the comparison result.
  * @return 0 on success, or negative errno value on failure.
  */
@@ -305,14 +306,17 @@ int bf_matcher_new_from_raw(struct bf_matcher **matcher,
  * @param matcher On success, points to the newly allocated and initialised
  *        matcher. Can't be NULL.
  * @param node Serialized matcher. Can't be NULL.
+ * @param sets Sets used to resolve serialized names. Can be NULL if the
+ *        matcher does not reference a set. The collection retains ownership.
  * @return 0 on success, or negative error value on failure.
  */
-int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node);
+int bf_matcher_new_from_pack(struct bf_matcher **matcher, bf_rpack_node_t node,
+                             const bf_hashset *sets);
 
 /**
- * @brief Allocate an independent copy of a matcher and its payload.
+ * @brief Allocate a copy of a matcher and its payload.
  *
- * Set matchers copy the set name. The referenced set, if any, is not copied.
+ * Set matchers borrow the same set as the source matcher.
  *
  * @param dest Destination matcher. Unchanged on failure. Can't be NULL.
  * @param src Matcher to copy. Can't be NULL.
